@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Atharraich cànan na fuaime",
     "home": "Duilleag-dhachaigh JesusFilm",
     "closeSearch": "Dùin an rannsachadh",
-    "submitSearch": "Lorg"
+    "submitSearch": "Lorg",
+    "library": "Leabharlann"
   },
   "SearchOverlay": {
     "dialogLabel": "Lorg is brobhs bhideothan",
@@ -467,6 +468,7 @@
     "sports": "Spòrs",
     "collections": "Cruinneachaidhean",
     "subtitlesOnly": "Fo-thiotalan a-mhàin",
+    "backToTop": "Air ais gu mullach",
     "newlyAdded": "Air ùr chur ris",
     "newVideosTitle": "Bhideothan Crìosdail ùra ann an {language}",
     "newestFirst": "As ùire an toiseach",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bhideothan fa-leth",
     "videosFromCollection": "Bhideothan bho {collection}.",
     "standaloneDescription": "Bhideothan fa-leth sa chànan seo.",
-    "openCollection": "Fosgail a’ chruinneachadh"
+    "openCollection": "Fosgail a’ chruinneachadh",
+    "filters": "Criathragan",
+    "filterLength": "Faid",
+    "filterLength_under5": "Nas lugha na 5 mion",
+    "filterLength_5to10": "5-10 mion",
+    "filterLength_10to30": "10-30 mion",
+    "filterLength_over30": "Còrr air 30 mion",
+    "filterType": "Seòrsa",
+    "clearFilters": "Falamhaich na criathragan",
+    "filterResults": "{count} de {total} air an sealltainn",
+    "noFilterResults": "Chan eil bhidio a' freagairt ris na criathragan seo. Feuch ri fear a thoirt air falbh.",
+    "filterAdded": "Air a chur ris",
+    "filterAdded_60d": "60 latha mu dheireadh",
+    "filterAdded_6m": "6 mìosan mu dheireadh",
+    "filterAdded_12m": "12 mìosan mu dheireadh"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Coimhead",
@@ -646,44 +662,6 @@
     "actionsLabel": "Gnìomhan airson duilleag nach deach a lorg",
     "backToWatch": "Air ais gu Watch",
     "browseVideos": "Brobhs bhideothan"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Coimhead air film goirid",
-    "actions": {
-      "joinUs": "Thig còmhla rinn",
-      "shareMission": "Gabh pàirt nar misean"
-    },
-    "welcomeStart": {
-      "label": "Creideamh & an Sgriobtar",
-      "title": "Taghaidhean bhidio an-diugh",
-      "description": "Susbaint bhidio stèidhichte air a’ chreideamh bhon leabharlann againn airson brosnachadh, dùbhlan, agus meòrachadh a thogail."
-    },
-    "welcomeMorning": {
-      "label": "Brosnachadh maidne",
-      "title": "Madainn mhath! Tha amannan a’ Bhìobaill an-diugh a’ feitheamh.",
-      "description": "Tòisich an latha le amannan brosnachail a’ Bhìobaill a tha air an dealbhadh gus do spiorad a bhrosnachadh agus a thogail."
-    },
-    "welcomeAfternoon": {
-      "label": "Brosnachadh feasgair",
-      "title": "Feasgar math! Amannan a’ Bhìobaill airson an latha agad.",
-      "description": "Susbaint a’ Bhìobaill a tha brosnachail, foirfe airson do bhriseadh feasgair no airson brosnachadh leantainneach."
-    },
-    "welcomeEvening": {
-      "label": "Brosnachadh an fheasgair",
-      "title": "Feasgar math! Gabh fois le amannan a’ Bhìobaill.",
-      "description": "Amannan ciùine a’ Bhìobaill gus do chuideachadh le meòrachadh agus comhfhurtachd a lorg mar a thig an latha gu crìch."
-    },
-    "joinUs": {
-      "label": "Thig còmhla rinn",
-      "title": "Tha billeanan a’ sireadh",
-      "description": "Tha am foghar an seo. Thig còmhla rinn fhad ’s a tha sinn a’ roinn an t-soisgeil leis an t-saoghal tro mheadhanan didseatach."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Thèid sinn còmhla",
-      "title": "Sgeulachd Ìosa ag innse còmhla",
-      "description": "Gus an cluinn is gum faic iad gràdh Ìosa nan cànan fhèin, far a bheil iad."
-    }
   },
   "VideoRecommendations": {
     "match": "Maidseadh: {percent}%",

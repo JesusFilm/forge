@@ -15,8 +15,10 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { Globe, ListVideo, X } from "lucide-react"
+import { Globe, X } from "lucide-react"
 import { useTranslations } from "next-intl"
+
+import { WatchLibraryIcon } from "@/components/watch/watch-section-styles"
 
 import type {
   FloatingSearchControllerProps,
@@ -908,7 +910,11 @@ export function FloatingSearchProvider({
                 href={languageVideosHref}
                 prefetch={false}
                 data-testid="floating-header-language-videos-link"
-                aria-label={languageVideosLabel}
+                // No `aria-label`: the visible "Library" text is now the
+                // accessible name. Overriding it with "See all videos in X"
+                // would break WCAG 2.5.3 Label in Name, since the spoken name
+                // would not contain the visible label. The richer phrasing
+                // stays as the hover tooltip.
                 title={languageVideosLabel}
                 // Hidden below `md`: the header's trailing grid column is
                 // `minmax(80px,1fr)` at mobile widths, so a third 44px control
@@ -919,12 +925,19 @@ export function FloatingSearchProvider({
                 // Absent entirely while the search modal is open at every
                 // width: the overlay renders its own full-width row above the
                 // category tiles instead, so the two never compete.
-                className={`pointer-events-auto hidden ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:inline-flex`}
+                // Auto width rather than the fixed square
+                // FLOATING_HEADER_LANGUAGE_SLOT_CLASS, since the control now
+                // carries a text label beside the glyph. Still hidden below
+                // `md` for the reason above.
+                className="pointer-events-auto hidden h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:inline-flex md:h-[52px]"
               >
-                <ListVideo
+                <WatchLibraryIcon
                   aria-hidden
-                  className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+                  className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
                 />
+                <span className="text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
+                  {t("library")}
+                </span>
               </Link>
             ) : null}
             {headerLanguageControlVisible ? (

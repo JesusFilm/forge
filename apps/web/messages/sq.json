@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ndrysho gjuhën e audios",
     "home": "Faqja kryesore e JesusFilm",
     "closeSearch": "Mbyll kërkimin",
-    "submitSearch": "Kërko"
+    "submitSearch": "Kërko",
+    "library": "Bibliotekë"
   },
   "SearchOverlay": {
     "dialogLabel": "Kërko dhe shfleto videot",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Koleksione",
     "subtitlesOnly": "Vetëm titra",
+    "backToTop": "Kthehu lart",
     "newlyAdded": "Sapo shtuar",
     "newVideosTitle": "Video të reja të krishtera në {language}",
     "newestFirst": "Më të rejat të parat",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video të veçanta",
     "videosFromCollection": "Video nga {collection}.",
     "standaloneDescription": "Video të veçanta në këtë gjuhë.",
-    "openCollection": "Hap koleksionin"
+    "openCollection": "Hap koleksionin",
+    "filters": "Filtra",
+    "filterLength": "Kohëzgjatja",
+    "filterLength_under5": "Nën 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mbi 30 min",
+    "filterType": "Tipi",
+    "clearFilters": "Fshi filtrat",
+    "filterResults": "{count} nga {total} të shfaqura",
+    "noFilterResults": "Asnjë video nuk përputhet me këta filtra. Provoni të hiqni një.",
+    "filterAdded": "Shtuar",
+    "filterAdded_60d": "60 ditët e fundit",
+    "filterAdded_6m": "6 muajt e fundit",
+    "filterAdded_12m": "12 muajt e fundit"
   },
   "WatchHome": {
     "pageTitle": "Shikimi i Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Veprimet kur faqja nuk u gjet",
     "backToWatch": "Kthehu te Shikimi",
     "browseVideos": "Shfleto videot"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Shiko filmin e shkurtër",
-    "actions": {
-      "joinUs": "Bashkohuni me ne",
-      "shareMission": "Ndani misionin tonë"
-    },
-    "welcomeStart": {
-      "label": "Besim & Shkrimi i Shenjtë",
-      "title": "Përzgjedhjet e sotme të videove",
-      "description": "Përmbajtje video me në qendër besimin nga biblioteka jonë, për të frymëzuar, sfiduar dhe nxitur reflektim."
-    },
-    "welcomeMorning": {
-      "label": "Frymëzim i mëngjesit",
-      "title": "Mirëmëngjes! Ju presin momentet e sotme biblike.",
-      "description": "Filloni ditën me momente inkurajuese biblike, të krijuara për të frymëzuar dhe ngritur shpirtin tuaj."
-    },
-    "welcomeAfternoon": {
-      "label": "Frymëzim i pasdites",
-      "title": "Mirëdita! Momente biblike për ditën tuaj.",
-      "description": "Përmbajtje inkurajuese biblike, e përsosur për pushimin e pasdites ose për frymëzim të mëtejshëm."
-    },
-    "welcomeEvening": {
-      "label": "Frymëzim i mbrëmjes",
-      "title": "Mirëmbrëma! Qetësohuni me momente biblike.",
-      "description": "Momente paqësore biblike për t’ju ndihmuar të reflektoni dhe të gjeni ngushëllim ndërsa dita po mbyllet."
-    },
-    "joinUs": {
-      "label": "Bashkohuni me ne",
-      "title": "Miliarda njerëz po kërkojnë",
-      "description": "Të korrat janë këtu. Bashkohuni me ne ndërsa ndajmë ungjillin me botën përmes mediave digjitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Le të shkojmë së bashku",
-      "title": "Të tregojmë historinë e Jezusit, së bashku",
-      "description": "Që ata të mund të dëgjojnë dhe të shohin dashurinë e Jezusit në gjuhën e tyre, pikërisht aty ku janë."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% përputhje",

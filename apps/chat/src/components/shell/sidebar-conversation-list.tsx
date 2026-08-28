@@ -26,6 +26,18 @@ type ConversationListProps = {
  * fallback labels for untitled server threads (R11), and a muted presentation
  * (+ sr-only note) for rows whose transcript is no longer available. An empty
  * server list renders nothing extra — today's client-only look (R16).
+ *
+ * feat-401 makes a FULLY empty list reachable for the first time, by three
+ * paths: a first-time signed-in user with no server history, and either
+ * access-denial revert (list or replay), which empties a rail the user just
+ * saw populated. Decided for all three: leave it bare — no empty-state copy,
+ * no reserved space. The chat pane beside it already answers "what now?"
+ * ("What would you like to ask?"), so a second empty-state message a few
+ * pixels away only restates it, and the rail's own affordance is the New
+ * action directly above; the denial paths additionally want R16 silence.
+ * That same pane is also why nothing marks `aria-current` while the open
+ * conversation is unstarted: the pane, not a highlighted row, is the
+ * indication. Revisit only if the rail gains a purpose beyond history.
  */
 export function ConversationList({
   conversations,

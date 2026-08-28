@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Breyta tungumáli hljóðs",
     "home": "Forsíða JesusFilm",
     "closeSearch": "Loka leit",
-    "submitSearch": "Leita"
+    "submitSearch": "Leita",
+    "library": "Safn"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og fletta í myndböndum",
@@ -467,6 +468,7 @@
     "sports": "Íþróttir",
     "collections": "Söfn",
     "subtitlesOnly": "Aðeins textar",
+    "backToTop": "Til baka upp",
     "newlyAdded": "Nýlega bætt við",
     "newVideosTitle": "Ný kristileg myndbönd á {language}",
     "newestFirst": "Nýjust fyrst",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Stök myndbönd",
     "videosFromCollection": "Myndbönd úr {collection}.",
     "standaloneDescription": "Stök myndbönd á þessu tungumáli.",
-    "openCollection": "Opna safn"
+    "openCollection": "Opna safn",
+    "filters": "Síur",
+    "filterLength": "Lengd",
+    "filterLength_under5": "Undir 5 mín",
+    "filterLength_5to10": "5-10 mín",
+    "filterLength_10to30": "10-30 mín",
+    "filterLength_over30": "Yfir 30 mín",
+    "filterType": "Tegund",
+    "clearFilters": "Hreinsa síur",
+    "filterResults": "{count} af {total} sýnd",
+    "noFilterResults": "Engin myndbönd passa við þessar síur. Prófaðu að fjarlægja eina.",
+    "filterAdded": "Bætt við",
+    "filterAdded_60d": "Síðustu 60 dagar",
+    "filterAdded_6m": "Síðustu 6 mánuðir",
+    "filterAdded_12m": "Síðustu 12 mánuðir"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Horfðu",
@@ -646,44 +662,6 @@
     "actionsLabel": "Aðgerðir fyrir síðu sem fannst ekki",
     "backToWatch": "Til baka í horf",
     "browseVideos": "Fletta í myndböndum"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Horfa á stuttmynd",
-    "actions": {
-      "joinUs": "Vertu með",
-      "shareMission": "Deildu í þjónustu okkar"
-    },
-    "welcomeStart": {
-      "label": "Trú og Ritning",
-      "title": "Myndbandaval dagsins",
-      "description": "Trúarmiðað myndbandsefni úr safninu okkar til að hvetja, ögra og vekja til umhugsunar."
-    },
-    "welcomeMorning": {
-      "label": "Hvatning að morgni",
-      "title": "Góðan daginn! Biblíustundir dagsins bíða.",
-      "description": "Byrjaðu daginn með uppörvandi Biblíustundum sem ætlaðar eru til að hvetja þig og lyfta anda þínum."
-    },
-    "welcomeAfternoon": {
-      "label": "Hvatning eftir hádegi",
-      "title": "Góðan daginn! Biblíustundir fyrir daginn þinn.",
-      "description": "Uppörvandi Biblíuinnihald sem hentar vel í hádegishléinu eða til áframhaldandi hvatningar."
-    },
-    "welcomeEvening": {
-      "label": "Hvatning að kvöldi",
-      "title": "Gott kvöld! Slakaðu á með Biblíustundum.",
-      "description": "Rólegar Biblíustundir sem hjálpa þér að hugleiða og finna huggun þegar dagurinn líður undir lok."
-    },
-    "joinUs": {
-      "label": "Vertu með",
-      "title": "Milljarðar eru að leita",
-      "description": "Höfin er komin. Vertu með okkur að deila fagnaðarboðskapnum með heiminum með stafrænum miðlum."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Förum saman",
-      "title": "Að segja sögu Jesú, saman",
-      "description": "Svo þau geti heyrt og séð kærleika Jesú á sínu eigin tungumáli, þar sem þau eru."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% samsvörun",

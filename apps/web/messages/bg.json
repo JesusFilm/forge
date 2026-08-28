@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промени езика на аудиото",
     "home": "Начална страница на JesusFilm",
     "closeSearch": "Затвори търсенето",
-    "submitSearch": "Търси"
+    "submitSearch": "Търси",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Търсене и разглеждане на видеа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекции",
     "subtitlesOnly": "Само субтитри",
+    "backToTop": "Обратно горе",
     "newlyAdded": "Ново добавени",
     "newVideosTitle": "Нови християнски видеа на {language}",
     "newestFirst": "Първо най-новите",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостоятелни видеа",
     "videosFromCollection": "Видеа от {collection}.",
     "standaloneDescription": "Самостоятелни видеа на този език.",
-    "openCollection": "Отвори колекцията"
+    "openCollection": "Отвори колекцията",
+    "filters": "Филтри",
+    "filterLength": "Дължина",
+    "filterLength_under5": "Под 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Над 30 мин",
+    "filterType": "Тип",
+    "clearFilters": "Изчисти филтрите",
+    "filterResults": "Показани {count} от {total}",
+    "noFilterResults": "Няма видеа, отговарящи на тези филтри. Опитайте да махнете един.",
+    "filterAdded": "Добавено",
+    "filterAdded_60d": "Последните 60 дни",
+    "filterAdded_6m": "Последните 6 месеца",
+    "filterAdded_12m": "Последните 12 месеца"
   },
   "WatchHome": {
     "pageTitle": "Гледайте Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Действия при липсваща страница",
     "backToWatch": "Обратно към Watch",
     "browseVideos": "Разгледай видеа"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Гледайте късометражния филм",
-    "actions": {
-      "joinUs": "Присъединете се",
-      "shareMission": "Участвайте в нашата мисия"
-    },
-    "welcomeStart": {
-      "label": "Вяра и Писание",
-      "title": "Днешните видеопредложения",
-      "description": "Видео съдържание, съсредоточено върху вярата, от нашата библиотека, което вдъхновява, предизвиква и подтиква към размисъл."
-    },
-    "welcomeMorning": {
-      "label": "Утринно вдъхновение",
-      "title": "Добро утро! Днешните библейски моменти ви очакват.",
-      "description": "Започнете деня си с насърчителни библейски моменти, създадени да вдъхновяват и да ви издигат духом."
-    },
-    "welcomeAfternoon": {
-      "label": "Следобедно вдъхновение",
-      "title": "Добър следобед! Библейски моменти за вашия ден.",
-      "description": "Насърчително библейско съдържание, идеално за следобедната ви почивка или за допълнително вдъхновение."
-    },
-    "welcomeEvening": {
-      "label": "Вечерно вдъхновение",
-      "title": "Добър вечер! Отпуснете се с библейски моменти.",
-      "description": "Спокойни библейски моменти, които ще ви помогнат да размислите и да намерите утеха, когато денят ви приключва."
-    },
-    "joinUs": {
-      "label": "Присъединете се",
-      "title": "Милиарди хора търсят",
-      "description": "Жътвата е тук. Присъединете се към нас, докато споделяме евангелието със света чрез дигитални медии."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Нека вървим заедно",
-      "title": "Разказваме историята на Исус заедно",
-      "description": "За да могат да чуят и видят любовта на Исус на своя собствен език, точно там, където са."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% съвпадение",

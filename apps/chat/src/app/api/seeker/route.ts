@@ -136,6 +136,17 @@ function isProxyBody(
 }
 
 /**
+ * The click-source tag (feat-366, KTD11): closed vocabulary, FORWARD-only —
+ * this proxy never invents a value. An absent, unknown, or non-string tag
+ * reads as absent and the upstream key is omitted, NEVER a 400: a junk tag
+ * must not cost the person their answer. Mastra applies the same rule on its
+ * own side and records an absent value as `typed`.
+ */
+function toPromptSource(value: unknown): "follow_up" | undefined {
+  return value === "follow_up" ? "follow_up" : undefined
+}
+
+/**
  * The testable proxy core. Always returns a 200 SSE Response (carrying a
  * terminal `error` frame on any failure) EXCEPT a 400 for a malformed body.
  */
@@ -153,6 +164,9 @@ export async function handleSeekerProxyRequest({
     return jsonResponse(400, { error: "text and conversationId are required" })
   }
   const { text, conversationId } = raw
+  const promptSource = toPromptSource(
+    (raw as { promptSource?: unknown }).promptSource,
+  )
 
   const encoder = new TextEncoder()
   let closed = false
@@ -228,7 +242,13 @@ export async function handleSeekerProxyRequest({
             apiKey: config.apiKey,
             path: "/forge-seeker",
             accept: "text/event-stream",
-            body: { prompt: text, threadId: conversationId, resourceId },
+            body: {
+              prompt: text,
+              threadId: conversationId,
+              resourceId,
+              // OMITTED unless the send came from a chip (feat-366, KTD11).
+              ...(promptSource ? { promptSource } : {}),
+            },
             signal,
           })
         } catch (error) {

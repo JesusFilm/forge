@@ -6,32 +6,52 @@ module.exports = {
       from: { path: "^src/contracts/" },
       to: { path: "^src/(?!contracts/)" },
     },
-    ...["acquisition", "indexing", "retrieval", "serving"].map((lane) => ({
-      name: `${lane}-stays-in-lane`,
+    ...["acquisition", "config", "indexing", "retrieval", "serving"].map(
+      (lane) => ({
+        name: `${lane}-stays-in-lane`,
+        severity: "error",
+        from: {
+          path: `^src/${lane}/`,
+          pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+        },
+        to: {
+          path: "^src/",
+          pathNot: `^src/(contracts|${lane})/`,
+        },
+      }),
+    ),
+    {
+      name: "fakes-are-test-only",
       severity: "error",
-      from: { path: `^src/${lane}/` },
-      to: {
-        path: "^src/",
-        pathNot: `^src/(contracts|${lane})/`,
-      },
-    })),
+      from: { path: "^src/(?!fakes/).*(?<!\\.(?:test|spec)\\.[cm]?[jt]sx?)$" },
+      to: { path: "^src/fakes/" },
+    },
     {
       name: "adapters-import-only-contracts",
       severity: "error",
-      from: { path: "^src/adapters/" },
-      to: { path: "^src/", pathNot: "^src/contracts/" },
+      from: {
+        path: "^src/adapters/",
+        pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+      },
+      to: { path: "^src/", pathNot: "^src/(contracts|adapters|generated)/" },
     },
     {
       name: "rag-does-not-import-other-apps",
       severity: "error",
       from: { path: "^src/" },
-      to: { path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)" },
+      to: {
+        path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)",
+        pathNot: "^\\.\\./\\.\\./node_modules/",
+      },
     },
     {
       name: "not-to-unresolvable",
       severity: "error",
       from: { path: "^src/" },
-      to: { couldNotResolve: true },
+      to: {
+        couldNotResolve: true,
+        pathNot: "^(?:@forge/rag-contracts|hono|hono/body-limit|tinyld)$",
+      },
     },
     {
       name: "no-circular",
@@ -49,7 +69,7 @@ module.exports = {
       name: "unclassified-modules-cannot-wire-internals",
       severity: "error",
       from: {
-        path: "^src/(?!(contracts|acquisition|indexing|retrieval|serving|adapters)/|main\\.ts$)",
+        path: "^src/(?!(contracts|acquisition|config|indexing|retrieval|serving|adapters|fakes)/|main\\.ts$)",
       },
       to: { path: "^src/" },
     },
@@ -58,7 +78,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
-        pathNot: "^src/adapters/",
+        pathNot: "^(?:src/adapters/|tests/adapters\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },
@@ -66,6 +86,6 @@ module.exports = {
   options: {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
-    doNotFollow: { path: "node_modules" },
+    doNotFollow: { path: "(?:node_modules|^src/generated/)" },
   },
 }

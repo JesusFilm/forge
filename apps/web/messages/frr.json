@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprak ännern",
     "home": "JesusFilm-hooftside",
     "closeSearch": "Sook sluten",
-    "submitSearch": "Soken"
+    "submitSearch": "Soken",
+    "library": "Bibliotheek"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's soken un bruken",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sammlingen",
     "subtitlesOnly": "Nuur Ündertitel",
+    "backToTop": "Torüg auer",
     "newlyAdded": "Nij tafoegd",
     "newVideosTitle": "Nije kristelike Video's in {language}",
     "newestFirst": "Nijst foaranan",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Onafhängige Video's",
     "videosFromCollection": "Video's ut {collection}.",
     "standaloneDescription": "Onafhängige Video's in dizze Sprak.",
-    "openCollection": "Sammlung oopen"
+    "openCollection": "Sammlung oopen",
+    "filters": "Filter",
+    "filterLength": "Loongde",
+    "filterLength_under5": "Maner as 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mör as 30 min",
+    "filterType": "Slach",
+    "clearFilters": "Filter fuartnem",
+    "filterResults": "{count} foon {total} wiset",
+    "noFilterResults": "Nian video paset tu deese filter. Prowe, ään fuart tu nemen.",
+    "filterAdded": "Tuudänj",
+    "filterAdded_60d": "Lääst 60 deege",
+    "filterAdded_6m": "Lääst 6 muunen",
+    "filterAdded_12m": "Lääst 12 muunen"
   },
   "WatchHome": {
     "pageTitle": "Kieken | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Side-naad-funden-aksjens",
     "backToWatch": "Torük na Watch",
     "browseVideos": "Video's blaad"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Koortfilm kieken",
-    "actions": {
-      "joinUs": "Doon mit",
-      "shareMission": "Deel in us Missie"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Skrift",
-      "title": "Vandaag s Video-uutwalen",
-      "description": "Glaubenscentreerde Video's ut us Bibliotheek, de inspirier, uutfoordern un to Nadenken anreeg."
-    },
-    "welcomeMorning": {
-      "label": "Morgeninspiratie",
-      "title": "Morgen! Vandaags Bibel-momenten wachte.",
-      "description": "Begjin din Daag mit ermutigende Bibel-momenten, de inspirier un din Geest opkerre sollen."
-    },
-    "welcomeAfternoon": {
-      "label": "Middag-inspiratie",
-      "title": "Guten middag! Bibel-momenten foar din Daag.",
-      "description": "Ermutigende Bibel-inhoald, perfect foar din middag-pause of foar weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Abend-inspiratie",
-      "title": "Guten Abend! Entspanne mit Bibel-momenten.",
-      "description": "Friddege Bibel-momenten, de di helpen, to nadenken un Troost to vinden, as din Daag to Enn geit."
-    },
-    "joinUs": {
-      "label": "Doon mit",
-      "title": "Milliarden soken",
-      "description": "De Ernte is hier. Doon mit, as wi de Evangelium mit de Wält dör digitale Media deelen."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Latt us tosam go",
-      "title": "De Geschichte fan Jesus tosam vertellen",
-      "description": "Dat se de Leevde fan Jesus in jür egen Språk hören un sehn könn, genau dor, wo se sünd."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% Öwereenkomst",

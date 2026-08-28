@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language sɛ change",
     "home": "JesusFilm paj akɛ home",
     "closeSearch": "Search lɛɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Kaŋ kayitay"
   },
   "SearchOverlay": {
     "dialogLabel": "Video mɛ search kɛ browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports mɛ",
     "collections": "Collection mɛ",
     "subtitlesOnly": "Subtitles lɛɛn",
+    "backToTop": "Sofukor jeegal",
     "newlyAdded": "Mɛ kɛŋ add kɛ",
     "newVideosTitle": "Video Christian mɛ kɛŋ in {language}",
     "newestFirst": "Mɛ kɛŋ nɛ kɛrɛ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone video mɛ",
     "videosFromCollection": "Video mɛ {collection} mɛ.",
     "standaloneDescription": "Standalone videos in language a.",
-    "openCollection": "Collection bɔ"
+    "openCollection": "Collection bɔ",
+    "filters": "Ñoolaay",
+    "filterLength": "Ndoolaay",
+    "filterLength_under5": "Rekam 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopam 30 min",
+    "filterType": "Kaŋaam",
+    "clearFilters": "Feesal ñoolaay",
+    "filterResults": "{count} ci {total} awonaa",
+    "noFilterResults": "Amuli widewo bumos ak ñoolaay yii. Feesal kenn.",
+    "filterAdded": "Ayokkul",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch paj",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page nɔ kɛrɛ actions",
     "backToWatch": "Watch kɛrɛ yɛ",
     "browseVideos": "Video mɛ browse kɛ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film kɛrɛ watch kɛ",
-    "actions": {
-      "joinUs": "Wɛ kɛ bɔ mɔ yɛ",
-      "shareMission": "Wa mission a kɛ bɔ mɔ yɛ"
-    },
-    "welcomeStart": {
-      "label": "Faith kɛ Scripture",
-      "title": "Nɛa video mɛ wa yɛ",
-      "description": "Wa library a mɛ faith-centered video kɔntɛnt, a wɛ inspire kɛ, challenge kɛ, kɛ reflection bɔ."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration",
-      "title": "Morning kpa! Nɛa Bible moments mɛ mɔ wɛ dɔ.",
-      "description": "Wɛ day a start kɛ Bible moments mɛ a wɛ encourage kɛ, inspire kɛ, kɛ wɛ spirit a uplift kɛ."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration",
-      "title": "Afternoon kpa! Nɛa Bible moments mɛ wɛ pɔʔ nɔ.",
-      "description": "Bible kɔntɛnt mɛ a wɛ encourage kɛ, wɛ afternoon break bɔ inspiration continue pɔʔ nɔ."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Evening kpa! Bible moments mɛ kɛ wɛ rest kɛ.",
-      "description": "Bible moments mɛ peaceful, a wɛ help kɛ reflect kɛ kɛ comfort kɛrɛ when wɛ day a mɔ lɛɛ."
-    },
-    "joinUs": {
-      "label": "Wɛ kɛ bɔ mɔ yɛ",
-      "title": "People billions mɔ search kɛ",
-      "description": "Harvest a nɔ nɛa. Wɛ kɛ bɔ mɔ yɛ when wa mɔ Gospel a world a kɛ share kɛ digital media kɛ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Wa lɔ mɔ yɛ",
-      "title": "Jesus story a mɔ tell kɛ, mɔ yɛ",
-      "description": "A mɔ Jesus love a hear kɛ kɛ see kɛ wɔn language a kɛ, right where mɔ nɔ."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% mɔ match kɛ",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
     "closeSearch": "ڳولا بند ڪريو",
-    "submitSearch": "ॻोलियो"
+    "submitSearch": "ॻोलियो",
+    "library": "लाइब्ररी"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -467,6 +468,7 @@
     "sports": "راندون",
     "collections": "مجموعا",
     "subtitlesOnly": "صرف سبٽائيٽلز",
+    "backToTop": "मथे वापस",
     "newlyAdded": "نئين شامل ٿيل",
     "newVideosTitle": "{language} ۾ نيون مسيحي وڊيوز",
     "newestFirst": "سڀ کان نئين پهرين",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الڳ وڊيوز",
     "videosFromCollection": "{collection} مان وڊيوز.",
     "standaloneDescription": "هن ٻولي ۾ الڳ وڊيوز.",
-    "openCollection": "مجموعو کوليو"
+    "openCollection": "مجموعو کوليو",
+    "filters": "फिल्टर",
+    "filterLength": "डिघाई",
+    "filterLength_under5": "5 मिनटनि खां घटि",
+    "filterLength_5to10": "5-10 मिनट",
+    "filterLength_10to30": "10-30 मिनट",
+    "filterLength_over30": "30 मिनटनि खां वधीक",
+    "filterType": "किसम",
+    "clearFilters": "फिल्टर साफ करियो",
+    "filterResults": "{total} मां {count} डेखारियल",
+    "noFilterResults": "इनन फिल्टरनि सां कोबि विडियो नथो मिले. हिकु हटाइ डिसो.",
+    "filterAdded": "शामिल कयो वयो",
+    "filterAdded_60d": "गुज़रियल 60 डींहं",
+    "filterAdded_6m": "गुज़रियल 6 महीना",
+    "filterAdded_12m": "गुज़रियल 12 महीना"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -646,44 +662,6 @@
     "actionsLabel": "صفحو نه ملڻ واريون ڪارروايون",
     "backToWatch": "واچ ڏانهن واپس وڃو",
     "browseVideos": "وڊيوز براؤز ڪريو"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु फ़िल्म देखें",
-    "actions": {
-      "joinUs": "हमसे जुड़ें",
-      "shareMission": "हमारे मिशन में सहभागी बनें"
-    },
-    "welcomeStart": {
-      "label": "विश्वास और शास्त्र",
-      "title": "आज के वीडियो सुझाव",
-      "description": "हमारी लाइब्रेरी से विश्वास-केंद्रित वीडियो सामग्री, जो प्रेरित करे, चुनौती दे, और मनन जगाए।"
-    },
-    "welcomeMorning": {
-      "label": "सुबह की प्रेरणा",
-      "title": "सुप्रभात! आज के बाइबल क्षण आपका इंतज़ार कर रहे हैं।",
-      "description": "अपने दिन की शुरुआत प्रोत्साहन देने वाले बाइबल क्षणों के साथ करें, जो प्रेरित करें और आपकी आत्मा को उठाएँ।"
-    },
-    "welcomeAfternoon": {
-      "label": "दोपहर की प्रेरणा",
-      "title": "शुभ दोपहर! आपके दिन के लिए बाइबल क्षण।",
-      "description": "दोपहर के विराम या आगे की प्रेरणा के लिए उपयुक्त प्रोत्साहक बाइबल सामग्री।"
-    },
-    "welcomeEvening": {
-      "label": "शाम की प्रेरणा",
-      "title": "शुभ संध्या! बाइबल क्षणों के साथ दिन समेटें।",
-      "description": "शांतिपूर्ण बाइबल क्षण, जो दिन के अंत में आपको मनन करने और सांत्वना पाने में मदद करें।"
-    },
-    "joinUs": {
-      "label": "हमसे जुड़ें",
-      "title": "अरबों लोग खोज रहे हैं",
-      "description": "फसल तैयार है। डिजिटल मीडिया के माध्यम से दुनिया तक सुसमाचार पहुँचाने में हमारे साथ जुड़ें।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आइए, साथ चलें",
-      "title": "एक साथ, यीशु की कहानी सुनाएँ",
-      "description": "ताकि वे जहाँ हैं वहीं अपनी भाषा में यीशु के प्रेम को सुन और देख सकें।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% मेल",

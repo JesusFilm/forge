@@ -3,7 +3,7 @@ id: "feat-425"
 title: "Port the RAG schema and provision empty Postgres"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-29"
 duration: 3
 depends_on: ["feat-424"]
@@ -14,6 +14,18 @@ tags: ["rag", "postgres", "migration"]
 ## Problem
 
 Forge RAG needs a schema-compatible empty database before code or corpus can move. Historical scope: [jfrag #158](https://github.com/JesusFilm/jesusfilm-rag/issues/158).
+
+## Resolution
+
+**Shipped:** 2026-08-27 via [PR #2064](https://github.com/JesusFilm/forge/pull/2064), with production evidence and service-name corrections recorded in [PR #2069](https://github.com/JesusFilm/forge/pull/2069).
+
+**What landed.** Forge RAG owns a seven-table Prisma schema, PostgreSQL-native raw SQL for pgvector, generated full-text search, GIN and HNSW indexes, real drift detection, PostgreSQL 18 local and CI integration proof, and Railway config-as-code at `/apps/rag/railway.toml`.
+
+**Production verification.** The initial migration completed against `forge/production/@forge/rag-postgres`. Migration status and drift were clean. PostgreSQL reported vector `0.8.6`, an active `20260827000000_init_rag_schema` migration, seven application tables, `halfvec(1536)`, the expected HNSW and GIN indexes, successful read access, and zero rows in every application table. No corpus data or legacy `jfrag` resource was touched.
+
+**Sequencing decision.** The initial schema was applied by an explicit operator migration from merged `main`. Railway already reads the correct config file and pre-deploy command, but automatic pre-deploy execution belongs to feat-428 because Railpack requires a runnable service before it reaches that phase. Feat-428 must verify the configured migration on its first valid deployment; it must not recreate or replace this database.
+
+**Unblocked.** `feat-426`.
 
 ## Entry Points — Read These First
 

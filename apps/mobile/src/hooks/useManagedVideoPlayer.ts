@@ -115,6 +115,10 @@ export function useManagedVideoPlayer(
   const player = useVideoPlayer(creationSource, (p) => {
     p.muted = false
     p.loop = false
+    // Set EXPLICITLY: expo-video's types say `@default true`, but the Android
+    // native default is false, so a speed pick also shifts the voice's pitch.
+    // iOS corrects pitch itself, which is why this only ever broke on Android.
+    p.preservesPitch = true
     setupRef.current?.(p)
   })
 

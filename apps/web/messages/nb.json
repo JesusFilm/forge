@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Endre lydspråk",
     "home": "JesusFilm-startside",
     "closeSearch": "Lukk søk",
-    "submitSearch": "Søk"
+    "submitSearch": "Søk",
+    "library": "Bibliotek"
   },
   "SearchOverlay": {
     "dialogLabel": "Søk og bla i videoer",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Samlinger",
     "subtitlesOnly": "Bare undertekster",
+    "backToTop": "Tilbake til toppen",
     "newlyAdded": "Nylig lagt til",
     "newVideosTitle": "Nye kristne videoer på {language}",
     "newestFirst": "Nyeste først",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Enkeltstående videoer",
     "videosFromCollection": "Videoer fra {collection}.",
     "standaloneDescription": "Enkeltstående videoer på dette språket.",
-    "openCollection": "Åpne samling"
+    "openCollection": "Åpne samling",
+    "filters": "Filtre",
+    "filterLength": "Lengde",
+    "filterLength_under5": "Kortere enn 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Over 30 min",
+    "filterType": "Kategori",
+    "clearFilters": "Fjern filtre",
+    "filterResults": "{count} av {total} vist",
+    "noFilterResults": "Ingen videoer samsvarer med disse filtrene. Prøv å fjerne ett.",
+    "filterAdded": "Lagt til",
+    "filterAdded_60d": "Siste 60 dager",
+    "filterAdded_6m": "Siste 6 måneder",
+    "filterAdded_12m": "Siste 12 måneder"
   },
   "WatchHome": {
     "pageTitle": "Se | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Handlinger for siden ikke funnet",
     "backToWatch": "Tilbake til Se",
     "browseVideos": "Bla i videoer"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Se kortfilm",
-    "actions": {
-      "joinUs": "Bli med oss",
-      "shareMission": "Del i vår misjon"
-    },
-    "welcomeStart": {
-      "label": "Tro og Skriften",
-      "title": "Dagens videoutvalg",
-      "description": "Trobasert videoinnhold fra biblioteket vårt som skal inspirere, utfordre og vekke ettertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgeninspirasjon",
-      "title": "God morgen! Dagens bibeløyeblikk venter.",
-      "description": "Start dagen med oppmuntrende bibeløyeblikk som er laget for å inspirere og løfte deg."
-    },
-    "welcomeAfternoon": {
-      "label": "Ettermiddagsinspirasjon",
-      "title": "God ettermiddag! Bibeløyeblikk for dagen din.",
-      "description": "Oppmuntrende bibelinnhold som passer perfekt til en pause på ettermiddagen eller som videre inspirasjon."
-    },
-    "welcomeEvening": {
-      "label": "Kveldsinspirasjon",
-      "title": "God kveld! Ro ned med bibeløyeblikk.",
-      "description": "Fredfulle bibeløyeblikk som hjelper deg å reflektere og finne trøst når dagen går mot slutten."
-    },
-    "joinUs": {
-      "label": "Bli med oss",
-      "title": "Milliarder søker",
-      "description": "Høsten er her. Bli med oss når vi deler evangeliet med verden gjennom digitale medier."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "La oss gå sammen",
-      "title": "Å fortelle historien om Jesus, sammen",
-      "description": "Slik at de kan høre og se Jesu kjærlighet på sitt eget språk, der de er."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent} % treff",

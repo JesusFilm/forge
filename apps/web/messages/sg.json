@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Gi"
+    "submitSearch": "Gi",
+    "library": "Da-mbeti"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala bavideo",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kakitisi ya maloba kaka",
+    "backToTop": "Kiri na li",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Bavideo ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bavideo ya solo",
     "videosFromCollection": "Bavideo uta na {collection}.",
     "standaloneDescription": "Bavideo ya solo na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Akungbi",
+    "filterLength": "Yongoro",
+    "filterLength_under5": "Na gbe ti ngbonga 5",
+    "filterLength_5to10": "Ngbonga 5-10",
+    "filterLength_10to30": "Ngbonga 10-30",
+    "filterLength_over30": "Na ndo ti ngbonga 30",
+    "filterType": "Marä",
+    "clearFilters": "Zi akungbi",
+    "filterResults": "{count} na yâ ti {total} a fa",
+    "noFilterResults": "Mbeni video oko ape so alingbi na akungbi so. Tara ti zi oko.",
+    "filterAdded": "A yeke zia",
+    "filterAdded_60d": "Alango 60 so ahon",
+    "filterAdded_6m": "Anze 6 so ahon",
+    "filterAdded_12m": "Anze 12 so ahon"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Bâa",
@@ -646,44 +662,6 @@
     "actionsLabel": "Misala ya lokasa ezwami te",
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala bavideo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Kota na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondɔko & Makomi",
-      "title": "Bavideo oyo tobɛti lelo",
-      "description": "Bavideo ya kondima oyo euti na laibɛli na biso mpo na kopesa mpiko, kotya mikakatano, mpe kolamusa makanisi."
-    },
-    "welcomeMorning": {
-      "label": "Elendiseli ya tongo",
-      "title": "Mbote tongo! Makambo ya Biblia mpo na lelo ezali kozela yo.",
-      "description": "Bandá mokolo na yo na makambo ya Biblia oyo elendisaka, oyo esalemi mpo na kolendisa mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Elendiseli ya midi",
-      "title": "Mbote midi! Makambo ya Biblia mpo na mokolo na yo.",
-      "description": "Makambo ya Biblia oyo elendisaka mpe ekokani malamu mpo na kopema na midi to kokoba kolendisama."
-    },
-    "welcomeEvening": {
-      "label": "Elendiseli ya mpokwa",
-      "title": "Mbote mpokwa! Pema na makambo ya Biblia.",
-      "description": "Makambo ya Biblia ya kimya mpo na kosalisa yo kotya makanisi mpe kozwa kobɔndisama ntango mokolo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Kota na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Mbuma ekomi. Kota na biso na kopanza nsango malamu na mokili mobimba na nzela ya media ya dijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Pona ete bakoka koyoka mpe komona bolingo ya Yesu na monoko na bango moko, epai bazali."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% alingbi",

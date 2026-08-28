@@ -1,3 +1,9 @@
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+import {
+  WATCH_HOME_TILE_ICON_KEYS,
+  WATCH_HOME_TILE_STYLE_KEYS,
+} from "@forge/watch-url-policy/watch-home-tiles"
+
 export type AdminMcpToolDefinition = {
   name: string
   description: string
@@ -9,6 +15,15 @@ export type AdminMcpToolDefinition = {
     additionalProperties?: boolean
   }
 }
+
+const WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE =
+  `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",categoryIds:[...],tiles?:[...]}. ` +
+  `categoryIds must be a non-empty unique subset of ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id).join(", ")}. ` +
+  `tiles is the authoritative ordered tile list when present; each tile is {id, categoryId?, title?, href?, icon?, style?} with a unique id, at most one tile per categoryId, and title/href/icon/style overriding that category's defaults. ` +
+  `A tile without categoryId is fully custom and requires both title and href; href must be a site path starting with / or an https:// URL. ` +
+  `icon must be one of ${WATCH_HOME_TILE_ICON_KEYS.join(", ")}; style must be one of ${WATCH_HOME_TILE_STYLE_KEYS.join(", ")}. ` +
+  "When tiles is present keep categoryIds as the ordered list of its predefined members so older renderers stay correct. " +
+  "When changing it, send the complete blocks array and preserve unrelated blocks and their order."
 
 export const ADMIN_MCP_TOOLS = [
   {
@@ -99,7 +114,7 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "experience.locale.create",
-    description: "Create a new localized Experience draft.",
+    description: `Create a new localized Experience draft. ${WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE}`,
     requiredScopes: ["experience:locale:create"],
     inputSchema: {
       type: "object",
@@ -114,15 +129,20 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "experience.locale.update",
-    description: "Update an existing localized Experience draft.",
+    description: `Update an existing localized Experience draft. ${WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE}`,
     requiredScopes: ["experience:locale:update"],
     inputSchema: {
       type: "object",
       properties: {
         localeId: { type: "string" },
+        expectedDraftRevision: {
+          type: ["string", "null"],
+          description:
+            "Opaque revision returned by experience.locale.read, or null to assert that no active draft exists.",
+        },
         draft: { type: "object" },
       },
-      required: ["localeId", "draft"],
+      required: ["localeId", "expectedDraftRevision", "draft"],
       additionalProperties: false,
     },
   },
@@ -144,14 +164,15 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.locale.discard",
     description:
-      "Discard the active shared draft for an ExperienceLocale without changing canonical public content.",
+      "Conditionally discard a newly created active draft without overwriting a later editor change. Restore an existing draft by calling experience.locale.update with the produced revision and the private pre-write payload.",
     requiredScopes: ["experience:locale:update"],
     inputSchema: {
       type: "object",
       properties: {
         localeId: { type: "string" },
+        expectedDraftRevision: { type: "string" },
       },
-      required: ["localeId"],
+      required: ["localeId", "expectedDraftRevision"],
       additionalProperties: false,
     },
   },
@@ -216,7 +237,7 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.create",
     description:
-      "Create a new Experience with an initial DRAFT locale. Never publishes; set meta/OG fields afterwards via experience.locale.update. Unlike the locale tools, expected failures return a structuredContent envelope {ok:false, reason, retryable, message} instead of a JSON-RPC error — a duplicate (locale, slug) returns reason 'slug_exists' with the existing resource's ids in a conflict field; success returns {ok:true, experience, locale, editorUrl}.",
+      "Create a new Experience with an initial non-homepage DRAFT locale, so blocks cannot include watchHomeCategoryRail; use experience.locale.update on the designated homepage instead. Never publishes; set meta/OG fields afterwards via experience.locale.update. Unlike the locale tools, expected failures return a structuredContent envelope {ok:false, reason, retryable, message} instead of a JSON-RPC error — a duplicate (locale, slug) returns reason 'slug_exists' with the existing resource's ids in a conflict field; success returns {ok:true, experience, locale, editorUrl}.",
     requiredScopes: ["experience:create"],
     inputSchema: {
       type: "object",

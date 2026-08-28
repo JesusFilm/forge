@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Изменить язык звука",
     "home": "Главная JesusFilm",
     "closeSearch": "Закрыть поиск",
-    "submitSearch": "Вешендомс"
+    "submitSearch": "Вешендомс",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Подборки",
     "subtitlesOnly": "Только субтитры",
+    "backToTop": "Вяре мърдамс",
     "newlyAdded": "Недавно добавлено",
     "newVideosTitle": "Новые христианские видео на {language}",
     "newestFirst": "Сначала новые",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Отдельные видео",
     "videosFromCollection": "Видео из {collection}.",
     "standaloneDescription": "Отдельные видео на этом языке.",
-    "openCollection": "Открыть подборку"
+    "openCollection": "Открыть подборку",
+    "filters": "Ванфтомат",
+    "filterLength": "Кувалмоц",
+    "filterLength_under5": "5 минутда сяда кржа",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутда сяда лама",
+    "filterType": "Тип",
+    "clearFilters": "Ванфтоматнень нардамс",
+    "filterResults": "{total}-ста {count} няфтьф",
+    "noFilterResults": "Тя ванфтоматненди лаcsемс видео аш. Фкя нардак да вант.",
+    "filterAdded": "Поладф",
+    "filterAdded_60d": "Меельце 60 ши",
+    "filterAdded_6m": "Меельце 6 ков",
+    "filterAdded_12m": "Меельце 12 ков"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — просмотр",
@@ -646,44 +662,6 @@
     "actionsLabel": "Действия для страницы не найдена",
     "backToWatch": "Назад к просмотру",
     "browseVideos": "Просмотреть видео"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Смотреть короткометражный фильм",
-    "actions": {
-      "joinUs": "Присоединяйтесь",
-      "shareMission": "Разделите нашу миссию"
-    },
-    "welcomeStart": {
-      "label": "Вера и Писание",
-      "title": "Сегодняшние подборки видео",
-      "description": "Видео на тему веры из нашей библиотеки — чтобы вдохновлять, побуждать к размышлению и задавать важные вопросы."
-    },
-    "welcomeMorning": {
-      "label": "Утреннее вдохновение",
-      "title": "Доброе утро! Вас ждут библейские моменты дня.",
-      "description": "Начните день с ободряющих библейских моментов, которые вдохновляют и поднимают дух."
-    },
-    "welcomeAfternoon": {
-      "label": "Дневное вдохновение",
-      "title": "Добрый день! Библейские моменты на ваш день.",
-      "description": "Ободряющий библейский контент, подходящий для дневного перерыва или для дальнейшего вдохновения."
-    },
-    "welcomeEvening": {
-      "label": "Вечернее вдохновение",
-      "title": "Добрый вечер! Завершите день с библейскими моментами.",
-      "description": "Спокойные библейские моменты, чтобы помочь вам поразмышлять и найти утешение в конце дня."
-    },
-    "joinUs": {
-      "label": "Присоединяйтесь",
-      "title": "Миллиарды людей в поиске",
-      "description": "Время жатвы пришло. Присоединяйтесь к нам, чтобы делиться Евангелием с миром через цифровые медиа."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Пойдём вместе",
-      "title": "Рассказываем историю Иисуса вместе",
-      "description": "Чтобы люди могли слышать и видеть любовь Иисуса на своём языке там, где они находятся."
-    }
   },
   "VideoRecommendations": {
     "match": "Совпадениясь — {percent}%",

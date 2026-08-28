@@ -12,10 +12,14 @@ import {
   WATCH_HOME_TV_ADVANCE_THRESHOLD,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
+  addWatchHomeVerticalVideoId,
+  boundedRandomIndex,
   buildWatchHomeVideoQueue,
   markWatchHomeVideoPlayed,
-  mergeWatchHomeMuxInserts,
+  isWatchHomeHeroPlayableAspect,
+  pickRandomWatchHomeHeroVideo,
   readWatchHomeTvPlayedIds,
+  readWatchHomeVerticalVideoIds,
   resetWatchHomeTvPlayedIds,
   saveWatchHomeCurrentVideoSession,
   type WatchHomeCarouselSequenceData,
@@ -84,6 +88,33 @@ export function shouldAdvanceWatchHomeTvCarousel(
   return previousProgress < threshold && currentProgress >= threshold
 }
 
+/**
+ * `<mux-video>` is a custom element wrapping a real `<video>`; depending on the
+ * build it either forwards the media properties or only exposes them on the
+ * inner element, so both are checked before giving up.
+ */
+export function readMediaVideoSize(
+  media: HTMLVideoElement | null,
+): { width: number; height: number } | null {
+  if (!media) return null
+
+  const host = media as unknown as HTMLElement
+  const inner =
+    (host.shadowRoot
+      ?.querySelector("mux-video")
+      ?.shadowRoot?.querySelector("video") as HTMLVideoElement | null) ??
+    (host.shadowRoot?.querySelector("video") as HTMLVideoElement | null) ??
+    null
+
+  for (const candidate of [media, inner]) {
+    const width = candidate?.videoWidth ?? 0
+    const height = candidate?.videoHeight ?? 0
+    if (width > 0 && height > 0) return { width, height }
+  }
+
+  return null
+}
+
 function firstPlayableIndex(slides: readonly WatchHomeTvCarouselSlide[]) {
   const index = slides.findIndex((slide) => Boolean(slide.src))
   return index >= 0 ? index : 0
@@ -145,6 +176,7 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    randomSource?: () => number
     suppressLeavingSlide?: boolean
   } = {},
 ) {
@@ -158,6 +190,9 @@ export function useWatchHomeTvCarousel(
     videos: WatchHomeTvCarouselVideoSlide[]
     nextPoolIndex: number
   } | null>(null)
+  const [portraitSlideIds, setPortraitSlideIds] = useState<readonly string[]>(
+    [],
+  )
   const [isMuted, setIsMuted] = useState(true)
   const [progress, setProgress] = useState(0)
   const [playbackTime, setPlaybackTime] = useState<{
@@ -208,20 +243,25 @@ export function useWatchHomeTvCarousel(
 
   const sequencedSlides = useMemo(() => {
     if (!isSequenced || !sequence) return null
-    const mergedSlides = mergeWatchHomeMuxInserts(
-      videoQueue,
-      sequence.muxInserts,
-      undefined,
-      { useStoredSelections: false },
-    )
-    return mergedSlides.length > 0 ? mergedSlides : null
-  }, [isSequenced, sequence, videoQueue])
+    if (videoQueue.length === 0) return null
+    if (portraitSlideIds.length === 0) return videoQueue
+    const portrait = new Set(portraitSlideIds)
+    const landscape = videoQueue.filter((slide) => !portrait.has(slide.id))
+    // Never empty the hero: if every queued video measured portrait, keep the
+    // queue and let the bounded skip counter stop the churn.
+    return landscape.length > 0 ? landscape : videoQueue
+  }, [isSequenced, portraitSlideIds, sequence, videoQueue])
 
   const displaySlides = sequencedSlides ?? slides
 
-  const defaultActiveIndex = hasHydrated
-    ? firstUnplayedWatchHomeTvCarouselIndex(displaySlides)
-    : firstPlayableIndex(displaySlides)
+  // Server render and the first client render must agree, so the sequenced
+  // hero opens on the deterministic queue's first playable slide. The random
+  // per-visit draw lands right after mount, once hydration can no longer break.
+  const defaultActiveIndex = isSequenced
+    ? firstPlayableIndex(displaySlides)
+    : hasHydrated
+      ? firstUnplayedWatchHomeTvCarouselIndex(displaySlides)
+      : firstPlayableIndex(displaySlides)
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null)
 
   const selectedActiveSlide =
@@ -243,6 +283,71 @@ export function useWatchHomeTvCarousel(
       )
     : 0
   const autoAdvancePausedRef = useRef(autoAdvancePaused)
+  const randomSourceRef = useRef(options.randomSource ?? Math.random)
+  const randomStartAppliedRef = useRef(false)
+  const pendingRandomHeroIdRef = useRef<string | null>(null)
+  const portraitSkipCountRef = useRef(0)
+  // `advance` is defined below the metadata handler that needs it.
+  const advanceRef = useRef<(() => void) | null>(null)
+
+  // The homepage is statically rendered and shared by every visitor, so the
+  // per-visit draw happens here — once, right after mount — over the pools the
+  // server already shipped. No extra request, no extra server render.
+  useEffect(() => {
+    if (randomStartAppliedRef.current) return
+    randomStartAppliedRef.current = true
+
+    const random = randomSourceRef.current
+    const playedIds = readWatchHomeTvPlayedIds()
+    // Videos an earlier load measured as portrait are out of the draw entirely;
+    // the hero is a wide frame and would crop them to a centre strip.
+    // Not mirrored into state: the queue below is built with them excluded, so
+    // a stored portrait video never reaches the slide list in the first place.
+    const excludedIds = readWatchHomeVerticalVideoIds()
+
+    if (isSequenced && sequence) {
+      const hero = pickRandomWatchHomeHeroVideo({
+        excludedIds,
+        playedIds,
+        pools: sequence.pools,
+        random,
+      })
+      if (!hero) return
+
+      const built = buildWatchHomeVideoQueue({
+        pools: sequence.pools,
+        existingVideos: [hero],
+        excludedIds,
+        startPoolIndex: boundedRandomIndex(sequence.pools.length, random),
+        targetVideoCount: 7,
+        randomSource: random,
+      })
+
+      pendingRandomHeroIdRef.current = hero.id
+      setPrefetchedQueue({
+        sequenceKey,
+        videos: built.videos,
+        nextPoolIndex: built.nextPoolIndex,
+      })
+      setActiveSlideId(hero.id)
+      return
+    }
+
+    const excluded = new Set(excludedIds)
+    const playable = displaySlides.filter(
+      (slide) => Boolean(slide.src) && !excluded.has(slide.id),
+    )
+    const candidates = playable.length > 0 ? playable : displaySlides
+    if (candidates.length === 0) return
+    const played = new Set(playedIds)
+    const unplayed = candidates.filter((slide) => !played.has(slide.id))
+    const drawFrom = unplayed.length > 0 ? unplayed : candidates
+    const hero = drawFrom[boundedRandomIndex(drawFrom.length, random)]
+    if (!hero) return
+
+    pendingRandomHeroIdRef.current = hero.id
+    setActiveSlideId(hero.id)
+  }, [displaySlides, isSequenced, sequence, sequenceKey])
 
   const clearVideoPosterHold = useCallback(() => {
     if (videoPosterHoldTimeoutRef.current != null) {
@@ -315,6 +420,10 @@ export function useWatchHomeTvCarousel(
     selectIndex(nextIndex)
   }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
 
+  useEffect(() => {
+    advanceRef.current = advance
+  }, [advance])
+
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
       const next = !current
@@ -345,7 +454,28 @@ export function useWatchHomeTvCarousel(
     setMediaReady(false)
     setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
     setProgress(0)
-  }, [activeSlide?.id, clearVideoPosterHold])
+
+    // The decoded size is the first and only trustworthy orientation signal in
+    // the pipeline, so the skip happens here rather than at draw time. Bounded
+    // because a pool that is portrait all the way down must not skip forever.
+    const slideId = activeSlide?.id
+    const size = readMediaVideoSize(videoRef.current)
+    if (
+      !slideId ||
+      !size ||
+      isWatchHomeHeroPlayableAspect(size.width, size.height) ||
+      portraitSkipCountRef.current >= displaySlides.length
+    ) {
+      return
+    }
+
+    portraitSkipCountRef.current += 1
+    addWatchHomeVerticalVideoId(slideId)
+    setPortraitSlideIds((current) =>
+      current.includes(slideId) ? current : [...current, slideId],
+    )
+    advanceRef.current?.()
+  }, [activeSlide?.id, clearVideoPosterHold, displaySlides.length, videoRef])
 
   const handleCanPlay = useCallback(() => {
     const video = videoRef.current
@@ -425,7 +555,19 @@ export function useWatchHomeTvCarousel(
     imageSlideStartedAtRef.current = null
     previousProgressRef.current = 0
     clearVideoPosterHold()
-    if (hasHydrated) {
+    // Between mount and the per-visit draw committing, the active slide is the
+    // deterministic bootstrap slide nobody actually watched. Recording it would
+    // permanently exclude that one video from every visitor's random draw.
+    // Compared against the id we set rather than the resolved slide, so a
+    // drawn id that fails to resolve cannot wedge play tracking off for the
+    // rest of the session.
+    const awaitingRandomHero =
+      pendingRandomHeroIdRef.current != null &&
+      activeSlideId !== pendingRandomHeroIdRef.current
+    if (activeSlideId === pendingRandomHeroIdRef.current) {
+      pendingRandomHeroIdRef.current = null
+    }
+    if (hasHydrated && !awaitingRandomHero) {
       if (isSequenced) {
         markWatchHomeVideoPlayed(activeSlide)
         saveWatchHomeCurrentVideoSession(activeSlide)
@@ -440,6 +582,7 @@ export function useWatchHomeTvCarousel(
   }, [
     activeSlide,
     activeSlide?.id,
+    activeSlideId,
     clearVideoPosterHold,
     hasHydrated,
     isSequenced,

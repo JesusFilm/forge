@@ -180,7 +180,8 @@
     "changeAudioLanguage": "އަޑުގެ ބަސް ބަދަލު ކުރާ",
     "home": "JesusFilm ހޯމް",
     "closeSearch": "ހޯދާން ބާންދާ",
-    "submitSearch": "ހޯދާ"
+    "submitSearch": "ހޯދާ",
+    "library": "ލައިބްރަރީ"
   },
   "SearchOverlay": {
     "dialogLabel": "ވީޑިއޯތައް ހޯދާ އަދި ބްރައުޒް ކުރާ",
@@ -467,6 +468,7 @@
     "sports": "ކުޅިވަރު",
     "collections": "ކޮލެކްޝަންތައް",
     "subtitlesOnly": "ސަބްޓައިޓަލްތައް އެކަނި",
+    "backToTop": "އަނބުރާ މައްޗަށް",
     "newlyAdded": "އައުކޮށް އެޅިއްޖެ",
     "newVideosTitle": "{language} ގައި އައު Christian videos",
     "newestFirst": "އެންމެ އައުކޮށް ފަހުން",
@@ -497,7 +499,21 @@
     "standaloneVideos": "އެކަނި ވީޑިއޯތައް",
     "videosFromCollection": "{collection} އިން ވީޑިއޯތައް.",
     "standaloneDescription": "މި ބަހަށް އެކަނި ވީޑިއޯތައް.",
-    "openCollection": "ކޮލެކްޝަން ހުޅުވާ"
+    "openCollection": "ކޮލެކްޝަން ހުޅުވާ",
+    "filters": "ފިލްޓަރުތައް",
+    "filterLength": "ދިގުމިން",
+    "filterLength_under5": "5 މިނެޓަށްވުރެ ކުރު",
+    "filterLength_5to10": "5-10 މިނެޓު",
+    "filterLength_10to30": "10-30 މިނެޓު",
+    "filterLength_over30": "30 މިނެޓަށްވުރެ ދިގު",
+    "filterType": "ބާވަތް",
+    "clearFilters": "ފިލްޓަރުތައް ސާފުކުރޭ",
+    "filterResults": "{total} ން {count} ދައްކާފައި",
+    "noFilterResults": "މި ފިލްޓަރުތަކާ ގުޅޭ ވީޑިއޯއެއް ނެތް. އެއް ފިލްޓަރު ނަގާލާ.",
+    "filterAdded": "އިތުރުކުރެވުނު",
+    "filterAdded_60d": "ފާއިތުވި 60 ދުވަސް",
+    "filterAdded_6m": "ފާއިތުވި 6 މަސް",
+    "filterAdded_12m": "ފާއިތުވި 12 މަސް"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ބަލާ",
@@ -646,44 +662,6 @@
     "actionsLabel": "ޞަފުހާ ނުފެނޭ ކަންތައް",
     "backToWatch": "Watch އަށް އަނބުރާ",
     "browseVideos": "ވީޑިއޯތައް ބްރައުޒް ކުރާ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ކުރު ފިލްމް ބަލާ",
-    "actions": {
-      "joinUs": "ގުޅުއްވާ",
-      "shareMission": "މިޝަން ހިއްސާ ކުރާ"
-    },
-    "welcomeStart": {
-      "label": "އީމާން އަދި ސްކްރިޕްޗަރ",
-      "title": "މިއަދުގެ ވީޑިއޯ ހޮވުންތައް",
-      "description": "އިތުބާރުލަވާ އަދި ހިތްހަމަޖައްސައިދޭ, ފިކުރުކުރުވާ ވަޒުނީ ވީޑިއޯ ކޮންޓެންޓް އަމިއްލަ ލައިބްރަރީއިން."
-    },
-    "welcomeMorning": {
-      "label": "މާދަމާގެ އިލާހީ އިންސްޕައިރޭޝަން",
-      "title": "އައި މޯނިންގް! މިއަދުގެ Bible ހިސާބުތައް ކެތްނެތި ބެހެއްޓިފަ އެވޭ.",
-      "description": "ހިތްބަރާބަރުކުރާ Bible ހިސާބުތަކާއިއެކު ދުވަހުގެ ފުރަތަމަ ހިސާބަށް ފަށާ, އެހެންމަ ހިތާވެސް މަތިވާނެ ގޮތަށް."
-    },
-    "welcomeAfternoon": {
-      "label": "ދެވަނަ ދުވަސް އިންސްޕައިރޭޝަން",
-      "title": "ހެވި ދުވަސް! މިއަދުގެ Bible ހިސާބުތައް.",
-      "description": "ދުވަސްމަތީ ބްރޭކްއަށް ނުވަތަ އިތުރަށް ހިތްހެޔޮ ކުރަން ބޭނުންވާ ހިސާބަށް މާއްދާވާ Bible ކޮންޓެންޓް."
-    },
-    "welcomeEvening": {
-      "label": "ރޭގެ އިންސްޕައިރޭޝަން",
-      "title": "ހެވި ރޭ! Bible ހިސާބުތަކާއިއެކު ދުވަސް ކުރިއަށް އަޅާލާ.",
-      "description": "ދުވަސް ނިމެންދެން ކުރިއަށް އަޅާލައި ހިތްހަމަޖައްސައިދޭ ހިސާބުތަކެއް."
-    },
-    "joinUs": {
-      "label": "ގުޅުއްވާ",
-      "title": "މިލިޔަންތަކެއް ހޯދަނީ",
-      "description": "އަދަދު ދިރޭ ވަގުތު އެއީ. ޑިޖިޓަލް މީޑިއާއާއި އެކު ދުނިޔެއަށް އިންޖީލް ހިއްސާ ކުރުމަށް އަންނާށެވެ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "އެކުގައި ދަމާށެވެ",
-      "title": "އީސައިގެ ވާހަކަ, އެކުގައި ބުނާށެވެ",
-      "description": "އެހެންމަ ތިބާގެ އަމިއްލަ ބަހުން, ތިބާ ހުރި ތަނުގައި އީސައިގެ ލޯބި އޮންނަން އަޑަކާއި ދުރު މައިދާނެއްގައި ނުވެސް ބަލަނީ."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ގުޅުން",

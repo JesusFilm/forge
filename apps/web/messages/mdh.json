@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
     "closeSearch": "Sara search",
-    "submitSearch": "Pangita"
+    "submitSearch": "Pangita",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitles lang",
+    "backToTop": "Bumalik sa taas",
     "newlyAdded": "Bag-o a naidugang",
     "newVideosTitle": "Bag-o a Christian videos sa {language}",
     "newestFirst": "Pinakabago una",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga standalone video",
     "videosFromCollection": "Mga video gika sa {collection}.",
     "standaloneDescription": "Mga standalone video sa ini a wika.",
-    "openCollection": "Abrihi so collection"
+    "openCollection": "Abrihi so collection",
+    "filters": "Mga filter",
+    "filterLength": "Kahaba",
+    "filterLength_under5": "Kulang sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohan ang mga filter",
+    "filterResults": "{count} sa {total} ang gipakita",
+    "noFilterResults": "Walay video nga nahiuyon niining mga filter. Sulayi kuhaon ang usa.",
+    "filterAdded": "Nadugang",
+    "filterAdded_60d": "Nakalabay nga 60 adlaw",
+    "filterAdded_6m": "Nakalabay nga 6 bulan",
+    "filterAdded_12m": "Nakalabay nga 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood sa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga buhat kun da nakuan a page",
     "backToWatch": "Balik sa Watch",
     "browseVideos": "Browse mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa so maikling pelikula",
-    "actions": {
-      "joinUs": "Sumali ka sa amon",
-      "shareMission": "Ibagi so amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya ago Kasulatan",
-      "title": "Mga napiling video para karon",
-      "description": "Mga video gika sa amon library na nakasentro sa pananampalataya para mag-inspire, maghamon, ago magpahuna-huna."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa buntag",
-      "title": "Marayaw a buntag! Naa na so mga Bible moment para karon.",
-      "description": "Sugdi so adlaw mo kaama so mga Bible moment na makapanganyaya ago makaangat sa imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa hapon",
-      "title": "Marayaw a hapon! Mga Bible moment para sa adlaw mo.",
-      "description": "Mga Bible content na makapanganyaya, marayaw para sa imo hapon a pahuway o padayon a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa gabi",
-      "title": "Marayaw a gabi! Magpahuway ka kaama so mga Bible moment.",
-      "description": "Kalma a mga Bible moment para tabangan ka maghunahuna ago makakapta so komportable habang gaahin na so adlaw mo."
-    },
-    "joinUs": {
-      "label": "Sumali ka sa amon",
-      "title": "Bilyon-bilyon so ga-pangita",
-      "description": "Naa na so anihan. Sumali ka sa amon sa pagbahagi sa ebanghelyo sa kalibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mag-inabi kita",
-      "title": "Pag-istorya sa Buhat ni Jesus, kaama so bawat isa",
-      "description": "Agod mabanalan ago makita nira so gugma ni Jesus sa ila sarili a wika didto mismo sa lugar nira."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",

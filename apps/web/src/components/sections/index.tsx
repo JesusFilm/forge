@@ -9,6 +9,10 @@ import type { RouteVideo, Section } from "@/lib/content"
 import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
 import type { DynamicMediaCollection as DynamicMediaCollectionType } from "./DynamicMediaCollection"
 import type { FeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type {
+  DynamicCollectionFeedCacheScope,
+  DynamicCollectionFeedCacheSignatures,
+} from "@/lib/dynamic-collection-contract"
 import type { PromoBanner as PromoBannerType } from "./PromoBanner"
 import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
 import type { CTASection as CTASectionType } from "./CTASection"
@@ -24,6 +28,7 @@ import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestion
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
 import type { LanguageGlobeExperience as LanguageGlobeExperienceType } from "./LanguageGlobeExperience"
+import type { WatchHomeCategoryRailExperience as WatchHomeCategoryRailExperienceType } from "./WatchHomeCategoryRailExperience"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -83,6 +88,11 @@ const LanguageGlobeExperience = dynamic(() =>
     default: m.LanguageGlobeExperience,
   })),
 ) as typeof LanguageGlobeExperienceType
+const WatchHomeCategoryRailExperience = dynamic(() =>
+  import("./WatchHomeCategoryRailExperience").then((m) => ({
+    default: m.WatchHomeCategoryRailExperience,
+  })),
+) as typeof WatchHomeCategoryRailExperienceType
 export type { Section } from "@/lib/content"
 
 /**
@@ -129,6 +139,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "CardBlock",
   "VideoRecommendationsBlock",
   "WatchHomeHeroBlock",
+  "WatchHomeCategoryRailBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -139,24 +150,31 @@ type AnyBlock = {
   readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
+type DynamicCollectionsRenderContext = {
+  featuredCollections?: FeaturedCollectionReferences
+  cacheScope: DynamicCollectionFeedCacheScope
+  cacheSignatures?: DynamicCollectionFeedCacheSignatures
+}
+
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
   languageSlug: string | null | undefined,
   locale: string | null | undefined,
-  featuredCollections: FeaturedCollectionReferences | undefined,
-  allowDynamicCollections: boolean,
+  dynamicCollections: DynamicCollectionsRenderContext | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
       if (block.itemsSource === "dynamicCollections") {
-        if (!allowDynamicCollections) return null
+        if (!dynamicCollections) return null
         return (
           <DynamicMediaCollection
             data={block as Parameters<typeof DynamicMediaCollection>[0]["data"]}
             locale={locale ?? "en"}
             languageSlug={languageSlug ?? "english"}
-            featuredCollections={featuredCollections}
+            featuredCollections={dynamicCollections.featuredCollections}
+            cacheScope={dynamicCollections.cacheScope}
+            cacheSignatures={dynamicCollections.cacheSignatures}
           />
         )
       }
@@ -308,6 +326,18 @@ function renderAdminBlock(
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.
       return null
+    case "WatchHomeCategoryRailBlock":
+      if (!languageSlug) return null
+      return (
+        <WatchHomeCategoryRailExperience
+          data={
+            block as Parameters<
+              typeof WatchHomeCategoryRailExperience
+            >[0]["data"]
+          }
+          languageSlug={languageSlug}
+        />
+      )
     default: {
       // F6 (ce-code-review): if this branch fires for a typename in
       // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have
@@ -334,15 +364,13 @@ export function ExperienceSectionRenderer({
   routeVideo,
   languageSlug,
   locale,
-  featuredCollections,
-  allowDynamicCollections = false,
+  dynamicCollections,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
   locale?: string | null
-  featuredCollections?: FeaturedCollectionReferences
-  allowDynamicCollections?: boolean
+  dynamicCollections?: DynamicCollectionsRenderContext
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -354,8 +382,7 @@ export function ExperienceSectionRenderer({
       routeVideo,
       languageSlug,
       locale,
-      featuredCollections,
-      allowDynamicCollections,
+      dynamicCollections,
     )
   }
 

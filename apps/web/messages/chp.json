@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ᐊᐃᑕ ᓂᐱ ᐊᑐᕐᕕᒃ ᐊᓯᐊᒍᑦ",
     "home": "JesusFilm ᐅᒃᑯᐃᓯᕐᕕᒃ",
     "closeSearch": "ᓇᓂᓂᖅ ᒪᑐᐃᕐᓗᒍ",
-    "submitSearch": "Nánetʼį"
+    "submitSearch": "Nánetʼį",
+    "library": "ʔedıhı kuę́"
   },
   "SearchOverlay": {
     "dialogLabel": "ᓇᓂᓐᓂᖅ ᐊᒻᒪ ᐸᐃᕆᓂᖅ ᐊᓯᕈᑏᑦ",
@@ -467,6 +468,7 @@
     "sports": "ᐱᐅᓯᐅᒪᔪᖅ ᐱᓂᖅ",
     "collections": "ᐃᓚᒋᓕᕐᓂᖅ",
     "subtitlesOnly": "ᓂᕆᐊᕐᓂᖅ ᑐᓴᒐᐅᑏᑦ ᐃᓚᖓ",
+    "backToTop": "Nágı yaghe",
     "newlyAdded": "ᓄᑖᖅ ᐃᓚᔭᐅᔪᖅ",
     "newVideosTitle": "ᓄᑖᖅ ᐱᐅᓂᖃᕐᓂᖅ {language}",
     "newestFirst": "ᓄᑖᖅ ᓯᕗᓂᐊᓂ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ᐅᖓᑖᓂ ᐊᓯᕈᑏᑦ",
     "videosFromCollection": "ᐊᓯᕈᑏᑦ {collection}.",
     "standaloneDescription": "ᐅᖓᑖᓂ ᐊᓯᕈᑏᑦ ᑖᓐᓇ ᓂᐱ.",
-    "openCollection": "ᐅᒃᑯᐃᕐᓗᒍ ᐃᓚᒋᓕᕐᓂᖅ"
+    "openCollection": "ᐅᒃᑯᐃᕐᓗᒍ ᐃᓚᒋᓕᕐᓂᖅ",
+    "filters": "Náídé",
+    "filterLength": "Nezų́",
+    "filterLength_under5": "5 sáhcogh hílį́",
+    "filterLength_5to10": "5-10 sáhcogh",
+    "filterLength_10to30": "10-30 sáhcogh",
+    "filterLength_over30": "30 sáhcogh dáhílį́",
+    "filterType": "Húts'į",
+    "clearFilters": "Náídé nágheldı",
+    "filterResults": "{total} ts'ę́n {count} néghą",
+    "noFilterResults": "ʔeyı náídé beghą video hílį́ ílé. Ɂįłághe nágheldı.",
+    "filterAdded": "Néghą",
+    "filterAdded_60d": "Sáhcogh 60 dzıné",
+    "filterAdded_6m": "Sáhcogh 6 sá",
+    "filterAdded_12m": "Sáhcogh 12 sá"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ᐅᖃᓪᓚᓂᖅ",
@@ -646,44 +662,6 @@
     "actionsLabel": "ᒪᑉᐱᕐᒃ ᓇᓂᔭᐅᖏᑦᑐᖅ ᐱᓕᕆᓂᖅ",
     "backToWatch": "ᑕᑯ ᐊᓯᐊᒍᑦ",
     "browseVideos": "ᐊᓯᕈᑏᑦ ᐸᐃᕆᓂᖅ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ᐱᕙᓪᓕᐊᓂᖅ ᓯᓚᓂ ᑕᑯ",
-    "actions": {
-      "joinUs": "ᐃᓚᓂᐊᕆᑦ ᐊᓯᓕ",
-      "shareMission": "ᐊᑐᓂ ᐃᓚᓂᐊᕐᓂᖅ"
-    },
-    "welcomeStart": {
-      "label": "ᐱᕈᖅ & ᐅᖃᐅᓯᖅ",
-      "title": "ᑕᐃᒪ ᐱᐅᓂᖃᕐᓂᖅ ᐱᓕᕆᔪᑦ",
-      "description": "ᓇᓂᔭᐅᕗᑦ ᐱᕈᖅ-ᐃᓕᓐᓂᖅ ᓂᕆᐊᕐᓂᖅ ᐃᓚᐅᔪᑦ ᑕᑯᔭᒃᓴᓂᖅ, ᐃᓱᒪᒋᔭᐅᓂᖅ, ᐊᒻᒪ ᓴᓇᔭᐅᓂᖅ."
-    },
-    "welcomeMorning": {
-      "label": "ᐅᓪᓗᒥ ᐃᓱᒪᒋᔭᐅᓂᖅ",
-      "title": "ᐅᓪᓛᒃ! ᑕᐃᒪ ᐱᐅᓂᖃᕐᓂᖅ ᐊᔭᒃᓴᐅᕗᑦ.",
-      "description": "ᐅᓪᓗᕐᒥ ᐊᑐᓕᕆᑦ ᐊᔭᒃᓴᐅᒻᒪᕆᖕᓂᒃ ᐱᐅᓯᐅᒪᔪᖅ ᐊᐃᕐᖕ ᑕᑯᔭᒃᓴᓂᖅ, ᓴᓇᔭᐅᓂᖅ ᐊᒻᒪ ᐃᓱᒪᒋᔭᐅᓂᖅ."
-    },
-    "welcomeAfternoon": {
-      "label": "ᐅᓪᓗᒧᑦ ᐃᓱᒪᒋᔭᐅᓂᖅ",
-      "title": "ᐅᓪᓛᒃ! ᑕᐃᒪ ᐱᐅᓂᖃᕐᓂᖅ ᐊᔭᒃᓴᐅᕗᑦ.",
-      "description": "ᐊᔭᒃᓴᐅᒻᒪᕆᖕ ᐱᐅᓯᐅᒪᔪᖅ ᐃᓚᐅᔪᑦ ᐊᔭᓐᓂᖅ ᐅᓪᓗᒧᑦ ᐃᓚᐅᔪᓂᒃ ᐅᕝᕙᓘᓐᓃᑦ ᑲᔪᓯᒋᐊᕐᓂᖅ ᐃᓱᒪᒋᔭᐅᓂᖅ."
-    },
-    "welcomeEvening": {
-      "label": "ᐅᓐᓄᐊᒥ ᐃᓱᒪᒋᔭᐅᓂᖅ",
-      "title": "ᐅᓐᓄᐊᒃ! ᐊᓯᐊᓗᒍ ᐱᐅᓯᐅᒪᔪᖅ ᐊᔭᒃᓴᐅᕗᑦ.",
-      "description": "ᓴᓇᔭᐅᓂᖅ ᐱᐅᓯᐅᒪᔪᖅ ᐊᔭᒃᓴᐅᕗᑦ ᐃᓱᒪᒋᔭᐅᓂᖅ ᐊᒻᒪ ᓂᑲᓇᐃᑦᑐᒥᒃ ᐃᓕᓐᓂᖅ ᑭᒃᑳᓂ ᐅᓪᓗᖅ ᐃᓱᓕᒃᐸᑦ."
-    },
-    "joinUs": {
-      "label": "ᐃᓚᓂᐊᕆᑦ",
-      "title": "ᐊᒥᓱᑦ ᓇᓂᓂᖅ ᐊᓯᕈᖅᐸᑦ",
-      "description": "ᐊᑐᓐᓂᖅ ᐃᓕᕐᕕᒃ ᑕᒪᑐᒥᖓ. ᐃᓚᓂᐊᕆᑦ ᐊᔭᒃᓴᐅᒻᒪᕆᖕ ᐱᐅᓂᖃᕐᓂᖅ ᐱᐅᓯᐅᒪᔪᖅ ᓄᓇᒐᓚᖕᓂᒃ ᐊᓯᐊᒍᑦ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ᐃᒻᒥᓂᒃ ᑲᔪᓯᖃᑎᒋᑦ",
-      "title": "ᔮᓱᓯᐅᑉ ᐅᓂᒃᑳᖓ ᐊᑐᓂ",
-      "description": "ᑖᓐᓇ ᑐᓴᕐᓂᕐᓂᒃ ᑕᑯᓂᖅ ᔮᓱᓯᐅᑉ ᖃᐅᔨᒪᔭᖓ ᐊᐱᕆᓗᑎᒃ ᐊᓂᕐᕋᓂᖅ, ᐊᑐᓂ ᐃᓕᓐᓂᖅ ᐃᓕᓐᓂᖅ."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ᓈᒻᒪᒃᑐᖅ",

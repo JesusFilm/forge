@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "changelog:grant-local-reader": "tsx src/scripts/grant-changelog-local-reader.ts",
     "seed:first-party-apps": "tsx src/scripts/seed-first-party-apps.ts",
     "mint:agent-handle": "tsx src/scripts/mint-agent-login-handle.ts",
     "mint:apple-client-secret": "node scripts/mint-apple-client-secret.mjs"

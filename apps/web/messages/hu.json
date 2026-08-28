@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hang nyelvének módosítása",
     "home": "JesusFilm kezdőlap",
     "closeSearch": "Keresés bezárása",
-    "submitSearch": "Keresés"
+    "submitSearch": "Keresés",
+    "library": "Médiatár"
   },
   "SearchOverlay": {
     "dialogLabel": "Videók keresése és böngészése",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Gyűjtemények",
     "subtitlesOnly": "Csak felirat",
+    "backToTop": "Vissza a tetejére",
     "newlyAdded": "Újonnan hozzáadva",
     "newVideosTitle": "Új keresztény videók {language} nyelven",
     "newestFirst": "A legújabb elöl",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Önálló videók",
     "videosFromCollection": "Videók innen: {collection}.",
     "standaloneDescription": "Önálló videók ebben a nyelvben.",
-    "openCollection": "Gyűjtemény megnyitása"
+    "openCollection": "Gyűjtemény megnyitása",
+    "filters": "Szűrők",
+    "filterLength": "Hossz",
+    "filterLength_under5": "5 percnél rövidebb",
+    "filterLength_5to10": "5-10 perc",
+    "filterLength_10to30": "10-30 perc",
+    "filterLength_over30": "30 percnél hosszabb",
+    "filterType": "Típus",
+    "clearFilters": "Szűrők törlése",
+    "filterResults": "{count} / {total} megjelenítve",
+    "noFilterResults": "Egyik videó sem felel meg ezeknek a szűrőknek. Próbálj eltávolítani egyet.",
+    "filterAdded": "Hozzáadva",
+    "filterAdded_60d": "Utolsó 60 nap",
+    "filterAdded_6m": "Utolsó 6 hónap",
+    "filterAdded_12m": "Utolsó 12 hónap"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project nézés",
@@ -646,44 +662,6 @@
     "actionsLabel": "Az oldal nem található műveletek",
     "backToWatch": "Vissza a megtekintéshez",
     "browseVideos": "Videók böngészése"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Rövidfilm megtekintése",
-    "actions": {
-      "joinUs": "Csatlakozz hozzánk",
-      "shareMission": "Vállalj részt a küldetésünkben"
-    },
-    "welcomeStart": {
-      "label": "Hit és Írás",
-      "title": "Mai videóajánlatok",
-      "description": "Hitközpontú videótartalmak a gyűjteményünkből, hogy inspiráljanak, kihívást jelentsenek, és gondolkodásra indítsanak."
-    },
-    "welcomeMorning": {
-      "label": "Reggeli inspiráció",
-      "title": "Jó reggelt! Várnak a mai bibliai pillanatok.",
-      "description": "Kezdd a napot bátorító bibliai pillanatokkal, amelyek inspirálnak és felemelnek."
-    },
-    "welcomeAfternoon": {
-      "label": "Délutáni inspiráció",
-      "title": "Jó napot! Bibliai pillanatok a napodhoz.",
-      "description": "Bátorító bibliai tartalmak egy délutáni szünethez vagy további inspirációhoz."
-    },
-    "welcomeEvening": {
-      "label": "Esti inspiráció",
-      "title": "Jó estét! Pihenj meg bibliai pillanatokkal.",
-      "description": "Nyugodt bibliai pillanatok, hogy elcsendesedj, elgondolkodj, és vigaszt találj a nap végén."
-    },
-    "joinUs": {
-      "label": "Csatlakozz hozzánk",
-      "title": "Milliárdok keresnek választ",
-      "description": "Itt van az aratás. Csatlakozz hozzánk, és osszuk meg az evangéliumot a világgal digitális médián keresztül."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Induljunk együtt",
-      "title": "Jézus történetét együtt elmesélve",
-      "description": "Hogy a saját nyelvükön hallhassák és láthassák Jézus szeretetét, ott, ahol vannak."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}%-os egyezés",

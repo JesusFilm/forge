@@ -138,6 +138,11 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import { WatchHomeCategoryRailEditor } from "./experience-editor/watch-home-category-rail-editor"
+import {
+  railBlockPatch,
+  readRailTiles,
+} from "./experience-editor/watch-home-category-rail-tiles"
 import {
   DuplicateExperienceControl,
   type DuplicateActionResult,
@@ -390,6 +395,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "watchHomeCategoryRail",
+    label: "Watch Category Rail",
+    description: "Homepage carousel with a selectable, ordered set of tiles.",
+    category: "Experience",
+    icon: ListOrdered,
+  },
+  {
     key: "languageGlobe",
     label: "Language Globe",
     description:
@@ -567,6 +579,7 @@ type SectionContentTemplateKey =
       | "routeVideo"
       | "routeVideoCarousel"
       | "dynamicMediaCollection"
+      | "watchHomeCategoryRail"
     >
   | "quizButton"
 
@@ -630,6 +643,10 @@ function isDynamicCollectionBlock(block: unknown) {
     asString(record?.t) === "mediaCollection" &&
     asString(record?.itemsSource) === "dynamicCollections"
   )
+}
+
+function isWatchHomeCategoryRailBlock(block: unknown) {
+  return asString(asRecord(block)?.t) === "watchHomeCategoryRail"
 }
 
 function keepDynamicCollectionBlockLast(blocks: unknown[]) {
@@ -1783,6 +1800,9 @@ export function ExperienceEditor({
     }
 
     if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "watchHomeCategoryRail") {
+      return isHomepage && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
+    }
     if (block.key === "dynamicMediaCollection") {
       return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
     }
@@ -2924,6 +2944,12 @@ export function ExperienceEditor({
       }
       nextBlocks.push(nextBlock)
       insertionIndex = nextBlocks.length - 1
+    } else if (template === "watchHomeCategoryRail") {
+      if (!isHomepage || nextBlocks.some(isWatchHomeCategoryRailBlock)) {
+        pushToast("The Watch homepage can contain one category rail.", "error")
+        return
+      }
+      nextBlocks.splice(index, 0, nextBlock)
     } else {
       nextBlocks.splice(index, 0, nextBlock)
     }
@@ -8343,7 +8369,16 @@ export function ExperienceEditor({
           </span>
         </div>
 
-        {type === "languageGlobe" ? (
+        {type === "watchHomeCategoryRail" ? (
+          <WatchHomeCategoryRailEditor
+            tiles={readRailTiles(blockRecord)}
+            onChange={(tiles) =>
+              updateBlockAt(index, (currentBlock) =>
+                railBlockPatch(currentBlock, tiles),
+              )
+            }
+          />
+        ) : type === "languageGlobe" ? (
           <div className="relative min-h-[300px] overflow-hidden rounded-sm bg-[#09090b] p-6 text-left text-white">
             <div
               aria-hidden="true"

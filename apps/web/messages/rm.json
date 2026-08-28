@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Midar la lingua d'audio",
     "home": "Pagina principala da JesusFilm",
     "closeSearch": "Serrar la tschertga",
-    "submitSearch": "Tschertgar"
+    "submitSearch": "Tschertgar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Tschertgar e navigar tras videos",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Collecziuns",
     "subtitlesOnly": "Be suttitels",
+    "backToTop": "Turnar si",
     "newlyAdded": "Agiuntà dacurt",
     "newVideosTitle": "Novs videos cristians en {language}",
     "newestFirst": "Ils pli novs l'emprim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos independents",
     "videosFromCollection": "Videos da {collection}.",
     "standaloneDescription": "Videos independents en questa lingua.",
-    "openCollection": "Avrir collecziun"
+    "openCollection": "Avrir collecziun",
+    "filters": "Filtrar",
+    "filterLength": "Durada",
+    "filterLength_under5": "Main che 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Dapli che 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Stizzar ils filters",
+    "filterResults": "{count} da {total} mussads",
+    "noFilterResults": "Nagin video correspunda a quests filters. Empruvai da allontanar in.",
+    "filterAdded": "Agiuntà",
+    "filterAdded_60d": "Ultims 60 dis",
+    "filterAdded_6m": "Ultims 6 mais",
+    "filterAdded_12m": "Ultims 12 mais"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Guardar",
@@ -646,44 +662,6 @@
     "actionsLabel": "Acziuns per pagina betg chattada",
     "backToWatch": "Torna a guardar",
     "browseVideos": "Navigar videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Guardar il film curt",
-    "actions": {
-      "joinUs": "Unì a nus",
-      "shareMission": "Partir nossa missiun"
-    },
-    "welcomeStart": {
-      "label": "Fe & Scrittira",
-      "title": "Las novitads da videos dad oz",
-      "description": "cuntegn video centrà sin la fe da nossa biblioteca per inspirar, provocar e stimular a reflitgar."
-    },
-    "welcomeMorning": {
-      "label": "Inspiraziun dal bunmain",
-      "title": "Bien di! Las novitads biblicas dad oz spetgan.",
-      "description": "Cumenzai il di cun novitads biblicas encuraschantas, fatgas per inspirar e rinforzar voss spiert."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiraziun da la damaun tardiva",
-      "title": "Bien di! Novitads biblicas per voss di.",
-      "description": "cuntegn biblic encuraschant, ideal per la pausa da la damaun tardiva u per cuntinuar cun inspiraziun."
-    },
-    "welcomeEvening": {
-      "label": "Inspiraziun da la saira",
-      "title": "Buna saira! Relaxai cun novitads biblicas.",
-      "description": " novitads biblicas calmantas per gidar a reflitgar e chattar cumfort, cura che voss di vegn a fin."
-    },
-    "joinUs": {
-      "label": "Unì a nus",
-      "title": "Milliardas tschertgan",
-      "description": "La racolta è qua. Unì cun nus e partscha il evangelium cun il mund per meds digitals."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos ensemen",
-      "title": "Raquintar ensemen l'istorgia da Jesus",
-      "description": "Aschia che persunas pon udir e vesair l'amur da Jesus en lur atgna lingua, gist là nua ch'ellas èn."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% concordanza",

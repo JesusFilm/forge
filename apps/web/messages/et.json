@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muuda heli keelt",
     "home": "JesusFilmi avaleht",
     "closeSearch": "Sulge otsing",
-    "submitSearch": "Otsi"
+    "submitSearch": "Otsi",
+    "library": "Teek"
   },
   "SearchOverlay": {
     "dialogLabel": "Otsi ja sirvi videoid",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kogud",
     "subtitlesOnly": "Ainult subtiitrid",
+    "backToTop": "Tagasi üles",
     "newlyAdded": "Äsja lisatud",
     "newVideosTitle": "Uued kristlikud videod keeles {language}",
     "newestFirst": "Uusimad eespool",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Eraldiseisvad videod",
     "videosFromCollection": "Videod kogust {collection}.",
     "standaloneDescription": "Eraldiseisvad videod selles keeles.",
-    "openCollection": "Ava kogu"
+    "openCollection": "Ava kogu",
+    "filters": "Filtrid",
+    "filterLength": "Pikkus",
+    "filterLength_under5": "Alla 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Üle 30 min",
+    "filterType": "Tüüp",
+    "clearFilters": "Tühjenda filtrid",
+    "filterResults": "Kuvatud {count} / {total}",
+    "noFilterResults": "Ükski video ei vasta neile filtritele. Proovi üks eemaldada.",
+    "filterAdded": "Lisatud",
+    "filterAdded_60d": "Viimased 60 päeva",
+    "filterAdded_6m": "Viimased 6 kuud",
+    "filterAdded_12m": "Viimased 12 kuud"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Projecti vaatamine",
@@ -646,44 +662,6 @@
     "actionsLabel": "Lehemitteleidmise toimingud",
     "backToWatch": "Tagasi vaatama",
     "browseVideos": "Sirvi videoid"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Vaata lühifilmi",
-    "actions": {
-      "joinUs": "Liitu meiega",
-      "shareMission": "Aita meie missiooni"
-    },
-    "welcomeStart": {
-      "label": "Usk ja Pühakiri",
-      "title": "Tänased videovalikud",
-      "description": "Meie kogu usukeskne video­sisu, mis innustab, esitab väljakutseid ja ärgitab mõtisklema."
-    },
-    "welcomeMorning": {
-      "label": "Hommikune inspiratsioon",
-      "title": "Tere hommikust! Tänased Piibli hetked ootavad.",
-      "description": "Alusta päeva julgustavate Piibli hetkede ja videodega, mis innustavad ning tõstavad meelt."
-    },
-    "welcomeAfternoon": {
-      "label": "Pärastlõunane inspiratsioon",
-      "title": "Tere pärastlõunast! Piibli hetked sinu päevaks.",
-      "description": "Julgustav Piibli sisu, mis sobib hästi pärastlõunaseks puhkepausiks või jätkuvaks innustuseks."
-    },
-    "welcomeEvening": {
-      "label": "Õhtune inspiratsioon",
-      "title": "Tere õhtust! Lõõgastu Piibli hetkede saatel.",
-      "description": "Rahulikud Piibli hetked, mis aitavad sul päeva lõppedes mõtiskleda ja lohutust leida."
-    },
-    "joinUs": {
-      "label": "Liitu meiega",
-      "title": "Miljardid otsivad",
-      "description": "Saagikoristus on käes. Liitu meiega, kui jagame evangeeliumi maailmaga digimeedia abil."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lähme koos",
-      "title": "Jutustame Jeesuse lugu koos",
-      "description": "Et nad kuuleksid ja näeksid Jeesuse armastust oma keeles just seal, kus nad parasjagu on."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% sobivus",

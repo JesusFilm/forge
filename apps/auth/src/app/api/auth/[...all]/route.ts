@@ -10,13 +10,20 @@ import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
-import { getAuthBaseUrl } from "@/config/env"
+import { getAuthBaseUrl, getAuthCustomAudiences } from "@/config/env"
 import { prisma } from "@/db/client"
 import {
   CHANGELOG_DEFAULT_SCOPES,
   CHANGELOG_LOCAL_CLIENT_ID,
   CHANGELOG_PRODUCTION_CLIENT_ID,
+  isFirstPartyOAuthClientId,
 } from "@/domain/apps"
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
 import {
   canRedeemAgentLoginHandle,
@@ -26,10 +33,7 @@ import {
   createChangelogOAuthGrantDecision,
   type ChangelogOAuthGrantDecision,
 } from "@/services/changelog-oauth-grant.service"
-import {
-  CHANGELOG_OAUTH_RESOURCES,
-  CHANGELOG_OAUTH_SCOPES,
-} from "@/services/oauth-policy.service"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/services/oauth-policy.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -40,7 +44,14 @@ const MAX_ATTEMPTS = 10
 const LAST_LOGIN_METHOD_COOKIE = "forge_auth_last_login_method"
 const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
 const MAX_DCR_BODY_BYTES = 64 * 1024
-
+const oauthResourceCatalog = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const publicDcrResources = new Set(getPublicDcrResources(oauthResourceCatalog))
+const publicDcrAllowedScopes = new Set<string>(
+  getPublicDcrAllowedScopes(oauthResourceCatalog),
+)
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
 
@@ -57,6 +68,9 @@ function isHttpLoopbackRedirect(uri: string): boolean {
     const url = new URL(uri)
     return (
       url.protocol === "http:" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.hash === "" &&
       (url.hostname === "localhost" ||
         url.hostname === "127.0.0.1" ||
         url.hostname === "[::1]")
@@ -69,15 +83,6 @@ function isHttpLoopbackRedirect(uri: string): boolean {
 async function normalizeLoopbackDcrRequest(
   request: Request,
 ): Promise<Request | Response> {
-  if (
-    !request.headers
-      .get("content-type")
-      ?.toLowerCase()
-      .includes("application/json")
-  ) {
-    return request
-  }
-
   const bodyBytes = await readBoundedBody(request, MAX_DCR_BODY_BYTES)
   if (!bodyBytes) {
     return Response.json(
@@ -87,29 +92,72 @@ async function normalizeLoopbackDcrRequest(
   }
   const headers = new Headers(request.headers)
   headers.delete("content-length")
-  const forward = (body: BodyInit) =>
-    new Request(request.url, {
-      body,
-      headers,
-      method: request.method,
-      signal: request.signal,
-    })
+  const boundedRequest = new Request(request.url, {
+    body: bodyBytes,
+    headers,
+    method: request.method,
+    signal: request.signal,
+  })
+
+  const authorization = request.headers.get("authorization")
+  if (authorization && /^Bearer\s+\S+/i.test(authorization)) {
+    return boundedRequest
+  }
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (session?.user?.id) return boundedRequest
+
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json")
+  ) {
+    return invalidDcrRequest()
+  }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(new TextDecoder().decode(bodyBytes))
   } catch {
-    return forward(bodyBytes)
+    return invalidDcrRequest()
   }
   if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return forward(bodyBytes)
+    return invalidDcrRequest()
   }
   const body = parsed as Record<string, unknown>
   const redirectUris = body.redirect_uris
+  const applicationType = body.application_type ?? "native"
+  const tokenEndpointAuthMethod = body.token_endpoint_auth_method ?? "none"
+  const grantTypes = body.grant_types ?? ["authorization_code", "refresh_token"]
+  const responseTypes = body.response_types ?? ["code"]
+  const resources = body.resources
+  const requestedScopes =
+    typeof body.scope === "string"
+      ? body.scope.split(/\s+/).filter(Boolean)
+      : body.scope === undefined
+        ? []
+        : null
   if (
-    body.application_type !== undefined ||
-    (body.token_endpoint_auth_method !== undefined &&
-      body.token_endpoint_auth_method !== "none") ||
+    applicationType !== "native" ||
+    tokenEndpointAuthMethod !== "none" ||
+    !Array.isArray(grantTypes) ||
+    !grantTypes.includes("authorization_code") ||
+    !grantTypes.every(
+      (grantType) =>
+        grantType === "authorization_code" || grantType === "refresh_token",
+    ) ||
+    !Array.isArray(responseTypes) ||
+    responseTypes.length !== 1 ||
+    responseTypes[0] !== "code" ||
+    (body.require_pkce !== undefined && body.require_pkce !== true) ||
+    (resources !== undefined &&
+      (!Array.isArray(resources) ||
+        !resources.every(
+          (resource): resource is string =>
+            typeof resource === "string" && publicDcrResources.has(resource),
+        ))) ||
+    requestedScopes == null ||
+    !requestedScopes.every((scope) => publicDcrAllowedScopes.has(scope)) ||
     !Array.isArray(redirectUris) ||
     redirectUris.length === 0 ||
     !redirectUris.every(
@@ -117,19 +165,32 @@ async function normalizeLoopbackDcrRequest(
         typeof uri === "string" && isHttpLoopbackRedirect(uri),
     )
   ) {
-    return forward(bodyBytes)
+    return invalidDcrRequest()
   }
 
   return new Request(request.url, {
     body: JSON.stringify({
       ...body,
       application_type: "native",
+      grant_types: grantTypes,
+      require_pkce: true,
+      response_types: responseTypes,
       token_endpoint_auth_method: "none",
     }),
     headers,
     method: request.method,
     signal: request.signal,
   })
+}
+
+function invalidDcrRequest(): Response {
+  return Response.json(
+    {
+      error: "invalid_client_metadata",
+      error_description: "The client registration metadata is not allowed.",
+    },
+    { status: 400, headers: { "Cache-Control": "no-store" } },
+  )
 }
 
 async function readBoundedBody(
@@ -646,25 +707,32 @@ const changelogClientIds = new Set([
   CHANGELOG_LOCAL_CLIENT_ID,
   CHANGELOG_PRODUCTION_CLIENT_ID,
 ])
-const changelogResources = new Set<string>(
-  Object.values(CHANGELOG_OAUTH_RESOURCES),
-)
-const changelogScopes = new Set<string>(CHANGELOG_OAUTH_SCOPES)
 type ChangelogOAuthDenialReason = Extract<
   ChangelogOAuthGrantDecision,
   { allowed: false }
 >["reason"]
 
-function isChangelogAuthorizeRequest(params: URLSearchParams): boolean {
-  const requestedScopes =
-    params.get("scope")?.split(/\s+/).filter(Boolean) ?? []
-  return (
-    changelogClientIds.has(params.get("client_id") ?? "") ||
-    requestedScopes.some((scope) => changelogScopes.has(scope)) ||
-    params
-      .getAll("resource")
-      .some((resource) => changelogResources.has(resource))
-  )
+async function classifyAuthorizeRequest(
+  params: URLSearchParams,
+): Promise<"changelog" | "provider" | "invalid-target"> {
+  const resources = params.getAll("resource")
+  if (resources.length > 1) return "invalid-target"
+  if (resources.length === 1) {
+    const target = resolveOAuthResource(oauthResourceCatalog, resources[0])
+    if (target?.resourceClass === "admin-mcp") return "provider"
+    if (target?.resourceClass === "changelog-mcp") return "changelog"
+    return "invalid-target"
+  }
+
+  const clientId = params.get("client_id")
+  if (clientId && changelogClientIds.has(clientId)) return "changelog"
+  if (!clientId || isFirstPartyOAuthClientId(clientId)) return "provider"
+
+  const client = await prisma.oauthClient.findUnique({
+    where: { clientId },
+    select: { clientId: true },
+  })
+  return client ? "invalid-target" : "provider"
 }
 
 async function applyChangelogAuthorizePolicy(
@@ -672,7 +740,19 @@ async function applyChangelogAuthorizePolicy(
   authorizeUrl: URL,
   providedSession?: Awaited<ReturnType<typeof auth.api.getSession>>,
 ): Promise<{ denied?: Response; url?: URL }> {
-  if (!isChangelogAuthorizeRequest(authorizeUrl.searchParams)) return {}
+  const classification = await classifyAuthorizeRequest(
+    authorizeUrl.searchParams,
+  )
+  if (classification === "invalid-target") {
+    return {
+      denied: await oauthDenial(
+        authorizeUrl.searchParams,
+        "invalid_target",
+        "The requested resource is invalid.",
+      ),
+    }
+  }
+  if (classification !== "changelog") return {}
 
   const session =
     providedSession ?? (await auth.api.getSession({ headers: request.headers }))
@@ -721,6 +801,14 @@ async function changelogOAuthDenial(
   const errorDescription = invalidTarget
     ? "The requested Changelog resource is invalid."
     : "Changelog access is not available."
+  return oauthDenial(params, error, errorDescription)
+}
+
+async function oauthDenial(
+  params: URLSearchParams,
+  error: "access_denied" | "invalid_target",
+  errorDescription: string,
+): Promise<Response> {
   const clientId = params.get("client_id")
   const redirectUri = params.get("redirect_uri")
   if (clientId && redirectUri) {

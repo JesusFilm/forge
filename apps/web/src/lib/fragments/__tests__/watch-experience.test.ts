@@ -1,9 +1,15 @@
 import { print, type SelectionSetNode } from "graphql"
 import { describe, expect, it } from "vitest"
 
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
+import {
+  adminLegacyWatchExperienceFragment,
+  adminWatchExperienceFragment,
+} from "@forge/admin-graphql/fragments"
 
-import { watchExperienceFragment } from "@/lib/fragments/watch-experience"
+import {
+  legacyWatchExperienceFragment,
+  watchExperienceFragment,
+} from "@/lib/fragments/watch-experience"
 import { watchMediaCollectionTitlesFragment } from "@/lib/fragments/watch-media-collection-titles"
 
 function collectResolvedTitlePaths(
@@ -35,6 +41,60 @@ function collectResolvedTitlePaths(
 }
 
 describe("Web Watch Experience media collection titles", () => {
+  it("keeps the legacy compatibility fragment identical except for the category rail", () => {
+    const currentDefinition = adminWatchExperienceFragment.definitions.find(
+      (candidate) => candidate.kind === "FragmentDefinition",
+    )
+    const legacyDefinition =
+      adminLegacyWatchExperienceFragment.definitions.find(
+        (candidate) => candidate.kind === "FragmentDefinition",
+      )
+
+    expect(currentDefinition?.kind).toBe("FragmentDefinition")
+    expect(legacyDefinition?.kind).toBe("FragmentDefinition")
+    if (
+      currentDefinition?.kind !== "FragmentDefinition" ||
+      legacyDefinition?.kind !== "FragmentDefinition"
+    ) {
+      return
+    }
+
+    const stripCategoryRail = (selectionSet: SelectionSetNode) => ({
+      ...selectionSet,
+      selections: selectionSet.selections.map((selection) => {
+        if (selection.kind !== "Field" || selection.name.value !== "blocks") {
+          return selection
+        }
+        return {
+          ...selection,
+          selectionSet: {
+            ...selection.selectionSet,
+            selections: selection.selectionSet?.selections.filter(
+              (blockSelection) =>
+                blockSelection.kind !== "InlineFragment" ||
+                blockSelection.typeCondition?.name.value !==
+                  "WatchHomeCategoryRailBlock",
+            ),
+          },
+        }
+      }),
+    })
+
+    expect(stripCategoryRail(currentDefinition.selectionSet)).toEqual(
+      legacyDefinition.selectionSet,
+    )
+    expect(print(adminWatchExperienceFragment)).toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(print(adminWatchExperienceFragment)).toContain("categoryIds")
+    expect(print(adminLegacyWatchExperienceFragment)).not.toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(print(adminLegacyWatchExperienceFragment)).not.toContain(
+      "AdminWatchHomeCategoryRail",
+    )
+  })
+
   it("selects resolvedTitle through every supported collection nesting path", () => {
     const definition = watchMediaCollectionTitlesFragment.definitions.find(
       (candidate) => candidate.kind === "FragmentDefinition",
@@ -59,5 +119,13 @@ describe("Web Watch Experience media collection titles", () => {
       "...WatchMediaCollectionTitles",
     )
     expect(print(adminWatchExperienceFragment)).not.toContain("resolvedTitle")
+  })
+
+  it("keeps resolved titles in Web's old-schema compatibility projection", () => {
+    const source = print(legacyWatchExperienceFragment)
+
+    expect(source).toContain("...AdminLegacyWatchExperience")
+    expect(source).toContain("...WatchMediaCollectionTitles")
+    expect(source).not.toContain("WatchHomeCategoryRailBlock")
   })
 })

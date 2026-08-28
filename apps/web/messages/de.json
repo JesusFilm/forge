@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprache ändern",
     "home": "JesusFilm-Startseite",
     "closeSearch": "Suche schließen",
-    "submitSearch": "Suchen"
+    "submitSearch": "Suchen",
+    "library": "Mediathek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos suchen und entdecken",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Sammlungen",
     "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Nach oben",
     "newlyAdded": "Neu hinzugefügt",
     "newVideosTitle": "Neue christliche Videos in {language}",
     "newestFirst": "Neueste zuerst",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Einzelvideos",
     "videosFromCollection": "Videos aus {collection}.",
     "standaloneDescription": "Einzelvideos in dieser Sprache.",
-    "openCollection": "Sammlung öffnen"
+    "openCollection": "Sammlung öffnen",
+    "filters": "Filter",
+    "filterLength": "Länge",
+    "filterLength_under5": "Unter 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter zurücksetzen",
+    "filterResults": "{count} von {total} angezeigt",
+    "noFilterResults": "Keine Videos entsprechen diesen Filtern. Entfernen Sie einen davon.",
+    "filterAdded": "Hinzugefügt",
+    "filterAdded_60d": "Letzte 60 Tage",
+    "filterAdded_6m": "Letzte 6 Monate",
+    "filterAdded_12m": "Letzte 12 Monate"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Videos ansehen",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurzfilm ansehen",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile unsere Mission"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Die heutigen Video-Empfehlungen",
-      "description": "Glaubenszentrierte Videoinhalte aus unserer Bibliothek, die inspirieren, herausfordern und zum Nachdenken anregen."
-    },
-    "welcomeMorning": {
-      "label": "Morgendliche Inspiration",
-      "title": "Guten Morgen! Die heutigen Bibelmomente warten.",
-      "description": "Beginnen Sie Ihren Tag mit ermutigenden Bibelmomenten, die Ihren Geist inspirieren und erheben sollen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guten Nachmittag! Bibelmomente für Ihren Tag.",
-      "description": "Ermutigende Bibelinhalte, perfekt für Ihre Nachmittagsauszeit oder zur weiteren Inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Abendliche Inspiration",
-      "title": "Guten Abend! Lassen Sie den Tag mit Bibelmomenten ausklingen.",
-      "description": "Friedliche Bibelmomente, die Ihnen helfen, nachzudenken und Trost zu finden, wenn Ihr Tag zu Ende geht."
-    },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarden suchen",
-      "description": "Die Ernte ist da. Machen Sie mit, wenn wir das Evangelium mit digitalen Medien in die Welt tragen."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gehen wir gemeinsam",
-      "title": "Gemeinsam die Geschichte von Jesus erzählen",
-      "description": "Damit sie die Liebe Jesu in ihrer eigenen Sprache direkt dort hören und sehen können, wo sie sind."
     }
   },
   "VideoRecommendations": {

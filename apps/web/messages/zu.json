@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhaya le-JesusFilm",
     "closeSearch": "Vala usesho",
-    "submitSearch": "Sesha"
+    "submitSearch": "Sesha",
+    "library": "Ilabhulali"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Ezemidlalo",
     "collections": "Amaqoqo",
     "subtitlesOnly": "Izihlokwana kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Ezingeziwe zakamuva",
     "newVideosTitle": "Amavidiyo amasha obuKristu ngesi-{language}",
     "newestFirst": "Okusha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Amavidiyo azimele",
     "videosFromCollection": "Amavidiyo avela ku-{collection}.",
     "standaloneDescription": "Amavidiyo azimele kulolu limi.",
-    "openCollection": "Vula iqoqo"
+    "openCollection": "Vula iqoqo",
+    "filters": "Izihlungi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphansi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eyi-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engama-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Sula izihlungi",
+    "filterResults": "{count} kwabayi-{total} okuboniswayo",
+    "noFilterResults": "Awekho amavidiyo ahambisana nalezi zihlungi. Zama ukususa esinye.",
+    "filterAdded": "Kwengezwe",
+    "filterAdded_60d": "Izinsuku ezingama-60 ezedlule",
+    "filterAdded_6m": "Izinyanga eziyisi-6 ezedlule",
+    "filterAdded_12m": "Izinyanga eziyi-12 ezedlule"
   },
   "WatchHome": {
     "pageTitle": "I-Jesus Film Project Watch",
@@ -646,44 +662,6 @@
     "actionsLabel": "Izenzo zekhasi ezingatholakali",
     "backToWatch": "Buyela ku-Watch",
     "browseVideos": "Phequlula amavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Hlanganyela nathi",
-      "shareMission": "Yabelana emsebenzini wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukukholwa neMibhalo",
-      "title": "Okukhethiwe namuhla kwamavidiyo",
-      "description": "Okuqukethwe kwamavidiyo okugxile ekukholweni okuvela emtatsheni wethu ukuze kukhuthaze, kuphonsele inselele, futhi kubangele ukuzindla."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi lwasekuseni",
-      "title": "Sawubona! Izikhathi zeBhayibheli zanamuhla zilindile.",
-      "description": "Qala usuku lwakho ngezikhathi zeBhayibheli ezikhuthazayo eziklanyelwe ukukugqugquzela nokukuphakamisa emoyeni."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi lwantambama",
-      "title": "Ntambama enhle! Izikhathi zeBhayibheli zosuku lwakho.",
-      "description": "Okuqukethwe okukhuthazayo kweBhayibheli okulungele ikhefu lakho lantambama noma ukuqhubeka nokukhuthazeka."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi lwakusihlwa",
-      "title": "Sihlwa esihle! Yehlisa umoya ngezikhathi zeBhayibheli.",
-      "description": "Izikhathi zeBhayibheli ezithule nezikhululekile ezikusiza ukuba uzindle futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Hlanganyela nathi",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Hlanganyela nathi njengoba sabelana ngevangeli nomhlaba kusetshenziswa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Ukuxoxa indaba kaJesu, ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo endaweni abakuyo."
-    }
   },
   "VideoRecommendations": {
     "match": "Kufana ngo-{percent}%",

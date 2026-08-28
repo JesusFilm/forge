@@ -1,0 +1,132 @@
+// Forge-owned RAG schema, ported from jesusfilm-rag at commit
+// 5d08c9e995e71e5600860aabe1d4d00374d6a610.
+//
+// pgvector's halfvec and PostgreSQL's generated tsvector remain Unsupported
+// because Prisma 6 cannot model them. The migration is authoritative for those
+// columns and their HNSW/GIN indexes; schema contract tests guard the raw SQL.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Source {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key             String     @unique(map: "sources_key_uq")
+  name            String
+  domain          String?
+  trust           String?
+  ingestionMode   String?    @map("ingestion_mode")
+  languages       Json       @default("[]")
+  defaultTags     Json       @default("[]") @map("default_tags")
+  defaultCategory String?    @map("default_category")
+  rights          String?
+  contentHash     String?    @map("content_hash")
+  indexedAt       DateTime?  @map("indexed_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  documents       Document[]
+  chunks          Chunk[]
+
+  @@map("sources")
+}
+
+model Document {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId     String    @map("source_id") @db.Uuid
+  canonicalUrl String    @map("canonical_url")
+  url          String?
+  title        String?
+  language     String?
+  category     String?
+  contentHash  String    @map("content_hash")
+  chunkCount   Int       @default(0) @map("chunk_count")
+  firstSeen    DateTime  @default(now()) @map("first_seen") @db.Timestamptz(6)
+  lastSeen     DateTime  @default(now()) @map("last_seen") @db.Timestamptz(6)
+  indexedAt    DateTime? @map("indexed_at") @db.Timestamptz(6)
+  source       Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "documents_source_id_fkey")
+  chunks       Chunk[]
+
+  @@unique([sourceId, canonicalUrl], map: "documents_source_canonical_url_uq")
+  @@index([sourceId], map: "documents_source_idx")
+  @@map("documents")
+}
+
+model Chunk {
+  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId String                   @map("document_id") @db.Uuid
+  sourceId   String                   @map("source_id") @db.Uuid
+  ord        Int
+  text       String
+  charStart  Int                      @map("char_start")
+  charEnd    Int                      @map("char_end")
+  tokenCount Int                      @map("token_count")
+  tags       Json                     @default("[]")
+  createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  searchTsv  Unsupported("tsvector")? @map("search_tsv")
+  document   Document                 @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "chunks_document_id_fkey")
+  source     Source                   @relation(fields: [sourceId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "chunks_source_id_fkey")
+  embedding  ChunkEmbedding?
+
+  @@index([sourceId], map: "chunks_source_idx")
+  @@index([documentId], map: "chunks_document_idx")
+  @@map("chunks")
+}
+
+model ChunkEmbedding {
+  chunkId        String                       @id @map("chunk_id") @db.Uuid
+  embedding      Unsupported("halfvec(1536)")
+  embeddingModel String                       @map("embedding_model")
+  embeddedAt     DateTime                     @default(now()) @map("embedded_at") @db.Timestamptz(6)
+  chunk          Chunk                        @relation(fields: [chunkId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "chunk_embeddings_chunk_id_fkey")
+
+  @@index([embeddingModel], map: "chunk_embeddings_model_idx")
+  @@map("chunk_embeddings")
+}
+
+model HttpCache {
+  url          String   @id
+  etag         String?
+  lastModified String?  @map("last_modified")
+  bodyHash     String?  @map("body_hash")
+  statusCode   Int?     @map("status_code")
+  fetchedAt    DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("http_cache")
+}
+
+model RobotsCache {
+  robotsUrl  String   @id @map("robots_url")
+  body       String?
+  statusCode Int?     @map("status_code")
+  fetchedAt  DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("robots_cache")
+}
+
+model RawDocument {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceKey    String    @map("source_key")
+  url          String
+  canonicalUrl String    @map("canonical_url")
+  title        String?
+  rawContent   String    @map("raw_content")
+  status       Int?
+  bodyHash     String?   @map("body_hash")
+  etag         String?
+  lastModified String?   @map("last_modified")
+  fetchedAt    DateTime  @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  notModified  Boolean   @default(false) @map("not_modified")
+  ingestedAt   DateTime? @map("ingested_at") @db.Timestamptz(6)
+
+  @@index([sourceKey], map: "raw_documents_source_key_idx")
+  @@index([ingestedAt], map: "raw_documents_ingested_at_idx")
+  @@map("raw_documents")
+}

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ध्वनि-भाषां परिवर्तयतु",
     "home": "JesusFilm गृहपृष्ठम्",
     "closeSearch": "अन्वेषणं पिधाय",
-    "submitSearch": "अन्वेषयतु"
+    "submitSearch": "अन्वेषयतु",
+    "library": "पुस्तकालयः"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियोनि अन्वेषयतु ब्राउज़् च कुर्वन्तु",
@@ -467,6 +468,7 @@
     "sports": "क्रीडाः",
     "collections": "सङ्ग्रहाः",
     "subtitlesOnly": "उपशीर्षक-मात्रम्",
+    "backToTop": "उपरि गच्छतु",
     "newlyAdded": "नूतनतया योजितम्",
     "newVideosTitle": "{language} भाषायां नूतनानि ख्रीष्टीय-वीडियोनि",
     "newestFirst": "नवतमानि प्रथमतः",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतन्त्र-वीडियोनि",
     "videosFromCollection": "{collection} इत्यस्मात् वीडियोनि।",
     "standaloneDescription": "अस्मिन् भाषायां स्वतन्त्र-वीडियोनि।",
-    "openCollection": "सङ्ग्रहं उद्घाटयतु"
+    "openCollection": "सङ्ग्रहं उद्घाटयतु",
+    "filters": "चालनी",
+    "filterLength": "दीर्घता",
+    "filterLength_under5": "५ निमेषात् न्यूनम्",
+    "filterLength_5to10": "५-१० निमेषाः",
+    "filterLength_10to30": "१०-३० निमेषाः",
+    "filterLength_over30": "३० निमेषात् अधिकम्",
+    "filterType": "प्रकारः",
+    "clearFilters": "चालनीः अपसारयतु",
+    "filterResults": "{total} मध्ये {count} प्रदर्शिताः",
+    "noFilterResults": "एताभिः चालनीभिः किमपि चलच्चित्रं न मेलति। एकां अपसारयतु।",
+    "filterAdded": "योजितम्",
+    "filterAdded_60d": "गताः ६० दिनाः",
+    "filterAdded_6m": "गताः ६ मासाः",
+    "filterAdded_12m": "गताः १२ मासाः"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पश्यन्तु",
@@ -646,44 +662,6 @@
     "actionsLabel": "पृष्ठं न प्राप्तम् क्रियाः",
     "backToWatch": "पश्यने पुनर्गच्छतु",
     "browseVideos": "वीडियोनि ब्राउज़् कुर्वन्तु"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु-चलच्चित्रं पश्यतु",
-    "actions": {
-      "joinUs": "अस्माभिः सह युञ्जीत",
-      "shareMission": "अस्माकं मिशने भागं गृह्णीत"
-    },
-    "welcomeStart": {
-      "label": "विश्वासः एवं शास्त्रम्",
-      "title": "अद्यतनानि वीडियो-चयनानि",
-      "description": "विश्वासकेंद्रितं वीडियोसामग्री अस्माकं संग्रहात्, यत् प्रेरणां दातुं, चुनौतीं कर्तुं, चिन्तनं च प्रज्वालयितुं प्रयोज्यते।"
-    },
-    "welcomeMorning": {
-      "label": "प्रातः प्रेरणा",
-      "title": "सुप्रभातम्! अद्यतनानि बाइबिलक्षणानि प्रतीक्षन्ते।",
-      "description": "प्रातःकालं प्रोत्साहकैर् बाइबिलक्षणैः आरभत, ये प्रेरणां, उत्साहं च वर्धयन्ति।"
-    },
-    "welcomeAfternoon": {
-      "label": "अपराह्ण-प्रेरणा",
-      "title": "शुभमपराह्णम्! भवतः दिनाय बाइबिलक्षणानि।",
-      "description": "अपराह्णविरामाय वा निरन्तर-प्रेरणाय वा युक्तं प्रोत्साहकं बाइबिलसामग्री।"
-    },
-    "welcomeEvening": {
-      "label": "सायं प्रेरणा",
-      "title": "शुभसायम्! बाइबिलक्षणैः सह विश्रामं कुर्वन्तु।",
-      "description": "शान्तानि बाइबिलक्षणानि, ये दिनस्य समाप्तौ चिन्तनाय, सांत्वनं च प्राप्तुं सहायन्ते।"
-    },
-    "joinUs": {
-      "label": "अस्माभिः सह युञ्जीत",
-      "title": "अर्बुदानि जनाः अन्विष्यन्ति",
-      "description": "शस्यसमयः अत्रास्ति। डिजिटल-माध्यमैः विश्वं प्रति सुसमाचारं प्रचारेण अस्माभिः सह युञ्जीत।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आगच्छामः सह",
-      "title": "येशोः कथा, सहैव कथयामः",
-      "description": "येन ते स्वभाषायां तत्रैव येशोः प्रेम श्रुण्वन्तु पश्यन्तु च।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% साम्यम्",

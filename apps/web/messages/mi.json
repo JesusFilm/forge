@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Panoni i te reo oro",
     "home": "Kainga JesusFilm",
     "closeSearch": "Katia te rapu",
-    "submitSearch": "Rapu"
+    "submitSearch": "Rapu",
+    "library": "Whare pukapuka"
   },
   "SearchOverlay": {
     "dialogLabel": "Rapu me te tirotiro ataata",
@@ -467,6 +468,7 @@
     "sports": "Hākinakina",
     "collections": "Ngā kohinga",
     "subtitlesOnly": "Ngā taitararoto anake",
+    "backToTop": "Hoki ki runga",
     "newlyAdded": "Kua tāpiritia hōu",
     "newVideosTitle": "Ngā ataata Karaitiana hōu i roto i {language}",
     "newestFirst": "Tō muri rawa ki mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ngā ataata tū takitahi",
     "videosFromCollection": "Ngā ataata mai i {collection}.",
     "standaloneDescription": "Ngā ataata tū takitahi i tēnei reo.",
-    "openCollection": "Whakatuwhera kohinga"
+    "openCollection": "Whakatuwhera kohinga",
+    "filters": "Tātari",
+    "filterLength": "Roa",
+    "filterLength_under5": "Iti iho i te 5 meneti",
+    "filterLength_5to10": "5-10 meneti",
+    "filterLength_10to30": "10-30 meneti",
+    "filterLength_over30": "Neke atu i te 30 meneti",
+    "filterType": "Momo",
+    "clearFilters": "Whakakore i ngā tātari",
+    "filterResults": "E whakaatu ana i te {count} o te {total}",
+    "noFilterResults": "Kāore he ataata e ōrite ana ki ēnei tātari. Ngana ki te tango i tētahi.",
+    "filterAdded": "Kua tāpiritia",
+    "filterAdded_60d": "Ngā rā 60 kua hipa",
+    "filterAdded_6m": "Ngā marama 6 kua hipa",
+    "filterAdded_12m": "Ngā marama 12 kua hipa"
   },
   "WatchHome": {
     "pageTitle": "Mātakitaki | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ngā mahi mō te whārangi kāore i kitea",
     "backToWatch": "Hoki ki te Watch",
     "browseVideos": "Tirotiro i ngā ataata"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mātakitaki Pikitia Poto",
-    "actions": {
-      "joinUs": "Hono mai",
-      "shareMission": "Tiri i tā mātou mīhana"
-    },
-    "welcomeStart": {
-      "label": "Whakapono me te Karaipiture",
-      "title": "Ngā whiringa ataata o tēnei rā",
-      "description": "Ngā ataata e aro ana ki te whakapono mai i tā mātou whare kōpaki hei whakaawe, hei wero, hei whakaohooho whakaaro hoki."
-    },
-    "welcomeMorning": {
-      "label": "Whakaawe i te ata",
-      "title": "Kia ora! Kei konei ngā wāhanga Paipera o tēnei rā.",
-      "description": "Tīmatahia tō rā ki ngā wāhanga Paipera whakatenatena i hangaia hei whakaawe, hei hiki i tō wairua."
-    },
-    "welcomeAfternoon": {
-      "label": "Whakaawe i te ahiahi",
-      "title": "Kia ora i te ahiahi! Ngā wāhanga Paipera mō tō rā.",
-      "description": "He ihirangi Paipera whakatenatena e tino pai ana mō tō wā whakatā i te ahiahi, hei whakaohooho tonu rānei."
-    },
-    "welcomeEvening": {
-      "label": "Whakaawe i te ahiahi pō",
-      "title": "Kia ora i te ahiahi pō! Whakatā mā ngā wāhanga Paipera.",
-      "description": "Ngā wāhanga Paipera rangimārie hei āwhina i a koe ki te whakaaroaro, ki te kimi whakamarie hoki i te whakatau o tō rā."
-    },
-    "joinUs": {
-      "label": "Hono mai",
-      "title": "Kei te rapu ngā piriona",
-      "description": "Kua tae mai te kotinga. Hono mai ki a mātou i a mātou e tiri ana i te rongopai ki te ao mā ngā pāpāho matihiko."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Haere tahi tātou",
-      "title": "Te kōrero tahi i te kōrero mō Hēhu",
-      "description": "Kia rongo, kia kite hoki rātou i te aroha o Hēhu i roto i tō rātou ake reo, i reira tonu e noho ana rātou."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% te ōritetanga",

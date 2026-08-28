@@ -99,6 +99,51 @@ then finalizes `Account.issuer` before the server starts:
    column non-null.
 4. Seed native OAuth resources and client-resource links idempotently.
 
+### Public MCP client-resource repair
+
+The same startup seed repairs compatible dynamic loopback clients after all
+resource rows and first-party links have been seeded. Before inspecting any
+client, the seed verifies that every public DCR default has one enabled
+`OauthResource` row whose allowed scopes exactly match the Auth resource
+catalogue. Auth must not start when this invariant or a client repair
+transaction fails.
+
+The repair is additive and registration-posture based. It adds every missing
+public MCP link, in one transaction per client, only for an unseeded, enabled,
+public native client that uses token authentication `none`, Authorization Code
+plus Refresh Token, PKCE that is not disabled, and exact ephemeral HTTP
+loopback callbacks at `/auth/callback` or `/callback`. It does not change
+seeded, confidential, remote, disabled, PKCE-disabled, web, or incomplete-grant
+clients. It does not create AppGrants or consents and does not rewrite
+authorization codes, access tokens, or refresh tokens. The older
+`offline_access` append remains a separate, narrower migration for clients
+carrying the established legacy Admin MCP scope markers.
+
+Startup reports counts only: eligible clients, repaired clients, links added,
+and legacy clients updated for offline access. Do not add client IDs, redirect
+URIs, user identifiers, authorization codes, tokens, or secrets to this output.
+Before deployment, record equally redacted counts for public resource rows,
+links grouped by public resource, eligible loopback clients, and eligible
+clients missing at least one public link. Stop for duplicate resource
+identifiers, duplicate `(client_id, resource_id)` pairs, or unexpected seeded
+client gaps. After deployment, require zero eligible clients missing a public
+link and confirm a second seed adds zero repair links.
+
+Use a clean isolated MCP client profile for the rollout gate: perform discovery
+and registration without cached metadata, authorize the canonical production
+Admin MCP resource, exchange the code, verify the signed production Admin
+claims, initialize MCP, and list tools and Experiences. Then reconnect one
+accessible eligible pre-deploy client to exercise the repaired-client path. If
+none is accessible, record that smoke as not applicable and retain the
+post-seed invariant plus real-database backfill evidence. Remove the isolated
+profile and its credentials after the smoke.
+
+Application rollback is non-destructive. The added resource links are
+capability ceilings, not user grants, so do not delete them during rollback.
+Roll back through the normal PR-to-main deployment path only after the
+old-code/new-data compatibility check shows the previous Auth policy can read
+the additive links without widening authority or failing startup.
+
 If finalization fails, do not bypass it or start Better Auth 1.7. The additive
 schema can remain in place while the previous deployment continues; correct
 the trusted configuration or identity collision through a reviewed PR and
@@ -158,6 +203,73 @@ until Changelog has a stable preview deployment and callback domain.
 This boundary depends on the completed Better Auth 1.7 native-resource rollout
 (`feat-401`). Do not replace it with authorization-code record rewrites, a
 side-channel resource binding, or another issuer.
+
+### Grant Local Reader access
+
+Local Changelog normally authorizes through hosted Jesus Film Auth. Before
+granting access, the recipient must have signed in to Auth at least once and
+must be a verified, ACTIVE HUMAN user. Google sign-in is supported: the
+operator enters the account email only so Auth can resolve the stable user ID;
+the grant itself is stored against that ID. A linked Google account does not
+prove ACTIVE membership. If the command rejects an otherwise verified user,
+resolve an unexpected INVITED membership through the approved membership
+process; this command intentionally does not activate users.
+
+The command prompts for the email and must not receive it through command-line
+arguments:
+
+```bash
+pnpm --filter @forge/auth changelog:grant-local-reader
+```
+
+Running this command normally uses the Auth database configured in the current
+shell. Against a local Auth database, it changes local Auth only and will not
+help a Local Changelog instance that is using hosted Auth.
+
+For hosted Auth, use the following procedure only after this command has been
+merged, deployed, and checked out from a clean `main` branch:
+
+1. Inspect the target without reading environment variables:
+
+   ```bash
+   railway status \
+     --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 \
+     --environment production \
+     --json
+   ```
+
+2. Verify that the output identifies project `forge`, environment
+   `production`, and lists the `@forge/auth` service with ID
+   `28b7c7be-3a22-4a95-885a-bc302e3d16a2`.
+3. Pause and obtain human confirmation of that exact target.
+4. Run the prompt-driven command with the service's injected configuration:
+
+   ```bash
+   railway run \
+     --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 \
+     --environment production \
+     --service 28b7c7be-3a22-4a95-885a-bc302e3d16a2 \
+     --no-local \
+     -- pnpm --filter @forge/auth changelog:grant-local-reader
+   ```
+
+Do not run `railway variables`, `railway run env`, or
+`railway run printenv`. Do not print, copy, or paste `DATABASE_URL`, and do not
+use `railway up` for this workflow.
+
+The command can create an approved Reader grant for the Changelog Local
+environment only. It cannot grant Production, Contributor, or Admin access,
+and `AUTH_CHANGELOG_PRODUCTION_ENABLED` must remain disabled. After the grant,
+reconnect the Changelog MCP so the OAuth flow issues a fresh token for
+`http://localhost:3000/mcp`.
+
+Verify the new token by calling the MCP `list_entries` tool. A successful
+response with an empty entries array is valid when the developer's local
+Changelog PostgreSQL database has no entries; an authorization or
+insufficient-scope error is the failure signal.
+
+Changelog repository wording and policy documentation are tracked separately
+in [JesusFilm/jfp-changelog#81](https://github.com/JesusFilm/jfp-changelog/issues/81).
 
 ## 2026-05-12 Provisioning Status
 

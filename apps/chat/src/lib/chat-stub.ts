@@ -34,8 +34,15 @@ export type StreamReplyResult =
       engine: MessageEngine
       /** The featured video, when the terminal result carried a valid one. */
       video?: VideoAttachment
+      /** Suggested follow-up questions (feat-366). Undefined — never `[]` —
+       * when the frame omitted them or nothing survived the bound. */
+      followUps?: string[]
     }
   | { ok: false; reason: ReplyFailureReason; partialText: string }
+
+/** Where a send originated (feat-366, KTD11). Absent means typed; the one
+ * value is set when the person tapped a suggested follow-up chip. */
+export type SendPromptSource = "follow_up"
 
 /** Inputs to {@link streamReply}: the user text + conversation/thread id, the
  * deployment flag selecting stub vs Seeker, an optional abort signal, a
@@ -45,6 +52,9 @@ export type StreamReplyInput = {
   conversationId: string
   seekerEnabled: boolean
   signal?: AbortSignal
+  /** feat-366 (KTD11): set on a chip-originated send so mastra can tell a
+   * suggested question from a typed one. Typed sends OMIT the wire key. */
+  promptSource?: SendPromptSource
   /** Called per streamed token (Seeker path only). */
   onToken?: (text: string) => void
   /** Injectable for tests; defaults to global fetch. */
@@ -184,6 +194,46 @@ export function toVideo(
   }
 }
 
+// feat-366: a payload BOUND, deliberately NOT a mirror of mastra's
+// projectFollowUps (superseded KTD4, 2026-08-27 — rationale in that note).
+// Mastra owns content validation; these checks only bound shape and size.
+
+/** Wire cap: at most this many questions per turn. */
+export const FOLLOW_UPS_MAX_QUESTIONS = 3
+
+/** Per-question cap in UTF-16 code units. 120 is the value mastra's stored
+ * cap used at the time this was written; it is NOT kept in sync — the bound
+ * exists to cap layout and payload, not to second-guess mastra's content
+ * rules, so mastra tightening its own cap needs no change here. */
+export const FOLLOW_UPS_QUESTION_MAX_UNITS = 120
+
+/**
+ * Bound the (already server-validated) wire follow-up questions before they
+ * reach the render. Applied to BOTH wire paths — the live terminal frame here
+ * and the replay payload via history-client — because chat bounds every
+ * upstream response shape it renders, without assuming the upstream applied
+ * its own rules on that particular read.
+ *
+ * Four checks per item: non-string drops; empty-after-trim drops (a blank
+ * chip would send an empty message); over-cap drops, never truncates (a click
+ * sends the text verbatim as a user message, so a trimmed question would send
+ * words the person never saw); the list caps at FOLLOW_UPS_MAX_QUESTIONS.
+ * Total: junk shapes return [].
+ */
+export function toFollowUps(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const bounded: string[] = []
+  for (const item of value) {
+    if (bounded.length >= FOLLOW_UPS_MAX_QUESTIONS) break
+    if (typeof item !== "string") continue
+    const trimmed = item.trim()
+    if (trimmed.length === 0) continue
+    if (trimmed.length > FOLLOW_UPS_QUESTION_MAX_UNITS) continue
+    bounded.push(trimmed)
+  }
+  return bounded
+}
+
 // Flag-off path: resolve buildStubReply after a visible delay, abortable.
 function streamStubReply(input: StreamReplyInput): Promise<StreamReplyResult> {
   return new Promise((resolve) => {
@@ -231,6 +281,8 @@ async function streamSeekerReply(
       body: JSON.stringify({
         text: input.text,
         conversationId: input.conversationId,
+        // OMITTED on a typed send (KTD11) — the key exists only for a chip.
+        ...(input.promptSource ? { promptSource: input.promptSource } : {}),
       }),
       signal: input.signal,
     })
@@ -274,7 +326,11 @@ async function streamSeekerReply(
           sources?: unknown
           grounded?: unknown
           video?: unknown
+          followUps?: unknown
         }
+        // Bounded, then reduced to undefined when nothing survives — `[]`
+        // would render an empty chip block (feat-366).
+        const followUps = toFollowUps(d.followUps)
         terminal = {
           ok: true,
           text: typeof d.text === "string" ? d.text : full,
@@ -283,6 +339,7 @@ async function streamSeekerReply(
           engine: "seeker",
           // Terminal-frame only (plan D3) — no mid-stream video callback exists.
           video: toVideo(d.video),
+          followUps: followUps.length > 0 ? followUps : undefined,
         }
         return
       }

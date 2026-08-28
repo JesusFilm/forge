@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Home han JesusFilm",
     "closeSearch": "Sirad-i an search",
-    "submitSearch": "Pamilnga"
+    "submitSearch": "Pamilnga",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamilnga ngan usisa an mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Mga subtitle la",
+    "backToTop": "Balik sa igbaw",
     "newlyAdded": "Bag-o nga nadugang",
     "newVideosTitle": "Bag-o nga Kristohanon nga mga video ha {language}",
     "newestFirst": "Pinakabag-o anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga standalone",
     "videosFromCollection": "Mga video tikang ha {collection}.",
     "standaloneDescription": "Mga video nga standalone hini nga yinaknan.",
-    "openCollection": "Ablihi an koleksyon"
+    "openCollection": "Ablihi an koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Kahilaba",
+    "filterLength_under5": "Ubos sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohi an mga filter",
+    "filterResults": "{count} han {total} an ginpapakita",
+    "noFilterResults": "Waray video nga nauyon hini nga mga filter. Kuhaa an usa.",
+    "filterAdded": "Gindugang",
+    "filterAdded_60d": "Naglabay nga 60 ka adlaw",
+    "filterAdded_6m": "Naglabay nga 6 ka bulan",
+    "filterAdded_12m": "Naglabay nga 12 ka bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagtan-aw ha Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga buhat para ha waray makit-i nga panid",
     "backToWatch": "Balik ha Watch",
     "browseVideos": "Usisa an mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa an Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Uupod ha amon",
-      "shareMission": "Ipaambit an aton Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ngan Kasuratan",
-      "title": "Mga Pili nga Video Karuyag Mo Yana nga Adlaw",
-      "description": "Mga video nga nakasentro ha pagtuo tikang ha amon librarya nga makakapadasig, makakahagit, ngan makakapagpahinumdom."
-    },
-    "welcomeMorning": {
-      "label": "Padasig ha Aga",
-      "title": "Maayong aga! Mga Hugna han Biblia para yana nga adlaw, naghuhulat na.",
-      "description": "Umpisa an imo adlaw upod an mga mapupulsanon nga hugna han Biblia nga gindisenyo basi makapadasig ngan makapalipay ha imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Padasig ha Hapon",
-      "title": "Maayong hapon! Mga Hugna han Biblia para ha imo adlaw.",
-      "description": "Mga hugna han Biblia nga makapadasig, angay para ha imo pahulay ha hapon o padayon nga padasig."
-    },
-    "welcomeEvening": {
-      "label": "Padasig ha Gab-i",
-      "title": "Maayong gab-i! Magpahuway upod an mga hugna han Biblia.",
-      "description": "Hapsay nga mga hugna han Biblia nga mabulig ha imo paghunahuna ngan pagkarawat hin kahupayan samtang nagtutunaw an imo adlaw."
-    },
-    "joinUs": {
-      "label": "Uupod ha amon",
-      "title": "Binilyon an namimiling",
-      "description": "Aada na an ani. Uupod ha amon samtang ginsusumat namon an ebanghelyo ha kalibotan gamit an digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkaupod kita",
-      "title": "Pagsumat han Estorya ni Jesus, Magkaupod kita",
-      "description": "Basi madungog ngan makita nira an gugma ni Jesus ha ira kalugaringon nga yinaknan, dida mismo ha ira kon diin hira aada."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% nga kapareho",

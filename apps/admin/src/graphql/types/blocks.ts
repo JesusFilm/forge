@@ -47,6 +47,8 @@ import type {
   VideoCarouselItemSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
+  WatchHomeCategoryRailTileSchema,
   WatchHomeHeroBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
@@ -84,6 +86,10 @@ type VideoCarouselBlock = z.infer<typeof VideoCarouselBlockSchema>
 type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
+type WatchHomeCategoryRailBlock = z.infer<
+  typeof WatchHomeCategoryRailBlockSchema
+>
+type WatchHomeCategoryRailTile = z.infer<typeof WatchHomeCategoryRailTileSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
 
 type MediaPreviewContext = {
@@ -1170,6 +1176,44 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const WatchHomeCategoryRailTileRef =
+  builder.objectRef<WatchHomeCategoryRailTile>("WatchHomeCategoryRailTile")
+WatchHomeCategoryRailTileRef.implement({
+  description:
+    "Single authored tile in WatchHomeCategoryRailBlock.tiles. A non-null categoryId marks a predefined tile whose unset fields fall back to the consumer's catalog defaults; every field null but categoryId means 'render the predefined tile unchanged'.",
+  fields: (t) => ({
+    id: t.exposeString("id"),
+    categoryId: t.exposeString("categoryId", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    href: t.exposeString("href", { nullable: true }),
+    icon: t.exposeString("icon", { nullable: true }),
+    style: t.exposeString("style", { nullable: true }),
+  }),
+})
+
+const WatchHomeCategoryRailBlockRef =
+  builder.objectRef<WatchHomeCategoryRailBlock>("WatchHomeCategoryRailBlock")
+WatchHomeCategoryRailBlockRef.implement({
+  description:
+    "Top-level Watch homepage category carousel with an authored tile subset and order.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    categoryIds: t.field({
+      type: ["String"],
+      nullable: false,
+      resolve: (row) => row.categoryIds,
+    }),
+    tiles: t.field({
+      type: [WatchHomeCategoryRailTileRef],
+      nullable: true,
+      description:
+        "Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.",
+      resolve: (row) => row.tiles ?? null,
+    }),
+  }),
+})
+
 const LanguageGlobeBlockRef =
   builder.objectRef<LanguageGlobeBlock>("LanguageGlobeBlock")
 LanguageGlobeBlockRef.implement({
@@ -1300,6 +1344,7 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
+  watchHomeCategoryRail: "WatchHomeCategoryRailBlock",
   watchHomeHero: "WatchHomeHeroBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
@@ -1351,6 +1396,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoCarouselBlockRef,
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
+    WatchHomeCategoryRailBlockRef,
     WatchHomeHeroBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),

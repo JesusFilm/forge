@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Caghlaa çhengey yn chlashtyn",
     "home": "Cheead JesusFilm",
     "closeSearch": "Doo shirrey",
-    "submitSearch": "Shirrey"
+    "submitSearch": "Shirrey",
+    "library": "Lioarlann"
   },
   "SearchOverlay": {
     "dialogLabel": "Shirrey as scrutaghey videoyn",
@@ -467,6 +468,7 @@
     "sports": "Spoyrt",
     "collections": "Co-chruinaghtyn",
     "subtitlesOnly": "Focklyn-foyshe ny lomarcan",
+    "backToTop": "Erash gys y mullagh",
     "newlyAdded": "Airhoyn noa",
     "newVideosTitle": "Videoyn Creestee noa ayns {language}",
     "newestFirst": "Nys noa toshiaght",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videoyn hene shaynt",
     "videosFromCollection": "Videoyn ass {collection}.",
     "standaloneDescription": "Videoyn hene shaynt ayns y çhengey shoh.",
-    "openCollection": "Foashley co-chruinnaght"
+    "openCollection": "Foashley co-chruinnaght",
+    "filters": "Sheeleyderyn",
+    "filterLength": "Liurid",
+    "filterLength_under5": "Fo 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Harrish 30 min",
+    "filterType": "Sorch",
+    "clearFilters": "Glen ny sheeleyderyn",
+    "filterResults": "{count} ass {total} soilshit",
+    "noFilterResults": "Cha nel video erbee cordail rish ny sheeleyderyn shoh. Prowal geddyn rey rish unnane.",
+    "filterAdded": "Currit rish",
+    "filterAdded_60d": "Yn 60 laa s'jerree",
+    "filterAdded_6m": "Yn 6 mee s'jerree",
+    "filterAdded_12m": "Yn 12 mee s'jerree"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Jeeaghyn",
@@ -646,44 +662,6 @@
     "actionsLabel": "Gniaghyn cha nel duillag ry-gheddyn",
     "backToWatch": "Er-ash dys Watch",
     "browseVideos": "Scrutagh videoyn"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Jeeagh er film giare",
-    "actions": {
-      "joinUs": "Tar lhiat shin",
-      "shareMission": "Co-honney ayns nyn obbyr mission"
-    },
-    "welcomeStart": {
-      "label": "Credjue & Scryptyr",
-      "title": "Reihyn video jiu",
-      "description": "Cummal video stabbil ayns credjue ass nyn lioar-reill, dy dooyrt, cur coadey, as çhiarnaghey smooinaghtyn."
-    },
-    "welcomeMorning": {
-      "label": "Neushtys laa",
-      "title": "Moghrey mie! Ta traaghyn y Vible jiu ayn.",
-      "description": "Tòstey dty laa lesh traaghyn y Vible ta goaill lesh lurg ayns aght son cobbal as troggal dty spyrryd."
-    },
-    "welcomeAfternoon": {
-      "label": "Neushtys traa lurg y voghrey",
-      "title": "Moirrey mie! Traaghyn y Vible son dty laa.",
-      "description": "Cummal y Vible ta çhyndaait son dty neulaghyn ys lhiggey neeshtay ayns y traa lurg y voghrey ny son cur ynsagh ayns oyr."
-    },
-    "welcomeEvening": {
-      "label": "Neushtys fastyr",
-      "title": "Fastyr mie! Goll sheese lesh traaghyn y Vible.",
-      "description": "Traaghyn cloie ass y Vible son cooney dy smooinaghtyn as dy ghoaill goaillys tra ta'n laa cheet gys y jerrey."
-    },
-    "joinUs": {
-      "label": "Tar lhiat shin",
-      "title": "Ta billioyn dy hirrey",
-      "description": "Ta'n buirrin ayn. Tar lhiat shin myr ta shin goaill yn sushtal er y theihll liorish media jeeragh."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Goll cooidjagh",
-      "title": "Inshyn skeeal Yeesey, cooidjagh",
-      "description": "Dy nod ad clashtyn as fakin graih Yeesey ayns nyn çhengey hene ayns yn ynnyd t'ad ayn."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% co-chosoylaght",

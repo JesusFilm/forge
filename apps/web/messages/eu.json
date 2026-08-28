@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Aldatu audio-hizkuntza",
     "home": "JesusFilm hasiera",
     "closeSearch": "Itxi bilaketa",
-    "submitSearch": "Bilatu"
+    "submitSearch": "Bilatu",
+    "library": "Liburutegia"
   },
   "SearchOverlay": {
     "dialogLabel": "Bilatu eta arakatu bideoak",
@@ -467,6 +468,7 @@
     "sports": "Kirolak",
     "collections": "Bildumak",
     "subtitlesOnly": "Azpitituluak soilik",
+    "backToTop": "Itzuli gora",
     "newlyAdded": "Berriki gehitua",
     "newVideosTitle": "Kristau-bideo berriak {language} hizkuntzan",
     "newestFirst": "Berrienak lehenik",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bakarkako bideoak",
     "videosFromCollection": "{collection} bildumako bideoak.",
     "standaloneDescription": "Hizkuntza honetako bakarkako bideoak.",
-    "openCollection": "Ireki bilduma"
+    "openCollection": "Ireki bilduma",
+    "filters": "Iragazkiak",
+    "filterLength": "Iraupena",
+    "filterLength_under5": "5 min baino gutxiago",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30 min baino gehiago",
+    "filterType": "Mota",
+    "clearFilters": "Garbitu iragazkiak",
+    "filterResults": "{total}(e)tik {count} erakutsita",
+    "noFilterResults": "Ez dago iragazki hauekin bat datorren bideorik. Saiatu bat kentzen.",
+    "filterAdded": "Gehituta",
+    "filterAdded_60d": "Azken 60 egunak",
+    "filterAdded_6m": "Azken 6 hilabeteak",
+    "filterAdded_12m": "Azken 12 hilabeteak"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ikusi",
@@ -646,44 +662,6 @@
     "actionsLabel": "Orria ez aurkitzeko ekintzak",
     "backToWatch": "Itzuli ikustera",
     "browseVideos": "Arakatu bideoak"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ikusi film laburra",
-    "actions": {
-      "joinUs": "Bat egin gurekin",
-      "shareMission": "Partekatu gure misioa"
-    },
-    "welcomeStart": {
-      "label": "Fedea eta Eskritura",
-      "title": "Gaurko bideo-hautaketak",
-      "description": "Gure bildumako fedean oinarritutako bideo-edukia, inspiratzeko, erronka jartzeko eta gogoeta pizteko."
-    },
-    "welcomeMorning": {
-      "label": "Goizeko inspirazioa",
-      "title": "Egun on! Gaurko Bibliako uneak zain dituzu.",
-      "description": "Hasi eguna animo emango dizuten Bibliako uneekin, zure espiritua inspiratu eta indartzeko diseinatuak."
-    },
-    "welcomeAfternoon": {
-      "label": "Arratsaldeko inspirazioa",
-      "title": "Arratsalde on! Gaurko Bibliako uneak zuretzat.",
-      "description": "Bibliako eduki sustatzailea, arratsaldeko atsedenalderako edo inspirazioari eusteko aproposa."
-    },
-    "welcomeEvening": {
-      "label": "Iluntzeko inspirazioa",
-      "title": "Gau on! Lasaitu Bibliako uneekin.",
-      "description": "Bibliako une baketsuak, zure eguna amaitzean gogoeta egiten eta lasaitasuna aurkitzen laguntzeko."
-    },
-    "joinUs": {
-      "label": "Bat egin gurekin",
-      "title": "Milioika pertsona bilatzen ari dira",
-      "description": "Uzta hemen dago. Bat egin gurekin ebanjelioa munduarekin hedabide digitalen bidez partekatzen dugun honetan."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Goazen elkarrekin",
-      "title": "Jesusen istorioa elkarrekin kontatuz",
-      "description": "Horrela, Jesusekiko maitasuna beren hizkuntzan entzun eta ikusi ahal izan dezaten, dauden tokian bertan."
-    }
   },
   "VideoRecommendations": {
     "match": "%{percent}eko bat-etortzea",

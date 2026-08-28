@@ -126,6 +126,8 @@
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",
     "LanguageInventory.bibleProject",
+    "LanguageInventory.filterLength_10to30",
+    "LanguageInventory.filterLength_5to10",
     "LanguageInventory.sectionMetricLabel",
     "SubtitleTranscript.aiSuffix",
     "WatchHomeMuxInserts.datedTitle",
