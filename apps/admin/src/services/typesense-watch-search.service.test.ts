@@ -2629,7 +2629,7 @@ describe("TypesenseWatchSearchService", () => {
         request.collection !== TYPESENSE_WATCH_AVAILABILITY_ALIAS &&
         request.q === "*" &&
         request.include_fields ===
-          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
+          "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson",
     )
     const availabilityRequest = requests.find(
       (request) => request.collection === TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -2731,7 +2731,7 @@ describe("TypesenseWatchSearchService", () => {
           (request) =>
             request.q === "*" &&
             request.include_fields ===
-              "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson",
+              "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson,audioOptionsJson,subtitleOptionsJson",
         ),
     ).toBe(true)
     expect(logger.warn).toHaveBeenCalledWith(
@@ -3058,7 +3058,7 @@ describe("TypesenseWatchSearchService", () => {
           search.include_fields != null,
       )
     expect(semanticCatalogHydration?.include_fields).toBe(
-      "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl",
+      "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson",
     )
     expect(
       typesense.multiSearch.mock.calls
@@ -3066,7 +3066,7 @@ describe("TypesenseWatchSearchService", () => {
         .some(
           (search) =>
             search.include_fields ===
-            "id,audioLanguageSlugs,subtitleLanguageSlugs",
+            "id,audioLanguageSlugs,subtitleLanguageSlugs,containerLanguagesJson",
         ),
     ).toBe(false)
   })

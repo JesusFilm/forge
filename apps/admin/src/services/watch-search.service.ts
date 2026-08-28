@@ -23,7 +23,10 @@ import {
   resolveSearchLanguageSignals,
   type SearchLanguageSignalSource,
 } from "./search-language-resolution"
-import { availabilityScoreForKind } from "./watch-search-availability-score"
+import {
+  availabilityScoreForKind,
+  watchabilityRankForKind,
+} from "./watch-search-availability-score"
 import {
   SearchWatchabilityService,
   type SearchWatchability,
@@ -1473,11 +1476,7 @@ function toWholeStartSeconds(value: number | null): number | null {
 export function watchabilityRank(
   watchability: SearchWatchability | undefined,
 ): number {
-  if (watchability?.kind === "target_audio") return 0
-  if (watchability?.kind === "target_subtitle") return 1
-  if (watchability?.kind === "container") return 2
-  if (watchability?.kind === "related_language") return 3
-  return 4
+  return watchabilityRankForKind(watchability?.kind)
 }
 
 /** Exported for unit testing — see watch-search.service.test.ts. */
