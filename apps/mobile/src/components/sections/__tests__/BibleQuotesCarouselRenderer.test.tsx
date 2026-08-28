@@ -12,9 +12,28 @@ jest.mock("../../../lib/openPassageSheet", () => ({
   openPassageSheet: (...args: unknown[]) => mockOpenPassageSheet(...args),
 }))
 
+/**
+ * The suite had no image-library mock and so had never rendered the image
+ * branch at all. A jest.fn component is the assertion surface: zero calls means
+ * no image element, which is what stops the prop cases below passing against an
+ * absent node. `prefetch` is a module static the carousel calls directly.
+ */
+const mockImage = jest.fn((_props: Record<string, unknown>) => null)
+const mockPrefetch = jest.fn((..._args: unknown[]) => Promise.resolve(true))
+jest.mock("expo-image", () => {
+  const Image = (props: Record<string, unknown>) => mockImage(props)
+  Image.prefetch = (...args: unknown[]) => mockPrefetch(...args)
+  return { __esModule: true, Image }
+})
+
+const mockWarn = jest.fn()
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: (...a: unknown[]) => mockWarn(...a) },
+}))
+
 import { act } from "react"
 import type React from "react"
-import { Dimensions } from "react-native"
+import { AccessibilityInfo, Dimensions } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -23,6 +42,7 @@ import {
   LINK_MIN_TAP_HEIGHT,
   REFERENCE_MARGIN,
   REFERENCE_MAX_LINES,
+  SCRIM_MAX_SOLID_STOP,
   TRANSLATION_MARGIN,
   TRANSLATION_MAX_LINES,
   VERSE_FONT_SIZE_INCREASE,
@@ -30,6 +50,7 @@ import {
   VERSE_MAX_LINES,
   composeCardLabel,
   fitPassageCardRegions,
+  passageCardStackHeight,
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
@@ -99,19 +120,58 @@ function renderAtSize(
   }
 }
 
-function render(quotes: Quote[]): TestInstance {
-  const section = {
+function sectionOf(quotes: Quote[]): AdminBlock {
+  return {
     __typename: "BibleQuotesCarouselBlock",
     heading: "Bible Quotes",
     quotes,
   } as unknown as AdminBlock
+}
 
+/**
+ * Every renderer is torn down after its test. The card subscribes to the OS
+ * reduce-motion setting, so a renderer left mounted re-renders when that read
+ * resolves — inside the NEXT test's `act`, where its props land in the image
+ * mock ahead of the card actually under test.
+ */
+const mounted: TestInstance[] = []
+
+function render(
+  quotes: Quote[],
+  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void,
+): TestInstance {
   let renderer!: TestInstance
   act(() => {
     renderer = TestRenderer.create(
-      (<BibleQuotesCarouselRenderer section={section} />) as React.ReactElement,
+      (
+        <BibleQuotesCarouselRenderer
+          section={sectionOf(quotes)}
+          onArtworkFailed={onArtworkFailed}
+        />
+      ) as React.ReactElement,
     )
   })
+  mounted.push(renderer)
+  return renderer
+}
+
+/** Lets the reduce-motion read resolve before anything is asserted. */
+async function renderSettled(
+  quotes: Quote[],
+  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void,
+): Promise<TestInstance> {
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(
+      (
+        <BibleQuotesCarouselRenderer
+          section={sectionOf(quotes)}
+          onArtworkFailed={onArtworkFailed}
+        />
+      ) as React.ReactElement,
+    )
+  })
+  mounted.push(renderer)
   return renderer
 }
 
@@ -599,6 +659,307 @@ describe("fit constants match the rendered styles", () => {
       (node) => flatStyle(node).padding === CARD_CONTENT_PADDING,
     )
     expect(content.length).toBeGreaterThan(0)
+  })
+})
+
+// ── Card artwork ────────────────────────────────────────────────────────────
+
+const STILL_A =
+  "https://image.mux.com/playbackA/thumbnail.webp?width=800&height=800&fit_mode=smartcrop&time=140.00"
+const STILL_B =
+  "https://image.mux.com/playbackA/thumbnail.webp?width=800&height=800&fit_mode=smartcrop&time=420.00"
+const STOCK_A = "https://images.unsplash.com/photo-1480869799327?q=80&w=800"
+
+/** A watch-page card that resolved the top rung of the ladder. */
+function stillQuote(overrides: Quote = {}): Quote {
+  return {
+    ...PASSAGE_QUOTE,
+    imageUrl: STILL_A,
+    artCandidates: [STILL_A, STOCK_A],
+    artIndex: 0,
+    ...overrides,
+  }
+}
+
+function imageProps(): Record<string, unknown> | undefined {
+  return mockImage.mock.calls[0]?.[0]
+}
+
+/** The rendered scrim, read off the tree rather than off a duplicated constant. */
+function scrim(renderer: TestInstance) {
+  const node = renderer.root.findAll((n) => Array.isArray(n.props.colors))[0]
+  const colors = node?.props.colors as string[] | undefined
+  const locations = node?.props.locations as number[] | undefined
+  if (colors == null || locations == null) throw new Error("no scrim rendered")
+  return { colors, locations }
+}
+
+type Rgba = { r: number; g: number; b: number; a: number }
+
+function parseColor(value: string): Rgba {
+  const rgba = /^rgba?\(([^)]+)\)$/.exec(value.trim())
+  if (rgba?.[1] != null) {
+    const parts = rgba[1].split(",").map((p) => Number(p.trim()))
+    return {
+      r: parts[0] ?? 0,
+      g: parts[1] ?? 0,
+      b: parts[2] ?? 0,
+      a: parts[3] ?? 1,
+    }
+  }
+  const hex = value.replace("#", "")
+  return {
+    r: parseInt(hex.slice(0, 2), 16),
+    g: parseInt(hex.slice(2, 4), 16),
+    b: parseInt(hex.slice(4, 6), 16),
+    a: 1,
+  }
+}
+
+const channel = (c: number) => {
+  const v = c / 255
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+const luminance = (c: Rgba) =>
+  0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b)
+
+function composite(fg: Rgba, bg: Rgba): Rgba {
+  return {
+    r: fg.a * fg.r + (1 - fg.a) * bg.r,
+    g: fg.a * fg.g + (1 - fg.a) * bg.g,
+    b: fg.a * fg.b + (1 - fg.a) * bg.b,
+    a: 1,
+  }
+}
+
+function contrast(a: Rgba, b: Rgba): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05)
+}
+
+/** The colour each named text region actually rendered with. */
+function regionColor(renderer: TestInstance, needle: string): Rgba {
+  const node = findText(renderer, needle)
+  const color = flatStyle(node).color as unknown as string
+  if (typeof color !== "string") throw new Error(`no colour on "${needle}"`)
+  return parseColor(color)
+}
+
+beforeEach(() => {
+  mockImage.mockClear()
+  mockPrefetch.mockClear()
+  mockWarn.mockClear()
+})
+
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((renderer) => renderer.unmount())
+  })
+  jest.restoreAllMocks()
+})
+
+describe("BibleQuotesCarouselRenderer — card artwork", () => {
+  it("renders an image element when the card has a candidate", () => {
+    // Anti-vacuous: every prop assertion below reads mock call zero, which
+    // would be undefined — and silently absent — without this.
+    render([stillQuote()])
+    expect(mockImage).toHaveBeenCalledTimes(1)
+    expect(imageProps()?.source).toBe(STILL_A)
+  })
+
+  it("renders no image element and no broken frame when there is no candidate", () => {
+    render([{ ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] }])
+    expect(mockImage).not.toHaveBeenCalled()
+  })
+
+  it("clears 4.5:1 for all four text regions over the worst still (AE13)", () => {
+    const renderer = render([stillQuote()])
+    const { colors, locations } = scrim(renderer)
+
+    // The scrim's SOLID stop is the card colour, and the whole text stack sits
+    // below it, so a pure-white still never reaches any text pixel.
+    const solid = parseColor(colors[1] as string)
+    const regions: Array<[string, Rgba]> = [
+      ["verse", regionColor(renderer, "Let’s make man")],
+      ["reference", regionColor(renderer, "GENESIS 1:26-27")],
+      ["translation", regionColor(renderer, "World English Bible")],
+      ["copyright", regionColor(renderer, "Public Domain")],
+    ]
+    for (const [name, color] of regions) {
+      const ratio = contrast(composite(color, solid), solid)
+      expect({ name, ratio: ratio >= 4.5 }).toEqual({ name, ratio: true })
+    }
+
+    // R9: non-zero from the card's TOP edge, so no still renders at full
+    // strength anywhere.
+    expect(locations[0]).toBe(0)
+    expect(parseColor(colors[0] as string).a).toBeGreaterThan(0)
+  })
+
+  it("puts the scrim's solid stop at or above the top of the text stack", () => {
+    // This geometry is what makes the contrast case above hold for ANY still
+    // rather than for one sampled frame.
+    const width = 390
+    const cardWidth = Math.round(width - 32)
+    const renderer = renderAtSize([stillQuote()], { width, fontScale: 1 })
+    const { locations } = scrim(renderer)
+
+    const typography = computeTypographyScale(1)
+    const fitInput = {
+      contentHeight: cardWidth - CARD_CONTENT_PADDING * 2,
+      typography,
+      fontScale: 1,
+      hasVerse: true,
+      hasTranslation: true,
+      hasCopyright: true,
+      hasLink: true,
+    }
+    const stackTop =
+      (cardWidth -
+        CARD_CONTENT_PADDING -
+        passageCardStackHeight(fitInput, fitPassageCardRegions(fitInput))) /
+      cardWidth
+
+    expect(locations[1]).toBeLessThanOrEqual(stackTop + 1e-9)
+    expect(locations[1]).toBeGreaterThan(0)
+  })
+
+  it("never lets the scrim sit lighter than the fixed stop it replaced", () => {
+    // A card with almost no text would otherwise push the solid point far down
+    // and leave a bright still fighting the reference.
+    const renderer = render([
+      { reference: "John 3:16", text: null, imageUrl: STILL_A },
+    ])
+    expect(scrim(renderer).locations[1]).toBeLessThanOrEqual(
+      SCRIM_MAX_SOLID_STOP,
+    )
+  })
+
+  it("pins the image to the memory and disk cache tiers", () => {
+    render([stillQuote()])
+    expect(imageProps()?.cachePolicy).toBe("memory-disk")
+  })
+
+  it("ranks the card image below the player it competes with", () => {
+    render([stillQuote()])
+    expect(imageProps()?.priority).toBe("low")
+  })
+
+  it("fades the still in over an explicit duration", async () => {
+    await renderSettled([stillQuote()])
+    expect(imageProps()?.transition).toBe(200)
+  })
+
+  it("snaps rather than fades when reduce motion is on (AE8)", async () => {
+    jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockResolvedValue(true)
+    await renderSettled([stillQuote()])
+
+    // A NUMBER, not an object without a duration: the transition record
+    // defaults to 100ms on iOS and 0 on Android, so the object form would fade
+    // on iOS and not at all on Android — and an iOS-only check would pass.
+    const last = mockImage.mock.calls.at(-1)?.[0]
+    expect(last?.transition).toBe(0)
+  })
+
+  it("keys recycling off the resolved source, not the reference label (AE9)", () => {
+    // Two citations really can resolve to one label; keying on it would tell
+    // the list the two cards are the same image.
+    render([
+      stillQuote({ imageUrl: STILL_A, artCandidates: [STILL_A] }),
+      stillQuote({ imageUrl: STILL_B, artCandidates: [STILL_B] }),
+    ])
+    const keys = mockImage.mock.calls.map((call) => call[0]?.recyclingKey)
+    expect(keys).toEqual([STILL_A, STILL_B])
+    expect(new Set(keys).size).toBe(2)
+  })
+
+  it("renders a ladder-resolved URL byte-identically (KTD12)", () => {
+    // The render-time validator is idempotent on an absolute URL, which is why
+    // keeping it for the Experience and SDUI paths costs this path nothing.
+    render([stillQuote()])
+    expect(imageProps()?.source).toBe(STILL_A)
+  })
+
+  it("hides the still from assistive technology (AE14)", () => {
+    const renderer = render([stillQuote()])
+    expect(imageProps()?.accessible).toBe(false)
+    expect(imageProps()?.accessibilityLabel).toBeUndefined()
+
+    // The card is one grouped element and announces itself once.
+    expect(cardLabels(renderer)).toContain(
+      composeCardLabel("Genesis 1:26-27", String(PASSAGE_QUOTE.text)),
+    )
+  })
+
+  it("reports a load failure upward rather than holding its own tier (AE11)", () => {
+    const onArtworkFailed = jest.fn()
+    render([stillQuote()], onArtworkFailed)
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(onArtworkFailed).toHaveBeenCalledWith(0, 0)
+  })
+
+  it("emits the exhaustion signal once when the last rung fails", () => {
+    const onArtworkFailed = jest.fn()
+    render(
+      [
+        stillQuote({
+          imageUrl: STOCK_A,
+          artCandidates: [STOCK_A],
+          artIndex: 0,
+        }),
+      ],
+      onArtworkFailed,
+    )
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+
+    expect(mockWarn).toHaveBeenCalledTimes(1)
+    expect(mockWarn.mock.calls[0]?.[0]).toBe("bible_card_art.exhausted")
+  })
+
+  it("stays quiet when a failure still has somewhere to fall to", () => {
+    render([stillQuote()], jest.fn())
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+
+  it("reports nothing for a card that never entered the ladder", () => {
+    const onArtworkFailed = jest.fn()
+    // The Experience path: an image field, but no candidate list behind it.
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: STOCK_A }], onArtworkFailed)
+
+    act(() => {
+      ;(imageProps()?.onError as () => void)()
+    })
+    expect(onArtworkFailed).not.toHaveBeenCalled()
+    expect(mockWarn).not.toHaveBeenCalled()
+  })
+})
+
+describe("BibleQuotesCarouselRenderer — the Experience parity gap", () => {
+  it("renders no image for a quote carrying admin's own artwork field", () => {
+    // Admin's quote item defines `imageAsset` and `backgroundImageAsset`; this
+    // renderer reads `imageUrl`, which the type does not define. Pinning
+    // today's behaviour, NOT endorsing it — closing the gap is out of scope.
+    render([{ ...EXPERIENCE_QUOTE, imageAsset: STOCK_A }])
+    expect(mockImage).not.toHaveBeenCalled()
+  })
+
+  it("still resolves and validates an image field that does arrive", () => {
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: "javascript:alert(1)" }])
+    expect(mockImage).not.toHaveBeenCalled()
+
+    render([{ ...EXPERIENCE_QUOTE, imageUrl: STOCK_A }])
+    expect(imageProps()?.source).toBe(STOCK_A)
   })
 })
 

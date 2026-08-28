@@ -85,6 +85,48 @@ export type PassageCardFitInput = {
   hasLink: boolean
 }
 
+/**
+ * How tall the bottom-aligned text stack will be, from the same arithmetic that
+ * chose the regions. The scrim reads this to decide where it must be fully
+ * opaque, so a measured round trip — which lands after paint — is not needed.
+ */
+export function passageCardStackHeight(
+  input: PassageCardFitInput,
+  regions: PassageCardRegions,
+): number {
+  return stackHeight(input, regions)
+}
+
+/**
+ * Where the card's scrim must have reached the card colour: the top of the text
+ * stack, as a fraction of the card's height.
+ *
+ * Every text pixel then sits over the solid colour, so the 4.5:1 floor holds
+ * for any still the ladder can produce — including a pure-white one — rather
+ * than resting on one sampled frame.
+ *
+ * Capped at the gradient's previous fixed stop, so the scrim is never LIGHTER
+ * than the one this replaced; a tall stack only pushes it higher. Floored above
+ * zero because a gradient's stops must increase.
+ */
+export const SCRIM_MAX_SOLID_STOP = 0.6
+const SCRIM_MIN_SOLID_STOP = 0.02
+
+export function scrimSolidStop(
+  cardHeight: number,
+  stackHeight: number,
+): number {
+  if (!Number.isFinite(cardHeight) || cardHeight <= 0) {
+    return SCRIM_MIN_SOLID_STOP
+  }
+  const stackTop =
+    (cardHeight - CARD_CONTENT_PADDING - stackHeight) / cardHeight
+  return Math.min(
+    SCRIM_MAX_SOLID_STOP,
+    Math.max(SCRIM_MIN_SOLID_STOP, stackTop),
+  )
+}
+
 function stackHeight(
   input: PassageCardFitInput,
   regions: PassageCardRegions,

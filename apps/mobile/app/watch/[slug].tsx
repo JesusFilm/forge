@@ -836,7 +836,10 @@ export default function WatchVideoPage() {
 
             {bibleCitationsBlock != null && (
               <View style={styles.sectionGap}>
-                <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+                <BibleQuotesCarouselRenderer
+                  section={bibleCitationsBlock}
+                  onArtworkFailed={bibleQuotes.reportArtworkFailure}
+                />
               </View>
             )}
           </>

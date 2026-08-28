@@ -30,11 +30,15 @@ import {
   VERSE_MARGIN,
   composeCardLabel,
   fitPassageCardRegions,
+  passageCardStackHeight,
+  scrimSolidStop,
   verseTypography,
 } from "../../lib/bibleCardFit"
+import { datadogLog } from "../../lib/datadog"
 import { openPassageSheet } from "../../lib/openPassageSheet"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import type { BibleQuoteBlock } from "../../hooks/useBibleVerses"
@@ -61,11 +65,25 @@ type QuoteItem = {
   ctaLabel?: string | null
   ctaLink?: string | null
 } & Partial<
-  Pick<BibleQuoteBlock, "translation" | "copyright" | "passageUrl" | "loading">
+  Pick<
+    BibleQuoteBlock,
+    | "translation"
+    | "copyright"
+    | "passageUrl"
+    | "loading"
+    | "artCandidates"
+    | "artIndex"
+  >
 >
 
 export interface BibleQuotesCarouselRendererProps {
   section: AdminBlock
+  /**
+   * A card's artwork failed to load; the owning layer advances its rung. An
+   * explicit prop, not a passenger on the block bag: the ladder's index lives
+   * above this component and the card only reports upward.
+   */
+  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -77,16 +95,33 @@ const READ_PASSAGE_LABEL = "Read full passage"
 
 /**
  * Every text node on the card sits over artwork the card does not choose, and
- * some of it is light — the Psalm 19 card's is near-white. The gradient scrim
- * only covers the lower part, so white text on a light frame needs its own
- * separation. Faint on purpose: enough to hold an edge, not enough to read as
- * a style. Layout-neutral, so it costs the fit arithmetic nothing.
+ * a still drawn from the film can be near-white. The scrim is fully opaque
+ * behind the text stack, so this is not what carries the contrast floor — it
+ * holds an edge where a bright still meets the ramp above the stack. Faint on
+ * purpose. Layout-neutral, so it costs the fit arithmetic nothing.
  */
 const CARD_TEXT_SHADOW = {
   textShadowColor: "rgba(0, 0, 0, 0.6)",
   textShadowOffset: { width: 0, height: 1 },
   textShadowRadius: 3,
 } as const
+
+/**
+ * The scrim's opacity at the card's TOP edge, so no still ever renders at full
+ * strength. The 4.5:1 floor is not carried here — `scrimSolidStop` puts the
+ * whole text stack over the solid card colour — so this only has to keep a
+ * bright still from fighting the card it sits in.
+ */
+const SCRIM_TOP_OPACITY = 0.3
+
+/**
+ * Explicit, and a number rather than an object without one: the transition
+ * record defaults to 100ms on iOS and 0 on Android, so an object-form
+ * transition carrying no duration fades on iOS and does not fade at all on
+ * Android — and an iOS-only device check would pass. Matches the poster
+ * elsewhere in the app; the search thumbnail's 400ms reads slow at card size.
+ */
+const STILL_FADE_MS = 200
 
 // ── QuoteCard ───────────────────────────────────────────────────────────────
 
@@ -117,21 +152,34 @@ function VerseLoading({ typography }: { typography: TypographyScale }) {
 
 function QuoteCard({
   quote,
+  cardIndex,
   cardWidth,
   typography,
   fontScale,
+  reduceMotion,
   onOpenPassage,
+  onArtworkFailed,
 }: {
   quote: QuoteItem
+  cardIndex: number
   cardWidth: number
   typography: TypographyScale
   fontScale: number
+  reduceMotion: boolean
   onOpenPassage?: (url: string) => void
+  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
-  const bgTransparent = hexToRgba(bgColor, 0)
+  const scrimTop = hexToRgba(bgColor, SCRIM_TOP_OPACITY)
+  // Retained deliberately (KTD12). The derivation already validated everything
+  // it produced and this is idempotent on an absolute URL, so it costs nothing
+  // there — and it is the ONLY URL check the Experience and SDUI paths get,
+  // which reach this component with no derivation in between.
   const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
   const loading = quote.loading === true
+
+  const artCandidates = quote.artCandidates ?? []
+  const artIndex = quote.artIndex ?? 0
 
   const passageUrl =
     quote.passageUrl != null && validateActionUrl(quote.passageUrl)
@@ -156,7 +204,7 @@ function QuoteCard({
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
-  const regions = fitPassageCardRegions({
+  const fitInput = {
     contentHeight: cardWidth - CARD_CONTENT_PADDING * 2,
     typography,
     fontScale,
@@ -164,7 +212,31 @@ function QuoteCard({
     hasTranslation: !loading && quote.translation != null,
     hasCopyright: !loading && quote.copyright != null,
     hasLink: !loading && passageUrl != null,
-  })
+  }
+  const regions = fitPassageCardRegions(fitInput)
+
+  // The card is a square, so its height is its width. The scrim reaches the
+  // card colour at the top of the text stack, which is what puts every text
+  // region over a solid backdrop for ANY still — not just a sampled one.
+  const solidStop = scrimSolidStop(
+    cardWidth,
+    passageCardStackHeight(fitInput, regions),
+  )
+
+  const reportArtworkFailure = () => {
+    if (artCandidates.length === 0) return
+    if (artIndex >= artCandidates.length - 1) {
+      // The terminal state. Every rung failed, including the stock host the
+      // problem frame names as unreliable, so the card settles at its
+      // background colour — visually identical to loading, and countable only
+      // through this signal.
+      datadogLog.warn("bible_card_art.exhausted", {
+        reference: quote.reference,
+        candidate_count: artCandidates.length,
+      })
+    }
+    onArtworkFailed?.(cardIndex, artIndex)
+  }
 
   return (
     <View
@@ -185,13 +257,31 @@ function QuoteCard({
           source={imageUrl}
           style={[StyleSheet.absoluteFill, styles.cardImage]}
           contentFit="cover"
-          recyclingKey={`bqc-${quote.reference}`}
-          accessibilityLabel={quote.reference}
+          // Off the RESOLVED source, not the reference label: two citations can
+          // share a label and would otherwise be told they are the same image.
+          recyclingKey={imageUrl}
+          // memory-disk on both tiers. Disk is what makes a still identical
+          // across launches; memory is what stops the carousel's unmount-and-
+          // remount windowing re-decoding on every scroll back.
+          cachePolicy="memory-disk"
+          // The carousel mounts its first cells at watch-screen mount rather
+          // than when scrolled into view, so an unranked still competes with
+          // player startup on the design-centre device.
+          priority="low"
+          // The fade lives on expo-image's own transition, so it animates the
+          // image node alone. Animating a wrapper would take the scrim with it
+          // — Android applies a group's opacity to each child.
+          transition={reduceMotion ? 0 : STILL_FADE_MS}
+          onError={reportArtworkFailure}
+          // Decorative: the card is one grouped element and already announces
+          // its own composed label.
+          accessible={false}
+          importantForAccessibility="no"
         />
       )}
       <LinearGradient
-        colors={[bgTransparent, bgColor]}
-        locations={[0, 0.6]}
+        colors={[scrimTop, bgColor]}
+        locations={[0, solidStop]}
         style={styles.gradient}
         pointerEvents="none"
       />
@@ -329,8 +419,10 @@ function PaginationDots({
 
 export function BibleQuotesCarouselRenderer({
   section,
+  onArtworkFailed,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
+  const reduceMotion = useReduceMotion()
   const { width: screenWidth, fontScale } = useWindowDimensions()
   const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -368,13 +460,23 @@ export function BibleQuotesCarouselRenderer({
       <QuoteCard
         key={`bqc-${index}`}
         quote={item}
+        cardIndex={index}
         cardWidth={cardWidth}
         typography={typography}
         fontScale={fontScale}
+        reduceMotion={reduceMotion}
         onOpenPassage={handleOpenPassage}
+        onArtworkFailed={onArtworkFailed}
       />
     ),
-    [cardWidth, typography, fontScale, handleOpenPassage],
+    [
+      cardWidth,
+      typography,
+      fontScale,
+      reduceMotion,
+      handleOpenPassage,
+      onArtworkFailed,
+    ],
   )
 
   const keyExtractor = useCallback(
@@ -495,9 +597,12 @@ const styles = StyleSheet.create({
   cardImage: {
     borderRadius: 12,
   },
+  // From the card's TOP edge, not 20% down. Starting lower left the still at
+  // full strength across the whole upper band, which is where a bright frame
+  // fights the card hardest. The first stop carries the opacity; moving the
+  // origin alone would have changed nothing.
   gradient: {
     ...StyleSheet.absoluteFill,
-    top: "20%",
   },
   cardContent: {
     flex: 1,
