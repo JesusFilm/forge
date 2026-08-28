@@ -849,7 +849,10 @@ export function FeedbackModal({
               <DialogTitle className="mt-6 text-3xl font-semibold text-white">
                 {t("success.title")}
               </DialogTitle>
-              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300">
+              {/* `sm:text-base` is load-bearing: DialogDescription's phone tier is
+                  `text-base sm:text-sm`, and overriding only the base size would
+                  leave that `sm:` rule live and shrink this to 14px on desktop. */}
+              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300 sm:text-base">
                 {t("success.description")}{" "}
                 {submittedWithEmail || followUpAdded
                   ? t(
