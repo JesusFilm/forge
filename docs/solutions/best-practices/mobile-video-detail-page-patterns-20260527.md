@@ -127,6 +127,17 @@ The parent component must pass `activeVariant?.hls` (the currently-selected vari
 
 ### 3. Bible verse fetching: bookSlugForApi strips spaces, not replaces with hyphens
 
+> **Superseded 2026-08-27 for `apps/mobile` and `apps/web`. Do not follow this
+> section on either app.** Both now read admin's server-resolved
+> `BibleCitation.passage`. Web moved on 2026-07-03; mobile moved in the Bible
+> Quotes passages work, which deleted its whole mirror stack — the client fetch,
+> `formatScripture` and `bookSlugForApi`. The mirror dropped verse ranges,
+> inlined footnote text into the verse body, truncated poetry to its first line,
+> and named no translation or copyright holder. Mobile's replacement is
+> `src/lib/biblePassages.ts` plus the `GetVideoBiblePassages` companion query in
+> `src/lib/queries.ts`. **`apps/tv` still holds its own copy of the code below**,
+> so the section stays for that app until TV moves too.
+
 Bible verse content is fetched client-side from the jsdelivr CDN (`wldeh/bible-api`). The book slug format strips spaces entirely. Both the mobile and web implementations use the same logic.
 
 ```typescript

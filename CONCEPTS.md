@@ -977,6 +977,12 @@ The moment the series detail screen first shows a populated episode rail — the
 
 Fires only on real content readiness: a partially-cached series that paints its hero before episodes arrive has not reached First Rail Ready, and returning to an already-loaded series never re-fires it — a near-zero re-measure would poison the metric's percentiles.
 
+### Bible Passage
+
+The credited scripture text a Watch surface renders for a Bible Citation, resolved server-side and cached by Admin rather than fetched by the client. The Citation is identity — book, chapter, and verse range sourced from Core — while the Passage is the rendered words plus the translation name and copyright line that licence them.
+
+The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
+
 ## Home hero UI
 
 ### Three-Layer Hero
