@@ -3,7 +3,7 @@ id: "feat-405"
 title: "Sidebar: untitled threads show a date label until you open them"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-01"
 duration: 2
 depends_on: []
@@ -11,6 +11,44 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-28 via [#NNNN](https://github.com/JesusFilm/forge/pull/NNNN) (`fix(mastra): gateway-first titling and daily title-repair sweep`). <!-- fill the real PR number in the shipping commit -->
+
+**What landed.** Per-turn titling moved off the retired single free-Gemma
+`AI_CHAT_TITLE_MODEL` string onto a function-valued default returning the
+seeker's gateway-first chain (`buildSeekerModelList()`, read per turn from a
+new `seeker-model-list.ts` leaf module) — so `AI_GATEWAY_SEEKER_ENABLED` now
+governs titling and answering together, and even flag-off is a two-entry
+retrying chain. A new daily `title-repair` workflow (06:00 UTC, default-off
+behind `AI_CHAT_TITLE_REPAIR_ENABLED`) heals stranded `user:` threads via the
+gateway model only, with guarded direct-SQL writes that preserve `updatedAt`
+(no rail reorder, no retention reset). Titles crossing the list wire are
+clamped to 120 UTF-16 units via a shared `ai-chat-title-clamp.ts` at
+`projectThreadRow`, covering both writers plus the framework's unclamped
+`createThread` path. The `""` untitled wire sentinel survives — now
+repairable, not permanent.
+
+The sweep's gate matrix (plan KTD4):
+
+| `AI_GATEWAY_SEEKER_ENABLED` | `AI_GATEWAY_CHAT_API_KEY` | `AI_CHAT_TITLE_REPAIR_ENABLED` | Per-turn titling      | Sweep              |
+| --------------------------- | ------------------------- | ------------------------------ | --------------------- | ------------------ |
+| true                        | set                       | true                           | Gateway-first chain   | Runs on gateway    |
+| true                        | set                       | false/unset                    | Gateway-first chain   | Skips (flag)       |
+| false                       | set                       | true                           | Two-entry Gemma chain | Runs on gateway    |
+| false                       | set                       | false/unset                    | Two-entry Gemma chain | Skips (flag)       |
+| any                         | unset                     | any                            | Two-entry Gemma chain | Skips (no gateway) |
+
+(The sweep additionally requires `SEEKER_ROUTE_ENABLED="true"`, a postgres
+ai-chat backend, and an explicit `DATABASE_URL`.)
+
+**Residual risk / follow-ups.** Arming the sweep is a recorded operator step
+(plan Q2: set `AI_CHAT_TITLE_REPAIR_ENABLED=true` in Railway after deploy).
+Old untitled threads keep their date label until the sweep heals them or the
+25-day retention window purges them (KD1 — option B deliberately not built;
+revisit on audience widening). Erasure-race residual accepted per plan KTD11
+(one message pair per thread per day, guarded no-op write).
 
 ## Problem
 

@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 27, 2026)
+## Status (August 28, 2026)
 
-- **Total tickets:** 62
-- ✅ **Complete:** 50
-- 🟡 **In progress:** 2
-- 🔵 **Not started:** 10
+- **Total tickets:** 63
+- ✅ **Complete:** 51
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 11
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -84,4 +84,9 @@ from the main DS Year 1 roadmap.
 | [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)                | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | ✅ complete    | [#1984](https://github.com/JesusFilm/forge/pull/1984)                                                        |
 | [feat-401](feat-401-sidebar-no-placeholder-row-for-unstarted-conversation.md) | Sidebar: no placeholder row for an unstarted conversation                    | jian wei | P3       | 2026-09-01 | 1    | ✅ complete    | [#2068](https://github.com/JesusFilm/forge/pull/2068)                                                        |
 | [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
-| [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | 🟡 in-progress | —                                                                                                            |
+| [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | ✅ complete    | [#NNNN](https://github.com/JesusFilm/forge/pull/NNNN)                                                        |
+| [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | 🔵 not-started | —                                                                                                            |
+
+<!-- SHIPPING TODO (feat-405): replace the #NNNN placeholder in the feat-405 row
+     above (and the matching one in the ticket's Resolution) with the real PR
+     number in the shipping commit. Remove this comment in the same edit. -->

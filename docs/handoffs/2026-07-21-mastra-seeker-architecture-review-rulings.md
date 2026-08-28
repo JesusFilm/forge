@@ -385,6 +385,16 @@ return the `{ thread, resource }` memory config, with
 > beats inheriting refactor scope inside a future feature diff. All five
 > requirements unchanged.
 
+> **Superseded in part (2026-08-28, feat-405):** requirement 2's
+> "`AI_CHAT_TITLE_MODEL` as a plain model-router string" no longer describes
+> the code — that constant is retired. The title model default is now a
+> FUNCTION returning `buildSeekerModelList()` (the seeker's gateway-first
+> chain, read per turn) in `ai-chat-memory.ts`, with the bundler-safety
+> concern carried by the `seeker-model-list.ts` leaf module's `createRequire`
+> shim. The other KTD12 semantics (top-level `generateTitle` key, `""`
+> sentinel, fire-and-forget timing) carry unchanged. See
+> `docs/plans/2026-08-27-2221-feat-ai-chat-title-reliability-plan.md` (KTD1).
+
 ## Verification expectations (every PR in this body of work)
 
 - `pnpm --filter @forge/mastra test` / `typecheck` / `lint` — all green; no

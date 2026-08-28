@@ -339,6 +339,60 @@ describe("handleAiChatHistoryListRequest — happy path + clamps (KTD6)", () => 
     expect(body.hasMore).toBe(true)
   })
 
+  it("clamps a pathologically long stored title to exactly 120 UTF-16 units (feat-405, KTD9)", async () => {
+    // Both writers cross this wire — per-turn titling and the repair sweep —
+    // and the framework's own createThread path stores titles unclamped, so
+    // the projection is the one bound covering them all. 50 unbounded titles
+    // is the one term that can breach the list proxy's 2 MiB response cap,
+    // failing the whole sidebar with a 502 rather than one row.
+    const { memory } = makeMemory({
+      threads: [
+        {
+          id: "t-long",
+          title: "x".repeat(10_000),
+          updatedAt: new Date("2026-07-12T08:00:00.000Z"),
+        },
+      ],
+    })
+    const outcome = await handleAiChatHistoryListRequest(
+      baseInput(memory, { readJson: async () => ({ resourceId: OWNER }) }),
+    )
+    const body = outcome.body as { threads: AiChatHistoryWireThread[] }
+    expect(body.threads[0]?.title).toBe("x".repeat(120))
+  })
+
+  it("projects a title with control characters and repeated whitespace cleaned (feat-405, KTD9)", async () => {
+    const { memory } = makeMemory({
+      threads: [
+        {
+          id: "t-messy",
+          title: "  Who  is   Jesus?\n\n  really  ",
+          updatedAt: new Date("2026-07-12T08:00:00.000Z"),
+        },
+      ],
+    })
+    const outcome = await handleAiChatHistoryListRequest(
+      baseInput(memory, { readJson: async () => ({ resourceId: OWNER }) }),
+    )
+    const body = outcome.body as { threads: AiChatHistoryWireThread[] }
+    expect(body.threads[0]?.title).toBe("Who is Jesus? really")
+  })
+
+  it("keeps the empty-string untitled sentinel untouched by the clamp (R10)", async () => {
+    // `""` is the wire contract's untitled sentinel — repairable by the daily
+    // sweep now, but still the shape the client's date label keys on.
+    const { memory } = makeMemory({
+      threads: [
+        { id: "t-empty", title: "", updatedAt: "2026-07-10T08:00:00.000Z" },
+      ],
+    })
+    const outcome = await handleAiChatHistoryListRequest(
+      baseInput(memory, { readJson: async () => ({ resourceId: OWNER }) }),
+    )
+    const body = outcome.body as { threads: AiChatHistoryWireThread[] }
+    expect(body.threads[0]?.title).toBe("")
+  })
+
   it("defaults page to 0 and perPage to the default clamp when absent", async () => {
     const { memory, listCalls } = makeMemory()
     await handleAiChatHistoryListRequest(baseInput(memory))
