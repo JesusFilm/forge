@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ध्वनि-भाषां परिवर्तयतु",
     "home": "JesusFilm गृहपृष्ठम्",
     "closeSearch": "अन्वेषणं पिधाय",
-    "submitSearch": "अन्वेषयतु"
+    "submitSearch": "अन्वेषयतु",
+    "library": "पुस्तकालयः"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियोनि अन्वेषयतु ब्राउज़् च कुर्वन्तु",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} इति भाषायां “{suggestion}” इति अन्वेषयतु",
     "inLanguage": "{language} इति भाषायाम्",
     "browseByRegion": "प्रदेशानुसारं ब्राउज़् कुर्वन्तु",
+    "allVideosOnSinglePage": "सर्वाणि वीडियोनि एकस्मिन् पृष्ठे",
     "clearLanguages": "स्वच्छं कुर्वन्तु",
     "queryLanguageDetected": "{language} इति भाषा निश्चिता",
     "searchInLanguage": "{language} इति भाषायाम् अन्वेषयतु",
@@ -271,14 +273,183 @@
     "couldNotLoad": "प्रतिक्रिया-प्रपत्रं लोड् कर्तुं न शक्यते स्म।",
     "loadingForm": "प्रतिक्रिया-प्रपत्रं लोड् क्रियते…",
     "retry": "पुनः प्रयतस्व",
-    "openFormShort": "प्रपत्रं उद्घाटयतु",
     "cancel": "निरस्तम्",
-    "title": "बीटा-प्रतिक्रिया",
-    "description": "यत् सम्यक् कार्यं करोति, यच्च वर्धनीयं, तत् साझा कुर्वन्तु। एतत् प्रपत्रं Google द्वारा प्रदत्तम्।",
-    "openInNewTab": "प्रपत्रं नूतन-ट्याब् मध्ये उद्घाटयतु",
     "closeForm": "प्रतिक्रिया-प्रपत्रं पिधाय",
-    "loadingGoogleForm": "Google Form लोड् क्रियते…",
-    "iframeTitle": "बीटा-प्रतिक्रिया समर्पयतु"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} भाषायां निःशुल्कानि ख्रीष्टीय-वीडियोनि | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "क्रीडाः",
     "collections": "सङ्ग्रहाः",
     "subtitlesOnly": "उपशीर्षक-मात्रम्",
+    "backToTop": "उपरि गच्छतु",
     "newlyAdded": "नूतनतया योजितम्",
     "newVideosTitle": "{language} भाषायां नूतनानि ख्रीष्टीय-वीडियोनि",
     "newestFirst": "नवतमानि प्रथमतः",
@@ -327,7 +499,21 @@
     "standaloneVideos": "स्वतन्त्र-वीडियोनि",
     "videosFromCollection": "{collection} इत्यस्मात् वीडियोनि।",
     "standaloneDescription": "अस्मिन् भाषायां स्वतन्त्र-वीडियोनि।",
-    "openCollection": "सङ्ग्रहं उद्घाटयतु"
+    "openCollection": "सङ्ग्रहं उद्घाटयतु",
+    "filters": "चालनी",
+    "filterLength": "दीर्घता",
+    "filterLength_under5": "५ निमेषात् न्यूनम्",
+    "filterLength_5to10": "५-१० निमेषाः",
+    "filterLength_10to30": "१०-३० निमेषाः",
+    "filterLength_over30": "३० निमेषात् अधिकम्",
+    "filterType": "प्रकारः",
+    "clearFilters": "चालनीः अपसारयतु",
+    "filterResults": "{total} मध्ये {count} प्रदर्शिताः",
+    "noFilterResults": "एताभिः चालनीभिः किमपि चलच्चित्रं न मेलति। एकां अपसारयतु।",
+    "filterAdded": "योजितम्",
+    "filterAdded_60d": "गताः ६० दिनाः",
+    "filterAdded_6m": "गताः ६ मासाः",
+    "filterAdded_12m": "गताः १२ मासाः"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पश्यन्तु",
@@ -407,6 +593,27 @@
     "merryChristmas": "ख्रीष्टमासस्य शुभकामनाः!",
     "daysUntilChristmas": "{count, plural, one {ख्रीष्टमासाय # दिनम् अवशिष्टम्} other {ख्रीष्टमासाय # दिनानि अवशिष्टानि}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "भाषाः",
     "metadataDescription": "JesusFilm भिडियोनि भाषानुसारं ब्राउज़् कुर्वन्तु।",
@@ -455,44 +662,6 @@
     "actionsLabel": "पृष्ठं न प्राप्तम् क्रियाः",
     "backToWatch": "पश्यने पुनर्गच्छतु",
     "browseVideos": "वीडियोनि ब्राउज़् कुर्वन्तु"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु-चलच्चित्रं पश्यतु",
-    "actions": {
-      "joinUs": "अस्माभिः सह युञ्जीत",
-      "shareMission": "अस्माकं मिशने भागं गृह्णीत"
-    },
-    "welcomeStart": {
-      "label": "विश्वासः एवं शास्त्रम्",
-      "title": "अद्यतनानि वीडियो-चयनानि",
-      "description": "विश्वासकेंद्रितं वीडियोसामग्री अस्माकं संग्रहात्, यत् प्रेरणां दातुं, चुनौतीं कर्तुं, चिन्तनं च प्रज्वालयितुं प्रयोज्यते।"
-    },
-    "welcomeMorning": {
-      "label": "प्रातः प्रेरणा",
-      "title": "सुप्रभातम्! अद्यतनानि बाइबिलक्षणानि प्रतीक्षन्ते।",
-      "description": "प्रातःकालं प्रोत्साहकैर् बाइबिलक्षणैः आरभत, ये प्रेरणां, उत्साहं च वर्धयन्ति।"
-    },
-    "welcomeAfternoon": {
-      "label": "अपराह्ण-प्रेरणा",
-      "title": "शुभमपराह्णम्! भवतः दिनाय बाइबिलक्षणानि।",
-      "description": "अपराह्णविरामाय वा निरन्तर-प्रेरणाय वा युक्तं प्रोत्साहकं बाइबिलसामग्री।"
-    },
-    "welcomeEvening": {
-      "label": "सायं प्रेरणा",
-      "title": "शुभसायम्! बाइबिलक्षणैः सह विश्रामं कुर्वन्तु।",
-      "description": "शान्तानि बाइबिलक्षणानि, ये दिनस्य समाप्तौ चिन्तनाय, सांत्वनं च प्राप्तुं सहायन्ते।"
-    },
-    "joinUs": {
-      "label": "अस्माभिः सह युञ्जीत",
-      "title": "अर्बुदानि जनाः अन्विष्यन्ति",
-      "description": "शस्यसमयः अत्रास्ति। डिजिटल-माध्यमैः विश्वं प्रति सुसमाचारं प्रचारेण अस्माभिः सह युञ्जीत।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आगच्छामः सह",
-      "title": "येशोः कथा, सहैव कथयामः",
-      "description": "येन ते स्वभाषायां तत्रैव येशोः प्रेम श्रुण्वन्तु पश्यन्तु च।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% साम्यम्",

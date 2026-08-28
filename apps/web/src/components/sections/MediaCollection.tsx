@@ -45,7 +45,12 @@ import {
   VideoThumbnailEyebrow,
   VideoThumbnailTitle,
 } from "@/components/ui/video-thumbnail-caption"
-import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
+  WATCH_IMMERSIVE_BACKGROUND_COLOR,
+  WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS,
+  WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
+} from "@/components/watch/watch-section-styles"
 
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
@@ -70,42 +75,33 @@ type HoverBackdropLayer = {
   state: "entering" | "exiting"
 }
 
-const MEDIA_COLLECTION_TINTS: Record<string, string> = {
-  default: "#050505",
-  dark: "#050505",
-  primary: "#172554",
-  cosmic: "#312e81",
-  purple: "#91214A",
-  red: "#7f1d1d",
-  rose: "#9f1239",
-  blue: "#1e3a8a",
-  teal: "#134e4a",
-  green: "#14532d",
-  amber: "#92400e",
-}
+// Values live in `watch-section-styles` so the /videos collection sidebars
+// render the same immersive backdrop as these authored sections.
+const IMMERSIVE_BACKGROUND_SATURATION_CLASS =
+  WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS
+const IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS =
+  WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS
+const IMMERSIVE_BACKGROUND_COLOR = WATCH_IMMERSIVE_BACKGROUND_COLOR
 
+// Phone column widths are set by what the card's TEXT needs, not by how many
+// cards fit: at the previous 56%/34% a 390px viewport rendered 185px and 113px
+// cards, and 7 of 8 poster titles were already clamped away at 14px. The wider
+// phone columns below are what let `video-thumbnail-caption` raise its phone
+// tier without trading a too-small title for a truncated one. `imageSizes` must
+// move with `columns` — it is the `sizes` attribute behind these same cards.
 const MOBILE_CAROUSEL_LAYOUT = {
   horizontal: {
-    columns: "auto-cols-[56%] gap-4 sm:auto-cols-[42%] md:gap-5",
-    imageSizes: "(max-width: 639px) 56vw, (max-width: 767px) 42vw, 360px",
+    columns: "auto-cols-[72%] gap-4 sm:auto-cols-[42%] md:gap-5",
+    imageSizes: "(max-width: 639.98px) 72vw, (max-width: 767px) 42vw, 360px",
   },
   vertical: {
-    columns: "auto-cols-[34%] gap-3 sm:auto-cols-[26%] md:gap-4",
-    imageSizes: "(max-width: 639px) 34vw, (max-width: 767px) 26vw, 220px",
+    columns: "auto-cols-[46%] gap-3 sm:auto-cols-[26%] md:gap-4",
+    imageSizes: "(max-width: 639.98px) 46vw, (max-width: 767px) 26vw, 220px",
   },
 } as const
 
 function backgroundImageStyle(imageUrl: string | null) {
   return imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined
-}
-
-function normalizeTintColor(value: unknown): string | null {
-  if (typeof value !== "string") return null
-
-  const trimmed = value.trim()
-  if (!trimmed) return null
-
-  return MEDIA_COLLECTION_TINTS[trimmed] ?? trimmed
 }
 
 function alphaColor(color: string, opacity: number): string {
@@ -138,14 +134,9 @@ function textScrimStyle(
   }
 }
 
-function tintOverlayStyle(
-  backgroundColor: string | null,
-  isRail: boolean,
-): CSSProperties | undefined {
-  if (!backgroundColor) return undefined
-
-  const strong = alphaColor(backgroundColor, isRail ? 0.92 : 0.86)
-  const soft = alphaColor(backgroundColor, isRail ? 0.38 : 0.34)
+function tintOverlayStyle(isRail: boolean): CSSProperties {
+  const strong = alphaColor(IMMERSIVE_BACKGROUND_COLOR, isRail ? 0.92 : 0.86)
+  const soft = alphaColor(IMMERSIVE_BACKGROUND_COLOR, isRail ? 0.38 : 0.34)
   const deep = alphaColor("#050505", isRail ? 0.62 : 0.76)
 
   return {
@@ -177,7 +168,6 @@ export function MediaCollection({
     title,
     subtitle,
     mediaDescription: description,
-    backgroundColor,
     categoryLabel,
     mediaCtaLink: ctaLink,
     mediaCtaLabel: rawCtaLabel,
@@ -240,7 +230,6 @@ export function MediaCollection({
       footerText={footerText}
       variant={variant}
       thumbnailOrientation={thumbnailOrientation ?? null}
-      backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
       fallbackLanguageSlug={resolvedLanguageSlug}
@@ -281,7 +270,6 @@ function WatchHomeMediaCollection({
   footerText,
   variant,
   thumbnailOrientation,
-  backgroundColor,
   showItemNumbers,
   items,
   fallbackLanguageSlug,
@@ -298,7 +286,6 @@ function WatchHomeMediaCollection({
   footerText: string | null
   variant: string | null
   thumbnailOrientation: "vertical" | "horizontal" | null
-  backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
@@ -351,16 +338,14 @@ function WatchHomeMediaCollection({
   const watchHref = standaloneCtaUrl
     ? new URL(standaloneCtaUrl).pathname
     : (normalizedCtaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`)
-  const sectionBackgroundColor =
-    backgroundColor ?? (isRail ? "#5b1537" : "#050505")
-  const tintStyle = tintOverlayStyle(backgroundColor, isRail)
+  const tintStyle = tintOverlayStyle(isRail)
   const titleRowStart = categoryLabel ? "row-start-2" : "row-start-1"
   const watchCta = (
     <a
       href={watchHref}
       data-testid="media-collection-cta"
       className={cn(
-        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
         title && `col-start-2 ${titleRowStart}`,
       )}
     >
@@ -369,7 +354,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-xs font-semibold tracking-eyebrow text-red-100/60 uppercase xl:text-sm 2xl:text-base">
+    <p className="text-sm font-semibold tracking-eyebrow text-red-100/60 uppercase sm:text-xs xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -389,7 +374,7 @@ function WatchHomeMediaCollection({
       {description ? (
         <p
           data-testid="media-collection-description"
-          className="w-full pt-2 text-sm leading-relaxed font-normal text-stone-200/80 xl:text-base"
+          className="w-full pt-2 text-base leading-relaxed font-normal text-stone-200/80 sm:text-sm xl:text-base"
         >
           {description}
         </p>
@@ -502,21 +487,16 @@ function WatchHomeMediaCollection({
       className={cn(
         "scroll-mt-24 relative overflow-hidden text-white",
         WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
-        !backgroundColor &&
-          (isRail
-            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.22),rgba(88,28,135,0.2),rgba(145,33,74,0.94))]"
-            : "bg-[#050505]"),
       )}
-      style={{ backgroundColor: sectionBackgroundColor }}
+      style={{ backgroundColor: IMMERSIVE_BACKGROUND_COLOR }}
     >
       {settledBackgroundUrl ? (
         <div
           data-testid="media-collection-default-backdrop"
           className={cn(
             "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat opacity-100 blur-2xl",
-            isRail
-              ? "brightness-80 saturate-125"
-              : "brightness-75 saturate-110",
+            IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
+            IMMERSIVE_BACKGROUND_SATURATION_CLASS,
           )}
           style={backgroundImageStyle(settledBackgroundUrl)}
           aria-hidden
@@ -535,9 +515,8 @@ function WatchHomeMediaCollection({
             layer.state === "entering"
               ? "watch-home-section-backdrop-enter"
               : "watch-home-section-backdrop-exit",
-            isRail
-              ? "brightness-80 saturate-125"
-              : "brightness-75 saturate-110",
+            IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
+            IMMERSIVE_BACKGROUND_SATURATION_CLASS,
           )}
           style={backdropLayerStyle(layer.imageUrl, "1")}
           aria-hidden
@@ -545,14 +524,13 @@ function WatchHomeMediaCollection({
       ))}
       <div
         aria-hidden
+        data-testid="media-collection-tint"
         className={cn(
           "absolute inset-0 z-[1] transition-opacity duration-500 ease-out",
+          IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
+          IMMERSIVE_BACKGROUND_SATURATION_CLASS,
           isSectionActive ? "opacity-0" : "opacity-100",
-          !backgroundColor && isRail
-            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.38),rgba(88,28,135,0.34),rgba(145,33,74,0.88))] mix-blend-multiply"
-            : !backgroundColor
-              ? "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.42),rgba(190,24,93,0.34)_38%,rgba(12,10,9,0.9))]"
-              : "mix-blend-multiply",
+          "mix-blend-multiply",
         )}
         style={tintStyle}
       />
@@ -726,7 +704,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
+            className="mt-8 max-w-5xl text-sm leading-relaxed font-normal text-stone-200/80 sm:text-xs xl:text-sm"
           >
             {footerText}
           </p>
@@ -883,7 +861,7 @@ function VideoCard({
               "absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 font-semibold text-white backdrop-blur-sm",
               compactOnMobile
                 ? "px-1.5 py-0.5 text-xs md:px-2 md:py-1 md:text-sm"
-                : "px-2 py-1 text-sm",
+                : "px-2 py-1 text-base sm:text-sm",
             )}
           >
             {item.collectionSize}

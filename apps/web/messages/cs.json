@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Změnit jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
     "closeSearch": "Zavřít hledání",
-    "submitSearch": "Hledat"
+    "submitSearch": "Hledat",
+    "library": "Knihovna"
   },
   "SearchOverlay": {
     "dialogLabel": "Hledat a procházet videa",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Vyhledat „{suggestion}“ v jazyce: {language}",
     "inLanguage": "v jazyce {language}",
     "browseByRegion": "Procházet podle regionu",
+    "allVideosOnSinglePage": "Všechna videa na jedné stránce",
     "clearLanguages": "Vymazat",
     "queryLanguageDetected": "Zjištěn jazyk {language}",
     "searchInLanguage": "Hledat v jazyce: {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Formulář zpětné vazby se nepodařilo načíst.",
     "loadingForm": "Načítání formuláře zpětné vazby…",
     "retry": "Zkusit znovu",
-    "openFormShort": "Otevřít formulář",
     "cancel": "Zrušit",
-    "title": "Beta zpětná vazba",
-    "description": "Podělte se o to, co funguje, a co můžeme vylepšit. Tento formulář poskytuje Google.",
-    "openInNewTab": "Otevřít formulář na nové kartě",
     "closeForm": "Zavřít formulář zpětné vazby",
-    "loadingGoogleForm": "Načítání formuláře Google…",
-    "iframeTitle": "Odeslat beta zpětnou vazbu"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Bezplatná křesťanská videa v jazyce {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sbírky",
     "subtitlesOnly": "Pouze titulky",
+    "backToTop": "Zpět nahoru",
     "newlyAdded": "Nově přidáno",
     "newVideosTitle": "Nová křesťanská videa v jazyce {language}",
     "newestFirst": "Nejnovější nejdřív",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Samostatná videa",
     "videosFromCollection": "Videa ze sbírky {collection}.",
     "standaloneDescription": "Samostatná videa v tomto jazyce.",
-    "openCollection": "Otevřít sbírku"
+    "openCollection": "Otevřít sbírku",
+    "filters": "Filtry",
+    "filterLength": "Délka",
+    "filterLength_under5": "Do 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nad 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Vymazat filtry",
+    "filterResults": "Zobrazeno {count} z {total}",
+    "noFilterResults": "Žádné video neodpovídá těmto filtrům. Zkuste jeden odebrat.",
+    "filterAdded": "Přidáno",
+    "filterAdded_60d": "Posledních 60 dní",
+    "filterAdded_6m": "Posledních 6 měsíců",
+    "filterAdded_12m": "Posledních 12 měsíců"
   },
   "WatchHome": {
     "pageTitle": "Sledování Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Veselé Vánoce!",
     "daysUntilChristmas": "{count, plural, one {Do Vánoc zbývá # den} few {Do Vánoc zbývají # dny} other {Do Vánoc zbývá # dní}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Jazyky",
     "metadataDescription": "Procházejte videa JesusFilm podle jazyka.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Akce pro nenalezenou stránku",
     "backToWatch": "Zpět na sledování",
     "browseVideos": "Procházet videa"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sledovat krátký film",
-    "actions": {
-      "joinUs": "Přidejte se k nám",
-      "shareMission": "Podílejte se na našem poslání"
-    },
-    "welcomeStart": {
-      "label": "Víra a Písmo",
-      "title": "Dnešní výběr videí",
-      "description": "Videobsah zaměřený na víru z naší knihovny, který inspiruje, vyzývá a podněcuje k zamyšlení."
-    },
-    "welcomeMorning": {
-      "label": "Ranní inspirace",
-      "title": "Dobré ráno! Čekají vás dnešní biblické okamžiky.",
-      "description": "Začněte den povzbudivými biblickými momenty, které mají inspirovat a povzbudit vašeho ducha."
-    },
-    "welcomeAfternoon": {
-      "label": "Odpolední inspirace",
-      "title": "Dobré odpoledne! Biblické okamžiky pro váš den.",
-      "description": "Povzbudivý biblický obsah, ideální pro odpolední pauzu nebo další povzbuzení."
-    },
-    "welcomeEvening": {
-      "label": "Večerní inspirace",
-      "title": "Dobrý večer! Uvolněte se s biblickými okamžiky.",
-      "description": "Klidné biblické okamžiky, které vám pomohou rozjímat a nalézt útěchu na konci dne."
-    },
-    "joinUs": {
-      "label": "Přidejte se k nám",
-      "title": "Hledají miliardy lidí",
-      "description": "Žeň je tady. Přidejte se k nám, když sdílíme evangelium se světem prostřednictvím digitálních médií."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Pojďme do toho společně",
-      "title": "Vyprávění příběhu Ježíše společně",
-      "description": "Aby mohli slyšet a vidět Ježíšovu lásku ve svém vlastním jazyce přímo tam, kde jsou."
-    }
   },
   "VideoRecommendations": {
     "match": "Shoda: {percent} %",

@@ -38,8 +38,15 @@ deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
 config videos ONLY (so a top-up short film can't leak into the hero, feat-172)
 while Experience cards hydrate off the merged index. Body-from-Experience-else-
-config resolves via `resolveWatchHomeModel` (fallback emits one structured
-`[WatchHome] fallback reason=…` log — never silent, incl. `topup-error`); the v3
+config resolves via `resolveWatchHomeModel`, a PURE resolver that logs nothing;
+the signal lives in `useWatchHome`'s reconcile ladder, which routes every config
+fallback AND every dropped top-up through `logWatchHomeFallback`
+(`src/lib/watchHome/logWatchHomeFallback.ts`) as
+`datadogLog.warn("watch_home_fallback", { reason, body_source })` — never silent,
+incl. `topup-error`. Both stay context attributes, never interpolated into the
+message, or Datadog loses the facet. A failed required-videos fetch is a
+different signal (`watch_home.videos_failed`), and the empty-videos-over-snapshot
+guard and the outer catch only set the retry error; the v3
 snapshot persists config + `hydrationVideos` separately for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
 (three-layer hero pager / shelves / overlay); hero streams resolve lazily per
 slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
@@ -52,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: Shared `AdminWatchExperienceFragment` from `@forge/admin-graphql/fragments` composes all block fragments
+- **Fragments**: while the Watch category-rail rollout can still roll Admin back to a pre-rail schema, import `adminLegacyWatchExperienceFragment` from `@forge/admin-graphql/fragments` and spread `...AdminLegacyWatchExperience`. Mobile does not render the Web-only rail, so naming its new GraphQL type would only make released native bundles incompatible with an old or rolled-back Admin. Return to the canonical fragment only after the compatibility window closes.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 
@@ -79,6 +86,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
+- **Bible verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -218,6 +226,19 @@ local file does not revoke it.
 Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
 once on preview before you ever need it on production.
 
+**Any `eas.json` change moves the runtime version, and the next `update:*`
+then reaches no installed build.** The app uses the fingerprint
+`runtimeVersion` policy, and `@expo/fingerprint` hashes `eas.json` as a build
+input. An update published after such a commit targets a runtime version that
+no installed build carries. The publish exits 0 and reports nothing. Before
+you publish, compare two values. The first is the `runtimeVersion` of the
+latest FINISHED `production` build, from
+`eas build:list --platform ios --limit 1 --json`. The second is the runtime
+version that `eas update` prints. When they differ, ship a native build and
+let testers install it first. JS-only changes under `src/` and `app/` do not
+move the version. The same rule already applies to config plugins and native
+modules.
+
 **`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
 tester in minutes with no store review, so publishing an uncommitted working
 tree would ship code that exists nowhere in git. Two things about it are not
@@ -236,6 +257,61 @@ disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
 device — a scheme-less host or stray whitespace would throw at module scope and
 hard-fail startup for every beta tester.
+
+## iOS build numbers (TestFlight)
+
+**EAS owns the build number** (`cli.appVersionSource: "remote"` +
+`production.autoIncrement: true`, the same shape `apps/tv` uses), so `app.json`
+carries no `ios.buildNumber` and every `production` build takes the next
+number without a commit. The version string (`expo.version`, `1.0.0`) stays
+in `app.json`; bump it by hand when testers should see a new marketing
+version. Read the counter with
+`eas build:version:get --platform ios --profile production`; set it with
+`eas build:version:set` only to seed or repair it.
+
+Why it is remote: before this, a `production` build resolved to `1.0.0 (1)`
+every time, and App Store Connect already held iOS build 1 from 2026-07-16,
+so the next upload would have been rejected as a duplicate. The record
+(`ascAppId` 6791428415, "Jesus Film Watch") is shared with `apps/tv`; App
+Store Connect keeps one build list per platform, so the tvOS numbers do not
+constrain iOS.
+
+## EAS builder toolchain pins
+
+`eas.json` has a `base` profile that every build profile extends, directly
+or through `preview`. It pins `node` and `pnpm` and sets
+`SHARP_IGNORE_GLOBAL_LIBVIPS=1`. Keep `pnpm` equal to `packageManager` in the
+root `package.json`, character for character. Keep `node` on the same major
+as `.nvmrc`. `.nvmrc` holds only the major (`24`), and `eas.json` needs a
+full semver, so the patch is the release the last green build used. Bump all
+three together. `app/__tests__/easToolchainPins.guard.test.js` pins both
+rules, the `extends` chain, and the env. A pin bump edits `eas.json`, so it
+moves the runtime version; see "Publishing an EAS Update". Never pass
+`--profile base`: it resolves to a store build with no channel and no
+build-number increment.
+
+Why: EAS takes its toolchain from the current default VM image, not from
+`packageManager`. On 2026-08-28 the default moved to macOS Tahoe / Xcode
+26.6 / Node 22 / pnpm 11.9.0. Two mobile production builds then failed in
+`Install dependencies` on `sharp@0.34.5`, an `apps/admin` dependency the
+icon script borrows. Two separate facts, verified from the build logs:
+
+- pnpm 11 ignores the root `package.json` `pnpm` field
+  (`packageExtensions`, `overrides`, `patchedDependencies`). The pins fix
+  that. They did NOT fix sharp — build `dfabe6e3` failed the same way on
+  Node 24.14.1 / pnpm 9.12.3.
+- The new image carries a global libvips. sharp's `install/check.js`
+  exits 1 silently when `useGlobalLibvips()` is true. pnpm then runs
+  `npm run build`. That build needs `node-gyp` and fails with "Please add
+  node-gyp to your dependencies". The prebuilt `@img/sharp-darwin-arm64`
+  package is in the lockfile the whole time; `SHARP_IGNORE_GLOBAL_LIBVIPS=1`
+  makes sharp use it. The last good builds (mobile 2026-07-16, TV
+  2026-08-19) ran on the older Sequoia image, which had no global libvips.
+
+`apps/tv` carries neither the pins nor the env and will hit the same
+failure on its next build. EAS build logs are Brotli-encoded JSON lines.
+Fetch `logFiles[0]` from `eas build:view <id> --json` with Node and
+`zlib.brotliDecompressSync`; python and curl on this machine lack Brotli.
 
 ## Observability (Datadog)
 
@@ -256,15 +332,21 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 ## Common Pitfalls
 
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
+- **The ambient wash hands over to BLACK while the video plays (`WatchAmbient`), for EVERY video, by decision — not by detection.** It is POSTER-derived, so once playback moves past that frame it no longer describes what is on screen, and on a video with baked-in letterbox bars it frames them. It cross-fades to pure black rather than simply away, because black is what those bars ARE — handing over to `BG_COLOR` would still leave them ~28 levels off their surround. Both layers ride ONE value (the black is `playFade` inverted), so they can never both be up or both be gone. The black holds solid to the player's bottom edge then dissolves into `BG_COLOR` across the bleed, with that midpoint DERIVED from `topInset + playerHeight` — ending an opaque band on the clipped edge is the seam this layer was already fixed for once. `PLAYING_OPACITY_MULTIPLIER` is the knob (0 = full handover, 1 = old behaviour); `PLAY_FADE_MS` is deliberately slow (3s) so it reads as the room settling rather than a glitch. The animated opacity MUST NOT land in the same style array as `styles.root` — it would win over `AMBIENT_MAX_OPACITY` and silently discard the contrast ceiling while that ceiling's own guard stays green. Play state arrives via the module-scope request store (`setPlaying` / `usePlaybackPlaying`), mirroring `loadFailed`, because the host is a `<Stack>` SIBLING and no context or prop path reaches the route's layers.
+- **Detecting baked-in letterbox bars on-device was investigated and REJECTED (2026-08-27) — do not re-litigate without new evidence.** Bars are in the PIXELS, not the container: `pilgrims-progress` is stored 1920x1080 on every rendition with 137 black rows top and bottom, so `VideoTrack.size` / `VideoThumbnail.width` / aspect metadata are all blind to it. Sampling frames DOES work (Mux `image.mux.com/<id>/thumbnail.png?time=&width=64`, requiring symmetry + steadiness across >=3 mid-timeline frames — a single middle frame false-positives on dark scenes, measured on `the-birth-of-jesus`), but the framing VARIES within one video (no bars t=3-20s on the same asset), only 1 in 11 videos is affected, and each cold bespoke Mux render costs ~0.93s TTFB. The unconditional fade above solves the same symptom with none of that. **Landmine if you retry:** feeding expo-video's `VideoThumbnail` into expo-image's `generateThumbhashAsync`/`generateBlurhashAsync` HANGS FOREVER on iOS — both internal `Either.get()` casts return nil, the generator never runs, and the promise never settles, so a prototype just looks like a slow network call. The only real JS-only pixel route is an offscreen `react-native-webview` canvas (already a shipped dependency; `image.mux.com` sends `access-control-allow-origin: *`).
+- **A group `opacity` over stacked children needs `needsOffscreenAlphaCompositing` on Android.** Android applies a ViewGroup's opacity to EACH CHILD unless the subtree is composited offscreen first, so an OPAQUE overlay stops covering what is beneath it — it blends over an already-dimmed sibling instead. `WatchAmbient` is the worked case: poster + gradient under `opacity: 0.45`, where the gradient's opaque tail could never reach `BG_COLOR`, so the wash ended in a hard seam at its clipped bottom edge instead of dissolving into the page. iOS composites correctly on its own and measured byte-identical either way, which is exactly why it shipped. Diagnose it by giving the overlay an unmistakable opaque colour and sampling pixels: leaking reads as the overlay PLUS a tint (`#8a177f`), correct reads as the overlay alone (`#810e7f` = 45% magenta over `BG_COLOR`). Suspect this whenever a fade looks right on iOS and terminates in a line on Android — `zIndex` does NOT fix it, because the defect is compositing, not draw order.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - **`replaceAsync` settles when the source is SET, not LOADED** (on Android it is aliased to `replace`), so anything written in its `.then()` runs while the player still holds the OUTGOING item. A `currentTime` write there is silently discarded; a `play()` is the mild form. Resume and seek on `sourceLoad`, and scope the listener to the source that requested it — the app shares ONE player, so another surface's load will otherwise take your seek. Codified in `src/hooks/useAutostartPlayback.ts` and `src/lib/recoverPlayback.ts`; the tvOS route to the same premise is `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`. The shared jest double reproduces the real settle-before-load order, so this is testable.
+- **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. `useManagedVideoPlayer` sets it at creation, which covers every surface that can change speed (the heroes are muted and never change rate). Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertion in `useManagedVideoPlayer.test.tsx` can only pass if the app sets it.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
+- **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+- **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
@@ -478,9 +560,16 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
   every SDK default and nothing at runtime says so. `aapt2` is the authority —
   it fails on an unresolvable parent or a nonexistent attribute.
-- **Every `react-native-google-cast` import stays under `src/lib/cast/`** —
-  `castImports.guard.test.js` fails the suite otherwise. That is why the hidden
-  button below is a wrapper in that directory rather than a component folder.
+- **Every `react-native-google-cast` import stays under `src/lib/cast/`, with
+  one allowlisted exception: `src/hooks/useCastPlayback.ts`.**
+  `castImports.guard.test.js` fails the suite otherwise, and it carries TWO
+  allowlists — `ALLOWED_PREFIX` for the directory and an `ALLOWED_FILES` set for
+  that one file, pinned by its own positive control. The hook sits outside the
+  directory because `useCastSession`, `useCastState`, `useMediaStatus` and
+  `useStreamPosition` are React hooks, while `src/lib/cast/` holds pure logic.
+  Add a file to `ALLOWED_FILES` only when the SDK hands you a React hook. The
+  same rule is why `src/lib/cast/NativeCastButton.tsx` is a wrapper in that
+  directory rather than a component folder.
 - **The cast CONTROL differs by platform, and that is deliberate.**
   `showCastDialog()` is implemented differently on each side, so one shared
   affordance cannot serve both:

@@ -4,6 +4,7 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { VideoLibraryCategory } from "@/app/dashboard/video-library-utils"
 import {
@@ -88,6 +89,7 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
 function renderEditorElement(
   blocks: unknown[],
   options: {
+    isHomepage?: boolean
     isTemplate?: boolean
     saveAction?: typeof action
     publishAction?: typeof action
@@ -160,7 +162,7 @@ function renderEditorElement(
         ogDescription: "",
         ogImageUrl: "",
         pathSegment: "",
-        isHomepage: false,
+        isHomepage: options.isHomepage ?? false,
         isTemplate: options.isTemplate ?? false,
         blocksJson: JSON.stringify(blocks),
       }}
@@ -378,6 +380,248 @@ describe("ExperienceEditor", () => {
           content: [{ t: "text", variant: "promotional" }],
         },
       ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("adds the language globe with editable copy from the block library", () => {
+    const view = renderEditorDom([])
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+      })
+
+      expect(view.container.textContent).toContain("Language Globe")
+      expect(view.container.textContent).toContain(
+        "Animated scripture globe with editable language copy and action.",
+      )
+
+      act(() => {
+        findButtonByText(view.container, "Language Globe").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "languageGlobe",
+          sectionKey: "language-globe-0",
+          eyebrow: "Watch languages",
+          title: "Choose a language",
+          description: "Explore languages by region or browse the full list.",
+          ctaEnabled: true,
+          ctaLabel: "Select language",
+          ctaLink: "/languages",
+        },
+      ])
+      expect(
+        view.container.querySelector('input[value="Choose a language"]'),
+      ).not.toBeNull()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("offers one category rail only on a homepage and inserts the shared catalog order", () => {
+    expect(renderEditor([], { isHomepage: false })).not.toContain(
+      "Watch Category Rail",
+    )
+
+    const view = renderEditorDom([], { isHomepage: true })
+
+    try {
+      expect(view.container.textContent).toContain("Watch Category Rail")
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+        findButtonByText(view.container, "Watch Category Rail").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "watch-home-category-rail-0",
+          categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+        },
+      ])
+      expect(view.container.textContent).not.toContain("Watch Category Rail")
+      expect(view.container.textContent).toContain("Browse by category")
+      expect(
+        view.container.querySelectorAll('[aria-label="Drag block"]'),
+      ).toHaveLength(1)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves tile membership and order through the normal hidden block payload", async () => {
+    // The assertion lives OUTSIDE the mock: a throw inside an async action
+    // mock becomes an unhandled rejection and the call-count wait still
+    // passes, so an in-mock expect would go green on the wrong payload.
+    const savedBlocks: unknown[] = []
+    const saveAction = vi.fn(async (formData: FormData) => {
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
+      return { ok: true }
+    })
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus", "gospels", "family"],
+        },
+      ],
+      { isHomepage: true, saveAction },
+    )
+
+    try {
+      act(() => findButtonByAriaLabel(view.container, "Move Family up").click())
+      act(() => findButtonByAriaLabel(view.container, "Move Family up").click())
+      act(() => findButtonByAriaLabel(view.container, "Remove Gospels").click())
+
+      await act(async () => {
+        findButtonByText(view.container, "Save Draft").click()
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      // `tiles` is the authored truth; `categoryIds` mirrors its predefined
+      // members so a web deploy that predates tiles still renders the same
+      // rail in the same order.
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["family", "jesus"],
+          tiles: [
+            { id: "category:family", categoryId: "family" },
+            { id: "category:jesus", categoryId: "jesus" },
+          ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves an authored custom tile alongside the predefined ones", async () => {
+    const savedBlocks: unknown[] = []
+    const saveAction = vi.fn(async (formData: FormData) => {
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
+      return { ok: true }
+    })
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+        },
+      ],
+      { isHomepage: true, saveAction },
+    )
+
+    try {
+      const addCustom = Array.from(
+        view.container.querySelectorAll("button"),
+      ).find((element) => element.textContent?.includes("Custom tile"))
+      if (!addCustom) throw new Error("Add custom tile button not found")
+      act(() => addCustom.click())
+
+      await act(async () => {
+        findButtonByText(view.container, "Save Draft").click()
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            { id: "category:jesus", categoryId: "jesus" },
+            {
+              id: "custom-1",
+              title: "New tile",
+              href: "/watch",
+              icon: "sparkles",
+              style: "slate",
+            },
+          ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("reopens and discards tile selections through the shared editor state", async () => {
+    const publishedBlocks = [
+      {
+        t: "watchHomeCategoryRail",
+        sectionKey: "categories",
+        categoryIds: ["family", "jesus"],
+      },
+    ]
+    const discardAction = vi.fn(async () => ({
+      ok: true,
+      values: {
+        title: "Experience title",
+        slug: "experience-title",
+        metaDescription: "Meta description",
+        ogTitle: "",
+        ogDescription: "",
+        ogImageUrl: "",
+        pathSegment: "",
+        isHomepage: true,
+        blocksJson: JSON.stringify(publishedBlocks),
+      },
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus", "gospels"],
+        },
+      ],
+      { isHomepage: true, hasDraft: true, discardAction },
+    )
+
+    try {
+      expect(
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:jesus", "category:gospels"])
+
+      act(() => findButtonByText(view.container, "Discard draft").click())
+      const discardDialog = Array.from(
+        document.body.querySelectorAll('[role="dialog"]'),
+      ).find((candidate) =>
+        candidate.textContent?.includes("Discard English draft?"),
+      )
+      if (!(discardDialog instanceof HTMLElement)) {
+        throw new Error("Discard confirmation dialog not found")
+      }
+
+      await act(async () => {
+        findButtonByExactText(discardDialog, "Discard draft").click()
+        await Promise.resolve()
+      })
+
+      expect(discardAction).toHaveBeenCalledWith("locale-1")
+      expect(
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:family", "category:jesus"])
     } finally {
       view.cleanup()
     }

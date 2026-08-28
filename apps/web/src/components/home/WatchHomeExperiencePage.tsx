@@ -1,10 +1,17 @@
+import { Fragment } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
-import { WatchLanguageGlobeSection } from "@/components/home/WatchLanguageGlobeSection"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
+import {
+  boundDynamicCollectionFeedReferences,
+  mergeDynamicCollectionFeedExcludedIds,
+  type DynamicCollectionFeedCacheScope,
+} from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
 
@@ -13,7 +20,14 @@ type WatchHomeExperiencePageProps = {
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
+  legacyCategoryRailCompatibility?: boolean
+  dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
 }
+
+const LEGACY_CATEGORY_RAIL_SECTION = {
+  __typename: "WatchHomeCategoryRailBlock",
+  categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+} as unknown as Section
 
 function findBackdropImage(model: WatchHomeModel): {
   url: string
@@ -118,6 +132,8 @@ export function WatchHomeExperiencePage({
   blocks,
   locale = "en",
   languageSlug,
+  legacyCategoryRailCompatibility = false,
+  dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
@@ -129,9 +145,39 @@ export function WatchHomeExperiencePage({
   const dynamicCollectionBlock = normalized.blocks.find(
     isDynamicMediaCollectionBlock,
   )
-  const authoredBlocks = dynamicCollectionBlock
-    ? normalized.blocks.filter((block) => block !== dynamicCollectionBlock)
-    : normalized.blocks
+  const boundedFeaturedCollections = {
+    ids: featuredCollections.ids,
+    slugs: boundDynamicCollectionFeedReferences(featuredCollections.slugs),
+  }
+  const dynamicCollectionCacheSignatures = dynamicCollectionBlock
+    ? createInitialDynamicCollectionFeedCacheSignatures({
+        locale,
+        languageSlug,
+        cacheScope: dynamicCollectionCacheScope,
+        excludedIds: mergeDynamicCollectionFeedExcludedIds(
+          (
+            dynamicCollectionBlock as unknown as {
+              excludedVideoIds?: readonly string[] | null
+            }
+          ).excludedVideoIds,
+          boundedFeaturedCollections.ids,
+        ),
+        excludedSlugs: boundedFeaturedCollections.slugs,
+      })
+    : undefined
+  const dynamicCollections = {
+    featuredCollections: boundedFeaturedCollections,
+    cacheScope: dynamicCollectionCacheScope,
+    cacheSignatures: dynamicCollectionCacheSignatures,
+  }
+  const compatibilityCategoryRail = legacyCategoryRailCompatibility ? (
+    <ExperienceSectionRenderer
+      section={LEGACY_CATEGORY_RAIL_SECTION}
+      locale={locale}
+      languageSlug={languageSlug}
+      dynamicCollections={dynamicCollections}
+    />
+  ) : null
 
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
@@ -139,11 +185,13 @@ export function WatchHomeExperiencePage({
 
     if (isWatchHomeHeroBlock(block)) {
       return (
-        <WatchHomeTvCarousel
-          key={blockKey}
-          slides={heroModel.heroSlides}
-          sequence={heroModel.carousel}
-        />
+        <Fragment key={blockKey}>
+          <WatchHomeTvCarousel
+            slides={heroModel.heroSlides}
+            sequence={heroModel.carousel}
+          />
+          {compatibilityCategoryRail}
+        </Fragment>
       )
     }
 
@@ -153,8 +201,7 @@ export function WatchHomeExperiencePage({
         section={block}
         locale={locale}
         languageSlug={languageSlug}
-        featuredCollections={featuredCollections}
-        allowDynamicCollections
+        dynamicCollections={dynamicCollections}
       />
     )
 
@@ -206,19 +253,15 @@ export function WatchHomeExperiencePage({
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
           {hasHeroBlock ? null : (
-            <WatchHomeTvCarousel
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
+            <>
+              <WatchHomeTvCarousel
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+              {compatibilityCategoryRail}
+            </>
           )}
-          {authoredBlocks.map(renderBlock)}
-          {dynamicCollectionBlock
-            ? renderBlock(
-                dynamicCollectionBlock,
-                normalized.blocks.indexOf(dynamicCollectionBlock),
-              )
-            : null}
-          <WatchLanguageGlobeSection />
+          {normalized.blocks.map(renderBlock)}
           <WatchHomeFooter />
         </div>
       </div>

@@ -9,6 +9,7 @@ import { builder } from "@/graphql/builder"
 import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import type { ExperiencePreviewShape } from "@/services/experience-preview.service"
+import { resolveWatchHomeCategoryRailReadBlocks } from "@/services/watch-home-category-rail-rollout"
 
 // PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
 // `unauthorizedResolver: () => null` overrides Pothos scope-auth's default
@@ -52,7 +53,12 @@ builder.prismaObject("ExperienceLocale", {
       nullable: false,
       description:
         "Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.",
-      resolve: (row) => row.blocks as Block[],
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -143,7 +149,12 @@ ExperienceLocaleEffectiveRef.implement({
     blocks: t.field({
       type: [ExperienceBlock],
       nullable: false,
-      resolve: (row) => row.blocks,
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -231,7 +242,12 @@ ExperiencePreviewRef.implement({
     blocks: t.field({
       type: [ExperienceBlock],
       nullable: false,
-      resolve: (row) => row.blocks,
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
     }),
   }),
 })

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambia lengua de l’audio",
     "home": "Pagina principal de JesusFilm",
     "closeSearch": "Sara ricerca",
-    "submitSearch": "Serca"
+    "submitSearch": "Serca",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Serca e navega video",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Serca «{suggestion}» in lengua {language}",
     "inLanguage": "in lengua {language}",
     "browseByRegion": "Navega par region",
+    "allVideosOnSinglePage": "Tuti i video su na pagina",
     "clearLanguages": "Pulisci",
     "queryLanguageDetected": "{language} rilevà",
     "searchInLanguage": "Serca in lengua {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "No se ga podesto cargar el formulario de feedback.",
     "loadingForm": "Cargando el formulario de feedback…",
     "retry": "Torna a provar",
-    "openFormShort": "Sonzo el formulario",
     "cancel": "Anula",
-    "title": "Feedback beta",
-    "description": "Condividi ciò che funziona e ciò che podemo melhorar. Questo formulario xe fornìo da Google.",
-    "openInNewTab": "Sonzo el formulario in una nova scheda",
     "closeForm": "Sara el formulario de feedback",
-    "loadingGoogleForm": "Cargando el formulario Google…",
-    "iframeTitle": "Invia feedback beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Video cristiani gratis in {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Sport",
     "collections": "Colessioni",
     "subtitlesOnly": "Solo sottotitoli",
+    "backToTop": "Torna sù",
     "newlyAdded": "Zonta de recente",
     "newVideosTitle": "Video cristiani novi in {language}",
     "newestFirst": "Prima i più novì",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Video indipendenti",
     "videosFromCollection": "Video da {collection}.",
     "standaloneDescription": "Video indipendenti in sta lengua.",
-    "openCollection": "Vara colession"
+    "openCollection": "Vara colession",
+    "filters": "Filtri",
+    "filterLength": "Durata",
+    "filterLength_under5": "Manco de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Pì de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Scancela i filtri",
+    "filterResults": "{count} de {total} mostrà",
+    "noFilterResults": "Nissun video coresponde a sti filtri. Prova a levarghene uno.",
+    "filterAdded": "Zontà",
+    "filterAdded_60d": "Ultimi 60 dì",
+    "filterAdded_6m": "Ultimi 6 mesi",
+    "filterAdded_12m": "Ultimi 12 mesi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Guardàr",
@@ -407,6 +593,27 @@
     "merryChristmas": "Bon Nadale!",
     "daysUntilChristmas": "{count, plural, one {# giorno al Nadale} other {# giorni al Nadale}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Lengue",
     "metadataDescription": "Navega tra i video JesusFilm per lengua.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Azioni par pagina no trovà",
     "backToWatch": "Torna a Guardàr",
     "browseVideos": "Navega tra i video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Varda el cortometragio",
-    "actions": {
-      "joinUs": "Unìteve a noi",
-      "shareMission": "Condividi la nostra mission"
-    },
-    "welcomeStart": {
-      "label": "Fede e Scrittura",
-      "title": "I video de oggi",
-      "description": "Contenuti video centrài su la fede da la nostra biblioteca, par inspirar, sfidar e far nascer riflession."
-    },
-    "welcomeMorning": {
-      "label": "Inspirassion de matina",
-      "title": "Bon dì! I momenti biblici de ogi te speta.",
-      "description": "Inizia la zornada con momenti biblici che inspiren e alzen el to spirito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirassion de dopopranzo",
-      "title": "Bon dopopranzo! Momenti biblici par la to zornada.",
-      "description": "Contenuti biblici che infonde corajo, perfeti par na pausa de dopopranzo o par continuar a ricever inspirassion."
-    },
-    "welcomeEvening": {
-      "label": "Inspirassion de sera",
-      "title": "Bonasera! Rilassite co i momenti biblici.",
-      "description": "Momenti biblici de paix par aiutarte a rifletter e trovar conforto co la zornada che se conza."
-    },
-    "joinUs": {
-      "label": "Unìteve a noi",
-      "title": "Milliardi i xe in cerca",
-      "description": "La messe xe qua. Unìteve a noi par condivider el vangelo co el mondo tramite i media digitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Védemo insieme",
-      "title": "Contar la storia de Gesù, insieme",
-      "description": "Cussì che i pol sentir e veder el amor de Gesù in la so lengua, proprio là dove i xe."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% de corispondenza",

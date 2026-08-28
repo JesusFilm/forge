@@ -29,6 +29,7 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     description
     imageUrl
     imageAlt
+    muxPlaybackId
     label
     availability
     watchLanguageSlug
@@ -40,6 +41,16 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     publishedAt
     createdAt
     updatedAt
+  }
+`)
+
+const getWatchCollectionLanguageCountsOperation = adminGraphql(`
+  query GetWatchCollectionLanguageCounts($slugs: [String!]!) {
+    watchCollectionLanguageCounts(slugs: $slugs) {
+      slug
+      audioLanguageCount
+      subtitleLanguageCount
+    }
   }
 `)
 
@@ -110,6 +121,12 @@ export type WatchLanguageInventoryCard = {
   description: string | null
   imageUrl: string | null
   imageAlt: string
+  /**
+   * Frame source for videos with no authored artwork. Kept separate from
+   * `imageUrl` so surfaces that need a specific resolution (or that pick a
+   * hero by "first item with real artwork") can decide for themselves.
+   */
+  muxPlaybackId: string | null
   label: string | null
   availability: WatchLanguageInventoryAvailability
   href: Route | null
@@ -141,6 +158,16 @@ export type WatchLanguageInventoryModel = {
   audioCollections: WatchLanguageInventoryCard[]
   audioVideos: WatchLanguageInventoryCard[]
   subtitleOnlyVideos: WatchLanguageInventoryCard[]
+  /// Per-collection language availability, keyed by collection slug. Absent
+  /// entries mean "not known" (the counts query failed or the collection has
+  /// no children) — NOT "zero languages", which is why the sidebar renders
+  /// nothing rather than a 0 for a missing entry.
+  collectionLanguageCounts: Record<string, WatchCollectionLanguageCounts>
+}
+
+export type WatchCollectionLanguageCounts = {
+  audioLanguageCount: number
+  subtitleLanguageCount: number
 }
 
 type ErrorLike = { message?: string }
@@ -207,6 +234,67 @@ async function queryWatchLanguageInventoryLanguages(): Promise<
   }
 
   return languages
+}
+
+// Admin omits unknown slugs and does NOT preserve request order, so the result
+// must be joined back by slug — never zipped by index.
+async function queryWatchCollectionLanguageCounts(
+  slugs: readonly string[],
+): Promise<Record<string, WatchCollectionLanguageCounts>> {
+  if (slugs.length === 0) return {}
+
+  const result = await adminClient.query({
+    query: getWatchCollectionLanguageCountsOperation,
+    variables: { slugs: [...slugs] },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+
+  const counts: Record<string, WatchCollectionLanguageCounts> = {}
+  for (const row of result.data?.watchCollectionLanguageCounts ?? []) {
+    counts[row.slug] = {
+      audioLanguageCount: row.audioLanguageCount,
+      subtitleLanguageCount: row.subtitleLanguageCount,
+    }
+  }
+  return counts
+}
+
+const fetchWatchCollectionLanguageCounts = unstable_cache(
+  queryWatchCollectionLanguageCounts,
+  ["watch-collection-language-counts"],
+  {
+    // Cached far harder than the inventory itself (60s): a collection's
+    // language roster changes when a new dub is published, i.e. rarely, and
+    // this is decoration rather than routing or playability. The route is
+    // `force-static` with `revalidate = 3600`, so this never runs on a
+    // visitor's request path at all — it runs during ISR regeneration.
+    revalidate: 86_400,
+    tags: [WATCH_CACHE_TAGS.video, WATCH_CACHE_TAGS.series],
+  },
+)
+
+// The indicator is decoration. A failure here must cost the page nothing, so
+// the whole call is swallowed into "no counts known" rather than propagated.
+async function resolveCollectionLanguageCounts(
+  slugs: readonly string[],
+): Promise<Record<string, WatchCollectionLanguageCounts>> {
+  try {
+    return await fetchWatchCollectionLanguageCounts(slugs)
+  } catch (error) {
+    console.error(
+      `[watch] event=watch_collection_language_counts.failed collections=${slugs.length} detail=${
+        error instanceof Error
+          ? error.message.replaceAll(/\s+/g, "_")
+          : "unknown"
+      }`,
+    )
+    return {}
+  }
 }
 
 const fetchWatchLanguageInventory = unstable_cache(
@@ -428,6 +516,7 @@ function normalizeCard(
     description: item.description ?? null,
     imageUrl: item.imageUrl ?? null,
     imageAlt: item.imageAlt ?? item.title,
+    muxPlaybackId: item.muxPlaybackId ?? null,
     label: item.label ?? null,
     availability: item.availability,
     href: buildInventoryHref(item, inventoryLanguageSlug),
@@ -468,9 +557,16 @@ export async function resolveWatchLanguageInventory(
     nativeName: languageNativeName,
     bcp47: raw.language?.bcp47 ?? null,
   } satisfies WatchLanguageInventorySwitcherLanguage
-  const switcherLanguages = await resolveSwitcherLanguages(
-    currentSwitcherLanguage,
-  )
+  // Independent of each other, so they must not form a serial waterfall on the
+  // ISR regeneration path.
+  const [switcherLanguages, collectionLanguageCounts] = await Promise.all([
+    resolveSwitcherLanguages(currentSwitcherLanguage),
+    resolveCollectionLanguageCounts(
+      raw.audioCollections
+        .map((collection) => collection.slug)
+        .filter((slug): slug is string => Boolean(slug)),
+    ),
+  ])
   const normalizeInventoryCard = (item: WatchLanguageInventoryItemRaw) =>
     normalizeCard(item, resolvedLanguageSlug)
 
@@ -484,5 +580,180 @@ export async function resolveWatchLanguageInventory(
     audioCollections: raw.audioCollections.map(normalizeInventoryCard),
     audioVideos: raw.audioVideos.map(normalizeInventoryCard),
     subtitleOnlyVideos: raw.subtitleOnlyVideos.map(normalizeInventoryCard),
+    collectionLanguageCounts,
+  }
+}
+
+// A series wears the new-release badge for 60 days after the COLLECTION's own
+// publish date (decided 2026-08-27; the alternative — newest episode date —
+// would keep long-running series permanently fresh, which is not what "new
+// release" means here).
+export const NEW_RELEASE_WINDOW_DAYS = 60
+
+const NEW_RELEASE_WINDOW_MS = NEW_RELEASE_WINDOW_DAYS * 24 * 60 * 60 * 1000
+
+// Future dates are legitimate but only just: admin stores date-only midnights,
+// so a renderer behind that boundary sees "tomorrow". Anything further ahead is
+// a data error, and left unbounded it would pin that collection to the top of
+// the page, take the hero, and wear a NEW badge forever.
+const PUBLISHED_AT_FUTURE_TOLERANCE_DAYS = 2
+const PUBLISHED_AT_FUTURE_TOLERANCE_MS =
+  PUBLISHED_AT_FUTURE_TOLERANCE_DAYS * 24 * 60 * 60 * 1000
+
+// Admin serves Postgres timestamps as `2026-07-31 00:00:00+00` — a space
+// separator and a bare two-digit UTC offset. Neither is valid ISO-8601, so
+// `Date.parse` accepts that form only through V8's implementation-defined
+// fallback path, which is not something to build a feature on.
+//
+// Normalize to real ISO instead. Two traps, both measured by hand on node
+// 24.19.0 (2026-08-27), both silent — they yield "no badge, ever", never an
+// error:
+//   1. Replacing ONLY the space is worse than doing nothing: once a `T` is
+//      present the strict ISO parser runs and rejects the bare offset, so
+//      `2026-07-31T00:00:00+00` is NaN while the original string parses.
+//   2. Expanding the offset with a loose `/([+-]\d{2})$/` corrupts a bare
+//      date — `2026-07-31` ends in `-31`, so it becomes `2026-07-31:00`.
+//      Hence the offset expansion is gated on a preceding time component.
+/// Parsed publish time, or NaN when unusable OR implausibly far in the future.
+/// Shared by the badge, the sort, and the age windows so one bad row cannot be
+/// treated differently by each.
+export function publishedAtSortTime(value: string, now: Date): number {
+  const parsed = parsePublishedAt(value)
+  if (Number.isNaN(parsed)) return Number.NaN
+  return parsed > now.getTime() + PUBLISHED_AT_FUTURE_TOLERANCE_MS
+    ? Number.NaN
+    : parsed
+}
+
+export function parsePublishedAt(value: string): number {
+  const withTimeSeparator = value.replace(" ", "T")
+  const normalized = /T[\d:.]+[+-]\d{2}$/.test(withTimeSeparator)
+    ? `${withTimeSeparator}:00`
+    : withTimeSeparator
+  return Date.parse(normalized)
+}
+
+// Future `publishedAt` values DO badge: admin stores date-only publish dates at
+// midnight UTC, so a series dated "tomorrow" is legitimately the newest thing
+// in the catalog for any render running behind that boundary. Unparseable and
+// absent dates fail closed.
+export function isNewRelease(
+  publishedAt: string | null | undefined,
+  now: Date,
+): boolean {
+  if (!publishedAt) return false
+  const parsed = parsePublishedAt(publishedAt)
+  if (Number.isNaN(parsed)) return false
+  if (parsed > now.getTime() + PUBLISHED_AT_FUTURE_TOLERANCE_MS) return false
+  return parsed >= now.getTime() - NEW_RELEASE_WINDOW_MS
+}
+
+// ---------------------------------------------------------------------------
+// Inventory filter facets
+//
+// Every dimension here is derived from fields the inventory payload ALREADY
+// carries (`durationSeconds`, `label`, `availability`, `publishedAt`), so
+// filtering costs no extra query and no admin change.
+//
+// Two axes the product asked for are deliberately absent because the data does
+// not support them (surveyed against a restored production snapshot,
+// 2026-08-27, 1,107 videos):
+//   - Release year: `video.published_at` is the platform-publish/sync stamp,
+//     not a production year — every row is 2025 (1,024) or 2026 (83). The
+//     honest version of that axis is `recent` below.
+//   - Animated / explainer format: `animated` tags 9 videos, `animation` 3,
+//     `explainer` 0. Needs new admin tagging before it can be a filter.
+// ---------------------------------------------------------------------------
+
+export type InventoryLengthBucket = "under5" | "5to10" | "10to30" | "over30"
+export type InventoryTypeGroup =
+  | "featureFilm"
+  | "shortFilm"
+  | "episode"
+  | "collection"
+
+/// Bucket boundaries follow the real distribution rather than round numbers:
+/// 30-60min holds exactly ONE English video, so a separate bucket for it would
+/// render a permanently near-empty option. 30+ is one bucket.
+export function inventoryLengthBucket(
+  durationSeconds: number | null,
+): InventoryLengthBucket | null {
+  if (durationSeconds == null || durationSeconds <= 0) return null
+  if (durationSeconds < 300) return "under5"
+  if (durationSeconds < 600) return "5to10"
+  if (durationSeconds < 1800) return "10to30"
+  return "over30"
+}
+
+/// Feature and short films stay SEPARATE (product decision 2026-08-27) even
+/// though `featureFilm` is only 12 English items against `shortFilm`'s 171 —
+/// the distinction is the point of the filter. `episode`/`segment` and
+/// `series`/`collection` still pair up, because those splits are internal
+/// bookkeeping rather than something a viewer chooses between.
+export function inventoryTypeGroup(
+  label: string | null,
+): InventoryTypeGroup | null {
+  switch (label) {
+    case "featureFilm":
+      return "featureFilm"
+    case "shortFilm":
+      return "shortFilm"
+    case "episode":
+    case "segment":
+      return "episode"
+    case "series":
+    case "collection":
+      return "collection"
+    default:
+      return null
+  }
+}
+
+/// Whole days between `publishedAt` and `now`, for the date-window filter.
+///
+/// NOTE the axis this measures: `publishedAt` is when the video was published
+/// on the PLATFORM, not when the film was released. Surveyed 2026-08-27 against
+/// a production snapshot, 89% of the English library (887 of 1,001 items)
+/// carries a single month — 2025-06, the bulk import — which is why the offered
+/// windows stop at 12 months. A "last 2 years" option would match 1,001 of
+/// 1,001 and filter nothing.
+export function inventoryAgeDays(
+  publishedAt: string | null,
+  now: Date,
+): number | null {
+  if (!publishedAt) return null
+  const parsed = publishedAtSortTime(publishedAt, now)
+  if (Number.isNaN(parsed)) return null
+  // A just-future publish (date-only midnight) counts as 0 days old rather than
+  // negative, so it lands in the newest window.
+  return Math.max(0, Math.floor((now.getTime() - parsed) / 86_400_000))
+}
+
+/// Cumulative windows: choosing 6 months includes everything inside 60 days.
+/// Counts on the English page at the time of writing: 3 / 72 / 85 of 1,001.
+export const INVENTORY_ADDED_WINDOW_DAYS = {
+  "60d": 60,
+  "6m": 183,
+  "12m": 365,
+} as const
+
+export type InventoryAddedWindow = keyof typeof INVENTORY_ADDED_WINDOW_DAYS
+
+export type InventoryFilterFacets = {
+  id: string
+  length: InventoryLengthBucket | null
+  type: InventoryTypeGroup | null
+  ageDays: number | null
+}
+
+export function inventoryFilterFacets(
+  card: WatchLanguageInventoryCard,
+  now: Date,
+): InventoryFilterFacets {
+  return {
+    id: card.id,
+    length: inventoryLengthBucket(card.durationSeconds),
+    type: inventoryTypeGroup(card.label),
+    ageDays: inventoryAgeDays(card.publishedAt, now),
   }
 }

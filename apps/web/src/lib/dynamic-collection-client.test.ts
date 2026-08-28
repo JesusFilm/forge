@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   DynamicCollectionFeedRequestError,
   DynamicCollectionFeedValidationError,
+  WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
   type DynamicCollectionFeedInput,
 } from "./dynamic-collection-contract"
 import { loadDynamicCollectionFeedPage } from "./dynamic-collection-client"
@@ -21,8 +22,15 @@ afterEach(() => {
 })
 
 describe("loadDynamicCollectionFeedPage", () => {
-  it("issues a same-origin no-store GET with normalized inputs", async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(validPage))
+  it("issues a same-origin GET without forcing an edge-cache bypass", async () => {
+    const nextCacheSignature = "n".repeat(43)
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json(validPage, {
+        headers: {
+          "X-Watch-Collection-Next-Signature": nextCacheSignature,
+        },
+      }),
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     await expect(
@@ -34,8 +42,9 @@ describe("loadDynamicCollectionFeedPage", () => {
         after: "cursor-1",
         excludedIds: ["z", "a", "a"],
         excludedSlugs: ["featured"],
+        cacheSignature: "a".repeat(43),
       }),
-    ).resolves.toEqual(validPage)
+    ).resolves.toEqual({ ...validPage, nextCacheSignature })
 
     const [href, init] = fetchMock.mock.calls[0] ?? []
     expect(href).toMatch(/^\/watch\/api\/dynamic-collections\?/)
@@ -49,15 +58,36 @@ describe("loadDynamicCollectionFeedPage", () => {
         ["excludedIds", "a"],
         ["excludedIds", "z"],
         ["excludedSlugs", "featured"],
+        ["cacheSignature", "a".repeat(43)],
       ]),
     )
     expect(init).toEqual(
       expect.objectContaining({
-        cache: "no-store",
         headers: { accept: "application/json" },
         method: "GET",
       }),
     )
+    expect(init).not.toHaveProperty("cache")
+  })
+
+  it("serializes preview scope exactly once", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(validPage))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await loadDynamicCollectionFeedPage({
+      locale: "en",
+      languageSlug: "english",
+      cacheScope: "preview",
+      first: 3,
+      cardsPerParent: 12,
+    })
+
+    const [href] = fetchMock.mock.calls[0] ?? []
+    expect(
+      new URL(String(href), "https://example.test").searchParams.getAll(
+        "scope",
+      ),
+    ).toEqual(["preview"])
   })
 
   it("rejects invalid input before fetch and enforces the URL budget", async () => {
@@ -87,6 +117,39 @@ describe("loadDynamicCollectionFeedPage", () => {
     ).rejects.toThrow("too large")
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it.each([null, "cursor-1"])(
+    "falls back to an unsigned boundary-size request after=%s",
+    async (after) => {
+      const fetchMock = vi.fn<typeof fetch>(async () =>
+        Response.json(validPage),
+      )
+      vi.stubGlobal("fetch", fetchMock)
+
+      await loadDynamicCollectionFeedPage({
+        locale: "en",
+        languageSlug: "english",
+        first: 3,
+        cardsPerParent: 12,
+        after,
+        excludedIds: Array.from(
+          { length: 39 },
+          (_, index) => `${index}-${"a".repeat(191)}`,
+        ),
+        cacheSignature: "a".repeat(43),
+      })
+
+      const [href] = fetchMock.mock.calls[0] ?? []
+      expect(String(href).length).toBeLessThan(
+        WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
+      )
+      expect(
+        new URL(String(href), "https://example.test").searchParams.has(
+          "cacheSignature",
+        ),
+      ).toBe(false)
+    },
+  )
 
   it("rejects HTTP, JSON, and strict response-shape failures", async () => {
     const fetchMock = vi
@@ -174,6 +237,26 @@ describe("loadDynamicCollectionFeedPage", () => {
       loadDynamicCollectionFeedPage({
         locale: "invalid",
         languageSlug: "english",
+        first: 2,
+        cardsPerParent: 8,
+      }),
+    ).rejects.toBeInstanceOf(DynamicCollectionFeedValidationError)
+
+    await expect(
+      loadDynamicCollectionFeedPage({
+        locale: "en",
+        languageSlug: "english",
+        cacheScope: "private" as "live",
+        first: 2,
+        cardsPerParent: 8,
+      }),
+    ).rejects.toBeInstanceOf(DynamicCollectionFeedValidationError)
+
+    await expect(
+      loadDynamicCollectionFeedPage({
+        locale: "en",
+        languageSlug: "english",
+        cacheSignature: "short",
         first: 2,
         cardsPerParent: 8,
       }),

@@ -4,6 +4,8 @@ import { hasUiLocale } from "@/i18n/generated-ui-locales"
 
 export const WATCH_COLLECTION_FEED_MAX_EXCLUSIONS = 200
 export const WATCH_COLLECTION_FEED_MAX_URL_LENGTH = 8 * 1024
+export const WATCH_COLLECTION_FEED_CACHE_SIGNATURE_PATTERN =
+  /^[A-Za-z0-9_-]{43}$/
 
 export const WATCH_COLLECTION_FEED_PROFILES = {
   mobile: { first: 2, cardsPerParent: 8 },
@@ -12,6 +14,13 @@ export const WATCH_COLLECTION_FEED_PROFILES = {
 
 export type DynamicCollectionFeedProfile =
   (typeof WATCH_COLLECTION_FEED_PROFILES)[keyof typeof WATCH_COLLECTION_FEED_PROFILES]
+
+export type DynamicCollectionFeedCacheScope = "live" | "preview"
+
+export type DynamicCollectionFeedCacheSignatures = Record<
+  keyof typeof WATCH_COLLECTION_FEED_PROFILES,
+  string
+>
 
 export type DynamicCollectionFeedItem = {
   id: string
@@ -40,9 +49,15 @@ export type DynamicCollectionFeedPage = {
   hasNextPage: boolean
 }
 
+export type LoadedDynamicCollectionFeedPage = DynamicCollectionFeedPage & {
+  nextCacheSignature: string | null
+}
+
 export type DynamicCollectionFeedInput = DynamicCollectionFeedProfile & {
   locale: string
   languageSlug: string
+  cacheScope?: DynamicCollectionFeedCacheScope
+  cacheSignature?: string | null
   after?: string | null
   excludedIds?: readonly string[]
   excludedSlugs?: readonly string[]
@@ -51,6 +66,8 @@ export type DynamicCollectionFeedInput = DynamicCollectionFeedProfile & {
 export type NormalizedDynamicCollectionFeedInput = {
   locale: string
   languageSlug: string
+  cacheScope: DynamicCollectionFeedCacheScope
+  cacheSignature: string | null
   after: string | null
   excludedIds: string[]
   excludedSlugs: string[]
@@ -152,12 +169,17 @@ export function normalizeDynamicCollectionFeedInput(
 ): NormalizedDynamicCollectionFeedInput {
   const locale = input.locale.trim()
   const languageSlug = input.languageSlug.trim().toLowerCase()
+  const cacheScope = input.cacheScope ?? "live"
+  const cacheSignature = input.cacheSignature?.trim() || null
   const after = input.after?.trim() || null
 
   if (
     !hasUiLocale(locale) ||
     !LANGUAGE_SLUG_PATTERN.test(languageSlug) ||
     !PUBLIC_WATCH_LANGUAGE_SLUGS.has(languageSlug) ||
+    (cacheScope !== "live" && cacheScope !== "preview") ||
+    (cacheSignature !== null &&
+      !WATCH_COLLECTION_FEED_CACHE_SIGNATURE_PATTERN.test(cacheSignature)) ||
     (after !== null && !CURSOR_PATTERN.test(after)) ||
     !Number.isInteger(input.first) ||
     !Number.isInteger(input.cardsPerParent) ||
@@ -172,12 +194,49 @@ export function normalizeDynamicCollectionFeedInput(
   return {
     locale,
     languageSlug,
+    cacheScope,
+    cacheSignature,
     after,
     excludedIds: normalizeReferences(input.excludedIds),
     excludedSlugs: normalizeReferences(input.excludedSlugs),
     first: input.first as 2 | 3,
     cardsPerParent: input.cardsPerParent as 8 | 12,
   }
+}
+
+export function mergeDynamicCollectionFeedExcludedIds(
+  blockIds: readonly string[] | null | undefined,
+  featuredIds: readonly string[],
+): string[] {
+  return boundDynamicCollectionFeedReferences([
+    ...(blockIds ?? []),
+    ...featuredIds,
+  ])
+}
+
+export function boundDynamicCollectionFeedReferences(
+  references: readonly string[],
+): string[] {
+  return [...new Set(references)].slice(0, WATCH_COLLECTION_FEED_MAX_EXCLUSIONS)
+}
+
+export function dynamicCollectionFeedSearchParams(
+  input: NormalizedDynamicCollectionFeedInput,
+): URLSearchParams {
+  const params = new URLSearchParams({
+    locale: input.locale,
+    languageSlug: input.languageSlug,
+    first: String(input.first),
+    cardsPerParent: String(input.cardsPerParent),
+  })
+  if (input.cacheScope === "preview") params.set("scope", "preview")
+  if (input.after) params.set("after", input.after)
+  for (const id of input.excludedIds) params.append("excludedIds", id)
+  for (const slug of input.excludedSlugs) params.append("excludedSlugs", slug)
+  if (input.cacheSignature) {
+    params.set("cacheSignature", input.cacheSignature)
+  }
+  return params
 }
 
 function isDynamicCollectionFeedItem(

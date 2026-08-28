@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
     "closeSearch": "Vuala kusaka",
-    "submitSearch": "Saka"
+    "submitSearch": "Saka",
+    "library": "Nzubu wa mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Saka “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Selebula na ekanda",
+    "allVideosOnSinglePage": "Mavidiyo onso pa paji imwe",
     "clearLanguages": "Katula",
     "queryLanguageDetected": "{language} yimanye",
     "searchInLanguage": "Saka mu {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Fomu ya mayi kayikatelele kusanguka.",
     "loadingForm": "Kusangula fomu ya mayi…",
     "retry": "Linga diaka",
-    "openFormShort": "Kafua fomu",
     "cancel": "Pela",
-    "title": "Mayi a Beta",
-    "description": "Pesha bualu budi bukatshile ne tshidi tuya kuyidila. Fomu eyi ipeshwa na Google.",
-    "openInNewTab": "Kafua fomu mu tab muepi",
     "closeForm": "Vuala fomu ya mayi",
-    "loadingGoogleForm": "Kusangula Google Fomu…",
-    "iframeTitle": "Tuma Mayi a Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Mavidiyo a Bukristu a bupwila mu {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Mibumba",
     "subtitlesOnly": "Subtitles kaka",
+    "backToTop": "Pinganyina kuulu",
     "newlyAdded": "Bikatswa pya",
     "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
     "newestFirst": "Bya pya kumpala",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Mavidiyo a mueyele",
     "videosFromCollection": "Mavidiyo aku mu {collection}.",
     "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
-    "openCollection": "Vula kusangula"
+    "openCollection": "Vula kusangula",
+    "filters": "Bilubulukishi",
+    "filterLength": "Buule",
+    "filterLength_under5": "Muinshi wa minitshi 5",
+    "filterLength_5to10": "Minitshi 5-10",
+    "filterLength_10to30": "Minitshi 10-30",
+    "filterLength_over30": "Kupita minitshi 30",
+    "filterType": "Mushindu",
+    "clearFilters": "Umbusha bilubulukishi",
+    "filterResults": "{count} pa {total} bileja",
+    "noFilterResults": "Kakuena vidyo udi upetangana ne bilubulukishi ebi. Tshima kumbusha kimwe.",
+    "filterAdded": "Mbadikilu",
+    "filterAdded_60d": "Matuku 60 mapite",
+    "filterAdded_6m": "Ngondo 6 mipite",
+    "filterAdded_12m": "Ngondo 12 mipite"
   },
   "WatchHome": {
     "pageTitle": "Talala pa Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Noeli muimpe!",
     "daysUntilChristmas": "{count, plural, one {# dituku ditshidi kumpala kwa Noeli} other {# matuku atshidi kumpala kwa Noeli}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Malulaka",
     "metadataDescription": "Selebula mavidiyo a JesusFilm na lulaka.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Bikorwa bya paji kayifwanyanga",
     "backToWatch": "Lwela ku Watch",
     "browseVideos": "Selebula mavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talala filme ya mukese",
-    "actions": {
-      "joinUs": "Kanga na betu",
-      "shareMission": "Kabana mu mision yetu"
-    },
-    "welcomeStart": {
-      "label": "Lukwikilu ne Maandishe a Bulemu",
-      "title": "Mavidiyo a lelo a kusankula",
-      "description": "Mavidiyo a mu mutshima wa lukwikilu a mu bufuku bwa betu, a kufwasa, a kukumina, ne a kubuulula mabanza."
-    },
-    "welcomeMorning": {
-      "label": "Bwambile bwa mu tshiambo",
-      "title": "Mpepo ya mu tshiandi! Bintu bya Biblia bya lelo bidi kulaya.",
-      "description": "Tshikala tshebe na mavidiyo a Biblia a kulonga mutshima ne kukulombola mu dikolo dia lelo."
-    },
-    "welcomeAfternoon": {
-      "label": "Bwambile bwa mu ditumba",
-      "title": "Mpepo ya mu ditumba! Bintu bya Biblia bya lelo bidi ku yebe.",
-      "description": "Mavidiyo a Biblia a kulomba mutshima, a kufwasa mu dikolo dia mu ditumba ne kuikala luishi."
-    },
-    "welcomeEvening": {
-      "label": "Bwambile bwa mu diloba",
-      "title": "Mpepo ya mu diloba! Pumuka ne bintu bya Biblia.",
-      "description": "Bintu bya Biblia bya kimpepe bi kukwasa kusambuka ne kupata lulendo luwama ne dikolo dia lelo diishi."
-    },
-    "joinUs": {
-      "label": "Kanga na betu",
-      "title": "Bilonda bidi kusaka",
-      "description": "Buvuna buleli. Kanga na betu mu kusakidila evangile pa buloba ne media ya digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tenda na betu",
-      "title": "Kutenda Nsangu ya Yesu, na betu",
-      "description": "Tudi kuleta mukanda ne luse lwa Yesu mu lulaka lwabo, mu njiya yawu mene."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% idi iwendangana",

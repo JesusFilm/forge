@@ -10,7 +10,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { LoaderCircle, Play } from "lucide-react"
+import { ArrowLeft, Circle, LoaderCircle, Play } from "lucide-react"
 
 import {
   Carousel,
@@ -33,6 +33,7 @@ import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -118,6 +119,7 @@ export function SiblingCarousel({
 }) {
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
+  const searchResultLabels = useTranslations("SearchResultCard")
   const { canonicalParent, currentVideoDocumentId } = block
   const selectableParents =
     block.selectableParents != null && block.selectableParents.length > 0
@@ -145,11 +147,18 @@ export function SiblingCarousel({
   // re-checked per child via the route builders below (a malformed slug still
   // renders, just not as a <Link>).
   const children = getRoutableCarouselChildren(selectedParent)
+  const isEpisodeRail = children.every(
+    (child) => videoLabelMessageKey(child.label) === "episode",
+  )
+  const railLabel = videoLabels(isEpisodeRail ? "episode" : "chapter")
 
   const activeIndex = children.findIndex(
     (child) => child.documentId === currentVideoDocumentId,
   )
-  const clipTotal = children.length
+  const itemTotal = children.length
+  const itemCountLabel = isEpisodeRail
+    ? searchResultLabels("episodeCount", { count: itemTotal })
+    : t("chapterCount", { count: itemTotal })
   const parentTitle = selectedParent.title ?? videoLabels("collection")
   const parentSlug =
     typeof selectedParent.slug === "string"
@@ -217,7 +226,7 @@ export function SiblingCarousel({
   const visualActiveIndex =
     pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
   const isParentMode = visualActiveIndex < 0
-  const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
+  const itemIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
   const [initialCarouselState] = useState(() => {
     const preservedIndex = consumePreservedCarouselIndex({
       children,
@@ -270,30 +279,25 @@ export function SiblingCarousel({
 
   if (children.length < 2) return null
 
-  // Parent-page mode (current video IS the parent / collection): suppress
-  // the "Clip N of M" position counter. There's no active position to
-  // count from, and rendering "Clip 1 of N" would be misleading. Show a
-  // simple "{N} chapters" total instead, mirroring the change in
-  // aria-label below.
+  // Parent-page mode (current video IS the parent / collection): suppress the
+  // position counter. There's no active position to count from, and rendering
+  // "Chapter 1 of N" or "Episode 1 of N" would be misleading. Show a simple
+  // item total instead, mirroring the change in aria-label below.
   const ariaLabel = isParentMode
-    ? t("chaptersAriaLabel", { title: parentTitle, count: clipTotal })
-    : t("clipAriaLabel", {
-        title: parentTitle,
-        current: clipIndex,
-        total: clipTotal,
-      })
+    ? `${parentTitle} · ${itemCountLabel}`
+    : `${parentTitle} · ${railLabel} ${t("position", {
+        current: itemIndex,
+        total: itemTotal,
+      })}`
   const positionLabel = isParentMode ? (
-    t("chapterCount", { count: clipTotal })
+    itemCountLabel
   ) : (
     <>
       <span className="md:hidden">
-        {t("position", { current: clipIndex, total: clipTotal })}
+        {t("position", { current: itemIndex, total: itemTotal })}
       </span>
       <span className="hidden md:inline">
-        {t("clipPosition", {
-          current: clipIndex,
-          total: clipTotal,
-        })}
+        {railLabel} {t("position", { current: itemIndex, total: itemTotal })}
       </span>
     </>
   )
@@ -307,22 +311,47 @@ export function SiblingCarousel({
     >
       <header className="mb-4 px-5 md:px-0">
         {selectableParents != null ? (
-          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
-            {selectableParents.length === 1 ? (
-              <span
-                data-testid="sibling-carousel-parent-title"
-                className="min-w-0 max-w-full truncate text-sm font-medium text-stone-100 md:max-w-xs md:flex-1"
-              >
-                {parentTitle}
+          selectableParents.length === 1 ? (
+            <p className="flex min-w-0 items-center gap-2 overflow-hidden text-base sm:text-sm font-normal text-stone-200">
+              {parentHref != null ? (
+                <Link
+                  href={parentHref}
+                  data-testid="sibling-carousel-parent-title"
+                  className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
+                >
+                  <ArrowLeft
+                    aria-hidden="true"
+                    data-testid="sibling-carousel-parent-icon"
+                    className="size-4 shrink-0 text-white"
+                  />
+                  <span className="truncate">{parentTitle}</span>
+                </Link>
+              ) : (
+                <span
+                  data-testid="sibling-carousel-parent-title"
+                  className="truncate font-medium text-stone-50"
+                >
+                  {parentTitle}
+                </span>
+              )}
+              <Circle
+                aria-hidden="true"
+                data-testid="sibling-carousel-separator-icon"
+                className="size-1 shrink-0 fill-current text-stone-400 opacity-60"
+              />
+              <span data-testid="sibling-carousel-label" className="shrink-0">
+                {positionLabel}
               </span>
-            ) : (
+            </p>
+          ) : (
+            <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
               <select
                 aria-label={videoLabels("collection")}
                 aria-busy={validPendingNavigation != null ? "true" : undefined}
                 data-testid="sibling-carousel-parent-selector"
                 value={selectedParent.documentId}
                 disabled={validPendingNavigation != null}
-                className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
+                className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-base sm:text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
                 onChange={(event) => {
                   setApi(null)
                   deferInitialAutoScrollRef.current = false
@@ -338,38 +367,53 @@ export function SiblingCarousel({
                   </option>
                 ))}
               </select>
-            )}
-            <span
-              data-testid="sibling-carousel-label"
-              className="shrink-0 text-sm font-normal text-stone-300"
-            >
-              {positionLabel}
-            </span>
-            {selectableParents.length > 1 ? (
+              <span
+                data-testid="sibling-carousel-label"
+                className="shrink-0 text-base sm:text-sm font-normal text-stone-300"
+              >
+                {positionLabel}
+              </span>
               <span
                 aria-live="polite"
                 aria-atomic="true"
                 data-testid="sibling-carousel-selection-announcement"
                 className="sr-only"
               >
-                {parentTitle} · {t("chapterCount", { count: clipTotal })}
+                {parentTitle} · {itemCountLabel}
               </span>
-            ) : null}
-          </div>
+            </div>
+          )
         ) : (
-          <p className="text-sm font-normal text-stone-300">
+          <p className="flex min-w-0 items-center gap-2 overflow-hidden text-base sm:text-sm font-normal text-stone-200">
             {parentHref != null ? (
               <Link
                 href={parentHref}
-                className="text-stone-100 hover:underline"
+                data-testid="sibling-carousel-parent-title"
+                className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
               >
-                <span className="font-medium">{parentTitle}</span>
+                <ArrowLeft
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-parent-icon"
+                  className="size-4 shrink-0 text-white"
+                />
+                <span className="truncate">{parentTitle}</span>
               </Link>
             ) : (
-              <span className="font-medium text-stone-100">{parentTitle}</span>
+              <span
+                data-testid="sibling-carousel-parent-title"
+                className="truncate font-medium text-stone-50"
+              >
+                {parentTitle}
+              </span>
             )}
-            <span className="px-2 text-stone-500">·</span>
-            <span data-testid="sibling-carousel-label">{positionLabel}</span>
+            <Circle
+              aria-hidden="true"
+              data-testid="sibling-carousel-separator-icon"
+              className="size-1 shrink-0 fill-current text-stone-400 opacity-60"
+            />
+            <span data-testid="sibling-carousel-label" className="shrink-0">
+              {positionLabel}
+            </span>
           </p>
         )}
       </header>
@@ -440,7 +484,7 @@ export function SiblingCarousel({
                     src={thumb}
                     alt={thumbnailAlt}
                     fill
-                    sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                    sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     {...(blurDataURL
                       ? {
@@ -459,14 +503,14 @@ export function SiblingCarousel({
                 ) : (
                   <div
                     data-testid="sibling-carousel-thumb-placeholder"
-                    className="flex h-full w-full items-center justify-center bg-stone-900 text-xs text-stone-600"
+                    className="flex h-full w-full items-center justify-center bg-stone-900 text-sm sm:text-xs text-stone-600"
                   >
                     {t("noImage")}
                   </div>
                 )}
                 <MuxHoverPreview
                   previewUrl={href ? muxPreview : null}
-                  sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                  sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                 />
 
                 {/* Soften the image into the lower caption zone. */}
@@ -512,7 +556,7 @@ export function SiblingCarousel({
                   className="z-20 bg-gradient-to-t from-black/68 via-black/35 to-transparent"
                 >
                   <VideoThumbnailEyebrow size="compact-sm">
-                    {t("chapter")}
+                    {railLabel}
                   </VideoThumbnailEyebrow>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
@@ -569,7 +613,7 @@ export function SiblingCarousel({
             return (
               <CarouselItem
                 key={child.documentId}
-                className="basis-[48%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
+                className="basis-[70%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
                 aria-current={isActive ? "true" : undefined}
               >
                 {/* Active cards use a real inside border. Inactive cards keep

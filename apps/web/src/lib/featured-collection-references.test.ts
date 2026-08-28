@@ -35,7 +35,7 @@ describe("collectFeaturedCollectionReferences", () => {
       ]),
     ).toEqual({
       ids: ["collection-id", "nested-id"],
-      slugs: ["the-parent-collection", "featured-collection", "nested-slug"],
+      slugs: ["the-parent-collection"],
     })
   })
 })

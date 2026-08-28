@@ -1,15 +1,25 @@
 {
   "cli": {
     "version": ">= 16.0.0",
+    "appVersionSource": "remote",
     "requireCommit": true
   },
   "build": {
+    "base": {
+      "node": "24.14.1",
+      "pnpm": "9.12.3",
+      "env": {
+        "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "channel": "preview",
       "environment": "preview"
@@ -19,6 +29,8 @@
       "ios": { "simulator": true }
     },
     "production": {
+      "extends": "base",
+      "autoIncrement": true,
       "channel": "production",
       "environment": "production"
     }

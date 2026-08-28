@@ -175,7 +175,7 @@ function UnavailableLanguageBadge({
   return (
     <span
       data-testid="search-card-availability-badge"
-      className="absolute top-3 left-3 z-30 inline-flex max-w-[calc(100%-1.5rem)] rounded-md bg-stone-100/95 px-2.5 py-1 text-[11px] leading-4 font-semibold text-stone-950 shadow-lg ring-1 ring-black/20 backdrop-blur-sm"
+      className="absolute top-3 left-3 z-30 inline-flex max-w-[calc(100%-1.5rem)] rounded-md bg-stone-100/95 px-2.5 py-1 text-xs leading-4 font-semibold text-stone-950 sm:text-[11px] shadow-lg ring-1 ring-black/20 backdrop-blur-sm"
     >
       <span className="truncate">
         <span>{t("notAvailable")}</span>
@@ -350,7 +350,7 @@ export function VideoCard({
         {isExperience && !isUnavailable ? (
           <span
             data-testid="search-card-experience-chip"
-            className="absolute top-3 right-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow"
+            className="absolute top-3 right-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-semibold tracking-wider text-stone-950 uppercase shadow sm:text-[10px]"
           >
             {t("experience")}
           </span>
@@ -358,7 +358,7 @@ export function VideoCard({
           <span
             data-testid="search-card-pill"
             data-pill-kind={pill.kind}
-            className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"
+            className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur-sm"
           >
             {pill.kind === "duration" ? (
               <Play size={10} fill="currentColor" stroke="none" aria-hidden />

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
     "closeSearch": "Gidde ohcan",
-    "submitSearch": "Oza"
+    "submitSearch": "Oza",
+    "library": "Girjerádju"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Oza «{suggestion}» dán gillii: {language}",
     "inLanguage": "{language}:s",
     "browseByRegion": "Geahččal guovllu mielde",
+    "allVideosOnSinglePage": "Buot videoat ovtta siiddus",
     "clearLanguages": "Sihko",
     "queryLanguageDetected": "{language} gávdnon",
     "searchInLanguage": "Oza dán gillii: {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Áššáigeahččanmádii ii sáhttán lohkat.",
     "loadingForm": "Lohkan áššáigeahččanmádii…",
     "retry": "Geahččal ođđasit",
-    "openFormShort": "Raba madii",
     "cancel": "Gaskkalduhte",
-    "title": "Beta-áššáigeahččan",
-    "description": "Muitte maid mii jođán lea ja maid mii sáhtat bisuhit. Dán madii addá Google.",
-    "openInNewTab": "Raba madii ođđa gittašaŋa",
     "closeForm": "Gidde áššáigeahččanmádii",
-    "loadingGoogleForm": "Lohkan Google Form…",
-    "iframeTitle": "Sádde Beta-áššáigeahččama"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Fállosat kristtalaš videoat {language}:s | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Spábbaileamit",
     "collections": "Čoakkáldagat",
     "subtitlesOnly": "Dušše lávlagat",
+    "backToTop": "Máhcca bajás",
     "newlyAdded": "Ođđa lasihuvvon",
     "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
     "newestFirst": "Ođđemus álggos",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Oktasoavttadit videoat",
     "videosFromCollection": "Videoat {collection}:s.",
     "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
-    "openCollection": "Raba čoakkáldaga"
+    "openCollection": "Raba čoakkáldaga",
+    "filters": "Sillat",
+    "filterLength": "Guhkkodat",
+    "filterLength_under5": "Unnit go 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Eanet go 30 min",
+    "filterType": "Šládja",
+    "clearFilters": "Sihko sillat",
+    "filterResults": "Čájehuvvo {count} / {total}",
+    "noFilterResults": "Ii oktage video heive dáid sillaide. Geahččal váldit eret ovtta.",
+    "filterAdded": "Lasihuvvon",
+    "filterAdded_60d": "Maŋimuš 60 beaivvi",
+    "filterAdded_6m": "Maŋimuš 6 mánu",
+    "filterAdded_12m": "Maŋimuš 12 mánu"
   },
   "WatchHome": {
     "pageTitle": "Geahččal | Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Buorit juovllat!",
     "daysUntilChristmas": "{count, plural, one {# beaivi juovllaide} other {# beaivvi juovllaide}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Gielat",
     "metadataDescription": "Geahččal JesusFilm videoaid giela mielde.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Siidu ii gávdno doaibmabijut",
     "backToWatch": "Maŋŋá geahččamii",
     "browseVideos": "Geahččal videoaid"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Geahččal oanehis filmma",
-    "actions": {
-      "joinUs": "Oasseváldde min",
-      "shareMission": "Juoge min missiijii"
-    },
-    "welcomeStart": {
-      "label": "Osko ja Skrifta",
-      "title": "Dálá videočoakkáldat",
-      "description": "Oskojulggašuvvon videosisdoallu min buvttas mii deaivvada, hástala ja movttiidahttá jurddašit."
-    },
-    "welcomeMorning": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Dálá Biibbalmuitalusat várrejit dutnje.",
-      "description": "Álggaše beaivvi buorit Biibbalmuitalusain, mat leat hábmejuvvon movttiidahttit ja bajidit du oaiviliid."
-    },
-    "welcomeAfternoon": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Biibbalmuitalusat du beivvi várás.",
-      "description": "Buorit Biibbalmuitalusat, heivvolaččat iežat beaivegaskkamii dahje jotkkolaš movttiidahttimii."
-    },
-    "welcomeEvening": {
-      "label": "Eahketmovttiidahttin",
-      "title": "Bures boahtin! Háliidatgo hávdadit Biibbalmuitalusain?",
-      "description": "Roahkkadit Biibbalmuitalusat, mat veahkehit dutnje jurddašit ja gávdnat roahtu go beaivi nohká."
-    },
-    "joinUs": {
-      "label": "Oasseváldde min",
-      "title": "Miljjáhtat ohcet",
-      "description": "Sáddu lea das. Oasseváldde min go juohkit evangeliuma máilmái digitála media bokte."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vázzet oktan",
-      "title": "Jesus muitalusa čuovvut oktanaga",
-      "description": "Vai sii ožžot guldalit ja oaidnit Jesus ráhkisvuođa iežaset gielas, dan sadjái gos sii orrot."
-    }
   },
   "VideoRecommendations": {
     "match": "Heiveheapmi: {percent} %",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Taui i te reo oro",
     "home": "Te fare JésusFilm",
     "closeSearch": "A tapiri i te imiraa",
-    "submitSearch": "A imi"
+    "submitSearch": "A imi",
+    "library": "Fare puta"
   },
   "SearchOverlay": {
     "dialogLabel": "A imi e a hi'o i te mau video",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "A imi i «{suggestion}» na roto i te reo {language}",
     "inLanguage": "i roto i te {language}",
     "browseByRegion": "A hi'o na te tuhaa fenua",
+    "allVideosOnSinglePage": "Te mau video ato’a i te api hoê",
     "clearLanguages": "Tamâ",
     "queryLanguageDetected": "Ua ite-hia te reo {language}",
     "searchInLanguage": "A imi na roto i te reo {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "ʻAita te faufau faaite i nehenehe e uta mai.",
     "loadingForm": "Te uta nei i te faufau faaite…",
     "retry": "Tamata faahou",
-    "openFormShort": "A iriti i te faufau",
     "cancel": "A faaea",
-    "title": "Faaite Beta",
-    "description": "A faaite mai i te mea e manuia ra e te mea e nehenehe e faahou. Na Google teie faufau.",
-    "openInNewTab": "A iriti i te faufau i roto i te tab apî",
     "closeForm": "A tapiri i te faufau faaite",
-    "loadingGoogleForm": "Te uta nei i te Google Form…",
-    "iframeTitle": "Tuu i te Faaite Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Te mau video Kerisetiano tamoni ore i roto i te {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Te mau hākinakina",
     "collections": "Te mau ha'aputuhia",
     "subtitlesOnly": "Te mau subtitles ana'e",
+    "backToTop": "Hoʻi i niʻa",
     "newlyAdded": "Ua tāpiri-apî-hia",
     "newVideosTitle": "Te mau video Kerisetiano apî i roto i te {language}",
     "newestFirst": "Te apî roa na mua",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Te mau video ta'ahiraa",
     "videosFromCollection": "Te mau video mai roto mai i te {collection}.",
     "standaloneDescription": "Te mau video ta'ahiraa i roto i teie reo.",
-    "openCollection": "A iriti i te ha'aputuhia"
+    "openCollection": "A iriti i te ha'aputuhia",
+    "filters": "Tāmāmā",
+    "filterLength": "Roa",
+    "filterLength_under5": "Iti aʻe i te 5 mineti",
+    "filterLength_5to10": "5-10 mineti",
+    "filterLength_10to30": "10-30 mineti",
+    "filterLength_over30": "Hau atu i te 30 mineti",
+    "filterType": "Huru",
+    "clearFilters": "Fāʻiriʻiri i te tāmāmā",
+    "filterResults": "Te faʻaiteraʻa i te {count} nō roto i te {total}",
+    "noFilterResults": "Aita e video e tuʻati i teie mau tāmāmā. A tāmata i te iriti i te hoʻē.",
+    "filterAdded": "Tuʻuhia",
+    "filterAdded_60d": "Te 60 mahana i mairi",
+    "filterAdded_6m": "Te 6 āvaʻe i mairi",
+    "filterAdded_12m": "Te 12 āvaʻe i mairi"
   },
   "WatchHome": {
     "pageTitle": "Mata'ita'i — Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Ia oaoa te Noel!",
     "daysUntilChristmas": "{count, plural, one {# mahana e toe nei e tae i te Noel} other {# mahana e toe nei e tae i te Noel}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Te mau reo",
     "metadataDescription": "A hi'o i te mau video JesusFilm na roto i te reo.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Te mau ohipa no te api i itehia-ore-hia",
     "backToWatch": "Ho'i i te Watch",
     "browseVideos": "A hi'o i te mau video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mata'ita'i i te hoho'a poto",
-    "actions": {
-      "joinUs": "A hono mai",
-      "shareMission": "A amui i roto i ta matou misioni"
-    },
-    "welcomeStart": {
-      "label": "Faaroo & te Parau Papai",
-      "title": "Te mau maitiraa video no teie mahana",
-      "description": "Te mau video no nia i te faaroo i roto i ta matou fare parau, no te faauru, no te tamataraa, e no te faaara i te feruriraa."
-    },
-    "welcomeMorning": {
-      "label": "Faaururaa i te po'ipo'i",
-      "title": "Ia ora na i te po'ipo'i! Te tia'i nei te mau taime Bibilia no teie mahana.",
-      "description": "A haamata i to oe mahana ma te mau taime Bibilia e faaitoito ra e e faateitei ra i to oe varua."
-    },
-    "welcomeAfternoon": {
-      "label": "Faaururaa i te aahiata",
-      "title": "Ia ora na i te aahiata! Te mau taime Bibilia no to oe mahana.",
-      "description": "Te mau tumu parau Bibilia e faaitoito ra, e tano maitai no to oe taime faafaaearaa i te aahiata aore ra no te faahou-faahou-raa i te faaururaa."
-    },
-    "welcomeEvening": {
-      "label": "Faaururaa i te ahiahi",
-      "title": "Ia ora na i te ahiahi! A faaea ma te mau taime Bibilia.",
-      "description": "Te mau taime Bibilia hau no te tauturu ia oe ia feruri hohonu e ia ite i te tamahanahanaraa i te hopea o to oe mahana."
-    },
-    "joinUs": {
-      "label": "A hono mai",
-      "title": "Te imi nei te mau miria taata",
-      "description": "Ua tae mai teotoretoraa. A hono mai ia matou i te faaiteraa i te evanelia i te ao nei na roto i te mau media numera."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A haere amui tatou",
-      "title": "Te faati'araa i te aamu o Iesu, amui atoa",
-      "description": "Ia nehenehe ratou e faaroo e e ite i te here o Iesu i roto i to ratou iho reo, i te vahi iho ra ratou."
-    }
   },
   "VideoRecommendations": {
     "match": "E tano {percent}%",

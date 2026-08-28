@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  ArrowUpRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -55,7 +56,7 @@ import {
   type FeedbackSelectedElement,
   type FeedbackSubmission,
 } from "@/lib/feedback"
-import { submitFeedback } from "@/lib/feedback-action"
+import { addFeedbackFollowUpEmail, submitFeedback } from "@/lib/feedback-action"
 import { publicWatchAudioLanguageSlugForLocale } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
@@ -65,29 +66,72 @@ import {
 
 const FEEDBACK_STEP_COUNT = 5
 const FEEDBACK_SUBMISSION_TIMEOUT_MS = 15_000
+const SUPPORT_FORM_URL = "https://www.jesusfilm.org/contact/"
 
-const STEP_COPY = [
-  {
-    title: "Choose a feedback type",
-    helper: "What best describes your feedback?",
-  },
-  {
-    title: "Add helpful context",
-    helper: "Tell us whether language or specific content is involved.",
-  },
-  {
-    title: "Point to something",
-    helper: "Optionally mark the exact element or area on this page.",
-  },
-  {
-    title: "Describe what happened",
-    helper: "Share the details and attach technical context if useful.",
-  },
-  {
-    title: "About you",
-    helper: "Add your name and an optional email so we can follow up.",
-  },
-] as const
+// Typed failure reasons from the server actions (derived from the action
+// return types so the switches below stay exhaustive-checkable), plus the
+// client-local timeout the submission race can synthesize.
+type FeedbackSubmitFailureReason =
+  | Extract<Awaited<ReturnType<typeof submitFeedback>>, { ok: false }>["reason"]
+  | "client_timeout"
+
+type FeedbackFollowUpFailureReason = Extract<
+  Awaited<ReturnType<typeof addFeedbackFollowUpEmail>>,
+  { ok: false }
+>["reason"]
+
+// Client-side translation keys for submission failures, keyed by the typed
+// `reason` on FeedbackActionResult (the server has no locale context, so its
+// English `message` is never rendered). Unknown reasons get the generic copy.
+function submissionErrorKey(reason: FeedbackSubmitFailureReason): string {
+  switch (reason) {
+    case "invalid":
+      return "errors.invalid"
+    case "rate_limited":
+      return "errors.rateLimited"
+    case "client_timeout":
+      return "errors.timeout"
+    case "delivery_failed":
+      return "errors.sendFailed"
+    default: {
+      // Out-of-contract runtime values still fall back to the generic copy;
+      // the never-assignment keeps the switch exhaustive at compile time.
+      const exhausted: never = reason
+      void exhausted
+      return "errors.sendFailed"
+    }
+  }
+}
+
+// Same pattern for the follow-up email action. The client validates the email
+// format before calling the action, so a server-side `invalid` in practice
+// means the opaque receipt expired.
+function followUpErrorKey(reason: FeedbackFollowUpFailureReason): string {
+  switch (reason) {
+    case "invalid":
+      return "errors.followUpExpired"
+    case "delivery_failed":
+      return "errors.followUpFailed"
+    default: {
+      const exhausted: never = reason
+      void exhausted
+      return "errors.followUpFailed"
+    }
+  }
+}
+
+// Message-key names under the Feedback.steps namespace, one per wizard step.
+const STEP_KEYS = ["type", "describe", "context", "point", "about"] as const
+
+// The success screen's follow-up copy is keyed by the persisted category
+// value; problem and confusing share the "problem" copy group.
+function followUpCopyKey(
+  category: FeedbackCategory | null,
+): "idea" | "problem" | "other" {
+  if (category === "idea") return "idea"
+  if (category === "problem" || category === "confusing") return "problem"
+  return "other"
+}
 
 type FeedbackModalProps = {
   open: boolean
@@ -95,58 +139,33 @@ type FeedbackModalProps = {
   onReady?: () => void
 }
 
+// Persisted `value` fields are wire/persisted enums — never localize them.
+// Display strings resolve through t() inside the component.
 type CategoryOption = {
   value: FeedbackCategory
-  label: string
   icon: typeof TriangleAlert
-  prompt: string
-  helper: string
 }
 
 const CATEGORY_OPTIONS: CategoryOption[] = [
-  {
-    value: "problem",
-    label: "Problem",
-    icon: TriangleAlert,
-    prompt: "What went wrong?",
-    helper: "Tell us what happened and what you expected to see.",
-  },
-  {
-    value: "confusing",
-    label: "Confusing",
-    icon: CircleHelp,
-    prompt: "What was hard to understand?",
-    helper: "Tell us where you got stuck or what felt unclear.",
-  },
-  {
-    value: "idea",
-    label: "Idea",
-    icon: Lightbulb,
-    prompt: "What would make Watch better?",
-    helper: "Describe the change and how it would help you.",
-  },
-  {
-    value: "praise",
-    label: "Praise",
-    icon: Heart,
-    prompt: "What worked well?",
-    helper: "Tell us what you enjoyed so we can do more of it.",
-  },
+  { value: "problem", icon: TriangleAlert },
+  { value: "confusing", icon: CircleHelp },
+  { value: "idea", icon: Lightbulb },
+  { value: "praise", icon: Heart },
 ]
 
 const LANGUAGE_AREA_OPTIONS = [
-  { value: "", label: "No language issue" },
-  { value: "audio", label: "Audio or dubbing" },
-  { value: "subtitles", label: "Subtitles or captions" },
-  { value: "interface", label: "Buttons or interface text" },
-  { value: "title-description", label: "Title or description" },
-  { value: "other", label: "Other language issue" },
+  { value: "", labelKey: "none" },
+  { value: "audio", labelKey: "audio" },
+  { value: "subtitles", labelKey: "subtitles" },
+  { value: "interface", labelKey: "interface" },
+  { value: "title-description", labelKey: "titleDescription" },
+  { value: "other", labelKey: "other" },
 ] as const
 
 const CONTENT_SCOPE_OPTIONS = [
-  { value: "", label: "No specific content" },
-  { value: "current", label: "This page or video" },
-  { value: "other", label: "Another video or resource" },
+  { value: "", labelKey: "none" },
+  { value: "current", labelKey: "current" },
+  { value: "other", labelKey: "other" },
 ] as const
 
 function ThemedSelect<T extends string>({
@@ -235,7 +254,7 @@ function ThemedSelect<T extends string>({
           setOpen((current) => !current)
         }}
         onKeyDown={handleKeyDown}
-        className="flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-white/15 bg-white/[0.035] px-4 text-left text-sm text-white transition hover:border-white/30 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
+        className="flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-white/15 bg-white/[0.035] px-4 text-left text-base sm:text-sm text-white transition hover:border-white/30 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
       >
         <span className="truncate">{selected?.label}</span>
         <ChevronDown
@@ -263,7 +282,7 @@ function ThemedSelect<T extends string>({
                   data-value={option.value}
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => choose(index)}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition focus-visible:outline-none ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-base sm:text-sm transition focus-visible:outline-none ${
                     isSelected
                       ? "bg-brand-red text-white"
                       : isActive
@@ -288,14 +307,14 @@ function ThemedSelect<T extends string>({
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="mb-2 block text-sm font-semibold text-stone-100">
+    <span className="mb-2 block text-base sm:text-sm font-semibold text-stone-100">
       {children}
     </span>
   )
 }
 
 function inputClassName(hasError = false) {
-  return `h-11 w-full rounded-xl border bg-white/[0.035] px-4 text-sm text-white transition placeholder:text-stone-600 focus-visible:ring-2 focus-visible:outline-none ${
+  return `h-11 w-full rounded-xl border bg-white/[0.035] px-4 text-base sm:text-sm text-white transition placeholder:text-stone-600 focus-visible:ring-2 focus-visible:outline-none ${
     hasError
       ? "border-brand-red/80 focus-visible:ring-brand-red/40"
       : "border-white/15 hover:border-white/25 focus-visible:border-white/35 focus-visible:ring-white/20"
@@ -309,6 +328,7 @@ function ElementPicker({
   onCancel: () => void
   onSelect: (element: FeedbackSelectedElement) => void
 }) {
+  const t = useTranslations("Feedback")
   const hoveredRef = useRef<HTMLElement | null>(null)
   const [outline, setOutline] = useState<DOMRect | null>(null)
   const [label, setLabel] = useState("")
@@ -393,18 +413,20 @@ function ElementPicker({
           <Crosshair aria-hidden className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Choose something on the page</p>
-          <p className="truncate text-xs text-stone-400">
-            {label || "Point to a heading, button, image, or section"}
+          <p className="text-base sm:text-sm font-semibold">
+            {t("picker.title")}
+          </p>
+          <p className="truncate text-sm sm:text-xs text-stone-400">
+            {label || t("picker.hint")}
           </p>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold text-stone-200 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-base sm:text-sm font-semibold text-stone-200 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
         >
           <X aria-hidden className="size-4" />
-          Cancel
+          {t("picker.cancel")}
         </button>
       </div>
     </div>
@@ -459,6 +481,12 @@ export function FeedbackModal({
     useState<FeedbackSelectedElement | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedWithEmail, setSubmittedWithEmail] = useState(false)
+  const [submissionReceipt, setSubmissionReceipt] = useState("")
+  const [followUpEmail, setFollowUpEmail] = useState("")
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false)
+  const [followUpAdded, setFollowUpAdded] = useState(false)
+  const [followUpError, setFollowUpError] = useState("")
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement>(null)
@@ -470,10 +498,50 @@ export function FeedbackModal({
       CATEGORY_OPTIONS[0],
     [category],
   )
-  const currentStepCopy =
-    step === 4
-      ? { title: categoryOption.prompt, helper: categoryOption.helper }
-      : STEP_COPY[step - 1]
+  // Memoized so per-keystroke re-renders don't re-run the t() lookups.
+  const currentStepCopy = useMemo(() => {
+    if (step === 2) {
+      return {
+        title: t(`categories.${categoryOption.value}.prompt`),
+        helper: t(`categories.${categoryOption.value}.helper`),
+      }
+    }
+    const stepKey = STEP_KEYS[step - 1] ?? "type"
+    return {
+      title: t(`steps.${stepKey}.title`),
+      helper: t(`steps.${stepKey}.helper`),
+    }
+  }, [categoryOption.value, step, t])
+  const languageAreaOptions = useMemo(
+    () =>
+      LANGUAGE_AREA_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(`languageAreas.${option.labelKey}`),
+      })),
+    [t],
+  )
+  const contentScopeOptions = useMemo(
+    () =>
+      CONTENT_SCOPE_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(`contentScopes.${option.labelKey}`),
+      })),
+    [t],
+  )
+  // Explicit label map: an unmapped future FeedbackDiagnostics field is a
+  // compile error. <dd> values stay raw (they are persisted to Linear).
+  const diagnosticsLabels = useMemo(
+    () =>
+      ({
+        browser: t("diagnostics.labels.browser"),
+        operatingSystem: t("diagnostics.labels.operatingSystem"),
+        device: t("diagnostics.labels.device"),
+        viewport: t("diagnostics.labels.viewport"),
+        timeZone: t("diagnostics.labels.timeZone"),
+        appVersion: t("diagnostics.labels.appVersion"),
+      }) satisfies Record<keyof FeedbackDiagnostics, string>,
+    [t],
+  )
   const selectedLanguage = useMemo(
     () =>
       languageOptions.find((option) => option.slug === languageSlug) ?? null,
@@ -586,18 +654,18 @@ export function FeedbackModal({
   function validateStep(targetStep: number): boolean {
     const next: Record<string, string> = {}
     if (targetStep === 1 && !category) {
-      next.category = "Choose a feedback type to continue."
+      next.category = t("validation.category")
     }
-    if (targetStep === 4 && message.trim().length < 10) {
-      next.message = "Please share at least 10 characters."
+    if (targetStep === 2 && message.trim().length < 10) {
+      next.message = t("validation.message")
     }
-    if (targetStep === 5 && !name.trim()) next.name = "Name is required."
+    if (targetStep === 5 && !name.trim()) next.name = t("validation.name")
     if (
       targetStep === 5 &&
       email.trim() &&
       !/^\S+@\S+\.\S+$/.test(email.trim())
     ) {
-      next.email = "Enter a valid email address."
+      next.email = t("validation.email")
     }
     setFieldErrors(next)
     return Object.keys(next).length === 0
@@ -607,7 +675,7 @@ export function FeedbackModal({
     event.preventDefault()
     if (step < FEEDBACK_STEP_COUNT) {
       if (validateStep(step)) setStep((current) => current + 1)
-      else if (step === 4) {
+      else if (step === 2) {
         document.getElementById("feedback-message")?.focus()
       }
       return
@@ -619,7 +687,7 @@ export function FeedbackModal({
       return
     }
     if (!category) {
-      setFieldErrors({ category: "Choose a feedback type to continue." })
+      setFieldErrors({ category: t("validation.category") })
       setStep(1)
       return
     }
@@ -673,35 +741,61 @@ export function FeedbackModal({
     try {
       const result = await Promise.race([
         submitFeedback(payload),
-        new Promise<{
-          ok: false
-          reason: "client_timeout"
-          message: string
-        }>((resolve) => {
+        new Promise<{ ok: false; reason: "client_timeout" }>((resolve) => {
           timeoutId = window.setTimeout(
-            () =>
-              resolve({
-                ok: false,
-                reason: "client_timeout",
-                message:
-                  "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
-              }),
+            () => resolve({ ok: false, reason: "client_timeout" }),
             FEEDBACK_SUBMISSION_TIMEOUT_MS,
           )
         }),
       ])
-      if (result.ok) setSubmitted(true)
-      else setError(result.message)
+      if (result.ok) {
+        setSubmittedWithEmail(Boolean(email.trim()))
+        setSubmissionReceipt(result.receipt ?? "")
+        setSubmitted(true)
+      }
+      // Render locale-aware copy keyed by the typed reason; the server's
+      // `message` string is English-only and is deliberately not rendered.
+      else setError(t(submissionErrorKey(result.reason)))
     } catch {
-      setError("We could not send your feedback. Please try again.")
+      setError(t("errors.sendFailed"))
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId)
       setSubmitting(false)
     }
   }
 
+  async function handleFollowUpEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedEmail = followUpEmail.trim()
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setFollowUpError(t("validation.email"))
+      return
+    }
+    if (!submissionReceipt) {
+      setFollowUpError(t("errors.followUpFailed"))
+      return
+    }
+
+    setFollowUpSubmitting(true)
+    setFollowUpError("")
+    try {
+      const result = await addFeedbackFollowUpEmail({
+        email: normalizedEmail,
+        receipt: submissionReceipt,
+      })
+      if (result.ok) setFollowUpAdded(true)
+      // Reason-keyed translation; the server's English `message` string is
+      // deliberately never rendered.
+      else setFollowUpError(t(followUpErrorKey(result.reason)))
+    } catch {
+      setFollowUpError(t("errors.followUpFailed"))
+    } finally {
+      setFollowUpSubmitting(false)
+    }
+  }
+
   function close() {
-    if (submitting) return
+    if (submitting || followUpSubmitting) return
     onOpenChange(false)
   }
 
@@ -723,7 +817,7 @@ export function FeedbackModal({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen && submitting) return
+        if (!nextOpen && (submitting || followUpSubmitting)) return
         onOpenChange(nextOpen)
       }}
     >
@@ -731,40 +825,112 @@ export function FeedbackModal({
         data-feedback-ignore
         data-testid="feedback-modal"
         overlayClassName="z-[70] bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-[71] grid place-items-center overflow-hidden"
+        viewportClassName="fixed inset-0 z-[71] flex overflow-x-hidden overflow-y-auto px-3 py-16 sm:py-24"
         showCloseButton={false}
-        className="relative flex h-dvh w-dvw max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 text-stone-100 ring-0 sm:h-auto sm:max-h-[94dvh] sm:w-[min(94vw,800px)] sm:max-w-[800px] sm:rounded-2xl sm:ring-1 sm:ring-white/15"
+        className="m-auto w-full max-w-[800px] shrink-0 overflow-visible rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0"
       >
         <button
           type="button"
           aria-label={t("closeForm")}
           data-testid="feedback-modal-close"
           onClick={close}
-          disabled={submitting}
-          className="absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] z-10 grid size-11 cursor-pointer place-items-center rounded-full text-stone-400 transition hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:top-5 sm:right-5"
+          disabled={submitting || followUpSubmitting}
+          className="fixed top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] z-50 grid size-11 cursor-pointer place-items-center rounded-full text-stone-400 transition hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:top-5 sm:right-5"
         >
           <X aria-hidden className="size-5" />
         </button>
 
         {submitted ? (
-          <div className="grid min-h-[430px] place-items-center px-6 py-16 text-center sm:min-h-[500px] sm:px-12">
-            <div className="max-w-md">
+          <div className="grid w-full place-items-center px-3 py-10 text-center sm:px-12 sm:py-16">
+            <div className="w-full max-w-md">
               <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/12 text-emerald-400 ring-1 ring-emerald-400/25">
                 <CheckCircle2 aria-hidden className="size-8" />
               </span>
               <DialogTitle className="mt-6 text-3xl font-semibold text-white">
-                Thank you
+                {t("success.title")}
               </DialogTitle>
-              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300">
-                Your feedback is with our team. It will help us decide what to
-                improve next.
+              {/* `sm:text-base` is load-bearing: DialogDescription's phone tier is
+                  `text-base sm:text-sm`, and overriding only the base size would
+                  leave that `sm:` rule live and shrink this to 14px on desktop. */}
+              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300 sm:text-base">
+                {t("success.description")}{" "}
+                {submittedWithEmail || followUpAdded
+                  ? t(
+                      `success.followUp.${followUpCopyKey(category)}.confirmation`,
+                    )
+                  : t(
+                      `success.followUp.${followUpCopyKey(category)}.invitation`,
+                    )}
               </DialogDescription>
+              {!submittedWithEmail && !followUpAdded ? (
+                <form
+                  data-testid="feedback-follow-up-email-form"
+                  noValidate
+                  onSubmit={handleFollowUpEmail}
+                  className="mt-7 text-left"
+                >
+                  <label
+                    htmlFor="feedback-follow-up-email"
+                    className="mb-2 block text-base sm:text-sm font-semibold text-stone-100"
+                  >
+                    {t("fields.email.label")}{" "}
+                    <span className="font-normal text-stone-500">
+                      {t("fields.optional")}
+                    </span>
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                      id="feedback-follow-up-email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={followUpEmail}
+                      maxLength={254}
+                      aria-invalid={Boolean(followUpError)}
+                      onChange={(event) => {
+                        setFollowUpEmail(event.target.value)
+                        if (followUpError) setFollowUpError("")
+                      }}
+                      placeholder={t("success.followUp.emailPlaceholder")}
+                      className={inputClassName(Boolean(followUpError))}
+                    />
+                    <button
+                      type="submit"
+                      disabled={followUpSubmitting}
+                      className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-base sm:text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      {followUpSubmitting ? (
+                        <Loader2 aria-hidden className="size-4 animate-spin" />
+                      ) : null}
+                      {followUpSubmitting
+                        ? t("success.followUp.adding")
+                        : t("success.followUp.addEmail")}
+                    </button>
+                  </div>
+                  {followUpError ? (
+                    <p
+                      role="alert"
+                      className="mt-2 text-sm sm:text-xs leading-relaxed text-red-200"
+                    >
+                      {followUpError}{" "}
+                      <a
+                        href={SUPPORT_FORM_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold underline underline-offset-4 hover:text-white"
+                      >
+                        {t("errors.openSupportForm")}
+                      </a>
+                    </p>
+                  ) : null}
+                </form>
+              ) : null}
               <button
                 type="button"
                 onClick={close}
-                className="mt-8 h-11 cursor-pointer rounded-full bg-brand-red px-7 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="mt-7 h-11 cursor-pointer rounded-full border border-white/15 px-7 text-base sm:text-sm font-semibold text-stone-200 transition hover:border-white/30 hover:bg-white/[0.05] hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                Done
+                {t("success.done")}
               </button>
             </div>
           </div>
@@ -773,20 +939,23 @@ export function FeedbackModal({
             ref={formRef}
             noValidate
             onSubmit={handleSubmit}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:px-10 sm:pt-6 sm:pb-6"
+            className="w-full overflow-visible px-2 py-2 sm:px-10 sm:py-4"
           >
             <header className="pr-12 sm:pr-14">
               <DialogTitle className="text-3xl leading-tight font-semibold text-white sm:text-[2rem]">
-                Share feedback
+                {t("header.title")}
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-sm leading-relaxed text-stone-300 sm:text-base">
-                Quick note, big impact. Help us make Watch better for everyone.
+                {t("header.description")}
               </DialogDescription>
               <div
                 className="mt-5 flex items-center gap-3"
-                aria-label={`Step ${step} of ${FEEDBACK_STEP_COUNT}`}
+                aria-label={t("steps.progressLabel", {
+                  step,
+                  count: FEEDBACK_STEP_COUNT,
+                })}
               >
-                <span className="shrink-0 text-xs font-semibold text-stone-400">
+                <span className="shrink-0 text-sm sm:text-xs font-semibold text-stone-400">
                   {step} / {FEEDBACK_STEP_COUNT}
                 </span>
                 <div className="grid flex-1 grid-cols-5 gap-1.5" aria-hidden>
@@ -807,14 +976,14 @@ export function FeedbackModal({
               >
                 {currentStepCopy?.title}
               </h3>
-              <p className="mt-1 text-sm text-stone-400">
+              <p className="mt-1 text-base sm:text-sm text-stone-400">
                 {currentStepCopy?.helper}
               </p>
             </header>
 
             {step === 1 ? (
               <fieldset className="mt-6" data-testid="feedback-step-1">
-                <legend className="sr-only">Feedback category</legend>
+                <legend className="sr-only">{t("categories.legend")}</legend>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
                   {CATEGORY_OPTIONS.map((option) => {
                     const Icon = option.icon
@@ -834,31 +1003,34 @@ export function FeedbackModal({
                             return next
                           })
                         }}
-                        className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:min-h-28 ${
+                        className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-base sm:text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:min-h-28 ${
                           selected
                             ? "border-brand-red bg-brand-red/[0.06] text-brand-red shadow-[0_0_0_1px_rgba(239,51,64,0.12)]"
                             : "border-white/15 bg-white/[0.025] text-stone-300 hover:border-white/30 hover:bg-white/[0.05] hover:text-white"
                         }`}
                       >
                         <Icon aria-hidden className="size-7" />
-                        {option.label}
+                        {t(`categories.${option.value}.label`)}
                       </button>
                     )
                   })}
                 </div>
                 {fieldErrors.category ? (
-                  <p role="alert" className="mt-3 text-sm text-brand-red">
+                  <p
+                    role="alert"
+                    className="mt-3 text-base sm:text-sm text-brand-red"
+                  >
                     {fieldErrors.category}
                   </p>
                 ) : null}
               </fieldset>
             ) : null}
 
-            {step === 4 ? (
-              <div className="mt-6" data-testid="feedback-step-4">
+            {step === 2 ? (
+              <div className="mt-6" data-testid="feedback-step-2">
                 <label htmlFor="feedback-message">
                   <FieldLabel>
-                    Details{" "}
+                    {t("fields.details.label")}{" "}
                     <span className="text-brand-red" aria-hidden>
                       *
                     </span>
@@ -880,10 +1052,10 @@ export function FeedbackModal({
                       fieldErrors.message ? "feedback-message-error" : undefined
                     }
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Share details here…"
-                    className="min-h-28 w-full resize-y bg-transparent px-4 py-3 text-sm leading-relaxed text-white placeholder:text-stone-600 focus:outline-none sm:min-h-[6.5rem]"
+                    placeholder={t("fields.details.placeholder")}
+                    className="min-h-28 w-full resize-y bg-transparent px-4 py-3 text-base sm:text-sm leading-relaxed text-white placeholder:text-stone-600 focus:outline-none sm:min-h-[6.5rem]"
                   />
-                  <div className="flex min-h-9 items-center border-t border-white/8 px-4 text-xs text-stone-500">
+                  <div className="flex min-h-9 items-center border-t border-white/8 px-4 text-sm sm:text-xs text-stone-500">
                     {fieldErrors.message ? (
                       <span
                         id="feedback-message-error"
@@ -901,20 +1073,20 @@ export function FeedbackModal({
               </div>
             ) : null}
 
-            {step === 2 ? (
+            {step === 3 ? (
               <div
                 className="mt-5 grid gap-4 sm:grid-cols-2"
-                data-testid="feedback-step-2"
+                data-testid="feedback-step-3"
               >
                 <div>
                   <label htmlFor="feedback-language-area">
-                    <FieldLabel>Is this language-related?</FieldLabel>
+                    <FieldLabel>{t("fields.languageArea.label")}</FieldLabel>
                   </label>
                   <ThemedSelect
                     id="feedback-language-area"
-                    label="Is this language-related?"
+                    label={t("fields.languageArea.label")}
                     value={languageArea}
-                    options={LANGUAGE_AREA_OPTIONS}
+                    options={languageAreaOptions}
                     onChange={(value) => {
                       setLanguageArea(value)
                       if (!value) {
@@ -926,8 +1098,8 @@ export function FeedbackModal({
                   />
                   {languageArea ? (
                     <div className="mt-3">
-                      <span className="mb-1.5 block text-xs font-medium text-stone-400">
-                        Affected language
+                      <span className="mb-1.5 block text-sm sm:text-xs font-medium text-stone-400">
+                        {t("fields.affectedLanguage.label")}
                       </span>
                       {languageOptionsState === "error" || useCustomLanguage ? (
                         <input
@@ -935,8 +1107,8 @@ export function FeedbackModal({
                           value={customLanguageName}
                           maxLength={100}
                           autoFocus
-                          placeholder="Type the affected language"
-                          aria-label="Affected language"
+                          placeholder={t("fields.affectedLanguage.placeholder")}
+                          aria-label={t("fields.affectedLanguage.label")}
                           onChange={(event) => {
                             setCustomLanguageName(event.target.value)
                             setUseCustomLanguage(true)
@@ -954,18 +1126,18 @@ export function FeedbackModal({
                           disabled={languageOptionsState !== "ready"}
                           placeholder={
                             languageOptionsState === "loading"
-                              ? "Loading languages…"
-                              : "Select language"
+                              ? t("languagePicker.loading")
+                              : t("languagePicker.select")
                           }
                           compact
                           triggerClassName="!h-11 !min-h-11 !rounded-xl !px-3"
                         />
                       )}
-                      <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                      <div className="mt-2 flex items-center justify-between gap-3 text-sm sm:text-xs">
                         <span className="text-stone-500">
                           {languageOptionsState === "error"
-                            ? "The language list is unavailable. Your typed value will still be submitted."
-                            : "Can’t find the right language?"}
+                            ? t("languagePicker.unavailable")
+                            : t("languagePicker.cantFind")}
                         </span>
                         <button
                           type="button"
@@ -979,10 +1151,10 @@ export function FeedbackModal({
                           className="shrink-0 cursor-pointer font-semibold text-stone-300 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
                         >
                           {languageOptionsState === "error"
-                            ? "Retry list"
+                            ? t("languagePicker.retryList")
                             : useCustomLanguage
-                              ? "Choose from list"
-                              : "Enter manually"}
+                              ? t("languagePicker.chooseFromList")
+                              : t("languagePicker.enterManually")}
                         </button>
                       </div>
                     </div>
@@ -991,13 +1163,13 @@ export function FeedbackModal({
 
                 <div>
                   <label htmlFor="feedback-content-scope">
-                    <FieldLabel>Is this about specific content?</FieldLabel>
+                    <FieldLabel>{t("fields.contentScope.label")}</FieldLabel>
                   </label>
                   <ThemedSelect
                     id="feedback-content-scope"
-                    label="Is this about specific content?"
+                    label={t("fields.contentScope.label")}
                     value={contentScope}
-                    options={CONTENT_SCOPE_OPTIONS}
+                    options={contentScopeOptions}
                     onChange={(value) => {
                       setContentScope(value)
                       setSelectedContent(null)
@@ -1006,15 +1178,15 @@ export function FeedbackModal({
                     }}
                   />
                   {contentScope === "current" && page ? (
-                    <p className="mt-2 truncate text-xs text-stone-500">
+                    <p className="mt-2 truncate text-sm sm:text-xs text-stone-500">
                       {page.title}
                     </p>
                   ) : null}
                   {contentScope === "other" ? (
                     <div className="relative mt-3">
                       <label htmlFor="feedback-content-title">
-                        <span className="mb-1.5 block text-xs font-medium text-stone-400">
-                          Search or enter media and collections
+                        <span className="mb-1.5 block text-sm sm:text-xs font-medium text-stone-400">
+                          {t("fields.contentSearch.label")}
                         </span>
                       </label>
                       {selectedContent ? (
@@ -1023,17 +1195,17 @@ export function FeedbackModal({
                             aria-hidden
                             className="size-4 shrink-0 text-brand-red"
                           />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-100">
+                          <span className="min-w-0 flex-1 truncate text-base sm:text-sm font-medium text-stone-100">
                             {selectedContent.title}
                           </span>
                           {selectedContent.label ? (
-                            <span className="hidden shrink-0 text-[10px] font-semibold tracking-wide text-stone-500 uppercase sm:inline">
+                            <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-stone-500 uppercase sm:inline sm:text-[10px]">
                               {selectedContent.label.replaceAll("_", " ")}
                             </span>
                           ) : null}
                           <button
                             type="button"
-                            aria-label="Clear selected content"
+                            aria-label={t("contentSearch.clearSelected")}
                             onClick={() => {
                               setSelectedContent(null)
                               setContentQuery("")
@@ -1055,7 +1227,7 @@ export function FeedbackModal({
                             value={contentQuery}
                             maxLength={200}
                             autoComplete="off"
-                            placeholder="Search or type a title…"
+                            placeholder={t("fields.contentSearch.placeholder")}
                             aria-autocomplete="list"
                             aria-controls="feedback-content-results"
                             onChange={(event) => {
@@ -1067,22 +1239,20 @@ export function FeedbackModal({
                         </div>
                       )}
                       {!selectedContent && contentSearchState === "loading" ? (
-                        <p className="mt-2 text-xs text-stone-500">
-                          Searching titles…
+                        <p className="mt-2 text-sm sm:text-xs text-stone-500">
+                          {t("contentSearch.searching")}
                         </p>
                       ) : null}
                       {!selectedContent && contentSearchState === "error" ? (
-                        <p className="mt-2 text-xs text-stone-400">
-                          Couldn’t search titles. You can continue with what you
-                          typed.
+                        <p className="mt-2 text-sm sm:text-xs text-stone-400">
+                          {t("contentSearch.error")}
                         </p>
                       ) : null}
                       {!selectedContent &&
                       contentSearchState === "ready" &&
                       contentResults.length === 0 ? (
-                        <p className="mt-2 text-xs text-stone-500">
-                          No direct match. Your typed title will still be
-                          submitted.
+                        <p className="mt-2 text-sm sm:text-xs text-stone-500">
+                          {t("contentSearch.noMatch")}
                         </p>
                       ) : null}
                       {!selectedContent && contentResults.length > 0 ? (
@@ -1106,13 +1276,13 @@ export function FeedbackModal({
                                   className="size-4 shrink-0 text-stone-400"
                                 />
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-medium text-stone-100">
+                                  <span className="block truncate text-base sm:text-sm font-medium text-stone-100">
                                     {result.title}
                                   </span>
-                                  <span className="block truncate text-[11px] text-stone-500">
+                                  <span className="block truncate text-xs text-stone-500 sm:text-[11px]">
                                     {result.label
                                       ? result.label.replaceAll("_", " ")
-                                      : "Media"}
+                                      : t("contentSearch.mediaFallback")}
                                     {result.description
                                       ? ` · ${result.description}`
                                       : ""}
@@ -1136,7 +1306,8 @@ export function FeedbackModal({
               >
                 <label>
                   <FieldLabel>
-                    Name <span className="text-brand-red">*</span>
+                    {t("fields.name.label")}{" "}
+                    <span className="text-brand-red">*</span>
                   </FieldLabel>
                   <input
                     id="feedback-name"
@@ -1151,7 +1322,7 @@ export function FeedbackModal({
                   {fieldErrors.name ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-xs text-brand-red"
+                      className="mt-1.5 block text-sm sm:text-xs text-brand-red"
                     >
                       {fieldErrors.name}
                     </span>
@@ -1160,9 +1331,9 @@ export function FeedbackModal({
                 <div>
                   <label htmlFor="feedback-email">
                     <FieldLabel>
-                      Email{" "}
+                      {t("fields.email.label")}{" "}
                       <span className="font-normal text-stone-500">
-                        optional
+                        {t("fields.optional")}
                       </span>
                     </FieldLabel>
                   </label>
@@ -1181,17 +1352,16 @@ export function FeedbackModal({
                   {fieldErrors.email ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-xs text-brand-red"
+                      className="mt-1.5 block text-sm sm:text-xs text-brand-red"
                     >
                       {fieldErrors.email}
                     </span>
                   ) : null}
                   <p
                     id="feedback-email-helper"
-                    className="mt-1.5 text-xs leading-relaxed text-stone-500"
+                    className="mt-1.5 text-sm sm:text-xs leading-relaxed text-stone-500"
                   >
-                    Add an email if you’d like us to ask follow-up questions or
-                    notify you when the problem is resolved.
+                    {t("fields.email.helper")}
                   </p>
                 </div>
               </div>
@@ -1208,12 +1378,12 @@ export function FeedbackModal({
               />
             </label>
 
-            {step === 3 ? (
-              <div data-testid="feedback-step-3">
+            {step === 4 ? (
+              <div data-testid="feedback-step-4">
                 {page ? (
                   <div
                     data-testid="feedback-page-context"
-                    className="mt-5 flex min-h-11 items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] px-3 text-xs text-stone-400"
+                    className="mt-5 flex min-h-11 items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] px-3 text-sm sm:text-xs text-stone-400"
                   >
                     <FileText aria-hidden className="size-4 shrink-0" />
                     <span className="max-w-44 truncate text-stone-300">
@@ -1250,20 +1420,21 @@ export function FeedbackModal({
                     className="size-5 shrink-0 text-stone-200"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-stone-100">
+                    <span className="block truncate text-base sm:text-sm font-semibold text-stone-100">
                       {selectedElement
                         ? selectedElement.label
-                        : "Mark something on the page"}
+                        : t("picker.mark")}
                       {!selectedElement ? (
                         <span className="ml-2 font-normal text-stone-500">
-                          optional
+                          {t("fields.optional")}
                         </span>
                       ) : null}
                     </span>
-                    <span className="block truncate text-xs text-stone-500">
+                    <span className="block truncate text-sm sm:text-xs text-stone-500">
                       {selectedElement
-                        ? `Selected ${selectedElement.role} · choose again`
-                        : "Highlight or point out an area"}
+                        ? // {role} stays the raw English DOM tag/role token.
+                          t("picker.selected", { role: selectedElement.role })
+                        : t("picker.markHint")}
                     </span>
                   </span>
                   <ChevronDown
@@ -1274,7 +1445,7 @@ export function FeedbackModal({
               </div>
             ) : null}
 
-            {step === 4 ? (
+            {step === 2 ? (
               <div className="mt-4 rounded-xl border border-transparent px-1">
                 <div className="flex items-start gap-3">
                   <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-xl p-1 focus-within:ring-2 focus-within:ring-brand-red/40">
@@ -1297,13 +1468,11 @@ export function FeedbackModal({
                       className="mt-0.5 size-5 shrink-0 text-stone-400"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-stone-100">
-                        Include technical details
+                      <span className="block text-base sm:text-sm font-semibold text-stone-100">
+                        {t("diagnostics.include")}
                       </span>
-                      <span className="mt-0.5 block text-xs leading-relaxed text-stone-500">
-                        Browser, device, operating system, screen size, page
-                        URL, language, time zone, and app version. Never
-                        passwords or form contents.
+                      <span className="mt-0.5 block text-sm sm:text-xs leading-relaxed text-stone-500">
+                        {t("diagnostics.description")}
                       </span>
                     </span>
                   </label>
@@ -1312,9 +1481,9 @@ export function FeedbackModal({
                     disabled={!diagnostics}
                     aria-expanded={detailsOpen}
                     onClick={() => setDetailsOpen((current) => !current)}
-                    className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-semibold text-stone-300 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 text-sm sm:text-xs font-semibold text-stone-300 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35"
                   >
-                    View details
+                    {t("diagnostics.viewDetails")}
                     <ChevronDown
                       aria-hidden
                       className={`size-3.5 transition ${detailsOpen ? "rotate-180" : ""}`}
@@ -1322,11 +1491,11 @@ export function FeedbackModal({
                   </button>
                 </div>
                 {detailsOpen && diagnostics ? (
-                  <dl className="mt-3 grid gap-x-5 gap-y-2 rounded-xl bg-white/[0.03] p-3 text-xs sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-x-5 gap-y-2 rounded-xl bg-white/[0.03] p-3 text-sm sm:text-xs sm:grid-cols-2">
                     {Object.entries(diagnostics).map(([key, value]) => (
                       <div key={key} className="min-w-0">
                         <dt className="capitalize text-stone-500">
-                          {key.replace(/([A-Z])/g, " $1")}
+                          {diagnosticsLabels[key as keyof FeedbackDiagnostics]}
                         </dt>
                         <dd className="truncate text-stone-300">{value}</dd>
                       </div>
@@ -1339,13 +1508,23 @@ export function FeedbackModal({
             {error ? (
               <div
                 role="alert"
-                className="mt-5 rounded-xl border border-brand-red/30 bg-brand-red/[0.08] px-4 py-3 text-sm text-red-100"
+                className="mt-5 rounded-xl border border-brand-red/30 bg-brand-red/[0.08] px-4 py-3 text-base sm:text-sm text-red-100"
               >
-                {error}
+                <p>{error}</p>
+                <a
+                  data-testid="feedback-support-form-link"
+                  href={SUPPORT_FORM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-red-200/25 px-4 font-semibold text-white transition hover:border-red-100/45 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                >
+                  {t("errors.openSupportForm")}
+                  <ArrowUpRight aria-hidden className="size-4" />
+                </a>
               </div>
             ) : null}
 
-            <footer className="sticky bottom-0 z-30 -mx-5 mt-6 border-t border-white/10 bg-stone-950/95 px-5 pt-4 pb-1 backdrop-blur-md sm:static sm:mx-0 sm:bg-stone-950 sm:px-0 sm:pt-5 sm:backdrop-blur-none">
+            <footer className="mt-6">
               <div
                 className={`grid gap-3 ${step > 1 ? "grid-cols-[minmax(0,0.45fr)_minmax(0,1fr)]" : "grid-cols-1"}`}
               >
@@ -1357,31 +1536,31 @@ export function FeedbackModal({
                       setStep((current) => Math.max(1, current - 1))
                     }}
                     disabled={submitting}
-                    className="h-11 cursor-pointer rounded-full border border-white/15 px-5 text-sm font-semibold text-stone-200 hover:border-white/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:opacity-50"
+                    className="h-11 cursor-pointer rounded-full border border-white/15 px-5 text-base sm:text-sm font-semibold text-stone-200 hover:border-white/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:opacity-50"
                   >
-                    Back
+                    {t("nav.back")}
                   </button>
                 ) : null}
                 <button
                   type="submit"
                   disabled={submitting || !page}
-                  className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(239,51,64,0.2)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
+                  className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-base sm:text-sm font-semibold text-white shadow-[0_12px_28px_rgba(239,51,64,0.2)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {submitting ? (
                     <Loader2 aria-hidden className="size-4 animate-spin" />
                   ) : null}
                   {submitting
-                    ? "Sending…"
+                    ? t("nav.sending")
                     : step === FEEDBACK_STEP_COUNT
-                      ? "Send feedback"
-                      : step === 3 && !selectedElement
-                        ? "Skip for now"
-                        : "Continue"}
+                      ? t("nav.send")
+                      : step === 4 && !selectedElement
+                        ? t("nav.skip")
+                        : t("nav.continue")}
                 </button>
               </div>
-              <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-stone-500">
+              <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm sm:text-xs text-stone-500">
                 <ShieldCheck aria-hidden className="size-4 shrink-0" />
-                Your feedback is reviewed by our team.
+                {t("footer.reviewed")}
               </p>
             </footer>
           </form>

@@ -34,7 +34,7 @@ export function FeedbackLoadNotice({
       role={error ? "alert" : "status"}
       aria-live={error ? "assertive" : "polite"}
       data-testid="feedback-modal-loading"
-      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-sm text-stone-100 shadow-2xl backdrop-blur-md"
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-base sm:text-sm text-stone-100 shadow-2xl backdrop-blur-md"
     >
       <WatchModalViewportCloseButton
         open
@@ -131,6 +131,9 @@ export function FeedbackLauncher() {
 
   return (
     <>
+      {/* This launcher opts out of the phone type tier on purpose: its label
+          sits behind `overflow-hidden` and only reveals on hover/focus-visible,
+          so touch never sees it, and 16px overflows the fixed h-11 box. */}
       {!searchOpen ? (
         <button
           ref={launcherRef}

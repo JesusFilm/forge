@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Broyt ljóðmál",
     "home": "JesusFilm forsíða",
     "closeSearch": "Lat leit aftur",
-    "submitSearch": "Leita"
+    "submitSearch": "Leita",
+    "library": "Savn"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og blaða í videobrotum",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Leita á {language} eftir „{suggestion}“",
     "inLanguage": "á {language}",
     "browseByRegion": "Blaða eftir øki",
+    "allVideosOnSinglePage": "Øll videobrot á eini síðu",
     "clearLanguages": "Strika",
     "queryLanguageDetected": "{language} funnið",
     "searchInLanguage": "Leita á {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Afturmeldingarformulárið kundi ikki lesast.",
     "loadingForm": "Lesur afturmeldingarformulær…",
     "retry": "Royn aftur",
-    "openFormShort": "Lat formulár upp",
     "cancel": "Avlýs",
-    "title": "Beta afturmelding",
-    "description": "Deil, hvat riggar, og hvat vit kunnu betra. Hetta formulárið er veitt av Google.",
-    "openInNewTab": "Lat formulárið upp í einum nýggjum flipa",
     "closeForm": "Lat afturmeldingarformulár aftur",
-    "loadingGoogleForm": "Lesur Google Formulár…",
-    "iframeTitle": "Send beta afturmelding"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Ókeypis kristin videobrot á {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Ítróttur",
     "collections": "Søvn",
     "subtitlesOnly": "Bert undirtekstir",
+    "backToTop": "Aftur upp",
     "newlyAdded": "Nýliga lagt aftrat",
     "newVideosTitle": "Nýggj kristin videobrot á {language}",
     "newestFirst": "Nýggjasta fyrst",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Stakar videobrot",
     "videosFromCollection": "Videobrot úr {collection}.",
     "standaloneDescription": "Støk videobrot á hesum máli.",
-    "openCollection": "Lat savn upp"
+    "openCollection": "Lat savn upp",
+    "filters": "Filtur",
+    "filterLength": "Longd",
+    "filterLength_under5": "Undir 5 min.",
+    "filterLength_5to10": "5-10 min.",
+    "filterLength_10to30": "10-30 min.",
+    "filterLength_over30": "Yvir 30 min.",
+    "filterType": "Slag",
+    "clearFilters": "Reinsa filtur",
+    "filterResults": "{count} av {total} víst",
+    "noFilterResults": "Ongin vídeo samsvarar hesum filtrunum. Royn at taka eitt burtur.",
+    "filterAdded": "Lagt til",
+    "filterAdded_60d": "Seinastu 60 dagar",
+    "filterAdded_6m": "Seinastu 6 mánaðir",
+    "filterAdded_12m": "Seinastu 12 mánaðir"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Hygg",
@@ -407,6 +593,27 @@
     "merryChristmas": "Gleðilig jól!",
     "daysUntilChristmas": "{count, plural, one {# dagur til jóla} other {# dagar til jóla}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Mál",
     "metadataDescription": "Blað í JesusFilm videobrotum eftir máli.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Agerðir fyri ikki funna síðu",
     "backToWatch": "Aftur til Watch",
     "browseVideos": "Blaða í videobrotum"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hygg at stuttfilmi",
-    "actions": {
-      "joinUs": "Ver við",
-      "shareMission": "Deil okkara missión"
-    },
-    "welcomeStart": {
-      "label": "Trúgv og Skrift",
-      "title": "Dagsins videoval",
-      "description": "Videoinnihald við trúgv í miðdeplinum úr savninum, sum kann inspirera, avbjóða og kveikja til hugleiðing."
-    },
-    "welcomeMorning": {
-      "label": "Morguninspiratión",
-      "title": "Góðan morgun! Dagsins bíbliustundir bíða.",
-      "description": "Byrja dagin við eggjandi bíbliustundum, ætlaðum at inspirera og lyfta andan."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftirmiðdagsinspiratión",
-      "title": "Góðan dag! Bíbliustundir til tín dag.",
-      "description": "Eggjandi bíbliutilfar, væl egnað til tína eftirmiðdagssteðg ella sum framhaldandi íblástur."
-    },
-    "welcomeEvening": {
-      "label": "Kvøldsinspiratión",
-      "title": "Góða kvøld! Slapp av við bíbliustundum.",
-      "description": "Friðsæl bíbliustundir, sum hjálpa tær at hugleiða og finna troyst, tá ið dagurin fer at enda."
-    },
-    "joinUs": {
-      "label": "Ver við",
-      "title": "Milliardir leita",
-      "description": "Heystið er her. Ver við okkum, meðan vit deila evangeliið við heimin gjøgnum talgild miðlar."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lata okkum fara saman",
-      "title": "At siga søguna um Jesus, saman",
-      "description": "So tey kunnu hoyra og síggja kærleikan hjá Jesusi á sínum egna máli júst har, sum tey eru."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% samsvar",

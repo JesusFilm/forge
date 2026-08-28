@@ -1366,6 +1366,53 @@ describe("Mastra env", () => {
     expect(isSeekerFollowUpsEnabled()).toBe(false)
   })
 
+  // --- feat-405: AI_CHAT_TITLE_REPAIR_ENABLED default-off string-boolean gate (KTD4) ---
+
+  it("disables title repair when AI_CHAT_TITLE_REPAIR_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isTitleRepairEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isTitleRepairEnabled()).toBe(false)
+  })
+
+  it.each(["false", "TRUE", "1", "yes"])(
+    "treats AI_CHAT_TITLE_REPAIR_ENABLED=%j as disabled — string-boolean, not truthiness",
+    async (value) => {
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", value)
+
+      const { isTitleRepairEnabled } = await import("./env")
+
+      expect(isTitleRepairEnabled()).toBe(false)
+    },
+  )
+
+  it('arms title repair only when AI_CHAT_TITLE_REPAIR_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "true")
+
+    const { isTitleRepairEnabled } = await import("./env")
+
+    expect(isTitleRepairEnabled()).toBe(true)
+  })
+
+  it("keeps AI_CHAT_TITLE_REPAIR_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // AI_CHAT_TITLE_REPAIR_ENABLED deliberately unset — a default-off deploy
+    // has zero new env prerequisites (opt-in-scaffolding law).
+
+    const { assertMastraRuntimeEnv, isTitleRepairEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isTitleRepairEnabled()).toBe(false)
+  })
+
   // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
 
   it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {

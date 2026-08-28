@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлтыг хаах",
-    "submitSearch": "Хайх"
+    "submitSearch": "Хайх",
+    "library": "Номын сан"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} хэлээр «{suggestion}» гэж хайх",
     "inLanguage": "{language} дээр",
     "browseByRegion": "Бүс нутгаар үзэх",
+    "allVideosOnSinglePage": "Бүх видео нэг хуудсанд",
     "clearLanguages": "Цэвэрлэх",
     "queryLanguageDetected": "{language} илэрлээ",
     "searchInLanguage": "{language} хэлээр хайх",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Санал хүсэлтийн маягтыг ачаалж чадсангүй.",
     "loadingForm": "Санал хүсэлтийн маягт ачаалж байна…",
     "retry": "Дахин оролдох",
-    "openFormShort": "Маягт нээх",
     "cancel": "Цуцлах",
-    "title": "Бета санал хүсэлт",
-    "description": "Ажиллаж байгаа зүйлс болон сайжруулах боломжтойг хуваалцаарай. Энэ маягтыг Google олгож байна.",
-    "openInNewTab": "Маягтыг шинэ таб дээр нээх",
     "closeForm": "Санал хүсэлтийн маягтыг хаах",
-    "loadingGoogleForm": "Google Form ачаалж байна…",
-    "iframeTitle": "Бета санал хүсэлт илгээх"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} хэл дээрх үнэгүй Христийн видео | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээш буцах",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language} хэл дээрх шинэ Христийн видео",
     "newestFirst": "Хамгийн шинэ эхэнд",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-оос видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүр",
+    "filterLength": "Урт",
+    "filterLength_under5": "5 минутаас бага",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутаас их",
+    "filterType": "Төрөл",
+    "clearFilters": "Шүүлтүүрийг арилгах",
+    "filterResults": "{total}-аас {count} харуулж байна",
+    "noFilterResults": "Эдгээр шүүлтүүрт тохирох видео байхгүй. Нэгийг хасаж үзээрэй.",
+    "filterAdded": "Нэмэгдсэн",
+    "filterAdded_60d": "Сүүлийн 60 хоног",
+    "filterAdded_6m": "Сүүлийн 6 сар",
+    "filterAdded_12m": "Сүүлийн 12 сар"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project үзэх хэсэг",
@@ -407,6 +593,27 @@
     "merryChristmas": "Зул сарын баярын мэнд!",
     "daysUntilChristmas": "{count, plural, one {Зул сар хүртэл # хоног} other {Зул сар хүртэл # хоног}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Хэлнүүд",
     "metadataDescription": "JesusFilm видеонуудыг хэлээр нь үзэх.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Хуудас олдсонгүй үйлдлүүд",
     "backToWatch": "Үзэх хэсэг рүү буцах",
     "browseVideos": "Видео үзэх"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Богино хэмжээний кино үзэх",
-    "actions": {
-      "joinUs": "Бидэнтэй нэгдэх",
-      "shareMission": "Бидний эрхэм зорилгыг түгээх"
-    },
-    "welcomeStart": {
-      "label": "Итгэл ба Судар",
-      "title": "Өнөөдрийн онцлох видеонууд",
-      "description": "Манай сангаас итгэл төвтэй видео контент — урам зориг өгөх, сорих, эргэцүүлэхэд туслах агуулга."
-    },
-    "welcomeMorning": {
-      "label": "Өглөөний урам зориг",
-      "title": "Өглөөний мэнд! Өнөөдрийн Библийн мөчүүд таныг хүлээж байна.",
-      "description": "Өдрөө эхлүүлэхэд тань урам өгч, сэтгэлийг тань өргөх Библийн мөчүүдээр эхлээрэй."
-    },
-    "welcomeAfternoon": {
-      "label": "Үдээс хойшхи урам зориг",
-      "title": "Өдрийн мэнд! Өнөөдрийн Библийн мөчүүд таны төлөө байна.",
-      "description": "Үдээс хойших завсарлагадаа үзэхэд тохиромжтой, эсвэл урам зориг үргэлжлүүлэн өгөх Библийн агуулга."
-    },
-    "welcomeEvening": {
-      "label": "Оройн урам зориг",
-      "title": "Оройн мэнд! Библийн мөчүүдээр тайвширъя.",
-      "description": "Өдрөө дүгнэж, тайвшрал олоход тань туслах амар тайван Библийн мөчүүд."
-    },
-    "joinUs": {
-      "label": "Бидэнтэй нэгдэх",
-      "title": "Тэрбум тэрбумаар нь хайж байна",
-      "description": "Хадуур бэлэн байна. Дижитал медиа ашиглан дэлхийд сайн мэдээг түгээхэд бидэнтэй нэгдээрэй."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хамтдаа явцгаая",
-      "title": "Есүсийн түүхийг хамтдаа өгүүлэх нь",
-      "description": "Тэгснээр тэд Есүсийн хайрыг өөрсдийн хэлээр, байгаа газарт нь сонсож, харж чадна."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% тохирч байна",

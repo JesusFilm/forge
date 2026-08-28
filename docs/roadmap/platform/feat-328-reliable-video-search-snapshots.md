@@ -128,3 +128,19 @@ Fill after merge and the first eligible 09:00 UTC scheduler run:
 - PostgreSQL 18 restore duration, row/vector/provenance counts: pending.
 - Semantic-search smoke without `run-embeds`: pending.
 - Measured first-month and month-twelve no-retention cost: pending.
+
+## August 2026 publication recovery
+
+- Production evidence on 29 August showed the last successful `video-core` and
+  `video-search` objects were published on 3 August. Every scheduled profile
+  run from 4 August onward failed before `pg_dump` during the source profile
+  compatibility preflight.
+- The production compatibility predicate itself returned zero excluded
+  social-image references. The failure was the newly introduced `psql`
+  subprocess boundary, not unsafe source data or a stopped scheduler.
+- Recovery replaces the single-host source check with Admin's existing `pg`
+  client, keeps native `psql` only for libpq multi-host authorities, and adds
+  regression coverage for connection cleanup, credential redaction, and the
+  absence of a single-host `psql` spawn.
+- Fresh production core/search object keys, sizes, ledger rows, and a restore
+  verification remain required before this ticket can move to `complete`.

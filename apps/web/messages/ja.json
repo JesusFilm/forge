@@ -180,7 +180,8 @@
     "changeAudioLanguage": "音声言語を変更",
     "home": "JesusFilm ホーム",
     "closeSearch": "検索を閉じる",
-    "submitSearch": "検索"
+    "submitSearch": "検索",
+    "library": "ライブラリ"
   },
   "SearchOverlay": {
     "dialogLabel": "動画を検索・閲覧",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language}で「{suggestion}」を検索",
     "inLanguage": "{language}で",
     "browseByRegion": "地域別に見る",
+    "allVideosOnSinglePage": "すべての動画を1ページに",
     "clearLanguages": "クリア",
     "queryLanguageDetected": "{language}を検出しました",
     "searchInLanguage": "{language}で検索",
@@ -282,6 +284,7 @@
     "sports": "スポーツ",
     "collections": "コレクション",
     "subtitlesOnly": "字幕のみ",
+    "backToTop": "トップへ戻る",
     "newlyAdded": "新しく追加",
     "newVideosTitle": "{language}の新しいクリスチャン動画",
     "newestFirst": "新しい順",
@@ -312,7 +315,21 @@
     "standaloneVideos": "単体動画",
     "videosFromCollection": "{collection}の動画。",
     "standaloneDescription": "この言語の単体動画です。",
-    "openCollection": "コレクションを開く"
+    "openCollection": "コレクションを開く",
+    "filters": "絞り込み",
+    "filterLength": "長さ",
+    "filterLength_under5": "5分未満",
+    "filterLength_5to10": "5〜10分",
+    "filterLength_10to30": "10〜30分",
+    "filterLength_over30": "30分以上",
+    "filterType": "種類",
+    "clearFilters": "絞り込みを解除",
+    "filterResults": "{total}件中{count}件を表示",
+    "noFilterResults": "この条件に一致する動画はありません。条件を1つ外してみてください。",
+    "filterAdded": "追加日",
+    "filterAdded_60d": "過去60日",
+    "filterAdded_6m": "過去6か月",
+    "filterAdded_12m": "過去12か月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 動画視聴",
@@ -441,57 +458,209 @@
     "merryChristmas": "メリークリスマス！",
     "daysUntilChristmas": "{count, plural, other {クリスマスまであと#日}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "Feedback": {
     "openForm": "フィードバックフォームを開く",
     "label": "フィードバック",
     "couldNotLoad": "フィードバックフォームを読み込めませんでした。",
     "loadingForm": "フィードバックフォームを読み込み中…",
     "retry": "再試行",
-    "openFormShort": "フォームを開く",
     "cancel": "キャンセル",
-    "title": "ベータ版フィードバック",
-    "description": "うまくいっている点や改善できる点をお聞かせください。このフォームはGoogleが提供しています。",
-    "openInNewTab": "フォームを新しいタブで開く",
     "closeForm": "フィードバックフォームを閉じる",
-    "loadingGoogleForm": "Googleフォームを読み込み中…",
-    "iframeTitle": "ベータ版フィードバックを送信"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "短編映画を見る",
-    "actions": {
-      "joinUs": "参加する",
-      "shareMission": "私たちの使命に加わる"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
     },
-    "welcomeStart": {
-      "label": "信仰と聖書",
-      "title": "今日おすすめの動画",
-      "description": "ライブラリから、心を励まし、挑戦し、思い巡らすきっかけとなる、信仰を中心とした動画コンテンツをご覧ください。"
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
     },
-    "welcomeMorning": {
-      "label": "朝の励まし",
-      "title": "おはようございます。今日の聖書のひとときが待っています。",
-      "description": "心を励まし、元気づけるように作られた聖書のひとときで、一日を始めましょう。"
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
     },
-    "welcomeAfternoon": {
-      "label": "午後の励まし",
-      "title": "こんにちは。今日のための聖書のひとときをどうぞ。",
-      "description": "午後のひと休みや、さらに励ましを受けたいときにぴったりの、聖書に基づく励ましのコンテンツです。"
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
     },
-    "welcomeEvening": {
-      "label": "夜の励まし",
-      "title": "こんばんは。聖書のひとときで一日の終わりをゆっくり過ごしましょう。",
-      "description": "一日を振り返り、やすらぎを見いだせるようにする、穏やかな聖書のひとときです。"
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
     },
-    "joinUs": {
-      "label": "参加する",
-      "title": "何十億もの人が探しています",
-      "description": "収穫の時は来ています。デジタルメディアを用いて世界に福音を伝えるこの働きに、ぜひご参加ください。"
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "一緒に行きましょう",
-      "title": "イエスの物語を、ともに伝えましょう",
-      "description": "それぞれの場所で、自分の言語でイエスの愛を聞き、見てもらえるようにするためです。"
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "VideoRecommendations": {

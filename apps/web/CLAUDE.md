@@ -56,7 +56,13 @@ Required env vars (both flipped from `.optional()` in U13):
   `auth.jesusfilm.org` (PR #909 trap).
 - `WEB_ADMIN_API_KEYS` — single key or CSV; web reads the first entry as the outbound bearer so traffic identifies as `consumer:<key>` at admin's rate limiter.
 
-`REVALIDATION_SECRET` remains required for the `/api/revalidate` route. `STRAPI_PREVIEW_SECRET` remains required for the `/api/preview` Next draft-mode entry token (Strapi-era surface that hasn't migrated yet; out of data-layer scope).
+`REVALIDATION_SECRET` remains required for the `/api/revalidate` route.
+`CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN` are an optional pair:
+when both are present, successful live infinite-feed responses emit
+Cloudflare-only shared cache headers and relevant revalidation webhooks purge
+the `watch-dynamic-collections` cache tag. `STRAPI_PREVIEW_SECRET` remains
+required for the `/api/preview` Next draft-mode entry token (Strapi-era surface
+that hasn't migrated yet; out of data-layer scope).
 
 ## Common Pitfalls
 
@@ -64,7 +70,7 @@ Required env vars (both flipped from `.optional()` in U13):
 - `'use client'` is a boundary — everything imported below it is also client.
 - The admin bearer (`WEB_ADMIN_API_KEYS`) is in the server-only env block. Never reference it from a client component or `NEXT_PUBLIC_*` var.
 - For authenticated browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. Anonymous direct calls need an explicit package-local contract such as the floating Watch search exception above. The read-only infinite collection feed is one such exception: `GET /watch/api/dynamic-collections` uses `src/lib/dynamic-collection-contract.ts`, because the public Watch edge admits `/watch/api/*` while page-bound Server Action POSTs are not guaranteed to reach Next.js.
-- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. The 1 hour route TTL is the fallback for a missed webhook or process-local invalidation miss; do not raise resolver TTLs until production cache topology and webhook reliability are proven.
+- ISR cache: static watch routes under `src/app/[locale]/[htmlLang]/**` use route-level `revalidate = 3600`. Most Watch resolver `unstable_cache` wrappers in `src/lib/content.ts` / `src/lib/watch-home.ts` keep short data TTLs (`60` seconds, except child dub languages at `1h`) and attach coarse tags from `src/lib/watch-cache-tags.ts`. The deterministic infinite collection feed is the deliberate exception: live batches use the shared Redis-backed Data Cache for `24h`, previews use `15m`, and both retain the home/video invalidation tags. `/api/revalidate` must invalidate both layers: `revalidatePath` for route output and `revalidateTag(tag, { expire: 0 })` for resolver data so webhook-triggered renders do not serve stale Data Cache first. Long Cloudflare feed caching is additionally gated on configured cache-tag purge.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 - **Static locale root layout**: cacheable watch surfaces live under the internal route tree `src/app/[locale]/[htmlLang]/**`. `src/proxy.ts` rewrites public `/watch` URLs into that tree, so the root layout gets static params for both the next-intl message catalog key (`[locale]`) and `<html lang>` (`[htmlLang]`) without calling `headers()` or `cookies()`. Keep request-time dynamic APIs out of this tree unless the route is intentionally dynamic.
 
@@ -102,6 +108,24 @@ The receiver maps each semantic model to both paths and Data Cache tags:
 Redis across deploys and web instances. Production should set `REDIS_URL`;
 local, CI, build, and no-Redis runs fall back to the handler's process-local
 memory map. Use `NEXT_CACHE_REDIS_PREFIX` when sharing a Redis instance.
+
+`GET /watch/api/dynamic-collections` is non-personalized. Its live cache
+identity is locale, audio-language slug, frozen mobile/desktop feed profile,
+cursor, normalized child-ID exclusions, and normalized parent-slug exclusions;
+never add cookies, account identity, IP, geography, or user-agent values. Only
+variants carrying a server-issued, domain-separated HMAC over that complete
+identity enter the long-lived Next Data Cache. The signature is public cache
+admission metadata, not authorization; unsigned or altered requests remain
+functional but bypass shared storage. The browser always receives
+`Cache-Control: no-store`. When Cloudflare purge is fully configured, canonical
+signed live `200` responses also carry
+`Cloudflare-CDN-Cache-Control` plus `Cache-Tag: watch-dynamic-collections`;
+draft previews send `scope=preview` and never receive those edge headers.
+Cloudflare still needs a production Cache Rule that makes this exact GET path
+eligible while respecting the origin's CDN cache-control header and full query
+string. Do not configure the rule to ignore or normalize away query parameters.
+The response supplies the next cursor signature in a header so the strict JSON
+DTO and older clients remain compatible.
 
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
 

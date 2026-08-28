@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Baguhin ang wika ng audio",
     "home": "Tahanan ng JesusFilm",
     "closeSearch": "Isara ang paghahanap",
-    "submitSearch": "Maghanap"
+    "submitSearch": "Maghanap",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Maghanap at mag-browse ng mga video",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Hanapin sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse ayon sa rehiyon",
+    "allVideosOnSinglePage": "Lahat ng video sa isang pahina",
     "clearLanguages": "I-clear",
     "queryLanguageDetected": "May natukoy na {language}",
     "searchInLanguage": "Maghanap sa {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Hindi ma-load ang feedback form.",
     "loadingForm": "Nilo-load ang feedback form…",
     "retry": "Subukang muli",
-    "openFormShort": "Buksan ang form",
     "cancel": "Kanselahin",
-    "title": "Feedback para sa Beta",
-    "description": "Ibahagi kung ano ang gumagana at kung ano ang maaari naming pagbutihin. Ang form na ito ay ibinibigay ng Google.",
-    "openInNewTab": "Buksan ang form sa bagong tab",
     "closeForm": "Isara ang feedback form",
-    "loadingGoogleForm": "Nilo-load ang Google Form…",
-    "iframeTitle": "Magpadala ng Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Libreng mga Christian video sa {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Palakasan",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Bumalik sa itaas",
     "newlyAdded": "Kakain lamang naidagdag",
     "newVideosTitle": "Mga bagong Christian video sa {language}",
     "newestFirst": "Pinakabago muna",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Mga standalone na video",
     "videosFromCollection": "Mga video mula sa {collection}.",
     "standaloneDescription": "Mga standalone na video sa wikang ito.",
-    "openCollection": "Buksan ang koleksyon"
+    "openCollection": "Buksan ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Haba",
+    "filterLength_under5": "Mas mababa sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Higit sa 30 min",
+    "filterType": "Uri",
+    "clearFilters": "Alisin ang mga filter",
+    "filterResults": "{count} sa {total} ang nakikita",
+    "noFilterResults": "Walang videong tugma sa mga filter na ito. Subukang alisin ang isa.",
+    "filterAdded": "Naidagdag",
+    "filterAdded_60d": "Huling 60 araw",
+    "filterAdded_6m": "Huling 6 buwan",
+    "filterAdded_12m": "Huling 12 buwan"
   },
   "WatchHome": {
     "pageTitle": "Manood sa Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Maligayang Pasko!",
     "daysUntilChristmas": "{count, plural, one {# araw bago ang Pasko} other {# araw bago ang Pasko}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga Wika",
     "metadataDescription": "Mag-browse ng mga video ng JesusFilm ayon sa wika.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Mga aksyon para sa page na hindi nakita",
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Panoorin ang Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumama sa Amin",
-      "shareMission": "Makibahagi sa Aming Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya at Kasulatan",
-      "title": "Mga Napiling Video Ngayon",
-      "description": "Nilalaman ng video mula sa aming library na nakasentro sa pananampalataya upang magbigay-inspirasyon, hamunin, at magpasiklab ng pagninilay."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Umaga",
-      "title": "Magandang umaga! Naghihintay ang mga sandali ng Biblia ngayon.",
-      "description": "Simulan ang araw mo sa mga nakapagpapalakas na sandali mula sa Biblia na nilalayong magbigay-inspirasyon at magpasigla ng iyong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Magandang hapon! Mga sandali mula sa Biblia para sa iyong araw.",
-      "description": "Mga nakapagpapalakas na nilalaman mula sa Biblia na angkop sa iyong pahinga sa hapon o sa patuloy na inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gabi",
-      "title": "Magandang gabi! Magpahinga kasama ang mga sandali mula sa Biblia.",
-      "description": "Mga payapang sandali mula sa Biblia upang tulungan kang magnilay at makatagpo ng ginhawa habang nagtatapos ang iyong araw."
-    },
-    "joinUs": {
-      "label": "Sumama sa Amin",
-      "title": "Bilyon-bilyon ang naghahanap",
-      "description": "Nandito na ang ani. Sumama sa amin habang ibinabahagi natin ang ebanghelyo sa buong mundo gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkasama tayo",
-      "title": "Isinasalaysay ang Kuwento ni Jesus, Nang Magkasama",
-      "description": "Upang marinig at makita nila ang pag-ibig ni Jesus sa sarili nilang wika, kung nasaan man sila."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% tugma",

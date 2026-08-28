@@ -180,7 +180,8 @@
     "changeAudioLanguage": "變更音訊語言",
     "home": "JesusFilm 首頁",
     "closeSearch": "關閉搜尋",
-    "submitSearch": "搜尋"
+    "submitSearch": "搜尋",
+    "library": "影片庫"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋並瀏覽影片",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "以{language}搜尋「{suggestion}」",
     "inLanguage": "以{language}",
     "browseByRegion": "依地區瀏覽",
+    "allVideosOnSinglePage": "所有影片集中一頁",
     "clearLanguages": "清除",
     "queryLanguageDetected": "偵測到{language}",
     "searchInLanguage": "以{language}搜尋",
@@ -282,6 +284,7 @@
     "sports": "體育",
     "collections": "合集",
     "subtitlesOnly": "僅字幕",
+    "backToTop": "返回頂端",
     "newlyAdded": "最新上架",
     "newVideosTitle": "{language}的新基督教影片",
     "newestFirst": "依最新排序",
@@ -312,7 +315,21 @@
     "standaloneVideos": "獨立影片",
     "videosFromCollection": "來自{collection}的影片。",
     "standaloneDescription": "此語言的獨立影片。",
-    "openCollection": "查看合集"
+    "openCollection": "查看合集",
+    "filters": "篩選",
+    "filterLength": "長度",
+    "filterLength_under5": "5 分鐘以內",
+    "filterLength_5to10": "5-10 分鐘",
+    "filterLength_10to30": "10-30 分鐘",
+    "filterLength_over30": "30 分鐘以上",
+    "filterType": "類型",
+    "clearFilters": "清除篩選",
+    "filterResults": "已顯示 {count} / {total}",
+    "noFilterResults": "沒有影片符合這些篩選條件。試試移除一項。",
+    "filterAdded": "加入時間",
+    "filterAdded_60d": "最近 60 天",
+    "filterAdded_6m": "最近 6 個月",
+    "filterAdded_12m": "最近 12 個月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 觀看平台",
@@ -454,57 +471,209 @@
     "merryChristmas": "聖誕快樂！",
     "daysUntilChristmas": "{count, plural, other {距離聖誕節還有 # 天}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "Feedback": {
     "openForm": "開啟意見回饋表單",
     "label": "意見回饋",
     "couldNotLoad": "無法載入意見回饋表單。",
     "loadingForm": "正在載入意見回饋表單…",
     "retry": "重試",
-    "openFormShort": "開啟表單",
     "cancel": "取消",
-    "title": "Beta 意見回饋",
-    "description": "告訴我們哪些地方做得好、哪些地方可以改進。此表單由 Google 提供。",
-    "openInNewTab": "在新分頁中開啟表單",
     "closeForm": "關閉意見回饋表單",
-    "loadingGoogleForm": "正在載入 Google 表單…",
-    "iframeTitle": "送出 Beta 意見回饋"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "觀看短片",
-    "actions": {
-      "joinUs": "加入我們",
-      "shareMission": "與我們一起參與使命"
+    "categories": {
+      "confusing": {
+        "helper": "Tell us where you got stuck or what felt unclear.",
+        "label": "Confusing",
+        "prompt": "What was hard to understand?"
+      },
+      "idea": {
+        "helper": "Describe the change and how it would help you.",
+        "label": "Idea",
+        "prompt": "What would make Watch better?"
+      },
+      "legend": "Feedback category",
+      "praise": {
+        "helper": "Tell us what you enjoyed so we can do more of it.",
+        "label": "Praise",
+        "prompt": "What worked well?"
+      },
+      "problem": {
+        "helper": "Tell us what happened and what you expected to see.",
+        "label": "Problem",
+        "prompt": "What went wrong?"
+      }
     },
-    "welcomeStart": {
-      "label": "信仰與聖經",
-      "title": "今日精選影片",
-      "description": "從影片庫精選以信仰為主題的內容，帶給你啟發、挑戰與反思。"
+    "contentScopes": {
+      "current": "This page or video",
+      "none": "No specific content",
+      "other": "Another video or resource"
     },
-    "welcomeMorning": {
-      "label": "晨間啟發",
-      "title": "早安！從今天的聖經內容開始吧。",
-      "description": "用鼓舞人心的聖經內容展開新的一天，獲得啟發與力量。"
+    "contentSearch": {
+      "clearSelected": "Clear selected content",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "mediaFallback": "Media",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "searching": "Searching titles…"
     },
-    "welcomeAfternoon": {
-      "label": "午後鼓勵",
-      "title": "午安！來看今天的聖經內容。",
-      "description": "午後休息時，花一點時間從聖經內容中獲得鼓勵。"
+    "diagnostics": {
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "include": "Include technical details",
+      "labels": {
+        "appVersion": "app Version",
+        "browser": "browser",
+        "device": "device",
+        "operatingSystem": "operating System",
+        "timeZone": "time Zone",
+        "viewport": "viewport"
+      },
+      "viewDetails": "View details"
     },
-    "welcomeEvening": {
-      "label": "晚間安靜",
-      "title": "晚安！在聖經內容中安靜片刻。",
-      "description": "在一天結束時，透過平靜的聖經內容默想並得著安慰。"
+    "errors": {
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "invalid": "Please check the form and try again.",
+      "openSupportForm": "Open support form",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again."
     },
-    "joinUs": {
-      "label": "加入我們",
-      "title": "數十億人正在尋找答案",
-      "description": "現在正是傳揚福音的時候。加入我們，透過數位媒體，讓世界各地的人都能聽見福音。"
+    "fields": {
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "email": {
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved.",
+        "label": "Email"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "一起前行",
-      "title": "一起述說耶穌的故事",
-      "description": "讓世界各地的人都能用自己的語言聽見並看見耶穌的愛。"
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "header": {
+      "description": "Quick note, big impact. Help us make Watch better for everyone.",
+      "title": "Share feedback"
+    },
+    "languageAreas": {
+      "audio": "Audio or dubbing",
+      "interface": "Buttons or interface text",
+      "none": "No language issue",
+      "other": "Other language issue",
+      "subtitles": "Subtitles or captions",
+      "titleDescription": "Title or description"
+    },
+    "languagePicker": {
+      "cantFind": "Can’t find the right language?",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "loading": "Loading languages…",
+      "retryList": "Retry list",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted."
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "send": "Send feedback",
+      "sending": "Sending…",
+      "skip": "Skip for now"
+    },
+    "picker": {
+      "cancel": "Cancel",
+      "hint": "Point to a heading, button, image, or section",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again",
+      "title": "Choose something on the page"
+    },
+    "steps": {
+      "about": {
+        "helper": "Add your name and an optional email so we can follow up.",
+        "title": "About you"
+      },
+      "context": {
+        "helper": "Tell us whether language or specific content is involved.",
+        "title": "Add helpful context"
+      },
+      "describe": {
+        "helper": "Share the details and attach technical context if useful.",
+        "title": "Describe what happened"
+      },
+      "point": {
+        "helper": "Optionally mark the exact element or area on this page.",
+        "title": "Point to something"
+      },
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "helper": "What best describes your feedback?",
+        "title": "Choose a feedback type"
+      }
+    },
+    "success": {
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      },
+      "title": "Thank you"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "email": "Enter a valid email address.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required."
     }
   },
   "VideoRecommendations": {

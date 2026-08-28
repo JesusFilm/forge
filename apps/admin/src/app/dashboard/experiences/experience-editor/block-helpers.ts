@@ -1,4 +1,5 @@
 import { type Blocks } from "@/domain/blocks"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
@@ -19,6 +20,7 @@ export type BlockTemplateKey =
   | "cta"
   | "easterDates"
   | "infoBlocks"
+  | "languageGlobe"
   | "mediaCollection"
   | "dynamicMediaCollection"
   | "navigationCarousel"
@@ -31,6 +33,7 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
+  | "watchHomeCategoryRail"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -40,6 +43,8 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "watchHomeCategoryRail",
+  "languageGlobe",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -398,6 +403,41 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchHomeCategoryRail") {
+    // `tiles` is authoritative when present; `categoryIds` is what blocks
+    // stored before tile authoring carry (and the mirror kept for old readers).
+    const tiles = asArray(value.tiles)
+    const tileCount =
+      tiles.length > 0 ? tiles.length : asArray(value.categoryIds).length
+    const customCount = tiles.filter(
+      (tile) => asString(asRecord(tile)?.categoryId).length === 0,
+    ).length
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Category Rail",
+      title: "Browse by category",
+      body:
+        customCount > 0
+          ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`
+          : `${tileCount} ${tileCount === 1 ? "tile" : "tiles"}`,
+      tone: "standard",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
+  if (type === "languageGlobe") {
+    return {
+      key: summaryKey,
+      typeLabel: "Language Globe",
+      title: asString(value.title) || "Choose a language",
+      body:
+        asString(value.description) ||
+        "Animated scripture globe and language action.",
+      tone: "standard",
+      badges: ["LANGUAGES"],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -692,6 +732,27 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "watchHomeCategoryRail") {
+    return {
+      t: "watchHomeCategoryRail",
+      sectionKey: `watch-home-category-rail-${index}`,
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    }
+  }
+
+  if (template === "languageGlobe") {
+    return {
+      t: "languageGlobe",
+      sectionKey: `language-globe-${index}`,
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
     }
   }
 

@@ -126,7 +126,7 @@ Two spellings of the same idea also proved unequal. `\p{Cc}` does not match `U+2
 
 ## Related Issues
 
-- **PR #1968** (`worktree-feat-datadog-mobile-triage`) — open, not merged as of 2026-08-20. The fix ships in that branch.
+- **PR #1968** — merged 2026-08-20; the fix is on `main`.
 
 ### The fourth input-bounding axis
 
@@ -144,6 +144,7 @@ This repo already names three axes for bounding untrusted input. This learning i
 - [`mastra-body-merged-requestcontext-forgeable-markers.md`](mastra-body-merged-requestcontext-forgeable-markers.md) — same app, same threat vocabulary. A forged marker is exactly what the HTML-comment strip defends against here.
 - [`../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — the META home for falsification discipline. A sanitizer test whose fixture uses a character the **old** class already caught cannot detect the widening being reverted; that is the same vacuous-coverage trap, applied to character classes.
 - [`../architecture-patterns/support-research-evidence-ledger-pattern-20260801.md`](../architecture-patterns/support-research-evidence-ledger-pattern-20260801.md) — the pipeline this workflow was cloned from, which establishes the code-enforced sanitizer placement for the same `apps/mastra` to Linear outbox shape.
+- [`../integration-issues/datadog-error-tracking-issue-search-missing-track-and-include-params.md`](../integration-issues/datadog-error-tracking-issue-search-missing-track-and-include-params.md) — the same feature's other defect class (2026-08-27): the issue-search wire contract was docs-modelled and failed live. Different file, same pipeline; its silent half (filters inert without `include=issue`) is what feeds THIS sanitizer its input.
 
 ### Refresh candidate
 

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
     "closeSearch": "Sara search",
-    "submitSearch": "Pangita"
+    "submitSearch": "Pangita",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Pangita so “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "Browse ayon sa rehiyon",
+    "allVideosOnSinglePage": "Tanan a Video",
     "clearLanguages": "Linisi",
     "queryLanguageDetected": "Nadetekta so {language}",
     "searchInLanguage": "Pangita sa {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Da mapullot so feedback form.",
     "loadingForm": "Ga-load so feedback form…",
     "retry": "Ulihi",
-    "openFormShort": "Abrihi so form",
     "cancel": "Bawi",
-    "title": "Tubag-balik sa Beta",
-    "description": "Ipamigay kung manu na gaandar ago kung manu pa kapapamait. So form ini gika Google.",
-    "openInNewTab": "Abrihi so form sa bag-o a tab",
     "closeForm": "Sara so feedback form",
-    "loadingGoogleForm": "Ga-load so Google Form…",
-    "iframeTitle": "Ihatag so Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Free Christian videos sa {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitles lang",
+    "backToTop": "Bumalik sa taas",
     "newlyAdded": "Bag-o a naidugang",
     "newVideosTitle": "Bag-o a Christian videos sa {language}",
     "newestFirst": "Pinakabago una",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Mga standalone video",
     "videosFromCollection": "Mga video gika sa {collection}.",
     "standaloneDescription": "Mga standalone video sa ini a wika.",
-    "openCollection": "Abrihi so collection"
+    "openCollection": "Abrihi so collection",
+    "filters": "Mga filter",
+    "filterLength": "Kahaba",
+    "filterLength_under5": "Kulang sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohan ang mga filter",
+    "filterResults": "{count} sa {total} ang gipakita",
+    "noFilterResults": "Walay video nga nahiuyon niining mga filter. Sulayi kuhaon ang usa.",
+    "filterAdded": "Nadugang",
+    "filterAdded_60d": "Nakalabay nga 60 adlaw",
+    "filterAdded_6m": "Nakalabay nga 6 bulan",
+    "filterAdded_12m": "Nakalabay nga 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood sa Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Marayaw a Pasko!",
     "daysUntilChristmas": "{count, plural, one {# adlaw pa bago so Pasko} other {# mga adlaw pa bago so Pasko}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",
     "metadataDescription": "Browse so JesusFilm videos ayon sa wika.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Mga buhat kun da nakuan a page",
     "backToWatch": "Balik sa Watch",
     "browseVideos": "Browse mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa so maikling pelikula",
-    "actions": {
-      "joinUs": "Sumali ka sa amon",
-      "shareMission": "Ibagi so amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya ago Kasulatan",
-      "title": "Mga napiling video para karon",
-      "description": "Mga video gika sa amon library na nakasentro sa pananampalataya para mag-inspire, maghamon, ago magpahuna-huna."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa buntag",
-      "title": "Marayaw a buntag! Naa na so mga Bible moment para karon.",
-      "description": "Sugdi so adlaw mo kaama so mga Bible moment na makapanganyaya ago makaangat sa imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa hapon",
-      "title": "Marayaw a hapon! Mga Bible moment para sa adlaw mo.",
-      "description": "Mga Bible content na makapanganyaya, marayaw para sa imo hapon a pahuway o padayon a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa gabi",
-      "title": "Marayaw a gabi! Magpahuway ka kaama so mga Bible moment.",
-      "description": "Kalma a mga Bible moment para tabangan ka maghunahuna ago makakapta so komportable habang gaahin na so adlaw mo."
-    },
-    "joinUs": {
-      "label": "Sumali ka sa amon",
-      "title": "Bilyon-bilyon so ga-pangita",
-      "description": "Naa na so anihan. Sumali ka sa amon sa pagbahagi sa ebanghelyo sa kalibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mag-inabi kita",
-      "title": "Pag-istorya sa Buhat ni Jesus, kaama so bawat isa",
-      "description": "Agod mabanalan ago makita nira so gugma ni Jesus sa ila sarili a wika didto mismo sa lugar nira."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",

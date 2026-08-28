@@ -1,3 +1,38 @@
+---
+title: "Devcontainer setup for pnpm and Turborepo monorepos"
+date: 2026-05-18
+last_updated: 2026-08-26
+category: platform
+module: devcontainer
+problem_type: developer_experience
+component: development_environment
+severity: medium
+applies_when:
+  - "Running Forge development servers inside the Compose devcontainer while browsing them from the Docker host"
+  - "Adding or changing a stable application port or Mastra Studio endpoint"
+  - "Preventing development services from being published on host LAN interfaces"
+  - "Preserving editor forwarding and application scripts while making Compose the complete host-publication contract"
+  - "Validating the effective default-bridge Compose networking model in CI"
+symptoms:
+  - "A development server is reachable inside the devcontainer but localhost on the Docker host refuses or times out"
+  - "Host access works only while an editor-specific port-forwarding feature is active"
+  - "Mastra Studio starts its CLI coordinator but the spawned server is not reachable from the Docker host"
+  - "A Compose change preserves loopback port bindings but silently moves the app onto a non-default or routed network"
+root_cause: incomplete_setup
+resolution_type: environment_setup
+tags:
+  - devcontainer
+  - docker-compose
+  - host-port-publishing
+  - loopback-binding
+  - local-dev
+  - mastra
+  - default-bridge
+  - contract-testing
+related_features:
+  - feat-423
+---
+
 # Devcontainer Setup for pnpm + Turborepo Monorepos
 
 ## Pattern
@@ -70,6 +105,104 @@ docker compose -f .devcontainer/docker-compose.yml exec db \
   psql -U forge -d forge -Atqc \
   "select current_setting('server_version'), extversion from pg_extension where extname = 'vector';"
 ```
+
+## Host access to development servers
+
+The Compose `app` service publishes every stable application port to the same
+port on the Docker host's IPv4 loopback interface:
+
+| Service               | Port | Host URL                |
+| --------------------- | ---: | ----------------------- |
+| Web                   | 3000 | `http://localhost:3000` |
+| Manager               | 3002 | `http://localhost:3002` |
+| Admin                 | 3003 | `http://localhost:3003` |
+| Auth                  | 3004 | `http://localhost:3004` |
+| Mastra Gateway        | 3005 | `http://localhost:3005` |
+| YouTube Mapper        | 3010 | `http://localhost:3010` |
+| Crop Worker           | 3011 | `http://localhost:3011` |
+| Shorts Worker         | 3012 | `http://localhost:3012` |
+| Roadmap               | 3100 | `http://localhost:3100` |
+| Chat                  | 3200 | `http://localhost:3200` |
+| Mastra Studio and API | 4111 | `http://localhost:4111` |
+
+Host access crosses three separate boundaries:
+
+1. The process listens on a container-reachable interface. Existing application
+   development commands already provide the required listener behavior; no
+   package-script changes are needed. Compose sets both `HOST=0.0.0.0` for the
+   Mastra CLI coordinator and `MASTRA_HOST=0.0.0.0` for its child server.
+2. Compose publishes `127.0.0.1:<port>:<port>`, keeping the stable services on
+   host loopback instead of intentionally exposing them on the LAN.
+3. The browser uses `localhost:<port>`. Compose also sets
+   `MASTRA_AUTO_DETECT_URL=true` so Studio derives API requests from its host
+   page origin rather than advertising the internal bind address.
+
+Port publication does not start a service. Start the relevant development
+command inside the devcontainer, and recreate the devcontainer after changing
+Compose; restarting a process cannot add Docker port mappings.
+
+VS Code retains `forwardPorts: [3000]` and its `openBrowser` metadata as a
+convenience for Web. That editor behavior is complementary: Compose owns the
+complete, editor-independent publication contract for every stable port.
+
+Keep the `app` service on Compose's ordinary default bridge. Do not add an
+explicit `network_mode`, attach a second app network, make the default network
+external or non-bridge, or add driver options that enable routed exposure. A
+loopback host mapping protects the host publication boundary; it does not make
+an alternate container network topology safe.
+
+The mappings are intentionally fixed. Stop another Forge devcontainer or local
+process if Compose reports that a contracted port is already in use. With a
+remote Docker context, `127.0.0.1` refers to the Docker daemon host, so use a
+secure tunnel instead of widening the shared bindings.
+
+Use Docker Engine 28.0.0 or newer when relying on localhost publication for
+same-L2 network isolation. Older engines have a documented caveat that can make
+localhost-published ports reachable from the local network.
+
+### Direct `docker run`
+
+An image cannot publish its own ports. Callers that bypass Compose must repeat
+the environment and loopback mapping for each service they need:
+
+```bash
+docker run \
+  -e HOST=0.0.0.0 \
+  -e MASTRA_HOST=0.0.0.0 \
+  -e MASTRA_AUTO_DETECT_URL=true \
+  -p 127.0.0.1:3000:3000 \
+  -p 127.0.0.1:4111:4111 \
+  forge-dev:local
+```
+
+Do not omit `127.0.0.1`: Docker otherwise publishes on every host interface.
+
+### Verification
+
+CI checks the normalized Compose model rather than maintaining a separate raw
+YAML parser:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml config --format json \
+  | node scripts/check-dev-port-contract.mjs
+```
+
+The checker requires the exact TCP ingress mappings, all three listener/origin
+environment values, and the unmodified default-bridge attachment. These
+boundaries need separate checks: a valid resolved model and an open host port do
+not prove that the service can complete an application-level request.
+
+With the devcontainer and a representative service running, confirm Docker
+reports a loopback mapping and make an application-level request from the host:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml port app 4111
+curl --fail http://127.0.0.1:3011/health
+```
+
+The `docker compose port` output should start with `127.0.0.1:`. Open Web and
+Mastra Studio at `http://localhost:3000` and
+`http://localhost:4111/studio` to verify browser behavior.
 
 ## Local SSH access
 

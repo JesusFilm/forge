@@ -180,7 +180,8 @@
     "changeAudioLanguage": "အသံဘာသာစကား ပြောင်းပါ",
     "home": "JesusFilm မူလစာမျက်နှာ",
     "closeSearch": "ရှာဖွေမှု ပိတ်ပါ",
-    "submitSearch": "ရှာဖွေပါ"
+    "submitSearch": "ရှာဖွေပါ",
+    "library": "စာကြည့်တိုက်"
   },
   "SearchOverlay": {
     "dialogLabel": "ဗီဒီယိုများကို ရှာဖွေပြီး လေ့လာပါ",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” ကို {language} ဖြင့် ရှာဖွေပါ",
     "inLanguage": "{language} တွင်",
     "browseByRegion": "ဒေသအလိုက် လေ့လာပါ",
+    "allVideosOnSinglePage": "ဗီဒီယိုအားလုံး စာမျက်နှာတစ်မျက်နှာတွင်",
     "clearLanguages": "ရှင်းလင်းပါ",
     "queryLanguageDetected": "{language} တွေ့ရှိထားသည်",
     "searchInLanguage": "{language} ဖြင့် ရှာဖွေပါ",
@@ -271,14 +273,183 @@
     "couldNotLoad": "အကြံပြုချက် ပုံစံကို တင်၍ မရပါ။",
     "loadingForm": "အကြံပြုချက် ပုံစံကို တင်နေသည်…",
     "retry": "ထပ်ကြိုးစားပါ",
-    "openFormShort": "ပုံစံဖွင့်ပါ",
     "cancel": "ပယ်ဖျက်ပါ",
-    "title": "ဘီတာ အကြံပြုချက်",
-    "description": "အဆင်ပြေနေတဲ့အရာများနှင့် တိုးတက်စေနိုင်သောအရာများကို မျှဝေပါ။ ဤပုံစံကို Google က ပံ့ပိုးထားသည်။",
-    "openInNewTab": "ပုံစံကို တက်ဘ်အသစ်တွင် ဖွင့်ပါ",
     "closeForm": "အကြံပြုချက် ပုံစံကို ပိတ်ပါ",
-    "loadingGoogleForm": "Google Form ကို တင်နေသည်…",
-    "iframeTitle": "ဘီတာ အကြံပြုချက် တင်သွင်းပါ"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} တွင် အခမဲ့ ခရစ်ယာန်ဗီဒီယိုများ | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "အားကစား",
     "collections": "စုစည်းမှုများ",
     "subtitlesOnly": "စာတန်းထိုးသာ",
+    "backToTop": "အပေါ်ပြန်တက်",
     "newlyAdded": "အသစ် ထည့်ထားသည်",
     "newVideosTitle": "{language} ဘာသာဖြင့် အသစ်ထွက် ခရစ်ယာန်ဗီဒီယိုများ",
     "newestFirst": "အသစ်ဆုံးက စ",
@@ -327,7 +499,21 @@
     "standaloneVideos": "သီးခြားဗီဒီယိုများ",
     "videosFromCollection": "{collection} မှ ဗီဒီယိုများ။",
     "standaloneDescription": "ဤဘာသာစကားရှိ သီးခြားဗီဒီယိုများ။",
-    "openCollection": "စုစည်းမှု ဖွင့်ပါ"
+    "openCollection": "စုစည်းမှု ဖွင့်ပါ",
+    "filters": "စစ်ထုတ်မှုများ",
+    "filterLength": "အရှည်",
+    "filterLength_under5": "၅ မိနစ်အောက်",
+    "filterLength_5to10": "၅-၁၀ မိနစ်",
+    "filterLength_10to30": "၁၀-၃၀ မိနစ်",
+    "filterLength_over30": "၃၀ မိနစ်အထက်",
+    "filterType": "အမျိုးအစား",
+    "clearFilters": "စစ်ထုတ်မှုများ ရှင်းလင်း",
+    "filterResults": "{total} အနက် {count} ပြသထား",
+    "noFilterResults": "ဤစစ်ထုတ်မှုများနှင့် ကိုက်ညီသော ဗီဒီယိုမရှိပါ။ တစ်ခုဖယ်ရှားကြည့်ပါ။",
+    "filterAdded": "ထည့်သွင်းချိန်",
+    "filterAdded_60d": "လွန်ခဲ့သော ၆၀ ရက်",
+    "filterAdded_6m": "လွန်ခဲ့သော ၆ လ",
+    "filterAdded_12m": "လွန်ခဲ့သော ၁၂ လ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ကြည့်ရှု",
@@ -407,6 +593,27 @@
     "merryChristmas": "ပျော်ရွှင်ဖွယ် ခရစ္စမတ်ပါ!",
     "daysUntilChristmas": "{count, plural, other {ခရစ္စမတ်ရောက်ရန် # ရက်}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ဘာသာစကားများ",
     "metadataDescription": "JesusFilm ဗီဒီယိုများကို ဘာသာစကားအလိုက် ကြည့်ရှုပါ။",
@@ -455,44 +662,6 @@
     "actionsLabel": "စာမျက်နှာ မတွေ့သည့် လုပ်ဆောင်ချက်များ",
     "backToWatch": "ကြည့်ရှုရန် ပြန်သွားပါ",
     "browseVideos": "ဗီဒီယိုများကို လေ့လာပါ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "တိုတောင်းရုပ်ရှင်ကို ကြည့်ပါ",
-    "actions": {
-      "joinUs": "ကျွန်ုပ်တို့နှင့် ပူးပေါင်းပါ",
-      "shareMission": "ကျွန်ုပ်တို့၏ မစ်ရှင်တွင် ပါဝင်မျှဝေပါ"
-    },
-    "welcomeStart": {
-      "label": "ယုံကြည်ခြင်း နှင့် ကျမ်းစာ",
-      "title": "ယနေ့ အကြံပြုဗီဒီယိုများ",
-      "description": "ကျွန်ုပ်တို့၏ စာကြည့်တိုက်မှ ယုံကြည်ခြင်းကို ဗဟိုပြုသော ဗီဒီယိုအကြောင်းအရာများဖြင့် အားပေးရန်၊ စိန်ခေါ်ရန်နှင့် ဆင်ခြင်သုံးသပ်မှုကို လှုံ့ဆော်ရန် ရည်ရွယ်ပါသည်။"
-    },
-    "welcomeMorning": {
-      "label": "နံနက်ပိုင်း လှုံ့ဆော်မှု",
-      "title": "မင်္ဂလာနံနက်ခင်းပါ။ ယနေ့၏ သမ္မာကျမ်းစာ အခိုက်အတန့်များ သင့်ကို စောင့်နေသည်။",
-      "description": "သင်၏နေ့ကို လှုံ့ဆော်ပေးရန်နှင့် စိတ်ဓာတ်မြှင့်တင်ရန် ဒီဇိုင်းထားသော အားပေးသည့် ကျမ်းစာအခိုက်အတန့်များဖြင့် စတင်ပါ။"
-    },
-    "welcomeAfternoon": {
-      "label": "နေ့လယ်ပိုင်း လှုံ့ဆော်မှု",
-      "title": "နေ့လယ်မင်္ဂလာပါ။ သင်၏နေ့အတွက် ကျမ်းစာအခိုက်အတန့်များ။",
-      "description": "နေ့လယ် အနားယူချိန်တွင် ဖြစ်စေ၊ ဆက်လက်အားပေးမှုအတွက် ဖြစ်စေ အထူးသင့်လျော်သော အားပေးသည့် ကျမ်းစာအကြောင်းအရာများ။"
-    },
-    "welcomeEvening": {
-      "label": "ညနေခင်း လှုံ့ဆော်မှု",
-      "title": "မင်္ဂလာညနေခင်းပါ။ ကျမ်းစာအခိုက်အတန့်များဖြင့် နေ့ကို ဖြေလျှော့ပါ။",
-      "description": "နေ့တာကုန်ဆုံးလာချိန်တွင် ဆင်ခြင်သုံးသပ်နိုင်ရန်နှင့် နှစ်သိမ့်မှုရရှိရန် ကူညီပေးမည့် ငြိမ်းချမ်းသော ကျမ်းစာအခိုက်အတန့်များ။"
-    },
-    "joinUs": {
-      "label": "ကျွန်ုပ်တို့နှင့် ပူးပေါင်းပါ",
-      "title": "ဘီလီယံပေါင်းများစွာ ရှာဖွေနေကြသည်",
-      "description": "ရိတ်သိမ်းချိန် ရောက်ရှိနေပါပြီ။ ဒစ်ဂျစ်တယ် မီဒီယာကို အသုံးပြု၍ ဧဝံဂေလိသတင်းကို ကမ္ဘာနှင့် မျှဝေရာတွင် ကျွန်ုပ်တို့နှင့် ပူးပေါင်းပါ။"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "အတူတကွ သွားကြစို့",
-      "title": "ယေရှု၏ ဇာတ်လမ်းကို အတူတကွ ပြောပြခြင်း",
-      "description": "သူတို့ရှိရာနေရာတွင်ပင် မိမိတို့၏ ဘာသာစကားဖြင့် ယေရှု၏ ချစ်ခြင်းမေတ္တာကို ကြားမြင်နိုင်စေရန်။"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ကိုက်ညီမှု",

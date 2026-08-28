@@ -8,15 +8,25 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import type { DynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
+
+const createCacheSignatures = vi.hoisted(() => vi.fn())
 
 vi.mock("next/image", () => ({
   default: () => null,
 }))
 
 vi.mock("next-intl", () => ({
+  // `useLocale` is consumed by the shared Carousel (text direction), which
+  // reaches this tree through the category rail under the hero.
+  useLocale: () => "en",
   useTranslations: () => (key: string) =>
     key === "pageTitle" ? "Jesus Film Project Watch" : key,
+}))
+
+vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
+  createInitialDynamicCollectionFeedCacheSignatures: createCacheSignatures,
 }))
 
 vi.mock("@/components/home/WatchHomeFooter", () => ({
@@ -32,16 +42,11 @@ vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
   ),
 }))
 
-vi.mock("@/components/home/WatchLanguageGlobeSection", () => ({
-  WatchLanguageGlobeSection: () => (
-    <section data-testid="watch-language-globe-section" />
-  ),
-}))
-
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: ({
     section,
     languageSlug,
+    dynamicCollections,
   }: {
     section: {
       __typename?: string | null
@@ -52,6 +57,10 @@ vi.mock("@/components/sections", () => ({
       sectionContent?: Array<Record<string, unknown> | null> | null
     }
     languageSlug: string
+    dynamicCollections?: {
+      cacheSignatures?: DynamicCollectionFeedCacheSignatures
+      featuredCollections?: { ids: string[]; slugs: string[] }
+    }
   }) => {
     const headings = (
       block: typeof section | Record<string, unknown> | null,
@@ -81,6 +90,16 @@ vi.mock("@/components/sections", () => ({
       return Array.isArray(children) ? children.flatMap(headings) : []
     }
 
+    if (section.__typename === "WatchHomeCategoryRailBlock") {
+      return (
+        <section
+          data-testid="watch-home-category-rail"
+          data-block-marker="WatchHomeCategoryRailBlock"
+          data-language-slug={languageSlug}
+        />
+      )
+    }
+
     return (
       <section
         data-testid="experience-section"
@@ -88,6 +107,12 @@ vi.mock("@/components/sections", () => ({
         data-language-slug={languageSlug}
         data-block-marker={section.__typename ?? "unknown"}
         data-items-source={section.itemsSource ?? undefined}
+        data-desktop-cache-signature={
+          dynamicCollections?.cacheSignatures?.desktop
+        }
+        data-excluded-slug-count={
+          dynamicCollections?.featuredCollections?.slugs.length
+        }
       >
         {headings(section).map(({ heading, level }) =>
           level === "h1" ? (
@@ -106,7 +131,7 @@ import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePa
 const heroModel = {
   heroSlides: [],
   sections: [],
-  carousel: { pools: [], muxInserts: [] },
+  carousel: { pools: [] },
   missingData: [],
 } satisfies WatchHomeModel
 
@@ -147,6 +172,11 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  createCacheSignatures.mockReset()
+  createCacheSignatures.mockReturnValue({
+    mobile: "m".repeat(43),
+    desktop: "d".repeat(43),
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -229,9 +259,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(serverContainer.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    expect(
+      Array.from(serverContainer.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
 
     await act(async () => {
       root.render(
@@ -247,9 +279,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(container.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(container.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    expect(
+      Array.from(container.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
   })
 
   it("contains only top-level standalone video blocks on the Watch rail", async () => {
@@ -260,6 +294,7 @@ describe("WatchHomeExperiencePage", () => {
       makeBlock("SectionBlock", "section"),
       makeBlock("VideoBlock", "invitation"),
       makeBlock("MediaCollectionBlock", "collection"),
+      makeBlock("LanguageGlobeBlock", "language-globe"),
     ]
 
     await act(async () => {
@@ -305,6 +340,7 @@ describe("WatchHomeExperiencePage", () => {
       "VideoHeroBlock",
       "SectionBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ]) {
       const section = container.querySelector<HTMLElement>(
         `[data-section-type="${sectionType}"]`,
@@ -322,6 +358,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       Array.from(
@@ -334,6 +371,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       renderedSections.every(
@@ -346,16 +384,13 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).not.toBeNull()
-    expect(
-      container.querySelectorAll(
-        '[data-testid="watch-language-globe-section"]',
-      ),
-    ).toHaveLength(1)
-    expect(
-      container
-        .querySelector('[data-testid="watch-language-globe-section"]')
-        ?.nextElementSibling?.getAttribute("data-testid"),
-    ).toBe("watch-home-footer")
+    const authoredGlobe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+    expect(authoredGlobe).not.toBeNull()
+    expect(authoredGlobe?.nextElementSibling?.getAttribute("data-testid")).toBe(
+      "watch-home-footer",
+    )
   })
 
   it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
@@ -385,9 +420,201 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(footer).not.toBeNull()
     expect(dynamicFeed).not.toBeNull()
+    expect(dynamicFeed?.getAttribute("data-desktop-cache-signature")).toBe(
+      "d".repeat(43),
+    )
+    expect(createCacheSignatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheScope: "live",
+        locale: "en",
+        languageSlug: "english",
+      }),
+    )
     expect(dynamicFeed?.compareDocumentPosition(footer as Node) ?? 0).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
     expect(footer?.parentElement?.lastElementChild).toBe(footer)
+  })
+
+  it("preserves the editor-authored globe position around the dynamic feed", async () => {
+    const blocks = [
+      {
+        __typename: "MediaCollectionBlock",
+        sectionKey: "dynamic-collection-feed",
+        itemsSource: "dynamicCollections",
+      } as unknown as Section,
+      makeBlock("LanguageGlobeBlock", "language-globe"),
+    ]
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const dynamicFeed = container.querySelector(
+      '[data-items-source="dynamicCollections"]',
+    )
+    const globe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+
+    expect(dynamicFeed).not.toBeNull()
+    expect(globe).not.toBeNull()
+    expect(dynamicFeed?.compareDocumentPosition(globe as Node) ?? 0).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it.each([
+    ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
+    ["the fallback hero carousel", [] as Section[]],
+  ])(
+    "does not synthesize a category rail after %s on a supported schema",
+    async (_label, blocks) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="english"
+          />,
+        )
+      })
+
+      const rails = container.querySelectorAll(
+        '[data-testid="watch-home-category-rail"]',
+      )
+      expect(rails).toHaveLength(0)
+    },
+  )
+
+  it.each([
+    ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
+    ["the fallback hero carousel", [] as Section[]],
+  ])(
+    "renders one fixed compatibility rail directly after %s",
+    async (_label, blocks) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="english"
+            legacyCategoryRailCompatibility
+          />,
+        )
+      })
+
+      const rails = container.querySelectorAll(
+        '[data-testid="watch-home-category-rail"]',
+      )
+      expect(rails).toHaveLength(1)
+      expect(
+        container.querySelector('[data-testid="watch-home-hero"]')
+          ?.nextElementSibling,
+      ).toBe(rails[0])
+    },
+  )
+
+  it.each([
+    [
+      "before",
+      [
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+        makeBlock("MediaCollectionBlock", "collection"),
+      ],
+      ["WatchHomeCategoryRailBlock", "MediaCollectionBlock"],
+    ],
+    [
+      "between",
+      [
+        makeBlock("MediaCollectionBlock", "first"),
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+        makeBlock("LanguageGlobeBlock", "last"),
+      ],
+      [
+        "MediaCollectionBlock",
+        "WatchHomeCategoryRailBlock",
+        "LanguageGlobeBlock",
+      ],
+    ],
+    [
+      "after",
+      [
+        makeBlock("MediaCollectionBlock", "collection"),
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+      ],
+      ["MediaCollectionBlock", "WatchHomeCategoryRailBlock"],
+    ],
+  ])(
+    "renders the authored category rail %s surrounding blocks",
+    async (_label, blocks, order) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks as Section[]}
+            languageSlug="english"
+          />,
+        )
+      })
+
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>("[data-block-marker]"),
+        ).map((block) => block.dataset.blockMarker),
+      ).toEqual(["WatchHomeHeroBlock", ...order])
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-category-rail"]'),
+      ).toHaveLength(1)
+    },
+  )
+
+  it("bounds large authored parent-slug sets before signing and rendering", () => {
+    const authoredCollections = Array.from({ length: 201 }, (_, index) => ({
+      __typename: "MediaCollectionBlock",
+      sectionKey: `authored-${index}`,
+      mediaDefaultCollectionSlug: `collection-${index}`,
+      items: [],
+    })) as unknown as Section[]
+    const dynamicFeed = {
+      __typename: "MediaCollectionBlock",
+      sectionKey: "dynamic-collection-feed",
+      itemsSource: "dynamicCollections",
+    } as unknown as Section
+
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={[...authoredCollections, dynamicFeed]}
+        languageSlug="english"
+      />,
+    )
+
+    expect(createCacheSignatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        excludedSlugs: expect.arrayContaining([
+          "collection-0",
+          "collection-199",
+        ]),
+      }),
+    )
+    const signatureInput = createCacheSignatures.mock.calls[0]?.[0] as {
+      excludedSlugs: string[]
+    }
+    expect(signatureInput.excludedSlugs).toHaveLength(200)
+
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+    expect(
+      serverContainer
+        .querySelector('[data-items-source="dynamicCollections"]')
+        ?.getAttribute("data-excluded-slug-count"),
+    ).toBe("200")
   })
 })

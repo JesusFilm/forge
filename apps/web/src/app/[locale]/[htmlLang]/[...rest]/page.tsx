@@ -21,6 +21,7 @@ import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
+  rankSelectableCarouselParents,
   type CarouselParent,
   type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
@@ -323,6 +324,11 @@ function selectableParentsForStandaloneVideo(
         slug: parentSlug,
         title: filteredParent.title,
         children,
+        // Load-bearing, not decorative: `rankSelectableCarouselParents` reads
+        // this to open the carousel on the film/series a video is a chapter of
+        // rather than on whichever collection lists it earliest. Dropping it
+        // silently reverts to admin's VideoRelation.order.
+        label: filteredParent.label,
       },
     ]
   })
@@ -732,6 +738,11 @@ async function renderOneSegment(shape: {
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
+          legacyCategoryRailCompatibility={
+            pageResult.data?.kind === "experience" &&
+            pageResult.data.watchHomeCategoryRailCompatibility ===
+              "legacy-schema"
+          }
         />
       </>
     )
@@ -1013,8 +1024,34 @@ async function renderVideo(
       watchVideo.selectedVariant,
       formatAvailabilityCounts,
     )
+    // The filename prefix must be numbered inside the parent the viewer can
+    // actually see, or the page contradicts itself: the rail would read
+    // "Chapter 41 of 49" under the film while the saved file is named `05_...`
+    // from a collection. Two separate questions, and they take different
+    // sources:
+    //
+    //   WHICH parent — the ranked first entry of `selectableParents`, the same
+    //   manifest-filtered list the carousel opened on. Ranking the unfiltered
+    //   `video.parents` instead would pick a parent the rail may not be
+    //   showing: `selectableParents` is empty when the video's own children own
+    //   the rail, and it drops parents whose children this language cannot
+    //   route to.
+    //
+    //   WHOSE ORDER — that parent's unfiltered counterpart. Manifest filtering
+    //   removes siblings that still exist, and `resolveDownloadSequence`
+    //   derives `total` (and so the zero-padding width) from the child list.
+    //
+    // When no external parent owns the rail, keep the canonical parent.
+    const rankedCarouselParent =
+      rankSelectableCarouselParents(selectableParents)[0]
+    const downloadSequenceParent =
+      rankedCarouselParent == null
+        ? watchVideo.canonicalParent
+        : (watchVideo.video.parents.find(
+            (parent) => parent.documentId === rankedCarouselParent.documentId,
+          ) ?? rankedCarouselParent)
     const downloadSequence = resolveDownloadSequence(
-      watchVideo.canonicalParent,
+      downloadSequenceParent,
       watchVideo.video.documentId,
     )
     const clientVideo = pruneWatchVideoForClient(
@@ -1155,6 +1192,7 @@ async function renderVideo(
             formatAvailabilityCounts.subtitles,
           )}
         />
+        <WatchHomeFooter />
       </>
     )
   }

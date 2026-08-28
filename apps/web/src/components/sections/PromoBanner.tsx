@@ -21,7 +21,7 @@ export function PromoBanner({ data }: PromoBannerProps) {
     <section id={id} className="bg-blue-50 py-12">
       <div className="container mx-auto px-4 text-center">
         {intro && (
-          <p className="mb-2 text-sm uppercase tracking-wide text-blue-600">
+          <p className="mb-2 text-base sm:text-sm uppercase tracking-wide text-blue-600">
             {intro}
           </p>
         )}

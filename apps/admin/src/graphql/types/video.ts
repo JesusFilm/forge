@@ -23,6 +23,7 @@ import {
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
+  WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS,
 } from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
@@ -30,6 +31,7 @@ import type {
   WatchCollectionFeedItem,
   WatchCollectionFeedNode,
   WatchCollectionFeedPageInfo,
+  WatchCollectionLanguageCounts,
   WatchLanguageInventory,
   WatchLanguageInventoryCounts,
   WatchLanguageInventoryItem,
@@ -1098,6 +1100,11 @@ WatchLanguageInventoryItemRef.implement({
     description: t.exposeString("description", { nullable: true }),
     imageUrl: t.exposeString("imageUrl", { nullable: true }),
     imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", {
+      nullable: true,
+      description:
+        "Mux playback id of the row's best published dub. Lets consumers synthesize a frame thumbnail when `imageUrl` is null because the video carries no authored artwork.",
+    }),
     label: t.exposeString("label", {
       nullable: true,
       description:
@@ -1142,6 +1149,29 @@ WatchLanguageInventoryCountsRef.implement({
       nullable: false,
     }),
     total: t.exposeInt("total", { nullable: false }),
+  }),
+})
+
+const WatchCollectionLanguageCountsRef =
+  builder.objectRef<WatchCollectionLanguageCounts>(
+    "WatchCollectionLanguageCounts",
+  )
+
+WatchCollectionLanguageCountsRef.implement({
+  description:
+    "Distinct audio and subtitle language counts aggregated across a collection's visible children. Powers the Watch /videos sidebar availability indicator.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: false }),
+    audioLanguageCount: t.exposeInt("audioLanguageCount", {
+      nullable: false,
+      description:
+        "Distinct playable audio languages across the collection's visible children. Uses the same predicate as `Video.childDubLanguages`, so the two never disagree for the same collection.",
+    }),
+    subtitleLanguageCount: t.exposeInt("subtitleLanguageCount", {
+      nullable: false,
+      description:
+        "Distinct subtitle languages across the collection's visible children.",
+    }),
   }),
 })
 
@@ -1752,6 +1782,23 @@ builder.queryFields((t) => ({
       ctx.services.video.getWatchLanguageInventory({
         languageSlug: args.languageSlug,
         limit: args.limit,
+      }),
+  }),
+  watchCollectionLanguageCounts: t.field({
+    type: [WatchCollectionLanguageCountsRef],
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Batched audio/subtitle language counts for collection slugs. Deliberately separate from `watchLanguageInventory`: the counts are not language-scoped, and a slow aggregate must degrade the /videos availability indicator rather than blank the page. Unknown slugs are omitted from the result; callers must tolerate a short array.",
+    args: {
+      slugs: t.arg.stringList({
+        required: true,
+        description: `Collection slugs. Deduplicated; capped at ${WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS} entries.`,
+      }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchCollectionLanguageCounts({
+        slugs: args.slugs,
       }),
   }),
   videosByCoreIds: t.field({

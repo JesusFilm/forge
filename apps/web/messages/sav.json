@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi làkk bu audio bi",
     "home": "JesúsFilm home",
     "closeSearch": "Tëj seet bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayit"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak dëkkuwaay vidéos",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Seet « {suggestion} » ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Dëkkuwaay ci réew",
+    "allVideosOnSinglePage": "Gënaari vídeos",
     "clearLanguages": "Fey",
     "queryLanguageDetected": "{language} lañu dawall",
     "searchInLanguage": "Seet ci {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Mënul ubbi form bu feedback bi.",
     "loadingForm": "Di tënku form bu feedback bi…",
     "retry": "Faraat",
-    "openFormShort": "Ubbi form",
     "cancel": "Dëlloo",
-    "title": "Beta Bataaxal",
-    "description": "Jox lu def ak lu nu mën a yàggal. Form bii Google la joxe.",
-    "openInNewTab": "Ubbi form bi ci beneen tab",
     "closeForm": "Tëj form bu feedback",
-    "loadingGoogleForm": "Di tënku Google Form bi…",
-    "iframeTitle": "Yónnee Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeos bu xamul ci {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Sports yi",
     "collections": "Collections yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Fandiŋ jeeg",
     "newlyAdded": "Yeesu ci dëgg",
     "newVideosTitle": "Vídeos yu bees ci {language}",
     "newestFirst": "Boo gaaw gaawe",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Vídeos bu sikk",
     "videosFromCollection": "Vídeos ci {collection}.",
     "standaloneDescription": "Vídeos bu sikk ci làkk bii.",
-    "openCollection": "Ubbi collection bi"
+    "openCollection": "Ubbi collection bi",
+    "filters": "Ñoolaan",
+    "filterLength": "Ndoolo",
+    "filterLength_under5": "Rekaa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopaa 30 min",
+    "filterType": "Kaŋam",
+    "clearFilters": "Fees ñoolaan",
+    "filterResults": "{count} ca {total} a wonwaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaan yii. Fees kenn.",
+    "filterAdded": "A yokku",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Xool ci Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Noël bu neex!",
     "daysUntilChristmas": "{count, plural, one {# bés la des ba Noël} other {# bés la des ba Noël}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Làkk yi",
     "metadataDescription": "Dëkkuwaay vídeos yu JesusFilm ci làkk.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Jëf yu page bi amul",
     "backToWatch": "Dellu ci Watch",
     "browseVideos": "Dëkkuwaay vidéos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Xool film bu gàtt",
-    "actions": {
-      "joinUs": "Jóge nu",
-      "shareMission": "Bokkal ci sunu mission"
-    },
-    "welcomeStart": {
-      "label": "Ngëm ak Scripture",
-      "title": "Video yu nu tànn ci tay",
-      "description": "Kontenu vidéo bu jëm ci ngëm ci sunu library ngir xelal, yëngal, ak jox xalaat bu gëna fonk."
-    },
-    "welcomeMorning": {
-      "label": "Doxalin bu suba",
-      "title": "Naka, suba ba! Bible moments yu tay ñëw nañu.",
-      "description": "Tàmbalee sa bés ak Bible moments yu daldi, yu ñuy xelal ak dalal sa xel."
-    },
-    "welcomeAfternoon": {
-      "label": "Doxalin bu tàkkusaan",
-      "title": "Naka, tàkkusaan ba! Bible moments yu sa bés.",
-      "description": "Kontenu Bible bu xelal, bu baax ci sa pause bu tàkkusaan walla ngir yéene bu gëna bare."
-    },
-    "welcomeEvening": {
-      "label": "Doxalin bu guddi",
-      "title": "Naka, guddi ba! Dalal sa bopp ak Bible moments.",
-      "description": "Bible moments yu dal ngir say xalaat fekk dal, ak ngir nga gis ndam ak maarif as bés bi daa jàmm."
-    },
-    "joinUs": {
-      "label": "Jóge nu",
-      "title": "Milyardi nit ñi di seet",
-      "description": "Mbedd mi fii la. Jóge nu, nu jàngale gospel bi àdduna si ak media bu digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nañu demëndoom",
-      "title": "Wax xibaaru Yeesu bi, ñun ñépp",
-      "description": "Ngir ñu dégg ak gis mbëggeel bu Yeesu ci seen làkk bu leen di nekk fii."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% méngoo",

@@ -18,6 +18,8 @@ import { usePathname } from "next/navigation"
 import { Globe, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
+import { WatchLibraryIcon } from "@/components/watch/watch-section-styles"
+
 import type {
   FloatingSearchControllerProps,
   PendingSearchSubmitIntent,
@@ -57,8 +59,13 @@ import {
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
+import {
+  deriveLanguageDisplay,
+  isolateLanguageName,
+} from "@/lib/language-display"
 import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 import {
+  languageVideosIndexPath,
   localizedHomePath,
   parseWatchPath,
   tryAsLocaleSlug,
@@ -177,6 +184,7 @@ export function FloatingSearchProvider({
 }) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
+  const languageT = useTranslations("LanguagePickerModal")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = useMemo(() => parseWatchPath(pathname), [pathname])
@@ -243,10 +251,28 @@ export function FloatingSearchProvider({
     routeSurface,
     defaultLanguageSlug,
   )
+  const headerLanguageSlug = resolveHeaderLanguageSlug(
+    parsedPath,
+    currentLanguageSlug,
+  )
   const currentLanguageCode =
-    languageCodeFor({
-      slug: resolveHeaderLanguageSlug(parsedPath, currentLanguageSlug),
-    }) ?? languageCodeFor({ slug: currentLanguageSlug })
+    languageCodeFor({ slug: headerLanguageSlug }) ??
+    languageCodeFor({ slug: currentLanguageSlug })
+  // The inventory route 404s for anything outside the public watch language
+  // set, and linking to it from the page it already renders is noise — so the
+  // control is absent rather than dead in both cases.
+  const headerLanguageLocaleSlug = tryAsLocaleSlug(headerLanguageSlug)
+  const languageVideosHref =
+    parsedPath.kind !== "language-videos" &&
+    headerLanguageLocaleSlug != null &&
+    isPublicWatchHomeLanguageSlug(headerLanguageLocaleSlug)
+      ? languageVideosIndexPath(headerLanguageLocaleSlug)
+      : null
+  const languageVideosLabel = languageT("seeAllVideosInLanguage", {
+    language: isolateLanguageName(
+      deriveLanguageDisplay(headerLanguageSlug, null).name,
+    ),
+  })
   const isWatchHome =
     routeSurface === "language-home" || routeSurface === "experience"
   const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
@@ -879,6 +905,41 @@ export function FloatingSearchProvider({
                 : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
             }
           >
+            {!modalChromeHidden && languageVideosHref ? (
+              <Link
+                href={languageVideosHref}
+                prefetch={false}
+                data-testid="floating-header-language-videos-link"
+                // No `aria-label`: the visible "Library" text is now the
+                // accessible name. Overriding it with "See all videos in X"
+                // would break WCAG 2.5.3 Label in Name, since the spoken name
+                // would not contain the visible label. The richer phrasing
+                // stays as the hover tooltip.
+                title={languageVideosLabel}
+                // Hidden below `md`: the header's trailing grid column is
+                // `minmax(80px,1fr)` at mobile widths, so a third 44px control
+                // pushes the language globe past the viewport edge (clipped by
+                // `overflow-x-clip`). Widening that column is a header-wide
+                // layout change, not a same-PR call.
+                //
+                // Absent entirely while the search modal is open at every
+                // width: the overlay renders its own full-width row above the
+                // category tiles instead, so the two never compete.
+                // Auto width rather than the fixed square
+                // FLOATING_HEADER_LANGUAGE_SLOT_CLASS, since the control now
+                // carries a text label beside the glyph. Still hidden below
+                // `md` for the reason above.
+                className="pointer-events-auto hidden h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:inline-flex md:h-[52px]"
+              >
+                <WatchLibraryIcon
+                  aria-hidden
+                  className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+                />
+                <span className="text-base sm:text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
+                  {t("library")}
+                </span>
+              </Link>
+            ) : null}
             {headerLanguageControlVisible ? (
               <button
                 type="button"
@@ -906,7 +967,7 @@ export function FloatingSearchProvider({
                 {headerLanguageCode ? (
                   <span
                     data-testid="floating-header-language-code"
-                    className="text-[10px] font-bold tracking-[0.14em]"
+                    className="text-xs font-bold tracking-[0.14em] sm:text-[10px]"
                   >
                     {headerLanguageCode}
                   </span>
@@ -950,6 +1011,7 @@ export function FloatingSearchProvider({
             headerLanguageSwitcherVisible={headerLanguageControlVisible}
             headerLanguageCode={headerLanguageCode}
             headerPinned={pinned}
+            languageVideosHref={languageVideosHref}
             resetToken={searchResetToken}
             pendingSubmitIntent={pendingSearchSubmitIntent}
             onReady={markSearchControllerReady}

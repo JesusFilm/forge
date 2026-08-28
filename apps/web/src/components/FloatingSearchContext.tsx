@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext } from "react"
+import type { Route } from "next"
 
 import type { SearchActionResultSource, SearchResult } from "@/lib/search"
 import type {
@@ -48,6 +49,13 @@ export type FloatingSearchContextValue = {
   headerLanguageSwitcherVisible: boolean
   headerLanguageCode: string | null
   headerPinned: boolean
+  /**
+   * Inventory path for the header language, or null when that language has no
+   * public inventory route. Derived once in FloatingSearchProvider so the
+   * header control and the search overlay's mobile row can never disagree
+   * about which language "all videos" means.
+   */
+  languageVideosHref: Route | null
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
   search: (

@@ -4,6 +4,7 @@
 
 import {
   buildStubReply,
+  type SendPromptSource,
   type StreamReplyInput,
   type StreamReplyResult,
 } from "./chat-stub"
@@ -89,7 +90,9 @@ export type ConversationSession = {
   activate(): void
   deactivate(): void
   setDraft(value: string): void
-  send(text: string): void
+  /** `promptSource` marks a chip-originated send (feat-366, KTD11); a typed
+   * send omits it and the wire key never appears. */
+  send(text: string, promptSource?: SendPromptSource): void
   stopReply(): void
   selectConversation(id: string): void
   /**
@@ -196,6 +199,10 @@ export function mergeReplayMessages(
       content: m.text,
       ...(m.sources ? { sources: m.sources } : {}),
       ...(m.video ? { video: m.video } : {}),
+      // feat-366: the questions this turn offered when it ran. The wire
+      // carries them on the thread's LAST text-bearing turn only, which is
+      // also the only turn R3 renders chips on.
+      ...(m.followUps ? { followUps: m.followUps } : {}),
     }))
   return [...transcript, ...existing]
 }
@@ -221,6 +228,16 @@ function seedAdoptedConversation(id: string): Conversation {
  * hydration stamp; deselected it falls to last naturally, its key is 0) —
  * then everything else activity-descending: local conversations by the
  * `lastActivityAt` stamped on send, server rows by their listed `updatedAt`.
+ *
+ * feat-401 note — the fresh-empty-LOCAL pin below is now UNOBSERVABLE through
+ * `listConversations`: it pins rows matching `origin !== "server" &&
+ * messages.length === 0`, and that projection now keeps only
+ * `origin === "server" || messages.length > 0`, which no row can satisfy at
+ * the same time. It is dead policy through the sidebar, kept because the
+ * function is the general ordering primitive and its SECOND pin — feat-209
+ * R3's ACTIVE adopted server row awaiting its hydration stamp — still governs
+ * a visible row. Do not read the first branch as live sidebar policy.
+ *
  * Pure — exported for direct unit coverage.
  */
 export function orderConversations(
@@ -501,8 +518,8 @@ export function createConversationSession(
         : c
     if (activeConversation !== undefined && isRemovable(activeConversation)) {
       // The active pane is a disappearing server row — land on the existing
-      // fresh local conversation when one is left, else mint one (never both:
-      // a duplicate "New conversation" row would linger in the rail).
+      // fresh local conversation when one is left, else mint one. Never both:
+      // post-feat-401 a second one is invisible, so it strands unreachable.
       const fallback = conversations.find(
         (c) =>
           !isRemovable(c) && c.origin !== "server" && c.messages.length === 0,
@@ -667,7 +684,7 @@ export function createConversationSession(
   // Actions
   // ---------------------------------------------------------------------------
 
-  function send(text: string) {
+  function send(text: string, promptSource?: SendPromptSource) {
     const trimmed = text.trim()
     // Capture the target up front so the reply lands in the conversation
     // active at send time even if the user switches mid-reply.
@@ -707,6 +724,9 @@ export function createConversationSession(
           text: trimmed,
           conversationId: targetId,
           seekerEnabled: deps.seekerEnabled,
+          // feat-366 (KTD11): travels with the request like targetId does —
+          // captured at send start, never re-read at finalize.
+          promptSource,
           signal: controller.signal,
           onToken: (token) =>
             updateMessage(targetId, assistantId, (message) => ({
@@ -731,6 +751,9 @@ export function createConversationSession(
             // feat-328: terminal-frame only (plan D3) — absent on a turn that
             // featured nothing, and on every stub turn.
             video: result.video,
+            // feat-366: same shape — absent unless this turn's terminal frame
+            // carried questions that survived the client-side bound.
+            followUps: result.followUps,
           }))
           if (result.engine === "seeker") {
             // KTD10: the persisted predicate keys on a SUCCESSFUL Seeker turn
@@ -749,6 +772,7 @@ export function createConversationSession(
             grounded: false,
             engine: "stub",
             video: undefined,
+            followUps: undefined,
           }))
         } else if (wasStopped) {
           // User stop (feat-270): finalize with partial text kept — a plain

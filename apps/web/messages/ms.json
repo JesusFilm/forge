@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
     "closeSearch": "Tutup carian",
-    "submitSearch": "Cari"
+    "submitSearch": "Cari",
+    "library": "Pustaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan teroka video",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Cari “{suggestion}” dalam {language}",
     "inLanguage": "dalam {language}",
     "browseByRegion": "Semak imbas mengikut wilayah",
+    "allVideosOnSinglePage": "Semua video dalam satu halaman",
     "clearLanguages": "Kosongkan",
     "queryLanguageDetected": "{language} dikesan",
     "searchInLanguage": "Cari dalam {language}",
@@ -282,6 +284,7 @@
     "sports": "Sukan",
     "collections": "Koleksi",
     "subtitlesOnly": "Sari kata sahaja",
+    "backToTop": "Kembali ke atas",
     "newlyAdded": "Baru ditambah",
     "newVideosTitle": "Video Kristian baharu dalam {language}",
     "newestFirst": "Terbaharu dahulu",
@@ -312,7 +315,21 @@
     "standaloneVideos": "Video kendiri",
     "videosFromCollection": "Video daripada {collection}.",
     "standaloneDescription": "Video kendiri dalam bahasa ini.",
-    "openCollection": "Buka koleksi"
+    "openCollection": "Buka koleksi",
+    "filters": "Penapis",
+    "filterLength": "Tempoh",
+    "filterLength_under5": "Kurang 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Lebih 30 min",
+    "filterType": "Jenis",
+    "clearFilters": "Kosongkan penapis",
+    "filterResults": "{count} daripada {total} ditunjukkan",
+    "noFilterResults": "Tiada video sepadan dengan penapis ini. Cuba buang satu.",
+    "filterAdded": "Ditambah",
+    "filterAdded_60d": "60 hari lepas",
+    "filterAdded_6m": "6 bulan lepas",
+    "filterAdded_12m": "12 bulan lepas"
   },
   "WatchHome": {
     "pageTitle": "Tontonan Jesus Film Project",
@@ -441,57 +458,209 @@
     "merryChristmas": "Selamat Hari Krismas!",
     "daysUntilChristmas": "{count, plural, one {# hari lagi sebelum Krismas} other {# hari lagi sebelum Krismas}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "Feedback": {
     "openForm": "Buka borang maklum balas",
     "label": "Maklum balas",
     "couldNotLoad": "Borang maklum balas tidak dapat dimuatkan.",
     "loadingForm": "Memuatkan borang maklum balas…",
     "retry": "Cuba lagi",
-    "openFormShort": "Buka borang",
     "cancel": "Batal",
-    "title": "Maklum Balas Beta",
-    "description": "Kongsi perkara yang berfungsi dan perkara yang boleh kami perbaiki. Borang ini disediakan oleh Google.",
-    "openInNewTab": "Buka borang dalam tab baharu",
     "closeForm": "Tutup borang maklum balas",
-    "loadingGoogleForm": "Memuatkan Borang Google…",
-    "iframeTitle": "Hantar Maklum Balas Beta"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tonton Filem Pendek",
-    "actions": {
-      "joinUs": "Sertai Kami",
-      "shareMission": "Berkongsi dalam Misi Kami"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
     },
-    "welcomeStart": {
-      "label": "Iman & Kitab Suci",
-      "title": "Pilihan Video Hari Ini",
-      "description": "Kandungan video berteraskan iman daripada pustaka kami untuk mengilhamkan, mencabar dan mencetuskan renungan."
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
     },
-    "welcomeMorning": {
-      "label": "Inspirasi Pagi",
-      "title": "Selamat Pagi! Momen Alkitab Hari Ini Menanti Anda.",
-      "description": "Mulakan hari anda dengan momen Alkitab yang menggalakkan, direka untuk mengilhamkan dan menyegarkan roh anda."
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
     },
-    "welcomeAfternoon": {
-      "label": "Inspirasi Petang",
-      "title": "Selamat Petang! Momen Alkitab untuk Hari Anda.",
-      "description": "Kandungan Alkitab yang menggalakkan, sesuai untuk rehat petang atau sebagai sumber inspirasi berterusan."
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
     },
-    "welcomeEvening": {
-      "label": "Inspirasi Petang",
-      "title": "Selamat Petang! Tenangkan Diri dengan Momen Alkitab.",
-      "description": "Momen Alkitab yang damai untuk membantu anda merenung dan mendapat ketenangan ketika hari anda berakhir."
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
     },
-    "joinUs": {
-      "label": "Sertai Kami",
-      "title": "Berbilion-bilion sedang mencari",
-      "description": "Tuaian sudah tiba. Sertai kami ketika kami menyampaikan Injil kepada dunia melalui media digital."
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "Mari pergi bersama",
-      "title": "Menceritakan Kisah Yesus, Bersama-sama",
-      "description": "Supaya mereka dapat mendengar dan melihat kasih Yesus dalam bahasa mereka sendiri, di mana sahaja mereka berada."
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "VideoRecommendations": {

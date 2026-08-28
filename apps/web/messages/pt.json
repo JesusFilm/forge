@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Alterar idioma do áudio",
     "home": "Início do JesusFilm",
     "closeSearch": "Fechar pesquisa",
-    "submitSearch": "Pesquisar"
+    "submitSearch": "Pesquisar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Pesquisar e explorar vídeos",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Pesquisar “{suggestion}” em {language}",
     "inLanguage": "em {language}",
     "browseByRegion": "Explorar por região",
+    "allVideosOnSinglePage": "Todos os vídeos numa página",
     "clearLanguages": "Limpar",
     "queryLanguageDetected": "{language} detetado",
     "searchInLanguage": "Pesquisar em {language}",
@@ -282,6 +284,7 @@
     "sports": "Desporto",
     "collections": "Coleções",
     "subtitlesOnly": "Apenas legendas",
+    "backToTop": "Voltar ao início",
     "newlyAdded": "Adicionados recentemente",
     "newVideosTitle": "Novos vídeos cristãos em {language}",
     "newestFirst": "Mais recentes primeiro",
@@ -312,7 +315,21 @@
     "standaloneVideos": "Vídeos individuais",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos individuais neste idioma.",
-    "openCollection": "Abrir coleção"
+    "openCollection": "Abrir coleção",
+    "filters": "Filtros",
+    "filterLength": "Duração",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mais de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Limpar filtros",
+    "filterResults": "{count} de {total} exibidos",
+    "noFilterResults": "Nenhum vídeo corresponde a estes filtros. Tente remover um.",
+    "filterAdded": "Adicionado",
+    "filterAdded_60d": "Últimos 60 dias",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Assistir | Jesus Film Project",
@@ -441,57 +458,209 @@
     "merryChristmas": "Feliz Natal!",
     "daysUntilChristmas": "{count, plural, one {Falta # dia para o Natal} other {Faltam # dias para o Natal}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "Feedback": {
     "openForm": "Abrir formulário de feedback",
     "label": "Comentários",
     "couldNotLoad": "Não foi possível carregar o formulário de feedback.",
     "loadingForm": "A carregar o formulário de feedback…",
     "retry": "Tentar novamente",
-    "openFormShort": "Abrir formulário",
     "cancel": "Cancelar",
-    "title": "Feedback beta",
-    "description": "Partilhe o que está a funcionar e o que podemos melhorar. Este formulário é fornecido pela Google.",
-    "openInNewTab": "Abrir o formulário numa nova aba",
     "closeForm": "Fechar formulário de feedback",
-    "loadingGoogleForm": "A carregar o Formulário Google…",
-    "iframeTitle": "Enviar feedback beta"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver curta-metragem",
-    "actions": {
-      "joinUs": "Junte-se a nós",
-      "shareMission": "Partilhe a nossa missão"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
     },
-    "welcomeStart": {
-      "label": "Fé e Escrituras",
-      "title": "As escolhas de vídeo de hoje",
-      "description": "Conteúdo de vídeo centrado na fé, da nossa biblioteca, para inspirar, desafiar e despertar reflexão."
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
     },
-    "welcomeMorning": {
-      "label": "Inspiração da manhã",
-      "title": "Bom dia! Os momentos bíblicos de hoje esperam por si.",
-      "description": "Comece o seu dia com momentos bíblicos encorajadores, pensados para inspirar e elevar o seu espírito."
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
     },
-    "welcomeAfternoon": {
-      "label": "Inspiração da tarde",
-      "title": "Boa tarde! Momentos bíblicos para o seu dia.",
-      "description": "Conteúdo bíblico encorajador, perfeito para a sua pausa da tarde ou para continuar a inspirar-se."
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
     },
-    "welcomeEvening": {
-      "label": "Inspiração da noite",
-      "title": "Boa noite! Descontraia com momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para o ajudar a refletir e encontrar conforto ao terminar o dia."
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
     },
-    "joinUs": {
-      "label": "Junte-se a nós",
-      "title": "Mil milhões procuram",
-      "description": "A colheita está aqui. Junte-se a nós enquanto partilhamos o evangelho com o mundo através dos media digitais."
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos juntos",
-      "title": "Contar a história de Jesus, juntos",
-      "description": "Para que possam ouvir e ver o amor de Jesus na sua própria língua, exatamente onde estão."
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "VideoRecommendations": {

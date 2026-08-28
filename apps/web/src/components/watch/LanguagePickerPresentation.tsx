@@ -14,6 +14,11 @@ import { useCallback, type ComponentProps, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { SpinnerIcon } from "@/components/ui/spinner"
 
+// Re-exported so existing picker call sites keep importing the isolate
+// helper from here; the definition lives in the pure lib module that the
+// header chrome can import without this bundle.
+export { isolateLanguageName } from "@/lib/language-display"
+
 type LinkHref = ComponentProps<typeof Link>["href"]
 
 export const LANGUAGE_PICKER_FOCUS_RING_CLASS =
@@ -24,13 +29,6 @@ export const LANGUAGE_PICKER_VIEWPORT_CLASS =
 
 export const LANGUAGE_PICKER_MODAL_CLASS =
   "m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
-
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
-
-export function isolateLanguageName(value: string): string {
-  return `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`
-}
 
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },
@@ -198,7 +196,7 @@ export function MultilingualTooltipPanel({
       role="tooltip"
       aria-hidden={visible ? undefined : true}
       data-testid="watch-language-picker-tooltip-panel"
-      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2.5 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
+      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2.5 py-1 text-base sm:text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
         visible ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
       }`}
     >
@@ -291,7 +289,7 @@ export function LanguagePickerHeader({
           href={allLanguagesHref}
           prefetch={false}
           data-testid={`${testIdPrefix}-all-languages-link`}
-          className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+          className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-sm sm:text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
         >
           <Globe aria-hidden className="size-3.5" />
           <span>{allLanguagesLabel}</span>
@@ -337,7 +335,7 @@ export function LanguagePickerInventoryLink({
         prefetch={false}
         data-testid={`${testIdPrefix}-selected-language-link`}
         aria-label={label}
-        className={`group inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-stone-400 underline decoration-stone-500 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-stone-200 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+        className={`group inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-2 text-base sm:text-sm font-medium text-stone-400 underline decoration-stone-500 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-stone-200 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
       >
         <span className="truncate">{label}</span>
         <ArrowRight
@@ -393,7 +391,7 @@ export function LanguagePickerActions({
           data-testid={closeTestId ?? `${testIdPrefix}-close`}
           disabled={closeDisabled}
           onClick={onClose}
-          className={`h-auto w-40 gap-1.5 cursor-pointer rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+          className={`h-auto w-40 gap-1.5 cursor-pointer rounded-full px-5 py-3 text-sm sm:text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
         >
           <X aria-hidden data-testid={closeIconTestId} className="size-3.5" />
           <span>{closeLabel}</span>
@@ -410,7 +408,7 @@ export function LanguagePickerActions({
           data-testid={`${testIdPrefix}-apply`}
           disabled={applyDisabled}
           onClick={onApply}
-          className={`inline-flex w-40 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+          className={`inline-flex w-40 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-sm sm:text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
         >
           {navigating ? (
             <SpinnerIcon aria-hidden className="size-3.5 animate-spin" />

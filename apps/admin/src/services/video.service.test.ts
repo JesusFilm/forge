@@ -6,6 +6,7 @@ import {
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
   WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
+  WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS,
 } from "./video.service"
 
 describe("getWatchRouteSnapshotBySlug", () => {
@@ -755,6 +756,68 @@ describe("VideoService", () => {
     })
   })
 
+  // SQL CORRECTNESS for this method is proven against a restored production
+  // snapshot, not here: the JESUS film reports 2,267 audio languages from both
+  // this query and `Video.childDubLanguages` (verified 2026-08-27, PostgreSQL
+  // 18.6). These cases cover only the input handling a mocked prisma CAN
+  // discriminate — a mocked `$queryRaw` would happily return the right answer
+  // for a wrong predicate.
+  describe("getWatchCollectionLanguageCounts", () => {
+    it("skips the database entirely for an empty or blank slug list", async () => {
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: [] }),
+      ).resolves.toEqual([])
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: ["", "   "] }),
+      ).resolves.toEqual([])
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+
+    it("deduplicates, trims, and caps the requested slugs", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchCollectionLanguageCounts({
+        slugs: [
+          "jesus",
+          " jesus ",
+          "jesus",
+          "  ",
+          ...Array.from({ length: 500 }, (_, index) => `filler-${index}`),
+        ],
+      })
+
+      const [, ...values] = prisma.tx.$queryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        string[],
+      ]
+      const requested = values[0]
+      expect(requested).toContain("jesus")
+      expect(requested.filter((slug) => slug === "jesus")).toHaveLength(1)
+      expect(requested).not.toContain("  ")
+      expect(requested).toHaveLength(WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS)
+    })
+
+    it("coerces null aggregate counts to zero", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          slug: "childless",
+          audioLanguageCount: null,
+          subtitleLanguageCount: null,
+        },
+      ])
+
+      await expect(
+        service.getWatchCollectionLanguageCounts({ slugs: ["childless"] }),
+      ).resolves.toEqual([
+        {
+          slug: "childless",
+          audioLanguageCount: 0,
+          subtitleLanguageCount: 0,
+        },
+      ])
+    })
+  })
+
   describe("getWatchLanguageInventory", () => {
     it("returns empty buckets when the requested language slug is unknown", async () => {
       prisma.language.findFirst.mockResolvedValueOnce(null)
@@ -968,6 +1031,123 @@ describe("VideoService", () => {
       expect(sql).toContain('"sortAt" DESC NULLS LAST')
       expect(sql).toContain('relation.order AS "parentOrder"')
       expect(sql).toContain('parent_ref."parentOrder"')
+    })
+
+    // The inventory row's Mux playback id is the ONLY source consumers have for
+    // a thumbnail when a video carries no authored video_image row -- the
+    // production shape for the newer vertical series. Mocked SQL proves shape
+    // only; the join was additionally exercised against a real Postgres.
+    it("projects each bucket's Mux playback id from the dub its duration came from", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+
+      // Both dub-selecting CTEs must carry the playback id forward. Reusing
+      // them (rather than a per-row LATERAL over video_dub) is deliberate:
+      // a production video can have hundreds of dubs, and both CTEs are
+      // already MATERIALIZED and DISTINCT ON the video id.
+      expect(sql).toContain(
+        "NULLIF(BTRIM(mux_video.playback_id), '') AS \"muxPlaybackId\"",
+      )
+      expect(sql).toContain(
+        "NULLIF(BTRIM(subtitle_mux_video.playback_id), '') AS \"muxPlaybackId\"",
+      )
+      expect(sql).toContain(
+        "LEFT JOIN mux_video\n          ON mux_video.id = dub.mux_video_id",
+      )
+      expect(sql).toContain(
+        "LEFT JOIN mux_video subtitle_mux_video\n          ON subtitle_mux_video.id = edition_dub.mux_video_id",
+      )
+
+      // Subtitle-only rows play a fallback-language dub, so they must read
+      // usable_subtitle_video; the two audio buckets must read playable_audio.
+      // Inverting this condition silently serves the wrong language's frame.
+      expect(sql).toContain(
+        "WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub.\"muxPlaybackId\"",
+      )
+      expect(sql).toContain('ELSE audio_playback."muxPlaybackId"')
+      expect(sql).toContain(
+        "LEFT JOIN playable_audio audio_playback\n        ON candidate.bucket <> 'subtitle_video'",
+      )
+      expect(sql).toContain('AND audio_playback."videoId" = candidate.id')
+    })
+
+    it("returns the Mux playback id on rows with no authored artwork", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "english",
+        name: { en: "English" },
+        bcp47: "en",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          bucket: "audio_video",
+          bucketTotal: 2,
+          id: "episode-frame-only",
+          coreId: "core-episode-frame-only",
+          slug: "santiago-in-the-rearview-vertical",
+          title: "Santiago in the Rearview (Vertical)",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          muxPlaybackId: "playback-vertical",
+          label: "episode",
+          availability: "AUDIO",
+          watchLanguageSlug: "english",
+          parentSlug: "impulses-for-the-way-vertical",
+          parentTitle: "Impulses for the Way (Vertical)",
+          parentOrder: 31,
+          durationSeconds: 132,
+          childCount: 0,
+          publishedAt: "2026-05-15T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-05-15T00:00:00.000Z",
+          sortAt: "2026-05-15T00:00:00.000Z",
+        },
+        {
+          bucket: "audio_video",
+          bucketTotal: 2,
+          id: "episode-no-playback",
+          coreId: "core-episode-no-playback",
+          slug: "unplayable-episode",
+          title: "Unplayable Episode",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          muxPlaybackId: null,
+          label: "episode",
+          availability: "AUDIO",
+          watchLanguageSlug: "english",
+          parentSlug: null,
+          parentTitle: null,
+          parentOrder: null,
+          durationSeconds: null,
+          childCount: 0,
+          publishedAt: null,
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: null,
+          sortAt: null,
+        },
+      ])
+
+      const inventory = await service.getWatchLanguageInventory({
+        languageSlug: "english",
+      })
+
+      expect(
+        inventory.audioVideos.map((item) => [item.slug, item.muxPlaybackId]),
+      ).toEqual([
+        ["santiago-in-the-rearview-vertical", "playback-vertical"],
+        ["unplayable-episode", null],
+      ])
     })
 
     it("bounds language candidates before expensive card hydration", async () => {

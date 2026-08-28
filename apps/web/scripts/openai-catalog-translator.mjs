@@ -45,6 +45,8 @@ const UI_SURFACE_CONTEXTS = {
   WatchFooter: "the Watch site footer",
   WatchHistory: "the user's Watch history page",
   WatchHome: "the Watch homepage",
+  WatchHomeCategories:
+    "the browse-by-category rail on the Watch homepage, whose cards open a collection of videos",
   WatchHomeMuxInserts: "promotional video inserts on the Watch homepage",
   WatchHomePromo: "a promotional section on the Watch homepage",
   WatchHomeSections: "content sections on the Watch homepage",
@@ -80,6 +82,11 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     role: "authentication failure message",
     composition:
       "Rendered inside a failed-to-load sentence. It represents failed authentication with the content service, not a network connection failure.",
+  },
+  "FloatingSearch.library": {
+    role: "site-header navigation button label",
+    composition:
+      "Labels the header control that opens the full catalogue of watchable VIDEOS for the visitor's language. `Library` here means a browsable collection of videos — a video library or video catalogue — NOT a building that lends books, an archive of documents, or a software/code library. Prefer the conventional target-language wording a streaming or video-on-demand product would use for its full video catalogue. Keep it short enough for a header button beside an icon.",
   },
   "LanguageCombobox.languages": {
     role: "language results list accessibility label",

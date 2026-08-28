@@ -5,7 +5,7 @@
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import { after } from "next/server"
-import { randomBytes } from "node:crypto"
+import { createHash, randomBytes } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
@@ -18,6 +18,7 @@ import {
 import { start } from "workflow/api"
 import {
   ExperienceDuplicationError,
+  ConcurrentModificationError,
   ForbiddenError,
   NotFoundError,
 } from "./errors"
@@ -73,6 +74,13 @@ export class ExperienceDynamicCollectionPlacementError extends Error {
   }
 }
 
+export class ExperienceWatchHomeCategoryRailPlacementError extends Error {
+  constructor() {
+    super("The Watch category rail can only appear once on a homepage.")
+    this.name = "ExperienceWatchHomeCategoryRailPlacementError"
+  }
+}
+
 function isDynamicCollectionBlock(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
@@ -113,10 +121,61 @@ function assertDynamicCollectionPlacement(
   }
 }
 
+function assertWatchHomeCategoryRailPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  const hasCategoryRail = blocks.some(
+    (block) =>
+      block != null &&
+      typeof block === "object" &&
+      !Array.isArray(block) &&
+      (block as Record<string, unknown>).t === "watchHomeCategoryRail",
+  )
+  if (hasCategoryRail && !isHomepage) {
+    throw new ExperienceWatchHomeCategoryRailPlacementError()
+  }
+}
+
+function assertHomepageBlockPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  assertDynamicCollectionPlacement(blocks, isHomepage)
+  assertWatchHomeCategoryRailPlacement(blocks, isHomepage)
+}
+
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
   return { v: 1, data }
+}
+
+type ActiveLocaleDraft = {
+  id: string
+  snapshot: unknown
+  revisedAt: Date
+  revisedBy: string | null
+  reason: string | null
+}
+
+/**
+ * Opaque compare-and-set token for the mutable active revision row. The row id
+ * alone is insufficient because saves update that row in place.
+ */
+export function localeDraftRevision(draft: ActiveLocaleDraft): string {
+  const digest = createHash("sha256")
+    .update(
+      JSON.stringify({
+        id: draft.id,
+        snapshot: draft.snapshot,
+        revisedAt: draft.revisedAt.toISOString(),
+        revisedBy: draft.revisedBy,
+        reason: draft.reason,
+      }),
+    )
+    .digest("base64url")
+  return `${draft.id}.${digest}`
 }
 
 /**
@@ -165,7 +224,7 @@ type LocaleSnapshotSource = {
   updatedAt?: Date
 }
 
-function draftDataFromLocale(
+export function draftDataFromLocale(
   locale: LocaleSnapshotSource,
 ): ExperienceLocaleDraftData {
   return ExperienceLocaleDraftDataSchema.parse({
@@ -223,12 +282,14 @@ export class ExperienceService {
     user,
     revisedByKind,
     reason,
+    expectedDraftRevision,
   }: {
     id: string
     patch: Partial<ExperienceLocaleDraftData>
     user: Principal | null
     revisedByKind: "USER" | "AI"
     reason: string
+    expectedDraftRevision?: string | null
   }) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -255,6 +316,13 @@ export class ExperienceService {
           },
           orderBy: { revisedAt: "desc" },
         })
+        if (
+          expectedDraftRevision !== undefined &&
+          expectedDraftRevision !==
+            (activeDraft ? localeDraftRevision(activeDraft) : null)
+        ) {
+          throw new ConcurrentModificationError("ExperienceLocale draft", id)
+        }
         const base = activeDraft
           ? effectiveDraftData(canonical, activeDraft.snapshot)
           : draftDataFromLocale(canonical)
@@ -262,11 +330,13 @@ export class ExperienceService {
           ...base,
           ...patch,
         })
-        assertDynamicCollectionPlacement(data.blocks, data.isHomepage)
+        assertHomepageBlockPlacement(data.blocks, data.isHomepage)
         const snapshot = snapshotEnvelope(
           data as unknown as Prisma.InputJsonObject,
         )
-        const revisedAt = new Date()
+        const revisedAt = new Date(
+          Math.max(Date.now(), (activeDraft?.revisedAt?.getTime() ?? 0) + 1),
+        )
 
         const draft = activeDraft
           ? await tx.contentRevision.update({
@@ -399,7 +469,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    assertDynamicCollectionPlacement(input.blocks, false)
+    assertHomepageBlockPlacement(input.blocks, false)
 
     const blocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
@@ -542,6 +612,7 @@ export class ExperienceService {
       if (!blocks.success) {
         throw new ExperienceDuplicationError()
       }
+      assertWatchHomeCategoryRailPlacement(blocks.data, false)
       return locale
     })
 
@@ -614,7 +685,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    assertDynamicCollectionPlacement(input.blocks, input.isHomepage ?? false)
+    assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
 
     const { experienceId, ...data } = input
     const blocks = await backfillExperienceVideoLanguageIds({
@@ -736,9 +807,28 @@ export class ExperienceService {
   async updateLocale({
     input: raw,
     user,
+    expectedDraftRevision,
   }: {
     input: unknown
     user: Principal | null
+    expectedDraftRevision?: string | null
+  }) {
+    const staged = await this.updateLocaleDraft({
+      input: raw,
+      user,
+      expectedDraftRevision,
+    })
+    return staged.effective
+  }
+
+  async updateLocaleDraft({
+    input: raw,
+    user,
+    expectedDraftRevision,
+  }: {
+    input: unknown
+    user: Principal | null
+    expectedDraftRevision?: string | null
   }) {
     const input = UpdateExperienceLocaleInput.parse(raw)
 
@@ -787,8 +877,9 @@ export class ExperienceService {
       user,
       revisedByKind: "USER",
       reason: "Locale draft saved from admin editor",
+      expectedDraftRevision,
     })
-    return staged.effective
+    return staged
   }
 
   async publishLocale({
@@ -868,7 +959,7 @@ export class ExperienceService {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
         const draftData = effectiveDraftData(canonical, draft.snapshot)
-        assertDynamicCollectionPlacement(draftData.blocks, draftData.isHomepage)
+        assertHomepageBlockPlacement(draftData.blocks, draftData.isHomepage)
         const appliedAt = new Date()
 
         await tx.contentRevision.create({
@@ -978,6 +1069,67 @@ export class ExperienceService {
           })
         }
         return canonical
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    )
+  }
+
+  async rollbackLocaleDraft({
+    input,
+    user,
+  }: {
+    input: {
+      id: string
+      expectedDraftRevision: string
+    }
+    user: Principal | null
+  }) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${input.id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
+          },
+        })
+        if (!canEditExperienceLocale(user, canonical)) {
+          throw new ForbiddenError()
+        }
+        const draft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: input.id,
+            status: "DRAFT",
+          },
+          orderBy: { revisedAt: "desc" },
+        })
+        if (
+          !draft ||
+          localeDraftRevision(draft) !== input.expectedDraftRevision
+        ) {
+          throw new ConcurrentModificationError(
+            "ExperienceLocale draft",
+            input.id,
+          )
+        }
+
+        await tx.seoProposalMaterialization.updateMany({
+          where: {
+            contentRevisionId: draft.id,
+            status: { not: "STALE" },
+          },
+          data: { status: "STALE" },
+        })
+        await tx.contentRevision.update({
+          where: { id: draft.id },
+          data: { status: "DISCARDED" },
+        })
+        return { canonical, effective: canonical, activeDraft: null }
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     )

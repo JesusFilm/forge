@@ -5,6 +5,7 @@ import { env } from "@/config/env"
 import type { Principal, Role } from "@/auth/principal"
 
 const ENVIRONMENT_CLAIM = "https://jesusfilm.org/claims/environment"
+const APP_CLAIM = "https://jesusfilm.org/claims/app"
 
 export type AdminMcpOAuthConfig = {
   issuerUrl: string
@@ -124,6 +125,17 @@ export async function verifyAdminMcpBearerToken({
     throw new AdminMcpAuthError(
       "invalid_token",
       "Admin MCP token environment is not accepted.",
+      requiredScopes,
+    )
+  }
+
+  // New resource-bound tokens carry this trusted claim. Reject an explicit
+  // cross-product identity while retaining compatibility with older Admin
+  // tokens that predate the claim.
+  if (payload[APP_CLAIM] !== undefined && payload[APP_CLAIM] !== "admin-mcp") {
+    throw new AdminMcpAuthError(
+      "invalid_token",
+      "Admin MCP token app identity is not accepted.",
       requiredScopes,
     )
   }

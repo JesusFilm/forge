@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import { BlockSchema, BlocksSchema } from "@/domain/blocks"
 import {
   BLOCK_TEMPLATE_KEYS,
@@ -47,7 +48,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(22)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(24)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -492,6 +493,79 @@ describe("experience editor block helpers", () => {
       body: "Renders the static Watch homepage hero.",
       tone: "hero",
       badges: ["WATCH_HOME"],
+    })
+  })
+
+  it("creates and summarizes the Watch Home category rail", () => {
+    const block = createTemplateBlock("watchHomeCategoryRail", 3)
+
+    expect(block).toEqual({
+      t: "watchHomeCategoryRail",
+      sectionKey: "watch-home-category-rail-3",
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    })
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(summarizeBlock(block, 3, [])).toMatchObject({
+      typeLabel: "Watch Category Rail",
+      title: "Browse by category",
+      body: "13 tiles",
+      badges: ["WATCH_HOME"],
+    })
+  })
+
+  it("summarizes an authored rail from tiles, calling out the custom ones", () => {
+    const block = {
+      t: "watchHomeCategoryRail",
+      sectionKey: "watch-home-category-rail-3",
+      // The mirror deliberately disagrees with the tile count: it carries
+      // only the predefined members. The summary must read `tiles`.
+      categoryIds: ["jesus"],
+      tiles: [
+        { id: "category:jesus", categoryId: "jesus" },
+        { id: "custom-1", title: "Partner", href: "/partners" },
+        { id: "custom-2", title: "Give", href: "https://example.org/give" },
+      ],
+    }
+
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(summarizeBlock(block, 3, [])).toMatchObject({
+      body: "3 tiles · 2 custom",
+    })
+  })
+
+  it("summarizes a single-tile rail without pluralizing", () => {
+    expect(
+      summarizeBlock(
+        {
+          t: "watchHomeCategoryRail",
+          categoryIds: ["jesus"],
+          tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+        },
+        3,
+        [],
+      ),
+    ).toMatchObject({ body: "1 tile" })
+  })
+
+  it("creates and summarizes an authored language globe", () => {
+    expect(createTemplateBlock("languageGlobe", 2)).toEqual({
+      t: "languageGlobe",
+      sectionKey: "language-globe-2",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    })
+
+    expect(
+      summarizeBlock(createTemplateBlock("languageGlobe", 2), 2, []),
+    ).toMatchObject({
+      typeLabel: "Language Globe",
+      title: "Choose a language",
+      body: "Explore languages by region or browse the full list.",
+      badges: ["LANGUAGES"],
     })
   })
 

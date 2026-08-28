@@ -133,7 +133,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                       &ldquo;{scripture}&rdquo;
                     </p>
                     {scriptureReference && (
-                      <p className="mt-1 text-sm font-medium text-white/50">
+                      <p className="mt-1 text-base sm:text-sm font-medium text-white/50">
                         — {scriptureReference}
                       </p>
                     )}

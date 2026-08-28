@@ -146,6 +146,7 @@ import {
 } from "./workflows/youtube-ai-christian-discovery"
 import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
 import { datadogMobileTriageWorkflow } from "./workflows/datadog-mobile-triage"
+import { titleRepairWorkflow } from "./workflows/title-repair"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -320,6 +321,7 @@ export const mastra = new Mastra({
     youtubeAiChristianDiscoveryWorkflow,
     dailySupportResearchWorkflow,
     datadogMobileTriageWorkflow,
+    titleRepairWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,

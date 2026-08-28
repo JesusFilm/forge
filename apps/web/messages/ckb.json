@@ -180,7 +180,8 @@
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
     "home": "سەرەکیی JesusFilm",
     "closeSearch": "داخستنی گەڕان",
-    "submitSearch": "بگەڕێ"
+    "submitSearch": "بگەڕێ",
+    "library": "کتێبخانە"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "بە {language} بۆ «{suggestion}» بگەڕێ",
     "inLanguage": "بە {language}",
     "browseByRegion": "گەڕان بە پێی ناوچە",
+    "allVideosOnSinglePage": "هەموو ویدیۆکان لە یەک پەیجدا",
     "clearLanguages": "پاککردنەوە",
     "queryLanguageDetected": "{language} دۆزرایەوە",
     "searchInLanguage": "بە {language} بگەڕێ",
@@ -271,14 +273,183 @@
     "couldNotLoad": "نەتوانرا فۆڕمی ڕا و بۆچوون بار بکرێت.",
     "loadingForm": "فۆڕمی ڕا و بۆچوون بار دەکرێت…",
     "retry": "دووبارە هەوڵدان",
-    "openFormShort": "فۆرم بکەرەوە",
     "cancel": "هەڵوەشاندنەوە",
-    "title": "ڕا و بۆچوونی بتا",
-    "description": "باس بکە چی باشە و چی دەتوانرێت باشتر بکرێت. ئەم فۆرمە لەلایەن Google دابین کراوە.",
-    "openInNewTab": "فۆرمەکە لە تابێکی نوێدا بکەرەوە",
     "closeForm": "فۆڕمی ڕا و بۆچوون دابخە",
-    "loadingGoogleForm": "Google Form بار دەکرێت…",
-    "iframeTitle": "ناردنی ڕا و بۆچوونی بتا"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "ویدۆی مەسیحی بەخۆڕایی بە {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "وەرزش",
     "collections": "کۆمەڵەکان",
     "subtitlesOnly": "تەنها ژێرنوسین",
+    "backToTop": "گەڕانەوە بۆ سەرەوە",
     "newlyAdded": "تازە زیادکراو",
     "newVideosTitle": "ویدۆی مەسیحی نوێ بە {language}",
     "newestFirst": "نوێترین لە سەرەوە",
@@ -327,7 +499,21 @@
     "standaloneVideos": "ویدۆی سەربەخۆ",
     "videosFromCollection": "ویدۆ لە {collection}.",
     "standaloneDescription": "ویدۆی سەربەخۆ لەم زمانەدا.",
-    "openCollection": "کردنەوەی کۆمەڵە"
+    "openCollection": "کردنەوەی کۆمەڵە",
+    "filters": "فلتەرەکان",
+    "filterLength": "درێژی",
+    "filterLength_under5": "کەمتر لە 5 خولەک",
+    "filterLength_5to10": "5-10 خولەک",
+    "filterLength_10to30": "10-30 خولەک",
+    "filterLength_over30": "زیاتر لە 30 خولەک",
+    "filterType": "جۆر",
+    "clearFilters": "سڕینەوەی فلتەرەکان",
+    "filterResults": "{count} لە {total} پیشاندرا",
+    "noFilterResults": "هیچ ڤیدیۆیەک لەگەڵ ئەم فلتەرەکان ناگونجێت. هەوڵ بدە یەکێکیان لابەریت.",
+    "filterAdded": "زیادکراو",
+    "filterAdded_60d": "60 ڕۆژی ڕابردوو",
+    "filterAdded_6m": "6 مانگی ڕابردوو",
+    "filterAdded_12m": "12 مانگی ڕابردوو"
   },
   "WatchHome": {
     "pageTitle": "Watchی Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "کریسمستان پیرۆز بێت!",
     "daysUntilChristmas": "{count, plural, one {# ڕۆژ ماوە بۆ کریسمس} other {# ڕۆژ ماوە بۆ کریسمس}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "زمانەکان",
     "metadataDescription": "ویدۆکانی JesusFilm بە پێی زمان بگەڕێ.",
@@ -455,44 +662,6 @@
     "actionsLabel": "کردارەکانی پەڕە نەدۆزرایەوە",
     "backToWatch": "گەڕانەوە بۆ Watch",
     "browseVideos": "گەڕان لە ویدۆکان"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "فیلمی کورت ببینە",
-    "actions": {
-      "joinUs": "پەیوەندیمان پێوە بکە",
-      "shareMission": "له‌ میسۆنەکەماندا هاوبەش بە"
-    },
-    "welcomeStart": {
-      "label": "باوەڕ و دەقی پیرۆز",
-      "title": "هەڵبژاردەکانی ویدۆی ئەمڕۆ",
-      "description": "ناوەڕۆکی ویدۆیی بنەڕەت باوەڕیی لە کۆگاکەمانەوە بۆ هاندان، ڕووبەڕووبوونەوە، و هەڵچوونی بیرکردنەوە."
-    },
-    "welcomeMorning": {
-      "label": "هاندان بۆ بەیانی",
-      "title": "بەیانی باش! خولەکەکانی کتێبی پیرۆزت ئەمڕۆ چاوەڕێت دەکەن.",
-      "description": "ڕۆژەکەت بە خولەکە هاندانکەرەکانی کتێبی پیرۆز دەست پێ بکە کە بۆ هاندانی دڵ و بەرزکردنەوەی ڕووحەت دروستکراون."
-    },
-    "welcomeAfternoon": {
-      "label": "هاندان بۆ نیوەڕۆ",
-      "title": "نیوەڕۆ باش! خولەکەکانی کتێبی پیرۆز بۆ ڕۆژەکەت.",
-      "description": "ناوەڕۆکی هاندانکەری کتێبی پیرۆز کە بۆ پشووی نیوەڕۆکەت یان بۆ بەردەوامبوونی هاندانت گونجاوە."
-    },
-    "welcomeEvening": {
-      "label": "هاندان بۆ ئێوارە",
-      "title": "شەوی باش! بە خولەکەکانی کتێبی پیرۆز ئارام ببە.",
-      "description": "خولەکە ئارامەکانی کتێبی پیرۆز بۆ ئەوەی بیر بکەیتەوە و ئاسوودەیی بدۆزیەوە کە ڕۆژەکەت کۆتایی دێت."
-    },
-    "joinUs": {
-      "label": "پەیوەندیمان پێوە بکە",
-      "title": "میلیاردەها کەس دەگەڕێن",
-      "description": "کاتی دڕوو دەگات. پەیوەندیمان پێوە بکە لەکاتی هاوبەشکردنی ئینجیل لەگەڵ جیهان بە بەکارهێنانی میدیای دیجیتاڵ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بە یەکەوە بڕۆین",
-      "title": "چیرۆکی عیسا، بە یەکەوە دەگێڕینەوە",
-      "description": "تا بتوانن لە زمانە خۆیاندا، لەو شوێنەی خۆیانن، خۆشەویستی عیسا بشنێن و ببینن."
-    }
   },
   "VideoRecommendations": {
     "match": "لە سەدا {percent} هاوتایە",

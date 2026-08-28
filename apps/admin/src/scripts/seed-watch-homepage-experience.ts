@@ -15,7 +15,8 @@
 import { fileURLToPath } from "node:url"
 import { resolve } from "node:path"
 import type { VideoLabel } from "@prisma/client"
-import { BlocksSchema } from "@/domain/blocks"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+import { BlocksSchema, type Blocks } from "@/domain/blocks"
 
 type WatchHomeSeedSection = {
   id: string
@@ -370,6 +371,31 @@ function buildMediaItem(video: SeedVideo) {
   })
 }
 
+export function buildWatchHomeSeedBlocks(
+  mediaCollectionBlocks: readonly unknown[],
+): Blocks {
+  return BlocksSchema.parse([
+    { t: "watchHomeHero", sectionKey: "watch-home-hero" },
+    {
+      t: "watchHomeCategoryRail",
+      sectionKey: "watch-home-category-rail",
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    },
+    ...mediaCollectionBlocks,
+    WATCH_HOME_PROMO_SECTION,
+    {
+      t: "languageGlobe",
+      sectionKey: "watch-language-globe",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    },
+  ])
+}
+
 async function main(): Promise<void> {
   assertNotProdUrl(process.env.DATABASE_URL)
 
@@ -421,9 +447,8 @@ async function main(): Promise<void> {
       )
     }
 
-    const blocks = BlocksSchema.parse([
-      { t: "watchHomeHero", sectionKey: "watch-home-hero" },
-      ...WATCH_HOME_SEED_SECTIONS.map((section) => ({
+    const blocks = buildWatchHomeSeedBlocks(
+      WATCH_HOME_SEED_SECTIONS.map((section) => ({
         t: "mediaCollection",
         sectionKey: section.id,
         categoryLabel: section.eyebrow,
@@ -442,8 +467,7 @@ async function main(): Promise<void> {
             return video ? [buildMediaItem(video)] : []
           }),
       })),
-      WATCH_HOME_PROMO_SECTION,
-    ])
+    )
 
     const existingLocales = await prisma.experienceLocale.findMany({
       where: { locale: "en", isHomepage: true },

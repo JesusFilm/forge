@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Suia le gagana o le leo",
     "home": "Itulau autū o JesusFilm",
     "closeSearch": "Tapuni le su'esu'ega",
-    "submitSearch": "Su'e"
+    "submitSearch": "Su'e",
+    "library": "Faletusi"
   },
   "SearchOverlay": {
     "dialogLabel": "Su'e ma su'esu'e vitio",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Su'e “{suggestion}” i le {language}",
     "inLanguage": "i le {language}",
     "browseByRegion": "Su'esu'e e le itulagi",
+    "allVideosOnSinglePage": "Vitio uma i le itulau e tasi",
     "clearLanguages": "Fa'amama",
     "queryLanguageDetected": "Ua iloa le {language}",
     "searchInLanguage": "Su'e i le {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "E le mafai ona utaina le pepa o manatu.",
     "loadingForm": "O lo'o utaina le pepa o manatu…",
     "retry": "Toe taumafai",
-    "openFormShort": "Tatala le pepa",
     "cancel": "Fa'aleaoga",
-    "title": "Manatu o le Beta",
-    "description": "Fa'asoa mai mea o lo'o lelei ma mea e mafai ona fa'aleleia. O lenei pepa e saunia e Google.",
-    "openInNewTab": "Tatala le pepa i se tab fou",
     "closeForm": "Tapuni le pepa o manatu",
-    "loadingGoogleForm": "O lo'o utaina le Google Form…",
-    "iframeTitle": "Auina atu Manatu o le Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vitio fa'a-Kerisiano e leai se totogi i le {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Ta'aloga",
     "collections": "Aoina",
     "subtitlesOnly": "Na'o tusitusiga o le leo",
+    "backToTop": "Toe foʻi i luga",
     "newlyAdded": "Fa'aopoopo talu ai nei",
     "newVideosTitle": "Vitio fa'a-Kerisiano fou i le {language}",
     "newestFirst": "Muamua mea fou",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Vitio e tu'ufua",
     "videosFromCollection": "Vitio mai le {collection}.",
     "standaloneDescription": "Vitio e tu'ufua i lenei gagana.",
-    "openCollection": "Tatala le aoina"
+    "openCollection": "Tatala le aoina",
+    "filters": "Faamama",
+    "filterLength": "Umi",
+    "filterLength_under5": "I lalo ifo o le 5 minute",
+    "filterLength_5to10": "5-10 minute",
+    "filterLength_10to30": "10-30 minute",
+    "filterLength_over30": "Sili atu i le 30 minute",
+    "filterType": "Ituaiga",
+    "clearFilters": "Solo faamama",
+    "filterResults": "O loo faaali {count} mai le {total}",
+    "noFilterResults": "E leai se vitio e fetaui ma nei faamama. Taumafai e aveese se tasi.",
+    "filterAdded": "Faaopoopo",
+    "filterAdded_60d": "Aso 60 talu ai",
+    "filterAdded_6m": "Masina 6 talu ai",
+    "filterAdded_12m": "Masina 12 talu ai"
   },
   "WatchHome": {
     "pageTitle": "Matamata i le Jesus Film Project",
@@ -407,6 +593,27 @@
     "merryChristmas": "Manuia le Kerisimasi!",
     "daysUntilChristmas": "{count, plural, one {Toe # le aso i le Kerisimasi} other {Toe # aso i le Kerisimasi}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Gagana",
     "metadataDescription": "Su'esu'e vitio a le JesusFilm e tusa ai ma le gagana.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Gaioiga mo le itulau e le'i maua",
     "backToWatch": "Toe fo'i i le Watch",
     "browseVideos": "Su'esu'e vitio"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Matamata i le ata pu'upu'u",
-    "actions": {
-      "joinUs": "Auai mai",
-      "shareMission": "Faasoa i la matou misiona"
-    },
-    "welcomeStart": {
-      "label": "Fa'atuatua & Tusitusiga Paia",
-      "title": "Filifiliga Vitio o le Aso",
-      "description": "Vitio e fa'avae i le fa'atuatua mai la matou faletusi e fa'aosofia, lu'iina, ma fa'atosina ai le mafaufau loloto."
-    },
-    "welcomeMorning": {
-      "label": "Fa'aosofia i le Taeao",
-      "title": "Talofa i le taeao! O lo'o fa'atali mai taimi o le Tusi Paia o le aso.",
-      "description": "Amata lou aso i taimi fa'amalosi'au mai le Tusi Paia ua fuafuaina e fa'aosofia ma fa'amalosia ai lou agaga."
-    },
-    "welcomeAfternoon": {
-      "label": "Fa'aosofia i le Afiāfi",
-      "title": "Talofa i le aoauli! Taimi o le Tusi Paia mo lou aso.",
-      "description": "Anotusi fa'amalosi'au mai le Tusi Paia e lelei mo lau mālōlō i le afiafi po o le faaauau o le fa'amalosi'au."
-    },
-    "welcomeEvening": {
-      "label": "Fa'aosofia i le Afiafi",
-      "title": "Talofa i le afiafi! Mālōlō ma taimi o le Tusi Paia.",
-      "description": "Taimi filemu o le Tusi Paia e fesoasoani e te mafaufau loloto ai ma maua le fa'amafanafanaga a'o fa'ai'u le aso."
-    },
-    "joinUs": {
-      "label": "Auai mai",
-      "title": "O lo'o saili e le faitau piliona",
-      "description": "Ua oo mai le seleselega. Auai mai a o matou fa'asoa atu le tala lelei i le lalolagi e ala i fa'asalalauga fa'atekinolosi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tatou o fa'atasi",
-      "title": "Fa'amatala fa'atasi le Tala ia Iesu",
-      "description": "Ina ia latou lagona ma va'ai i le alofa o Iesu i lo latou lava gagana i le mea lava o i ai."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",

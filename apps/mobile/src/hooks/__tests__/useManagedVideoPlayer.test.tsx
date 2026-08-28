@@ -205,6 +205,7 @@ import { AppState } from "react-native"
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
 import { datadogLog } from "../../lib/datadog"
 import { resetPlayerSettings } from "../../test-utils/resetPlayerSettings"
+import { getPlayerSettingsStore } from "../../lib/miniPlayer/playerSettings"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import { PIP_EXPAND_GRACE_MS } from "../../lib/pipPolicy"
 import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
@@ -1065,5 +1066,138 @@ describe("useManagedVideoPlayer — healthy position for error recovery", () => 
     await act(async () => {
       renderer.unmount()
     })
+  })
+})
+
+/**
+ * Audio pitch must not ride the playback rate. expo-video's TS types document
+ * `preservesPitch` as `@default true`, but the ANDROID native default is
+ * `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch
+ * = false`), and its `applyPitchCorrection` then sets `pitch = speed`. So a
+ * speed pick on Android also shifts the voice up or down. iOS is unaffected —
+ * AVPlayer corrects pitch on its own — which is why this can only be caught by
+ * asserting the property is set EXPLICITLY, never by trusting the default.
+ *
+ * The fake player defaults `preservesPitch` to false for that reason, so these
+ * assertions fail unless the adapter sets it.
+ */
+describe("useManagedVideoPlayer — audio pitch across speed changes", () => {
+  it("asks the player to preserve pitch when it creates it", async () => {
+    await renderPlayer()
+
+    expect(video.__player.preservesPitch).toBe(true)
+  })
+
+  it("still preserves pitch after a speed pick lands on the player", async () => {
+    await renderPlayer()
+
+    await act(async () => {
+      getPlayerSettingsStore().setSpeed(1.5)
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.preservesPitch).toBe(true)
+  })
+})
+
+/**
+ * The play-state bridge the ambient wash reads (`usePlaybackPlaying`). The host
+ * is a `<Stack>` SIBLING, so this boolean is the only path from the one player
+ * to a route's layers — and nothing else in the suite observes it. Before these
+ * cases, deleting either `setPlaying` effect kept the whole suite green.
+ *
+ * Asserted against the real store through the real host, not a spy: the defect
+ * being guarded is a missing effect, which a spy on the store would still see.
+ */
+describe("useManagedVideoPlayer — play state published to the request store", () => {
+  it("publishes playback onto the store, and back to false on pause", async () => {
+    const renderer = await renderPlayer()
+    // Anti-vacuous: false here is the default, so the assertion after play()
+    // cannot pass on a store that was never written.
+    expect(requestStore.getSnapshot().playing).toBe(false)
+
+    await act(async () => {
+      video.__player.play()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  it("clears the flag when the host unmounts mid-playback", async () => {
+    // Without the teardown effect the flag stays true on a screen with no
+    // player at all, and the wash stays faded out for the rest of the session.
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await unmountPlayer(renderer)
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+  })
+})
+
+/**
+ * A mid-playback rebuffer drops `isPlaying` on both platforms — Android mirrors
+ * ExoPlayer's STATE_BUFFERING, iOS reports waitingToPlayAtSpecifiedRate — so
+ * publishing it raw made every network hiccup read as a pause and pulse the
+ * ambient wash. The published flag means "the viewer is watching", which a stall
+ * does not interrupt.
+ */
+describe("useManagedVideoPlayer — a stall is not a pause", () => {
+  it("keeps the flag up while a started video rebuffers", async () => {
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    // The transport drops playing and the status goes to loading together.
+    await act(async () => {
+      video.__player.pause()
+      video.__player.__emit("statusChange", { status: "loading" })
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(true)
+    await unmountPlayer(renderer)
+  })
+
+  it("drops the flag on a real pause, where the status stays ready", async () => {
+    // Anti-vacuous companion: without this the case above would pass on a flag
+    // that simply never falls.
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+      video.__player.__emit("statusChange", { status: "readyToPlay" })
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  it("treats a loading source that never played as not playing", async () => {
+    // An INITIAL load is also "loading". Counting it would fade the wash out
+    // under a poster the viewer has not started.
+    const renderer = await renderPlayer()
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "loading" })
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
   })
 })

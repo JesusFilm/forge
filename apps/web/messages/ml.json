@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
     "home": "JesusFilm ഹോം",
     "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക",
-    "submitSearch": "തിരയുക"
+    "submitSearch": "തിരയുക",
+    "library": "ലൈബ്രറി"
   },
   "SearchOverlay": {
     "dialogLabel": "വീഡിയോകൾ തിരയുകയും ബ്രൗസ് ചെയ്യുകയും ചെയ്യുക",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ൽ “{suggestion}” തിരയുക",
     "inLanguage": "{language} ൽ",
     "browseByRegion": "പ്രദേശം പ്രകാരം ബ്രൗസ് ചെയ്യുക",
+    "allVideosOnSinglePage": "എല്ലാ വീഡിയോകളും ഒരു പേജിൽ",
     "clearLanguages": "മായ്ക്കുക",
     "queryLanguageDetected": "{language} കണ്ടെത്തി",
     "searchInLanguage": "{language} ൽ തിരയുക",
@@ -271,14 +273,183 @@
     "couldNotLoad": "ഫീഡ്‌ബാക്ക് ഫോം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
     "loadingForm": "ഫീഡ്‌ബാക്ക് ഫോം ലോഡ് ചെയ്യുന്നു…",
     "retry": "വീണ്ടും ശ്രമിക്കുക",
-    "openFormShort": "ഫോം തുറക്കുക",
     "cancel": "റദ്ദാക്കുക",
-    "title": "ബീറ്റാ ഫീഡ്‌ബാക്ക്",
-    "description": "നന്നായി പ്രവർത്തിക്കുന്നതും മെച്ചപ്പെടുത്താവുന്നതുമായ കാര്യങ്ങളും പങ്കിടുക. ഈ ഫോം Google നൽകുന്നതാണ്.",
-    "openInNewTab": "ഫോം പുതിയ ടാബിൽ തുറക്കുക",
     "closeForm": "ഫീഡ്‌ബാക്ക് ഫോം അടയ്ക്കുക",
-    "loadingGoogleForm": "Google ഫോം ലോഡ് ചെയ്യുന്നു…",
-    "iframeTitle": "ബീറ്റാ ഫീഡ്‌ബാക്ക് സമർപ്പിക്കുക"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-ൽ സൗജന്യ ക്രിസ്തീയ വീഡിയോകൾ | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "കായികം",
     "collections": "ശേഖരങ്ങൾ",
     "subtitlesOnly": "സബ്ടൈറ്റിലുകൾ മാത്രം",
+    "backToTop": "മുകളിലേക്ക്",
     "newlyAdded": "പുതുതായി ചേർത്തത്",
     "newVideosTitle": "{language}-ൽ പുതിയ ക്രിസ്തീയ വീഡിയോകൾ",
     "newestFirst": "പുതിയതു മുതൽ",
@@ -327,7 +499,21 @@
     "standaloneVideos": "സ്വതന്ത്ര വീഡിയോകൾ",
     "videosFromCollection": "{collection} ലെ വീഡിയോകൾ.",
     "standaloneDescription": "ഈ ഭാഷയിലെ സ്വതന്ത്ര വീഡിയോകൾ.",
-    "openCollection": "ശേഖരം തുറക്കുക"
+    "openCollection": "ശേഖരം തുറക്കുക",
+    "filters": "ഫിൽട്ടറുകൾ",
+    "filterLength": "ദൈർഘ്യം",
+    "filterLength_under5": "5 മിനിറ്റിൽ കുറവ്",
+    "filterLength_5to10": "5-10 മിനിറ്റ്",
+    "filterLength_10to30": "10-30 മിനിറ്റ്",
+    "filterLength_over30": "30 മിനിറ്റിൽ കൂടുതൽ",
+    "filterType": "തരം",
+    "clearFilters": "ഫിൽട്ടറുകൾ മായ്ക്കുക",
+    "filterResults": "{total} ൽ {count} കാണിക്കുന്നു",
+    "noFilterResults": "ഈ ഫിൽട്ടറുകളുമായി ഒരു വീഡിയോയും പൊരുത്തപ്പെടുന്നില്ല. ഒന്ന് നീക്കം ചെയ്യുക.",
+    "filterAdded": "ചേർത്തത്",
+    "filterAdded_60d": "കഴിഞ്ഞ 60 ദിവസം",
+    "filterAdded_6m": "കഴിഞ്ഞ 6 മാസം",
+    "filterAdded_12m": "കഴിഞ്ഞ 12 മാസം"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project വാച്ച്",
@@ -407,6 +593,27 @@
     "merryChristmas": "ക്രിസ്മസ് ആശംസകൾ!",
     "daysUntilChristmas": "ക്രിസ്മസിന് ഇനി {count, plural, one {# ദിവസം} other {# ദിവസങ്ങൾ}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ഭാഷകൾ",
     "metadataDescription": "ഭാഷ പ്രകാരം JesusFilm വീഡിയോകൾ ബ്രൗസ് ചെയ്യുക.",
@@ -455,44 +662,6 @@
     "actionsLabel": "പേജ് കണ്ടെത്തിയില്ല പ്രവർത്തനങ്ങൾ",
     "backToWatch": "വാച്ചിലേക്ക് മടങ്ങുക",
     "browseVideos": "വീഡിയോകൾ ബ്രൗസ് ചെയ്യുക"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ചെറുചിത്രം കാണുക",
-    "actions": {
-      "joinUs": "ഞങ്ങളോടൊപ്പം ചേരുക",
-      "shareMission": "ഞങ്ങളുടെ ദൗത്യത്തിൽ പങ്കുചേരുക"
-    },
-    "welcomeStart": {
-      "label": "വിശ്വാസവും തിരുവെഴുത്തും",
-      "title": "ഇന്നത്തെ വീഡിയോ തിരഞ്ഞെടുപ്പുകൾ",
-      "description": "പ്രചോദിപ്പിക്കാനും, വെല്ലുവിളിക്കാനും, ആലോചന ഉണർത്താനും സഹായിക്കുന്ന ഞങ്ങളുടെ ലൈബ്രറിയിലെ വിശ്വാസകേന്ദ്രിത വീഡിയോ ഉള്ളടക്കം."
-    },
-    "welcomeMorning": {
-      "label": "പ്രഭാത പ്രചോദനം",
-      "title": "സുപ്രഭാതം! ഇന്നത്തെ ബൈബിൾ നിമിഷങ്ങൾ നിങ്ങളെ കാത്തിരിക്കുന്നു.",
-      "description": "നിങ്ങളുടെ ദിനം ഉത്സാഹപ്പെടുത്താനും ആത്മാവിനെ ഉയർത്താനും രൂപകൽപ്പന ചെയ്ത പ്രചോദനകരമായ ബൈബിൾ നിമിഷങ്ങളോടെ ആരംഭിക്കുക."
-    },
-    "welcomeAfternoon": {
-      "label": "ഉച്ചകഴിഞ്ഞുള്ള പ്രചോദനം",
-      "title": "ഉച്ചകഴിഞ്ഞു! നിങ്ങളുടെ ദിവസത്തിനായുള്ള ബൈബിൾ നിമിഷങ്ങൾ.",
-      "description": "ഉച്ചവേളയിൽ കാണാനോ തുടർ പ്രചോദനത്തിനോ അനുയോജ്യമായ ഉത്സാഹകരമായ ബൈബിൾ ഉള്ളടക്കം."
-    },
-    "welcomeEvening": {
-      "label": "സായാഹ്ന പ്രചോദനം",
-      "title": "സായാഹ്നം! ബൈബിൾ നിമിഷങ്ങളോടെ ദിനം ശാന്തമായി അവസാനിപ്പിക്കുക.",
-      "description": "നിങ്ങളുടെ ദിവസം അവസാനിക്കുമ്പോൾ ചിന്തിക്കാനും ആശ്വാസം കണ്ടെത്താനും സഹായിക്കുന്ന സമാധാനകരമായ ബൈബിൾ നിമിഷങ്ങൾ."
-    },
-    "joinUs": {
-      "label": "ഞങ്ങളോടൊപ്പം ചേരുക",
-      "title": "കോടിക്കണക്കിന് പേർ അന്വേഷിക്കുന്നു",
-      "description": "വിളവെടുപ്പ് ഇവിടെ തന്നെയാണ്. ഡിജിറ്റൽ മീഡിയ ഉപയോഗിച്ച് ലോകത്തോട് സുവിശേഷം പങ്കിടുന്നതിൽ ഞങ്ങളോടൊപ്പം ചേരുക."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "നമുക്ക് ഒരുമിച്ച് പോകാം",
-      "title": "യേശുവിന്റെ കഥ ഒരുമിച്ച് പറയുക",
-      "description": "അങ്ങനെ അവർക്ക് അവരുടെ ഭാഷയിൽ, തങ്ങൾ ഉള്ളിടത്തുതന്നെ, യേശുവിന്റെ സ്നേഹം കേൾക്കാനും കാണാനും കഴിയുന്നു."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% പൊരുത്തം",

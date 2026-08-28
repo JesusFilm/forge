@@ -10,10 +10,12 @@ import {
   SectionContentBlockSchema,
   TextBlockSchema,
   ContainerContentBlockSchema,
+  LanguageGlobeBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
   WatchHomeHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
@@ -52,6 +54,10 @@ describe("BlockSchema — all top-level types validate", () => {
     },
     { name: "infoBlocks", value: { t: "infoBlocks" } },
     {
+      name: "languageGlobe",
+      value: { t: "languageGlobe", title: "Choose a language" },
+    },
+    {
       name: "mediaCollection",
       value: { t: "mediaCollection", variant: "grid" },
     },
@@ -73,6 +79,10 @@ describe("BlockSchema — all top-level types validate", () => {
     {
       name: "videoRecommendations",
       value: { t: "videoRecommendations" },
+    },
+    {
+      name: "watchHomeCategoryRail",
+      value: { t: "watchHomeCategoryRail", categoryIds: ["family", "jesus"] },
     },
     {
       name: "watchHomeHero",
@@ -105,11 +115,203 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 18 top-level block types listed in the experience schema", () => {
+  it("covers all 20 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(18)
+    expect(samples.length).toBe(20)
+  })
+
+  it("accepts an ordered category subset and keeps the rail top-level only", () => {
+    const block = {
+      t: "watchHomeCategoryRail" as const,
+      sectionKey: "browse-categories",
+      categoryIds: ["family", "gospels", "jesus"],
+    }
+
+    expect(WatchHomeCategoryRailBlockSchema.parse(block).categoryIds).toEqual([
+      "family",
+      "gospels",
+      "jesus",
+    ])
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+  })
+
+  it.each([
+    { name: "empty", categoryIds: [] },
+    { name: "duplicate", categoryIds: ["family", "family"] },
+    { name: "unknown", categoryIds: ["family", "unknown-category"] },
+  ])("rejects $name category selections", ({ categoryIds }) => {
+    expect(
+      WatchHomeCategoryRailBlockSchema.safeParse({
+        t: "watchHomeCategoryRail",
+        categoryIds,
+      }).success,
+    ).toBe(false)
+  })
+
+  describe("watchHomeCategoryRail tiles", () => {
+    function rail(tiles: unknown) {
+      return {
+        t: "watchHomeCategoryRail",
+        categoryIds: ["family"],
+        tiles,
+      }
+    }
+
+    it("keeps tiles optional so pre-feature blocks still parse", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          t: "watchHomeCategoryRail",
+          categoryIds: ["family"],
+        }).success,
+      ).toBe(true)
+    })
+
+    it("accepts a predefined tile carrying nothing but its category reference", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "category:family", categoryId: "family" }]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it("accepts a predefined tile with every field overridden", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            {
+              id: "category:family",
+              categoryId: "family",
+              title: "Families",
+              href: "/watch/family.html",
+              icon: "users",
+              style: "forest",
+            },
+          ]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it("accepts a fully custom tile with a title and destination", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "Give", href: "https://x.example" }]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it.each([
+      { name: "no title", tile: { id: "custom-1", href: "/partners" } },
+      { name: "no destination", tile: { id: "custom-1", title: "Partner" } },
+    ])("rejects a custom tile with $name", ({ tile }) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(rail([tile])).success,
+      ).toBe(false)
+    })
+
+    it("rejects an empty tiles array — absent means 'no tiles authored', not 'an empty rail'", () => {
+      expect(WatchHomeCategoryRailBlockSchema.safeParse(rail([])).success).toBe(
+        false,
+      )
+    })
+
+    it("rejects duplicate tile ids", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            { id: "custom-1", title: "A", href: "/a" },
+            { id: "custom-1", title: "B", href: "/b" },
+          ]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it("rejects two tiles pointing at the same predefined category", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            { id: "a", categoryId: "family" },
+            { id: "b", categoryId: "family" },
+          ]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it("rejects an unknown category reference", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "a", categoryId: "not-a-category" }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it.each([
+      { name: "unknown icon", patch: { icon: "rocket" } },
+      { name: "unknown style", patch: { style: "chartreuse" } },
+      { name: "unknown field", patch: { target: "_blank" } },
+    ])("rejects a tile with an $name", ({ patch }) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href: "/a", ...patch }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    // The href lands in an anchor. Every rejected shape here is a
+    // script-execution sink, a cross-origin destination disguised as a path,
+    // or a protocol downgrade.
+    it.each([
+      "javascript:alert(1)",
+      "JavaScript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "//evil.example/watch",
+      "http://example.org/insecure",
+      "vbscript:msgbox(1)",
+      "file:///etc/passwd",
+      "watch/jesus.html",
+      "",
+      "   ",
+    ])("rejects the destination %j", (href) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it.each([
+      "/",
+      "/watch/jesus.html",
+      "/watch/jesus.html/spanish.html?t=12",
+      "https://example.org/give",
+      "https://example.org",
+    ])("accepts the destination %j", (href) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href }]),
+        ).success,
+      ).toBe(true)
+    })
+  })
+
+  it("accepts authored language globe copy and keeps it top-level only", () => {
+    const block = {
+      t: "languageGlobe" as const,
+      sectionKey: "watch-language-globe",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    }
+
+    expect(LanguageGlobeBlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
   })
 
   it("accepts watchHomeHero as a placement-only placeholder", () => {
@@ -591,6 +793,27 @@ describe("BlocksSchema", () => {
       },
     ]
     expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("rejects more than one watch home category rail", () => {
+    const rail = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["jesus"],
+    }
+
+    const result = BlocksSchema.safeParse([rail, { ...rail }])
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: [1],
+            message: expect.stringMatching(/only one/i),
+          }),
+        ]),
+      )
+    }
   })
 
   it("accepts canonical media asset ids for media collection imagery", () => {

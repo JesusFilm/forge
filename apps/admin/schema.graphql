@@ -300,7 +300,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -447,6 +447,20 @@ type Language {
   name: JSON
   slug: String
   updatedAt: String
+}
+
+"""
+Animated language globe with locale-authored promotional copy and action.
+"""
+type LanguageGlobeBlock {
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  eyebrow: String
+  sectionKey: String
+  t: String
+  title: String
 }
 
 """A localized display name for a Core language."""
@@ -1496,6 +1510,13 @@ type Query {
   """
   watchCollectionFeed(after: String, cardsPerParent: Int!, excludedIds: [String!], excludedSlugs: [String!], first: Int, languageSlug: String!, locale: String!): WatchCollectionFeed!
   """
+  Batched audio/subtitle language counts for collection slugs. Deliberately separate from `watchLanguageInventory`: the counts are not language-scoped, and a slow aggregate must degrade the /videos availability indicator rather than blank the page. Unknown slugs are omitted from the result; callers must tolerate a short array.
+  """
+  watchCollectionLanguageCounts(
+    """Collection slugs. Deduplicated; capped at 400 entries."""
+    slugs: [String!]!
+  ): [WatchCollectionLanguageCounts!]!
+  """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
@@ -2209,6 +2230,19 @@ type WatchCollectionFeedPageInfo {
   hasNextPage: Boolean!
 }
 
+"""
+Distinct audio and subtitle language counts aggregated across a collection's visible children. Powers the Watch /videos sidebar availability indicator.
+"""
+type WatchCollectionLanguageCounts {
+  """
+  Distinct playable audio languages across the collection's visible children. Uses the same predicate as `Video.childDubLanguages`, so the two never disagree for the same collection.
+  """
+  audioLanguageCount: Int!
+  slug: String!
+  """Distinct subtitle languages across the collection's visible children."""
+  subtitleLanguageCount: Int!
+}
+
 type WatchEvent {
   createdAt: String
   durationSeconds: Int
@@ -2225,6 +2259,31 @@ type WatchEvent {
 enum WatchEventType {
   download
   meaningful_playback
+}
+
+"""
+Top-level Watch homepage category carousel with an authored tile subset and order.
+"""
+type WatchHomeCategoryRailBlock {
+  categoryIds: [String!]!
+  sectionKey: String
+  t: String
+  """
+  Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.
+  """
+  tiles: [WatchHomeCategoryRailTile!]
+}
+
+"""
+Single authored tile in WatchHomeCategoryRailBlock.tiles. A non-null categoryId marks a predefined tile whose unset fields fall back to the consumer's catalog defaults; every field null but categoryId means 'render the predefined tile unchanged'.
+"""
+type WatchHomeCategoryRailTile {
+  categoryId: String
+  href: String
+  icon: String
+  id: String
+  style: String
+  title: String
 }
 
 """Top-level placeholder that renders the Web-owned Watch Home hero."""
@@ -2278,6 +2337,10 @@ type WatchLanguageInventoryItem {
   VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).
   """
   label: String
+  """
+  Mux playback id of the row's best published dub. Lets consumers synthesize a frame thumbnail when `imageUrl` is null because the video carries no authored artwork.
+  """
+  muxPlaybackId: String
   """
   Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.
   """

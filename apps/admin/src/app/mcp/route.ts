@@ -11,6 +11,7 @@ import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
 import { ExperienceMcpService } from "@/services/experience-mcp.service"
 import {
+  ConcurrentModificationError,
   ExperienceDuplicationError,
   ForbiddenError,
   NotFoundError,
@@ -241,6 +242,9 @@ function toolError(id: unknown, error: unknown) {
   }
   if (error instanceof ExperienceDuplicationError) {
     return jsonRpcError(id, -32000, error.message)
+  }
+  if (error instanceof ConcurrentModificationError) {
+    return jsonRpcError(id, -32009, error.message)
   }
   if (error instanceof Error && error.message === "not_implemented") {
     return jsonRpcError(id, -32601, "Admin MCP tool is not implemented yet.")

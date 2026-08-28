@@ -202,6 +202,21 @@ external collections are a fallback only when that intrinsic rail does not
 qualify; they do not become the standalone Video's canonical or next-item
 identity.
 
+### Containing Work
+
+A parent Video that the child is a constituent part of — a film whose Chapters
+it is one of, or a series whose Episodes it is one of — as distinct from a
+curated collection the child was merely gathered into alongside unrelated
+material. The distinction is carried by the parent's own label, not by the
+parent/child link, which is why a link alone cannot settle it.
+
+Where a Video has several eligible parents and only one may be presented, a
+Containing Work outranks a curated collection: it is the work the viewer is
+already inside. The relationship's playback position does not decide this — it
+orders a child within one parent and says nothing about how two parents compare.
+When several Containing Works are eligible, the relationship carries no signal
+that separates them.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -878,6 +893,14 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
 
+### Dynamic Collection Feed
+
+A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
+Web to fill bounded carousel pages from the shared Watch collection feed as the
+viewer approaches it. It is still an editor-authored Experience Block: its
+position comes from the Experience block sequence, while its generated page
+identity is shared across viewers and excludes account or device identity.
+
 ### Homepage Experience
 
 The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
@@ -969,6 +992,12 @@ The moment the series detail screen first shows a populated episode rail — the
 
 Fires only on real content readiness: a partially-cached series that paints its hero before episodes arrive has not reached First Rail Ready, and returning to an already-loaded series never re-fires it — a near-zero re-measure would poison the metric's percentiles.
 
+### Bible Passage
+
+The credited scripture text a Watch surface renders for a Bible Citation, resolved server-side and cached by Admin rather than fetched by the client. The Citation is identity — book, chapter, and verse range sourced from Core — while the Passage is the rendered words plus the translation name and copyright line that licence them.
+
+The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
+
 ## Home hero UI
 
 ### Three-Layer Hero
@@ -1033,7 +1062,7 @@ Activity begins when the first owner opens and ends only after the final owner r
 
 ### Chrome
 
-The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
+The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead lift while it is visible and return when it hides. How far they lift is a judgement about appearance, not about input: captions take no touches, so where a wide cue overlaps a control the cost is how it looks and never a swallowed press, and clearance bought beyond that is paid for on every cue.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
@@ -1096,6 +1125,16 @@ It is not a session boundary: continue-watching progress and the playback-qualit
 The app's one video player and the single view that draws it, owned above the navigation rather than by any screen, so every screen that shows video borrows it instead of creating its own.
 
 Because there is only ever one, moving video between presentations is a matter of resizing and repositioning that view — never handing playback to a second player, which would restart it and blank the picture. This is what lets a video survive leaving the screen it started on, and why the Mini Player and a Picture-in-Picture Handoff are presentations of the same playback rather than copies of it. A screen that wants video reserves the space it should occupy and publishes a request; the owner draws into that space.
+
+That space is measured rather than declared, and a measurement taken before the reserving screen is really on screen returns nothing at all rather than a wrong answer. So a reservation keeps measuring until it gets an answer instead of trusting a single attempt; until it does, the owner has nowhere to draw and the viewer sees only whatever the reservation itself puts up in the meantime. A reservation that gives up has to say so, because a silent give-up leaves the viewer facing an empty rectangle with nothing to act on and nothing to explain it.
+
+### Fullscreen
+
+The watch player's expanded presentation, in which the video fills the screen in landscape and the surrounding page is hidden. It is the same live playback surface as the inline player, expanded in place rather than handed to a second player, and the page-dismiss swipe is disabled for as long as it is up because a route cannot be popped out from under it.
+
+Entering rotates the app rather than waiting for the viewer to turn the device, so orientation is something the app asserts, not something it observes. That assertion names one specific landscape rather than "either landscape": a permissive choice only _allows_ rotation and then defers to the physical sensor, so a device held upright stays upright and the viewer sees a portrait fullscreen. The accepted cost is that turning the device end-for-end while already in fullscreen does not flip the picture.
+
+Exactly one layer may own orientation. A second writer does not merely duplicate the first — it silently disables it, because the platform asks only one of them and the answer it gets no longer reflects what the app asked for. The lock is also app-wide and lasts until something changes it, rather than belonging to the screen that set it: leaving fullscreen is what restores upright, and a screen that is covered and later uncovered does not re-assert its own orientation on the way back.
 
 ### Mini Player
 
@@ -1179,6 +1218,12 @@ The single library video the Seeker may attach to one reply — a recommendation
 
 The model **declares** a pick and never authors its payload: it may only name a video the same turn's own search returned, and every displayed field is re-projected from that search result through shape gates rather than taken from the model. A missing, malformed, or unmatched declaration attaches nothing and is never an error the reader sees. Because replies persist, a featured video is also re-derived when a conversation is replayed, so a replayed reply shows the video the turn featured, though a long title may appear shortened.
 
+### Suggested Follow-Ups
+
+Up to three tappable questions the Seeker offers under a finished answer, proposing where the conversation could go next — generated after the answer's text by a separate minimal model call, so a generation failure or timeout only means the suggestions do not appear; the answer itself is never affected. Tapping one sends that question verbatim as the person's own next message.
+
+Suggestions appear only after grounded, substantive answers, and they are stored with the reply they followed; on replay, only the conversation's latest reply shows its stored suggestions. Turning the capability off stops new suggestions but does not retract stored ones — retraction follows the conversation data's own lifecycle, not the flag.
+
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
@@ -1216,6 +1261,12 @@ One unit of detected activity a triage sweep may act on: a grouped error issue, 
 The standing activity a covered service already had when triage began watching it, recorded on that service's first covered run.
 
 That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
+
+### Release-Session Filter
+
+The gate deciding whether a Triage Signal's activity came from a real release build or from a developer's own session, so development noise never becomes a triage ticket. The version the activity carries is the primary discriminator; textual development markers are secondary, used only when no version is present.
+
+It fails open toward coverage: activity spanning both a development session and a release build stays in, and an unusable filter configuration refuses to run rather than silently excluding everything. Loosening the filter makes previously excluded noise look new, so a filter change requires re-seeding the affected Service Baseline.
 
 ### Epoch
 

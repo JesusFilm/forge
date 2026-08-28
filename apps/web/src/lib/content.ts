@@ -9,12 +9,14 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
+import { normalizeLabel } from "@/lib/video-labels"
 import {
   getVideoChildDubLanguagesBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  legacyWatchExperienceFragment,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -53,6 +55,17 @@ const GET_WATCH_EXPERIENCE = adminGraphql(
   [watchExperienceFragment],
 )
 
+const GET_LEGACY_WATCH_EXPERIENCE = adminGraphql(
+  `
+    query GetLegacyWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...LegacyWatchExperience
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
+)
+
 const GET_WATCH_SETTINGS = adminGraphql(
   `
     query GetWatchSettings($locale: String!) {
@@ -68,6 +81,23 @@ const GET_WATCH_SETTINGS = adminGraphql(
     }
   `,
   [watchExperienceFragment],
+)
+
+const GET_LEGACY_WATCH_SETTINGS = adminGraphql(
+  `
+    query GetLegacyWatchSettings($locale: String!) {
+      watchSetting(locale: $locale) {
+        documentId
+        homepageExperience {
+          ...LegacyWatchExperience
+        }
+        defaultTemplateExperience {
+          ...LegacyWatchExperience
+        }
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
@@ -335,7 +365,11 @@ export type RouteVideo = {
 }
 
 export type ResolvedWatchPage =
-  | { kind: "experience"; experience: NonNullable<WatchExperience> }
+  | {
+      kind: "experience"
+      experience: NonNullable<WatchExperience>
+      watchHomeCategoryRailCompatibility: "supported" | "legacy-schema"
+    }
   | {
       kind: "video-template"
       template: NonNullable<WatchExperience>
@@ -438,38 +472,176 @@ function graphqlError(result: {
   return message ? result.error : new Error("An unexpected error occurred.")
 }
 
-async function getExperienceBySlug(
+type GraphqlErrorCandidate = {
+  readonly message?: unknown
+  readonly path?: unknown
+  readonly extensions?: unknown
+}
+
+function graphqlErrorsFromResult(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): GraphqlErrorCandidate[] {
+  const direct = Array.isArray(result.errors) ? result.errors : []
+  const nested =
+    typeof result.error === "object" &&
+    result.error !== null &&
+    "errors" in result.error &&
+    Array.isArray(result.error.errors)
+      ? result.error.errors
+      : []
+
+  return [...direct, ...nested].filter(
+    (entry): entry is GraphqlErrorCandidate =>
+      typeof entry === "object" && entry !== null,
+  )
+}
+
+// Two distinct pre-feature Admin schemas produce two distinct validation
+// errors on the SAME selection, and both mean "fall back to the legacy
+// query": an Admin without the block type at all ("Unknown type"), and an
+// Admin that has the block but predates authored tiles ("Cannot query
+// field"). Matching only the first would have made the tiles selection a
+// hard failure during the deploy window rather than a graceful degrade.
+const CATEGORY_RAIL_SCHEMA_LAG_MESSAGES = [
+  /^Unknown type "WatchHomeCategoryRailBlock"\./,
+  /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
+]
+
+function isUnknownCategoryRailTypenameValidation(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): boolean {
+  return graphqlErrorsFromResult(result).some((entry) => {
+    if (
+      typeof entry.message !== "string" ||
+      !CATEGORY_RAIL_SCHEMA_LAG_MESSAGES.some((pattern) =>
+        pattern.test(entry.message as string),
+      ) ||
+      entry.path != null
+    ) {
+      return false
+    }
+
+    const code =
+      typeof entry.extensions === "object" &&
+      entry.extensions !== null &&
+      "code" in entry.extensions
+        ? entry.extensions.code
+        : undefined
+    return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+  })
+}
+
+async function getLegacyExperienceBySlug(
   locale: string,
   slug: string,
 ): Promise<NonNullable<WatchExperience> | null> {
   const result = await client.query({
-    query: GET_WATCH_EXPERIENCE,
+    query: GET_LEGACY_WATCH_EXPERIENCE,
     variables: { locale, slug },
     fetchPolicy: "no-cache",
   })
-
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
   )
+  if (error) throw error
+  return (result.data?.experienceBySlug ??
+    null) as NonNullable<WatchExperience> | null
+}
+
+async function getExperienceBySlug(
+  locale: string,
+  slug: string,
+  categoryRailCompatibility?: "supported" | "legacy-schema",
+): Promise<NonNullable<WatchExperience> | null> {
+  if (categoryRailCompatibility === "legacy-schema") {
+    return getLegacyExperienceBySlug(locale, slug)
+  }
+
+  const result = await client
+    .query({
+      query: GET_WATCH_EXPERIENCE,
+      variables: { locale, slug },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      if (
+        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
+      ) {
+        return null
+      }
+      throw error
+    })
+
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  if (
+    result === null ||
+    isUnknownCategoryRailTypenameValidation(resultWithErrors)
+  ) {
+    return getLegacyExperienceBySlug(locale, slug)
+  }
+
+  const error = graphqlError(resultWithErrors)
   if (error) throw error
 
   return (result.data?.experienceBySlug ??
     null) as NonNullable<WatchExperience> | null
 }
 
-async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
-  const result = await client.query({
-    query: GET_WATCH_SETTINGS,
-    variables: { locale },
-    fetchPolicy: "no-cache",
-  })
+async function getWatchSettings(locale: string): Promise<{
+  setting: WatchSetting | null
+  categoryRailCompatibility: "supported" | "legacy-schema"
+}> {
+  const result = await client
+    .query({
+      query: GET_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      if (
+        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
+      ) {
+        return null
+      }
+      throw error
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  if (
+    result === null ||
+    isUnknownCategoryRailTypenameValidation(resultWithErrors)
+  ) {
+    const legacyResult = await client.query({
+      query: GET_LEGACY_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    const legacyError = graphqlError(
+      legacyResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (legacyError) throw legacyError
+
+    return {
+      setting: (legacyResult.data?.watchSetting ?? null) as WatchSetting | null,
+      categoryRailCompatibility: "legacy-schema",
+    }
+  }
+
+  const error = graphqlError(resultWithErrors)
   if (error) throw error
 
-  return result.data?.watchSetting ?? null
+  return {
+    setting: result.data?.watchSetting ?? null,
+    categoryRailCompatibility: "supported",
+  }
 }
 
 // Admin-shape → flat-shape transform. Single normalisation surface
@@ -1156,7 +1328,8 @@ function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
 async function resolveHomepage(
   locale: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   const homepageExperience = settings?.homepageExperience ?? null
   if (!homepageExperience) return null
   // Admin's PUBLIC contract guarantees `homepageExperience` is the
@@ -1165,6 +1338,7 @@ async function resolveHomepage(
   return {
     kind: "experience",
     experience: homepageExperience,
+    watchHomeCategoryRailCompatibility: categoryRailCompatibility,
   }
 }
 
@@ -1172,7 +1346,8 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   // Lowercase both sides of the template-slug comparison. Editors can save
   // `defaultTemplateExperience.slug` as `Single-Video` while users hit
   // `/single-video`; byte-equality would silently mis-route the request.
@@ -1198,9 +1373,17 @@ async function resolveSlugPage(
   // rendering, not a public Experience page. Any non-template slug can still
   // fall back to a curated Experience when no route video exists.
   if (slug.toLowerCase() !== templateSlug) {
-    const experience = await getExperienceBySlug(locale, slug)
+    const experience = await getExperienceBySlug(
+      locale,
+      slug,
+      categoryRailCompatibility,
+    )
     if (experience) {
-      return { kind: "experience", experience }
+      return {
+        kind: "experience",
+        experience,
+        watchHomeCategoryRailCompatibility: "supported",
+      }
     }
   }
 
@@ -1233,7 +1416,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page", "v4-serializable-errors"],
+  ["watch-page", "v5-category-rail-compatibility"],
   {
     revalidate: 60,
     tags: [
@@ -1262,7 +1445,11 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
 
       return {
         data: JSON.parse(
-          JSON.stringify({ kind: "experience", experience }),
+          JSON.stringify({
+            kind: "experience",
+            experience,
+            watchHomeCategoryRailCompatibility: "supported",
+          }),
         ) as ResolvedWatchPage,
         error: null,
       }
@@ -1273,7 +1460,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
       }
     }
   },
-  ["watch-experience-page"],
+  ["watch-experience-page", "v2-category-rail-compatibility"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
 )
 
@@ -2484,6 +2671,15 @@ export type CarouselParent = {
   slug: string | null
   title: string | null
   children: WatchChild[]
+  /**
+   * Admin's `VideoLabel` for the parent itself. Optional because the
+   * synthesized-from-current-video parents (`virtualParent` here,
+   * `withCompatibilityAdmittedVideoChildren` in the route) describe the video
+   * being watched rather than a real container, and nothing ranks those.
+   * Populated for standalone `selectableParents`, where it decides which
+   * container the carousel opens on — see `rankSelectableCarouselParents`.
+   */
+  label?: string | null
 }
 
 export type WatchSiblingCarouselBlock = {
@@ -2625,6 +2821,59 @@ function nextWatchItemFromChild(
 }
 
 /**
+ * Parent labels that mean "this video is a chapter OF this thing" rather than
+ * "this video was curated INTO this thing". A segment of the Gospel of John
+ * belongs to the film in a way it never belongs to a seasonal playlist, so the
+ * film is the container a standalone page should open on.
+ *
+ * Compared through `normalizeLabel`, the same canonicalizer
+ * `videoLabelMessageKey` uses to render these labels in the carousel itself.
+ * Admin's wire enum is SNAKE_CASE (`VideoLabel` in
+ * `apps/admin/src/graphql/types/video.ts`) and is today the only spelling that
+ * reaches this field — `normalizeParent` passes `parent.label` through
+ * verbatim. The normalizer is reused anyway because a bare `toUpperCase()`
+ * maps a camelCase spelling like `featureFilm` to `FEATUREFILM` and matches
+ * nothing, so a future producer, a renamed enum, or a fixture in that shape
+ * would fail silently — straight back to the old default.
+ */
+const CONTAINING_WORK_PARENT_LABELS = new Set(["FEATURE_FILM", "SERIES"])
+
+function isContainingWorkParent(parent: CarouselParent): boolean {
+  const normalized = normalizeLabel(parent.label)
+  return normalized != null && CONTAINING_WORK_PARENT_LABELS.has(normalized)
+}
+
+/**
+ * Orders standalone carousel parents so the work the video is a chapter of
+ * wins the default slot over a curated collection.
+ *
+ * Admin hands `Video.parents` back sorted by `VideoRelation.order` — which is
+ * the *child's index inside each parent*, not a ranking between parents (see
+ * `docs/plans/2026-06-14-001-fix-watch-video-relation-order-plan.md`, where
+ * that ordering was introduced for `children` and applied to `parents` for
+ * determinism). Sorting parents by it means "whichever collection lists this
+ * video earliest wins", which is coincidence: `the-arrest-of-jesus-and-peter-denial`
+ * is #5 in the "Anticipate the Resurrection" collection and #41 in the
+ * "Life of Jesus (Gospel of John)" film, so the playlist took the default.
+ *
+ * Deliberately two tiers, not a full label ranking: promoting only
+ * FEATURE_FILM/SERIES leaves every other page byte-identical to today, so a
+ * missing or unrecognized label degrades to the previous behavior instead of
+ * reshuffling pages this bug never touched. `Array.prototype.sort` is
+ * spec-stable (ES2019), so relative order inside each tier is admin's order
+ * untouched; it sorts a copy because the caller's array is the resolver's.
+ */
+export function rankSelectableCarouselParents(
+  parents: CarouselParent[],
+): CarouselParent[] {
+  if (parents.length < 2) return parents
+  return [...parents].sort(
+    (a, b) =>
+      Number(isContainingWorkParent(b)) - Number(isContainingWorkParent(a)),
+  )
+}
+
+/**
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
@@ -2633,7 +2882,9 @@ function nextWatchItemFromChild(
  * 2. On a standalone route, when the current video has its **own** children
  *    (for example, JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
- * 3. Otherwise, use eligible selectable parents in their supplied order.
+ * 3. Otherwise, use eligible selectable parents ranked by
+ *    `rankSelectableCarouselParents` — the containing film/series first, then
+ *    admin's supplied order.
  *
  * Returns null when neither source has at least 2 entries.
  */
@@ -2678,11 +2929,14 @@ export function buildSiblingCarouselBlock(
   }
 
   if (selectableParents.length > 0) {
+    // Rank once and use the SAME array for both the default and the picker, so
+    // the dropdown's first entry is always the one the carousel opened on.
+    const rankedParents = rankSelectableCarouselParents(selectableParents)
     return {
       kind: "SiblingCarousel",
-      canonicalParent: selectableParents[0]!,
+      canonicalParent: rankedParents[0]!,
       currentVideoDocumentId: video.documentId,
-      selectableParents,
+      selectableParents: rankedParents,
     }
   }
   return null

@@ -75,7 +75,7 @@ export function WatchBody({
               />
               {downloadError ? (
                 <p
-                  className="max-w-64 text-sm leading-snug font-semibold text-red-200"
+                  className="max-w-64 text-base sm:text-sm leading-snug font-semibold text-red-200"
                   data-testid="watch-download-error"
                   role="alert"
                 >

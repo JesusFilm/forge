@@ -3,7 +3,6 @@ import type { Route } from "next"
 import Link from "next/link"
 
 import { DeferredLanguageGlobe } from "@/components/sections/DeferredLanguageGlobe"
-import { LanguageGlobe } from "@/components/sections/LanguageGlobe"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 
@@ -150,24 +149,14 @@ export function LanguageGlobeSection({
             </div>
           </div>
 
-          {deferGlobe ? (
-            <DeferredLanguageGlobe
-              className={cn(
-                "mt-2 sm:mt-0",
-                isNotFound && "h-[clamp(29rem,58vw,44rem)]",
-                globeClassName,
-              )}
-            />
-          ) : (
-            <LanguageGlobe
-              className={cn(
-                "mt-2 sm:mt-0",
-                isNotFound && "h-[clamp(29rem,58vw,44rem)]",
-                globeClassName,
-              )}
-              layout="embedded"
-            />
-          )}
+          <DeferredLanguageGlobe
+            className={cn(
+              "mt-2 sm:mt-0",
+              isNotFound && "h-[clamp(29rem,58vw,44rem)]",
+              globeClassName,
+            )}
+            loadImmediately={!deferGlobe}
+          />
         </div>
       </div>
     </section>

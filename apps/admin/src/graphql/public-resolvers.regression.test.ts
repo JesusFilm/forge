@@ -47,6 +47,10 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "watchCollectionFeed",
   // Forge /watch language inventory lookup: public consumer read, flat card shape.
   "watchLanguageInventory",
+  // Forge /watch language-collection sidebar availability indicator: public
+  // consumer read of aggregate COUNTS only — no language identities, titles, or
+  // ids — over the same child-visibility contract as `childDubLanguages`.
+  "watchCollectionLanguageCounts",
   // Forge /watch single-video cold route lookup: public consumer read, flat
   // route snapshot shape that replaces the hot nested videoBySlug graph.
   "watchVideoRouteSnapshotBySlug",

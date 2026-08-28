@@ -12,6 +12,7 @@ buildCommand = "export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEX
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
+  "/packages/watch-url-policy/**",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",

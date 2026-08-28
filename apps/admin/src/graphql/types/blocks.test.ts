@@ -2,7 +2,7 @@
 // surface. Each test constructs a fixture POJO matching the Zod schema for
 // one block kind, runs the GraphQL union's `resolveType` callback, and
 // asserts the returned typename matches `T_TO_TYPENAME[t]`. The exhaustive
-// 20-kind sweep proves Pothos's union dispatch contract for every block we
+// 21-kind sweep proves Pothos's union dispatch contract for every block we
 // can persist; the union-dispatch happy path mixes kinds in one array to
 // catch any cross-block side effects in resolveType; edge cases cover the
 // "no blocks" and "unknown discriminator" boundaries.
@@ -135,6 +135,10 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "infoBlocks",
     blocks: [{ icon: "info", title: "Hello", description: "World" }],
   },
+  languageGlobe: {
+    t: "languageGlobe",
+    title: "Choose a language",
+  },
   mediaCollection: {
     t: "mediaCollection",
     variant: "grid",
@@ -193,6 +197,10 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  watchHomeCategoryRail: {
+    t: "watchHomeCategoryRail",
+    categoryIds: ["family", "gospels", "jesus"],
+  },
   watchHomeHero: {
     t: "watchHomeHero",
   },
@@ -205,6 +213,24 @@ const expectedKeys = Object.keys(T_TO_TYPENAME) as BlockKind[]
 describe("blocks fixture set covers every kind in T_TO_TYPENAME", () => {
   it("has the same key set as T_TO_TYPENAME (no missing or stale fixtures)", () => {
     expect([...fixtureKeys].sort()).toEqual([...expectedKeys].sort())
+  })
+})
+
+describe("WatchHomeCategoryRailBlock fields", () => {
+  it("preserves the authored category order", async () => {
+    const resolve = fieldResolver("WatchHomeCategoryRailBlock", "categoryIds")
+
+    const result = await resolve(
+      fixtures.watchHomeCategoryRail,
+      {},
+      {},
+      fakeInfo,
+    )
+    expect(result).toEqual(["family", "gospels", "jesus"])
+    const type = schema.getType(
+      "WatchHomeCategoryRailBlock",
+    ) as GraphQLObjectType
+    expect(String(type.getFields().categoryIds?.type)).toBe("[String!]!")
   })
 })
 

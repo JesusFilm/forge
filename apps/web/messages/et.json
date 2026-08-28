@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muuda heli keelt",
     "home": "JesusFilmi avaleht",
     "closeSearch": "Sulge otsing",
-    "submitSearch": "Otsi"
+    "submitSearch": "Otsi",
+    "library": "Teek"
   },
   "SearchOverlay": {
     "dialogLabel": "Otsi ja sirvi videoid",
@@ -214,6 +215,7 @@
     "searchSuggestionWithLanguage": "Otsi keeles {language}: „{suggestion}”",
     "inLanguage": "keeles {language}",
     "browseByRegion": "Sirvi piirkonna järgi",
+    "allVideosOnSinglePage": "Kõik videod ühel lehel",
     "clearLanguages": "Tühjenda",
     "queryLanguageDetected": "Tuvastatud keel: {language}",
     "searchInLanguage": "Otsi keeles {language}",
@@ -271,14 +273,183 @@
     "couldNotLoad": "Tagasisidevormi ei saanud laadida.",
     "loadingForm": "Tagasisidevormi laadimine…",
     "retry": "Proovi uuesti",
-    "openFormShort": "Ava vorm",
     "cancel": "Tühista",
-    "title": "Beetatagasiside",
-    "description": "Jaga, mis töötab hästi ja mida saaks parandada. Selle vormi pakub Google.",
-    "openInNewTab": "Ava vorm uuel vahekaardil",
     "closeForm": "Sulge tagasisidevorm",
-    "loadingGoogleForm": "Google'i vormi laadimine…",
-    "iframeTitle": "Saada beetatagasisidet"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Tasuta kristlikud videod keeles {language} | Jesus Film Project",
@@ -297,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kogud",
     "subtitlesOnly": "Ainult subtiitrid",
+    "backToTop": "Tagasi üles",
     "newlyAdded": "Äsja lisatud",
     "newVideosTitle": "Uued kristlikud videod keeles {language}",
     "newestFirst": "Uusimad eespool",
@@ -327,7 +499,21 @@
     "standaloneVideos": "Eraldiseisvad videod",
     "videosFromCollection": "Videod kogust {collection}.",
     "standaloneDescription": "Eraldiseisvad videod selles keeles.",
-    "openCollection": "Ava kogu"
+    "openCollection": "Ava kogu",
+    "filters": "Filtrid",
+    "filterLength": "Pikkus",
+    "filterLength_under5": "Alla 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Üle 30 min",
+    "filterType": "Tüüp",
+    "clearFilters": "Tühjenda filtrid",
+    "filterResults": "Kuvatud {count} / {total}",
+    "noFilterResults": "Ükski video ei vasta neile filtritele. Proovi üks eemaldada.",
+    "filterAdded": "Lisatud",
+    "filterAdded_60d": "Viimased 60 päeva",
+    "filterAdded_6m": "Viimased 6 kuud",
+    "filterAdded_12m": "Viimased 12 kuud"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Projecti vaatamine",
@@ -407,6 +593,27 @@
     "merryChristmas": "Häid jõule!",
     "daysUntilChristmas": "{count, plural, one {# päev jõuludeni} other {# päeva jõuludeni}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Keeled",
     "metadataDescription": "Sirvi JesusFilmi videoid keele järgi.",
@@ -455,44 +662,6 @@
     "actionsLabel": "Lehemitteleidmise toimingud",
     "backToWatch": "Tagasi vaatama",
     "browseVideos": "Sirvi videoid"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Vaata lühifilmi",
-    "actions": {
-      "joinUs": "Liitu meiega",
-      "shareMission": "Aita meie missiooni"
-    },
-    "welcomeStart": {
-      "label": "Usk ja Pühakiri",
-      "title": "Tänased videovalikud",
-      "description": "Meie kogu usukeskne video­sisu, mis innustab, esitab väljakutseid ja ärgitab mõtisklema."
-    },
-    "welcomeMorning": {
-      "label": "Hommikune inspiratsioon",
-      "title": "Tere hommikust! Tänased Piibli hetked ootavad.",
-      "description": "Alusta päeva julgustavate Piibli hetkede ja videodega, mis innustavad ning tõstavad meelt."
-    },
-    "welcomeAfternoon": {
-      "label": "Pärastlõunane inspiratsioon",
-      "title": "Tere pärastlõunast! Piibli hetked sinu päevaks.",
-      "description": "Julgustav Piibli sisu, mis sobib hästi pärastlõunaseks puhkepausiks või jätkuvaks innustuseks."
-    },
-    "welcomeEvening": {
-      "label": "Õhtune inspiratsioon",
-      "title": "Tere õhtust! Lõõgastu Piibli hetkede saatel.",
-      "description": "Rahulikud Piibli hetked, mis aitavad sul päeva lõppedes mõtiskleda ja lohutust leida."
-    },
-    "joinUs": {
-      "label": "Liitu meiega",
-      "title": "Miljardid otsivad",
-      "description": "Saagikoristus on käes. Liitu meiega, kui jagame evangeeliumi maailmaga digimeedia abil."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lähme koos",
-      "title": "Jutustame Jeesuse lugu koos",
-      "description": "Et nad kuuleksid ja näeksid Jeesuse armastust oma keeles just seal, kus nad parasjagu on."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% sobivus",

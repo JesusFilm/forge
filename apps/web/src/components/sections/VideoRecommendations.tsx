@@ -30,7 +30,7 @@ function SimilarityBadge({ similarity }: { similarity: number }) {
   const t = useTranslations("VideoRecommendations")
   const pct = Math.round(similarity * 100)
   return (
-    <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-medium text-white/80">
+    <span className="rounded-full bg-white/15 px-2 py-0.5 text-sm sm:text-xs font-medium text-white/80">
       {t("match", { percent: pct })}
     </span>
   )
@@ -38,7 +38,7 @@ function SimilarityBadge({ similarity }: { similarity: number }) {
 
 function ThemePill({ theme }: { theme: string }) {
   return (
-    <span className="rounded-full bg-brand-red/40 px-2 py-0.5 text-xs text-brand-red/80">
+    <span className="rounded-full bg-brand-red/40 px-2 py-0.5 text-sm sm:text-xs text-brand-red/80">
       {theme}
     </span>
   )
@@ -83,7 +83,7 @@ function RecommendationCard({
           previewUrl={muxPreviewUrl}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         />
-        <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
+        <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-sm sm:text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}
         </div>
         <VideoThumbnailInteractionFrame data-testid="video-recommendation-thumbnail-frame" />
@@ -91,13 +91,13 @@ function RecommendationCard({
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex items-center gap-2">
-          <h3 className="flex-1 truncate text-sm font-semibold text-white">
+          <h3 className="flex-1 truncate text-base sm:text-sm font-semibold text-white">
             {rec.videoTitle}
           </h3>
           <SimilarityBadge similarity={rec.similarity} />
         </div>
 
-        <p className="line-clamp-2 text-xs leading-relaxed text-stone-300">
+        <p className="line-clamp-2 text-sm sm:text-xs leading-relaxed text-stone-300">
           {rec.description}
         </p>
 
