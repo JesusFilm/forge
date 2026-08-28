@@ -6,20 +6,27 @@ module.exports = {
       from: { path: "^src/contracts/" },
       to: { path: "^src/(?!contracts/)" },
     },
-    ...["acquisition", "config", "indexing", "retrieval", "serving"].map(
-      (lane) => ({
-        name: `${lane}-stays-in-lane`,
-        severity: "error",
-        from: {
-          path: `^src/${lane}/`,
-          pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
-        },
-        to: {
-          path: "^src/",
-          pathNot: `^src/(contracts|${lane})/`,
-        },
-      }),
-    ),
+    ...[
+      "acquisition",
+      "config",
+      "indexing",
+      "registry",
+      "retrieval",
+      "serving",
+    ].map((lane) => ({
+      name: `${lane}-stays-in-lane`,
+      severity: "error",
+      from: {
+        path: `^src/${lane}/`,
+        pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+      },
+      to: {
+        path: "^src/",
+        pathNot: `^src/(contracts|${lane}${
+          lane === "acquisition" || lane === "indexing" ? "|registry" : ""
+        })/`,
+      },
+    })),
     {
       name: "fakes-are-test-only",
       severity: "error",
@@ -69,7 +76,7 @@ module.exports = {
       name: "unclassified-modules-cannot-wire-internals",
       severity: "error",
       from: {
-        path: "^src/(?!(contracts|acquisition|config|indexing|retrieval|serving|adapters|fakes)/|main\\.ts$)",
+        path: "^src/(?!(contracts|acquisition|config|indexing|registry|retrieval|serving|adapters|fakes)/|main\\.ts$)",
       },
       to: { path: "^src/" },
     },

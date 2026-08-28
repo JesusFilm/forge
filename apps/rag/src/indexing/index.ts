@@ -18,6 +18,13 @@ export {
   type RawInput,
 } from "./normalize.js"
 export {
+  ingestPending,
+  type IngestDeps,
+  type IngestOptions,
+  type IngestStatus,
+  type IngestSummary,
+} from "./ingest.js"
+export {
   decideSweep,
   isFallback,
   resolveFromLlm,
