@@ -167,7 +167,7 @@ export function WatchUnavailableLanguageClient({
               >
                 {t("audioVersionsTitle")}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-stone-300">
+              <p className="mt-1 text-base sm:text-sm leading-6 text-stone-300">
                 {t("audioVersionsDescription")}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

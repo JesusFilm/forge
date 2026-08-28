@@ -151,7 +151,7 @@ function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
           <span className="block truncate text-base leading-tight font-medium">
             {language.englishLabel}
           </span>
-          <span className="mt-1 block truncate text-sm leading-tight font-normal text-stone-500">
+          <span className="mt-1 block truncate text-base sm:text-sm leading-tight font-normal text-stone-500">
             {language.nativeLabel}
           </span>
         </span>
@@ -211,7 +211,7 @@ function CountryLanguages({
           <h4 className="m-0 truncate text-lg leading-tight font-bold text-white">
             {country.name}
           </h4>
-          <p className="m-0 mt-0.5 text-sm leading-tight font-semibold text-stone-400">
+          <p className="m-0 mt-0.5 text-base sm:text-sm leading-tight font-semibold text-stone-400">
             {t("languageCount", { count: country.languages.length })}
           </p>
         </div>
@@ -232,7 +232,7 @@ function CountryLanguages({
       {hiddenLanguageCount > 0 ? (
         <button
           type="button"
-          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-medium text-amber-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-base sm:text-sm font-medium text-amber-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
           aria-controls={extraLanguagesId}
           aria-expanded={expanded}
           onClick={onToggle}
@@ -275,7 +275,7 @@ function RegionLanguages({
         <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         <span className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-25 mix-blend-soft-light" />
         <span className="relative z-[1] flex h-full min-h-48 flex-col justify-end p-5 lg:min-h-[24rem]">
-          <span className="mb-3 w-fit rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold tracking-[0.2em] text-amber-200 uppercase backdrop-blur-sm">
+          <span className="mb-3 w-fit rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold tracking-[0.2em] text-amber-200 uppercase sm:text-[11px] backdrop-blur-sm">
             {t("region")}
           </span>
           <h3 className="m-0 text-3xl leading-none font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
@@ -401,7 +401,7 @@ export function WatchLanguageIndexBrowser({
           <Globe2 className="size-6" aria-hidden="true" />
         </span>
         <span className="min-w-0">
-          <span className="mb-1 block text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
+          <span className="mb-1 block text-sm sm:text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
             {t("eyebrow")}
           </span>
           <h1
@@ -441,14 +441,14 @@ export function WatchLanguageIndexBrowser({
         ) : null}
       </label>
 
-      <p className="m-0 text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
+      <p className="m-0 text-sm sm:text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
         {t("browse")}
       </p>
       <h2 className="m-0 mt-1 text-xl leading-tight font-bold text-white sm:text-2xl">
         {t("browseByRegion")}
       </h2>
       <p
-        className="m-0 mt-2 text-sm font-bold text-stone-400"
+        className="m-0 mt-2 text-base sm:text-sm font-bold text-stone-400"
         aria-live="polite"
       >
         {t("languageCount", { count: visibleLanguageCount })}
@@ -468,7 +468,7 @@ export function WatchLanguageIndexBrowser({
           <h3 className="m-0 text-lg font-bold text-white">
             {t("noLanguages")}
           </h3>
-          <p className="m-0 mt-2 text-sm font-semibold text-stone-400">
+          <p className="m-0 mt-2 text-base sm:text-sm font-semibold text-stone-400">
             {t("tryAnotherSearch")}
           </p>
         </section>

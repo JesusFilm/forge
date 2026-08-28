@@ -136,7 +136,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
     >
       <div className="mb-6 flex flex-wrap items-center justify-between">
         {heading && (
-          <h4 className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+          <h4 className="flex shrink-0 items-center gap-4 py-4 text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:text-base 2xl:text-lg">
             {heading}
           </h4>
         )}

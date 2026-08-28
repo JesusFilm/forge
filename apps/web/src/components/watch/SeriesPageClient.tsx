@@ -468,7 +468,10 @@ export function SeriesPageClient({
               </div>
             </div>
             {downloadError ? (
-              <p role="alert" className="text-sm font-semibold text-red-300">
+              <p
+                role="alert"
+                className="text-base sm:text-sm font-semibold text-red-300"
+              >
                 {downloadError}
               </p>
             ) : null}
@@ -512,7 +515,7 @@ export function SeriesPageClient({
             >
               <span
                 data-testid="series-page-languages-label"
-                className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
+                className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
               >
                 {t("languages")}
               </span>

@@ -133,7 +133,7 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between pb-2">
       {heading && (
-        <h3 className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h3 className="text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:text-base 2xl:text-lg">
           {heading}
         </h3>
       )}
@@ -189,7 +189,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
     >
       <span
         className={`mb-1 block font-semibold tracking-[0.15em] text-amber-200/60 uppercase ${
-          hasText ? "text-[10px]" : "text-sm"
+          hasText ? "text-xs sm:text-[10px]" : "text-base sm:text-sm"
         }`}
       >
         {quote.reference}
@@ -199,7 +199,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
           {quote.text}
         </p>
       ) : (
-        <p className="text-sm leading-relaxed text-balance text-white/70">
+        <p className="text-base sm:text-sm leading-relaxed text-balance text-white/70">
           {t("readPassage")}
         </p>
       )}
@@ -214,7 +214,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
-      <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
+      <span className="mb-1 block text-sm sm:text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
         {quote.reference}
       </span>
       <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">

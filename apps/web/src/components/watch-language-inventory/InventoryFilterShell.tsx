@@ -133,7 +133,7 @@ export function InventoryFilterShell({
 
   const optionClass = (selected: boolean) =>
     cn(
-      "cursor-pointer rounded-full border px-3 py-1.5 text-xs leading-5 font-medium tracking-media-label uppercase transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none",
+      "cursor-pointer rounded-full border px-3 py-1.5 text-sm sm:text-xs leading-5 font-medium tracking-media-label uppercase transition-colors focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none",
       selected
         ? "border-white bg-white text-black"
         : "border-white/20 bg-white/[0.06] text-stone-200 hover:border-white/40 hover:bg-white/10",
@@ -176,7 +176,7 @@ export function InventoryFilterShell({
             {active && counts != null ? (
               <p
                 data-testid="language-inventory-filters-count"
-                className="text-sm font-medium text-stone-400 tabular-nums"
+                className="text-base sm:text-sm font-medium text-stone-400 tabular-nums"
               >
                 {t("filterResults", {
                   count: counts.visible,
@@ -303,7 +303,7 @@ function FilterGroup({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-full text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase sm:w-28">
+      <span className="w-full text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase sm:w-28">
         {label}
       </span>
       {children}
