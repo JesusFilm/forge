@@ -28,7 +28,8 @@
  *
  * pg pool arithmetic for this service: the ai-chat storage pool is capped at
  * 5; the service's other pools (runtime store 20, experience-chat storage 5,
- * experience-chat vector 2 — see `./memory.ts`) bring the total to ~32
+ * experience-chat vector 2 — see `./memory.ts`; title-repair sweep 2,
+ * run-scoped — see `./workflows/title-repair.ts`) bring the total to ~34
  * potential connections. Keep new pools small.
  *
  * Mirrors the lazy-singleton + `__reset*ForTesting` SHAPE of
@@ -46,11 +47,13 @@ import { InMemoryStore } from "@mastra/core/storage"
 import { Memory } from "@mastra/memory"
 import { PostgresStore } from "@mastra/pg"
 
+import type { ModelWithRetries } from "@mastra/core/agent"
 import type { MastraModelConfig } from "@mastra/core/llm"
 
 import { getMastraDatabaseUrl, resolveAiChatMemoryBackend } from "../config/env"
 
 import { USER_RESOURCE_PREFIX } from "./ai-chat-thread-ownership"
+import { buildSeekerModelList } from "./seeker-model-list"
 
 /**
  * Postgres schema owning the ai-chat lane's memory tables (feat-208). SEPARATE
@@ -93,18 +96,29 @@ export function getAiChatStorage(): PostgresStore {
 }
 
 /**
- * LLM thread titles (feat-241, KTD12): the model-router string for Mastra's
- * `generateTitle` — the free Gemma tier the seeker's fallback chain already
- * uses, as a PLAIN string (a static `@ai-sdk/*` import would trip the Mastra
- * CLI bundler; `generateTitle: true` would instead burn the paid gateway model
- * whenever feat-237's flag is on). Titling rides the same `OPENROUTER_API_KEY`
- * the Gemma chain requires; an absent key degrades to a benign no-op.
+ * Default title model (feat-405, KTD1): a FUNCTION returning the seeker's own
+ * gateway-first fallback chain (`buildSeekerModelList`, U1 leaf module).
+ * Gateway-first resolves feat-241's standing "revisit first-party gateway
+ * titling" note: when `AI_GATEWAY_SEEKER_ENABLED="true"` and the chat key is
+ * set, titles generate on the self-hosted JesusFilm gateway; the free Gemma
+ * chain remains the failover tail (and the whole chain when the flag or key
+ * is off — still an upgrade over the retired single un-retried
+ * `AI_CHAT_TITLE_MODEL` string, since the disabled branch is a two-entry
+ * retrying chain).
  *
- * Trust posture, stated plainly: titles send conversation-derived content to a
- * free-tier third-party model. Accepted for the signed-in dogfood roster;
- * revisit (first-party gateway titling) when feat-237's gateway flag is on.
+ * The function form is required, not cosmetic (KTD1): it defers
+ * gateway-client construction out of module load, reads
+ * `AI_GATEWAY_SEEKER_ENABLED` per turn instead of freezing it at the first
+ * `buildAiChatMemory()` call, and removes the module-load half of the KTD2
+ * import cycle (`seeker-agent.ts` imports this module).
+ *
+ * Trust posture, stated plainly: with the gateway flag on, titles send
+ * conversation-derived content to the first-party gateway; with it off (or
+ * the key unset), they still go to the free-tier third-party Gemma pool —
+ * the same coupling the seeker's answer path has. Flipping
+ * `AI_GATEWAY_SEEKER_ENABLED` governs both surfaces together.
  */
-export const AI_CHAT_TITLE_MODEL = "openrouter/google/gemma-4-26b-a4b-it:free"
+const defaultTitleModel = (): ModelWithRetries[] => buildSeekerModelList()
 
 /**
  * Build the ai-chat Memory. Backend-aware (feat-208): `memory` → a dedicated
@@ -126,28 +140,44 @@ export const AI_CHAT_TITLE_MODEL = "openrouter/google/gemma-4-26b-a4b-it:free"
  * `titleModel` is the matching seam for title generation so tests can observe
  * the titling path with a mock model.
  *
- * Title generation (feat-241, KTD12): the TOP-LEVEL `generateTitle` option —
- * NEVER the deprecated `threads.generateTitle` nesting, which throws mid-turn
- * at the first merged-config read (not at construction). Semantics, verified
- * against the pinned dist: fire-and-forget AFTER a completed turn (it cannot
- * delay or fail the turn it rides on); fires only for threads whose stored
- * title is still empty — `""` is the untitled sentinel (`createThread` stores
+ * Title generation (feat-241 KTD12, model default feat-405 KTD1): the
+ * TOP-LEVEL `generateTitle` option — NEVER the deprecated
+ * `threads.generateTitle` nesting, which throws mid-turn at the first
+ * merged-config read (not at construction). Semantics, verified against the
+ * pinned dist: fire-and-forget AFTER a completed turn (it cannot delay or
+ * fail the turn it rides on); fires only for threads whose stored title is
+ * still empty — `""` is the untitled sentinel (`createThread` stores
  * `title || ""`) — so a title-model failure leaves `""` and retries on the
- * next turn, and the first listing after a first turn may legitimately still
- * show the client's fallback label. Scope: signed-in threads only — the send
- * route passes a per-call `options: { generateTitle: false }` override for
- * non-`user:` resources via `aiChatMemoryConfigFor` below (they are
- * permanently unlistable under R2, so titling them would waste a model call
- * per junk POST).
+ * next turn (and, since feat-405, the daily title-repair sweep heals threads
+ * that never get another turn), and the first listing after a first turn may
+ * legitimately still show the client's fallback label. Scope: signed-in
+ * threads only — the send route passes a per-call
+ * `options: { generateTitle: false }` override for non-`user:` resources via
+ * `aiChatMemoryConfigFor` below (they are permanently unlistable under R2, so
+ * titling them would waste a model call per junk POST).
  */
 export function buildAiChatMemory({
   getBackend = resolveAiChatMemoryBackend,
-  titleModel = AI_CHAT_TITLE_MODEL,
+  titleModel = defaultTitleModel,
 }: {
   getBackend?: () => "postgres" | "memory"
-  titleModel?: MastraModelConfig
+  titleModel?: MastraModelConfig | (() => ModelWithRetries[])
 } = {}): Memory {
-  const options = { generateTitle: { model: titleModel } }
+  const options = {
+    generateTitle: {
+      // KTD1 cast, verified 2026-08-27 against the installed @mastra/core:
+      // the declared type is the singular DynamicArgument<MastraModelConfig>,
+      // but resolveTitleGenerationConfig hands this to Agent.getLLM →
+      // resolveModelSelection, which accepts a function returning a
+      // ModelWithRetries[] and normalizes it via normalizeModelFallbacks.
+      // The pinned-dist-fact test in ai-chat-memory.test.ts guards the shape
+      // across @mastra/* bumps — re-verify there on any bump. Known cosmetic
+      // effect: MastraMemory.getConfig() drops a function-valued title model
+      // from its serialized config, so Studio's memory config reads as if
+      // titling were absent; the wiring tests below are the source of truth.
+      model: titleModel as MastraModelConfig,
+    },
+  }
   if (getBackend() === "memory") {
     return new Memory({
       storage: new InMemoryStore({ id: "ai-chat-memory-storage" }),
