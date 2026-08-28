@@ -3,7 +3,7 @@ id: "feat-430"
 title: "Copy the production RAG corpus into Forge Railway"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-16"
 duration: 2
 depends_on: ["feat-429"]
@@ -50,8 +50,12 @@ equivalent: all seven table counts, integrity checks, fingerprints, embedding
 provenance/dimensions, and stored-vector retrieval probes match, with zero
 embedding calls. The source backup is retained and jfrag remains online.
 
-Live `/v1` comparison identified one receiver drift: Forge lacked
-`EMBED_QUERY_INSTRUCTION`. The matching value is now staged on `@forge/rag`
-with deployments suppressed. Keep this ticket in progress until the normal
-PR-to-main deployment activates it and old/new `/v1` ranking equivalence is
-recorded.
+PR [#2090](https://github.com/JesusFilm/forge/pull/2090) merged through the
+normal PR-to-main flow with the matching `EMBED_QUERY_INSTRUCTION` production
+configuration. The operator then independently ran the documented count and
+integrity queries in the Forge Railway production database: every table count
+matched the receipt and every orphan/null integrity count was zero.
+
+The production data-copy scope is complete. Consumer cutover and its live
+service soak remain owned by the later cutover tickets; jfrag and the retained
+backup remain available for rollback until those gates complete.
