@@ -647,44 +647,6 @@
     "backToWatch": "Yn ôl i Wylio",
     "browseVideos": "Pori fideos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gwylio ffilm fer",
-    "actions": {
-      "joinUs": "Ymunwch â ni",
-      "shareMission": "Rhannu yn ein cenhadaeth"
-    },
-    "welcomeStart": {
-      "label": "Ffydd ac Ysgrythur",
-      "title": "Dewisiadau fideo heddiw",
-      "description": "Cynnwys fideo sy’n canolbwyntio ar ffydd o’n llyfrgell i ysbrydoli, herio, a chynnau myfyrdod."
-    },
-    "welcomeMorning": {
-      "label": "Ysbrydoliaeth y bore",
-      "title": "Bore da! Mae eiliadau Beiblaidd heddiw yn eich disgwyl.",
-      "description": "Dechreuwch eich diwrnod gydag eiliadau Beiblaidd calonogol sydd wedi’u cynllunio i ysbrydoli ac i godi’ch ysbryd."
-    },
-    "welcomeAfternoon": {
-      "label": "Ysbrydoliaeth y prynhawn",
-      "title": "Prynhawn da! Eiliadau Beiblaidd ar gyfer eich diwrnod.",
-      "description": "Cynnwys Beiblaidd calonogol sy’n berffaith ar gyfer eich egwyl brynhawn neu i barhau â’r ysbrydoliaeth."
-    },
-    "welcomeEvening": {
-      "label": "Ysbrydoliaeth y nos",
-      "title": "Noswaith dda! Ymlaciwch gydag eiliadau Beiblaidd.",
-      "description": "Eiliadau Beiblaidd tawel i’ch helpu i fyfyrio a chael cysur wrth i’ch diwrnod ddirwyn i ben."
-    },
-    "joinUs": {
-      "label": "Ymunwch â ni",
-      "title": "Mae biliynau yn chwilio",
-      "description": "Mae’r cynhaeaf yma. Ymunwch â ni wrth i ni rannu’r efengyl â’r byd drwy gyfryngau digidol."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Awn gyda’n gilydd",
-      "title": "Adrodd stori Iesu, gyda’n gilydd",
-      "description": "Fel y gallant glywed a gweld cariad Iesu yn eu hiaith eu hunain, yn union lle maent."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% yn cyfateb",
     "none": "Ni chanfuwyd unrhyw argymhellion ar gyfer y fideo hwn yn yr iaith hon."

@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "短編映画を見る",
-    "actions": {
-      "joinUs": "参加する",
-      "shareMission": "私たちの使命に加わる"
-    },
-    "welcomeStart": {
-      "label": "信仰と聖書",
-      "title": "今日おすすめの動画",
-      "description": "ライブラリから、心を励まし、挑戦し、思い巡らすきっかけとなる、信仰を中心とした動画コンテンツをご覧ください。"
-    },
-    "welcomeMorning": {
-      "label": "朝の励まし",
-      "title": "おはようございます。今日の聖書のひとときが待っています。",
-      "description": "心を励まし、元気づけるように作られた聖書のひとときで、一日を始めましょう。"
-    },
-    "welcomeAfternoon": {
-      "label": "午後の励まし",
-      "title": "こんにちは。今日のための聖書のひとときをどうぞ。",
-      "description": "午後のひと休みや、さらに励ましを受けたいときにぴったりの、聖書に基づく励ましのコンテンツです。"
-    },
-    "welcomeEvening": {
-      "label": "夜の励まし",
-      "title": "こんばんは。聖書のひとときで一日の終わりをゆっくり過ごしましょう。",
-      "description": "一日を振り返り、やすらぎを見いだせるようにする、穏やかな聖書のひとときです。"
-    },
-    "joinUs": {
-      "label": "参加する",
-      "title": "何十億もの人が探しています",
-      "description": "収穫の時は来ています。デジタルメディアを用いて世界に福音を伝えるこの働きに、ぜひご参加ください。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一緒に行きましょう",
-      "title": "イエスの物語を、ともに伝えましょう",
-      "description": "それぞれの場所で、自分の言語でイエスの愛を聞き、見てもらえるようにするためです。"
-    }
-  },
   "VideoRecommendations": {
     "match": "一致度 {percent}%",
     "none": "この言語では、この動画のおすすめが見つかりませんでした。"

@@ -235,7 +235,6 @@ describe("collection structured data", () => {
             ],
           },
         ],
-        muxInserts: [],
       },
       missingData: [],
     } as never
@@ -299,7 +298,7 @@ describe("collection structured data", () => {
       model: {
         heroSlides: [],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       } as never,
       blocks: [

@@ -647,44 +647,6 @@
     "backToWatch": "Volver a Watch",
     "browseVideos": "Explorar videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraje",
-    "actions": {
-      "joinUs": "Únase a nosotros",
-      "shareMission": "Comparta nuestra misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Videos recomendados para hoy",
-      "description": "Contenido en video centrado en la fe de nuestra biblioteca para inspirar, retar y provocar reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración de la mañana",
-      "title": "¡Buenos días! Le esperan los momentos bíblicos de hoy.",
-      "description": "Comience el día con momentos bíblicos alentadores diseñados para inspirar y animar su espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Buenas tardes! Momentos bíblicos para su día.",
-      "description": "Contenido bíblico alentador, perfecto para su descanso de la tarde o para seguir inspirándose."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración de la noche",
-      "title": "¡Buenas noches! Relájese con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para ayudarle a reflexionar y encontrar consuelo al terminar el día."
-    },
-    "joinUs": {
-      "label": "Únase a nosotros",
-      "title": "Miles de millones están buscando",
-      "description": "La cosecha ya está aquí. Únase a nosotros mientras compartimos el evangelio con el mundo usando medios digitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vayamos juntos",
-      "title": "Contando juntos la historia de Jesús",
-      "description": "Para que puedan oír y ver el amor de Jesús en su propio idioma, dondequiera que estén."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Man xilitäj ta jun recomendación rech le wachibʼäl riʼ pa le chʼabʼal riʼ."

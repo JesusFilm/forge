@@ -7,10 +7,7 @@ import {
   tryAsLocaleSlug,
   watchVideoPath,
 } from "@/lib/routes"
-import {
-  buildWatchHomeVideoQueue,
-  mergeWatchHomeMuxInserts,
-} from "@/lib/watch-home-carousel-sequence"
+import { buildWatchHomeVideoQueue } from "@/lib/watch-home-carousel-sequence"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
 export type WatchHomeVisibleDestination = {
@@ -54,16 +51,9 @@ function initialHeroDestination(
     targetVideoCount: 7,
     useStoredProgress: false,
   })
-  const sequenced = mergeWatchHomeMuxInserts(
-    queue.videos,
-    model.carousel.muxInserts,
-    undefined,
-    { useStoredSelections: false },
-  )
   const selected =
-    sequenced.find(
-      (slide) => slide.kind === "video" && slide.src && slide.href,
-    ) ?? model.heroSlides.find((slide) => slide.href)
+    queue.videos.find((slide) => slide.src && slide.href) ??
+    model.heroSlides.find((slide) => slide.href)
 
   if (!selected?.href || !("title" in selected)) return null
   const url = watchDestinationUrl(selected.href)

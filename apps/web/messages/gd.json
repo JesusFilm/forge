@@ -647,44 +647,6 @@
     "backToWatch": "Air ais gu Watch",
     "browseVideos": "Brobhs bhideothan"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Coimhead air film goirid",
-    "actions": {
-      "joinUs": "Thig còmhla rinn",
-      "shareMission": "Gabh pàirt nar misean"
-    },
-    "welcomeStart": {
-      "label": "Creideamh & an Sgriobtar",
-      "title": "Taghaidhean bhidio an-diugh",
-      "description": "Susbaint bhidio stèidhichte air a’ chreideamh bhon leabharlann againn airson brosnachadh, dùbhlan, agus meòrachadh a thogail."
-    },
-    "welcomeMorning": {
-      "label": "Brosnachadh maidne",
-      "title": "Madainn mhath! Tha amannan a’ Bhìobaill an-diugh a’ feitheamh.",
-      "description": "Tòisich an latha le amannan brosnachail a’ Bhìobaill a tha air an dealbhadh gus do spiorad a bhrosnachadh agus a thogail."
-    },
-    "welcomeAfternoon": {
-      "label": "Brosnachadh feasgair",
-      "title": "Feasgar math! Amannan a’ Bhìobaill airson an latha agad.",
-      "description": "Susbaint a’ Bhìobaill a tha brosnachail, foirfe airson do bhriseadh feasgair no airson brosnachadh leantainneach."
-    },
-    "welcomeEvening": {
-      "label": "Brosnachadh an fheasgair",
-      "title": "Feasgar math! Gabh fois le amannan a’ Bhìobaill.",
-      "description": "Amannan ciùine a’ Bhìobaill gus do chuideachadh le meòrachadh agus comhfhurtachd a lorg mar a thig an latha gu crìch."
-    },
-    "joinUs": {
-      "label": "Thig còmhla rinn",
-      "title": "Tha billeanan a’ sireadh",
-      "description": "Tha am foghar an seo. Thig còmhla rinn fhad ’s a tha sinn a’ roinn an t-soisgeil leis an t-saoghal tro mheadhanan didseatach."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Thèid sinn còmhla",
-      "title": "Sgeulachd Ìosa ag innse còmhla",
-      "description": "Gus an cluinn is gum faic iad gràdh Ìosa nan cànan fhèin, far a bheil iad."
-    }
-  },
   "VideoRecommendations": {
     "match": "Maidseadh: {percent}%",
     "none": "Cha deach molaidhean sam bith a lorg airson a’ bhidio seo sa chànan seo."

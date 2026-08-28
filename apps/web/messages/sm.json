@@ -647,44 +647,6 @@
     "backToWatch": "Toe fo'i i le Watch",
     "browseVideos": "Su'esu'e vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Matamata i le ata pu'upu'u",
-    "actions": {
-      "joinUs": "Auai mai",
-      "shareMission": "Faasoa i la matou misiona"
-    },
-    "welcomeStart": {
-      "label": "Fa'atuatua & Tusitusiga Paia",
-      "title": "Filifiliga Vitio o le Aso",
-      "description": "Vitio e fa'avae i le fa'atuatua mai la matou faletusi e fa'aosofia, lu'iina, ma fa'atosina ai le mafaufau loloto."
-    },
-    "welcomeMorning": {
-      "label": "Fa'aosofia i le Taeao",
-      "title": "Talofa i le taeao! O lo'o fa'atali mai taimi o le Tusi Paia o le aso.",
-      "description": "Amata lou aso i taimi fa'amalosi'au mai le Tusi Paia ua fuafuaina e fa'aosofia ma fa'amalosia ai lou agaga."
-    },
-    "welcomeAfternoon": {
-      "label": "Fa'aosofia i le Afiāfi",
-      "title": "Talofa i le aoauli! Taimi o le Tusi Paia mo lou aso.",
-      "description": "Anotusi fa'amalosi'au mai le Tusi Paia e lelei mo lau mālōlō i le afiafi po o le faaauau o le fa'amalosi'au."
-    },
-    "welcomeEvening": {
-      "label": "Fa'aosofia i le Afiafi",
-      "title": "Talofa i le afiafi! Mālōlō ma taimi o le Tusi Paia.",
-      "description": "Taimi filemu o le Tusi Paia e fesoasoani e te mafaufau loloto ai ma maua le fa'amafanafanaga a'o fa'ai'u le aso."
-    },
-    "joinUs": {
-      "label": "Auai mai",
-      "title": "O lo'o saili e le faitau piliona",
-      "description": "Ua oo mai le seleselega. Auai mai a o matou fa'asoa atu le tala lelei i le lalolagi e ala i fa'asalalauga fa'atekinolosi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tatou o fa'atasi",
-      "title": "Fa'amatala fa'atasi le Tala ia Iesu",
-      "description": "Ina ia latou lagona ma va'ai i le alofa o Iesu i lo latou lava gagana i le mea lava o i ai."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",
     "none": "E leai ni vitio fautuaina na maua mo lenei vitio i lenei gagana."

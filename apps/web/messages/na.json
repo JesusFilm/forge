@@ -647,44 +647,6 @@
     "backToWatch": "Watch ne back ae",
     "browseVideos": "Videos e browse ae"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film keke e bitaei",
-    "actions": {
-      "joinUs": "Ngana me join ae",
-      "shareMission": "Mission bu me share ae"
-    },
-    "welcomeStart": {
-      "label": "Faith me Scripture",
-      "title": "Yiy video picks re",
-      "description": "Library bu faith-centered video content, e inspire, challenge, me reflection e start ae."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration eo",
-      "title": "Morning bwa! Yiy Bible moments re wait ae.",
-      "description": "Day eo e start ae me Bible moments encouraging, spirit eo e inspire me uplift ae."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration eo",
-      "title": "Afternoon bwa! Yiy Bible moments re.",
-      "description": "Bible content encouraging, afternoon break eo me inspiration e continue ae ke perfect."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration eo",
-      "title": "Evening bwa! Bible moments me rest ae.",
-      "description": "Bible moments peaceful e help ae bwe day eo e close, a reflect me comfort e aetin."
-    },
-    "joinUs": {
-      "label": "Ngana me join ae",
-      "title": "People billions re bika",
-      "description": "Harvest eo ia. Digital media e ka me ngana join ae, gospel eo world ne share ae."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ngana together e re",
-      "title": "Jesus story eo together e told ae",
-      "description": "Bwe Jesus love eo ami language eo re hear me see ae, ia etsi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e match ae",
     "none": "Video eo language eo re recommendations ekoe."

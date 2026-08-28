@@ -13,7 +13,6 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import {
-  WATCH_HOME_MUX_INSERTS,
   WATCH_HOME_PLAYLIST_SEQUENCE,
   getWatchHomeCoreIds,
   WATCH_HOME_CACHE_VERSION,
@@ -81,7 +80,6 @@ export type WatchHomeMissingField =
   | "title"
   | "image"
   | "href"
-  | "mux-insert"
   | "local-thumbnail"
 
 export type WatchHomeMissingData = {
@@ -803,16 +801,6 @@ export function buildWatchHomeModelFromVideos(args: {
   const languageSlug = args.languageSlug ?? selectedLanguageSlug(args.locale)
   const missingData: WatchHomeMissingData[] = [
     {
-      sectionId: "home-hero",
-      sourceId: "source-app",
-      field: "mux-insert",
-      detail:
-        "The source beta hero can include non-catalog Mux insert slides; admin currently exposes catalog videos only.",
-      fallback: "Hero uses admin video slides",
-      followUp:
-        "Add an admin-managed hero insert model or map source Mux inserts into admin.",
-    },
-    {
       sectionId: "home-sections",
       sourceId: "source-app",
       field: "local-thumbnail",
@@ -862,7 +850,6 @@ export function buildWatchHomeModelFromVideos(args: {
   })
   const carousel = {
     pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
-    muxInserts: WATCH_HOME_MUX_INSERTS,
   }
   const cardMissing = [
     ...heroSlides.flatMap((card) => card.missingData),

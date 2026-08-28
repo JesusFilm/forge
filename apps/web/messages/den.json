@@ -647,44 +647,6 @@
     "backToWatch": "Watch gots’ę́ náɂa",
     "browseVideos": "Videos gho nats’edé"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film dáne gúhta",
-    "actions": {
-      "joinUs": "Nezį́ nát’ı̨́",
-      "shareMission": "Nezį́ mission k’e nát’ı̨́"
-    },
-    "welcomeStart": {
-      "label": "Edáhts’ı̨́ ɂeyí Scripture",
-      "title": "Kǫ́ta video nezų́ ɂekwé",
-      "description": "Ne edáhts’ı̨́ gha nezų́, ne sı̨́ gha, ɂeyí gho nats’edá gha nezı̨́ library gots’ǫ́ videos."
-    },
-    "welcomeMorning": {
-      "label": "Morning gha yatı́ nezų́",
-      "title": "Morning nezų́! Kǫ́ta Bible gho dáne nats’edá.",
-      "description": "Bible yatı́ negha nezų́ ɂeyí ne nı̨́hts’ı̨ gha k’áh nezų́ ɂehtsı t’á ne dzę́ ɂeɣáda."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon gha yatı́ nezų́",
-      "title": "Afternoon nezų́! Ne dzę́ gha Bible gho dáne nats’edá.",
-      "description": "Afternoon k’e náı̨htá kǫ́ę́ ɂeyíle k’áh nezų́ edáhts’ı̨́ gha Bible content nezų́."
-    },
-    "welcomeEvening": {
-      "label": "Evening gha yatı́ nezų́",
-      "title": "Evening nezų́! Bible gho nats’edá t’á náı̨htá.",
-      "description": "Ne dzę́ t’áh ɂáɂá kǫ́ę́, Bible gho nats’edá t’á gho nezų́ nats’edá ɂeyí ne nı̨́hts’ı̨ gha náts’ehɂá."
-    },
-    "joinUs": {
-      "label": "Nezį́ nát’ı̨́",
-      "title": "Dǫ́ne billions náɂa",
-      "description": "Harvest kǫ́ta góɂǫ́. Digital media t’á Gospel world t’áh łégháts’ede k’e nezį́ nát’ı̨́."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Łe nats’eyá",
-      "title": "Jesus gogha yatı́ łe łégháts’ede",
-      "description": "Dáonı̨ góɂǫ́ kǫ́ę́, gots’ı̨ yatı́ t’á Jesus gots’ę́ ɂenegha nezų́ ɂáht’é ɂeyí gots’edáhts’ı̨́ ɂeyí gots’ehɂá gha."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% łe ɂáht’é",
     "none": "Di yatı́ t’á di video gha recommendation góɂǫ́ nɛ."

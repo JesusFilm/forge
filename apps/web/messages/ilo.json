@@ -647,44 +647,6 @@
     "backToWatch": "Agsubli iti Watch",
     "browseVideos": "Sukimaten dagiti video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kitaen ti Napisik a Pelikula",
-    "actions": {
-      "joinUs": "Makikadua kaniami",
-      "shareMission": "Ibahagi ti misyonmi"
-    },
-    "welcomeStart": {
-      "label": "Pammati ken Sagrado a Surat",
-      "title": "Dagiti Napilian a Video ita nga Aldaw",
-      "description": "Dagiti video manipud iti librarymi a nakaibatay iti pammati tapno makabirok ti inspirasion, panangpasiar, ken panangpukaw ti panagripripik."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasion iti Agsapa",
-      "title": "Naimbag a bigat! Adda dagiti Biblia a mabalinmo ita nga aldaw.",
-      "description": "Sugiren ti aldawmo babaen kadagiti makasubbot a Biblia a banag a naiplano tapno mangted inspirasion ken mangitatag-ay iti espiritum."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasion iti Rabii a Maud",
-      "title": "Naimbag a malem! Dagiti Biblia a banag para iti aldawm.",
-      "description": "Dagiti makapadasig a Biblia a menensia a nagtaming iti maika-labuat ti malemmo wenno agtultuloy a mangted inspirasion."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasion iti Rabii",
-      "title": "Naimbag a rabii! Agrelaksayo babaen kadagiti Biblia a banag.",
-      "description": "Dagiti nalinaw a Biblia a banag a makatulong nga agpanunot ken makasarak ti liwawa kabayatan a magipas ti aldawmo."
-    },
-    "joinUs": {
-      "label": "Makikadua kaniami",
-      "title": "Agingga iti ribu-ribu ti agsapsapul",
-      "description": "Dumtengen ti apit. Makikadua kaniami iti panangibingay ti ebanghelyo iti lubong babaen iti digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Dumallaus tayo a sangsangkamaysa",
-      "title": "Panangisao ti Istoria ni Jesus, Sangsangkamaysa",
-      "description": "Tapno mangngeg ken makitada ti ayat ni Jesus iti bukodda a pagsasao, iti mismo a lugar a kinnaruarda."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a maitutop",
     "none": "Awan ti nasarakan a mairekomenda para iti daytoy a video iti daytoy a pagsasao."

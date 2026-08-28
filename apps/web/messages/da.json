@@ -647,44 +647,6 @@
     "backToWatch": "Tilbage til Watch",
     "browseVideos": "Browse videoer"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Se kortfilm",
-    "actions": {
-      "joinUs": "Vær med",
-      "shareMission": "Del i vores mission"
-    },
-    "welcomeStart": {
-      "label": "Tro og Skrift",
-      "title": "Dagens videoudvalg",
-      "description": "Trocentreret videoindhold fra vores bibliotek, der skal inspirere, udfordre og vække eftertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgeninspiration",
-      "title": "Godmorgen! Dagens bibeløjeblikke venter.",
-      "description": "Begynd dagen med opmuntrende bibeløjeblikke, der er skabt til at inspirere og løfte din ånd."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftermiddagsinspiration",
-      "title": "Godaften! Bibeløjeblikke til din dag.",
-      "description": "Opmuntrende bibelindhold, perfekt til din eftermiddagspause eller fortsatte inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Afteninspiration",
-      "title": "Godaften! Slap af med bibeløjeblikke.",
-      "description": "Fredfyldte bibeløjeblikke, der hjælper dig med at reflektere og finde trøst, når dagen går på hæld."
-    },
-    "joinUs": {
-      "label": "Vær med",
-      "title": "Milliarder søger",
-      "description": "Høsten er her. Vær med, når vi deler evangeliet med verden via digitale medier."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lad os gå sammen",
-      "title": "At fortælle Jesu historie sammen",
-      "description": "Så de kan høre og se Jesu kærlighed på deres eget sprog, lige dér hvor de er."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % overensstemmelse",
     "none": "Der blev ikke fundet nogen anbefalinger til denne video på dette sprog."

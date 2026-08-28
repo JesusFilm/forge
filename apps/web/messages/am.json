@@ -647,44 +647,6 @@
     "backToWatch": "ወደ Watch ተመለስ",
     "browseVideos": "ቪዲዮዎችን አስስ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}፦ {title}",
-    "watchShortFilm": "አጭር ፊልም ይመልከቱ",
-    "actions": {
-      "joinUs": "ይቀላቀሉን",
-      "shareMission": "በተልዕኳችን ይካፈሉ"
-    },
-    "welcomeStart": {
-      "label": "እምነት እና ቅዱስ መጽሐፍ",
-      "title": "የዛሬ የቪዲዮ ምርጦች",
-      "description": "ከማዕከላችን የተመረጠ በእምነት ላይ ያተኮረ የቪዲዮ ይዘት፣ ለማነሳሳት፣ ለመፈተን እና ለማሰብ የሚያነሳሳ።"
-    },
-    "welcomeMorning": {
-      "label": "የጠዋት ማበረታቻ",
-      "title": "እንደምን አደሩ! የዛሬ የመጽሐፍ ቅዱስ አፍታዎች ይጠብቁዎታል።",
-      "description": "ቀንዎን ለማበረታታት እና መንፈስዎን ለማነሳሳት በተዘጋጁ አበረታች የመጽሐፍ ቅዱስ አፍታዎች ይጀምሩ።"
-    },
-    "welcomeAfternoon": {
-      "label": "የከሰዓት ማበረታቻ",
-      "title": "እንደምን አረፈዱ! ለቀንዎ የመጽሐፍ ቅዱስ አፍታዎች።",
-      "description": "ለከሰዓት እረፍትዎ ወይም ለቀጣይ ማበረታቻ ተመራጭ የሆነ አበረታች የመጽሐፍ ቅዱስ ይዘት።"
-    },
-    "welcomeEvening": {
-      "label": "የምሽት ማበረታቻ",
-      "title": "መልካም ምሽት! በመጽሐፍ ቅዱስ አፍታዎች ዘና ይበሉ።",
-      "description": "ቀንዎ ሲያበቃ እንዲያሰላስሉ እና መጽናናት እንዲያገኙ የሚረዱ የሰላም የመጽሐፍ ቅዱስ አፍታዎች።"
-    },
-    "joinUs": {
-      "label": "ይቀላቀሉን",
-      "title": "ቢሊዮኖች እየፈለጉ ነው",
-      "description": "መከሩ አሁን አለ። ከዓለም ጋር ወንጌልን በዲጂታል ሚዲያ ለማካፈል ይቀላቀሉን።"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "አብረን እንጓዝ",
-      "title": "የኢየሱስን ታሪክ በአንድነት መንገር",
-      "description": "እርሱ ባሉበት በራሳቸው ቋንቋ የኢየሱስን ፍቅር እንዲሰሙ እና እንዲያዩ ዘንድ።"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ይዛመዳል",
     "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።"

@@ -647,44 +647,6 @@
     "backToWatch": "Buyela kuBukela",
     "browseVideos": "Bhrawuza iividiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bukela ifilimu emfutshane",
-    "actions": {
-      "joinUs": "Sijoyine",
-      "shareMission": "Yiba nenxaxheba kwimishini yethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo neZibhalo",
-      "title": "Iividiyo esizikhethileyo namhlanje",
-      "description": "Umxholo wevidiyo ojolise kukholo ovela kwithala lethu ukuze ukhuthaze, ucele umngeni, uze uvuse ukucamngca."
-    },
-    "welcomeMorning": {
-      "label": "Inkuthazo yasekuseni",
-      "title": "Mholo kusasa! Nantsi imizuzu yeBhayibhile yanamhlanje.",
-      "description": "Qala usuku lwakho ngemizuzu yeBhayibhile ekhuthazayo eyilelwe ukukukhuthaza nokuphakamisa umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Inkuthazo yasemva kwemini",
-      "title": "Mholo emva kwemini! Imizuzu yeBhayibhile yosuku lwakho.",
-      "description": "Umxholo weBhayibhile okhuthazayo ofanelekile kwikhefu lakho lasemva kwemini okanye ukuqhubeka nokukhuthazeka."
-    },
-    "welcomeEvening": {
-      "label": "Inkuthazo yangokuhlwa",
-      "title": "Mholo ngokuhlwa! Phola ngemizuzu yeBhayibhile.",
-      "description": "Imizuzu yeBhayibhile enoxolo ekunceda ucamngce uze ufumane intuthuzelo njengokuba usuku lwakho lusondela esiphelweni."
-    },
-    "joinUs": {
-      "label": "Sijoyine",
-      "title": "Iibhiliyoni ziyafuna",
-      "description": "Isivuno silapha. Sijoyine xa sisasaza iindaba ezilungileyo kwihlabathi usebenzisa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Masihambe kunye",
-      "title": "Ukubalisa ibali likaYesu, kunye",
-      "description": "Ukuze beve baze babone uthando lukaYesu ngolwimi lwabo kanye apho bakhoyo."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ihambelana nge-{percent}%",
     "none": "Akukho ngcebiso zifunyenweyo zale vidiyo kolu lwimi."

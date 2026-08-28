@@ -647,44 +647,6 @@
     "backToWatch": "Vissza a megtekintéshez",
     "browseVideos": "Videók böngészése"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Rövidfilm megtekintése",
-    "actions": {
-      "joinUs": "Csatlakozz hozzánk",
-      "shareMission": "Vállalj részt a küldetésünkben"
-    },
-    "welcomeStart": {
-      "label": "Hit és Írás",
-      "title": "Mai videóajánlatok",
-      "description": "Hitközpontú videótartalmak a gyűjteményünkből, hogy inspiráljanak, kihívást jelentsenek, és gondolkodásra indítsanak."
-    },
-    "welcomeMorning": {
-      "label": "Reggeli inspiráció",
-      "title": "Jó reggelt! Várnak a mai bibliai pillanatok.",
-      "description": "Kezdd a napot bátorító bibliai pillanatokkal, amelyek inspirálnak és felemelnek."
-    },
-    "welcomeAfternoon": {
-      "label": "Délutáni inspiráció",
-      "title": "Jó napot! Bibliai pillanatok a napodhoz.",
-      "description": "Bátorító bibliai tartalmak egy délutáni szünethez vagy további inspirációhoz."
-    },
-    "welcomeEvening": {
-      "label": "Esti inspiráció",
-      "title": "Jó estét! Pihenj meg bibliai pillanatokkal.",
-      "description": "Nyugodt bibliai pillanatok, hogy elcsendesedj, elgondolkodj, és vigaszt találj a nap végén."
-    },
-    "joinUs": {
-      "label": "Csatlakozz hozzánk",
-      "title": "Milliárdok keresnek választ",
-      "description": "Itt van az aratás. Csatlakozz hozzánk, és osszuk meg az evangéliumot a világgal digitális médián keresztül."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Induljunk együtt",
-      "title": "Jézus történetét együtt elmesélve",
-      "description": "Hogy a saját nyelvükön hallhassák és láthassák Jézus szeretetét, ott, ahol vannak."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-os egyezés",
     "none": "Ehhez a videóhoz ezen a nyelven nem található ajánlás."

@@ -647,44 +647,6 @@
     "backToWatch": "Terug na Kyk",
     "browseVideos": "Blaai deur video’s"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kyk kortfilm",
-    "actions": {
-      "joinUs": "Sluit by ons aan",
-      "shareMission": "Deel in ons sending"
-    },
-    "welcomeStart": {
-      "label": "Geloof & Skrif",
-      "title": "Vandag se video-keuses",
-      "description": "Geloofsgerigte videoinhoud uit ons biblioteek om te inspireer, uit te daag en nadenke aan te wakker."
-    },
-    "welcomeMorning": {
-      "label": "Oggendinspirasie",
-      "title": "Goeie môre! Vandag se Bybelmomente wag.",
-      "description": "Begin jou dag met bemoedigende Bybelmomente wat ontwerp is om jou te inspireer en op te bou."
-    },
-    "welcomeAfternoon": {
-      "label": "Middaginspirasie",
-      "title": "Goeie middag! Bybelmomente vir jou dag.",
-      "description": "Bemoedigende Bybelinhoud, perfek vir jou middagpouse of vir verdere inspirasie."
-    },
-    "welcomeEvening": {
-      "label": "Aandinspirasie",
-      "title": "Goeie aand! Ontspan met Bybelmomente.",
-      "description": "Rustige Bybelmomente om jou te help nadink en vertroosting te vind soos jou dag tot ’n einde kom."
-    },
-    "joinUs": {
-      "label": "Sluit by ons aan",
-      "title": "Miljarde soek",
-      "description": "Die oes is hier. Sluit by ons aan terwyl ons die evangelie deur digitale media met die wêreld deel."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kom ons gaan saam",
-      "title": "Vertel saam die verhaal van Jesus",
-      "description": "Sodat hulle die liefde van Jesus in hul eie taal kan hoor en sien, reg waar hulle is."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ooreenstemming",
     "none": "Geen aanbevelings is vir hierdie video in dié taal gevind nie."

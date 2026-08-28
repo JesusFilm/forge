@@ -647,44 +647,6 @@
     "backToWatch": "Nazaj na ogled",
     "browseVideos": "Brskaj po videoposnetkih"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Glej kratki film",
-    "actions": {
-      "joinUs": "Pridružite se nam",
-      "shareMission": "Delite naše poslanstvo"
-    },
-    "welcomeStart": {
-      "label": "Vera in Sveto pismo",
-      "title": "Današnji izbor videoposnetkov",
-      "description": "Video vsebine iz naše knjižnice, osredotočene na vero, ki navdihujejo, izzivajo in spodbujajo k premisleku."
-    },
-    "welcomeMorning": {
-      "label": "Jutranji navdih",
-      "title": "Dobro jutro! Današnji svetopisemski trenutki vas čakajo.",
-      "description": "Začnite dan s spodbudnimi svetopisemskimi utrinki, ustvarjenimi za navdih in okrepitev duha."
-    },
-    "welcomeAfternoon": {
-      "label": "Popoldanski navdih",
-      "title": "Dober dan! Svetopisemski trenutki za vaš dan.",
-      "description": "Spodbudne svetopisemske vsebine, popolne za popoldanski odmor ali nadaljnji navdih."
-    },
-    "welcomeEvening": {
-      "label": "Večerni navdih",
-      "title": "Dober večer! Umirite se s svetopisemskimi trenutki.",
-      "description": "Mirni svetopisemski trenutki, ki vam pomagajo pri premisleku in prinašajo tolažbo ob koncu dneva."
-    },
-    "joinUs": {
-      "label": "Pridružite se nam",
-      "title": "Milijarde iščejo",
-      "description": "Žetev je tu. Pridružite se nam pri deljenju evangelija s svetom prek digitalnih medijev."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Pojdimo skupaj",
-      "title": "Skupaj pripovedujemo Jezusovo zgodbo",
-      "description": "Da bodo lahko slišali in videli Jezusovo ljubezen v svojem jeziku, prav tam, kjer so."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ujemanje: {percent} %",
     "none": "Za ta videoposnetek v tem jeziku ni bilo najdenih priporočil."

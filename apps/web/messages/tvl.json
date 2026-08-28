@@ -647,44 +647,6 @@
     "backToWatch": "Toe foki ki te Watch",
     "browseVideos": "Browse vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Matamata ki te ata tifaga poto",
-    "actions": {
-      "joinUs": "Fakatasi mai",
-      "shareMission": "Tufa i te matou Misiona"
-    },
-    "welcomeStart": {
-      "label": "Fakatuanaki mo te Tusi Tapu",
-      "title": "Vitio filifili mō te aso nei",
-      "description": "Vitio fakavae ki te fakatuanaki mai te matou library ke fakamalosi, fakalotolotolua, mo fakaosooso mafaufauga."
-    },
-    "welcomeMorning": {
-      "label": "Fakamalosiga i te taeao",
-      "title": "Taeao manuia! E fakaasi atu a mea mai te Tusi Tapu mō te aso nei.",
-      "description": "Amata tou aso mo a mea fakamalosi mai te Tusi Tapu ne fuafuagina ke fakamalosia kae fakaola tou loto."
-    },
-    "welcomeAfternoon": {
-      "label": "Fakamalosiga i te afiafi",
-      "title": "Afiafi manuia! Mea mai te Tusi Tapu mō tou aso.",
-      "description": "Tala fakamalosia mai te Tusi Tapu e fetaui lelei mō tou mālōlō i te afiafi io me ke tumau tou fakamalosiga."
-    },
-    "welcomeEvening": {
-      "label": "Fakamalosiga i te afiafi po",
-      "title": "Afiafi manuia! Malōlō mālie mo a mea mai te Tusi Tapu.",
-      "description": "A mea filemu mai te Tusi Tapu ke fesoasoani ki a koe o mafaufau kae maua te fakamafanafana i te fakaotiga o tou aso."
-    },
-    "joinUs": {
-      "label": "Fakatasi mai",
-      "title": "E tokouke a tino e sailivili",
-      "description": "Kua oko mai te taimi o te seleselega. Fakatafai mai mo matou ke tufa te tala lei ki te lalolagi mā te media faka-igitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tatou olo fakatasi",
-      "title": "Faipati ki te tala o Iesu, fakatasi",
-      "description": "Ke mafai o lagona kae kilo atu latou ki te alofa o Iesu i tālatou lava language i te koga telā e nofo ei latou."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",
     "none": "Seai ne fautuaga ne maua mō te vitio tenei i te language tenei."

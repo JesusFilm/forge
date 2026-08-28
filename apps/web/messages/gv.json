@@ -647,44 +647,6 @@
     "backToWatch": "Er-ash dys Watch",
     "browseVideos": "Scrutagh videoyn"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Jeeagh er film giare",
-    "actions": {
-      "joinUs": "Tar lhiat shin",
-      "shareMission": "Co-honney ayns nyn obbyr mission"
-    },
-    "welcomeStart": {
-      "label": "Credjue & Scryptyr",
-      "title": "Reihyn video jiu",
-      "description": "Cummal video stabbil ayns credjue ass nyn lioar-reill, dy dooyrt, cur coadey, as çhiarnaghey smooinaghtyn."
-    },
-    "welcomeMorning": {
-      "label": "Neushtys laa",
-      "title": "Moghrey mie! Ta traaghyn y Vible jiu ayn.",
-      "description": "Tòstey dty laa lesh traaghyn y Vible ta goaill lesh lurg ayns aght son cobbal as troggal dty spyrryd."
-    },
-    "welcomeAfternoon": {
-      "label": "Neushtys traa lurg y voghrey",
-      "title": "Moirrey mie! Traaghyn y Vible son dty laa.",
-      "description": "Cummal y Vible ta çhyndaait son dty neulaghyn ys lhiggey neeshtay ayns y traa lurg y voghrey ny son cur ynsagh ayns oyr."
-    },
-    "welcomeEvening": {
-      "label": "Neushtys fastyr",
-      "title": "Fastyr mie! Goll sheese lesh traaghyn y Vible.",
-      "description": "Traaghyn cloie ass y Vible son cooney dy smooinaghtyn as dy ghoaill goaillys tra ta'n laa cheet gys y jerrey."
-    },
-    "joinUs": {
-      "label": "Tar lhiat shin",
-      "title": "Ta billioyn dy hirrey",
-      "description": "Ta'n buirrin ayn. Tar lhiat shin myr ta shin goaill yn sushtal er y theihll liorish media jeeragh."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Goll cooidjagh",
-      "title": "Inshyn skeeal Yeesey, cooidjagh",
-      "description": "Dy nod ad clashtyn as fakin graih Yeesey ayns nyn çhengey hene ayns yn ynnyd t'ad ayn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% co-chosoylaght",
     "none": "Cha row videoyn erbee er nyn voylley son y video shoh ayns y çhengey shoh."

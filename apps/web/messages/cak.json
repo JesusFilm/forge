@@ -647,44 +647,6 @@
     "backToWatch": "Tzolin chik pa Watch",
     "browseVideos": "Tanik'oj videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tatz'eta' ko'öl film",
-    "actions": {
-      "joinUs": "Jutijoj chik qawäch",
-      "shareMission": "Tawila' pa qamision"
-    },
-    "welcomeStart": {
-      "label": "Fe chuqa' Escritura",
-      "title": "Taq video ri nikajo' wakami",
-      "description": "Video content pa qach'amonel ri k'o ruq'ij ajowab'al, nitijon, chuqa' nuban na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Nab'ey q'ijil na'oj",
-      "title": "Utz q'ij! Taq Biblia moment ri k'o wakami.",
-      "description": "Titikïr aq'ij rik'in taq Biblia moment ri nib'an richin nakuxtaj chuqa' nak'axaj awanima'."
-    },
-    "welcomeAfternoon": {
-      "label": "Aftan na'oj",
-      "title": "Utz aq'ij! Taq Biblia moment richin ri awiq'ij.",
-      "description": "Taq Biblia content ri nib'an animan chi ya'oj, utz richin ri aq'ij k'iyil o richin nib'anon na'oj chik."
-    },
-    "welcomeEvening": {
-      "label": "Aq'ab' na'oj",
-      "title": "Utz aq'ab'! Taqak'oj jun b'ey rik'in taq Biblia moment.",
-      "description": "Tz'ib'an taq Biblia moment richin nak'axaj na'oj chuqa' natz'ët uchuk'ulem tok ri aq'ij nitzaq."
-    },
-    "joinUs": {
-      "label": "Jutijoj chik qawäch",
-      "title": "Jun'ulik le' are tajin nikanöx",
-      "description": "Ri k'axk'ol k'o wakami. Jutijoj chik qawäch richin niya' rutzijol ri evangelio chuweqaj ri ruwach'ulew rik'in digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Qe'chakun junam",
-      "title": "Nitzijoj ri tzij ri Jesús, junam",
-      "description": "Richin nikitz'ët chuqa' nik'axaj ri rutzilal ri Jesús pa ri achike ch'ab'äl ri k'o chikiwäch chila' achike k'o wi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nik'äm ri'",
     "none": "Majun chilab'enïk xk'ulutäj richin re video re' pa re ch'ab'äl re'."

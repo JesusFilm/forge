@@ -647,44 +647,6 @@
     "backToWatch": "Hoko ki he Watch",
     "browseVideos": "Vakaiʻi ʻa e ngaahi vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sio ki he Filimi Nounou",
-    "actions": {
-      "joinUs": "Kau Mai",
-      "shareMission": "Kau ʻi Homau Misioná"
-    },
-    "welcomeStart": {
-      "label": "Tui & Folofola",
-      "title": "Ngaahi fili vitio ʻo e ʻaho ni",
-      "description": "Ko e ngaahi vitio mei heʻemau falaní ʻoku fakatefito ʻi he tui ke ueʻi, fakamalohia, mo fakakaukauʻi."
-    },
-    "welcomeMorning": {
-      "label": "Ueʻi Fakamālōlō",
-      "title": "Mālō e pongipongi! ʻOku tali atu ʻa e ngaahi momeniti Tohi Tapu ʻo e ʻaho ni.",
-      "description": "Kamata hoʻo ʻaho ʻaki ha ngaahi momeniti Tohi Tapu fakalotolahi ke ueʻi mo hiki hake hoʻo laumālie."
-    },
-    "welcomeAfternoon": {
-      "label": "Ueʻi ʻi he Afiafi",
-      "title": "Mālō e efiafi! Ngaahi momeniti Tohi Tapu maʻá ho ʻaho.",
-      "description": "Ko e ngaahi fakamatala Tohi Tapu fakalotolahi ʻoku feʻunga pe ki hoʻo mālōlō ʻi he efiafi pe ki ha fakalotolahi hokohoko atu."
-    },
-    "welcomeEvening": {
-      "label": "Ueʻi ʻi he Pō",
-      "title": "Mālō e pō! Malolo mo e ngaahi momeniti Tohi Tapu.",
-      "description": "Ko e ngaahi momeniti Tohi Tapu mālie ke tokoni atu ke ke fakalaulauloto mo maʻu ʻa e fiemālie ʻi he ngataʻanga hoʻo ʻaho."
-    },
-    "joinUs": {
-      "label": "Kau Mai",
-      "title": "ʻOku kumi ʻe he lau piliona",
-      "description": "Kuo aʻu mai ʻa e fua. Kau mai ke tau vahevahe ʻa e ongoongolelei ki mamani ʻaki ʻa e ngaahi media fakavahaʻa taimi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tau fononga fakataha",
-      "title": "Tala ʻo Sīsū, fakataha",
-      "description": "Koeʻuhí ke nau fanongo mo mamata ki he ʻofa ʻa Sīsū ʻi honau lea pē ʻi honau feituʻu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ʻoku fenāpasi",
     "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni."

@@ -647,44 +647,6 @@
     "backToWatch": "Balik sa Watch",
     "browseVideos": "Browse mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa so maikling pelikula",
-    "actions": {
-      "joinUs": "Sumali ka sa amon",
-      "shareMission": "Ibagi so amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya ago Kasulatan",
-      "title": "Mga napiling video para karon",
-      "description": "Mga video gika sa amon library na nakasentro sa pananampalataya para mag-inspire, maghamon, ago magpahuna-huna."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa buntag",
-      "title": "Marayaw a buntag! Naa na so mga Bible moment para karon.",
-      "description": "Sugdi so adlaw mo kaama so mga Bible moment na makapanganyaya ago makaangat sa imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa hapon",
-      "title": "Marayaw a hapon! Mga Bible moment para sa adlaw mo.",
-      "description": "Mga Bible content na makapanganyaya, marayaw para sa imo hapon a pahuway o padayon a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa gabi",
-      "title": "Marayaw a gabi! Magpahuway ka kaama so mga Bible moment.",
-      "description": "Kalma a mga Bible moment para tabangan ka maghunahuna ago makakapta so komportable habang gaahin na so adlaw mo."
-    },
-    "joinUs": {
-      "label": "Sumali ka sa amon",
-      "title": "Bilyon-bilyon so ga-pangita",
-      "description": "Naa na so anihan. Sumali ka sa amon sa pagbahagi sa ebanghelyo sa kalibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mag-inabi kita",
-      "title": "Pag-istorya sa Buhat ni Jesus, kaama so bawat isa",
-      "description": "Agod mabanalan ago makita nira so gugma ni Jesus sa ila sarili a wika didto mismo sa lugar nira."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",
     "none": "Daa nakuan a rekomendasyon para sa ini a video sa ini a wika."
