@@ -3,7 +3,7 @@ id: "feat-431"
 title: "Port RAG acquisition, ingestion, and maintenance"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-18"
 duration: 5
 depends_on: ["feat-430"]
