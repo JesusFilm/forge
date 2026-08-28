@@ -93,7 +93,7 @@ type SafeReport = {
   source: { database: string; hostHash: string }
   target: { database: string; hostHash: string }
   copiedRows: Partial<Record<TableName, number>>
-  operation?: {
+  operation: {
     mode: "local" | "production"
     sourceSnapshotReference: string | null
     sourceCutoff: string | null
@@ -241,7 +241,6 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     sourceCutoff: null,
   }
   let localConfirmed = false
-  let productionConfirmed = false
   let reportOverridden = false
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -251,7 +250,6 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
       options.verifyOnly = true
     } else if (arg === "--confirm-local-copy") localConfirmed = true
     else if (arg === "--confirm-production-copy") {
-      productionConfirmed = true
       options.production = true
     } else if (arg === "--expected-target-host-hash")
       options.expectedTargetHostHash = argv[++index] ?? ""
@@ -284,7 +282,7 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     throw new MigrationUsageError(
       "Environment variable names and report path cannot be empty",
     )
-  if (localConfirmed && productionConfirmed)
+  if (localConfirmed && options.production)
     throw new MigrationUsageError(
       "Choose exactly one local or production copy acknowledgement",
     )
@@ -292,7 +290,7 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     !options.dryRun &&
     !options.verifyOnly &&
     !localConfirmed &&
-    !productionConfirmed
+    !options.production
   )
     throw new MigrationUsageError("--copy requires --confirm-local-copy")
   if (options.production) {
