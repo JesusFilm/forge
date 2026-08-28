@@ -1024,18 +1024,34 @@ async function renderVideo(
       watchVideo.selectedVariant,
       formatAvailabilityCounts,
     )
-    // Rank for the filename prefix too, or the page contradicts itself: the
-    // rail would read "Chapter 41 of 49" under the film while the saved file
-    // is named `05_...` — numbered inside whichever collection admin happened
-    // to return first. Before parent ranking both sides read `parents[0]` and
-    // agreed by accident; ranking one side without the other is what breaks it.
-    // Deliberately ranks the UNFILTERED `video.parents`, not `selectableParents`:
-    // `resolveDownloadSequence` derives `total` (and so the zero-padding width)
-    // from the parent's full child list, and manifest-filtered children would
-    // silently narrow it.
+    // The filename prefix must be numbered inside the parent the viewer can
+    // actually see, or the page contradicts itself: the rail would read
+    // "Chapter 41 of 49" under the film while the saved file is named `05_...`
+    // from a collection. Two separate questions, and they take different
+    // sources:
+    //
+    //   WHICH parent — the ranked first entry of `selectableParents`, the same
+    //   manifest-filtered list the carousel opened on. Ranking the unfiltered
+    //   `video.parents` instead would pick a parent the rail may not be
+    //   showing: `selectableParents` is empty when the video's own children own
+    //   the rail, and it drops parents whose children this language cannot
+    //   route to.
+    //
+    //   WHOSE ORDER — that parent's unfiltered counterpart. Manifest filtering
+    //   removes siblings that still exist, and `resolveDownloadSequence`
+    //   derives `total` (and so the zero-padding width) from the child list.
+    //
+    // When no external parent owns the rail, keep the canonical parent.
+    const rankedCarouselParent =
+      rankSelectableCarouselParents(selectableParents)[0]
+    const downloadSequenceParent =
+      rankedCarouselParent == null
+        ? watchVideo.canonicalParent
+        : (watchVideo.video.parents.find(
+            (parent) => parent.documentId === rankedCarouselParent.documentId,
+          ) ?? rankedCarouselParent)
     const downloadSequence = resolveDownloadSequence(
-      rankSelectableCarouselParents(watchVideo.video.parents)[0] ??
-        watchVideo.canonicalParent,
+      downloadSequenceParent,
       watchVideo.video.documentId,
     )
     const clientVideo = pruneWatchVideoForClient(

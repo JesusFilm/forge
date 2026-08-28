@@ -727,6 +727,28 @@ describe("rankSelectableCarouselParents", () => {
     ).toEqual(["life-of-jesus-gospel-of-john", "anticipate-the-resurrection"])
   })
 
+  // Near-miss labels: every positive row above would also pass under a sloppy
+  // substring or prefix classifier, which would then promote labels outside
+  // admin's enum. These rows only pass under an exact match on the canonical
+  // form, so they are what distinguishes the two implementations.
+  it.each([
+    ["a longer label containing a promoted one", "FEATURED_COLLECTION"],
+    ["a sibling enum member that is not promoted", "SHORT_FILM"],
+    ["another sibling enum member", "EPISODE"],
+    ["a promoted name as a substring", "MINI_SERIES"],
+  ])("does not promote %s", (_case, label) => {
+    const nearMiss = makeParent({
+      documentId: "parent-near-miss",
+      slug: "near-miss",
+      label,
+    })
+    expect(
+      rankSelectableCarouselParents([collection, nearMiss] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["anticipate-the-resurrection", "near-miss"])
+  })
+
   it("leaves admin's order untouched when no parent is a film or series", () => {
     const second = makeParent({
       documentId: "parent-collection-2",
