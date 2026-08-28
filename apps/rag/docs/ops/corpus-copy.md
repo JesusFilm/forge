@@ -80,11 +80,11 @@ any selected target differs.
 1. Create and retain an on-demand source backup. Use its Railway backup ID as
    `--source-snapshot-reference` and its creation time as `--source-cutoff`.
 2. Run the read-only preflight through an approved connection to each database.
-   Record the target `hostHash`, source counts, target-empty result, embedding
-   model, and vector dimensions. Never record connection strings.
+   Record both database `hostHash` values, source counts, target-empty result,
+   embedding model, and vector dimensions. Never record connection strings.
 3. Run the copy with `--copy --confirm-production-copy`, the exact preflight
-   target hash, snapshot reference, and cutoff. Production mode forces every
-   source connection read-only and writes the standard receipt to
+   source and target hashes, snapshot reference, and cutoff. Production mode
+   forces every source connection read-only and writes the standard receipt to
    `docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json`.
 4. If interrupted, use the same arguments plus `--resume`. The target must be a
    validated source prefix. Never use `--resume` to accept unrelated rows.

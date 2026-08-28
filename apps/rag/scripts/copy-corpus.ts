@@ -82,6 +82,7 @@ type CopyOptions = {
   maxBatches: number | null
   reportPath: string
   production: boolean
+  expectedSourceHostHash: string | null
   expectedTargetHostHash: string | null
   sourceSnapshotReference: string | null
   sourceCutoff: string | null
@@ -95,6 +96,8 @@ type SafeReport = {
   copiedRows: Partial<Record<TableName, number>>
   operation: {
     mode: "local" | "production"
+    expectedSourceHostHash: string | null
+    expectedTargetHostHash: string | null
     sourceSnapshotReference: string | null
     sourceCutoff: string | null
   }
@@ -236,6 +239,7 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     maxBatches: null,
     reportPath: DEFAULT_REPORT,
     production: false,
+    expectedSourceHostHash: null,
     expectedTargetHostHash: null,
     sourceSnapshotReference: null,
     sourceCutoff: null,
@@ -251,7 +255,9 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     } else if (arg === "--confirm-local-copy") localConfirmed = true
     else if (arg === "--confirm-production-copy") {
       options.production = true
-    } else if (arg === "--expected-target-host-hash")
+    } else if (arg === "--expected-source-host-hash")
+      options.expectedSourceHostHash = argv[++index] ?? ""
+    else if (arg === "--expected-target-host-hash")
       options.expectedTargetHostHash = argv[++index] ?? ""
     else if (arg === "--source-snapshot-reference")
       options.sourceSnapshotReference = argv[++index] ?? ""
@@ -294,6 +300,10 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
   )
     throw new MigrationUsageError("--copy requires --confirm-local-copy")
   if (options.production) {
+    if (!/^[a-f0-9]{16}$/.test(options.expectedSourceHostHash ?? ""))
+      throw new MigrationUsageError(
+        "Production mode requires --expected-source-host-hash from a read-only preflight",
+      )
     if (!/^[a-f0-9]{16}$/.test(options.expectedTargetHostHash ?? ""))
       throw new MigrationUsageError(
         "Production mode requires --expected-target-host-hash from a read-only preflight",
@@ -309,6 +319,37 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     if (!reportOverridden) options.reportPath = PRODUCTION_REPORT
   }
   return options
+}
+
+export function sourceReadOnlyUrl(sourceUrl: string): string {
+  const readOnlySourceUrl = new URL(sourceUrl)
+  const existingOptions = readOnlySourceUrl.searchParams.get("options")
+  readOnlySourceUrl.searchParams.set(
+    "options",
+    [existingOptions, "-c default_transaction_read_only=on"]
+      .filter(Boolean)
+      .join(" "),
+  )
+  return readOnlySourceUrl.href
+}
+
+export function validateProductionIdentities(
+  options: Pick<
+    CopyOptions,
+    "production" | "expectedSourceHostHash" | "expectedTargetHostHash"
+  >,
+  sourceIdentity: { hostHash: string },
+  targetIdentity: { hostHash: string },
+): void {
+  if (!options.production) return
+  if (sourceIdentity.hostHash !== options.expectedSourceHostHash)
+    throw new MigrationUsageError(
+      "Production source identity does not match --expected-source-host-hash",
+    )
+  if (targetIdentity.hostHash !== options.expectedTargetHostHash)
+    throw new MigrationUsageError(
+      "Production target identity does not match --expected-target-host-hash",
+    )
 }
 
 export function serializeReport(report: SafeReport): string {
@@ -423,14 +464,21 @@ async function resumeCursor(
      FROM ${quote(spec.name)}`,
   )
   if (!cursor) return null
-  const [{ sourcePrefix }] = await source.$queryRawUnsafe<
-    Array<{ sourcePrefix: bigint }>
+  const [{ sourcePrefix, sourceFingerprint }] = await source.$queryRawUnsafe<
+    Array<{ sourcePrefix: bigint; sourceFingerprint: string }>
   >(
-    `SELECT count(*) AS "sourcePrefix" FROM ${quote(spec.name)}
-     WHERE ${quote(spec.cursor)} <= $1::${spec.cursorType}`,
+    `SELECT count(*) AS "sourcePrefix",
+            coalesce(sum(hashtextextended((to_jsonb(t) - 'search_tsv')::text, 0)::numeric), 0)::text AS "sourceFingerprint"
+     FROM ${quote(spec.name)} t WHERE ${quote(spec.cursor)} <= $1::${spec.cursorType}`,
     cursor,
   )
-  if (sourcePrefix !== count)
+  const [{ targetFingerprint }] = await target.$queryRawUnsafe<
+    Array<{ targetFingerprint: string }>
+  >(
+    `SELECT coalesce(sum(hashtextextended((to_jsonb(t) - 'search_tsv')::text, 0)::numeric), 0)::text AS "targetFingerprint"
+     FROM ${quote(spec.name)} t`,
+  )
+  if (sourcePrefix !== count || sourceFingerprint !== targetFingerprint)
     throw new MigrationUsageError(
       `Target ${spec.name} rows are not a resumable source prefix`,
     )
@@ -570,15 +618,9 @@ async function run(options: CopyOptions): Promise<SafeReport> {
   if (sourceUrl === targetUrl)
     throw new MigrationUsageError("Source and target databases must differ")
 
-  const readOnlySourceUrl = new URL(sourceUrl)
-  const existingOptions = readOnlySourceUrl.searchParams.get("options")
-  readOnlySourceUrl.searchParams.set(
-    "options",
-    [existingOptions, "-c default_transaction_read_only=on"]
-      .filter(Boolean)
-      .join(" "),
-  )
-  const source = new PrismaClient({ datasourceUrl: readOnlySourceUrl.href })
+  const source = new PrismaClient({
+    datasourceUrl: sourceReadOnlyUrl(sourceUrl),
+  })
   const target = new PrismaClient({ datasourceUrl: targetUrl })
   try {
     await Promise.all([source.$connect(), target.$connect()])
@@ -597,13 +639,7 @@ async function run(options: CopyOptions): Promise<SafeReport> {
       throw new MigrationUsageError(
         "Source and target resolve to the same database",
       )
-    if (
-      options.production &&
-      targetIdentity.hostHash !== options.expectedTargetHostHash
-    )
-      throw new MigrationUsageError(
-        "Production target identity does not match --expected-target-host-hash",
-      )
+    validateProductionIdentities(options, sourceIdentity, targetIdentity)
     if (
       !options.dryRun &&
       !options.verifyOnly &&
@@ -670,6 +706,8 @@ async function run(options: CopyOptions): Promise<SafeReport> {
       copiedRows,
       operation: {
         mode: options.production ? "production" : "local",
+        expectedSourceHostHash: options.expectedSourceHostHash,
+        expectedTargetHostHash: options.expectedTargetHostHash,
         sourceSnapshotReference: options.sourceSnapshotReference,
         sourceCutoff: options.sourceCutoff,
       },

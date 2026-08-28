@@ -5,6 +5,8 @@ import {
   parseCorpusCopyArgs,
   retrievalEquivalent,
   serializeReport,
+  sourceReadOnlyUrl,
+  validateProductionIdentities,
 } from "./copy-corpus.js"
 
 describe("corpus copy CLI contract", () => {
@@ -68,6 +70,8 @@ describe("corpus copy CLI contract", () => {
       parseCorpusCopyArgs([
         "--copy",
         "--confirm-production-copy",
+        "--expected-source-host-hash",
+        "fedcba9876543210",
         "--expected-target-host-hash",
         "0123456789abcdef",
       ]),
@@ -77,6 +81,8 @@ describe("corpus copy CLI contract", () => {
       parseCorpusCopyArgs([
         "--copy",
         "--confirm-production-copy",
+        "--expected-source-host-hash",
+        "fedcba9876543210",
         "--expected-target-host-hash",
         "0123456789abcdef",
         "--source-snapshot-reference",
@@ -86,6 +92,7 @@ describe("corpus copy CLI contract", () => {
       ]),
     ).toMatchObject({
       production: true,
+      expectedSourceHostHash: "fedcba9876543210",
       expectedTargetHostHash: "0123456789abcdef",
       sourceSnapshotReference: "jfrag-backup-2026-08-28",
       sourceCutoff: "2026-08-28T02:00:00.000Z",
@@ -98,6 +105,8 @@ describe("corpus copy CLI contract", () => {
         "--copy",
         "--confirm-local-copy",
         "--confirm-production-copy",
+        "--expected-source-host-hash",
+        "fedcba9876543210",
         "--expected-target-host-hash",
         "0123456789abcdef",
         "--source-snapshot-reference",
@@ -106,6 +115,39 @@ describe("corpus copy CLI contract", () => {
         "not-a-date",
       ]),
     ).toThrow(MigrationUsageError)
+  })
+
+  it("enforces both production database identities", () => {
+    const options = {
+      production: true,
+      expectedSourceHostHash: "fedcba9876543210",
+      expectedTargetHostHash: "0123456789abcdef",
+    }
+    expect(() =>
+      validateProductionIdentities(
+        options,
+        { hostHash: "aaaaaaaaaaaaaaaa" },
+        { hostHash: "0123456789abcdef" },
+      ),
+    ).toThrow(/source identity/)
+    expect(() =>
+      validateProductionIdentities(
+        options,
+        { hostHash: "fedcba9876543210" },
+        { hostHash: "aaaaaaaaaaaaaaaa" },
+      ),
+    ).toThrow(/target identity/)
+  })
+
+  it("forces read-only source sessions while preserving connection options", () => {
+    const url = new URL(
+      sourceReadOnlyUrl(
+        "postgresql://user:pass@host/db?options=-c%20statement_timeout%3D1000",
+      ),
+    )
+    expect(url.searchParams.get("options")).toBe(
+      "-c statement_timeout=1000 -c default_transaction_read_only=on",
+    )
   })
 
   it("serializes reports without connection strings or corpus text", () => {
@@ -117,6 +159,8 @@ describe("corpus copy CLI contract", () => {
       copiedRows: { sources: 1 },
       operation: {
         mode: "production",
+        expectedSourceHostHash: "abc",
+        expectedTargetHostHash: "def",
         sourceSnapshotReference: "backup-1",
         sourceCutoff: "2026-08-28T02:00:00.000Z",
       },

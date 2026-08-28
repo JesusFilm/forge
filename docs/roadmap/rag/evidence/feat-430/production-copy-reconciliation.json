@@ -12,6 +12,8 @@
   "copiedRows": {},
   "operation": {
     "mode": "production",
+    "expectedSourceHostHash": "1d1d31717c18c748",
+    "expectedTargetHostHash": "5a4986ef81e580f1",
     "sourceSnapshotReference": "railway-backup:3b65f69d-96aa-4ddc-a306-53ff9a7af982",
     "sourceCutoff": "2026-08-28T01:43:58.992Z"
   },
