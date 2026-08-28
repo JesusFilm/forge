@@ -1203,6 +1203,12 @@ The single library video the Seeker may attach to one reply — a recommendation
 
 The model **declares** a pick and never authors its payload: it may only name a video the same turn's own search returned, and every displayed field is re-projected from that search result through shape gates rather than taken from the model. A missing, malformed, or unmatched declaration attaches nothing and is never an error the reader sees. Because replies persist, a featured video is also re-derived when a conversation is replayed, so a replayed reply shows the video the turn featured, though a long title may appear shortened.
 
+### Suggested Follow-Ups
+
+Up to three tappable questions the Seeker offers under a finished answer, proposing where the conversation could go next — generated after the answer's text by a separate minimal model call, so a generation failure or timeout only means the suggestions do not appear; the answer itself is never affected. Tapping one sends that question verbatim as the person's own next message.
+
+Suggestions appear only after grounded, substantive answers, and they are stored with the reply they followed; on replay, only the conversation's latest reply shows its stored suggestions. Turning the capability off stops new suggestions but does not retract stored ones — retraction follows the conversation data's own lifecycle, not the flag.
+
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
