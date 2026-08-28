@@ -4,6 +4,10 @@ const MUX_STREAM_RE = /stream\.mux\.com\/([a-zA-Z0-9]+)/
 // into a URL so a tainted seed value can't inject a different host/path.
 const MUX_PLAYBACK_ID_RE = /^[a-zA-Z0-9]+$/
 
+// One-way door: Mux caches per exact URL, so changing this cold-renders the
+// whole catalogue again and discards every warmed entry. See muxThumbnailAtSecond.
+const STILL_SIZE = 800
+
 export function deriveMuxThumbnailUrl(
   streamingUrl: string | null | undefined,
 ): string | null {
@@ -33,6 +37,28 @@ export function muxThumbnailFromPlaybackId(
 ): string | null {
   if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
   return `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop`
+}
+
+/**
+ * A still from one moment of the asset, for the Bible quote cards.
+ *
+ * Fixed 800x800, never a size derived from the device: Mux caches per exact
+ * URL, so a layout-derived width gives every screen geometry its own cold
+ * render. Measured 2026-08-28 on one asset — 640 = 33.9 KB, 800 = 41.4 KB,
+ * 1080 = 57.5 KB — and the still sits behind a heavy scrim as texture, so the
+ * upscale on a 3x screen is not perceptible where 39% more bytes would be.
+ *
+ * The second is emitted to two decimal places because on a short runtime the
+ * caller's window collapses and whole-second rounding would merge several
+ * cards onto one URL. Caller owns the spacing and the clamp; this owns the URL.
+ */
+export function muxThumbnailAtSecond(
+  playbackId: string | null | undefined,
+  second: number,
+): string | null {
+  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
+  if (!Number.isFinite(second) || second < 0) return null
+  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=${STILL_SIZE}&height=${STILL_SIZE}&fit_mode=smartcrop&time=${second.toFixed(2)}`
 }
 
 /**
