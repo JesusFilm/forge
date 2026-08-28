@@ -129,6 +129,8 @@ type HarnessProps = {
  * runs the effect once, and that single call is what R12's "exactly one
  * passage request" is about.
  */
+const mounted: TestInstance[] = []
+
 function renderHook(initial: HarnessProps, options: { strict?: boolean } = {}) {
   const strict = options.strict ?? true
   const wrap = (element: React.ReactElement) =>
@@ -148,6 +150,9 @@ function renderHook(initial: HarnessProps, options: { strict?: boolean } = {}) {
       ) as unknown as React.ReactElement,
     )
   })
+  // The hook arms the artwork hold's release timer on mount. A renderer left
+  // standing keeps that timer alive past the test that created it.
+  mounted.push(renderer)
   return {
     latest: () => seen[seen.length - 1]!,
     rerender: (next: HarnessProps) =>
@@ -181,6 +186,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((renderer) => renderer.unmount())
+  })
   jest.useRealTimers()
 })
 
@@ -804,6 +812,7 @@ describe("useBibleVerses card artwork", () => {
       },
       { strict: false },
     )
+    await flush()
     expect(verseCards(hook.latest())[0]?.imageUrl).toBeNull()
 
     act(() => {

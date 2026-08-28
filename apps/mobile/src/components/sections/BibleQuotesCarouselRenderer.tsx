@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
@@ -123,6 +123,24 @@ const SCRIM_TOP_OPACITY = 0.3
  */
 const STILL_FADE_MS = 200
 
+/**
+ * How far ahead of the viewer stills are requested. The carousel already mounts
+ * its immediate neighbours, so one is enough; the bound is the point, because
+ * `Image.prefetch` is a module static with no cancel token and no view
+ * association — leaving the screen does not stop work already in flight.
+ */
+const PREFETCH_AHEAD = 1
+
+/**
+ * The final release for the prefetch gate. The prefetch API accepts no
+ * priority, so ordering behind the visible card's own load is the only lever —
+ * but a load that neither completes nor errors would otherwise suppress the
+ * prefetch for the rest of the session.
+ */
+const PREFETCH_RELEASE_MS = 3000
+
+const NOTHING_SETTLED: ReadonlySet<number> = new Set()
+
 // ── QuoteCard ───────────────────────────────────────────────────────────────
 
 /** Reserved-height stand-in for the verse while the passage read is in flight. */
@@ -159,6 +177,7 @@ function QuoteCard({
   reduceMotion,
   onOpenPassage,
   onArtworkFailed,
+  onArtworkSettled,
 }: {
   quote: QuoteItem
   cardIndex: number
@@ -168,6 +187,7 @@ function QuoteCard({
   reduceMotion: boolean
   onOpenPassage?: (url: string) => void
   onArtworkFailed?: (cardIndex: number, failedIndex: number) => void
+  onArtworkSettled?: (cardIndex: number) => void
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
   const scrimTop = hexToRgba(bgColor, SCRIM_TOP_OPACITY)
@@ -224,6 +244,10 @@ function QuoteCard({
   )
 
   const reportArtworkFailure = () => {
+    // Settled either way: an errored image is as done competing for bandwidth
+    // as a loaded one, and gating the prefetch on load alone would suppress it
+    // for the rest of the session on an ordinary failure.
+    onArtworkSettled?.(cardIndex)
     if (artCandidates.length === 0) return
     if (artIndex >= artCandidates.length - 1) {
       // The terminal state. Every rung failed, including the stock host the
@@ -272,6 +296,7 @@ function QuoteCard({
           // image node alone. Animating a wrapper would take the scrim with it
           // — Android applies a group's opacity to each child.
           transition={reduceMotion ? 0 : STILL_FADE_MS}
+          onLoad={() => onArtworkSettled?.(cardIndex)}
           onError={reportArtworkFailure}
           // Decorative: the card is one grouped element and already announces
           // its own composed label.
@@ -446,6 +471,52 @@ export function BibleQuotesCarouselRenderer({
     flatListRef.current?.scrollToIndex({ index, animated: true })
   }, [])
 
+  // ── Bounded prefetch ──────────────────────────────────────────────────────
+
+  const [settledCards, setSettledCards] =
+    useState<ReadonlySet<number>>(NOTHING_SETTLED)
+  const [prefetchReleased, setPrefetchReleased] = useState(false)
+  // Keyed by URL, not by index: the ladder can hand a card a different rung,
+  // and that new URL has not been prefetched even though its index has.
+  const prefetchedRef = useRef<Set<string>>(new Set())
+
+  const handleArtworkSettled = useCallback((cardIndex: number) => {
+    setSettledCards((prev) => {
+      if (prev.has(cardIndex)) return prev
+      const next = new Set(prev)
+      next.add(cardIndex)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    setPrefetchReleased(false)
+    const timer = setTimeout(
+      () => setPrefetchReleased(true),
+      PREFETCH_RELEASE_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [activeIndex])
+
+  useEffect(() => {
+    // A card with nothing to load is already settled — waiting on an image it
+    // will never request would suppress the prefetch for the whole session.
+    const visibleUrl = resolveImageUrl(quotes[activeIndex]?.imageUrl ?? null)
+    const visibleSettled =
+      visibleUrl == null || settledCards.has(activeIndex) || prefetchReleased
+    if (!visibleSettled) return
+
+    const nextIndex = activeIndex + PREFETCH_AHEAD
+    if (nextIndex >= quotes.length) return
+
+    const url = resolveImageUrl(quotes[nextIndex]?.imageUrl ?? null)
+    // Never an empty list: the promise resolves only from inside a per-URL
+    // callback, so an empty array never settles at all.
+    if (url == null || prefetchedRef.current.has(url)) return
+    prefetchedRef.current.add(url)
+    void Image.prefetch([url], { cachePolicy: "memory-disk" })
+  }, [activeIndex, settledCards, prefetchReleased, quotes])
+
   // KTD9: deliberately NOT registered as a non-route sheet id. The floating
   // window cannot be present on the watch route — `miniPlayerPresentation`
   // returns the full-player presentation there before it consults sheet
@@ -467,6 +538,7 @@ export function BibleQuotesCarouselRenderer({
         reduceMotion={reduceMotion}
         onOpenPassage={handleOpenPassage}
         onArtworkFailed={onArtworkFailed}
+        onArtworkSettled={handleArtworkSettled}
       />
     ),
     [
@@ -476,6 +548,7 @@ export function BibleQuotesCarouselRenderer({
       reduceMotion,
       handleOpenPassage,
       onArtworkFailed,
+      handleArtworkSettled,
     ],
   )
 

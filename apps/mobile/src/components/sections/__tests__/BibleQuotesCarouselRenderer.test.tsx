@@ -749,6 +749,12 @@ beforeEach(() => {
   mockImage.mockClear()
   mockPrefetch.mockClear()
   mockWarn.mockClear()
+  // The card reads the OS reduce-motion setting asynchronously. Left to
+  // resolve, it lands a state update outside `act` in every synchronous case
+  // here. The two cases that care about the setting override this and await.
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockReturnValue(new Promise<boolean>(() => {}))
 })
 
 afterEach(() => {
@@ -846,6 +852,9 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
   })
 
   it("fades the still in over an explicit duration", async () => {
+    jest
+      .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+      .mockResolvedValue(false)
     await renderSettled([stillQuote()])
     expect(imageProps()?.transition).toBe(200)
   })
@@ -960,6 +969,109 @@ describe("BibleQuotesCarouselRenderer — the Experience parity gap", () => {
 
     render([{ ...EXPERIENCE_QUOTE, imageUrl: STOCK_A }])
     expect(imageProps()?.source).toBe(STOCK_A)
+  })
+})
+
+describe("BibleQuotesCarouselRenderer — bounded prefetch", () => {
+  /** Every card carries its own still, which is the shape a real video has. */
+  function carousel(count: number, overrides: Quote = {}): Quote[] {
+    return Array.from({ length: count }, (_, i) =>
+      stillQuote({
+        reference: `Psalm ${i + 1}:1`,
+        imageUrl: `https://image.mux.com/p/thumbnail.webp?time=${i}.00`,
+        artCandidates: [`https://image.mux.com/p/thumbnail.webp?time=${i}.00`],
+        ...overrides,
+      }),
+    )
+  }
+
+  const settleCard = (index: number) =>
+    act(() => {
+      ;(mockImage.mock.calls[index]?.[0]?.onLoad as () => void)()
+    })
+
+  it("issues no prefetch before the visible card has settled", () => {
+    render(carousel(3))
+    // The API takes no priority, so ordering behind the visible card's own load
+    // is the only thing keeping an off-screen still from outranking it.
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("prefetches the next card's still once the visible one settles", () => {
+    render(carousel(3))
+    settleCard(0)
+
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    expect(mockPrefetch.mock.calls[0]?.[0]).toEqual([
+      "https://image.mux.com/p/thumbnail.webp?time=1.00",
+    ])
+  })
+
+  it("prefetches with the cache policy the render itself uses", () => {
+    render(carousel(3))
+    settleCard(0)
+    expect(mockPrefetch.mock.calls[0]?.[1]).toEqual({
+      cachePolicy: "memory-disk",
+    })
+  })
+
+  it("does not re-issue a request for a card already prefetched", () => {
+    render(carousel(3))
+    settleCard(0)
+    settleCard(0)
+    settleCard(1)
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("issues nothing at the end of the carousel rather than an empty list", () => {
+    // `Image.prefetch` never settles when handed an empty array — both native
+    // implementations resolve only from inside a per-URL callback.
+    render(carousel(1))
+    settleCard(0)
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("issues nothing for a video whose ladder yields no artwork", () => {
+    render([
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+    ])
+    expect(mockPrefetch).not.toHaveBeenCalled()
+  })
+
+  it("prefetches when the visible card errors rather than loads", () => {
+    render(carousel(3), jest.fn())
+    act(() => {
+      ;(mockImage.mock.calls[0]?.[0]?.onError as () => void)()
+    })
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("prefetches immediately when the visible card has nothing to load", () => {
+    // A held card is settled by construction: waiting on an image it will never
+    // request would suppress the prefetch for the rest of the session.
+    render([
+      { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
+      ...carousel(1),
+    ])
+    expect(mockPrefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases the gate on a load that never settles, and not before", () => {
+    jest.useFakeTimers()
+    try {
+      render(carousel(3))
+      // Asserted in BOTH directions: absence alone would pass against a
+      // prefetch that never fires at all.
+      expect(mockPrefetch).not.toHaveBeenCalled()
+
+      act(() => {
+        jest.advanceTimersByTime(3000)
+      })
+      expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })
 
