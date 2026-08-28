@@ -64,6 +64,7 @@ export class PostgresLanguageMaintenanceStore {
   async applyLanguageChanges(
     sourceKey: string,
     changes: ReadonlyArray<Omit<StoredLanguageChange, "sourceKey">>,
+    record: (change: StoredLanguageChange) => void | Promise<void>,
   ): Promise<StoredLanguageChange[]> {
     return this.db.$transaction(async (tx) => {
       const committed: StoredLanguageChange[] = []
@@ -76,7 +77,13 @@ export class PostgresLanguageMaintenanceStore {
             AND d.language IS NOT DISTINCT FROM ${change.oldLanguage}
           RETURNING d.id
         `)
-        if (rows.length) committed.push({ ...change, sourceKey })
+        if (rows.length) {
+          const applied = { ...change, sourceKey }
+          // The transaction cannot commit unless its guarded reversal record has
+          // been durably handed to the audit sink.
+          await record(applied)
+          committed.push(applied)
+        }
       }
       return committed
     })
@@ -228,15 +235,46 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       sourceKey?: string
       limit?: number
       includeIngested?: boolean
+      targetEmbeddingModel?: string
     } = {},
   ): Promise<PendingRawDocument[]> {
+    let eligibleIds: string[] | undefined
+    if (options.targetEmbeddingModel) {
+      const ids = await this.db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT r.id
+        FROM raw_documents r
+        LEFT JOIN sources s ON s.key = r.source_key
+        LEFT JOIN documents d
+          ON d.source_id = s.id AND d.canonical_url = r.canonical_url
+        WHERE (${options.sourceKey ?? null}::text IS NULL OR r.source_key = ${options.sourceKey ?? null})
+          AND (
+            d.id IS NULL OR NOT EXISTS (
+              SELECT 1
+              FROM chunks c
+              JOIN chunk_embeddings e ON e.chunk_id = c.id
+              WHERE c.document_id = d.id
+            ) OR EXISTS (
+              SELECT 1
+              FROM chunks c
+              JOIN chunk_embeddings e ON e.chunk_id = c.id
+              WHERE c.document_id = d.id
+                AND e.embedding_model <> ${options.targetEmbeddingModel}
+            )
+          )
+        ORDER BY r.fetched_at ASC, r.id ASC
+        ${options.limit ? Prisma.sql`LIMIT ${options.limit}` : Prisma.empty}
+      `)
+      eligibleIds = ids.map(({ id }) => id)
+      if (eligibleIds.length === 0) return []
+    }
     const rows = await this.db.rawDocument.findMany({
       where: {
+        id: eligibleIds ? { in: eligibleIds } : undefined,
         sourceKey: options.sourceKey,
         ingestedAt: options.includeIngested ? undefined : null,
       },
       orderBy: [{ fetchedAt: "asc" }, { id: "asc" }],
-      take: options.limit,
+      take: eligibleIds ? undefined : options.limit,
     })
     return rows.map((row) => ({
       id: row.id,

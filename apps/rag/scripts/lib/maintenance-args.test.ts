@@ -23,8 +23,21 @@ describe("maintenance command arguments", () => {
   it("bounds index concurrency and preserves source/force controls", () => {
     expect(
       parseIndexArgs(["--source", "cru", "--concurrency", "4", "--apply"]),
-    ).toMatchObject({ source: "cru", concurrency: 4, apply: true })
-    expect(() => parseIndexArgs(["--concurrency", "5"])).toThrow(/1\.\.4/)
+    ).toMatchObject({ all: false, source: "cru", concurrency: 4, apply: true })
+    expect(() => parseIndexArgs(["--all", "--concurrency", "5"])).toThrow(
+      /1\.\.4/,
+    )
+    expect(() => parseIndexArgs([])).toThrow(/exactly one/)
+    expect(() => parseIndexArgs(["--all", "--source", "cru"])).toThrow(
+      /exactly one/,
+    )
+    expect(() => parseIndexArgs(["--all", "--limit"])).toThrow(
+      /requires a value/,
+    )
+    expect(() => parseIndexArgs(["--all", "--wat"])).toThrow(/unknown flag/)
+    expect(() => parseIndexArgs(["--all", "--all"])).toThrow(
+      /only be specified once/,
+    )
   })
 
   it("makes sweep and revert read-only unless apply is explicit", () => {

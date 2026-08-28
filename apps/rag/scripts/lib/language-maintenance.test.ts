@@ -25,6 +25,13 @@ describe("language maintenance guards", () => {
     )
 
     expect(store.applyLanguageChanges).toHaveBeenCalledOnce()
+    const record = store.applyLanguageChanges.mock.calls[0][2]
+    await record({
+      id: "a",
+      sourceKey: "cru",
+      oldLanguage: null,
+      newLanguage: "en",
+    })
     expect(append).toHaveBeenCalledOnce()
     expect(JSON.parse(append.mock.calls[0][0])).toMatchObject({ id: "a" })
   })
@@ -45,5 +52,25 @@ describe("language maintenance guards", () => {
         restoreLanguage: null,
       },
     ])
+  })
+
+  it("does not allow the store transaction to finish when audit recording fails", async () => {
+    const store = {
+      applyLanguageChanges: vi.fn(async (_source, changes, record) => {
+        await record({ ...changes[0], sourceKey: "cru" })
+        return []
+      }),
+      revertLanguageChanges: vi.fn(),
+    }
+    await expect(
+      applySourceChanges(
+        store,
+        "cru",
+        [{ id: "a", oldLanguage: null, newLanguage: "en" }],
+        async () => {
+          throw new Error("audit unavailable")
+        },
+      ),
+    ).rejects.toThrow("audit unavailable")
   })
 })

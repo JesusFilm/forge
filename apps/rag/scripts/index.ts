@@ -1,21 +1,38 @@
 import { ingestPending } from "../src/indexing/index.js"
 import { parseIndexArgs } from "./lib/maintenance-args.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
+import { getSource } from "../src/registry/index.js"
 
 async function main() {
   const argv = process.argv.slice(2)
   const production = argv.includes("--production")
   const args = parseIndexArgs(argv)
   if (production) installProductionEnvironment(process.env, args.apply)
-  if (!args.apply) {
-    console.log(
-      `DRY RUN: would index ${args.source ?? "all sources"}; concurrency=${args.concurrency}; no staging or corpus rows changed`,
-    )
-    return
-  }
+  if (args.source && !getSource(args.source))
+    throw new Error(`unknown source '${args.source}'`)
   const { wire } = await import("../src/main.js")
   const wiring = wire()
   try {
+    if (!args.apply) {
+      const candidates = await wiring.rawDocumentReader.listPending({
+        sourceKey: args.source,
+        limit: args.limit,
+        includeIngested: args.force,
+        targetEmbeddingModel:
+          args.force && !args.forceAll ? wiring.embedder.model : undefined,
+      })
+      console.log(
+        JSON.stringify({
+          dryRun: true,
+          source: args.source ?? "all",
+          candidateCount: candidates.length,
+          candidateIds: candidates.map(({ id }) => id),
+          embeddingModel: wiring.embedder.model,
+          mutation: false,
+        }),
+      )
+      return
+    }
     const summary = await ingestPending(
       {
         reader: wiring.rawDocumentReader,

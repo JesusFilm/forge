@@ -10,6 +10,8 @@ corpus.
 - Start with one named source and a small limit. Do not run a full-corpus
   acquisition, index, reindex, or language sweep as part of migration issue
   `JesusFilm/jesusfilm-rag#164`.
+- Every index invocation must name exactly one scope: `--source <source-key>`
+  or the deliberately explicit `--all`.
 - Omit `--apply` for a dry run. A write requires `--apply`; production writes
   additionally require `--production`, exact `JFRAG_ALLOW_PROD_WRITE=1`, and an
   exact `JFRAG_EXPECTED_POSTGRES_HOST` match.
@@ -64,7 +66,9 @@ pnpm --filter @forge/rag index --source <source-key> --limit 10
 pnpm --filter @forge/rag index --source <source-key> --limit 10 --apply
 ```
 
-The first command is a dry run. The applied run embeds, writes the corpus, and
+The first command connects read-only and reports the actual bounded candidate
+count and staging-row IDs for the requested source/model selection; it does not
+embed, mark staging rows, or write corpus data. The applied run embeds, writes the corpus, and
 records the canonical embedding model on each embedding row. Repeating an
 ordinary run drains no already-ingested staging rows, and unchanged content is
 deduplicated by content hash.
@@ -77,7 +81,10 @@ pnpm --filter @forge/rag index --source <source-key> --limit 10 --force --apply
 ```
 
 `--force` re-reads ingested staging rows but skips documents already stored with
-the target `EMBED_MODEL_ID`, so a model migration can be resumed safely.
+the target `EMBED_MODEL_ID`, so a model migration can be resumed safely. The
+model filter is applied before `--limit`, which means repeated bounded runs
+advance through old-model documents instead of repeatedly selecting the oldest
+already-migrated rows.
 `--force-all` re-embeds even rows already on that model and should be reserved
 for an intentional same-model chunker rebuild. For production, use
 `index:production` under the same Doppler injection and write preflight shown
@@ -96,7 +103,9 @@ pnpm --filter @forge/rag language:sweep --source <source-key> --mode blanks --li
 An applied sweep writes a JSONL changelog containing row identifiers, old/new
 languages, source keys, and detector-model provenance. Treat it as restricted
 operational data: keep it outside the repository and do not paste it into logs
-or tickets. `--mode full` revisits already labelled rows; use it only for a
+or tickets. Each guarded database update awaits its reversal-record append
+inside the transaction, so an audit-write failure rolls back the source batch.
+`--mode full` revisits already labelled rows; use it only for a
 bounded, approved repair.
 
 Reverse exactly a reviewed changelog with an initial dry run:

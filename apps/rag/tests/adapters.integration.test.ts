@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one real-Postgres lifecycle shared across adapter integration scenarios */
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -59,7 +60,12 @@ const vector = (axis: number): number[] => {
   return value
 }
 
-const chunk = (ord: number, text: string, axis: number): EmbeddedChunk => ({
+const chunk = (
+  ord: number,
+  text: string,
+  axis: number,
+  embeddingModel = "fixture/model",
+): EmbeddedChunk => ({
   ord,
   text,
   charStart: 0,
@@ -67,13 +73,13 @@ const chunk = (ord: number, text: string, axis: number): EmbeddedChunk => ({
   tokenCount: text.split(" ").length,
   tags: ["fixture"],
   embedding: vector(axis),
-  embeddingModel: "fixture/model",
+  embeddingModel,
 })
 
-const raw = (body: string): RawDocument => ({
+const raw = (body: string, slug = "raw"): RawDocument => ({
   sourceKey: key,
-  url: `${prefix}raw`,
-  canonicalUrl: `${prefix}raw`,
+  url: `${prefix}${slug}`,
+  canonicalUrl: `${prefix}${slug}`,
   title: "Raw",
   rawContent: body,
   fetch: {
@@ -197,6 +203,47 @@ describe("Prisma-backed RAG adapters", () => {
     expect(
       await search.vectorSearch(vector(0), { allowedSourceKeys: [] }, 5),
     ).toEqual([])
+  })
+
+  it("advances bounded forced reindex batches past the target model", async () => {
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("old-a", "old-a"))
+    await rawStore.putRawDocument(raw("old-b", "old-b"))
+    const staged = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(staged.map(({ id }) => id))
+
+    const oldDocument = (slug: string): NormalizedDocument => ({
+      ...document(slug, "en"),
+      canonicalUrl: `${prefix}${slug}`,
+      title: slug,
+    })
+    await writes.replaceDocument(oldDocument("old-a"), [
+      chunk(0, "Old model A", 0, "fixture/model-old"),
+    ])
+    await writes.replaceDocument(oldDocument("old-b"), [
+      chunk(0, "Old model B", 1, "fixture/model-old"),
+    ])
+
+    const first = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    expect(first).toHaveLength(1)
+    await writes.replaceDocument(
+      oldDocument(first[0].canonicalUrl.split("/").at(-1)!),
+      [chunk(0, "Migrated", 0, "fixture/model-target")],
+    )
+
+    const second = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    expect(second).toHaveLength(1)
+    expect(second[0].id).not.toBe(first[0].id)
   })
 
   it("fails before SQL when the query vector width is wrong", async () => {

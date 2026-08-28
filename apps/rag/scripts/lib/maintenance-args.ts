@@ -4,6 +4,28 @@ const valueAfter = (argv: string[], flag: string): string | undefined => {
   return value?.startsWith("--") ? undefined : value
 }
 
+function validateArgs(
+  argv: string[],
+  values: readonly string[],
+  booleans: readonly string[],
+): void {
+  const known = new Set([...values, ...booleans, "--production"])
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index]
+    if (!arg.startsWith("--")) throw new Error(`unexpected argument '${arg}'`)
+    if (!known.has(arg)) throw new Error(`unknown flag '${arg}'`)
+    if (booleans.includes(arg) && argv.indexOf(arg) !== index)
+      throw new Error(`${arg} may only be specified once`)
+    if (values.includes(arg)) {
+      const value = argv[++index]
+      if (!value || value.startsWith("--"))
+        throw new Error(`${arg} requires a value`)
+      if (argv.indexOf(arg) !== index - 1)
+        throw new Error(`${arg} may only be specified once`)
+    }
+  }
+}
+
 const positive = (argv: string[], flag: string): number | undefined => {
   const raw = valueAfter(argv, flag)
   if (raw === undefined) return undefined
@@ -22,6 +44,11 @@ export type AcquireArgs = {
 }
 
 export function parseAcquireArgs(argv: string[]): AcquireArgs {
+  validateArgs(
+    argv,
+    ["--source"],
+    ["--all", "--dry-run", "--resume", "--apply"],
+  )
   const all = argv.includes("--all")
   const source = valueAfter(argv, "--source")
   if (all === Boolean(source))
@@ -37,6 +64,7 @@ export function parseAcquireArgs(argv: string[]): AcquireArgs {
 }
 
 export type IndexArgs = {
+  all: boolean
   source?: string
   limit?: number
   concurrency: number
@@ -46,11 +74,21 @@ export type IndexArgs = {
 }
 
 export function parseIndexArgs(argv: string[]): IndexArgs {
+  validateArgs(
+    argv,
+    ["--source", "--limit", "--concurrency"],
+    ["--all", "--force", "--force-all", "--apply"],
+  )
+  const all = argv.includes("--all")
+  const source = valueAfter(argv, "--source")
+  if (all === Boolean(source))
+    throw new Error("use exactly one of --source <key> or --all")
   const concurrency = positive(argv, "--concurrency") ?? 4
   if (concurrency > 4) throw new Error("--concurrency must be in 1..4")
   const forceAll = argv.includes("--force-all")
   return {
-    source: valueAfter(argv, "--source"),
+    all,
+    source,
     limit: positive(argv, "--limit"),
     concurrency,
     force: argv.includes("--force") || forceAll,
@@ -73,6 +111,11 @@ export type LanguageArgs =
   | { kind: "revert"; changelog: string; apply: boolean }
 
 export function parseLanguageArgs(argv: string[]): LanguageArgs {
+  validateArgs(
+    argv,
+    ["--revert", "--source", "--mode", "--limit", "--concurrency", "--out-dir"],
+    ["--all", "--apply"],
+  )
   const revert = valueAfter(argv, "--revert")
   if (revert)
     return {

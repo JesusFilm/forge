@@ -196,6 +196,7 @@ export async function ingestPending(
     sourceKey: opts.sourceKey,
     limit: opts.limit,
     includeIngested: force, // force/forceAll ⇒ re-index from the snapshot
+    targetEmbeddingModel: force && !forceAll ? deps.embedder.model : undefined,
   })
   const summary: IngestSummary = {
     attempted: 0,

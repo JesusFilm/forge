@@ -86,6 +86,8 @@ export interface RawDocumentReader {
     sourceKey?: string
     limit?: number
     includeIngested?: boolean
+    /** When present, return only rows whose corpus document is not fully embedded with this model. */
+    targetEmbeddingModel?: string
   }): Promise<PendingRawDocument[]>
   /** Mark these `raw_documents` rows consumed (set `ingested_at`). */
   markIngested(ids: string[]): Promise<void>
