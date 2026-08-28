@@ -70,8 +70,8 @@ corrections plus that cap pin. One correction was load-bearing: the
 accepted-`Cf`-false-positive decision cited the (now absent) U2 mirror as one
 of its grounds. No mastra runtime behaviour changed.
 
-**Post-U1 fix — the generator's output cap was inert (2026-08-28, PR #TBD —
-fill in when raised):** U1 passed `FOLLOW_UPS_MAX_OUTPUT_TOKENS` (300) as a
+**Post-U1 fix — the generator's output cap was inert (2026-08-28,
+[#2092](https://github.com/JesusFilm/forge/pull/2092)):** U1 passed `FOLLOW_UPS_MAX_OUTPUT_TOKENS` (300) as a
 top-level `maxOutputTokens` option to the generator's `generate()` call, a slot
 `@mastra/core` 1.55.0 never reads — the runtime forwards only `modelSettings`
 to the model call, so the cap was a silent no-op (verified against the
