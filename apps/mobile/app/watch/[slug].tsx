@@ -27,6 +27,7 @@ import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
   type WatchBibleCitation,
+  type WatchVariant,
 } from "../../src/lib/normalizeVideo"
 import { isSeriesRecord } from "../../src/lib/isSeriesRecord"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
@@ -96,6 +97,7 @@ import {
 } from "../../src/lib/subtitleSelection"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
+const EMPTY_VARIANTS: WatchVariant[] = []
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -234,7 +236,16 @@ export default function WatchVideoPage() {
   // request for the last one's — and paint its references for a frame.
   const routeCitations =
     video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
-  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations)
+  // The card artwork comes from the video's own Mux asset, so the derivation's
+  // inputs are threaded from here — the hook's only call site, and the only
+  // place the dubs and the authored image are in scope. `loading` is the
+  // settled signal: the query returns partial cached data, on which the lean
+  // series fragment carries neither a runtime nor a playback id.
+  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations, {
+    variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
+    authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
+    payloadSettled: !loading,
+  })
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
