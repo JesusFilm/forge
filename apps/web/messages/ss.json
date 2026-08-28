@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
     "closeSearch": "Vala usesho",
-    "submitSearch": "Sesha"
+    "submitSearch": "Sesha",
+    "library": "Ilayibhulali"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Sesha “{suggestion}” ngelulwimi: {language}",
     "inLanguage": "nge-{language}",
     "browseByRegion": "Phequlula ngokwesifunda",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Wonke amavidiyo ekhasini linye",
     "clearLanguages": "Susa",
     "queryLanguageDetected": "Kutholwe {language}",
     "searchInLanguage": "Sesha ngelulwimi: {language}",
@@ -467,6 +468,7 @@
     "sports": "Ezemidlalo",
     "collections": "Amaqoqo",
     "subtitlesOnly": "Izihlokwana kuphela",
+    "backToTop": "Buyela etulu",
     "newlyAdded": "Kungezwe kamuva nje",
     "newVideosTitle": "Amavidiyo amaKristu amasha nge-{language}",
     "newestFirst": "Okusha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Amavidiyo azimele",
     "videosFromCollection": "Amavidiyo avela ku-{collection}.",
     "standaloneDescription": "Amavidiyo azimele ngalolu limi.",
-    "openCollection": "Vula iqoqo"
+    "openCollection": "Vula iqoqo",
+    "filters": "Tihlungi",
+    "filterLength": "Budze",
+    "filterLength_under5": "Ngentasi kwemaminithi lasi-5",
+    "filterLength_5to10": "Emaminithi lasi-5-10",
+    "filterLength_10to30": "Emaminithi lali-10-30",
+    "filterLength_over30": "Ngetulu kwemaminithi langu-30",
+    "filterType": "Luhlobo",
+    "clearFilters": "Susa tihlungi",
+    "filterResults": "{count} kwa-{total} lokukhonjiswa",
+    "noFilterResults": "Akukho mavidiyo lahambisana naletihlungi. Zama kususa lolunye.",
+    "filterAdded": "Kwengetiwe",
+    "filterAdded_60d": "Emalanga langu-60 lephelile",
+    "filterAdded_6m": "Tinyanga letisi-6 letiphelile",
+    "filterAdded_12m": "Tinyanga letili-12 letiphelile"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Buka",
@@ -646,44 +662,6 @@
     "actionsLabel": "Izenzo zekhasi elingatholakali",
     "backToWatch": "Buyela ku-Watch",
     "browseVideos": "Phequlula amavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Hlangana nathi",
-      "shareMission": "Yabelana ngomsebenzi wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo Nemibhalo",
-      "title": "Izinketho zevidiyo zanamuhla",
-      "description": "Okuqukethwe kwevidiyo okugxile okholweni okuvela emtapweni wethu ukuze kukhuthaze, kuphonsele inselelo, futhi kuvuse ukucabanga."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi Lwasekuseni",
-      "title": "Sawubona! Izikhathi zeBhayibheli zanamuhla zikulindile.",
-      "description": "Qala usuku lwakho ngezikhathi ezikhuthazayo zeBhayibheli ezenzelwe ukukugqugquzela nokuphakamisa umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi Lwantambama",
-      "title": "Sawubona ntambama! Izikhathi zeBhayibheli zosuku lwakho.",
-      "description": "Okuqukethwe okukhuthazayo kweBhayibheli okulungele ikhefu lakho lantambama noma ukuqhubeka nokuthola ugqozi."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi Lwangokuhlwa",
-      "title": "Sawubona kusihlwa! Hlalisa phansi ngezikhathi zeBhayibheli.",
-      "description": "Izikhathi zeBhayibheli ezinokuthula ezikusiza ucabange futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Hlangana nathi",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Hlangana nathi njengoba sabelana ngevangeli nomhlaba ngemidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Sitshela Indaba kaJesu, Ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo, khona lapho abakulo."
-    }
   },
   "VideoRecommendations": {
     "match": "Kuhambisana nga-{percent}%",

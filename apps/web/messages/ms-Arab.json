@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
     "closeSearch": "Tutup carian",
-    "submitSearch": "چاري"
+    "submitSearch": "چاري",
+    "library": "ڤوستاک"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan semak video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "چاري “{suggestion}” دالم {language}",
     "inLanguage": "dalam {language}",
     "browseByRegion": "Semak mengikut wilayah",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "سموا ۏيديو دالم ساتو هلامن",
     "clearLanguages": "Kosongkan",
     "queryLanguageDetected": "{language} dikesan",
     "searchInLanguage": "چاري دالم {language}",
@@ -467,6 +468,7 @@
     "sports": "Sukan",
     "collections": "Koleksi",
     "subtitlesOnly": "Sarikata sahaja",
+    "backToTop": "کمبالي کأتس",
     "newlyAdded": "Ditambah baharu",
     "newVideosTitle": "Video Kristian baharu dalam {language}",
     "newestFirst": "Paling baharu dahulu",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video berdiri sendiri",
     "videosFromCollection": "Video daripada {collection}.",
     "standaloneDescription": "Video berdiri sendiri dalam bahasa ini.",
-    "openCollection": "Buka koleksi"
+    "openCollection": "Buka koleksi",
+    "filters": "ڤناڤيس",
+    "filterLength": "تمڤوه",
+    "filterLength_under5": "کورڠ 5 مينيت",
+    "filterLength_5to10": "5-10 مينيت",
+    "filterLength_10to30": "10-30 مينيت",
+    "filterLength_over30": "لبيه 30 مينيت",
+    "filterType": "جنيس",
+    "clearFilters": "کوسوڠکن ڤناڤيس",
+    "filterResults": "{count} درڤد {total} دتونجوککن",
+    "noFilterResults": "تيادا ۏيديو سڤادن دڠن ڤناڤيس اين. چوبا بواڠ ساتو.",
+    "filterAdded": "دتمبه",
+    "filterAdded_60d": "60 هاري لڤس",
+    "filterAdded_6m": "6 بولن لڤس",
+    "filterAdded_12m": "12 بولن لڤس"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Tonton",
@@ -646,44 +662,6 @@
     "actionsLabel": "Tindakan halaman tidak ditemui",
     "backToWatch": "Kembali ke Tontonan",
     "browseVideos": "Semak video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tonton filem pendek",
-    "actions": {
-      "joinUs": "Sertai kami",
-      "shareMission": "Berkongsi dalam misi kami"
-    },
-    "welcomeStart": {
-      "label": "Iman & Kitab Suci",
-      "title": "Pilihan video hari ini",
-      "description": "Kandungan video berteraskan iman dari pustaka kami untuk menginspirasi, mencabar, dan mencetuskan renungan."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasi pagi",
-      "title": "Selamat pagi! Momen-momen Alkitab hari ini menanti.",
-      "description": "Mulakan hari anda dengan momen-momen Alkitab yang menggalakkan, direka untuk memberi inspirasi dan menguatkan semangat anda."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasi petang",
-      "title": "Selamat petang! Momen-momen Alkitab untuk hari anda.",
-      "description": "Kandungan Alkitab yang menggalakkan, sesuai untuk rehat petang anda atau sebagai inspirasi berterusan."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasi malam",
-      "title": "Selamat malam! Tenangkan diri dengan momen-momen Alkitab.",
-      "description": "Momen-momen Alkitab yang menenangkan untuk membantu anda merenung dan menemukan penghiburan ketika hari anda berakhir."
-    },
-    "joinUs": {
-      "label": "Sertai kami",
-      "title": "Berbilion-bilion sedang mencari",
-      "description": "Tuai sudah tiba. Sertai kami ketika kami membagikan Injil kepada dunia melalui media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mari bersama-sama",
-      "title": "Menceritakan Kisah Jesus, Bersama-sama",
-      "description": "Supaya mereka dapat mendengar dan melihat kasih Jesus dalam bahasa mereka sendiri, di mana sahaja mereka berada."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% سڤادن",

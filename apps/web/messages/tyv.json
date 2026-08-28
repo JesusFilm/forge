@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио чажытын өөред",
     "home": "JesusFilm баш бети",
     "closeSearch": "Издеңин жаба бер",
-    "submitSearch": "Изде"
+    "submitSearch": "Изде",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларды издеп, көрүп тур",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} де «{suggestion}» изде",
     "inLanguage": "{language} де",
     "browseByRegion": "Аймакка көрүп тур",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Бүткүл видео бир бетте",
     "clearLanguages": "Тазала",
     "queryLanguageDetected": "{language} табылды",
     "searchInLanguage": "{language} де изде",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жыйнактар",
     "subtitlesOnly": "Тек субтитр",
+    "backToTop": "Өрү чанары",
     "newlyAdded": "Жаңы кошулган",
     "newVideosTitle": "{language} де жаңы христиан видеолар",
     "newestFirst": "Эң жаңысы алдыда",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Өзүнчө видеолор",
     "videosFromCollection": "{collection} дын видеолору.",
     "standaloneDescription": "Бу чажыттагы өзүнчө видеолор.",
-    "openCollection": "Жыйнакты ач"
+    "openCollection": "Жыйнакты ач",
+    "filters": "Фильтрлер",
+    "filterLength": "Узуну",
+    "filterLength_under5": "5 минутадан эвээш",
+    "filterLength_5to10": "5-10 минута",
+    "filterLength_10to30": "10-30 минута",
+    "filterLength_over30": "30 минутадан хөй",
+    "filterType": "Хевири",
+    "clearFilters": "Фильтрлерни аштаары",
+    "filterResults": "{total} дан {count} көргүзүттүнген",
+    "noFilterResults": "Бо фильтрлерге дүгжүр видео чок. Бирээзин ап көрүңер.",
+    "filterAdded": "Немешкен",
+    "filterAdded_60d": "Сөөлгү 60 хонук",
+    "filterAdded_6m": "Сөөлгү 6 ай",
+    "filterAdded_12m": "Сөөлгү 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Көрү",
@@ -646,44 +662,6 @@
     "actionsLabel": "Бет табылбаган аракеттер",
     "backToWatch": "Көрүүгө кайтар",
     "browseVideos": "Видеолорду көрүп тур"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска фильм көр",
-    "actions": {
-      "joinUs": "Бизге кошул",
-      "shareMission": "Биздин миссияны бөлүш"
-    },
-    "welcomeStart": {
-      "label": "Ишеним жана Ыйык Жазма",
-      "title": "Бүгүнкү видео тандоолор",
-      "description": "Бөлүштүргөн китепканабыздагы ишенимге багытталган видеолор сизди шыктандырып, ойготуп, ой жүгүртүүгө түрткү берет."
-    },
-    "welcomeMorning": {
-      "label": "Эртең мененки шыктануу",
-      "title": "Кутман таң! Бүгүнкү Библия учурлары сизди күтүп турат.",
-      "description": "Күнүңүздү дем берип, көңүл көтөргөн Библия учурлары менен баштаңыз."
-    },
-    "welcomeAfternoon": {
-      "label": "Түштөн кийинки шыктануу",
-      "title": "Кутман түштөн кийин! Бүгүнкү Библия учурлары сиз үчүн.",
-      "description": "Түштөн кийинки эс алууңузга же дем алдырууга ылайык Библия мазмуну."
-    },
-    "welcomeEvening": {
-      "label": "Кечки шыктануу",
-      "title": "Кутман кеч! Библия учурлары менен эс алыңыз.",
-      "description": "Күн аяктай баштаганда ой жүгүртүп, жубаныш табууга жардам берген тынч Библия учурлары."
-    },
-    "joinUs": {
-      "label": "Бизге кошул",
-      "title": "Миллиарддар издеп жатат",
-      "description": "Түшүм бышып жетти. Санарип медиа аркылуу дүйнөгө Инжилди таратууга бизге кошулуңуз."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бирге баралы",
-      "title": "Ыйсанын тарыхын бирге айтуу",
-      "description": "Ошондо алар Ыйсанын сүйүүсүн өз тилинде, өздөрү турган жерде угуп, көрө алышат."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% таарыжылга",

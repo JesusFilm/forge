@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pynkylla ka ktien sur",
     "home": "Ka home JesusFilm",
     "closeSearch": "Pynkhap ia ka search",
-    "submitSearch": "Wad"
+    "submitSearch": "Wad",
+    "library": "Ïing kot"
   },
   "SearchOverlay": {
     "dialogLabel": "Wad bad peit ia ki video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Wad ia \"{suggestion}\" ha {language}",
     "inLanguage": "ha {language}",
     "browseByRegion": "Peit katkum ka thaiñ",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Ki video baroh ha ka bynta wei",
     "clearLanguages": "Pynlait",
     "queryLanguageDetected": "La shem {language}",
     "searchInLanguage": "Wad ha {language}",
@@ -467,6 +468,7 @@
     "sports": "Ki jingïalehkai",
     "collections": "Ki Collection",
     "subtitlesOnly": "Subtitle tang",
+    "backToTop": "Phai sha shatei",
     "newlyAdded": "La bynrap thymmai",
     "newVideosTitle": "Ki video Khristan thymmai ha {language}",
     "newestFirst": "Ki ba thymmai shwa",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ki video marwei",
     "videosFromCollection": "Ki video na {collection}.",
     "standaloneDescription": "Ki video marwei ha kane ka ktien.",
-    "openCollection": "Plie collection"
+    "openCollection": "Plie collection",
+    "filters": "Ki jingpyllait",
+    "filterLength": "Jrong",
+    "filterLength_under5": "Khyndiat ban 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Khraw ban 30 minit",
+    "filterType": "Rukom",
+    "clearFilters": "Sait ki jingpyllait",
+    "filterResults": "La pyni {count} na {total}",
+    "noFilterResults": "Ym don video ba iaid lang bad kine ki jingpyllait. Peit sait wei.",
+    "filterAdded": "La buh noh",
+    "filterAdded_60d": "60 sngi ba mynta",
+    "filterAdded_6m": "6 bnai ba mynta",
+    "filterAdded_12m": "12 bnai ba mynta"
   },
   "WatchHome": {
     "pageTitle": "Peit ha Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ki action na ka bynta ka page ym lap",
     "backToWatch": "Kylliang sha Watch",
     "browseVideos": "Peit ia ki video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Peit ia ka film lyngkot",
-    "actions": {
-      "joinUs": "Khluit lang bad ngi",
-      "shareMission": "Sam lang ha ka mishon jong ngi"
-    },
-    "welcomeStart": {
-      "label": "Ka jingngeit & ka Scripture",
-      "title": "Ki video ba la jied na bynta mynta ka sngi",
-      "description": "Ki video na ka collection jong ngi kiba thmu ban pynshlur, ban pynsngewkhia, bad ban pynkiew jingmut lyngba ka jingngeit."
-    },
-    "welcomeMorning": {
-      "label": "Ka jingpynshlur mynstep",
-      "title": "Step bha! Ki jingïa bynta Baibl jong mynta ki ap.",
-      "description": "Sdang ia ka sngi jong phi da ki jingïa bynta Baibl kiba pynshlur ba la shna ban pynkiew mynsiem bad pynsngewbha ia phi."
-    },
-    "welcomeAfternoon": {
-      "label": "Ka jingpynshlur mynstep sngi",
-      "title": "Sep sngi bha! Ki jingïa bynta Baibl na bynta ka sngi jong phi.",
-      "description": "Ki bynta Baibl kiba pynshlur, kiba biang tam na bynta ka break mynstep sngi jong phi lane ban bteng ia ka jingpynshlur."
-    },
-    "welcomeEvening": {
-      "label": "Ka jingpynshlur janmiet",
-      "title": "Janmiet bha! Shongthait bad ki jingïa bynta Baibl.",
-      "description": "Ki jingïa bynta Baibl kiba jai jai ban iarap ia phi ban pyrkhat bad ban shem jingkyrshan katba ka sngi jong phi ka kut."
-    },
-    "joinUs": {
-      "label": "Khluit lang bad ngi",
-      "title": "Ki billion ki dang wad",
-      "description": "Ka por ot ka la dei. Khluit lang bad ngi katba ngi sam ia ka gospel sha ka pyrthei da ka digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "To ïaid lang",
-      "title": "Ban ïathuh ia ka khana U Jisu, lang-lang",
-      "description": "Khnang ba kin lah ban sngap bad iohi ia ka jingieit U Jisu ha la ka jong ka ktien, ha kata hi ka jaka ba ki don."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% jingïahap",

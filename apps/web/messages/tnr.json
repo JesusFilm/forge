@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language laa",
     "home": "JesusFilm kɔŋ hɔn",
     "closeSearch": "Suŋ dɔŋ",
-    "submitSearch": "Suŋ kɛ"
+    "submitSearch": "Suŋ kɛ",
+    "library": "Kaŋ kayite"
   },
   "SearchOverlay": {
     "dialogLabel": "Video suŋ kɛ kɔ browse kɛ",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ka “{suggestion}” suŋ kɛ",
     "inLanguage": "{language} ka",
     "browseByRegion": "Region ka browse kɛ",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Dɛmɛ video kɔn",
     "clearLanguages": "Bɔ",
     "queryLanguageDetected": "{language} yé find kɛ",
     "searchInLanguage": "{language} ka suŋ kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports ka",
     "collections": "Collections dɛmɛ",
     "subtitlesOnly": "Subtitles jɛmɛ",
+    "backToTop": "Fandiŋ jeege",
     "newlyAdded": "Bɔŋ nɛŋ add kɛ",
     "newVideosTitle": "Video Christian bɔŋ nɛŋ {language} ka",
     "newestFirst": "Bɔŋ nɛŋ bɔŋa",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos standalone",
     "videosFromCollection": "Videos {collection} bɔ.",
     "standaloneDescription": "Videos standalone language ɗi ka.",
-    "openCollection": "Collection ile"
+    "openCollection": "Collection ile",
+    "filters": "Ñoolaane",
+    "filterLength": "Ndoole",
+    "filterLength_under5": "Rekee 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopee 30 min",
+    "filterType": "Kaŋame",
+    "clearFilters": "Feese ñoolaane",
+    "filterResults": "{count} ca {total} a wonee",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaane yii. Feese kenn.",
+    "filterAdded": "A yokke",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kɔŋ",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page no find actions",
     "backToWatch": "Watch ka kɔrɔ",
     "browseVideos": "Videos browse kɛ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kɔŋ film kɔŋ",
-    "actions": {
-      "joinUs": "Joina aŋa",
-      "shareMission": "Aŋa ka mission kɛŋa"
-    },
-    "welcomeStart": {
-      "label": "Faith kɔ Scripture",
-      "title": "Bi video kɔŋa aŋa",
-      "description": "Aŋa ka library bɔ video faith-centered yé, aŋa mɔŋa tɛɛ, challenge kɛ kɔ reflection bɔŋa."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration",
-      "title": "Morning mɛ! Bible moments bi yé tɔŋ.",
-      "description": "Bi kɔŋa Bible moments encouragement ka, aŋa ka spirit lift kɛ."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration",
-      "title": "Afternoon mɛ! Bible moments aŋa ka day ka.",
-      "description": "Bible content encouragement ka, afternoon break ka lɛŋa, o inspiration kɔŋa."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Evening mɛ! Bible moments kɔŋa kɛ.",
-      "description": "Bible moments peace ka, aŋa mɔŋa kɛ kɔ comfort find kɛ, day ɗi kɔŋa bɔŋa."
-    },
-    "joinUs": {
-      "label": "Joina aŋa",
-      "title": "Billions yé suŋ kɛ",
-      "description": "Harvest yé tɔŋ. Joina aŋa ka gospel duuniya dɛmɛ ka digital media ka kɛŋa."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Aŋa kɔŋa",
-      "title": "Jesus ka story kɛŋa, aŋa dɛmɛ ka",
-      "description": "Aŋa yé Jesus ka love yé wɔn kɔ see kɛ wɔn language dɛmɛ ka wɔn ka nɛŋ."
-    }
   },
   "VideoRecommendations": {
     "match": "Yé match {percent}% ",

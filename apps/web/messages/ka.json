@@ -180,7 +180,8 @@
     "changeAudioLanguage": "აუდიოენის შეცვლა",
     "home": "JesusFilm-ის მთავარი გვერდი",
     "closeSearch": "ძიების დახურვა",
-    "submitSearch": "ძიება"
+    "submitSearch": "ძიება",
+    "library": "ბიბლიოთეკა"
   },
   "SearchOverlay": {
     "dialogLabel": "ვიდეოების ძიება და დათვალიერება",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "მოძებნეთ „{suggestion}“ ამ ენაზე: {language}",
     "inLanguage": "ენაზე: {language}",
     "browseByRegion": "რეგიონის მიხედვით დათვალიერება",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "ყველა ვიდეო ერთ გვერდზე",
     "clearLanguages": "გასუფთავება",
     "queryLanguageDetected": "ნაპოვნია ენა: {language}",
     "searchInLanguage": "ძიება ენაზე: {language}",
@@ -467,6 +468,7 @@
     "sports": "სპორტი",
     "collections": "კოლექციები",
     "subtitlesOnly": "მხოლოდ სუბტიტრები",
+    "backToTop": "ზემოთ დაბრუნება",
     "newlyAdded": "ახლახან დამატებული",
     "newVideosTitle": "ახალი ქრისტიანული ვიდეოები {language}-ზე",
     "newestFirst": "ჯერ უახლესი",
@@ -497,7 +499,21 @@
     "standaloneVideos": "დამოუკიდებელი ვიდეოები",
     "videosFromCollection": "ვიდეოები {collection}-დან.",
     "standaloneDescription": "ამ ენაზე დამოუკიდებელი ვიდეოები.",
-    "openCollection": "კოლექციის გახსნა"
+    "openCollection": "კოლექციის გახსნა",
+    "filters": "ფილტრები",
+    "filterLength": "ხანგრძლივობა",
+    "filterLength_under5": "5 წუთზე ნაკლები",
+    "filterLength_5to10": "5-10 წუთი",
+    "filterLength_10to30": "10-30 წუთი",
+    "filterLength_over30": "30 წუთზე მეტი",
+    "filterType": "ტიპი",
+    "clearFilters": "ფილტრების გასუფთავება",
+    "filterResults": "ნაჩვენებია {count} / {total}",
+    "noFilterResults": "ამ ფილტრებს არცერთი ვიდეო არ ემთხვევა. სცადეთ ერთის მოშორება.",
+    "filterAdded": "დამატებულია",
+    "filterAdded_60d": "ბოლო 60 დღე",
+    "filterAdded_6m": "ბოლო 6 თვე",
+    "filterAdded_12m": "ბოლო 12 თვე"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-ის ყურება",
@@ -646,44 +662,6 @@
     "actionsLabel": "გვერდი ვერ მოიძებნა — ქმედებები",
     "backToWatch": "უკან Watch-ზე",
     "browseVideos": "ვიდეოების დათვალიერება"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "მოკლემეტრაჟიანი ფილმის ყურება",
-    "actions": {
-      "joinUs": "შემოგვიერთდით",
-      "shareMission": "მონაწილეობა ჩვენს მისიაში"
-    },
-    "welcomeStart": {
-      "label": "რწმენა და წმინდა წერილი",
-      "title": "დღის ვიდეოები",
-      "description": "ჩვენი ბიბლიოთეკის რწმენაზე დაფუძნებული ვიდეოები, რომლებიც შთაგაგონებთ, გამოგიწვევთ და დაფიქრებისკენ გიბიძგებთ."
-    },
-    "welcomeMorning": {
-      "label": "დილით შთაგონება",
-      "title": "დილა მშვიდობისა! დღევანდელი ბიბლიური მომენტები გელით.",
-      "description": "დაიწყეთ დღე ბიბლიის გამამხნევებელი მომენტებით, რომლებიც თქვენი სულის შთაგონებასა და გამხნევებას ემსახურება."
-    },
-    "welcomeAfternoon": {
-      "label": "ნაშუადღევის შთაგონება",
-      "title": "საღამო მშვიდობისა! ბიბლიური მომენტები თქვენი დღისთვის.",
-      "description": "გამამხნევებელი ბიბლიური შიგთავსი, რომელიც იდეალურია ნაშუადღევის შესვენებისთვის ან შთაგონების გასაგრძელებლად."
-    },
-    "welcomeEvening": {
-      "label": "საღამოს შთაგონება",
-      "title": "საღამო მშვიდობისა! დამშვიდდით ბიბლიური მომენტებით.",
-      "description": "მშვიდი ბიბლიური მომენტები, რომლებიც დაგეხმარებათ დაფიქრდეთ და ნუგეში იპოვოთ, როცა დღე სრულდება."
-    },
-    "joinUs": {
-      "label": "შემოგვიერთდით",
-      "title": "მილიარდები ეძებენ პასუხებს",
-      "description": "მოსავლის დრო დადგა. შემოგვიერთდით, როცა ციფრული მედიის დახმარებით სახარებას ვუზიარებთ მსოფლიოს."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "წავიდეთ ერთად",
-      "title": "იესოს ამბის მოყოლა ერთად",
-      "description": "რათა მათ შეძლონ იესოს სიყვარული მოისმინონ და დაინახონ საკუთარ ენაზე, იქ, სადაც არიან."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% დამთხვევა",

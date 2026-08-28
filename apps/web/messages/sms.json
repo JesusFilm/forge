@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Peitt haku",
-    "submitSearch": "Etsi"
+    "submitSearch": "Etsi",
+    "library": "Ǩiiržrââʹjj"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Etsi kielessä {language}: ”{suggestion}”",
     "inLanguage": "kielessä {language}",
     "browseByRegion": "Selaa alueen perusteella",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Kõõll videoid",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "{language} havaittu",
     "searchInLanguage": "Etsi kielessä {language}",
@@ -467,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykõk",
+    "backToTop": "Maacc pââʹjjel",
     "newlyAdded": "Uusid lisätty",
     "newVideosTitle": "Uusit kristtillâš videoid kielessä {language}",
     "newestFirst": "Uusimmat ensin",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Lääʹdd kokoelma"
+    "openCollection": "Lääʹdd kokoelma",
+    "filters": "Sillâ",
+    "filterLength": "Kookkadvuõtt",
+    "filterLength_under5": "Occanj ko 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Jäänab ko 30 min",
+    "filterType": "Sorttâ",
+    "clearFilters": "Ciõlkkâd sillâ",
+    "filterResults": "Čuäʹjtet {count} / {total}",
+    "noFilterResults": "Ni õhtt video ij šiõtt tän sillid. Ǩiõčč väʹldded õõut jåura.",
+    "filterAdded": "Lââʹzztum",
+    "filterAdded_60d": "Mââimõs 60 peeiʹv",
+    "filterAdded_6m": "Mââimõs 6 mannu",
+    "filterAdded_12m": "Mââimõs 12 mannu"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project -katselu",
@@ -646,44 +662,6 @@
     "actionsLabel": "Sivua ei löydy -toiminnot",
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoid"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Katso lyhytelokuva",
-    "actions": {
-      "joinUs": "Liity mukaan",
-      "shareMission": "Jaa lähetystehtävässämme"
-    },
-    "welcomeStart": {
-      "label": "Usko ja Raamattu",
-      "title": "Tämän päivän videovalinnat",
-      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään pohdintaa."
-    },
-    "welcomeMorning": {
-      "label": "Aamun inspiraatio",
-      "title": "Hyvää huomenta! Tämän päivän Raamattu-hetket odottavat.",
-      "description": "Aloita päiväsi rohkaisevilla Raamattu-hetkillä, jotka on suunniteltu inspiroimaan ja kohottamaan mieltäsi."
-    },
-    "welcomeAfternoon": {
-      "label": "Iltapäivän inspiraatio",
-      "title": "Hyvää iltapäivää! Raamattu-hetkiä päivääsi.",
-      "description": "Rohkaisevaa Raamattu-sisältöä juuri iltapäivän tauollesi tai jatkamaan inspiraatiota."
-    },
-    "welcomeEvening": {
-      "label": "Illan inspiraatio",
-      "title": "Hyvää iltaa! Rauhoitu Raamattu-hetkien parissa.",
-      "description": "Rauhallisia Raamattu-hetkiä, jotka auttavat sinua hiljentymään ja löytämään lohtua päivän päättyessä."
-    },
-    "joinUs": {
-      "label": "Liity mukaan",
-      "title": "Miljardit etsivät",
-      "description": "Sato on täällä. Liity mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kuljetaan yhdessä",
-      "title": "Kerrotaan Jeesuksen tarina yhdessä",
-      "description": "Jotta he voivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään juuri siellä missä ovat."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent} % såppâmvuõtt",

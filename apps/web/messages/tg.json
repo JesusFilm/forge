@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Тағйири забони аудио",
     "home": "Саҳифаи асосии JesusFilm",
     "closeSearch": "Пӯшидани ҷустуҷӯ",
-    "submitSearch": "Ҷустуҷӯ"
+    "submitSearch": "Ҷустуҷӯ",
+    "library": "Китобхона"
   },
   "SearchOverlay": {
     "dialogLabel": "Ҷустуҷӯ ва бозрасии видеоҳо",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}»-ро ба забони {language} ҷустуҷӯ кунед",
     "inLanguage": "ба забони {language}",
     "browseByRegion": "Аз рӯйи минтақа паймоиш кунед",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Ҳамаи видеоҳо дар як саҳифа",
     "clearLanguages": "Тоза кардан",
     "queryLanguageDetected": "{language} муайян шуд",
     "searchInLanguage": "Ба забони {language} ҷустуҷӯ кунед",
@@ -467,6 +468,7 @@
     "sports": "Варзиш",
     "collections": "Маҷмӯаҳо",
     "subtitlesOnly": "Танҳо субтитрҳо",
+    "backToTop": "Ба боло",
     "newlyAdded": "Нав илова шудааст",
     "newVideosTitle": "Видеоҳои масеҳии нав ба забони {language}",
     "newestFirst": "Аввал навтарин",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Видеоҳои мустақил",
     "videosFromCollection": "Видеоҳо аз {collection}.",
     "standaloneDescription": "Видеоҳои мустақил дар ин забон.",
-    "openCollection": "Кушодани маҷмӯа"
+    "openCollection": "Кушодани маҷмӯа",
+    "filters": "Филтрҳо",
+    "filterLength": "Давомнокӣ",
+    "filterLength_under5": "Камтар аз 5 дақиқа",
+    "filterLength_5to10": "5-10 дақиқа",
+    "filterLength_10to30": "10-30 дақиқа",
+    "filterLength_over30": "Бештар аз 30 дақиқа",
+    "filterType": "Навъ",
+    "clearFilters": "Тоза кардани филтрҳо",
+    "filterResults": "{count} аз {total} нишон дода шуд",
+    "noFilterResults": "Ягон видео ба ин филтрҳо мувофиқ нест. Кӯшиш кунед якеро бардоред.",
+    "filterAdded": "Илова шуд",
+    "filterAdded_60d": "60 рӯзи охир",
+    "filterAdded_6m": "6 моҳи охир",
+    "filterAdded_12m": "12 моҳи охир"
   },
   "WatchHome": {
     "pageTitle": "Тамошои Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Амалиётҳои саҳифаи ёфтнашуда",
     "backToWatch": "Бозгашт ба Тамошо",
     "browseVideos": "Паймоиши видеоҳо"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Филми кӯтоҳро тамошо кунед",
-    "actions": {
-      "joinUs": "Ба мо ҳамроҳ шавед",
-      "shareMission": "Дар рисолати мо саҳм гузоред"
-    },
-    "welcomeStart": {
-      "label": "Имон ва Навиштаҳо",
-      "title": "Пешниҳодҳои имрӯзаи видео",
-      "description": "Мундариҷаи видеоии бар асоси имон аз китобхонаи мо, ки илҳом мебахшад, ба андеша водор мекунад ва тафаккурро бедор месозад."
-    },
-    "welcomeMorning": {
-      "label": "Илҳоми субҳ",
-      "title": "Субҳ ба хайр! Лаҳзаҳои имрӯзаи Китоби Муқаддас шуморо интизоранд.",
-      "description": "Рӯзи худро бо лаҳзаҳои рӯҳбахши Китоби Муқаддас оғоз кунед, то шуморо илҳом бахшанд ва рӯҳи шуморо боло баранд."
-    },
-    "welcomeAfternoon": {
-      "label": "Илҳоми нисфирӯзӣ",
-      "title": "Нисфирӯз ба хайр! Лаҳзаҳои Китоби Муқаддас барои рӯзи шумо.",
-      "description": "Мундариҷаи рӯҳбахши Китоби Муқаддас, ки барои танаффуси нисфирӯзӣ ё идомаи илҳом комил аст."
-    },
-    "welcomeEvening": {
-      "label": "Илҳоми шом",
-      "title": "Шом ба хайр! Бо лаҳзаҳои Китоби Муқаддас ором шавед.",
-      "description": "Лаҳзаҳои ороми Китоби Муқаддас, то ҳангоми анҷоми рӯзи худ андеша кунед ва тасаллӣ пайдо намоед."
-    },
-    "joinUs": {
-      "label": "Ба мо ҳамроҳ шавед",
-      "title": "Миллиардҳо нафар ҷустуҷӯ доранд",
-      "description": "Ҳосил ҳозир аст. Бо мо ҳамроҳ шавед, то Инҷилро бо воситаи медиаҳои рақамӣ ба ҷаҳон бирасонем."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Биёед якҷо равем",
-      "title": "Ҳикояи Исоро якҷо нақл мекунем",
-      "description": "То онҳо муҳаббати Исоро бо забони худ, дар ҷое ки ҳастанд, бишнаванд ва бубинанд."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% мувофиқат",

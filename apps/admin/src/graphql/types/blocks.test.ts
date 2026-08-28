@@ -197,6 +197,10 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  watchHomeCategoryRail: {
+    t: "watchHomeCategoryRail",
+    categoryIds: ["family", "gospels", "jesus"],
+  },
   watchHomeHero: {
     t: "watchHomeHero",
   },
@@ -209,6 +213,24 @@ const expectedKeys = Object.keys(T_TO_TYPENAME) as BlockKind[]
 describe("blocks fixture set covers every kind in T_TO_TYPENAME", () => {
   it("has the same key set as T_TO_TYPENAME (no missing or stale fixtures)", () => {
     expect([...fixtureKeys].sort()).toEqual([...expectedKeys].sort())
+  })
+})
+
+describe("WatchHomeCategoryRailBlock fields", () => {
+  it("preserves the authored category order", async () => {
+    const resolve = fieldResolver("WatchHomeCategoryRailBlock", "categoryIds")
+
+    const result = await resolve(
+      fixtures.watchHomeCategoryRail,
+      {},
+      {},
+      fakeInfo,
+    )
+    expect(result).toEqual(["family", "gospels", "jesus"])
+    const type = schema.getType(
+      "WatchHomeCategoryRailBlock",
+    ) as GraphQLObjectType
+    expect(String(type.getFields().categoryIds?.type)).toBe("[String!]!")
   })
 })
 

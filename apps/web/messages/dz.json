@@ -180,7 +180,8 @@
     "changeAudioLanguage": "སྒྲ་སྐད་བསྒྱུར།",
     "home": "JesusFilm གཙོ་ཤོག",
     "closeSearch": "འཚོལ་ཞིབ་ཁ་བསྡམ།",
-    "submitSearch": "འཚོལ།"
+    "submitSearch": "འཚོལ།",
+    "library": "དཔེ་མཛོད།"
   },
   "SearchOverlay": {
     "dialogLabel": "བརྙན་སྡེ་འཚོལ་ཡང་ན་ལྟ་སྐོར།",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” འདི་ {language} ནང་འཚོལ།",
     "inLanguage": "{language} ནང",
     "browseByRegion": "ལུང་ཕྱོགས་ལྟར་ལྟ་སྐོར།",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "བརྙན་སྡེ་ཚང་མ་ཤོག་ལེབ་གཅིག་གུ",
     "clearLanguages": "བསལ།",
     "queryLanguageDetected": "{language} བརྡ་འཛིན་འབད་ཡོད།",
     "searchInLanguage": "{language} ནང་འཚོལ།",
@@ -467,6 +468,7 @@
     "sports": "རྩེད་རིགས།",
     "collections": "བསྡུ་ཚན།",
     "subtitlesOnly": "བརྡ་དཔེ་རྐྱང་པ།",
+    "backToTop": "ཡར་ལོག",
     "newlyAdded": "གསར་བཙུགས་བཏང་ཡོད།",
     "newVideosTitle": "{language} ནང་གསར་པ་གསོལ་བཤད་བརྙན་སྡེ།",
     "newestFirst": "གསར་ཤོས་སྔོན་ལས།",
@@ -497,7 +499,21 @@
     "standaloneVideos": "རང་རྐྱང་བརྙན་སྡེ།",
     "videosFromCollection": "{collection} ལས་བརྙན་སྡེ།",
     "standaloneDescription": "འ་ནི་སྐད་ཡིག་ནང་རང་རྐྱང་བརྙན་སྡེ།",
-    "openCollection": "བསྡུ་ཚན་ཁ་ཕྱེ།"
+    "openCollection": "བསྡུ་ཚན་ཁ་ཕྱེ།",
+    "filters": "ཚགས་མ།",
+    "filterLength": "རིང་ཚད།",
+    "filterLength_under5": "སྐར་མ ༥ ལས་ཉུང་།",
+    "filterLength_5to10": "སྐར་མ ༥-༡༠",
+    "filterLength_10to30": "སྐར་མ ༡༠-༣༠",
+    "filterLength_over30": "སྐར་མ ༣༠ ལས་ལྷག",
+    "filterType": "དབྱེ་བ།",
+    "clearFilters": "ཚགས་མ་བསལ།",
+    "filterResults": "{total} ནང་ལས {count} བཀྲམ་བཞག",
+    "noFilterResults": "ཚགས་མ་འདི་ཚུ་དང་མཐུནམ་གློག་བརྙན་མིན་འདུག། གཅིག་ཕྱིར་བཏོན་གནང་།",
+    "filterAdded": "བསྣན་ཡོདཔ།",
+    "filterAdded_60d": "ཉིནམ ༦༠ གི་ནང་།",
+    "filterAdded_6m": "ཟླཝ ༦ གི་ནང་།",
+    "filterAdded_12m": "ཟླཝ ༡༢ གི་ནང་།"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ལྟ་སྐོར།",
@@ -646,44 +662,6 @@
     "actionsLabel": "ཤོག་ལེབ་མ་ཐོབ་བྱ་ལས།",
     "backToWatch": "ལྟ་སྐོར་ལུ་ལོག",
     "browseVideos": "བརྙན་སྡེ་ལྟ་སྐོར་འབད"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "གློག་བརྙན་ཐུང་ཀུ་ལྟ།",
-    "actions": {
-      "joinUs": "ང་ཚོ་དང་མཉམ་ཞུགས།",
-      "shareMission": "ང་ཚོའི་ལས་འགན་ལ་མཉམ་སྤྱོད་འབད།"
-    },
-    "welcomeStart": {
-      "label": "དད་པ་དང་གསུང་རབ།",
-      "title": "ད་རིང་གི་བརྙན་སྡེ་གདམ་ཁ།",
-      "description": "ང་ཚོའི་དཔེ་མཛོད་ནང་ལས་དད་པ་ལྟེ་བའི་བརྙན་སྡེ་ནང་དོན་ཚུ་གིས་སྐུལ་མ་དང་། དཀའ་སྤྱད། དེ་ལས་བསམ་ཞིབ་སྐྱེད།"
-    },
-    "welcomeMorning": {
-      "label": "ཞོགས་ཀས་སྐུལ་མ།",
-      "title": "ཞོགས་པ་བཟང་པོ། དེ་རིང་གི་བཀའ་དེབ་སྣང་བརྙན་སྒུག་ཡོད།",
-      "description": "ཁྱེད་ཀྱི་ཉིན་མོ་སྐུལ་མ་དང་སེམས་སྤོབས་སྐྱེད་ནིའི་དོན་ལུ་བཟོས་པའི་བཀའ་དེབ་ཀྱི་སྣང་བརྙན་ཚུ་དང་མཉམ་དུ་ཉིན་མོ་འགོ་བཙུགས།"
-    },
-    "welcomeAfternoon": {
-      "label": "ཉིན་ཕྱི་དྲོའི་སྐུལ་མ།",
-      "title": "ཉིན་ཕྱི་དྲོ་བཟང་པོ། ཁྱེད་ཀྱི་ཉིན་མོའི་བཀའ་དེབ་སྣང་བརྙན་འདི་ནང་ཡོད།",
-      "description": "ཉིན་ཕྱི་དྲོའི་ངལ་གསོ་དང་ཡང་ན་སྐུལ་མ་འཕྲོ་མཐུད་ལུ་འཚམ་པའི་བཀའ་དེབ་ཀྱི་ནང་དོན་སྐུལ་མ་ཅན་ཚུ།"
-    },
-    "welcomeEvening": {
-      "label": "དགོང་མོའི་སྐུལ་མ།",
-      "title": "དགོང་མོ་བཟང་པོ། བཀའ་དེབ་སྣང་བརྙན་དང་མཉམ་དུ་ངལ་གསོ།",
-      "description": "ཉིན་མོ་མཇུག་བསྡུ་བའི་སྐབས་བསམ་ཞིབ་དང་སེམས་གསོ་འཐོབ་ནིའི་དོན་ལུ་ཞི་བདེའི་བཀའ་དེབ་སྣང་བརྙན་ཚུ།"
-    },
-    "joinUs": {
-      "label": "ང་ཚོ་དང་མཉམ་ཞུགས།",
-      "title": "ཀ་གྲངས་མང་པོས་འཚོལ་བཞིན་པ་ཨིན།",
-      "description": "སྡུད་ལེན་འདི་འབྱོར་ཡོད། ཌི་ཇི་ཊཱལ་བརྒྱུད་ལམ་ཐོག་ནས་འཛམ་གླིང་ལུ་མགྱོགས་པར་སྤེལ་བཞིན་པའི་བཀའ་བཟང་དང་མཉམ་དུ་ང་ཚོ་དང་འགྲོ་གྲོགས་བྱེད།"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ང་ཚོ་མཉམ་དུ་འགྲོ།",
-      "title": "ཡེ་ཤུའི་གཏམ་རྒྱུད་མཉམ་དུ་བཤད་པ།",
-      "description": "དེ་ཚུ་ལུ་ཁོང་རང་སོ་སོའི་སྐད་ཡིག་ནང་ཡེ་ཤུའི་དགའ་བའི་བྱམས་པ་ཐོས་ནི་དང་མཐོང་ནི་གི་གོ་སྐབས་ཡོད།"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% མཐུན།",

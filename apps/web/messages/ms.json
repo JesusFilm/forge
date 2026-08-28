@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
     "closeSearch": "Tutup carian",
-    "submitSearch": "Cari"
+    "submitSearch": "Cari",
+    "library": "Pustaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan teroka video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Cari “{suggestion}” dalam {language}",
     "inLanguage": "dalam {language}",
     "browseByRegion": "Semak imbas mengikut wilayah",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Semua video dalam satu halaman",
     "clearLanguages": "Kosongkan",
     "queryLanguageDetected": "{language} dikesan",
     "searchInLanguage": "Cari dalam {language}",
@@ -283,6 +284,7 @@
     "sports": "Sukan",
     "collections": "Koleksi",
     "subtitlesOnly": "Sari kata sahaja",
+    "backToTop": "Kembali ke atas",
     "newlyAdded": "Baru ditambah",
     "newVideosTitle": "Video Kristian baharu dalam {language}",
     "newestFirst": "Terbaharu dahulu",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video kendiri",
     "videosFromCollection": "Video daripada {collection}.",
     "standaloneDescription": "Video kendiri dalam bahasa ini.",
-    "openCollection": "Buka koleksi"
+    "openCollection": "Buka koleksi",
+    "filters": "Penapis",
+    "filterLength": "Tempoh",
+    "filterLength_under5": "Kurang 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Lebih 30 min",
+    "filterType": "Jenis",
+    "clearFilters": "Kosongkan penapis",
+    "filterResults": "{count} daripada {total} ditunjukkan",
+    "noFilterResults": "Tiada video sepadan dengan penapis ini. Cuba buang satu.",
+    "filterAdded": "Ditambah",
+    "filterAdded_60d": "60 hari lepas",
+    "filterAdded_6m": "6 bulan lepas",
+    "filterAdded_12m": "12 bulan lepas"
   },
   "WatchHome": {
     "pageTitle": "Tontonan Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tonton Filem Pendek",
-    "actions": {
-      "joinUs": "Sertai Kami",
-      "shareMission": "Berkongsi dalam Misi Kami"
-    },
-    "welcomeStart": {
-      "label": "Iman & Kitab Suci",
-      "title": "Pilihan Video Hari Ini",
-      "description": "Kandungan video berteraskan iman daripada pustaka kami untuk mengilhamkan, mencabar dan mencetuskan renungan."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasi Pagi",
-      "title": "Selamat Pagi! Momen Alkitab Hari Ini Menanti Anda.",
-      "description": "Mulakan hari anda dengan momen Alkitab yang menggalakkan, direka untuk mengilhamkan dan menyegarkan roh anda."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasi Petang",
-      "title": "Selamat Petang! Momen Alkitab untuk Hari Anda.",
-      "description": "Kandungan Alkitab yang menggalakkan, sesuai untuk rehat petang atau sebagai sumber inspirasi berterusan."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasi Petang",
-      "title": "Selamat Petang! Tenangkan Diri dengan Momen Alkitab.",
-      "description": "Momen Alkitab yang damai untuk membantu anda merenung dan mendapat ketenangan ketika hari anda berakhir."
-    },
-    "joinUs": {
-      "label": "Sertai Kami",
-      "title": "Berbilion-bilion sedang mencari",
-      "description": "Tuaian sudah tiba. Sertai kami ketika kami menyampaikan Injil kepada dunia melalui media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mari pergi bersama",
-      "title": "Menceritakan Kisah Yesus, Bersama-sama",
-      "description": "Supaya mereka dapat mendengar dan melihat kasih Yesus dalam bahasa mereka sendiri, di mana sahaja mereka berada."
     }
   },
   "VideoRecommendations": {

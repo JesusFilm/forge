@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambia lengua de l’audio",
     "home": "Pagina principal de JesusFilm",
     "closeSearch": "Sara ricerca",
-    "submitSearch": "Serca"
+    "submitSearch": "Serca",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Serca e navega video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Serca «{suggestion}» in lengua {language}",
     "inLanguage": "in lengua {language}",
     "browseByRegion": "Navega par region",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tuti i video su na pagina",
     "clearLanguages": "Pulisci",
     "queryLanguageDetected": "{language} rilevà",
     "searchInLanguage": "Serca in lengua {language}",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Colessioni",
     "subtitlesOnly": "Solo sottotitoli",
+    "backToTop": "Torna sù",
     "newlyAdded": "Zonta de recente",
     "newVideosTitle": "Video cristiani novi in {language}",
     "newestFirst": "Prima i più novì",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video indipendenti",
     "videosFromCollection": "Video da {collection}.",
     "standaloneDescription": "Video indipendenti in sta lengua.",
-    "openCollection": "Vara colession"
+    "openCollection": "Vara colession",
+    "filters": "Filtri",
+    "filterLength": "Durata",
+    "filterLength_under5": "Manco de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Pì de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Scancela i filtri",
+    "filterResults": "{count} de {total} mostrà",
+    "noFilterResults": "Nissun video coresponde a sti filtri. Prova a levarghene uno.",
+    "filterAdded": "Zontà",
+    "filterAdded_60d": "Ultimi 60 dì",
+    "filterAdded_6m": "Ultimi 6 mesi",
+    "filterAdded_12m": "Ultimi 12 mesi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Guardàr",
@@ -646,44 +662,6 @@
     "actionsLabel": "Azioni par pagina no trovà",
     "backToWatch": "Torna a Guardàr",
     "browseVideos": "Navega tra i video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Varda el cortometragio",
-    "actions": {
-      "joinUs": "Unìteve a noi",
-      "shareMission": "Condividi la nostra mission"
-    },
-    "welcomeStart": {
-      "label": "Fede e Scrittura",
-      "title": "I video de oggi",
-      "description": "Contenuti video centrài su la fede da la nostra biblioteca, par inspirar, sfidar e far nascer riflession."
-    },
-    "welcomeMorning": {
-      "label": "Inspirassion de matina",
-      "title": "Bon dì! I momenti biblici de ogi te speta.",
-      "description": "Inizia la zornada con momenti biblici che inspiren e alzen el to spirito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirassion de dopopranzo",
-      "title": "Bon dopopranzo! Momenti biblici par la to zornada.",
-      "description": "Contenuti biblici che infonde corajo, perfeti par na pausa de dopopranzo o par continuar a ricever inspirassion."
-    },
-    "welcomeEvening": {
-      "label": "Inspirassion de sera",
-      "title": "Bonasera! Rilassite co i momenti biblici.",
-      "description": "Momenti biblici de paix par aiutarte a rifletter e trovar conforto co la zornada che se conza."
-    },
-    "joinUs": {
-      "label": "Unìteve a noi",
-      "title": "Milliardi i xe in cerca",
-      "description": "La messe xe qua. Unìteve a noi par condivider el vangelo co el mondo tramite i media digitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Védemo insieme",
-      "title": "Contar la storia de Gesù, insieme",
-      "description": "Cussì che i pol sentir e veder el amor de Gesù in la so lengua, proprio là dove i xe."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% de corispondenza",

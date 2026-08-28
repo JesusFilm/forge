@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылез воштӥл",
     "home": "JesusFilm шӧр",
     "closeSearch": "Утчалонез пыдӥл",
-    "submitSearch": "Утчалы"
+    "submitSearch": "Утчалы",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоос утчалы но выжыты",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} кылын «{suggestion}» утчалы",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр выжыты",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Вань видеоос огъя страница вылын",
     "clearLanguages": "Вань",
     "queryLanguageDetected": "{language} табыны",
     "searchInLanguage": "{language} кылын утчалы",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Сборникъёс",
     "subtitlesOnly": "Только субтитръёс",
+    "backToTop": "Вылэ берытскыны",
     "newlyAdded": "Нырыз пыдӥсез",
     "newVideosTitle": "{language} кылын тӥ христиан видеоос",
     "newestFirst": "Нырыз тӥ ӧтӥсько",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Кузьы видеоос",
     "videosFromCollection": "{collection} вылысь видеоос.",
     "standaloneDescription": "Та кылын кузьы видеоос.",
-    "openCollection": "Сборникез ӧтӥл"
+    "openCollection": "Сборникез ӧтӥл",
+    "filters": "Пыртонъёс",
+    "filterLength": "Кузьдала",
+    "filterLength_under5": "5 минутлэсь ӧжыт",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутлэсь трос",
+    "filterType": "Мында",
+    "clearFilters": "Пыртонъёсты сузяны",
+    "filterResults": "{total}-ысь {count} возьматӥсько",
+    "noFilterResults": "Та пыртонъёслы тупась видео ӧвӧл. Огзэ басьтыса учке.",
+    "filterAdded": "Ватсамын",
+    "filterAdded_60d": "Берпуметӥ 60 нунал",
+    "filterAdded_6m": "Берпуметӥ 6 толэзь",
+    "filterAdded_12m": "Берпуметӥ 12 толэзь"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — ваньтон",
@@ -646,44 +662,6 @@
     "actionsLabel": "Страница табыны ӧвӧл действияос",
     "backToWatch": "Ӧтӥл шоры бертӥ",
     "browseVideos": "Видеоосез выжыты"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыска фильмез ваньты",
-    "actions": {
-      "joinUs": "Миеныз пырӟиськыла",
-      "shareMission": "Миссиямыз шӧртэмләсе пӧртэм"
-    },
-    "welcomeStart": {
-      "label": "Вера но Писание",
-      "title": "Танязы видео таңдаос",
-      "description": "Библиотекамысь вералы юрттӥсь видео контент, тауъяськыны, ӧрскытӥськыны но ойлымон карыны."
-    },
-    "welcomeMorning": {
-      "label": "Тангыртэмен шӧр",
-      "title": "Тау, тани кезьыт! Библияны кӧня мылкыдъёс күтэ.",
-      "description": "Кояшьыны но шӧдӥськыны юрттӥсь Библия мылкыдъёсымен уд кал. Ческе күнез заводить карыны."
-    },
-    "welcomeAfternoon": {
-      "label": "Пусӥськон пум",
-      "title": "Тау, пусӥськон пум! Кунлы Библия мылкыдъёс.",
-      "description": "Пусӥськон пумын тынад тыныды тупатысь, ӧрскытӥськись Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Шуныт пум",
-      "title": "Тау, шуныт пум! Библия мылкыдъёсын тыныныз.",
-      "description": "Күн потэм вакытлы ойгыны, ойлымон карӥськыны но тыныд табыныны юрттӥсь шуныт Библия мылкыдъёс."
-    },
-    "joinUs": {
-      "label": "Миеныз пырӟиськыла",
-      "title": "Миллиардъёс утчают",
-      "description": "Уҗэз тадыр. Цифровой медиа пыр быдӥсь улослы Евангелиеез верамын миеныз пырӟиськыла."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ваньмыз ӧтчыяськыны",
-      "title": "Jesus тарихез ваньмыз ӧтчыяськыны верамын",
-      "description": "Солэн калыкез лэсьтӥськыны, соин кылын, йыртыдлы асьтӥд урын туж юн ӧлӟыны да көриськыны."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% тупаськон",

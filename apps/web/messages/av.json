@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудиоялъе миллат бади",
     "home": "JesusFilm хона",
     "closeSearch": "Кӏалъан бекьизе",
-    "submitSearch": "Кӏалъе"
+    "submitSearch": "Кӏалъе",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео кӏалъе ва къадалъан бие",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} мацӏалда «{suggestion}» кӏалъе",
     "inLanguage": "{language} лъайда",
     "browseByRegion": "Регионниса кӏалъе",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Киналго видеол цо страницалда",
     "clearLanguages": "Бекьизе",
     "queryLanguageDetected": "{language} цӏумена",
     "searchInLanguage": "{language} мацӏалда кӏалъе",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциял",
     "subtitlesOnly": "Субтитрал ган",
+    "backToTop": "Тӏадегӏан",
     "newlyAdded": "Цӏидаса кьабул гьабураб",
     "newVideosTitle": "{language}-да цӏияб христианский видеол",
     "newestFirst": "Бищун цӏияб аввал",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӏатӏа видеол",
     "videosFromCollection": "{collection}-дан видеол.",
     "standaloneDescription": "Гьаб тилалда тӏатӏа видеол.",
-    "openCollection": "Коллекция къоларух"
+    "openCollection": "Коллекция къоларух",
+    "filters": "Тӏасалъиял",
+    "filterLength": "Халалъи",
+    "filterLength_under5": "5 минуталдаса дагьаб",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуталдаса цӏикӏкӏун",
+    "filterType": "Тайпа",
+    "clearFilters": "Тӏасалъиял цӏунизе",
+    "filterResults": "{total}-даса {count} бихьизабуна",
+    "noFilterResults": "Гьал тӏасалъиялде рекъараб видео гьечӏо. Цо бахъизе гьабе.",
+    "filterAdded": "Жубараб",
+    "filterAdded_60d": "Ахирисел 60 къо",
+    "filterAdded_6m": "Ахирисел 6 моцӏ",
+    "filterAdded_12m": "Ахирисел 12 моцӏ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Смотре",
@@ -646,44 +662,6 @@
     "actionsLabel": "Бетарица страница actions",
     "backToWatch": "Смотрелде тӏадбухъе",
     "browseVideos": "Видео къадалъе"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Къиса фильм къадалъе",
-    "actions": {
-      "joinUs": "Нижги къолӏе",
-      "shareMission": "Миссиябилъе гьаб хъвалин пайдам гьабе"
-    },
-    "welcomeStart": {
-      "label": "Иман ва Scripture",
-      "title": "Гьанжисел video тӏалъатӏал",
-      "description": "Къалъулал хъвалил, таасир гьабизе ва фикиралде къотӏизе кумек гьабулеб видеолал нашей библиотекадан."
-    },
-    "welcomeMorning": {
-      "label": "Багъараб ильхам",
-      "title": "Багъараб хъвазе! Гьанжисел Библиялал моментал күтӏул буго.",
-      "description": "Дий къадалъараб Библиялал моменталдалъан багъараб бастӏизе ва рухӏ къотӏизе кумек гьабе."
-    },
-    "welcomeAfternoon": {
-      "label": "Къадалъадаб ильхам",
-      "title": "Къадалъаб хъвазе! Кунгейлъе Библиялал моментал.",
-      "description": "Къадалъараб тынысалда цӏалул лъулалъе гьабураб, ильхам кьолеб Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Къантӏизе ильхам",
-      "title": "Къантӏаб хъвазе! Библиялал моменталдалъан къотӏе.",
-      "description": "Къантӏараб Библиялал моментал, кӏалъазе ва гьанжисел къалбазе тыныс кьолеб."
-    },
-    "joinUs": {
-      "label": "Нижги къолӏе",
-      "title": "Миллиардал къваригьал буго",
-      "description": "Хъулухъал гьанже буго. Цифровой медиа пайдал гьабулеб гьазе дунъялалде Инжил бицине нижги къолӏе."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Цӏияб хъвалилде кӏолӏе",
-      "title": "Исаалъул хъвалил бицине, нижги гьабе",
-      "description": "Гьедал ахьвине ва дидизе кӏола, Исаалъул махӏабат жиндаго тилалда, жиндир бугеб хӏалалда тӏад."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% рекъола",

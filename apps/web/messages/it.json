@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambia lingua audio",
     "home": "Home di JesusFilm",
     "closeSearch": "Chiudi ricerca",
-    "submitSearch": "Cerca"
+    "submitSearch": "Cerca",
+    "library": "Videoteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca e sfoglia video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Cerca «{suggestion}» in {language}",
     "inLanguage": "Lingua: {language}",
     "browseByRegion": "Sfoglia per regione",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tutti i video in una pagina",
     "clearLanguages": "Cancella",
     "queryLanguageDetected": "Rilevato {language}",
     "searchInLanguage": "Cerca in {language}",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Raccolte",
     "subtitlesOnly": "Solo sottotitoli",
+    "backToTop": "Torna su",
     "newlyAdded": "Aggiunti di recente",
     "newVideosTitle": "Nuovi video cristiani in {language}",
     "newestFirst": "Più recenti prima",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video autonomi",
     "videosFromCollection": "Video da {collection}.",
     "standaloneDescription": "Video autonomi in questa lingua.",
-    "openCollection": "Apri raccolta"
+    "openCollection": "Apri raccolta",
+    "filters": "Filtri",
+    "filterLength": "Durata",
+    "filterLength_under5": "Meno di 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Più di 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Cancella filtri",
+    "filterResults": "{count} di {total} mostrati",
+    "noFilterResults": "Nessun video corrisponde a questi filtri. Prova a rimuoverne uno.",
+    "filterAdded": "Aggiunto",
+    "filterAdded_60d": "Ultimi 60 giorni",
+    "filterAdded_6m": "Ultimi 6 mesi",
+    "filterAdded_12m": "Ultimi 12 mesi"
   },
   "WatchHome": {
     "pageTitle": "Guarda | Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Guarda il cortometraggio",
-    "actions": {
-      "joinUs": "Unisciti a noi",
-      "shareMission": "Partecipa alla nostra missione"
-    },
-    "welcomeStart": {
-      "label": "Fede e Scrittura",
-      "title": "Le selezioni video di oggi",
-      "description": "Contenuti video incentrati sulla fede dalla nostra raccolta per ispirare, mettere alla prova e stimolare la riflessione."
-    },
-    "welcomeMorning": {
-      "label": "Ispirazione del mattino",
-      "title": "Buongiorno! Ti aspettano i momenti biblici di oggi.",
-      "description": "Inizia la giornata con momenti biblici incoraggianti, pensati per ispirarti e sollevare il tuo spirito."
-    },
-    "welcomeAfternoon": {
-      "label": "Ispirazione del pomeriggio",
-      "title": "Buon pomeriggio! Momenti biblici per la tua giornata.",
-      "description": "Contenuti biblici incoraggianti, perfetti per la pausa pomeridiana o per continuare a trarre ispirazione."
-    },
-    "welcomeEvening": {
-      "label": "Ispirazione della sera",
-      "title": "Buonasera! Rilassati con i momenti biblici.",
-      "description": "Momenti biblici di pace per aiutarti a riflettere e trovare conforto mentre la giornata volge al termine."
-    },
-    "joinUs": {
-      "label": "Unisciti a noi",
-      "title": "Miliardi di persone stanno cercando",
-      "description": "Il raccolto è qui. Unisciti a noi mentre condividiamo il Vangelo con il mondo attraverso i media digitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Andiamo insieme",
-      "title": "Raccontare insieme la storia di Gesù",
-      "description": "Così possano ascoltare e vedere l'amore di Gesù nella loro lingua, proprio dove si trovano."
     }
   },
   "VideoRecommendations": {

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Schimbă limba audio",
     "home": "Pagina principală JesusFilm",
     "closeSearch": "Închide căutarea",
-    "submitSearch": "Caută"
+    "submitSearch": "Caută",
+    "library": "Bibliotecă"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Caută „{suggestion}” în {language}",
     "inLanguage": "în {language}",
     "browseByRegion": "Răsfoiește după regiune",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Toate videoclipurile pe o singură pagină",
     "clearLanguages": "Șterge",
     "queryLanguageDetected": "Detectat: {language}",
     "searchInLanguage": "Caută în {language}",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Colecții",
     "subtitlesOnly": "Doar subtitrări",
+    "backToTop": "Sus",
     "newlyAdded": "Adăugat recent",
     "newVideosTitle": "Videoclipuri creștine noi în {language}",
     "newestFirst": "Cele mai noi primele",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Videoclipuri independente",
     "videosFromCollection": "Videoclipuri din {collection}.",
     "standaloneDescription": "Videoclipuri independente în această limbă.",
-    "openCollection": "Deschide colecția"
+    "openCollection": "Deschide colecția",
+    "filters": "Filtre",
+    "filterLength": "Durată",
+    "filterLength_under5": "Sub 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Peste 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Șterge filtrele",
+    "filterResults": "{count} din {total} afișate",
+    "noFilterResults": "Niciun videoclip nu corespunde acestor filtre. Încearcă să elimini unul.",
+    "filterAdded": "Adăugat",
+    "filterAdded_60d": "Ultimele 60 de zile",
+    "filterAdded_6m": "Ultimele 6 luni",
+    "filterAdded_12m": "Ultimele 12 luni"
   },
   "WatchHome": {
     "pageTitle": "Vizionare Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Urmărește scurtmetrajul",
-    "actions": {
-      "joinUs": "Alătură-te nouă",
-      "shareMission": "Ia parte la misiunea noastră"
-    },
-    "welcomeStart": {
-      "label": "Credință și Scriptură",
-      "title": "Selecția video de astăzi",
-      "description": "Conținut video centrat pe credință din biblioteca noastră, pentru a inspira, a provoca și a stârni reflecția."
-    },
-    "welcomeMorning": {
-      "label": "Inspirație de dimineață",
-      "title": "Bună dimineața! Te așteaptă momente biblice pentru astăzi.",
-      "description": "Începe-ți ziua cu momente biblice încurajatoare, gândite să inspire și să-ți înalțe sufletul."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirație de după-amiază",
-      "title": "Bună după-amiaza! Momente biblice pentru ziua ta.",
-      "description": "Conținut biblic încurajator, perfect pentru pauza de după-amiază sau pentru inspirație în continuare."
-    },
-    "welcomeEvening": {
-      "label": "Inspirație de seară",
-      "title": "Bună seara! Încheie ziua cu momente biblice.",
-      "description": "Momente biblice liniștitoare, care te ajută să reflectezi și să găsești mângâiere pe măsură ce ziua se apropie de sfârșit."
-    },
-    "joinUs": {
-      "label": "Alătură-te nouă",
-      "title": "Miliarde de oameni caută răspunsuri",
-      "description": "Secerișul este aici. Alătură-te nouă în timp ce împărtășim Evanghelia cu lumea prin media digitală."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Să mergem împreună",
-      "title": "Spunem împreună povestea lui Isus",
-      "description": "Ca să poată auzi și vedea dragostea lui Isus în limba lor, chiar acolo unde se află."
     }
   },
   "VideoRecommendations": {

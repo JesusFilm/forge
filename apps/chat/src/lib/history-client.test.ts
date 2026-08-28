@@ -262,3 +262,65 @@ describe("history client — never-throw guarantee", () => {
     }
   })
 })
+
+describe("history client — followUps re-validation (feat-366, AE6 client half)", () => {
+  async function replay(message: Record<string, unknown>) {
+    const result = await fetchHistoryThread({
+      conversationId: "c1",
+      fetchImpl: fetchReturning(200, { messages: [message] }),
+    })
+    expect(result.ok).toBe(true)
+    return result.ok ? result.messages[0] : undefined
+  }
+
+  const stored = (followUps: unknown) => ({
+    id: "r1",
+    role: "assistant",
+    text: "Replayed answer.",
+    createdAt: "2026-08-20T00:00:00.000Z",
+    followUps,
+  })
+
+  it("carries a valid stored list through onto the replayed turn", async () => {
+    expect((await replay(stored(["Why pray?"])))?.followUps).toEqual([
+      "Why pray?",
+    ])
+  })
+
+  it("applies the SAME bound the live frame uses", async () => {
+    // Chat bounds every upstream shape it renders, replay included: an
+    // over-length item and a non-string drop, the rest pass through untouched
+    // (mastra already filtered their CONTENT — AE6).
+    const message = await replay(
+      stored(["q".repeat(121), 7, "Why pray?", "Who is Jesus?"]),
+    )
+    expect(message?.followUps).toEqual(["Why pray?", "Who is Jesus?"])
+  })
+
+  it("caps a stored list at three, even if more were persisted", async () => {
+    const message = await replay(stored(["a", "b", "c", "d", "e"]))
+    expect(message?.followUps).toEqual(["a", "b", "c"])
+  })
+
+  it("leaves the key ABSENT — never [] — when nothing survives", async () => {
+    const message = await replay(stored(["   ", 7]))
+    expect(message).not.toBeUndefined()
+    expect("followUps" in message!).toBe(false)
+  })
+
+  it("leaves the key absent for a junk (non-array) stored shape", async () => {
+    const message = await replay(stored({ questions: ["Why pray?"] }))
+    expect("followUps" in message!).toBe(false)
+  })
+
+  it("never fails the replay over malformed questions — the transcript is the point", async () => {
+    const result = await fetchHistoryThread({
+      conversationId: "c1",
+      fetchImpl: fetchReturning(200, {
+        messages: [stored("not an array at all")],
+      }),
+    })
+    expect(result.ok).toBe(true)
+    expect(result.ok && result.messages).toHaveLength(1)
+  })
+})

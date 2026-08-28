@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Sosa"
+    "submitSearch": "Sosa",
+    "library": "Ebombelo ya mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Sosa «{suggestion}» na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etúká",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Video nyonso na lokasa moko",
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} emonanaki",
     "searchInLanguage": "Sosa na {language}",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kaka ba sous-titres",
+    "backToTop": "Zonga likolo",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba video ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ba video oyo etɛlɛmaka yango moko",
     "videosFromCollection": "Ba video oyo euti na {collection}.",
     "standaloneDescription": "Ba video oyo etɛlɛmaka yango moko na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Batalisi",
+    "filterLength": "Bolai",
+    "filterLength_under5": "Na nse ya miniti 5",
+    "filterLength_5to10": "Miniti 5-10",
+    "filterLength_10to30": "Miniti 10-30",
+    "filterLength_over30": "Koleka miniti 30",
+    "filterType": "Lolenge",
+    "clearFilters": "Longola batalisi",
+    "filterResults": "{count} na {total} elakisami",
+    "noFilterResults": "Vidéo moko te eyokani na batalisi oyo. Meka kolongola moko.",
+    "filterAdded": "Ebakisami",
+    "filterAdded_60d": "Mikolo 60 eleki",
+    "filterAdded_6m": "Basanza 6 eleki",
+    "filterAdded_12m": "Basanza 12 eleki"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Misala ya lokasa emonani te",
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala ba video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Sangana na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondimi mpe Makomi",
-      "title": "Pik ya video ya lelo",
-      "description": "Ba video ya bondimi oyo euti na librari na biso mpo na kolendisa yo, kobenga yo na makanisi, mpe kolamusa botali."
-    },
-    "welcomeMorning": {
-      "label": "Kolendisa ya tongo",
-      "title": "Tongo malamu! Ba moments ya Biblia ya lelo bazali kozela yo.",
-      "description": "Bandá mokolo na yo na ba moments ya Biblia oyo ezali kolendisa mpo na kopesa yo mpiko mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Kolendisa ya midi",
-      "title": "Mwa butu malamu! Ba moments ya Biblia mpo na mokolo na yo.",
-      "description": "Contenu ya Biblia oyo ezali kolendisa, ebongi mpenza mpo na pause na yo ya midi to mpo na kobakisa kolendisa."
-    },
-    "welcomeEvening": {
-      "label": "Kolendisa ya mpokwa",
-      "title": "Mpokwa malamu! Pema na ba moments ya Biblia.",
-      "description": "Ba moments ya Biblia ya kimia mpo na kosalisa yo kotya makanisi mpe kozwa libondisi ntango mokolo na yo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Sangana na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Nguba ezali awa. Sangana na biso wana tozali kokabola Nsango Malamu na mokili na nzela ya média numérique."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Mpo bayoka mpe bámona bolingo ya Yesu na monoko na bango moko, wana bazali esika bazali."
-    }
   },
   "VideoRecommendations": {
     "match": "Ekokani na {percent}%",

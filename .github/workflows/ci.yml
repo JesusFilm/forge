@@ -56,7 +56,7 @@ jobs:
         name: Detect affected services
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo ls --affected --output=json 2>/dev/null || echo "[]")
+          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo ls --affected --output=json)
           SERVICES=$(echo "$TURBO_OUT" | jq -c '
             if type == "array" then
               [ .[] | if type == "object" then (.name // .package // empty) else . end ]
@@ -71,7 +71,7 @@ jobs:
             end
             | map(select(type == "string" and startswith("@forge/")))
             | unique
-          ' 2>/dev/null || echo "[]")
+          ')
           echo "Affected services: $SERVICES"
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
 
@@ -174,7 +174,55 @@ jobs:
         env:
           AUTH_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           BETTER_AUTH_SECRET: auth-integration-secret-not-for-production
-        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts --no-file-parallelism
+        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts --no-file-parallelism
+
+  rag-postgres-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/rag')
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forge
+          POSTGRES_DB: forge_rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forge -d forge_rag"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate RAG schema contract
+        run: pnpm --filter @forge/rag db:schema:check
+      - name: Apply RAG migrations from zero
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag db:migrate:deploy
+      - name: Prove RAG migrations are idempotent and current
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: |
+          pnpm --filter @forge/rag db:migrate:deploy
+          pnpm --filter @forge/rag db:migrate:status
+          pnpm --filter @forge/rag db:drift:check
+      - name: Exercise RAG schema against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag db:verify
 
   format:
     runs-on: ubuntu-latest
@@ -209,6 +257,25 @@ jobs:
       # tvOS patch can't silently re-break the native build. No install needed.
       - name: Check pnpm patch keys match installed versions
         run: node scripts/check-patched-deps.mjs
+
+  hidden-roadmap-lanes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify docs-only roadmap lanes stay hidden
+        run: |
+          pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts
+          pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
 
   dev-port-contract:
     runs-on: ubuntu-latest
@@ -325,8 +392,20 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run Expo Doctor
+      - name: Check Expo package versions
         working-directory: apps/mobile
+        run: npx expo install --check
+      - name: Create isolated mobile dependency tree
+        run: |
+          pnpm --filter @forge/mobile deploy --prod "$RUNNER_TEMP/mobile-doctor"
+          touch "$RUNNER_TEMP/mobile-doctor/pnpm-lock.yaml"
+      - name: Run Expo Doctor
+        working-directory: ${{ runner.temp }}/mobile-doctor
+        env:
+          # Version compatibility is checked above. Isolation prevents Expo
+          # Doctor from treating the auth server's optional Expo peers as
+          # duplicate native modules in the mobile application.
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
         run: npx expo-doctor@1.20.1
 
   build:
@@ -379,8 +458,11 @@ jobs:
       - affected
       - admin-graphql-generate
       - admin-schema-drift
+      - auth-postgres-integration
+      - rag-postgres-integration
       - format
       - patched-deps-guard
+      - hidden-roadmap-lanes
       - dev-port-contract
       - experiment-ledger
       - lint

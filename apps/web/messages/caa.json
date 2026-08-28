@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
     "home": "Ruwotot JesusFilm",
     "closeSearch": "Tatz'apka' sa'j",
-    "submitSearch": "Sa'j"
+    "submitSearch": "Sa'j",
+    "library": "Wuj ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Sa'j y k'axpa' videos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Sa'j \"{suggestion}\" ta {language}",
     "inLanguage": "ta {language}",
     "browseByRegion": "K'axpa' yoj región",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "K'axoj videos ta inte' página",
     "clearLanguages": "Tz'aku'",
     "queryLanguageDetected": "{language} xcha'k'taj",
     "searchInLanguage": "Sa'j ta {language}",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Subtitles xa'",
+    "backToTop": "Tzalij chikaj",
     "newlyAdded": "Añadido ch'utx",
     "newVideosTitle": "Videos cristianos nuevos ta {language}",
     "newestFirst": "Más nuevo primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos ta junxan",
     "videosFromCollection": "Videos ta {collection}.",
     "standaloneDescription": "Videos ta junxan ta ch'ab'äl ri.",
-    "openCollection": "Taq'apa' colección"
+    "openCollection": "Taq'apa' colección",
+    "filters": "Chaꞌonik",
+    "filterLength": "Rakan",
+    "filterLength_under5": "Man nim ta chwach 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chwach 30 minutos",
+    "filterType": "Rwach",
+    "clearFilters": "Chupij ri chaꞌonik",
+    "filterResults": "{count} chi {total} kꞌutun",
+    "noFilterResults": "Man kꞌo ta jun video junam rukꞌ ri chaꞌonik riꞌ. Chesaj jun.",
+    "filterAdded": "Xkoj chik",
+    "filterAdded_60d": "Kꞌisbal 60 qꞌij",
+    "filterAdded_6m": "Kꞌisbal 6 ikꞌ",
+    "filterAdded_12m": "Kꞌisbal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Watz'otz' ta Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Acciones ta página man xk'ul ta",
     "backToWatch": "Tatz'ul chik ta Watch",
     "browseVideos": "K'axpa' videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tz'otz' película ch'ut",
-    "actions": {
-      "joinUs": "Tajb'ej junam",
-      "shareMission": "Sa'j yoj ru misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Videos ta q'ijojb'il ri",
-      "description": "Tzij ta video ta fe ta nuestra biblioteca para k'utb'ej, k'amchik, y k'ajb'ej na'oj."
-    },
-    "welcomeMorning": {
-      "label": "K'utb'il ta ajaw",
-      "title": "Buenos días! Lqi'ik ta Biblia ta q'ij ri.",
-      "description": "Taq'ape' awu'q'ij yoj k'utb'il ta Biblia ta k'amk'oja' y k'utb'ej awanima'."
-    },
-    "welcomeAfternoon": {
-      "label": "K'utb'il ta oq'oj",
-      "title": "Buenos días! K'utb'il ta Biblia pa awu'q'ij.",
-      "description": "Tzij ta Biblia ta k'amk'oja' ta noq'oj o yoj k'utb'il chik."
-    },
-    "welcomeEvening": {
-      "label": "K'utb'il ta ak'ochel",
-      "title": "Buenas noches! Tz'otz' yoj k'utb'il ta Biblia.",
-      "description": "K'utb'il ta Biblia ta k'uxch'och' para awil na'oj y utz ta awu'q'ij ta q'axem."
-    },
-    "joinUs": {
-      "label": "Tajb'ej junam",
-      "title": "Miles millones tajin k'amk'oja'",
-      "description": "Ri cosecha ya'k. Tajb'ej junam chi yoj sa'j ri evangelio pa mundo yoj media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tiyoj junam",
-      "title": "K'utb'ej ri historia ta Jesús, junam",
-      "description": "Pa ta kawil y ta kach'aj ri ru'amor ta Jesús pa ch'ab'äl ri, jarar ak'ojk'il."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% junam",

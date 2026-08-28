@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijäl ruk'ux ri ch'ab'äl audio",
     "home": "JesusFilm ruxaq alaxik",
     "closeSearch": "Titz'apïx kanöxik",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Wuj jay"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx chuqa' tapeq videos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Tikanöx “{suggestion}” pa {language}",
     "inLanguage": "pa {language}",
     "browseByRegion": "Tanik'oj ruma región",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Konojel videos pa jun ruwäch wuj",
     "clearLanguages": "Tijikïx",
     "queryLanguageDetected": "Xtz'et {language}",
     "searchInLanguage": "Tikanöx pa {language}",
@@ -467,6 +468,7 @@
     "sports": "Ki'kotem",
     "collections": "K'amonel",
     "subtitlesOnly": "Xaq xe' subtitles",
+    "backToTop": "Tikꞌatzalij chikaj",
     "newlyAdded": "K'ak'a' xtz'aqatisäx",
     "newVideosTitle": "K'ak'a' Christian taq video pa {language}",
     "newestFirst": "Ri k'ak'a' nab'ey",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ta video ri k'aq",
     "videosFromCollection": "Taq video pa {collection}.",
     "standaloneDescription": "Ta video ri k'aq pa re ch'ab'äl re'.",
-    "openCollection": "Tijaq k'amonel"
+    "openCollection": "Tijaq k'amonel",
+    "filters": "Chaꞌonik",
+    "filterLength": "Ruqꞌaꞌ",
+    "filterLength_under5": "Man nïm ta chuwäch 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nïm chuwäch 30 minutos",
+    "filterType": "Ruwäch",
+    "clearFilters": "Tichupïx ri chaꞌonik",
+    "filterResults": "{count} chi {total} nikꞌut",
+    "noFilterResults": "Majun video nijunumäx rikꞌin re chaꞌonik reꞌ. Tawelesaj jun.",
+    "filterAdded": "Xokisäx chi",
+    "filterAdded_60d": "Ruqꞌisbꞌal 60 qꞌij",
+    "filterAdded_6m": "Ruqꞌisbꞌal 6 ikꞌ",
+    "filterAdded_12m": "Ruqꞌisbꞌal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Tatz'eta' pa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Taq b'anik richin majun ruxaq xk'ulutäj",
     "backToWatch": "Tzolin chik pa Watch",
     "browseVideos": "Tanik'oj videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tatz'eta' ko'öl film",
-    "actions": {
-      "joinUs": "Jutijoj chik qawäch",
-      "shareMission": "Tawila' pa qamision"
-    },
-    "welcomeStart": {
-      "label": "Fe chuqa' Escritura",
-      "title": "Taq video ri nikajo' wakami",
-      "description": "Video content pa qach'amonel ri k'o ruq'ij ajowab'al, nitijon, chuqa' nuban na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Nab'ey q'ijil na'oj",
-      "title": "Utz q'ij! Taq Biblia moment ri k'o wakami.",
-      "description": "Titikïr aq'ij rik'in taq Biblia moment ri nib'an richin nakuxtaj chuqa' nak'axaj awanima'."
-    },
-    "welcomeAfternoon": {
-      "label": "Aftan na'oj",
-      "title": "Utz aq'ij! Taq Biblia moment richin ri awiq'ij.",
-      "description": "Taq Biblia content ri nib'an animan chi ya'oj, utz richin ri aq'ij k'iyil o richin nib'anon na'oj chik."
-    },
-    "welcomeEvening": {
-      "label": "Aq'ab' na'oj",
-      "title": "Utz aq'ab'! Taqak'oj jun b'ey rik'in taq Biblia moment.",
-      "description": "Tz'ib'an taq Biblia moment richin nak'axaj na'oj chuqa' natz'ët uchuk'ulem tok ri aq'ij nitzaq."
-    },
-    "joinUs": {
-      "label": "Jutijoj chik qawäch",
-      "title": "Jun'ulik le' are tajin nikanöx",
-      "description": "Ri k'axk'ol k'o wakami. Jutijoj chik qawäch richin niya' rutzijol ri evangelio chuweqaj ri ruwach'ulew rik'in digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Qe'chakun junam",
-      "title": "Nitzijoj ri tzij ri Jesús, junam",
-      "description": "Richin nikitz'ët chuqa' nik'axaj ri rutzilal ri Jesús pa ri achike ch'ab'äl ri k'o chikiwäch chila' achike k'o wi."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% nik'äm ri'",

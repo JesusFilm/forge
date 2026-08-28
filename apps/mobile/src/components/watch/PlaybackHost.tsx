@@ -89,6 +89,10 @@ import {
 } from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
+import {
+  clearPlaybackTransport,
+  setPlaybackTransport,
+} from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -318,6 +322,14 @@ function ActivePlaybackHost({
 
   // R4: what the player already holds, so a screen remounting onto the video it
   // is playing adopts it rather than reloading it from zero.
+  // Status mirrored from the listener below so the published play flag can
+  // tell a rebuffer from a pause; the latch separates a rebuffer from an
+  // initial load, which never played.
+  const [playerStatus, setPlayerStatus] = useState<VideoPlayerStatus | null>(
+    null,
+  )
+  const hasPlayedRef = useRef(false)
+
   const loadedSourceRef = useRef<LoadedSource | null>(null)
   const requestLanguage =
     request.session?.languageSlug ?? request.progressLanguageSlug ?? null
@@ -673,6 +685,22 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
+  // Lends the one player to a surface presented OVER the app (the Bible passage
+  // sheet). Registered beside the facts source because both are the same shape:
+  // the host owns the player, and a route-tree component cannot reach a sibling
+  // of the stack.
+  useEffect(() => {
+    const transport = {
+      isPlaying: () => player.playing,
+      pause: () => player.pause(),
+      play: () => player.play(),
+    }
+    setPlaybackTransport(transport)
+    // Identity-checked: an unconditional null would let a torn-down host clear
+    // a live registration if the two ever overlap.
+    return () => clearPlaybackTransport(transport)
+  }, [player])
+
   // R25 stops playback on a subject change, R6 on a dismissal — neither is
   // covered by the teardown (an expanded screen keeps this host mounted). Every
   // real ending also resets the playback-session settings (R13).
@@ -730,6 +758,7 @@ function ActivePlaybackHost({
       "statusChange",
       ({ status }: { status: VideoPlayerStatus }) => {
         store.setLoadFailed(status === "error")
+        setPlayerStatus(status)
       },
     )
     return () => {
@@ -752,6 +781,10 @@ function ActivePlaybackHost({
       // Player already released
     }
     store.setLoadFailed(current === "error")
+    setPlayerStatus(current)
+    // A new source has not played yet, so its "loading" is an initial load and
+    // must not read as playback.
+    hasPlayedRef.current = false
   }, [store, player, request.streamingUrl])
 
   // ── The floating window (U7) ──────────────────────────────────────────────
@@ -1321,6 +1354,28 @@ function ActivePlaybackHost({
       ],
     }
   }, [shrink, motion])
+
+  // A mid-playback rebuffer drops `isPlaying` on both platforms (Android
+  // mirrors ExoPlayer's STATE_BUFFERING, iOS reports waitingToPlayAtSpecified-
+  // Rate), so publishing it raw makes every network hiccup read as a pause.
+  if (isPlaying) hasPlayedRef.current = true
+  const watching =
+    isPlaying || (hasPlayedRef.current && playerStatus === "loading")
+
+  // Publish playback for layers the host cannot reach by prop (the route's
+  // ambient wash). Mirrors the `setLoadFailed` bridge; the store ignores a
+  // repeat value, so this costs nothing on a re-render.
+  useEffect(() => {
+    store.setPlaying(watching)
+  }, [store, watching])
+
+  // A host that unmounts mid-playback would otherwise leave the flag stuck true
+  // and the wash faded out on a screen with no player at all.
+  useEffect(() => {
+    return () => {
+      store.setPlaying(false)
+    }
+  }, [store])
 
   // Armed only while this video actually runs, so pressing Home over a paused
   // video opens no window — and kept armed through the hold, because expo-video

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Baguhin ang wika ng audio",
     "home": "Tahanan ng JesusFilm",
     "closeSearch": "Isara ang paghahanap",
-    "submitSearch": "Maghanap"
+    "submitSearch": "Maghanap",
+    "library": "Aklatan"
   },
   "SearchOverlay": {
     "dialogLabel": "Maghanap at mag-browse ng mga video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Hanapin sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse ayon sa rehiyon",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Lahat ng video sa isang pahina",
     "clearLanguages": "I-clear",
     "queryLanguageDetected": "May natukoy na {language}",
     "searchInLanguage": "Maghanap sa {language}",
@@ -467,6 +468,7 @@
     "sports": "Palakasan",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Bumalik sa itaas",
     "newlyAdded": "Kakain lamang naidagdag",
     "newVideosTitle": "Mga bagong Christian video sa {language}",
     "newestFirst": "Pinakabago muna",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga standalone na video",
     "videosFromCollection": "Mga video mula sa {collection}.",
     "standaloneDescription": "Mga standalone na video sa wikang ito.",
-    "openCollection": "Buksan ang koleksyon"
+    "openCollection": "Buksan ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Haba",
+    "filterLength_under5": "Mas mababa sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Higit sa 30 min",
+    "filterType": "Uri",
+    "clearFilters": "Alisin ang mga filter",
+    "filterResults": "{count} sa {total} ang nakikita",
+    "noFilterResults": "Walang videong tugma sa mga filter na ito. Subukang alisin ang isa.",
+    "filterAdded": "Naidagdag",
+    "filterAdded_60d": "Huling 60 araw",
+    "filterAdded_6m": "Huling 6 buwan",
+    "filterAdded_12m": "Huling 12 buwan"
   },
   "WatchHome": {
     "pageTitle": "Manood sa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga aksyon para sa page na hindi nakita",
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Panoorin ang Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumama sa Amin",
-      "shareMission": "Makibahagi sa Aming Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya at Kasulatan",
-      "title": "Mga Napiling Video Ngayon",
-      "description": "Nilalaman ng video mula sa aming library na nakasentro sa pananampalataya upang magbigay-inspirasyon, hamunin, at magpasiklab ng pagninilay."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Umaga",
-      "title": "Magandang umaga! Naghihintay ang mga sandali ng Biblia ngayon.",
-      "description": "Simulan ang araw mo sa mga nakapagpapalakas na sandali mula sa Biblia na nilalayong magbigay-inspirasyon at magpasigla ng iyong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Magandang hapon! Mga sandali mula sa Biblia para sa iyong araw.",
-      "description": "Mga nakapagpapalakas na nilalaman mula sa Biblia na angkop sa iyong pahinga sa hapon o sa patuloy na inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gabi",
-      "title": "Magandang gabi! Magpahinga kasama ang mga sandali mula sa Biblia.",
-      "description": "Mga payapang sandali mula sa Biblia upang tulungan kang magnilay at makatagpo ng ginhawa habang nagtatapos ang iyong araw."
-    },
-    "joinUs": {
-      "label": "Sumama sa Amin",
-      "title": "Bilyon-bilyon ang naghahanap",
-      "description": "Nandito na ang ani. Sumama sa amin habang ibinabahagi natin ang ebanghelyo sa buong mundo gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkasama tayo",
-      "title": "Isinasalaysay ang Kuwento ni Jesus, Nang Magkasama",
-      "description": "Upang marinig at makita nila ang pag-ibig ni Jesus sa sarili nilang wika, kung nasaan man sila."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% tugma",

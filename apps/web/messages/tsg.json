@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Homan han JesusFilm",
     "closeSearch": "Isira an search",
-    "submitSearch": "Haapa"
+    "submitSearch": "Haapa",
+    "library": "Librari"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamiling ngan mag-browse hin mga video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Haapa in “{suggestion}” ha bahasa {language}",
     "inLanguage": "ha {language}",
     "browseByRegion": "Mag-browse pinaagi ha rehiyon",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tanang video ha usa ka pahina",
     "clearLanguages": "Haw-ani",
     "queryLanguageDetected": "Nabatyagan an {language}",
     "searchInLanguage": "Maghaap ha bahasa {language}",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle la",
+    "backToTop": "Magbalik pataas",
     "newlyAdded": "Bag-o nga nadugang",
     "newVideosTitle": "Bag-o nga Kristohanon nga mga video ha {language}",
     "newestFirst": "Bag-o anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga nag-usa la",
     "videosFromCollection": "Mga video tikang ha {collection}.",
     "standaloneDescription": "Mga video nga nag-usa la ha hini nga yinaknan.",
-    "openCollection": "Abrihi an koleksyon"
+    "openCollection": "Abrihi an koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Kalugay",
+    "filterLength_under5": "Kulang dayn ha 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labi dayn ha 30 min",
+    "filterType": "Ginis",
+    "clearFilters": "Hukasa in mga filter",
+    "filterResults": "{count} dayn ha {total} in pinapakita",
+    "noFilterResults": "Way video sumusuuk ha manga filter ini. Kawaa in hambuuk.",
+    "filterAdded": "Naragdag",
+    "filterAdded_60d": "Nakauna 60 adlaw",
+    "filterAdded_6m": "Nakauna 6 bulan",
+    "filterAdded_12m": "Nakauna 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagtan-aw ha Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga aksyon para ha waray makit-i nga page",
     "backToWatch": "Balik ha Watch",
     "browseVideos": "Browse hin mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kitaa an Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Upod kamo ha amon",
-      "shareMission": "Ipaambit an amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ngan Kasuratan",
-      "title": "Mga Pili nga Video Para Yana nga Adlaw",
-      "description": "Mga video nga nakasentro ha pagtuo tikang ha amon librarya basi makagdasig, makapahimo hin paghunahuna, ngan makapukaw hin pamalandong."
-    },
-    "welcomeMorning": {
-      "label": "Buntag nga Inspirasyon",
-      "title": "Maupay nga Buntag! Aada An Mga Himo han Biblia Para Yana nga Adlaw.",
-      "description": "Sugdi an imo adlaw pinaagi ha makapadasig nga mga takna han Biblia nga ginhimo basi makadasig ngan makapagbuhi han imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Hapon nga Inspirasyon",
-      "title": "Maupay nga Hapon! Mga Takna han Biblia Para ha Imo Adlaw.",
-      "description": "Makapadasig nga mga sulod han Biblia nga angay para ha imo hapon nga pahuway o padayon nga inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Gab-i nga Inspirasyon",
-      "title": "Maupay nga Gab-i! Magpahuway pinaagi ha Mga Takna han Biblia.",
-      "description": "Malinawon nga mga takna han Biblia nga mabulig ha imo magpamalandong ngan makakita hin kahupayan samtang natatapos an imo adlaw."
-    },
-    "joinUs": {
-      "label": "Upod kamo ha amon",
-      "title": "Bilyones an nagbibiling",
-      "description": "Aada na an anihon. Upod kamo ha amon ha pagpaambit han ebanghelyo ha kalibutan pinaagi ha digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkaupod kita",
-      "title": "Pagsumat han Istorya ni Jesus, Magkaupod kita",
-      "description": "Basi mabatian ngan makita nira an gugma ni Jesus ha ira kalugaringon nga yinaknan mismo didto ha ira kalugaringon nga lugar."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% kaparis",

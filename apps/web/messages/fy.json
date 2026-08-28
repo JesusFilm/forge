@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-taal feroarje",
     "home": "JesusFilm-startside",
     "closeSearch": "Sykjen slute",
-    "submitSearch": "Sykje"
+    "submitSearch": "Sykje",
+    "library": "Bibleteek"
   },
   "SearchOverlay": {
     "dialogLabel": "Fideo's sykje en blêdzje",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Sykje yn {language} nei \"{suggestion}\"",
     "inLanguage": "yn {language}",
     "browseByRegion": "Blêdzje op regio",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Alle fideo’s op ien side",
     "clearLanguages": "Wiskje",
     "queryLanguageDetected": "{language} ûntdutsen",
     "searchInLanguage": "Sykje yn {language}",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolleksjes",
     "subtitlesOnly": "Allinnich ûndertiteling",
+    "backToTop": "Werom nei boppen",
     "newlyAdded": "Koartlyn tafoege",
     "newVideosTitle": "Nije kristlike fideo's yn {language}",
     "newestFirst": "Nijste earst",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Aparte fideo's",
     "videosFromCollection": "Fideo's út {collection}.",
     "standaloneDescription": "Aparte fideo's yn dizze taal.",
-    "openCollection": "Kolleksje iepenje"
+    "openCollection": "Kolleksje iepenje",
+    "filters": "Filterkarren",
+    "filterLength": "Lingte",
+    "filterLength_under5": "Minder as 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mear as 30 min",
+    "filterType": "Soarte",
+    "clearFilters": "Filters wiskje",
+    "filterResults": "{count} fan {total} toand",
+    "noFilterResults": "Gjin fideo's passe by dizze filters. Probearje ien fuort te heljen.",
+    "filterAdded": "Tafoege",
+    "filterAdded_60d": "Lêste 60 dagen",
+    "filterAdded_6m": "Lêste 6 moannen",
+    "filterAdded_12m": "Lêste 12 moannen"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Sjen",
@@ -646,44 +662,6 @@
     "actionsLabel": "Aksjes foar side net fûn",
     "backToWatch": "Werom nei Sjen",
     "browseVideos": "Blêdzje troch fideo's"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Koarte film besjen",
-    "actions": {
-      "joinUs": "Doch mei",
-      "shareMission": "Diel mei yn ús missy"
-    },
-    "welcomeStart": {
-      "label": "Leauwe & Skrift",
-      "title": "Fideokar fan hjoed",
-      "description": "Leauwe-rjochte fideo-ynhâld út ús bibleteek om te ynspirearjen, út te daagjen en ta neitinken oan te setten."
-    },
-    "welcomeMorning": {
-      "label": "Moarnsyntspanning",
-      "title": "Goeie moarn! De bibeleminten fan hjoed wachtsje.",
-      "description": "Begjin jo dei mei bemoedigjende bibelmominten dy't ûntwurpen binne om jo te ynspirearjen en jo geast te ferheffen."
-    },
-    "welcomeAfternoon": {
-      "label": "Midsmidde-yntspanning",
-      "title": "Goeie middei! Bibelmominten foar jo dei.",
-      "description": "Bemoedigjende bibelynhâld, perfekt foar jo middeipauze of foar trochgeande ynspiraasje."
-    },
-    "welcomeEvening": {
-      "label": "Jûnsynspiraasje",
-      "title": "Goedejûn! Kom ta rêst mei bibelmominten.",
-      "description": "Fredefolle bibelmominten om te helpen neitinke en treast te finen as jo dei ta ein rint."
-    },
-    "joinUs": {
-      "label": "Doch mei",
-      "title": "Miljarden sykje",
-      "description": "De rispinge is der. Doch mei as wy it evangeelje mei de wrâld diele fia digitale media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Litte wy tegearre gean",
-      "title": "Tegearre it ferhaal fan Jezus fertelle",
-      "description": "Sadat se de leafde fan Jezus yn har eigen taal hearre en sjen kinne, krekt wêr't se binne."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% oerienkomst",

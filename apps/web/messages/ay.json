@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
     "closeSearch": "Thaqhaña llawuña",
-    "submitSearch": "Thaqhaña"
+    "submitSearch": "Thaqhaña",
+    "library": "Panka uta"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” uk {language} arun thaqhaña",
     "inLanguage": "{language} arun",
     "browseByRegion": "Región tuqit uñakipaña",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Taqi video-naka mä laphina",
     "clearLanguages": "Q’umachaña",
     "queryLanguageDetected": "{language} ukax jikxatäxiwa",
     "searchInLanguage": "{language} arun thaqhaña",
@@ -467,6 +468,7 @@
     "sports": "Deporte-naka",
     "collections": "Tantachäwinaka",
     "subtitlesOnly": "Subtítulos ukiki",
+    "backToTop": "Alayaru kutt'aña",
     "newlyAdded": "Machaq uñt’atatäxi",
     "newVideosTitle": "{language} arun machaq cristiano video-naka",
     "newestFirst": "Machaqanak nayraqata",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapak videos",
     "videosFromCollection": "{collection} ukan video-naka.",
     "standaloneDescription": "Aka arun sapak video-naka.",
-    "openCollection": "Tantachäwi jist’arña"
+    "openCollection": "Tantachäwi jist’arña",
+    "filters": "Chhijllawinaka",
+    "filterLength": "Jayapa",
+    "filterLength_under5": "5 minututa jukʼa",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minututa juk'ampi",
+    "filterType": "Kasta",
+    "clearFilters": "Chhijllawinaka qʼumachaña",
+    "filterResults": "{total} ukat {count} uñachtʼayata",
+    "noFilterResults": "Kuna videos ukanakas jani aka chhijllawinakampi chikachasiti. Mayni apsuñäni.",
+    "filterAdded": "Yapt'ata",
+    "filterAdded_60d": "Qhipa 60 uru",
+    "filterAdded_6m": "Qhipa 6 phaxsi",
+    "filterAdded_12m": "Qhipa 12 phaxsi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Uñch’ukiña",
@@ -646,44 +662,6 @@
     "actionsLabel": "Panka janiw jikxataskiti luräwinaka",
     "backToWatch": "Uñch’ukiñaru kutt’aña",
     "browseVideos": "Video-naka uñakipaña"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Corto metraje uñch’ukiña",
-    "actions": {
-      "joinUs": "Jiwasamp mayacht’asiña",
-      "shareMission": "Misión apost’ar mayacht’asiña"
-    },
-    "welcomeStart": {
-      "label": "Iyawsäwi ukhamaraki Qillqatanaka",
-      "title": "Jichha uru video ajllitanaka",
-      "description": "Bibliasataki video yatiyawinaka, chuymacht’aña, amtasiña ukhamaraki amuyt’aña sartayañataki."
-    },
-    "welcomeMorning": {
-      "label": "Qhantati chuymacht’äwi",
-      "title": "Aski alwatäxiwa. Jichha uru Biblia yäwinakax suyt’asiwa.",
-      "description": "Uru qalltañamatakix Biblia yäwinakamp ch’amañcht’ata, chuymar aynacht’ayañataki wakichata."
-    },
-    "welcomeAfternoon": {
-      "label": "Inti jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Uruympi Biblia yäwinaka.",
-      "description": "Biblia yatiyawinaka chuymacht’añatakiwa, jayp’u samart’añamataki jan ukax juk’amp chuymacht’äwinakataki wali aski."
-    },
-    "welcomeEvening": {
-      "label": "Jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Biblia yäwinakampi samart’aña.",
-      "description": "Samarañ Biblia yäwinaka, urum tukuyki ukhaw amuyt’añataki ukhamaraki chuymachasiñataki yanapt’i."
-    },
-    "joinUs": {
-      "label": "Jiwasamp mayacht’asiña",
-      "title": "Waranqanakax thaqhapxiwa",
-      "description": "Aka yapux utjiwa. Digital media apnaqasa uraqpachar evangelio yatiyañataki jiwasamp mayacht’asiña."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Juk’amp chiqankañäni",
-      "title": "Jesus tuqit saräwi, mayacht’asisana",
-      "description": "Ukhamat kawkhankki uka chiqanxa Jesus ukan munasiwipx arupansa uñt’asa ist’asipxani."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% chikachasiwi",

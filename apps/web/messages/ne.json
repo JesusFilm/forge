@@ -180,7 +180,8 @@
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "home": "JesusFilm गृहपृष्ठ",
     "closeSearch": "खोज बन्द गर्नुहोस्",
-    "submitSearch": "खोज्नुहोस्"
+    "submitSearch": "खोज्नुहोस्",
+    "library": "पुस्तकालय"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} मा “{suggestion}” खोज्नुहोस्",
     "inLanguage": "{language} मा",
     "browseByRegion": "क्षेत्रअनुसार ब्राउज गर्नुहोस्",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "सबै भिडियोहरू एउटै पृष्ठमा",
     "clearLanguages": "खाली गर्नुहोस्",
     "queryLanguageDetected": "{language} पत्ता लाग्यो",
     "searchInLanguage": "{language} मा खोज्नुहोस्",
@@ -283,6 +284,7 @@
     "sports": "खेलकुद",
     "collections": "संग्रहहरू",
     "subtitlesOnly": "उपशीर्षक मात्र",
+    "backToTop": "माथि फर्कनु",
     "newlyAdded": "नयाँ थपिएको",
     "newVideosTitle": "{language} मा नयाँ ख्रिस्टियन भिडियोहरू",
     "newestFirst": "सबैभन्दा नयाँ पहिले",
@@ -313,7 +315,21 @@
     "standaloneVideos": "स्वतन्त्र भिडियोहरू",
     "videosFromCollection": "{collection} बाट भिडियोहरू।",
     "standaloneDescription": "यस भाषाका स्वतन्त्र भिडियोहरू।",
-    "openCollection": "संग्रह खोल्नुहोस्"
+    "openCollection": "संग्रह खोल्नुहोस्",
+    "filters": "फिल्टर",
+    "filterLength": "अवधि",
+    "filterLength_under5": "5 मिनेटभन्दा कम",
+    "filterLength_5to10": "5-10 मिनेट",
+    "filterLength_10to30": "10-30 मिनेट",
+    "filterLength_over30": "30 मिनेटभन्दा बढी",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर हटाउनु",
+    "filterResults": "{total} मध्ये {count} देखाइएको",
+    "noFilterResults": "यी फिल्टरसँग कुनै भिडियो मेल खाँदैन। एउटा हटाउनुहोस्।",
+    "filterAdded": "थपिएको",
+    "filterAdded_60d": "पछिल्ला 60 दिन",
+    "filterAdded_6m": "पछिल्ला 6 महिना",
+    "filterAdded_12m": "पछिल्ला 12 महिना"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project हेर्नुहोस्",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "छोटो फिल्म हेर्नुहोस्",
-    "actions": {
-      "joinUs": "हामीसँग जोडिनुहोस्",
-      "shareMission": "हाम्रो मिसनमा सहभागी हुनुहोस्"
-    },
-    "welcomeStart": {
-      "label": "विश्वास र धर्मशास्त्र",
-      "title": "आजका भिडियो छनोटहरू",
-      "description": "हाम्रो पुस्तकालयबाट विश्वासकेन्द्रित भिडियो सामग्री, जसले प्रेरित गर्न, चुनौती दिन, र चिन्तन जगाउन मद्दत गर्छ।"
-    },
-    "welcomeMorning": {
-      "label": "बिहानी प्रेरणा",
-      "title": "शुभ प्रभात! आजका बाइबल क्षणहरू तपाईंको प्रतीक्षामा छन्।",
-      "description": "तपाईंको दिन सुरु गर्न प्रेरणादायी बाइबल क्षणहरूसँग शुरुआत गर्नुहोस्, जसले तपाईंलाई उत्साहित र सशक्त पार्न डिजाइन गरिएको छ।"
-    },
-    "welcomeAfternoon": {
-      "label": "दिउँसो प्रेरणा",
-      "title": "शुभ अपराह्न! तपाईंको दिनका लागि बाइबल क्षणहरू।",
-      "description": "दिउँसोको विश्राम वा निरन्तर प्रेरणाका लागि उपयुक्त प्रेरणादायी बाइबल सामग्री।"
-    },
-    "welcomeEvening": {
-      "label": "साँझ प्रेरणा",
-      "title": "शुभ साँझ! बाइबल क्षणहरूसँग विश्राम लिनुहोस्।",
-      "description": "तपाईंको दिन समाप्त हुँदै गर्दा मनन गर्न र सान्त्वना पाउन मद्दत गर्ने शान्त बाइबल क्षणहरू।"
-    },
-    "joinUs": {
-      "label": "हामीसँग जोडिनुहोस्",
-      "title": "अरबौँ मानिसहरू खोजिरहेका छन्",
-      "description": "फसल तयार छ। डिजिटल मिडिया प्रयोग गरेर संसारसँग सुसमाचार बाँड्न हामीसँग सामेल हुनुहोस्।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "साथै अघि बढौँ",
-      "title": "येशूको कथा, सँगै सुनाउँदै",
-      "description": "ताकि उनीहरूले जहाँ छन् त्यहीँ आफ्नै भाषामा येशूको प्रेम सुन्न र देख्न सकून्।"
     }
   },
   "VideoRecommendations": {

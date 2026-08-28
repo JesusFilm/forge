@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ses dilini değiştir",
     "home": "JesusFilm ana sayfası",
     "closeSearch": "Aramayı kapat",
-    "submitSearch": "Ara"
+    "submitSearch": "Ara",
+    "library": "Kütüphane"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarda ara ve keşfet",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} dilinde “{suggestion}” ifadesini ara",
     "inLanguage": "{language} dilinde",
     "browseByRegion": "Bölgeye göre göz at",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tüm videolar tek sayfada",
     "clearLanguages": "Temizle",
     "queryLanguageDetected": "{language} algılandı",
     "searchInLanguage": "{language} dilinde ara",
@@ -283,6 +284,7 @@
     "sports": "Spor",
     "collections": "Koleksiyonlar",
     "subtitlesOnly": "Sadece altyazı",
+    "backToTop": "Başa dön",
     "newlyAdded": "Yeni eklenenler",
     "newVideosTitle": "{language} dilinde yeni Hristiyan videoları",
     "newestFirst": "En yeniden başlayarak",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Tekil videolar",
     "videosFromCollection": "{collection} koleksiyonundan videolar.",
     "standaloneDescription": "Bu dildeki tekil videolar.",
-    "openCollection": "Koleksiyonu aç"
+    "openCollection": "Koleksiyonu aç",
+    "filters": "Filtreler",
+    "filterLength": "Süre",
+    "filterLength_under5": "5 dakikadan kısa",
+    "filterLength_5to10": "5-10 dakika",
+    "filterLength_10to30": "10-30 dakika",
+    "filterLength_over30": "30 dakikadan uzun",
+    "filterType": "Tür",
+    "clearFilters": "Filtreleri temizle",
+    "filterResults": "{total} içinden {count} gösteriliyor",
+    "noFilterResults": "Bu filtrelere uyan video yok. Birini kaldırmayı deneyin.",
+    "filterAdded": "Eklendi",
+    "filterAdded_60d": "Son 60 gün",
+    "filterAdded_6m": "Son 6 ay",
+    "filterAdded_12m": "Son 12 ay"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project İzle",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kısa filmi izle",
-    "actions": {
-      "joinUs": "Bize katılın",
-      "shareMission": "Misyonumuza ortak olun"
-    },
-    "welcomeStart": {
-      "label": "İman ve Kutsal Yazı",
-      "title": "Bugünün video seçimleri",
-      "description": "Sizi teşvik etmek, düşündürmek ve yüreklendirmek için kütüphanemizden iman merkezli videolar."
-    },
-    "welcomeMorning": {
-      "label": "Sabah ilhamı",
-      "title": "Günaydın! Bugünün Kutsal Kitap anları sizi bekliyor.",
-      "description": "Güne, sizi yüreklendirmek ve ruhunuzu yükseltmek için hazırlanmış teşvik edici Kutsal Kitap anlarıyla başlayın."
-    },
-    "welcomeAfternoon": {
-      "label": "Öğleden sonra ilhamı",
-      "title": "Tünaydın! Gününüz için Kutsal Kitap anları.",
-      "description": "Öğleden sonraki molanız için ya da ilhamınızı sürdürmek için ideal teşvik edici Kutsal Kitap içerikleri."
-    },
-    "welcomeEvening": {
-      "label": "Akşam ilhamı",
-      "title": "İyi akşamlar! Kutsal Kitap anlarıyla dinlenin.",
-      "description": "Gününüz sona ererken düşünmenize ve teselli bulmanıza yardımcı olacak huzurlu Kutsal Kitap anları."
-    },
-    "joinUs": {
-      "label": "Bize katılın",
-      "title": "Milyarlarca insan arayışta",
-      "description": "Hasat zamanı geldi. Dijital medya kullanarak Müjde’yi dünyayla paylaşırken bize katılın."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Birlikte ilerleyelim",
-      "title": "İsa’nın Hikâyesini Birlikte Anlatalım",
-      "description": "Böylece, oldukları yerde, İsa’nın sevgisini kendi dillerinde duyup görebilsinler."
     }
   },
   "VideoRecommendations": {

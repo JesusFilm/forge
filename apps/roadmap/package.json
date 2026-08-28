@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3100",
     "lint": "eslint .",
-    "generate:readme": "node ./scripts/generate-roadmap-readme.js"
+    "generate:readme": "tsx ./scripts/generate-roadmap-readme.js"
   },
   "dependencies": {
     "@forge/watch-url-policy": "workspace:*",

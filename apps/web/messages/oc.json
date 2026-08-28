@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar la lenga de l'àudio",
     "home": "Pagina d'acuèlh JesusFilm",
     "closeSearch": "Tampar la recèrca",
-    "submitSearch": "Recercar"
+    "submitSearch": "Recercar",
+    "library": "Bibliotèca"
   },
   "SearchOverlay": {
     "dialogLabel": "Recercar e explorar de vidèos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Recercar « {suggestion} » en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navegar per region",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Totes los vidèos sus una pagina",
     "clearLanguages": "Escafar",
     "queryLanguageDetected": "{language} detectat",
     "searchInLanguage": "Recercar en {language}",
@@ -467,6 +468,7 @@
     "sports": "Espòrt",
     "collections": "Colleccions",
     "subtitlesOnly": "Solament sostítols",
+    "backToTop": "Tornar amont",
     "newlyAdded": "Ajustat recentament",
     "newVideosTitle": "Vidèos crestianas novèlas en {language}",
     "newestFirst": "Los mai recents primièr",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidèos independentas",
     "videosFromCollection": "Vidèos de {collection}.",
     "standaloneDescription": "Vidèos independentas dins aquesta lenga.",
-    "openCollection": "Dobrir la colleccion"
+    "openCollection": "Dobrir la colleccion",
+    "filters": "Filtres",
+    "filterLength": "Durada",
+    "filterLength_under5": "Mens de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mai de 30 min",
+    "filterType": "Tipe",
+    "clearFilters": "Escafar los filtres",
+    "filterResults": "{count} sus {total} afichats",
+    "noFilterResults": "Cap de vidèo correspond pas a aquestes filtres. Ensajatz d'ne levar un.",
+    "filterAdded": "Ajustat",
+    "filterAdded_60d": "Darrièrs 60 jorns",
+    "filterAdded_6m": "Darrièrs 6 meses",
+    "filterAdded_12m": "Darrièrs 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Visionament",
@@ -646,44 +662,6 @@
     "actionsLabel": "Accions per pagina pas trobada",
     "backToWatch": "Tornar a Visionament",
     "browseVideos": "Navegar pels vidèos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Veire lo cort-metratge",
-    "actions": {
-      "joinUs": "Rejonhètz-nos",
-      "shareMission": "Partejar nòstra mission"
-    },
-    "welcomeStart": {
-      "label": "Fe e Escritura",
-      "title": "Las causidas vidèo d'uèi",
-      "description": "Contengut vidèo centrat sus la fe de nòstra bibliotèca per inspirar, desafiar e espotir la reflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiracion del matin",
-      "title": "Bonjorn ! Las moments biblicas d'uèi vos espèran.",
-      "description": "Començatz la jornada amb de moments biblics encoratjants concebuts per inspirar e elevar vòstre esperit."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiracion de la tantòst",
-      "title": "Bon vèspre ! Moments biblics per vòstre jorn.",
-      "description": "Contengut biblic encoratjant, ideal per una pausa de la tantòst o per contunhar d'èsser inspirat."
-    },
-    "welcomeEvening": {
-      "label": "Inspiracion de ser",
-      "title": "Bon ser ! Relaxatz-vos amb de moments biblics.",
-      "description": "De moments biblics pacifics per vos ajudar a reflectir e trobar de consòrt a mesura que la jornada s'acaba."
-    },
-    "joinUs": {
-      "label": "Rejonhètz-nos",
-      "title": "De miliards recercan",
-      "description": "La meisson es aquí. Rejonhètz-nos per partejar l'evangèli amb lo mond per mejan dels mèdias numerics."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Anem amassa",
-      "title": "Contar l'istòria de Jèsus, amassa",
-      "description": "Per que pòscan ausir e veire l'amor de Jèsus dins lor pròpria lenga, aquí ont son."
-    }
   },
   "VideoRecommendations": {
     "match": "Correspondéncia de {percent} %",

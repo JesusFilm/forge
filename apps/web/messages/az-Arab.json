@@ -180,7 +180,8 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جستجو",
-    "submitSearch": "آختار"
+    "submitSearch": "آختار",
+    "library": "کتابخانا"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} دیلینده «{suggestion}» آختار",
     "inLanguage": "به {language}",
     "browseByRegion": "مرور بر اساس منطقه",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "همهٔ ویدیوها در یک صفحه",
     "clearLanguages": "پاک کردن",
     "queryLanguageDetected": "{language} شناسایی شد",
     "searchInLanguage": "{language} دیلینده آختار",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "مجموعه‌ها",
     "subtitlesOnly": "فقط زیرنویس",
+    "backToTop": "یوخاریا قایید",
     "newlyAdded": "افزوده‌شدهٔ تازه",
     "newVideosTitle": "ویدیوهای مسیحی جدید به {language}",
     "newestFirst": "جدیدترین‌ها در ابتدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدیوهای مستقل",
     "videosFromCollection": "ویدیوهای {collection}.",
     "standaloneDescription": "ویدیوهای مستقل به این زبان.",
-    "openCollection": "باز کردن مجموعه"
+    "openCollection": "باز کردن مجموعه",
+    "filters": "فیلترلر",
+    "filterLength": "اوزونلوق",
+    "filterLength_under5": "۵ دقیقه‌دن آز",
+    "filterLength_5to10": "۵-۱۰ دقیقه",
+    "filterLength_10to30": "۱۰-۳۰ دقیقه",
+    "filterLength_over30": "۳۰ دقیقه‌دن چوخ",
+    "filterType": "نوع",
+    "clearFilters": "فیلترلری تمیزله",
+    "filterResults": "{total} نتیجه‌دن {count} گؤستریلیر",
+    "noFilterResults": "بو فیلترلره اویغون ویدیو یوخدور. بیرینی سیلمگه چالیشین.",
+    "filterAdded": "علاوه ادیلیب",
+    "filterAdded_60d": "سون ۶۰ گون",
+    "filterAdded_6m": "سون ۶ آی",
+    "filterAdded_12m": "سون ۱۲ آی"
   },
   "WatchHome": {
     "pageTitle": "تماشای Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "اقدام‌های صفحهٔ پیدا نشد",
     "backToWatch": "بازگشت به تماشا",
     "browseVideos": "مرور ویدیوها"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "تماشای فیلم کوتاه",
-    "actions": {
-      "joinUs": "به ما بپیوندید",
-      "shareMission": "در مأموریت ما سهیم شوید"
-    },
-    "welcomeStart": {
-      "label": "ایمان و کتاب‌مقدس",
-      "title": "گزیده‌های ویدیویی امروز",
-      "description": "محتوای ویدیوییِ مبتنی بر ایمان از کتابخانهٔ ما برای الهام‌بخشی، به چالش کشیدن و برانگیختن تأمل."
-    },
-    "welcomeMorning": {
-      "label": "الهام صبحگاهی",
-      "title": "صبح بخیر! لحظه‌های کتاب‌مقدسی امروز در انتظارند.",
-      "description": "روزتان را با لحظه‌های دلگرم‌کنندهٔ کتاب‌مقدسی آغاز کنید؛ برای الهام‌بخشی و تقویت روح شما."
-    },
-    "welcomeAfternoon": {
-      "label": "الهام عصرگاهی",
-      "title": "عصر بخیر! لحظه‌های کتاب‌مقدسی برای امروز شما.",
-      "description": "محتوای دلگرم‌کنندهٔ کتاب‌مقدسی، مناسب برای استراحت عصرگاهی یا ادامهٔ الهام."
-    },
-    "welcomeEvening": {
-      "label": "الهام شبانگاهی",
-      "title": "شبتان بخیر! با لحظه‌های کتاب‌مقدسی آرام بگیرید.",
-      "description": "لحظه‌های آرامِ کتاب‌مقدسی برای کمک به تأمل و یافتن آرامش در پایان روز."
-    },
-    "joinUs": {
-      "label": "به ما بپیوندید",
-      "title": "میلیاردها نفر در جستجو هستند",
-      "description": "زمان برداشت رسیده است. با ما همراه شوید تا با رسانهٔ دیجیتال، انجیل را با جهان به‌اشتراک بگذاریم."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بیایید با هم برویم",
-      "title": "داستان عیسی را با هم روایت کنیم",
-      "description": "تا بتوانند محبت عیسی را به زبان خودشان، درست همان‌جایی که هستند، بشنوند و ببینند."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}٪ اویغونلوخ",

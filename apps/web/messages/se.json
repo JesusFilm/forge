@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
     "closeSearch": "Gidde ohcan",
-    "submitSearch": "Oza"
+    "submitSearch": "Oza",
+    "library": "Girjerádju"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Oza «{suggestion}» dán gillii: {language}",
     "inLanguage": "{language}:s",
     "browseByRegion": "Geahččal guovllu mielde",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Buot videoat ovtta siiddus",
     "clearLanguages": "Sihko",
     "queryLanguageDetected": "{language} gávdnon",
     "searchInLanguage": "Oza dán gillii: {language}",
@@ -467,6 +468,7 @@
     "sports": "Spábbaileamit",
     "collections": "Čoakkáldagat",
     "subtitlesOnly": "Dušše lávlagat",
+    "backToTop": "Máhcca bajás",
     "newlyAdded": "Ođđa lasihuvvon",
     "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
     "newestFirst": "Ođđemus álggos",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Oktasoavttadit videoat",
     "videosFromCollection": "Videoat {collection}:s.",
     "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
-    "openCollection": "Raba čoakkáldaga"
+    "openCollection": "Raba čoakkáldaga",
+    "filters": "Sillat",
+    "filterLength": "Guhkkodat",
+    "filterLength_under5": "Unnit go 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Eanet go 30 min",
+    "filterType": "Šládja",
+    "clearFilters": "Sihko sillat",
+    "filterResults": "Čájehuvvo {count} / {total}",
+    "noFilterResults": "Ii oktage video heive dáid sillaide. Geahččal váldit eret ovtta.",
+    "filterAdded": "Lasihuvvon",
+    "filterAdded_60d": "Maŋimuš 60 beaivvi",
+    "filterAdded_6m": "Maŋimuš 6 mánu",
+    "filterAdded_12m": "Maŋimuš 12 mánu"
   },
   "WatchHome": {
     "pageTitle": "Geahččal | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Siidu ii gávdno doaibmabijut",
     "backToWatch": "Maŋŋá geahččamii",
     "browseVideos": "Geahččal videoaid"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Geahččal oanehis filmma",
-    "actions": {
-      "joinUs": "Oasseváldde min",
-      "shareMission": "Juoge min missiijii"
-    },
-    "welcomeStart": {
-      "label": "Osko ja Skrifta",
-      "title": "Dálá videočoakkáldat",
-      "description": "Oskojulggašuvvon videosisdoallu min buvttas mii deaivvada, hástala ja movttiidahttá jurddašit."
-    },
-    "welcomeMorning": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Dálá Biibbalmuitalusat várrejit dutnje.",
-      "description": "Álggaše beaivvi buorit Biibbalmuitalusain, mat leat hábmejuvvon movttiidahttit ja bajidit du oaiviliid."
-    },
-    "welcomeAfternoon": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Biibbalmuitalusat du beivvi várás.",
-      "description": "Buorit Biibbalmuitalusat, heivvolaččat iežat beaivegaskkamii dahje jotkkolaš movttiidahttimii."
-    },
-    "welcomeEvening": {
-      "label": "Eahketmovttiidahttin",
-      "title": "Bures boahtin! Háliidatgo hávdadit Biibbalmuitalusain?",
-      "description": "Roahkkadit Biibbalmuitalusat, mat veahkehit dutnje jurddašit ja gávdnat roahtu go beaivi nohká."
-    },
-    "joinUs": {
-      "label": "Oasseváldde min",
-      "title": "Miljjáhtat ohcet",
-      "description": "Sáddu lea das. Oasseváldde min go juohkit evangeliuma máilmái digitála media bokte."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vázzet oktan",
-      "title": "Jesus muitalusa čuovvut oktanaga",
-      "description": "Vai sii ožžot guldalit ja oaidnit Jesus ráhkisvuođa iežaset gielas, dan sadjái gos sii orrot."
-    }
   },
   "VideoRecommendations": {
     "match": "Heiveheapmi: {percent} %",

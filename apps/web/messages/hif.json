@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio bhasha badliye",
     "home": "JesusFilm ka home page",
     "closeSearch": "Search band kariye",
-    "submitSearch": "Khojiye"
+    "submitSearch": "Khojiye",
+    "library": "Bhandar"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} me “{suggestion}” khojiye",
     "inLanguage": "{language} me",
     "browseByRegion": "Ilaaka ke hisaab se browse kariye",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Sab video ek page pe",
     "clearLanguages": "Saaf kariye",
     "queryLanguageDetected": "{language} pahchana gaya",
     "searchInLanguage": "{language} me khojiye",
@@ -467,6 +468,7 @@
     "sports": "Khel",
     "collections": "Sab collections",
     "subtitlesOnly": "Sirf subtitles",
+    "backToTop": "Uupar jao",
     "newlyAdded": "Abhi joda gaya",
     "newVideosTitle": "{language} me naye Christian videos",
     "newestFirst": "Sab se naye pehle",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Alag videos",
     "videosFromCollection": "{collection} se videos.",
     "standaloneDescription": "Is bhasha me alag videos.",
-    "openCollection": "Collection kholiye"
+    "openCollection": "Collection kholiye",
+    "filters": "Filter",
+    "filterLength": "Lambai",
+    "filterLength_under5": "5 minute se kam",
+    "filterLength_5to10": "5-10 minute",
+    "filterLength_10to30": "10-30 minute",
+    "filterLength_over30": "30 minute se jyada",
+    "filterType": "Prakar",
+    "clearFilters": "Filter hatao",
+    "filterResults": "{total} me se {count} dekhawa gais",
+    "noFilterResults": "Ii filter se koi video match nai kare hai. Ek hataike dekho.",
+    "filterAdded": "Joda gais",
+    "filterAdded_60d": "Pichhla 60 din",
+    "filterAdded_6m": "Pichhla 6 mahina",
+    "filterAdded_12m": "Pichhla 12 mahina"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project par dekhiye",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page nai mili ke actions",
     "backToWatch": "Watch par wapas",
     "browseVideos": "Video browse kariye"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Chhota film dekhiye",
-    "actions": {
-      "joinUs": "Hamare saath judiye",
-      "shareMission": "Hamari mission me hissha lijiye"
-    },
-    "welcomeStart": {
-      "label": "Vishwas aur Scripture",
-      "title": "Aaj ke video chunav",
-      "description": "Hamari library se vishwas-kenit video content, jo inspire kare, challenge kare, aur soch-vichar jagaye."
-    },
-    "welcomeMorning": {
-      "label": "Subah ki prerna",
-      "title": "Suprabhat! Aaj ke Bible moments intezaar me hain.",
-      "description": "Apna din Bible ke encouraging moments ke saath shuru kariye, jo aapke mann ko uplift karein."
-    },
-    "welcomeAfternoon": {
-      "label": "Dopahar ki prerna",
-      "title": "Shubh dopahar! Aapke din ke liye Bible moments.",
-      "description": "Bible ka encouraging content, aapke dopahar ke break ya aage ki prerna ke liye ekdum theek."
-    },
-    "welcomeEvening": {
-      "label": "Shaam ki prerna",
-      "title": "Shubh sandhya! Bible moments ke saath araam kariye.",
-      "description": "Shant Bible moments jo aapko sochne aur din ke ant me sukoon paane me madad karein."
-    },
-    "joinUs": {
-      "label": "Hamare saath judiye",
-      "title": "Arabon log khoj rahe hain",
-      "description": "Katni tayaar hai. Digital media ke zariye duniya ke saath gospel baantne me hamara saath dijiye."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Chaliye saath me",
-      "title": "Jesus ki kahani saath me sunaiye",
-      "description": "Taaki log apni hi bhasha me, jahan woh hain wahin, Jesus ke pyaar ko sun aur dekh saken."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% milta hai",

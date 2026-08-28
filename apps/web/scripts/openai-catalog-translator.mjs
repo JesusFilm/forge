@@ -83,6 +83,11 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     composition:
       "Rendered inside a failed-to-load sentence. It represents failed authentication with the content service, not a network connection failure.",
   },
+  "FloatingSearch.library": {
+    role: "site-header navigation button label",
+    composition:
+      "Labels the header control that opens the full catalogue of watchable VIDEOS for the visitor's language. `Library` here means a browsable collection of videos — a video library or video catalogue — NOT a building that lends books, an archive of documents, or a software/code library. Prefer the conventional target-language wording a streaming or video-on-demand product would use for its full video catalogue. Keep it short enough for a header button beside an icon.",
+  },
   "LanguageCombobox.languages": {
     role: "language results list accessibility label",
     visibility: "assistive technology only",

@@ -48,12 +48,15 @@ import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
 import { createServices } from "@/services"
+import { readWatchHomeCategoryRailRolloutCompleted } from "@/services/watch-home-category-rail-rollout"
 
 export async function createContext({
   request,
 }: {
   request: Request
 }): Promise<ContextShape> {
+  const watchHomeCategoryRailRolloutCompleted =
+    await readWatchHomeCategoryRailRolloutCompleted(prisma)
   const sessionUser = await resolvePrincipalFromRequest(request)
   // Session wins. A user with an admin session who happens to also send
   // a (valid or stray) bearer header is treated as that session, not
@@ -99,6 +102,7 @@ export async function createContext({
     user,
     request,
     prisma,
+    watchHomeCategoryRailRolloutCompleted,
     loaders: createLoaders(prisma),
     services: createServices(prisma),
   }

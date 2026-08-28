@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио тылын уларыт",
     "home": "JesusFilm бастыҥ сирэйи",
     "closeSearch": "Көрдөһүүни сап",
-    "submitSearch": "Көрдө"
+    "submitSearch": "Көрдө",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолары көрдө уонна көр",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} тылынан «{suggestion}» көрдө",
     "inLanguage": "{language}-та",
     "browseByRegion": "Улусаҕынан көр",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Бүтүн видео биир сирэйгэ",
     "clearLanguages": "Сот",
     "queryLanguageDetected": "{language} биллибит",
     "searchInLanguage": "{language} тылынан көрдө",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциялар",
     "subtitlesOnly": "Субтитр эрэ",
+    "backToTop": "Үөһээ төннүү",
     "newlyAdded": "Саҥа эбиллибит",
     "newVideosTitle": "{language}-та саҥа христиан видеолар",
     "newestFirst": "Илдьэ суохтан",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бэйэ эрэ видеолар",
     "videosFromCollection": "{collection}-тан видеолар.",
     "standaloneDescription": "Бу тылга бэйэ эрэ видеолар.",
-    "openCollection": "Коллекцияны арый"
+    "openCollection": "Коллекцияны арый",
+    "filters": "Фильтрдар",
+    "filterLength": "Уһуна",
+    "filterLength_under5": "5 мүнүүтэттэн аҕыйах",
+    "filterLength_5to10": "5-10 мүнүүтэ",
+    "filterLength_10to30": "10-30 мүнүүтэ",
+    "filterLength_over30": "30 мүнүүтэттэн элбэх",
+    "filterType": "Көрүҥэ",
+    "clearFilters": "Фильтрдары сотуу",
+    "filterResults": "{total} иһиттэн {count} көрдөрүлүннэ",
+    "noFilterResults": "Бу фильтрдарга сөп түбэһэр видео суох. Биирдэрин сотон көрүҥ.",
+    "filterAdded": "Эбилиннэ",
+    "filterAdded_60d": "Бүтэһик 60 күн",
+    "filterAdded_6m": "Бүтэһик 6 ый",
+    "filterAdded_12m": "Бүтэһик 12 ый"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project көрүү",
@@ -646,44 +662,6 @@
     "actionsLabel": "Сирэй булуллубата буоллаҕына ыытыах тубэр күндэһиилэр",
     "backToWatch": "Көрөргө барыа",
     "browseVideos": "Видеолары көр"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыра кинону көр",
-    "actions": {
-      "joinUs": "Биһигиэхэ кыт",
-      "shareMission": "Миссиябыттан биир буол"
-    },
-    "welcomeStart": {
-      "label": "Итэҕэл уонна Сурах",
-      "title": "Бүгүнкү видео талбыттара",
-      "description": "Биһиги библиотекабыттан итэҕэлгэ сыһыаннаах видео контент, киниҥи умсугутар, харыһаллар уонна санааҕа төннөр."
-    },
-    "welcomeMorning": {
-      "label": "Түһүннэҕи умсугутуу",
-      "title": "Күн маңнайгы! Бүгүнкү Библия минуттара кэтэһэр.",
-      "description": "Күҥҥэ үрдүк санаа уонна бодорук иһин, үөрэтэр Библия минуттарын кытта бастакы ыксаллыы суолтуур."
-    },
-    "welcomeAfternoon": {
-      "label": "Күн урдугу умсугутуу",
-      "title": "Күндүзүө саҥаһыны! Күҥҥэ аналлаах Библия минуттара.",
-      "description": "Күн урдугу тыныгыы кэмҥэ эбэтэр умсугутууну саҕалыырга сөптөөх үөрэтэр Библия контента."
-    },
-    "welcomeEvening": {
-      "label": "Кэтээн умсугутуу",
-      "title": "Кэтээн сырыыга! Библия минуттарынан тыныг.",
-      "description": "Күнүн бүтэрдэҕинэ, санааҕа төннөр уонна ыарһыһыҥы барыан туһунан тынчтык Библия минуттара."
-    },
-    "joinUs": {
-      "label": "Биһигиэхэ кыт",
-      "title": "Билэриэхтэрэ миллиардтар",
-      "description": "Талыы кэлбитэ. Цифровой медиа туһунан дойдуга Евангелиени бэлиэтиэххэ биһигиэхэ кыт."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кытта баралыа",
-      "title": "Иисустун ахсааны бииргэ кэпсиибэт",
-      "description": "Кинилэр бэйэлэрин тылларынан, бэйэлэрин сирдэринэн Иисустун тапталын иһиттэрин уонна көрдөрөрүн иһин."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% сөп түбэһэр",

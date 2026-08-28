@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Athraigh teanga an fhuaime",
     "home": "Baile JesusFilm",
     "closeSearch": "Dún an cuardach",
-    "submitSearch": "Cuardaigh"
+    "submitSearch": "Cuardaigh",
+    "library": "Leabharlann"
   },
   "SearchOverlay": {
     "dialogLabel": "Cuardaigh agus brabhsáil físeáin",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Cuardaigh “{suggestion}” i {language}",
     "inLanguage": "i {language}",
     "browseByRegion": "Brabhsáil de réir réigiúin",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Gach físeán ar aon leathanach",
     "clearLanguages": "Glan",
     "queryLanguageDetected": "Aimsíodh {language}",
     "searchInLanguage": "Cuardaigh i {language}",
@@ -467,6 +468,7 @@
     "sports": "Spóirt",
     "collections": "Bailiúcháin",
     "subtitlesOnly": "Fotheidil amháin",
+    "backToTop": "Ar ais go barr",
     "newlyAdded": "Nua-bhreise",
     "newVideosTitle": "Físeáin Chríostaí nua i {language}",
     "newestFirst": "Is nuaí ar dtús",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Físeáin neamhspleácha",
     "videosFromCollection": "Físeáin ó {collection}.",
     "standaloneDescription": "Físeáin neamhspleácha sa teanga seo.",
-    "openCollection": "Oscail an bailiúchán"
+    "openCollection": "Oscail an bailiúchán",
+    "filters": "Scagairí",
+    "filterLength": "Fad",
+    "filterLength_under5": "Faoi 5 nóim",
+    "filterLength_5to10": "5-10 nóim",
+    "filterLength_10to30": "10-30 nóim",
+    "filterLength_over30": "Os cionn 30 nóim",
+    "filterType": "Cineál",
+    "clearFilters": "Glan na scagairí",
+    "filterResults": "{count} as {total} ar taispeáint",
+    "noFilterResults": "Níl aon fhíseán ag teacht leis na scagairí seo. Bain ceann díobh.",
+    "filterAdded": "Curtha leis",
+    "filterAdded_60d": "60 lá anuas",
+    "filterAdded_6m": "6 mhí anuas",
+    "filterAdded_12m": "12 mhí anuas"
   },
   "WatchHome": {
     "pageTitle": "Féach ar Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Gníomhartha an leathanaigh nár aimsíodh",
     "backToWatch": "Ar ais go Watch",
     "browseVideos": "Brabhsáil físeáin"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Féach ar ghearrscannán",
-    "actions": {
-      "joinUs": "Bígí Linn",
-      "shareMission": "Comhroinn inár Misean"
-    },
-    "welcomeStart": {
-      "label": "Creideamh & an Scrioptúr",
-      "title": "Roghanna Físeáin an Lae Inniu",
-      "description": "Ábhar físe atá dírithe ar an gcreideamh ónár leabharlann chun spreagadh, dúshlán, agus machnamh a mhúscailt."
-    },
-    "welcomeMorning": {
-      "label": "Spreagadh na Maidine",
-      "title": "Maidin mhaith! Tá Nóiméid an Bhíobla inniu ag fanacht leat.",
-      "description": "Tosaigh do lá le nóiméid spreagúla ón mBíobla atá deartha chun do spiorad a spreagadh agus a ardú."
-    },
-    "welcomeAfternoon": {
-      "label": "Spreagadh na hIarnóna",
-      "title": "Tráthnóna maith! Nóiméid ón mBíobla do do lá.",
-      "description": "Ábhar spreagúil ón mBíobla, foirfe do do shos tráthnóna nó mar spreagadh breise."
-    },
-    "welcomeEvening": {
-      "label": "Spreagadh na Tráthnóna",
-      "title": "Oíche mhaith! Lig do scíth le Nóiméid ón mBíobla.",
-      "description": "Nóiméid shíochánta ón mBíobla chun cabhrú leat machnamh a dhéanamh agus sólás a fháil agus do lá ag teacht chun deiridh."
-    },
-    "joinUs": {
-      "label": "Bígí Linn",
-      "title": "Tá billiúin ag cuardach",
-      "description": "Tá an fómhar anseo. Bí linn agus sinn ag roinnt an tsoiscéil leis an domhan trí mheán digiteach."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Téimis le chéile",
-      "title": "Scéal Íosa a insint, le chéile",
-      "description": "Go gcloisfidís agus go bhfeicfidís grá Íosa ina dteanga féin, díreach san áit a bhfuil siad."
-    }
   },
   "VideoRecommendations": {
     "match": "Meaitseáil {percent}%",

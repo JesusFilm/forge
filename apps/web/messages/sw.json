@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Badilisha lugha ya sauti",
     "home": "Nyumbani kwa JesusFilm",
     "closeSearch": "Funga utafutaji",
-    "submitSearch": "Tafuta"
+    "submitSearch": "Tafuta",
+    "library": "Maktaba"
   },
   "SearchOverlay": {
     "dialogLabel": "Tafuta na vinjari video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Tafuta “{suggestion}” katika {language}",
     "inLanguage": "katika {language}",
     "browseByRegion": "Vinjari kwa eneo",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Video zote katika ukurasa mmoja",
     "clearLanguages": "Futa",
     "queryLanguageDetected": "{language} imetambuliwa",
     "searchInLanguage": "Tafuta katika {language}",
@@ -467,6 +468,7 @@
     "sports": "Michezo",
     "collections": "Mikusanyiko",
     "subtitlesOnly": "Manukuu pekee",
+    "backToTop": "Rudi juu",
     "newlyAdded": "Imeongezwa hivi karibuni",
     "newVideosTitle": "Video mpya za Kikristo katika {language}",
     "newestFirst": "Mpya kwanza",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video za pekee",
     "videosFromCollection": "Video kutoka {collection}.",
     "standaloneDescription": "Video za pekee katika lugha hii.",
-    "openCollection": "Fungua mkusanyiko"
+    "openCollection": "Fungua mkusanyiko",
+    "filters": "Vichujio",
+    "filterLength": "Urefu",
+    "filterLength_under5": "Chini ya dakika 5",
+    "filterLength_5to10": "Dakika 5-10",
+    "filterLength_10to30": "Dakika 10-30",
+    "filterLength_over30": "Zaidi ya dakika 30",
+    "filterType": "Aina",
+    "clearFilters": "Ondoa vichujio",
+    "filterResults": "{count} kati ya {total} zinaonyeshwa",
+    "noFilterResults": "Hakuna video zinazolingana na vichujio hivi. Jaribu kuondoa kimoja.",
+    "filterAdded": "Iliongezwa",
+    "filterAdded_60d": "Siku 60 zilizopita",
+    "filterAdded_6m": "Miezi 6 iliyopita",
+    "filterAdded_12m": "Miezi 12 iliyopita"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Tazama",
@@ -646,44 +662,6 @@
     "actionsLabel": "Vitendo vya ukurasa haupatikani",
     "backToWatch": "Rudi kwenye Kutazama",
     "browseVideos": "Vinjari video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tazama filamu fupi",
-    "actions": {
-      "joinUs": "Jiunge nasi",
-      "shareMission": "Shiriki katika misheni yetu"
-    },
-    "welcomeStart": {
-      "label": "Imani na Maandiko",
-      "title": "Chaguo za Video za Leo",
-      "description": "Maudhui ya video yaliyojikita katika imani kutoka kwenye maktaba yetu ili kukutia moyo, kukupa changamoto, na kuchochea tafakari."
-    },
-    "welcomeMorning": {
-      "label": "Mhamasisho wa Asubuhi",
-      "title": "Habari za asubuhi! Vipindi vya Biblia vya leo vinakusubiri.",
-      "description": "Anza siku yako kwa matukio ya Biblia yenye kutia moyo yaliyoundwa kukutia moyo na kuinua roho yako."
-    },
-    "welcomeAfternoon": {
-      "label": "Mhamasisho wa Mchana",
-      "title": "Habari za mchana! Matukio ya Biblia kwa siku yako.",
-      "description": "Maudhui ya Biblia yenye kutia moyo, yanayofaa kwa mapumziko yako ya mchana au kuendelea kupata hamasa."
-    },
-    "welcomeEvening": {
-      "label": "Mhamasisho wa Jioni",
-      "title": "Habari za jioni! Tulia na matukio ya Biblia.",
-      "description": "Matukio ya Biblia yenye utulivu ili kukusaidia kutafakari na kupata faraja siku yako inapokaribia kuisha."
-    },
-    "joinUs": {
-      "label": "Jiunge nasi",
-      "title": "Mabilioni wanatafuta",
-      "description": "Mavuno yamefika. Jiunge nasi tunaposhiriki injili ulimwenguni kwa kutumia vyombo vya habari vya kidijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Twendeni pamoja",
-      "title": "Tukisimulia Hadithi ya Yesu, Pamoja",
-      "description": "Ili waweze kusikia na kuona upendo wa Yesu katika lugha yao wenyewe, mahali walipo."
-    }
   },
   "VideoRecommendations": {
     "match": "Inalingana kwa {percent}%",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
     "home": "JesusFilm முகப்பு",
     "closeSearch": "தேடலை மூடு",
-    "submitSearch": "தேடவும்"
+    "submitSearch": "தேடவும்",
+    "library": "நூலகம்"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-இல் “{suggestion}” என்பதைத் தேடவும்",
     "inLanguage": "{language}-இல்",
     "browseByRegion": "பகுதியின்படி உலாவவும்",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "அனைத்து வீடியோக்களும் ஒரே பக்கத்தில்",
     "clearLanguages": "அழிக்கவும்",
     "queryLanguageDetected": "{language} கண்டறியப்பட்டது",
     "searchInLanguage": "{language}-இல் தேடவும்",
@@ -467,6 +468,7 @@
     "sports": "விளையாட்டு",
     "collections": "தொகுப்புகள்",
     "subtitlesOnly": "வசனங்கள் மட்டும்",
+    "backToTop": "மேலே திரும்பு",
     "newlyAdded": "புதிதாக சேர்க்கப்பட்டது",
     "newVideosTitle": "{language}-இல் புதிய கிறிஸ்தவ வீடியோக்கள்",
     "newestFirst": "முதலில் சமீபத்தியது",
@@ -497,7 +499,21 @@
     "standaloneVideos": "தனிப்பட்ட வீடியோக்கள்",
     "videosFromCollection": "{collection}-இலிருந்து வீடியோக்கள்.",
     "standaloneDescription": "இந்த மொழியில் உள்ள தனிப்பட்ட வீடியோக்கள்.",
-    "openCollection": "தொகுப்பைத் திறக்கவும்"
+    "openCollection": "தொகுப்பைத் திறக்கவும்",
+    "filters": "வடிகட்டிகள்",
+    "filterLength": "நீளம்",
+    "filterLength_under5": "5 நிமிடத்திற்கும் குறைவு",
+    "filterLength_5to10": "5-10 நிமிடம்",
+    "filterLength_10to30": "10-30 நிமிடம்",
+    "filterLength_over30": "30 நிமிடத்திற்கும் மேல்",
+    "filterType": "வகை",
+    "clearFilters": "வடிகட்டிகளை அழி",
+    "filterResults": "{total} இல் {count} காட்டப்படுகிறது",
+    "noFilterResults": "இந்த வடிகட்டிகளுக்கு எந்த வீடியோவும் பொருந்தவில்லை. ஒன்றை நீக்கிப் பாருங்கள்.",
+    "filterAdded": "சேர்க்கப்பட்டது",
+    "filterAdded_60d": "கடந்த 60 நாட்கள்",
+    "filterAdded_6m": "கடந்த 6 மாதங்கள்",
+    "filterAdded_12m": "கடந்த 12 மாதங்கள்"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project பார்வை",
@@ -646,44 +662,6 @@
     "actionsLabel": "பக்கம் கிடைக்கவில்லை செயல்கள்",
     "backToWatch": "பார்வைக்கு திரும்பவும்",
     "browseVideos": "வீடியோக்களை உலாவவும்"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "குறும்படத்தைப் பார்க்கவும்",
-    "actions": {
-      "joinUs": "எங்களுடன் சேருங்கள்",
-      "shareMission": "எங்கள் பணியில் பங்கெடுக்கவும்"
-    },
-    "welcomeStart": {
-      "label": "நம்பிக்கை & வேதாகமம்",
-      "title": "இன்றைய வீடியோ தேர்வுகள்",
-      "description": "ஊக்கமளிக்கவும், சவால் செய்யவும், சிந்தனையைத் தூண்டவும் எங்கள் நூலகத்திலிருந்து நம்பிக்கை மையமான வீடியோ உள்ளடக்கம்."
-    },
-    "welcomeMorning": {
-      "label": "காலை ஊக்கம்",
-      "title": "காலை வணக்கம்! இன்றைய வேதாகம தருணங்கள் காத்திருக்கின்றன.",
-      "description": "உங்கள் நாளை உற்சாகப்படுத்தவும் உயர்த்தவும் வடிவமைக்கப்பட்ட ஊக்கமளிக்கும் வேதாகம தருணங்களுடன் தொடங்குங்கள்."
-    },
-    "welcomeAfternoon": {
-      "label": "மதிய ஊக்கம்",
-      "title": "மதிய வணக்கம்! உங்கள் நாளுக்கான வேதாகம தருணங்கள்.",
-      "description": "உங்கள் மதிய இடைவேளைக்கோ அல்லது தொடர்ந்த ஊக்கத்துக்கோ சிறந்த ஊக்கமளிக்கும் வேதாகம உள்ளடக்கம்."
-    },
-    "welcomeEvening": {
-      "label": "மாலை ஊக்கம்",
-      "title": "மாலை வணக்கம்! வேதாகம தருணங்களுடன் அமைதியாகுங்கள்.",
-      "description": "உங்கள் நாள் முடிவடையும் போது சிந்தித்து ஆறுதல் பெற உதவும் அமைதியான வேதாகம தருணங்கள்."
-    },
-    "joinUs": {
-      "label": "எங்களுடன் சேருங்கள்",
-      "title": "பில்லியன் கணக்கானோர் தேடுகிறார்கள்",
-      "description": "அறுவடை இங்கே உள்ளது. டிஜிட்டல் ஊடகத்தைப் பயன்படுத்தி உலகிற்கு சுவிசேஷத்தைப் பகிர எங்களுடன் சேருங்கள்."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ஒன்றாகச் செல்வோம்",
-      "title": "இயேசுவின் கதையை ஒன்றாகச் சொல்லுதல்",
-      "description": "அவர்கள் இருக்கும் இடத்திலேயே, அவர்களின் சொந்த மொழியில் இயேசுவின் அன்பை கேட்டு காண முடிவதற்காக."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% பொருத்தம்",

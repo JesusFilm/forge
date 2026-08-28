@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio gwich’in tr’ahłii",
     "home": "JesusFilm ch’àn gwik’it",
     "closeSearch": "Search nąįį",
-    "submitSearch": "Nah’in"
+    "submitSearch": "Nah’in",
+    "library": "Gwiindaii ko"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search k’eejìi nah’in",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} k’it “{suggestion}” search",
     "inLanguage": "{language} k’it",
     "browseByRegion": "Nan t’ąįį k’it nah’in",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "𐑄ᕉ𐑋 𐑄ᕉ𐑋",
     "clearLanguages": "Nąįį",
     "queryLanguageDetected": "{language} gwiłtsąįį",
     "searchInLanguage": "{language} k’it search",
@@ -467,6 +468,7 @@
     "sports": "Sports gwandak",
     "collections": "Video collections",
     "subtitlesOnly": "Subtitles-zheh",
+    "backToTop": "Nakhwaa nihdeetak",
     "newlyAdded": "Łyaa gwiłtsaii",
     "newVideosTitle": "{language}: Christian videos łyaa",
     "newestFirst": "Łyaa t’ehk’it",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Collection kwaa videos",
     "videosFromCollection": "{collection} k’it videos.",
     "standaloneDescription": "Jii gwich’in k’it standalone videos.",
-    "openCollection": "Collection nah’in"
+    "openCollection": "Collection nah’in",
+    "filters": "Diikʼinjik",
+    "filterLength": "Nitsii",
+    "filterLength_under5": "5 minit tsʼąʼ nihkʼit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "30 minit tsʼąʼ nakhwaa",
+    "filterType": "Gwitrʼit",
+    "clearFilters": "Diikʼinjik nichʼit",
+    "filterResults": "{total} tsʼąʼ {count} gwitrʼit",
+    "noFilterResults": "Video kwaa diikʼinjik jiʼ gwikʼit. Chan nichʼit.",
+    "filterAdded": "Nikhwaa",
+    "filterAdded_60d": "60 dzaa gwikʼit",
+    "filterAdded_6m": "6 sahzhrii gwikʼit",
+    "filterAdded_12m": "12 sahzhrii gwikʼit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project k’it nah’in",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page gwiłtsąįį kwaa gwitr’it",
     "backToWatch": "Watch ts’àt ch’àn",
     "browseVideos": "Videos nah’in"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Short Film nah’in",
-    "actions": {
-      "joinUs": "Nihłaa gwitr’it",
-      "shareMission": "Niin mission k’it nihłaa gwiłtsaii"
-    },
-    "welcomeStart": {
-      "label": "Gwandaii ts’àt Scripture",
-      "title": "Jùu video choices",
-      "description": "Nakhwanh library k’it faith-centered video content, diiyahk encourage, challenge, ts’àt reflection gwiłtsaii."
-    },
-    "welcomeMorning": {
-      "label": "Dawn inspiration",
-      "title": "Dawn łyaa! Jùu Bible moments nah’in.",
-      "description": "Jii dinjii Bible moments ts’àt nishìi start, encourages ts’àt your spirit uplift gwiłtsaii."
-    },
-    "welcomeAfternoon": {
-      "label": "Noon inspiration",
-      "title": "Noon łyaa! Nii dinjii Bible moments.",
-      "description": "Bible content gwiinzii, afternoon break k’it ihłeh, continue encouragement gwiłtsaii."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Evening łyaa! Bible moments ts’àt nihłt’ii.",
-      "description": "Peaceful Bible moments, dinjii reflection ts’àt comfort gwiłtsaii, ninii drin nahshii."
-    },
-    "joinUs": {
-      "label": "Nihłaa gwitr’it",
-      "title": "Billions search gwiłtsaii",
-      "description": "Harvest ihłii. Digital media ts’àt gospel nihłaa gwitr’it, jii world ts’àt."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nihłaa ch’ihłii",
-      "title": "Jesus gwandak, nihłaa",
-      "description": "Jii dinjii Jesus love nihłts’ąįį, their own language ts’àt, where they are."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% nihłaa ahłii",

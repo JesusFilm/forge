@@ -180,7 +180,8 @@
     "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
     "home": "หน้าแรก JesusFilm",
     "closeSearch": "ปิดการค้นหา",
-    "submitSearch": "ค้นหา"
+    "submitSearch": "ค้นหา",
+    "library": "คลังวิดีโอ"
   },
   "SearchOverlay": {
     "dialogLabel": "ค้นหาและเลือกดูวิดีโอ",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "ค้นหา “{suggestion}” ในภาษา {language}",
     "inLanguage": "ใน {language}",
     "browseByRegion": "เลือกดูตามภูมิภาค",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "วิดีโอทั้งหมดในหน้าเดียว",
     "clearLanguages": "ล้าง",
     "queryLanguageDetected": "ตรวจพบ {language}",
     "searchInLanguage": "ค้นหาในภาษา {language}",
@@ -283,6 +284,7 @@
     "sports": "กีฬา",
     "collections": "คอลเลกชัน",
     "subtitlesOnly": "เฉพาะคำบรรยาย",
+    "backToTop": "กลับขึ้นด้านบน",
     "newlyAdded": "เพิ่มใหม่",
     "newVideosTitle": "วิดีโอคริสเตียนใหม่ในภาษา{language}",
     "newestFirst": "ใหม่ล่าสุดก่อน",
@@ -313,7 +315,21 @@
     "standaloneVideos": "วิดีโอเดี่ยว",
     "videosFromCollection": "วิดีโอจาก {collection}",
     "standaloneDescription": "วิดีโอเดี่ยวในภาษานี้",
-    "openCollection": "เปิดคอลเลกชัน"
+    "openCollection": "เปิดคอลเลกชัน",
+    "filters": "ตัวกรอง",
+    "filterLength": "ความยาว",
+    "filterLength_under5": "น้อยกว่า 5 นาที",
+    "filterLength_5to10": "5-10 นาที",
+    "filterLength_10to30": "10-30 นาที",
+    "filterLength_over30": "มากกว่า 30 นาที",
+    "filterType": "ประเภท",
+    "clearFilters": "ล้างตัวกรอง",
+    "filterResults": "แสดง {count} จาก {total}",
+    "noFilterResults": "ไม่มีวิดีโอที่ตรงกับตัวกรองเหล่านี้ ลองนำออกหนึ่งรายการ",
+    "filterAdded": "เพิ่มเมื่อ",
+    "filterAdded_60d": "60 วันที่ผ่านมา",
+    "filterAdded_6m": "6 เดือนที่ผ่านมา",
+    "filterAdded_12m": "12 เดือนที่ผ่านมา"
   },
   "WatchHome": {
     "pageTitle": "Watch ของ Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ชมภาพยนตร์สั้น",
-    "actions": {
-      "joinUs": "เข้าร่วมกับเรา",
-      "shareMission": "ร่วมแบ่งปันพันธกิจของเรา"
-    },
-    "welcomeStart": {
-      "label": "ความเชื่อและพระคัมภีร์",
-      "title": "วิดีโอแนะนำสำหรับวันนี้",
-      "description": "วิดีโอจากคลังของเราที่เน้นความเชื่อ เพื่อสร้างแรงบันดาลใจ ท้าทายใจ และกระตุ้นให้คิดไตร่ตรอง"
-    },
-    "welcomeMorning": {
-      "label": "แรงบันดาลใจยามเช้า",
-      "title": "สวัสดีตอนเช้า! ช่วงเวลาดี ๆ จากพระคัมภีร์วันนี้รอคุณอยู่",
-      "description": "เริ่มวันของคุณด้วยช่วงเวลาดี ๆ จากพระคัมภีร์ที่ช่วยหนุนใจและยกระดับจิตใจ"
-    },
-    "welcomeAfternoon": {
-      "label": "แรงบันดาลใจยามบ่าย",
-      "title": "สวัสดีตอนบ่าย! ช่วงเวลาดี ๆ จากพระคัมภีร์สำหรับวันนี้",
-      "description": "เนื้อหาพระคัมภีร์ที่ช่วยหนุนใจ เหมาะสำหรับช่วงพักยามบ่ายหรือเติมแรงบันดาลใจต่อเนื่อง"
-    },
-    "welcomeEvening": {
-      "label": "แรงบันดาลใจยามเย็น",
-      "title": "สวัสดีตอนเย็น! ผ่อนคลายไปกับช่วงเวลาดี ๆ จากพระคัมภีร์",
-      "description": "ช่วงเวลาดี ๆ จากพระคัมภีร์ที่สงบ ช่วยให้คุณไตร่ตรองและพบความปลอบประโลมเมื่อวันกำลังสิ้นสุดลง"
-    },
-    "joinUs": {
-      "label": "เข้าร่วมกับเรา",
-      "title": "มีคนนับพันล้านกำลังค้นหา",
-      "description": "ฤดูเก็บเกี่ยวมาถึงแล้ว มาร่วมกับเราในการแบ่งปันพระกิตติคุณแก่โลกผ่านสื่อดิจิทัล"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ไปด้วยกันเถอะ",
-      "title": "บอกเล่าเรื่องราวของพระเยซูไปด้วยกัน",
-      "description": "เพื่อให้พวกเขาได้ยินและเห็นความรักของพระเยซูในภาษาของตนเอง ณ ที่ที่พวกเขาอยู่"
     }
   },
   "VideoRecommendations": {

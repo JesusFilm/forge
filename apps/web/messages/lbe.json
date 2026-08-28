@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылсэ воштӥ",
     "home": "JesusFilm шоры",
     "closeSearch": "Уттонэз пыдаты",
-    "submitSearch": "Лахъин"
+    "submitSearch": "Лахъин",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоосэз утт да кара",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} мазрай «{suggestion}» лахъин",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр кара",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Тымыт видеоос",
     "clearLanguages": "Кышт",
     "queryLanguageDetected": "{language} тодэм",
     "searchInLanguage": "{language} мазрай лахъин",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Калекцыяос",
     "subtitlesOnly": "Тикъе субтитръёс",
+    "backToTop": "Ялун зana",
     "newlyAdded": "Выль ӵемытэм",
     "newVideosTitle": "{language} кылын выль христиан видеоос",
     "newestFirst": "Выльдыз бӧрсьынан",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӥндэн видеоос",
     "videosFromCollection": "{collection} кытчысь видеоос.",
     "standaloneDescription": "Тазі кылын тӥндэн видеоос.",
-    "openCollection": "Коллекцияны вуо"
+    "openCollection": "Коллекцияны вуо",
+    "filters": "Ккаккан бансса",
+    "filterLength": "Ттуршуку",
+    "filterLength_under5": "5 минутрая чансса",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутрая гьарта",
+    "filterType": "Жура",
+    "clearFilters": "Ккаккан бансса марцӏ бан",
+    "filterResults": "{total}-рая {count} ккаккан бунни",
+    "noFilterResults": "Ва ккаккан бансса видео дакъар. Ца дуккан бува.",
+    "filterAdded": "Хъирив бувну",
+    "filterAdded_60d": "Ахъирисса 60 кьини",
+    "filterAdded_6m": "Ахъирисса 6 барз",
+    "filterAdded_12m": "Ахъирисса 12 барз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — кара",
@@ -646,44 +662,6 @@
     "actionsLabel": "Страница валэктэм ужанъёс",
     "backToWatch": "Watch шоры ву",
     "browseVideos": "Видеоосэз кара"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Пичи фильм кара",
-    "actions": {
-      "joinUs": "Тӥнъёс",
-      "shareMission": "Миссияме ваньтэ кылдыт"
-    },
-    "welcomeStart": {
-      "label": "Вера но Scripture",
-      "title": "Тулыс видео пӧртэмъёс",
-      "description": "Асьме библиотекаысь вера луон видеоос тӥнъёслы, тӧдъянлы но ойдо кырӟанлы."
-    },
-    "welcomeMorning": {
-      "label": "Тулыс вдохновение",
-      "title": "Сӥзь лу! Вералысьӧн видео моментъёс валэктэм.",
-      "description": "Сӥзь кутсконды вералысь ӟучлысь видео моментъёсымен, соос тӥнъёслы вдохновение но йырсэт келяны кылдытӥсько."
-    },
-    "welcomeAfternoon": {
-      "label": "Ӧдӥс вдохновение",
-      "title": "Ӧдӥс лу! Та дырызлы вералысь видео моментъёс.",
-      "description": "Ӧдӥс тыныд кылдытэм вералысь видео контент, гырись тыныд тыныд шӧдӥське оло азьлань вдохновениея."
-    },
-    "welcomeEvening": {
-      "label": "Шӧрӥс вдохновение",
-      "title": "Шӧрӥс лу! Вера моментъёсын тыныд тынысь.",
-      "description": "Тынысь вера моментъёс, күндызь йыресен сярысь думбыртытӥсько но тыныд тыныш кылдытӥсько."
-    },
-    "joinUs": {
-      "label": "Тӥнъёс",
-      "title": "Биллионъёс утчаско",
-      "description": "Урожай татын. Диджитал медиа пыр инвожо дырмытэ но gospel вань дунъялы кылдытӥсько."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Вандыс кылим",
-      "title": "Jesus тыраныз веран, ваньмыз белән",
-      "description": "Соос асьсэ кылын, асьсэ лулэзын Jesus йыртӥськылэз кылыниське но көрыниське, татын кырӟан их."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% мувофикъ",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ఆడియో భాషను మార్చండి",
     "home": "JesusFilm హోమ్",
     "closeSearch": "శోధనను మూసివేయండి",
-    "submitSearch": "శోధించండి"
+    "submitSearch": "శోధించండి",
+    "library": "లైబ్రరీ"
   },
   "SearchOverlay": {
     "dialogLabel": "వీడియోలను శోధించి బ్రౌజ్ చేయండి",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language}లో “{suggestion}” కోసం శోధించండి",
     "inLanguage": "{language} లో",
     "browseByRegion": "ప్రాంతం వారీగా బ్రౌజ్ చేయండి",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "అన్ని వీడియోలు ఒకే పేజీలో",
     "clearLanguages": "తొలగించు",
     "queryLanguageDetected": "{language} గుర్తించబడింది",
     "searchInLanguage": "{language}లో శోధించండి",
@@ -467,6 +468,7 @@
     "sports": "క్రీడలు",
     "collections": "సేకరణలు",
     "subtitlesOnly": "ఉపశీర్షికలు మాత్రమే",
+    "backToTop": "పైకి తిరిగి",
     "newlyAdded": "కొత్తగా జోడించబడినవి",
     "newVideosTitle": "{language} లో కొత్త క్రైస్తవ వీడియోలు",
     "newestFirst": "కొత్తవి ముందుగా",
@@ -497,7 +499,21 @@
     "standaloneVideos": "స్వతంత్ర వీడియోలు",
     "videosFromCollection": "{collection} నుండి వీడియోలు.",
     "standaloneDescription": "ఈ భాషలో స్వతంత్ర వీడియోలు.",
-    "openCollection": "సేకరణ తెరవండి"
+    "openCollection": "సేకరణ తెరవండి",
+    "filters": "ఫిల్టర్‌లు",
+    "filterLength": "నిడివి",
+    "filterLength_under5": "5 నిమిషాల కంటే తక్కువ",
+    "filterLength_5to10": "5-10 నిమిషాలు",
+    "filterLength_10to30": "10-30 నిమిషాలు",
+    "filterLength_over30": "30 నిమిషాల కంటే ఎక్కువ",
+    "filterType": "రకం",
+    "clearFilters": "ఫిల్టర్‌లను తొలగించు",
+    "filterResults": "{total} లో {count} చూపబడుతోంది",
+    "noFilterResults": "ఈ ఫిల్టర్‌లకు ఏ వీడియో సరిపోలలేదు. ఒకటి తీసివేసి ప్రయత్నించండి.",
+    "filterAdded": "జోడించబడింది",
+    "filterAdded_60d": "గత 60 రోజులు",
+    "filterAdded_6m": "గత 6 నెలలు",
+    "filterAdded_12m": "గత 12 నెలలు"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project వాచ్",
@@ -646,44 +662,6 @@
     "actionsLabel": "పేజీ కనబడలేదు చర్యలు",
     "backToWatch": "వాచ్‌కు తిరిగి వెళ్లండి",
     "browseVideos": "వీడియోలను బ్రౌజ్ చేయండి"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "చిన్న చిత్రం చూడండి",
-    "actions": {
-      "joinUs": "మాతో చేరండి",
-      "shareMission": "మా మిషన్‌లో భాగస్వామ్యం అవండి"
-    },
-    "welcomeStart": {
-      "label": "విశ్వాసం & లేఖనం",
-      "title": "ఈ రోజు మా వీడియో ఎంపికలు",
-      "description": "ఆలోచన రేకెత్తించే, ప్రేరణనిచ్చే మా గ్రంథాలయం నుంచి విశ్వాసకేంద్రిత వీడియో కంటెంట్."
-    },
-    "welcomeMorning": {
-      "label": "ఉదయ ప్రేరణ",
-      "title": "శుభోదయం! ఈ రోజు బైబిల్ క్షణాలు మీ కోసం సిద్ధంగా ఉన్నాయి.",
-      "description": "మీ రోజును ప్రోత్సాహకరమైన బైబిల్ క్షణాలతో ప్రారంభించండి; అవి మీ మనసును ప్రేరేపించి ఉత్సాహపరచడానికి రూపొందించబడ్డాయి."
-    },
-    "welcomeAfternoon": {
-      "label": "మధ్యాహ్న ప్రేరణ",
-      "title": "శుభ మధ్యాహ్నం! మీ రోజుకోసం బైబిల్ క్షణాలు.",
-      "description": "మీ మధ్యాహ్న విరామానికి లేదా కొనసాగుతున్న ప్రేరణకు సరిపోయే ప్రోత్సాహకరమైన బైబిల్ కంటెంట్."
-    },
-    "welcomeEvening": {
-      "label": "సాయంత్ర ప్రేరణ",
-      "title": "శుభ సాయంత్రం! బైబిల్ క్షణాలతో విశ్రాంతి తీసుకోండి.",
-      "description": "మీ రోజు ముగియుతున్న వేళ, ఆలోచించడానికి మరియు సాంత్వన పొందడానికి సహాయపడే ప్రశాంత బైబిల్ క్షణాలు."
-    },
-    "joinUs": {
-      "label": "మాతో చేరండి",
-      "title": "అనేక బిలియన్లు వెతుకుతున్నారు",
-      "description": "పంట సిద్ధంగా ఉంది. డిజిటల్ మీడియా ద్వారా సువార్తను ప్రపంచానికి పంచడంలో మాతో చేరండి."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "రండి, కలిసి ముందుకు సాగుదాం",
-      "title": "యేసు కథను కలిసి చెప్పుదాం",
-      "description": "వారు ఉన్న చోటే, వారి స్వంత భాషలో యేసు ప్రేమను వినీ చూడగలుగుటకు."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% సరిపోలిక",

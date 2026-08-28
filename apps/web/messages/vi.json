@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
     "home": "Trang chủ JesusFilm",
     "closeSearch": "Đóng tìm kiếm",
-    "submitSearch": "Tìm kiếm"
+    "submitSearch": "Tìm kiếm",
+    "library": "Thư viện"
   },
   "SearchOverlay": {
     "dialogLabel": "Tìm kiếm và xem video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Tìm “{suggestion}” bằng {language}",
     "inLanguage": "bằng {language}",
     "browseByRegion": "Duyệt theo khu vực",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tất cả video trên một trang",
     "clearLanguages": "Xóa",
     "queryLanguageDetected": "Đã phát hiện {language}",
     "searchInLanguage": "Tìm bằng {language}",
@@ -283,6 +284,7 @@
     "sports": "Thể thao",
     "collections": "Bộ sưu tập",
     "subtitlesOnly": "Chỉ phụ đề",
+    "backToTop": "Về đầu trang",
     "newlyAdded": "Mới thêm",
     "newVideosTitle": "Video Cơ Đốc mới bằng {language}",
     "newestFirst": "Mới nhất trước",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video độc lập",
     "videosFromCollection": "Video từ {collection}.",
     "standaloneDescription": "Các video độc lập bằng ngôn ngữ này.",
-    "openCollection": "Mở bộ sưu tập"
+    "openCollection": "Mở bộ sưu tập",
+    "filters": "Bộ lọc",
+    "filterLength": "Thời lượng",
+    "filterLength_under5": "Dưới 5 phút",
+    "filterLength_5to10": "5-10 phút",
+    "filterLength_10to30": "10-30 phút",
+    "filterLength_over30": "Trên 30 phút",
+    "filterType": "Loại",
+    "clearFilters": "Xóa bộ lọc",
+    "filterResults": "Hiển thị {count} trên {total}",
+    "noFilterResults": "Không có video nào khớp với các bộ lọc này. Hãy thử bỏ một bộ lọc.",
+    "filterAdded": "Đã thêm",
+    "filterAdded_60d": "60 ngày qua",
+    "filterAdded_6m": "6 tháng qua",
+    "filterAdded_12m": "12 tháng qua"
   },
   "WatchHome": {
     "pageTitle": "Xem | Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Xem phim ngắn",
-    "actions": {
-      "joinUs": "Tham gia cùng chúng tôi",
-      "shareMission": "Chung tay trong sứ mệnh của chúng tôi"
-    },
-    "welcomeStart": {
-      "label": "Đức tin & Kinh Thánh",
-      "title": "Các video được chọn hôm nay",
-      "description": "Nội dung video xoay quanh đức tin từ thư viện của chúng tôi để truyền cảm hứng, thách thức và khơi gợi suy ngẫm."
-    },
-    "welcomeMorning": {
-      "label": "Nguồn cảm hứng buổi sáng",
-      "title": "Chào buổi sáng! Những khoảnh khắc Kinh Thánh hôm nay đang chờ bạn.",
-      "description": "Bắt đầu ngày mới với những khoảnh khắc Kinh Thánh đầy khích lệ, giúp truyền cảm hứng và nâng đỡ tâm linh bạn."
-    },
-    "welcomeAfternoon": {
-      "label": "Nguồn cảm hứng buổi chiều",
-      "title": "Chào buổi chiều! Những khoảnh khắc Kinh Thánh cho ngày của bạn.",
-      "description": "Nội dung Kinh Thánh khích lệ, rất phù hợp cho giờ nghỉ chiều hoặc để tiếp thêm cảm hứng cho bạn."
-    },
-    "welcomeEvening": {
-      "label": "Nguồn cảm hứng buổi tối",
-      "title": "Chào buổi tối! Thư giãn với những khoảnh khắc Kinh Thánh.",
-      "description": "Những khoảnh khắc Kinh Thánh bình an giúp bạn suy ngẫm và tìm được sự an ủi khi ngày dần khép lại."
-    },
-    "joinUs": {
-      "label": "Tham gia cùng chúng tôi",
-      "title": "Tỷ tỷ người đang tìm kiếm",
-      "description": "Mùa gặt đã đến. Hãy cùng chúng tôi chia sẻ Tin Mừng cho thế giới bằng phương tiện số."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Cùng nhau tiến bước",
-      "title": "Kể câu chuyện về Chúa Giê-su, cùng nhau",
-      "description": "Để họ có thể nghe và thấy tình yêu của Chúa Giê-su bằng chính ngôn ngữ của mình, ngay tại nơi họ đang sống."
     }
   },
   "VideoRecommendations": {

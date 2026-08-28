@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Keisti garso kalbą",
     "home": "JesusFilm pradžia",
     "closeSearch": "Uždaryti paiešką",
-    "submitSearch": "Ieškoti"
+    "submitSearch": "Ieškoti",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Ieškoti ir naršyti vaizdo įrašus",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Ieškoti „{suggestion}“ šia kalba: {language}",
     "inLanguage": "{language} kalba",
     "browseByRegion": "Naršyti pagal regioną",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Visi vaizdo įrašai viename puslapyje",
     "clearLanguages": "Išvalyti",
     "queryLanguageDetected": "Aptikta {language} kalba",
     "searchInLanguage": "Ieškoti šia kalba: {language}",
@@ -467,6 +468,7 @@
     "sports": "Sportas",
     "collections": "Rinkiniai",
     "subtitlesOnly": "Tik subtitrai",
+    "backToTop": "Atgal į viršų",
     "newlyAdded": "Neseniai pridėta",
     "newVideosTitle": "Nauji krikščioniški vaizdo įrašai {language} kalba",
     "newestFirst": "Naujausi pirmiausia",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Atskirti vaizdo įrašai",
     "videosFromCollection": "Vaizdo įrašai iš {collection}.",
     "standaloneDescription": "Atskirti šios kalbos vaizdo įrašai.",
-    "openCollection": "Atidaryti rinkinį"
+    "openCollection": "Atidaryti rinkinį",
+    "filters": "Filtrai",
+    "filterLength": "Ilgis",
+    "filterLength_under5": "Mažiau nei 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Daugiau nei 30 min",
+    "filterType": "Tipas",
+    "clearFilters": "Išvalyti filtrus",
+    "filterResults": "Rodoma {count} iš {total}",
+    "noFilterResults": "Nė vienas vaizdo įrašas neatitinka šių filtrų. Pabandykite pašalinti vieną.",
+    "filterAdded": "Pridėta",
+    "filterAdded_60d": "Paskutinės 60 dienų",
+    "filterAdded_6m": "Paskutiniai 6 mėnesiai",
+    "filterAdded_12m": "Paskutiniai 12 mėnesių"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project žiūrėjimas",
@@ -646,44 +662,6 @@
     "actionsLabel": "Veiksmai, kai puslapis nerastas",
     "backToWatch": "Grįžti į žiūrėjimą",
     "browseVideos": "Naršyti vaizdo įrašus"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Žiūrėti trumpametražį filmą",
-    "actions": {
-      "joinUs": "Prisijunkite prie mūsų",
-      "shareMission": "Prisidėkite prie mūsų misijos"
-    },
-    "welcomeStart": {
-      "label": "Tikėjimas ir Raštas",
-      "title": "Šiandienos vaizdo įrašų pasirinkimai",
-      "description": "Tikėjimu grįstas vaizdo turinys iš mūsų bibliotekos, skirtas įkvėpti, paskatinti ir paskatinti apmąstymus."
-    },
-    "welcomeMorning": {
-      "label": "Rytinis įkvėpimas",
-      "title": "Labas rytas! Šiandienos Biblijos akimirkos jūsų laukia.",
-      "description": "Pradėkite dieną su padrąsinančiomis Biblijos akimirkomis, skirtomis įkvėpti ir pakylėti jūsų dvasią."
-    },
-    "welcomeAfternoon": {
-      "label": "Popietės įkvėpimas",
-      "title": "Labas! Biblijos akimirkos jūsų dienai.",
-      "description": "Padrąsinantis Biblijos turinys, puikiai tinkantis popietės pertraukai arba tolesniam įkvėpimui."
-    },
-    "welcomeEvening": {
-      "label": "Vakaro įkvėpimas",
-      "title": "Labas vakaras! Atsipalaiduokite su Biblijos akimirkomis.",
-      "description": "Ramybę suteikiančios Biblijos akimirkos, padedančios apmąstyti ir rasti paguodą dienai baigiantis."
-    },
-    "joinUs": {
-      "label": "Prisijunkite prie mūsų",
-      "title": "Milijardai ieško",
-      "description": "Derlius jau čia. Prisijunkite prie mūsų, kai dalijamės Evangelija su pasauliu naudodami skaitmenines medijas."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Eikime kartu",
-      "title": "Kartu pasakokime Jėzaus istoriją",
-      "description": "Kad jie galėtų girdėti ir matyti Jėzaus meilę savo kalba ten, kur yra."
-    }
   },
   "VideoRecommendations": {
     "match": "Atitiktis: {percent} %",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "שנו שפת שמע",
     "home": "דף הבית של JesusFilm",
     "closeSearch": "סגירת החיפוש",
-    "submitSearch": "חיפוש"
+    "submitSearch": "חיפוש",
+    "library": "ספרייה"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "חפשו ב־{language} את ״{suggestion}״",
     "inLanguage": "ב־{language}",
     "browseByRegion": "עיון לפי אזור",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "כל הסרטונים בעמוד אחד",
     "clearLanguages": "ניקוי",
     "queryLanguageDetected": "זוהתה שפה: {language}",
     "searchInLanguage": "חיפוש ב־{language}",
@@ -467,6 +468,7 @@
     "sports": "ספורט",
     "collections": "אוספים",
     "subtitlesOnly": "כתוביות בלבד",
+    "backToTop": "חזרה למעלה",
     "newlyAdded": "נוסף לאחרונה",
     "newVideosTitle": "סרטונים נוצריים חדשים ב־{language}",
     "newestFirst": "החדשים תחילה",
@@ -497,7 +499,21 @@
     "standaloneVideos": "סרטונים עצמאיים",
     "videosFromCollection": "סרטונים מתוך {collection}.",
     "standaloneDescription": "סרטונים עצמאיים בשפה זו.",
-    "openCollection": "פתחו אוסף"
+    "openCollection": "פתחו אוסף",
+    "filters": "מסננים",
+    "filterLength": "אורך",
+    "filterLength_under5": "פחות מ-5 דקות",
+    "filterLength_5to10": "5-10 דקות",
+    "filterLength_10to30": "10-30 דקות",
+    "filterLength_over30": "יותר מ-30 דקות",
+    "filterType": "סוג",
+    "clearFilters": "נקה מסננים",
+    "filterResults": "מוצגים {count} מתוך {total}",
+    "noFilterResults": "אין סרטונים שתואמים למסננים אלה. נסה להסיר אחד.",
+    "filterAdded": "נוסף",
+    "filterAdded_60d": "60 הימים האחרונים",
+    "filterAdded_6m": "6 החודשים האחרונים",
+    "filterAdded_12m": "12 החודשים האחרונים"
   },
   "WatchHome": {
     "pageTitle": "צפייה של Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "פעולות לדף שלא נמצא",
     "backToWatch": "חזרה לצפייה",
     "browseVideos": "עיון בסרטונים"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "צפו בסרט קצר",
-    "actions": {
-      "joinUs": "הצטרפו אלינו",
-      "shareMission": "שותפו בשליחות שלנו"
-    },
-    "welcomeStart": {
-      "label": "אמונה וכתובים",
-      "title": "בחירות הווידאו של היום",
-      "description": "תוכן וידאו מהספרייה שלנו, ממוקד אמונה, כדי לעורר השראה, לאתגר ולעודד מחשבה."
-    },
-    "welcomeMorning": {
-      "label": "השראה לבוקר",
-      "title": "בוקר טוב! רגעי התנ״ך של היום מחכים לכם.",
-      "description": "פתחו את היום ברגעי תנ״ך מעודדים שנועדו להעניק השראה ולהרים את רוחכם."
-    },
-    "welcomeAfternoon": {
-      "label": "השראה לצהריים",
-      "title": "צהריים טובים! רגעי תנ״ך ליום שלכם.",
-      "description": "תוכן תנ״כי מעודד, מושלם להפסקת הצהריים שלכם או להמשך השראה."
-    },
-    "welcomeEvening": {
-      "label": "השראה לערב",
-      "title": "ערב טוב! הירגעו עם רגעי תנ״ך.",
-      "description": "רגעי תנ״ך שלווים שיעזרו לכם להרהר ולמצוא נחמה עם סיום היום."
-    },
-    "joinUs": {
-      "label": "הצטרפו אלינו",
-      "title": "מיליארדים מחפשים",
-      "description": "הקציר כבר כאן. הצטרפו אלינו כשאנחנו משתפים את הבשורה עם העולם באמצעות מדיה דיגיטלית."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "בואו נצעד יחד",
-      "title": "מספרים את סיפורו של ישו, יחד",
-      "description": "כדי שיוכלו לשמוע ולראות את אהבתו של ישו בשפתם, ממש במקום שבו הם נמצאים."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% התאמה",

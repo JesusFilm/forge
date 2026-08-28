@@ -180,7 +180,8 @@
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
     "closeSearch": "ፍለጋ ዝጋ",
-    "submitSearch": "ፈልግ"
+    "submitSearch": "ፈልግ",
+    "library": "ቤተ መጻሕፍት"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "በ{language} «{suggestion}»ን ፈልግ",
     "inLanguage": "በ{language}",
     "browseByRegion": "በክልል አስስ",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "ሁሉም ቪዲዮዎች በአንድ ገጽ",
     "clearLanguages": "አጥፋ",
     "queryLanguageDetected": "{language} ተገኝቷል",
     "searchInLanguage": "በ{language} ፈልግ",
@@ -467,6 +468,7 @@
     "sports": "ስፖርት",
     "collections": "ስብስቦች",
     "subtitlesOnly": "ንዑስ ጽሑፎች ብቻ",
+    "backToTop": "ወደ ላይ ተመለስ",
     "newlyAdded": "አዲስ የተጨመሩ",
     "newVideosTitle": "በ{language} አዲስ ክርስቲያናዊ ቪዲዮዎች",
     "newestFirst": "አዲሱ መጀመሪያ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ብቻውን ያሉ ቪዲዮዎች",
     "videosFromCollection": "ከ{collection} የተወሰዱ ቪዲዮዎች።",
     "standaloneDescription": "በዚህ ቋንቋ ብቻውን ያሉ ቪዲዮዎች።",
-    "openCollection": "ስብስብ ክፈት"
+    "openCollection": "ስብስብ ክፈት",
+    "filters": "አጣሪዎች",
+    "filterLength": "ርዝመት",
+    "filterLength_under5": "ከ5 ደቂቃ በታች",
+    "filterLength_5to10": "5-10 ደቂቃ",
+    "filterLength_10to30": "10-30 ደቂቃ",
+    "filterLength_over30": "ከ30 ደቂቃ በላይ",
+    "filterType": "ዓይነት",
+    "clearFilters": "አጣሪዎችን አጽዳ",
+    "filterResults": "ከ{total} ውስጥ {count} ይታያል",
+    "noFilterResults": "ከእነዚህ አጣሪዎች ጋር የሚዛመድ ቪዲዮ የለም። አንዱን ያስወግዱ።",
+    "filterAdded": "ተጨምሯል",
+    "filterAdded_60d": "ያለፉ 60 ቀናት",
+    "filterAdded_6m": "ያለፉ 6 ወራት",
+    "filterAdded_12m": "ያለፉ 12 ወራት"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ዋች",
@@ -646,44 +662,6 @@
     "actionsLabel": "የገጽ አልተገኘም እርምጃዎች",
     "backToWatch": "ወደ Watch ተመለስ",
     "browseVideos": "ቪዲዮዎችን አስስ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}፦ {title}",
-    "watchShortFilm": "አጭር ፊልም ይመልከቱ",
-    "actions": {
-      "joinUs": "ይቀላቀሉን",
-      "shareMission": "በተልዕኳችን ይካፈሉ"
-    },
-    "welcomeStart": {
-      "label": "እምነት እና ቅዱስ መጽሐፍ",
-      "title": "የዛሬ የቪዲዮ ምርጦች",
-      "description": "ከማዕከላችን የተመረጠ በእምነት ላይ ያተኮረ የቪዲዮ ይዘት፣ ለማነሳሳት፣ ለመፈተን እና ለማሰብ የሚያነሳሳ።"
-    },
-    "welcomeMorning": {
-      "label": "የጠዋት ማበረታቻ",
-      "title": "እንደምን አደሩ! የዛሬ የመጽሐፍ ቅዱስ አፍታዎች ይጠብቁዎታል።",
-      "description": "ቀንዎን ለማበረታታት እና መንፈስዎን ለማነሳሳት በተዘጋጁ አበረታች የመጽሐፍ ቅዱስ አፍታዎች ይጀምሩ።"
-    },
-    "welcomeAfternoon": {
-      "label": "የከሰዓት ማበረታቻ",
-      "title": "እንደምን አረፈዱ! ለቀንዎ የመጽሐፍ ቅዱስ አፍታዎች።",
-      "description": "ለከሰዓት እረፍትዎ ወይም ለቀጣይ ማበረታቻ ተመራጭ የሆነ አበረታች የመጽሐፍ ቅዱስ ይዘት።"
-    },
-    "welcomeEvening": {
-      "label": "የምሽት ማበረታቻ",
-      "title": "መልካም ምሽት! በመጽሐፍ ቅዱስ አፍታዎች ዘና ይበሉ።",
-      "description": "ቀንዎ ሲያበቃ እንዲያሰላስሉ እና መጽናናት እንዲያገኙ የሚረዱ የሰላም የመጽሐፍ ቅዱስ አፍታዎች።"
-    },
-    "joinUs": {
-      "label": "ይቀላቀሉን",
-      "title": "ቢሊዮኖች እየፈለጉ ነው",
-      "description": "መከሩ አሁን አለ። ከዓለም ጋር ወንጌልን በዲጂታል ሚዲያ ለማካፈል ይቀላቀሉን።"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "አብረን እንጓዝ",
-      "title": "የኢየሱስን ታሪክ በአንድነት መንገር",
-      "description": "እርሱ ባሉበት በራሳቸው ቋንቋ የኢየሱስን ፍቅር እንዲሰሙ እና እንዲያዩ ዘንድ።"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ይዛመዳል",

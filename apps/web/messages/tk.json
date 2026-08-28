@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ses dilini üýtget",
     "home": "JesusFilm baş sahypasy",
     "closeSearch": "Gözlegi ýap",
-    "submitSearch": "Gözle"
+    "submitSearch": "Gözle",
+    "library": "Kitaphana"
   },
   "SearchOverlay": {
     "dialogLabel": "Wideolary gözläň we gözden geçiriň",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» boýunça {language} dilinde gözle",
     "inLanguage": "{language} dilinde",
     "browseByRegion": "Sebit boýunça gözden geçir",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Ähli wideolar bir sahypada",
     "clearLanguages": "Arassala",
     "queryLanguageDetected": "{language} tapyldy",
     "searchInLanguage": "{language} dilinde gözle",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Toplumlar",
     "subtitlesOnly": "Diňe subtitrler",
+    "backToTop": "Ýokara dolan",
     "newlyAdded": "Täze goşuldy",
     "newVideosTitle": "{language} dilindäki täze hristian wideolary",
     "newestFirst": "Ilki iň täzeleri",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Aýratyn wideolar",
     "videosFromCollection": "{collection}-den wideolar.",
     "standaloneDescription": "Bu dilde aýratyn wideolar.",
-    "openCollection": "Toplumy aç"
+    "openCollection": "Toplumy aç",
+    "filters": "Süzgüçler",
+    "filterLength": "Dowamlylygy",
+    "filterLength_under5": "5 minutdan az",
+    "filterLength_5to10": "5-10 minut",
+    "filterLength_10to30": "10-30 minut",
+    "filterLength_over30": "30 minutdan köp",
+    "filterType": "Görnüşi",
+    "clearFilters": "Süzgüçleri arassala",
+    "filterResults": "{total} sanydan {count} görkezilýär",
+    "noFilterResults": "Bu süzgüçlere gabat gelýän wideo ýok. Birini aýryp görüň.",
+    "filterAdded": "Goşuldy",
+    "filterAdded_60d": "Soňky 60 gün",
+    "filterAdded_6m": "Soňky 6 aý",
+    "filterAdded_12m": "Soňky 12 aý"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-de serediň",
@@ -646,44 +662,6 @@
     "actionsLabel": "Sahypa tapylmady hereketleri",
     "backToWatch": "Seretmäge dolan",
     "browseVideos": "Wideolara göz aýla"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gysga filmi gör",
-    "actions": {
-      "joinUs": "Bize goşulyň",
-      "shareMission": "Biziň missiýamyza goşulyň"
-    },
-    "welcomeStart": {
-      "label": "Iman we Mukaddes Yazgy",
-      "title": "Şu günki wideo saýlawlarymyz",
-      "description": "Kitaphanamyzda bar bolan, imana degişli, ylham beriji, oýlanmaga iteriji wideolar."
-    },
-    "welcomeMorning": {
-      "label": "Säher ylhamy",
-      "title": "Hoş säher! Şu günüň Mukaddes Kitap pursatlary sizi garaşýar.",
-      "description": "Günüňize ruhuňyzy güýçlendirip, ylham berjek Mukaddes Kitap pursatlary bilen başlaň."
-    },
-    "welcomeAfternoon": {
-      "label": "Gündizki ylham",
-      "title": "Gowy günortan! Günüňiz üçin Mukaddes Kitap pursatlary.",
-      "description": "Günortan arakesmäňiz ýa-da dowam edýän ylham üçin laýyk, ruhlandyryjy Mukaddes Kitap mazmuny."
-    },
-    "welcomeEvening": {
-      "label": "Agşamky ylham",
-      "title": "Agşam haýyr! Mukaddes Kitap pursatlary bilen dynç alyň.",
-      "description": "Günüňiz tamamlananda oýlanmaga we teselli tapmaga kömek edýän asuda Mukaddes Kitap pursatlary."
-    },
-    "joinUs": {
-      "label": "Bize goşulyň",
-      "title": "Milliardlar gözleýär",
-      "description": "Hasyl taýýar. Sanly media arkaly Hoş Habary dünýä bilen paýlaşmakda bize goşulyň."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Geliň, bilelikde öňe ilerläliň",
-      "title": "Isa baradaky gürrüňi bilelikde aýdalyň",
-      "description": "Şonda olar Isa-nyň söýgüsini öz dillerinde, ýaşaýan ýerlerinde eşidip hem görüp bilerler."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% gabat gelýär",

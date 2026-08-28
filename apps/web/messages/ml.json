@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
     "home": "JesusFilm ഹോം",
     "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക",
-    "submitSearch": "തിരയുക"
+    "submitSearch": "തിരയുക",
+    "library": "ലൈബ്രറി"
   },
   "SearchOverlay": {
     "dialogLabel": "വീഡിയോകൾ തിരയുകയും ബ്രൗസ് ചെയ്യുകയും ചെയ്യുക",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ൽ “{suggestion}” തിരയുക",
     "inLanguage": "{language} ൽ",
     "browseByRegion": "പ്രദേശം പ്രകാരം ബ്രൗസ് ചെയ്യുക",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "എല്ലാ വീഡിയോകളും ഒരു പേജിൽ",
     "clearLanguages": "മായ്ക്കുക",
     "queryLanguageDetected": "{language} കണ്ടെത്തി",
     "searchInLanguage": "{language} ൽ തിരയുക",
@@ -467,6 +468,7 @@
     "sports": "കായികം",
     "collections": "ശേഖരങ്ങൾ",
     "subtitlesOnly": "സബ്ടൈറ്റിലുകൾ മാത്രം",
+    "backToTop": "മുകളിലേക്ക്",
     "newlyAdded": "പുതുതായി ചേർത്തത്",
     "newVideosTitle": "{language}-ൽ പുതിയ ക്രിസ്തീയ വീഡിയോകൾ",
     "newestFirst": "പുതിയതു മുതൽ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "സ്വതന്ത്ര വീഡിയോകൾ",
     "videosFromCollection": "{collection} ലെ വീഡിയോകൾ.",
     "standaloneDescription": "ഈ ഭാഷയിലെ സ്വതന്ത്ര വീഡിയോകൾ.",
-    "openCollection": "ശേഖരം തുറക്കുക"
+    "openCollection": "ശേഖരം തുറക്കുക",
+    "filters": "ഫിൽട്ടറുകൾ",
+    "filterLength": "ദൈർഘ്യം",
+    "filterLength_under5": "5 മിനിറ്റിൽ കുറവ്",
+    "filterLength_5to10": "5-10 മിനിറ്റ്",
+    "filterLength_10to30": "10-30 മിനിറ്റ്",
+    "filterLength_over30": "30 മിനിറ്റിൽ കൂടുതൽ",
+    "filterType": "തരം",
+    "clearFilters": "ഫിൽട്ടറുകൾ മായ്ക്കുക",
+    "filterResults": "{total} ൽ {count} കാണിക്കുന്നു",
+    "noFilterResults": "ഈ ഫിൽട്ടറുകളുമായി ഒരു വീഡിയോയും പൊരുത്തപ്പെടുന്നില്ല. ഒന്ന് നീക്കം ചെയ്യുക.",
+    "filterAdded": "ചേർത്തത്",
+    "filterAdded_60d": "കഴിഞ്ഞ 60 ദിവസം",
+    "filterAdded_6m": "കഴിഞ്ഞ 6 മാസം",
+    "filterAdded_12m": "കഴിഞ്ഞ 12 മാസം"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project വാച്ച്",
@@ -646,44 +662,6 @@
     "actionsLabel": "പേജ് കണ്ടെത്തിയില്ല പ്രവർത്തനങ്ങൾ",
     "backToWatch": "വാച്ചിലേക്ക് മടങ്ങുക",
     "browseVideos": "വീഡിയോകൾ ബ്രൗസ് ചെയ്യുക"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ചെറുചിത്രം കാണുക",
-    "actions": {
-      "joinUs": "ഞങ്ങളോടൊപ്പം ചേരുക",
-      "shareMission": "ഞങ്ങളുടെ ദൗത്യത്തിൽ പങ്കുചേരുക"
-    },
-    "welcomeStart": {
-      "label": "വിശ്വാസവും തിരുവെഴുത്തും",
-      "title": "ഇന്നത്തെ വീഡിയോ തിരഞ്ഞെടുപ്പുകൾ",
-      "description": "പ്രചോദിപ്പിക്കാനും, വെല്ലുവിളിക്കാനും, ആലോചന ഉണർത്താനും സഹായിക്കുന്ന ഞങ്ങളുടെ ലൈബ്രറിയിലെ വിശ്വാസകേന്ദ്രിത വീഡിയോ ഉള്ളടക്കം."
-    },
-    "welcomeMorning": {
-      "label": "പ്രഭാത പ്രചോദനം",
-      "title": "സുപ്രഭാതം! ഇന്നത്തെ ബൈബിൾ നിമിഷങ്ങൾ നിങ്ങളെ കാത്തിരിക്കുന്നു.",
-      "description": "നിങ്ങളുടെ ദിനം ഉത്സാഹപ്പെടുത്താനും ആത്മാവിനെ ഉയർത്താനും രൂപകൽപ്പന ചെയ്ത പ്രചോദനകരമായ ബൈബിൾ നിമിഷങ്ങളോടെ ആരംഭിക്കുക."
-    },
-    "welcomeAfternoon": {
-      "label": "ഉച്ചകഴിഞ്ഞുള്ള പ്രചോദനം",
-      "title": "ഉച്ചകഴിഞ്ഞു! നിങ്ങളുടെ ദിവസത്തിനായുള്ള ബൈബിൾ നിമിഷങ്ങൾ.",
-      "description": "ഉച്ചവേളയിൽ കാണാനോ തുടർ പ്രചോദനത്തിനോ അനുയോജ്യമായ ഉത്സാഹകരമായ ബൈബിൾ ഉള്ളടക്കം."
-    },
-    "welcomeEvening": {
-      "label": "സായാഹ്ന പ്രചോദനം",
-      "title": "സായാഹ്നം! ബൈബിൾ നിമിഷങ്ങളോടെ ദിനം ശാന്തമായി അവസാനിപ്പിക്കുക.",
-      "description": "നിങ്ങളുടെ ദിവസം അവസാനിക്കുമ്പോൾ ചിന്തിക്കാനും ആശ്വാസം കണ്ടെത്താനും സഹായിക്കുന്ന സമാധാനകരമായ ബൈബിൾ നിമിഷങ്ങൾ."
-    },
-    "joinUs": {
-      "label": "ഞങ്ങളോടൊപ്പം ചേരുക",
-      "title": "കോടിക്കണക്കിന് പേർ അന്വേഷിക്കുന്നു",
-      "description": "വിളവെടുപ്പ് ഇവിടെ തന്നെയാണ്. ഡിജിറ്റൽ മീഡിയ ഉപയോഗിച്ച് ലോകത്തോട് സുവിശേഷം പങ്കിടുന്നതിൽ ഞങ്ങളോടൊപ്പം ചേരുക."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "നമുക്ക് ഒരുമിച്ച് പോകാം",
-      "title": "യേശുവിന്റെ കഥ ഒരുമിച്ച് പറയുക",
-      "description": "അങ്ങനെ അവർക്ക് അവരുടെ ഭാഷയിൽ, തങ്ങൾ ഉള്ളിടത്തുതന്നെ, യേശുവിന്റെ സ്നേഹം കേൾക്കാനും കാണാനും കഴിയുന്നു."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% പൊരുത്തം",

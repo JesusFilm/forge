@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fakafesuiaʻi te language o te leo",
     "home": "Te kāiga o JesusFilm",
     "closeSearch": "Tapuni te search",
-    "submitSearch": "Saili"
+    "submitSearch": "Saili",
+    "library": "Fale tusi"
   },
   "SearchOverlay": {
     "dialogLabel": "Saili kae browse vitio",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Saili ki te \"{suggestion}\" i te {language}",
     "inLanguage": "i te {language}",
     "browseByRegion": "Browse mā te region",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Vitio katoa i te itulau e tasi",
     "clearLanguages": "Tamā",
     "queryLanguageDetected": "{language} ne maua",
     "searchInLanguage": "Saili i te {language}",
@@ -467,6 +468,7 @@
     "sports": "Taaloga",
     "collections": "Fakaputuga",
     "subtitlesOnly": "Subtitles fua",
+    "backToTop": "Toe foki ki luga",
     "newlyAdded": "Faatoā fakapuloua",
     "newVideosTitle": "Vitio faka-Kelisiano fou i te {language}",
     "newestFirst": "Mea fou muamua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vitio tūtasi",
     "videosFromCollection": "Videos mai {collection}.",
     "standaloneDescription": "Standalone videos i tenei language.",
-    "openCollection": "Tatala collection"
+    "openCollection": "Tatala collection",
+    "filters": "Fakamama",
+    "filterLength": "Loa",
+    "filterLength_under5": "Fakaitiiti ifo i te 5 minuti",
+    "filterLength_5to10": "5-10 minuti",
+    "filterLength_10to30": "10-30 minuti",
+    "filterLength_over30": "Sili atu i te 30 minuti",
+    "filterType": "Vaega",
+    "clearFilters": "Tapena a fakamama",
+    "filterResults": "E fakaasi {count} mai te {total}",
+    "noFilterResults": "Seai se vitio e fetaui mo fakamama konei. Taumafai ke ave keatea se tasi.",
+    "filterAdded": "Fakaopoopo",
+    "filterAdded_60d": "Aso 60 ko teka",
+    "filterAdded_6m": "Masina 6 ko teka",
+    "filterAdded_12m": "Masina 12 ko teka"
   },
   "WatchHome": {
     "pageTitle": "Matamata i te Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Gaioiga mō te page se maua",
     "backToWatch": "Toe foki ki te Watch",
     "browseVideos": "Browse vitio"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Matamata ki te ata tifaga poto",
-    "actions": {
-      "joinUs": "Fakatasi mai",
-      "shareMission": "Tufa i te matou Misiona"
-    },
-    "welcomeStart": {
-      "label": "Fakatuanaki mo te Tusi Tapu",
-      "title": "Vitio filifili mō te aso nei",
-      "description": "Vitio fakavae ki te fakatuanaki mai te matou library ke fakamalosi, fakalotolotolua, mo fakaosooso mafaufauga."
-    },
-    "welcomeMorning": {
-      "label": "Fakamalosiga i te taeao",
-      "title": "Taeao manuia! E fakaasi atu a mea mai te Tusi Tapu mō te aso nei.",
-      "description": "Amata tou aso mo a mea fakamalosi mai te Tusi Tapu ne fuafuagina ke fakamalosia kae fakaola tou loto."
-    },
-    "welcomeAfternoon": {
-      "label": "Fakamalosiga i te afiafi",
-      "title": "Afiafi manuia! Mea mai te Tusi Tapu mō tou aso.",
-      "description": "Tala fakamalosia mai te Tusi Tapu e fetaui lelei mō tou mālōlō i te afiafi io me ke tumau tou fakamalosiga."
-    },
-    "welcomeEvening": {
-      "label": "Fakamalosiga i te afiafi po",
-      "title": "Afiafi manuia! Malōlō mālie mo a mea mai te Tusi Tapu.",
-      "description": "A mea filemu mai te Tusi Tapu ke fesoasoani ki a koe o mafaufau kae maua te fakamafanafana i te fakaotiga o tou aso."
-    },
-    "joinUs": {
-      "label": "Fakatasi mai",
-      "title": "E tokouke a tino e sailivili",
-      "description": "Kua oko mai te taimi o te seleselega. Fakatafai mai mo matou ke tufa te tala lei ki te lalolagi mā te media faka-igitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tatou olo fakatasi",
-      "title": "Faipati ki te tala o Iesu, fakatasi",
-      "description": "Ke mafai o lagona kae kilo atu latou ki te alofa o Iesu i tālatou lava language i te koga telā e nofo ei latou."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",

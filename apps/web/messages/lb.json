@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "home": "JesusFilm-Startsäit",
     "closeSearch": "Sich zoumaachen",
-    "submitSearch": "Sichen"
+    "submitSearch": "Sichen",
+    "library": "Bibliothek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Op {language} no „{suggestion}“ sichen",
     "inLanguage": "op {language}",
     "browseByRegion": "No Regioun duerchkucken",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "All Videoen op enger Säit",
     "clearLanguages": "Läschen",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Op {language} sichen",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollektiounen",
     "subtitlesOnly": "Nëmme Ënnertitelen",
+    "backToTop": "Zréck no uewen",
     "newlyAdded": "Nei dobäigesat",
     "newVideosTitle": "Nei chrëschtlech Videoen op {language}",
     "newestFirst": "Déi neisten éischt",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Eenzel Videoen",
     "videosFromCollection": "Videoen aus {collection}.",
     "standaloneDescription": "Eenzel Videoen op dëser Sprooch.",
-    "openCollection": "Kollektioun opmaachen"
+    "openCollection": "Kollektioun opmaachen",
+    "filters": "Filteren",
+    "filterLength": "Längt",
+    "filterLength_under5": "Ënner 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Iwwer 30 Min.",
+    "filterType": "Typ",
+    "clearFilters": "Filteren zurécksetzen",
+    "filterResults": "{count} vun {total} gewisen",
+    "noFilterResults": "Kee Video passt zu dëse Filteren. Probéier een ewechzehuelen.",
+    "filterAdded": "Dobäigesat",
+    "filterAdded_60d": "Lescht 60 Deeg",
+    "filterAdded_6m": "Lescht 6 Méint",
+    "filterAdded_12m": "Lescht 12 Méint"
   },
   "WatchHome": {
     "pageTitle": "Videoe kucken | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Aktioune bei net fonnten Säiten",
     "backToWatch": "Zréck op Watch",
     "browseVideos": "Videoen duerchkucken"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kuerzfilm kucken",
-    "actions": {
-      "joinUs": "Maacht mat",
-      "shareMission": "Maacht mat bei eiser Missioun"
-    },
-    "welcomeStart": {
-      "label": "Glaawen & Schrëft",
-      "title": "Déi hauteg Video-Auswiel",
-      "description": "Glaawenszentéiert Videoen aus eiser Bibliothéik, déi inspiréieren, erausfuerderen an zum Nokéieren anregen."
-    },
-    "welcomeMorning": {
-      "label": "Moiesinspiratioun",
-      "title": "Gudde Moien! Hauteg Bibelmomenter waarden op Iech.",
-      "description": "Start Ären Dag mat ermunternden Bibelmomenter, déi inspiréieren an Äre Geescht opbauen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nomëttesinspiratioun",
-      "title": "Gudden Nomëtteg! Bibelmomenter fir Ären Dag.",
-      "description": "Ermuetigend Bibelinhalter, ideal fir Är Nomëttespaus oder fir weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Owensinspiratioun",
-      "title": "Gudden Owend! Entspannt Iech mat Bibelmomenter.",
-      "description": "Roueg Bibelmomenter, déi Iech hëllefen, nozedenken an Trouscht ze fannen, wann Ären Dag op en Enn geet."
-    },
-    "joinUs": {
-      "label": "Maacht mat",
-      "title": "Milliarde si am Sich",
-      "description": "D’Ernte ass do. Maacht mat a deelt d’Evangelium mat der Welt iwwer digital Medie."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Loosst eis et zesumme maachen",
-      "title": "D’Geschicht vu Jesus zesumme erzielen",
-      "description": "Sou kënne si d’Léift vu Jesus an hirer eegener Sprooch héieren a gesinn, direkt do wou si sinn."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent} % Iwwereestëmmung",

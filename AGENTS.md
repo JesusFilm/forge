@@ -55,4 +55,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `apps/tv/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
 - `apps/chat/AGENTS.md` + `apps/chat/CLAUDE.md`
+- `apps/rag/AGENTS.md` (canonical) + `apps/rag/CLAUDE.md` (provider redirect)
+- `packages/rag-contracts/AGENTS.md` (canonical) + `packages/rag-contracts/CLAUDE.md` (provider redirect)
+- `docs/roadmap/rag/CLAUDE.md`
 - `packages/admin-graphql/CLAUDE.md`

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio tilini o‘zgartirish",
     "home": "JesusFilm bosh sahifasi",
     "closeSearch": "Qidiruvni yopish",
-    "submitSearch": "Qidirish"
+    "submitSearch": "Qidirish",
+    "library": "Kutubxona"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarni qidirish va ko‘rish",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} tilida «{suggestion}»ni qidirish",
     "inLanguage": "{language} tilida",
     "browseByRegion": "Mintaqa bo‘yicha ko‘rish",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Barcha videolar bitta sahifada",
     "clearLanguages": "Tozalash",
     "queryLanguageDetected": "{language} tili aniqlandi",
     "searchInLanguage": "{language} tilida qidirish",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "To‘plamlar",
     "subtitlesOnly": "Faqat subtitrlar",
+    "backToTop": "Yuqoriga",
     "newlyAdded": "Yangi qo‘shilgan",
     "newVideosTitle": "{language} tilidagi yangi xristian videolari",
     "newestFirst": "Eng yangisi avval",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mustaqil videolar",
     "videosFromCollection": "{collection}dan videolar.",
     "standaloneDescription": "Bu tildagi mustaqil videolar.",
-    "openCollection": "To‘plamni ochish"
+    "openCollection": "To‘plamni ochish",
+    "filters": "Filtrlar",
+    "filterLength": "Davomiyligi",
+    "filterLength_under5": "5 daqiqadan kam",
+    "filterLength_5to10": "5-10 daqiqa",
+    "filterLength_10to30": "10-30 daqiqa",
+    "filterLength_over30": "30 daqiqadan ko'p",
+    "filterType": "Turi",
+    "clearFilters": "Filtrlarni tozalash",
+    "filterResults": "{total} dan {count} ko'rsatildi",
+    "noFilterResults": "Bu filtrlarga mos video yo'q. Bittasini olib tashlab ko'ring.",
+    "filterAdded": "Qo'shilgan",
+    "filterAdded_60d": "Oxirgi 60 kun",
+    "filterAdded_6m": "Oxirgi 6 oy",
+    "filterAdded_12m": "Oxirgi 12 oy"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ko‘rish",
@@ -646,44 +662,6 @@
     "actionsLabel": "Sahifa topilmadi amallari",
     "backToWatch": "Ko‘rishga qaytish",
     "browseVideos": "Videolarni ko‘rib chiqish"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Qisqa filmni tomosha qiling",
-    "actions": {
-      "joinUs": "Bizga qo‘shiling",
-      "shareMission": "Missiyamizga sherik bo‘ling"
-    },
-    "welcomeStart": {
-      "label": "Imon va Muqaddas Bitik",
-      "title": "Bugungi video tanlovlar",
-      "description": "Kutubxonamizdagi imon markazli videolar sizni ilhomlantirish, mulohazaga chorlash va o‘ylantirish uchun."
-    },
-    "welcomeMorning": {
-      "label": "Tonggi ilhom",
-      "title": "Xayrli tong! Bugungi Bibliya lahzalari sizni kutmoqda.",
-      "description": "Kuningizni ilhomlantiruvchi Bibliya lahzalari bilan boshlang — ular ruhingizni ko‘tarish uchun yaratilgan."
-    },
-    "welcomeAfternoon": {
-      "label": "Peshin ilhomi",
-      "title": "Xayrli kun! Kuningiz uchun Bibliya lahzalari.",
-      "description": "Kunning ikkinchi yarmi uchun ayni mos bo‘lgan, ruhlantiruvchi Bibliya mazmuni."
-    },
-    "welcomeEvening": {
-      "label": "Kechki ilhom",
-      "title": "Xayrli kech! Bibliya lahzalari bilan xotirjamlik toping.",
-      "description": "Kuningiz yakunida mulohaza qilish va taskin topishga yordam beradigan sokin Bibliya lahzalari."
-    },
-    "joinUs": {
-      "label": "Bizga qo‘shiling",
-      "title": "Milyardlab odamlar izlanmoqda",
-      "description": "Hosil tayyor. Raqamli media orqali butun dunyo bilan xushxabarni ulashishda bizga qo‘shiling."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Birga yo‘l olaylik",
-      "title": "Iso haqidagi hikoyani birga hikoya qilamiz",
-      "description": "Shunda ular Iso sevgisini o‘z tillarida, aynan o‘zlari turgan joyda eshitib va ko‘ra oladilar."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% mos",

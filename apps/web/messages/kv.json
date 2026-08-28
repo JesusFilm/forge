@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кывсӧ вӧвны",
     "home": "JesusFilm оланнин",
     "closeSearch": "Корсьӧмӧс вӧчны",
-    "submitSearch": "Корсьны"
+    "submitSearch": "Корсьны",
+    "library": "Небöгкуд"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоӧс корсьны да лыддьыны",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} кыв вылын «{suggestion}» корсьны",
     "inLanguage": "{language} вылын",
     "browseByRegion": "Регион сайын лыддьыны",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Быдӧс видео ӧти страница вылын",
     "clearLanguages": "Вакыт",
     "queryLanguageDetected": "{language} тӧдӧм",
     "searchInLanguage": "Корсьӧм кыв: {language}",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияяс",
     "subtitlesOnly": "Субтитръяс гӧгӧр",
+    "backToTop": "Вылö бергöдчыны",
     "newlyAdded": "Выль ӧтдӧм",
     "newVideosTitle": "{language} вылын выль христианской видео",
     "newestFirst": "Сыӧн вӧт",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Мутӧм видеоъяс",
     "videosFromCollection": "{collection} сайын видеоъяс.",
     "standaloneDescription": "Этӧ кыв вылын мутӧм видеоъяс.",
-    "openCollection": "Коллекцияӧс вӧчны"
+    "openCollection": "Коллекцияӧс вӧчны",
+    "filters": "Пыртöмъяс",
+    "filterLength": "Кузьта",
+    "filterLength_under5": "5 минутся этша",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутся уна",
+    "filterType": "Ног",
+    "clearFilters": "Пыртöмъяс чышкыны",
+    "filterResults": "{total}-ысь {count} петкöдлöма",
+    "noFilterResults": "Тайö пыртöмъяслы лöсялана видео абу. Öтикöс босьт да видзöд.",
+    "filterAdded": "Содтöма",
+    "filterAdded_60d": "Бöръя 60 лун",
+    "filterAdded_6m": "Бöръя 6 тöлысь",
+    "filterAdded_12m": "Бöръя 12 тöлысь"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — видзӧдны",
@@ -646,44 +662,6 @@
     "actionsLabel": "Страница абу шедӧдӧм действий",
     "backToWatch": "Watch-ӧ бӧр",
     "browseVideos": "Видеоъяс лыддьыны"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыскыд фильмӧс смотритны",
-    "actions": {
-      "joinUs": "Эзитӧ",
-      "shareMission": "Миян миссияын участвуйте"
-    },
-    "welcomeStart": {
-      "label": "Вера да Scripture",
-      "title": "Тодӧм лунса видеоӧс",
-      "description": "Миян библиотекаысь вералысь видео контент, кӧні мед бурысь, кӧсйӧмлысь да думӧс вӧчны вӧйтӧны."
-    },
-    "welcomeMorning": {
-      "label": "Ылӧм вдохновение",
-      "title": "Сэ да бур лун! Библия лунчаяс волӧны.",
-      "description": "Лунъяссӧ вӧчны Библиянысь бур лунчаясӧн, кӧні ӧтчыдлыны да лӧньтны."
-    },
-    "welcomeAfternoon": {
-      "label": "Ӧтвыд вдохновение",
-      "title": "Бур удж лун! Сійӧн Библия лунчаяс.",
-      "description": "Ӧтвыд шыдлӧм вылӧ или мӧдӧд вдохновение вылӧ ӧтчыдлысь Библия контент."
-    },
-    "welcomeEvening": {
-      "label": "Вечер вдохновение",
-      "title": "Бур вечер! Библия лунчаясӧн лӧньтны.",
-      "description": "Лӧнь Библия лунчаяс, кӧні висьтӧм да бур тӧдчӧм шедӧдны, лун вӧдӧмӧн."
-    },
-    "joinUs": {
-      "label": "Эзитӧ",
-      "title": "Миллиардъяс корсьӧны",
-      "description": "Жугӧр му вылын. Эзитӧ миянӧн, кӧнӧй digital media вӧчны, Евангелие висьтавны быд мортлы."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ӧтчыд мунны",
-      "title": "Иисусӧн висьтӧм, ӧтчыд",
-      "description": "Шоб сы кывын асланыс лунын эшӧ вермасьны Иисуслысь мылсям да висьтӧм пӧжӧдны."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% лӧсялӧ",

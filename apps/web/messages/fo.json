@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Broyt ljóðmál",
     "home": "JesusFilm forsíða",
     "closeSearch": "Lat leit aftur",
-    "submitSearch": "Leita"
+    "submitSearch": "Leita",
+    "library": "Savn"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og blaða í videobrotum",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Leita á {language} eftir „{suggestion}“",
     "inLanguage": "á {language}",
     "browseByRegion": "Blaða eftir øki",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Øll videobrot á eini síðu",
     "clearLanguages": "Strika",
     "queryLanguageDetected": "{language} funnið",
     "searchInLanguage": "Leita á {language}",
@@ -467,6 +468,7 @@
     "sports": "Ítróttur",
     "collections": "Søvn",
     "subtitlesOnly": "Bert undirtekstir",
+    "backToTop": "Aftur upp",
     "newlyAdded": "Nýliga lagt aftrat",
     "newVideosTitle": "Nýggj kristin videobrot á {language}",
     "newestFirst": "Nýggjasta fyrst",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Stakar videobrot",
     "videosFromCollection": "Videobrot úr {collection}.",
     "standaloneDescription": "Støk videobrot á hesum máli.",
-    "openCollection": "Lat savn upp"
+    "openCollection": "Lat savn upp",
+    "filters": "Filtur",
+    "filterLength": "Longd",
+    "filterLength_under5": "Undir 5 min.",
+    "filterLength_5to10": "5-10 min.",
+    "filterLength_10to30": "10-30 min.",
+    "filterLength_over30": "Yvir 30 min.",
+    "filterType": "Slag",
+    "clearFilters": "Reinsa filtur",
+    "filterResults": "{count} av {total} víst",
+    "noFilterResults": "Ongin vídeo samsvarar hesum filtrunum. Royn at taka eitt burtur.",
+    "filterAdded": "Lagt til",
+    "filterAdded_60d": "Seinastu 60 dagar",
+    "filterAdded_6m": "Seinastu 6 mánaðir",
+    "filterAdded_12m": "Seinastu 12 mánaðir"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Hygg",
@@ -646,44 +662,6 @@
     "actionsLabel": "Agerðir fyri ikki funna síðu",
     "backToWatch": "Aftur til Watch",
     "browseVideos": "Blaða í videobrotum"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hygg at stuttfilmi",
-    "actions": {
-      "joinUs": "Ver við",
-      "shareMission": "Deil okkara missión"
-    },
-    "welcomeStart": {
-      "label": "Trúgv og Skrift",
-      "title": "Dagsins videoval",
-      "description": "Videoinnihald við trúgv í miðdeplinum úr savninum, sum kann inspirera, avbjóða og kveikja til hugleiðing."
-    },
-    "welcomeMorning": {
-      "label": "Morguninspiratión",
-      "title": "Góðan morgun! Dagsins bíbliustundir bíða.",
-      "description": "Byrja dagin við eggjandi bíbliustundum, ætlaðum at inspirera og lyfta andan."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftirmiðdagsinspiratión",
-      "title": "Góðan dag! Bíbliustundir til tín dag.",
-      "description": "Eggjandi bíbliutilfar, væl egnað til tína eftirmiðdagssteðg ella sum framhaldandi íblástur."
-    },
-    "welcomeEvening": {
-      "label": "Kvøldsinspiratión",
-      "title": "Góða kvøld! Slapp av við bíbliustundum.",
-      "description": "Friðsæl bíbliustundir, sum hjálpa tær at hugleiða og finna troyst, tá ið dagurin fer at enda."
-    },
-    "joinUs": {
-      "label": "Ver við",
-      "title": "Milliardir leita",
-      "description": "Heystið er her. Ver við okkum, meðan vit deila evangeliið við heimin gjøgnum talgild miðlar."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lata okkum fara saman",
-      "title": "At siga søguna um Jesus, saman",
-      "description": "So tey kunnu hoyra og síggja kærleikan hjá Jesusi á sínum egna máli júst har, sum tey eru."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% samsvar",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Taui i te reo oro",
     "home": "Te fare JésusFilm",
     "closeSearch": "A tapiri i te imiraa",
-    "submitSearch": "A imi"
+    "submitSearch": "A imi",
+    "library": "Fare puta"
   },
   "SearchOverlay": {
     "dialogLabel": "A imi e a hi'o i te mau video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "A imi i «{suggestion}» na roto i te reo {language}",
     "inLanguage": "i roto i te {language}",
     "browseByRegion": "A hi'o na te tuhaa fenua",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Te mau video ato’a i te api hoê",
     "clearLanguages": "Tamâ",
     "queryLanguageDetected": "Ua ite-hia te reo {language}",
     "searchInLanguage": "A imi na roto i te reo {language}",
@@ -467,6 +468,7 @@
     "sports": "Te mau hākinakina",
     "collections": "Te mau ha'aputuhia",
     "subtitlesOnly": "Te mau subtitles ana'e",
+    "backToTop": "Hoʻi i niʻa",
     "newlyAdded": "Ua tāpiri-apî-hia",
     "newVideosTitle": "Te mau video Kerisetiano apî i roto i te {language}",
     "newestFirst": "Te apî roa na mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Te mau video ta'ahiraa",
     "videosFromCollection": "Te mau video mai roto mai i te {collection}.",
     "standaloneDescription": "Te mau video ta'ahiraa i roto i teie reo.",
-    "openCollection": "A iriti i te ha'aputuhia"
+    "openCollection": "A iriti i te ha'aputuhia",
+    "filters": "Tāmāmā",
+    "filterLength": "Roa",
+    "filterLength_under5": "Iti aʻe i te 5 mineti",
+    "filterLength_5to10": "5-10 mineti",
+    "filterLength_10to30": "10-30 mineti",
+    "filterLength_over30": "Hau atu i te 30 mineti",
+    "filterType": "Huru",
+    "clearFilters": "Fāʻiriʻiri i te tāmāmā",
+    "filterResults": "Te faʻaiteraʻa i te {count} nō roto i te {total}",
+    "noFilterResults": "Aita e video e tuʻati i teie mau tāmāmā. A tāmata i te iriti i te hoʻē.",
+    "filterAdded": "Tuʻuhia",
+    "filterAdded_60d": "Te 60 mahana i mairi",
+    "filterAdded_6m": "Te 6 āvaʻe i mairi",
+    "filterAdded_12m": "Te 12 āvaʻe i mairi"
   },
   "WatchHome": {
     "pageTitle": "Mata'ita'i — Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Te mau ohipa no te api i itehia-ore-hia",
     "backToWatch": "Ho'i i te Watch",
     "browseVideos": "A hi'o i te mau video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mata'ita'i i te hoho'a poto",
-    "actions": {
-      "joinUs": "A hono mai",
-      "shareMission": "A amui i roto i ta matou misioni"
-    },
-    "welcomeStart": {
-      "label": "Faaroo & te Parau Papai",
-      "title": "Te mau maitiraa video no teie mahana",
-      "description": "Te mau video no nia i te faaroo i roto i ta matou fare parau, no te faauru, no te tamataraa, e no te faaara i te feruriraa."
-    },
-    "welcomeMorning": {
-      "label": "Faaururaa i te po'ipo'i",
-      "title": "Ia ora na i te po'ipo'i! Te tia'i nei te mau taime Bibilia no teie mahana.",
-      "description": "A haamata i to oe mahana ma te mau taime Bibilia e faaitoito ra e e faateitei ra i to oe varua."
-    },
-    "welcomeAfternoon": {
-      "label": "Faaururaa i te aahiata",
-      "title": "Ia ora na i te aahiata! Te mau taime Bibilia no to oe mahana.",
-      "description": "Te mau tumu parau Bibilia e faaitoito ra, e tano maitai no to oe taime faafaaearaa i te aahiata aore ra no te faahou-faahou-raa i te faaururaa."
-    },
-    "welcomeEvening": {
-      "label": "Faaururaa i te ahiahi",
-      "title": "Ia ora na i te ahiahi! A faaea ma te mau taime Bibilia.",
-      "description": "Te mau taime Bibilia hau no te tauturu ia oe ia feruri hohonu e ia ite i te tamahanahanaraa i te hopea o to oe mahana."
-    },
-    "joinUs": {
-      "label": "A hono mai",
-      "title": "Te imi nei te mau miria taata",
-      "description": "Ua tae mai teotoretoraa. A hono mai ia matou i te faaiteraa i te evanelia i te ao nei na roto i te mau media numera."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A haere amui tatou",
-      "title": "Te faati'araa i te aamu o Iesu, amui atoa",
-      "description": "Ia nehenehe ratou e faaroo e e ite i te here o Iesu i roto i to ratou iho reo, i te vahi iho ra ratou."
-    }
   },
   "VideoRecommendations": {
     "match": "E tano {percent}%",

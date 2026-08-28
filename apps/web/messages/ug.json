@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ئاۋاز تىلىنى ئۆزگەرتىش",
     "home": "JesusFilm باش بېتى",
     "closeSearch": "ئىزدەشنى يېپىش",
-    "submitSearch": "ئىزدەش"
+    "submitSearch": "ئىزدەش",
+    "library": "كۇتۇپخانا"
   },
   "SearchOverlay": {
     "dialogLabel": "سىنلارنى ئىزدەش ۋە كۆرۈش",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} دا «{suggestion}» نى ئىزدەش",
     "inLanguage": "{language} دا",
     "browseByRegion": "رايون بويىچە كۆرۈش",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "بارلىق سىنلار بىر بەتتە",
     "clearLanguages": "تازىلاش",
     "queryLanguageDetected": "{language} بايقالدى",
     "searchInLanguage": "{language} دا ئىزدەش",
@@ -467,6 +468,7 @@
     "sports": "تەنتەربىيە",
     "collections": "يىغقۇلار",
     "subtitlesOnly": "پەقەت تارتىم",
+    "backToTop": "ئۈستىگە قايتىش",
     "newlyAdded": "يېڭى قوشۇلغان",
     "newVideosTitle": "{language} دىكى يېڭى خىرىستىيان سىنلىرى",
     "newestFirst": "ئەڭ يېڭىسى ئالدىدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "مۇستەقىل سىنلار",
     "videosFromCollection": "{collection} دىكى سىنلار.",
     "standaloneDescription": "بۇ تىلدىكى مۇستەقىل سىنلار.",
-    "openCollection": "يىغقۇنى ئېچىش"
+    "openCollection": "يىغقۇنى ئېچىش",
+    "filters": "سۈزگۈچلەر",
+    "filterLength": "ئۇزۇنلۇقى",
+    "filterLength_under5": "5 مىنۇتتىن ئاز",
+    "filterLength_5to10": "5-10 مىنۇت",
+    "filterLength_10to30": "10-30 مىنۇت",
+    "filterLength_over30": "30 مىنۇتتىن كۆپ",
+    "filterType": "تىپى",
+    "clearFilters": "سۈزگۈچلەرنى تازىلاش",
+    "filterResults": "{total} دىن {count} كۆرسىتىلدى",
+    "noFilterResults": "بۇ سۈزگۈچلەرگە ماس كېلىدىغان سىن يوق. بىرىنى ئېلىۋېتىپ سىناڭ.",
+    "filterAdded": "قوشۇلغان",
+    "filterAdded_60d": "ئاخىرقى 60 كۈن",
+    "filterAdded_6m": "ئاخىرقى 6 ئاي",
+    "filterAdded_12m": "ئاخىرقى 12 ئاي"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project كۆرۈش",
@@ -646,44 +662,6 @@
     "actionsLabel": "بەت تېپىلمىغان ھەرىكەتلەر",
     "backToWatch": "كۆرۈشكە قايتىش",
     "browseVideos": "سىنلارنى كۆرۈش"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "قىسقا فىلىمنى كۆرۈش",
-    "actions": {
-      "joinUs": "بىزگە قوشۇلۇڭ",
-      "shareMission": "بىزنىڭ ۋەزىپىمىزگە قوشۇلۇڭ"
-    },
-    "welcomeStart": {
-      "label": "ئېتىقاد ۋە مۇقەددەس كىتاب",
-      "title": "بۈگۈنكى تاللانغان سىنلار",
-      "description": "مەنبە كۇتۇپخانىسىمىزدىكى ئېتىقاد مەركەزلەشكەن سىن مەزمۇنى سىزنى ئىلھاملاندۇرۇش، قىيىنلاشتۇرۇش ۋە ئويغا سالىش ئۈچۈن."
-    },
-    "welcomeMorning": {
-      "label": "ئەتىگەنلىك ئىلھام",
-      "title": "خەيرلىك سەھەر! بۈگۈنكى ئىنجىل دەقىقىلىرى سىزنى كۈتمەكتە.",
-      "description": "كۈننى كۆڭۈلنى ئىلھاملاندۇرىدىغان، روھىڭىزنى كۆتۈرىدىغان ئىنجىل دەقىقىلىرى بىلەن باشلاڭ."
-    },
-    "welcomeAfternoon": {
-      "label": "چۈشتىن كېيىنكى ئىلھام",
-      "title": "خەيرلىك چۈش! كۈنىڭىز ئۈچۈن ئىنجىل دەقىقىلىرى.",
-      "description": "چۈشتىن كېيىنكى ئارام ۋاقتىڭىز ياكى داۋاملىق ئىلھام ئېلىشىڭىز ئۈچۈن مۇۋاپىق بولغان ئىلھاملاندۇرغۇچى ئىنجىل مەزمۇنى."
-    },
-    "welcomeEvening": {
-      "label": "كەچلىك ئىلھام",
-      "title": "خەيرلىك كەچ! ئىنجىل دەقىقىلىرى بىلەن ئارام ئېلىڭ.",
-      "description": "كۈنىڭىز ئاخىرلاشقاندا ئويلىنىشىڭىز ۋە تەسەللى تېپىشىڭىزغا ياردەم بېرىدىغان تىنچ ئىنجىل دەقىقىلىرى."
-    },
-    "joinUs": {
-      "label": "بىزگە قوشۇلۇڭ",
-      "title": "مىلياردلار ئىزدەۋاتىدۇ",
-      "description": "ھوسۇل ۋاقتى كەلدى. رەقەملىك مېدىيا ئارقىلىق خۇش خەۋەرنى دۇنياغا يەتكۈزۈشتە بىزگە قوشۇلۇڭ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بىرلىكتە ئالغا ئىلگىرلەيلى",
-      "title": "ئەيسا مەسىھنىڭ ھېكايىسىنى بىرلىكتە سۆزلەيلى",
-      "description": "شۇنداق بولغاندا ئۇلار ئۆز تىلىدا، ئۆزلىرى تۇرغان جايىدا ئەيسانىڭ مۇھەببىتىنى ئاڭلاپ ۋە كۆرەلەيدۇ."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ماس كېلىدۇ",

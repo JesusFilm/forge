@@ -1,7 +1,11 @@
 import { print } from "graphql"
 import type { DocumentNode } from "graphql"
 
-import { GET_SERIES_BY_SLUG, GET_VIDEO_BY_SLUG } from "../queries"
+import {
+  GET_SERIES_BY_SLUG,
+  GET_VIDEO_BIBLE_PASSAGES,
+  GET_VIDEO_BY_SLUG,
+} from "../queries"
 
 // gql.tada documents are parsed DocumentNode ASTs (no raw source string is
 // retained), so we serialize them back with graphql's `print` to make
@@ -12,6 +16,7 @@ function asSdl(doc: unknown): string {
 
 const seriesSdl = asSdl(GET_SERIES_BY_SLUG)
 const bulkSdl = asSdl(GET_VIDEO_BY_SLUG)
+const passagesSdl = asSdl(GET_VIDEO_BIBLE_PASSAGES)
 
 // The printed document is the operation followed by its fragment definitions.
 // Slicing off the fragments isolates an operation's OWN selections.
@@ -79,5 +84,39 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
     // `children` appears only inside the WatchVideo fragment's parents.parent
     // sibling path — never as a top-level operation selection.
     expect(operationOnly(bulkSdl)).not.toContain("children")
+  })
+})
+
+// ── U2. Bible passage isolation guard (KTD1, KTD2) ─────────────────────────
+//
+// These assertions run over the FULL printed document, never `operationOnly`:
+// `passage` would be re-inlined inside the WatchVideo / SeriesWatchVideo
+// FRAGMENT, which `operationOnly` slices off — an assertion built on it would
+// sit in the discarded region and pass whether the field is there or not.
+describe("Bible passages stay off the player-gating queries", () => {
+  it("EXCLUDES passage from the watch-screen operation", () => {
+    expect(bulkSdl).not.toMatch(/\bpassage\b/)
+  })
+
+  it("EXCLUDES passage from the series operation", () => {
+    expect(seriesSdl).not.toMatch(/\bpassage\b/)
+  })
+
+  // Positive control. Without it the two negatives above pass vacuously the day
+  // the field is renamed on admin's side.
+  it("SELECTS passage on the companion operation", () => {
+    expect(passagesSdl).toMatch(/\bpassage\s*\{/)
+    expect(passagesSdl).toContain("versionAbbreviation")
+  })
+
+  // KTD2. The OUTER alias is what lets the cache normalize the video; without
+  // it a successful passage read replaces the shared reference and takes the
+  // player-gating read down with it. `biblePassages.test.ts` pins that
+  // mechanism against a real InMemoryCache; this pins the selection itself.
+  it("SELECTS documentId on videoBySlug itself and on each citation", () => {
+    expect(passagesSdl).toMatch(
+      /videoBySlug\(slug: \$slug\)\s*\{\s*documentId: id/,
+    )
+    expect(passagesSdl).toMatch(/bibleCitations\s*\{\s*documentId: id/)
   })
 })

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Byt lydspråk",
     "home": "JesusFilm-heimesida",
     "closeSearch": "Lukk søk",
-    "submitSearch": "Søk"
+    "submitSearch": "Søk",
+    "library": "Bibliotek"
   },
   "SearchOverlay": {
     "dialogLabel": "Søk og bla i videoar",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Søk etter «{suggestion}» på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Bla etter region",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Alle videoar på éi side",
     "clearLanguages": "Tøm",
     "queryLanguageDetected": "{language} oppdaga",
     "searchInLanguage": "Søk på {language}",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Samlingar",
     "subtitlesOnly": "Berre undertekstar",
+    "backToTop": "Tilbake til toppen",
     "newlyAdded": "Nyleg lagt til",
     "newVideosTitle": "Nye kristne videoar på {language}",
     "newestFirst": "Nyaste først",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Einskildvideoar",
     "videosFromCollection": "Videoar frå {collection}.",
     "standaloneDescription": "Einskildvideoar på dette språket.",
-    "openCollection": "Opne samling"
+    "openCollection": "Opne samling",
+    "filters": "Filter",
+    "filterLength": "Lengd",
+    "filterLength_under5": "Kortare enn 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Over 30 min",
+    "filterType": "Kategori",
+    "clearFilters": "Fjern filter",
+    "filterResults": "{count} av {total} viste",
+    "noFilterResults": "Ingen videoar samsvarar med desse filtera. Prøv å fjerne eitt.",
+    "filterAdded": "Lagt til",
+    "filterAdded_60d": "Siste 60 dagar",
+    "filterAdded_6m": "Siste 6 månader",
+    "filterAdded_12m": "Siste 12 månader"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project - Vis",
@@ -646,44 +662,6 @@
     "actionsLabel": "Handlingar for sida ikkje funnen",
     "backToWatch": "Tilbake til Vis",
     "browseVideos": "Bla i videoar"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sjå kortfilm",
-    "actions": {
-      "joinUs": "Bli med oss",
-      "shareMission": "Del i oppdraget vårt"
-    },
-    "welcomeStart": {
-      "label": "Tru og Skrift",
-      "title": "Dagens videoutval",
-      "description": "Trussentrerte videoinnhald frå biblioteket vårt som skal inspirere, utfordre og vekkje ettertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgoninspirasjon",
-      "title": "God morgon! Dagens Bibeløyeblikk ventar.",
-      "description": "Start dagen med oppmuntrande Bibeløyeblikk som skal inspirere og løfte ande."
-    },
-    "welcomeAfternoon": {
-      "label": "Ettermiddagsinspirasjon",
-      "title": "God ettermiddag! Bibeløyeblikk for dagen din.",
-      "description": "Oppmuntrande bibelinnhald som passar perfekt til ettermiddagspausen din eller vidare inspirasjon."
-    },
-    "welcomeEvening": {
-      "label": "Kveldsinspirasjon",
-      "title": "God kveld! Ro ned med Bibeløyeblikk.",
-      "description": "Fredelege Bibeløyeblikk som hjelper deg å reflektere og finne trøyst når dagen går mot slutten."
-    },
-    "joinUs": {
-      "label": "Bli med oss",
-      "title": "Milliardar er på søk",
-      "description": "Innhaustinga er her. Bli med oss når vi deler evangeliet med verda gjennom digitale medium."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lat oss gå saman",
-      "title": "Fortelje historia om Jesus, saman",
-      "description": "Slik at dei kan høyre og sjå Jesu kjærleik på sitt eige språk akkurat der dei er."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent} % samsvar",

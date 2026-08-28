@@ -173,7 +173,7 @@ beforeEach(() => {
     data: {
       heroSlides: [],
       sections: [],
-      carousel: { pools: [], muxInserts: [] },
+      carousel: { pools: [] },
       missingData: [],
     },
     error: null,
@@ -609,7 +609,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-es" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -617,6 +617,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
+        watchHomeCategoryRailCompatibility: "legacy-schema",
         experience: {
           id: "exp-home-es",
           slug: "watch-home",
@@ -636,10 +637,11 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
         heroModel: {
           heroSlides: [{ id: "hero-es" }],
           sections: [],
-          carousel: { pools: [], muxInserts: [] },
+          carousel: { pools: [] },
           missingData: [],
         },
         blocks: [],
+        legacyCategoryRailCompatibility: true,
       }),
       undefined,
     )
@@ -664,7 +666,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           },
         ],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -712,7 +714,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-ru" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -734,7 +736,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-ru" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,

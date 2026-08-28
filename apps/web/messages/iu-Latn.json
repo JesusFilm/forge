@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Nipilersuuteqarfiup oqaatsit allanngoruk",
     "home": "JesusFilm aallartiffia",
     "closeSearch": "Ujaasineq matooruk",
-    "submitSearch": "Ujaruk"
+    "submitSearch": "Ujaruk",
+    "library": "Uqalimaagaqarvik"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoit ujarlugit alakkarlugillu",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-mi “{suggestion}” ujaruk",
     "inLanguage": "{language}-mi",
     "browseByRegion": "Nunarsuup immikkoortortai naapertorlugit alakkarit",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Videoit tamarmik quppernermi ataatsimi",
     "clearLanguages": "Piiuk",
     "queryLanguageDetected": "{language} paasineqarpoq",
     "searchInLanguage": "{language}-mi ujaruk",
@@ -467,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersat",
     "subtitlesOnly": "Titartagassaqinnaat",
+    "backToTop": "Qulaanut utiq",
     "newlyAdded": "Nutaatut ilanngunneqartut",
     "newVideosTitle": "{language}-mi kristumiut videoit nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videoit ataasiakkaat",
     "videosFromCollection": "Videoit {collection}-mit.",
     "standaloneDescription": "Taanna oqaatsit videoit ataasiakkaat.",
-    "openCollection": "Katersaq ammaruk"
+    "openCollection": "Katersaq ammaruk",
+    "filters": "Aviktuqsimajut",
+    "filterLength": "Takininga",
+    "filterLength_under5": "5 minitnit ikinniqsaq",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "30 minitnit amisuniqsaq",
+    "filterType": "Ajjigiingittuq",
+    "clearFilters": "Aviktuqsimajut salummaqsaq",
+    "filterResults": "{total}-nit {count} takuksautitaujut",
+    "noFilterResults": "Tamakkununga aviktuqsimajunut ajjigijaqanngittuq. Atausiq piijarlugu.",
+    "filterAdded": "Ilagiaqsimajuq",
+    "filterAdded_60d": "Kingulliqpaat 60 ullut",
+    "filterAdded_6m": "Kingulliqpaat 6 taqqit",
+    "filterAdded_12m": "Kingulliqpaat 12 taqqit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-mi isiginnaarit",
@@ -646,44 +662,6 @@
     "actionsLabel": "Qupperneq nassaarineqanngitsup iliuusissat",
     "backToWatch": "Watch-imut uterit",
     "browseVideos": "Videoit alakkarit"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Naatsumik film-imik isiginnaaruk",
-    "actions": {
-      "joinUs": "Ilassisigut",
-      "shareMission": "Missionitsinnut peqataagit"
-    },
-    "welcomeStart": {
-      "label": "Upperisaq & Skrift",
-      "title": "Ullumi videoit toqqakkat",
-      "description": "Videoit upperisarsiornermut tunngasut katersivitsinneersut eqqarsalersitsisinnaasut, kajumissaarisut, kiisalu isummersoqatigiinnermik aallartisaasut."
-    },
-    "welcomeMorning": {
-      "label": "Ullaaq inspiratio",
-      "title": "Ullaakkut eqqaamallugu! Ullumi Biibilimi pisut utaqqipput.",
-      "description": "Ullut aallartinnerani Biibilimi pisut pitsaasut atorlugit isumalluarneqartinnialerit, uppissutissiillutillu."
-    },
-    "welcomeAfternoon": {
-      "label": "Ullaap-qiteqqunnerani inspiratio",
-      "title": "Ualikkut pitsaasumik! Ullormut Biibilimi pisut.",
-      "description": "Biibilimi imarisat kajumissaartut ualikkut qasuersaarfissannut imaluunniit ingerlaqqiffissannut tulluartut."
-    },
-    "welcomeEvening": {
-      "label": "Unnukkut inspiratio",
-      "title": "Unnukkut pitsaasumik! Biibilimi pisut atorlugit eqqissillutit.",
-      "description": "Biibilimi pisut eqqissinarput eqqarsarfissannik aammalu ullup naammassinerani eqqissisimanissamut iluaqutaallutik."
-    },
-    "joinUs": {
-      "label": "Ilassisigut",
-      "title": "Miliardit misissuisorpassuit",
-      "description": "Katersineq aallartippoq. Digitalikkut media atorlugu nunarsuarmi tamaani evangeliumi avitseqatigalugu peqataagit."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ataatsimoorluta ingerlaqatigiarta",
-      "title": "Jiisusip oqaluttuanik oqaluttuarineq, ataatsimoorluta",
-      "description": "Taamaalillutik najugaqarfigisaminnut nammineq oqaatsitik atorlugit Jiisusip asanninnera tusaasinnaallugu takusinnaallugulu."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}%-imik naapertuuppoq",

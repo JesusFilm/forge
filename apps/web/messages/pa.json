@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ਆਡੀਓ ਭਾਸ਼ਾ ਬਦਲੋ",
     "home": "JesusFilm ਹੋਮ",
     "closeSearch": "ਖੋਜ ਬੰਦ ਕਰੋ",
-    "submitSearch": "ਖੋਜੋ"
+    "submitSearch": "ਖੋਜੋ",
+    "library": "ਲਾਇਬ੍ਰੇਰੀ"
   },
   "SearchOverlay": {
     "dialogLabel": "ਵੀਡੀਓਜ਼ ਖੋਜੋ ਅਤੇ ਬ੍ਰਾਊਜ਼ ਕਰੋ",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ਵਿੱਚ “{suggestion}” ਖੋਜੋ",
     "inLanguage": "{language} ਵਿੱਚ",
     "browseByRegion": "ਖੇਤਰ ਅਨੁਸਾਰ ਬ੍ਰਾਊਜ਼ ਕਰੋ",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "ਸਾਰੇ ਵੀਡੀਓ ਇੱਕ ਪੰਨੇ ’ਤੇ",
     "clearLanguages": "ਸਾਫ਼ ਕਰੋ",
     "queryLanguageDetected": "{language} ਪਤਾ ਲੱਗੀ",
     "searchInLanguage": "{language} ਵਿੱਚ ਖੋਜੋ",
@@ -467,6 +468,7 @@
     "sports": "ਖੇਡਾਂ",
     "collections": "ਸੰਗ੍ਰਹਿ",
     "subtitlesOnly": "ਸਿਰਫ਼ ਉਪਸ਼ੀਰਸ਼ਕ",
+    "backToTop": "ਉੱਪਰ ਵਾਪਸ",
     "newlyAdded": "ਨਵੇਂ ਜੋੜੇ ਗਏ",
     "newVideosTitle": "{language} ਵਿੱਚ ਨਵੀਆਂ ਮਸੀਹੀ ਵੀਡੀਓਜ਼",
     "newestFirst": "ਸਭ ਤੋਂ ਨਵੀਂ ਪਹਿਲਾਂ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ਇਕੱਲੀਆਂ ਵੀਡੀਓਜ਼",
     "videosFromCollection": "{collection} ਤੋਂ ਵੀਡੀਓਜ਼।",
     "standaloneDescription": "ਇਸ ਭਾਸ਼ਾ ਵਿੱਚ ਇਕੱਲੀਆਂ ਵੀਡੀਓਜ਼।",
-    "openCollection": "ਸੰਗ੍ਰਹਿ ਖੋਲ੍ਹੋ"
+    "openCollection": "ਸੰਗ੍ਰਹਿ ਖੋਲ੍ਹੋ",
+    "filters": "ਫਿਲਟਰ",
+    "filterLength": "ਲੰਬਾਈ",
+    "filterLength_under5": "5 ਮਿੰਟ ਤੋਂ ਘੱਟ",
+    "filterLength_5to10": "5-10 ਮਿੰਟ",
+    "filterLength_10to30": "10-30 ਮਿੰਟ",
+    "filterLength_over30": "30 ਮਿੰਟ ਤੋਂ ਵੱਧ",
+    "filterType": "ਕਿਸਮ",
+    "clearFilters": "ਫਿਲਟਰ ਸਾਫ਼ ਕਰੋ",
+    "filterResults": "{total} ਵਿੱਚੋਂ {count} ਦਿਖਾਏ ਗਏ",
+    "noFilterResults": "ਇਹਨਾਂ ਫਿਲਟਰਾਂ ਨਾਲ ਕੋਈ ਵੀਡੀਓ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ। ਇੱਕ ਹਟਾ ਕੇ ਦੇਖੋ।",
+    "filterAdded": "ਸ਼ਾਮਲ ਕੀਤਾ",
+    "filterAdded_60d": "ਪਿਛਲੇ 60 ਦਿਨ",
+    "filterAdded_6m": "ਪਿਛਲੇ 6 ਮਹੀਨੇ",
+    "filterAdded_12m": "ਪਿਛਲੇ 12 ਮਹੀਨੇ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ਵਾਚ",
@@ -646,44 +662,6 @@
     "actionsLabel": "ਪੰਨਾ ਨਹੀਂ ਮਿਲਿਆ ਕਾਰਵਾਈਆਂ",
     "backToWatch": "ਵਾਚ 'ਤੇ ਵਾਪਸ ਜਾਓ",
     "browseVideos": "ਵੀਡੀਓਜ਼ ਬ੍ਰਾਊਜ਼ ਕਰੋ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ਛੋਟੀ ਫ਼ਿਲਮ ਦੇਖੋ",
-    "actions": {
-      "joinUs": "ਸਾਡੇ ਨਾਲ ਸ਼ਾਮਲ ਹੋਵੋ",
-      "shareMission": "ਸਾਡੇ ਮਿਸ਼ਨ ਵਿੱਚ ਭਾਗੀਦਾਰ ਬਣੋ"
-    },
-    "welcomeStart": {
-      "label": "ਵਿਸ਼ਵਾਸ ਅਤੇ ਸ਼ਾਸਤਰ",
-      "title": "ਅੱਜ ਦੀਆਂ ਵੀਡੀਓ ਚੋਣਾਂ",
-      "description": "ਸਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਤੋਂ ਵਿਸ਼ਵਾਸ-ਕੇਂਦਰਿਤ ਵੀਡੀਓ ਸਮੱਗਰੀ, ਜੋ ਪ੍ਰੇਰਿਤ ਕਰਨ, ਚੁਣੌਤੀ ਦੇਣ ਅਤੇ ਵਿਚਾਰ ਜਗਾਉਣ ਲਈ ਬਣਾਈ ਗਈ ਹੈ।"
-    },
-    "welcomeMorning": {
-      "label": "ਸਵੇਰ ਦੀ ਪ੍ਰੇਰਣਾ",
-      "title": "ਸੁਭ ਪ੍ਰਭਾਤ! ਅੱਜ ਦੇ ਬਾਈਬਲ ਪਲ ਤੁਹਾਡੀ ਉਡੀਕ ਕਰ ਰਹੇ ਹਨ।",
-      "description": "ਆਪਣੇ ਦਿਨ ਦੀ ਸ਼ੁਰੂਆਤ ਬਾਈਬਲ ਦੇ ਹੌਸਲਾ ਦੇਣ ਵਾਲੇ ਪਲਾਂ ਨਾਲ ਕਰੋ, ਜੋ ਤੁਹਾਨੂੰ ਪ੍ਰੇਰਿਤ ਕਰਨ ਅਤੇ ਆਤਮਾ ਨੂੰ ਉੱਚਾ ਚੁੱਕਣ ਲਈ ਬਣਾਏ ਗਏ ਹਨ।"
-    },
-    "welcomeAfternoon": {
-      "label": "ਦੁਪਹਿਰ ਦੀ ਪ੍ਰੇਰਣਾ",
-      "title": "ਸੁਭ ਦੁਪਹਿਰ! ਤੁਹਾਡੇ ਦਿਨ ਲਈ ਬਾਈਬਲ ਦੇ ਪਲ।",
-      "description": "ਹੌਸਲਾ ਦੇਣ ਵਾਲੀ ਬਾਈਬਲ ਸਮੱਗਰੀ, ਜੋ ਤੁਹਾਡੇ ਦੁਪਹਿਰ ਦੇ ਵਿਰਾਮ ਜਾਂ ਲਗਾਤਾਰ ਪ੍ਰੇਰਣਾ ਲਈ ਬਿਲਕੁਲ ਢੁੱਕਵੀ ਹੈ।"
-    },
-    "welcomeEvening": {
-      "label": "ਸ਼ਾਮ ਦੀ ਪ੍ਰੇਰਣਾ",
-      "title": "ਸੁਭ ਸ਼ਾਮ! ਬਾਈਬਲ ਦੇ ਪਲਾਂ ਨਾਲ ਆਰਾਮ ਕਰੋ।",
-      "description": "ਸ਼ਾਂਤ ਬਾਈਬਲ ਪਲ, ਜੋ ਤੁਹਾਡੇ ਦਿਨ ਦੇ ਅੰਤ 'ਤੇ ਵਿਚਾਰ ਕਰਨ ਅਤੇ ਸੁਕੂਨ ਪਾਉਣ ਵਿੱਚ ਮਦਦ ਕਰਨ ਲਈ ਹਨ।"
-    },
-    "joinUs": {
-      "label": "ਸਾਡੇ ਨਾਲ ਸ਼ਾਮਲ ਹੋਵੋ",
-      "title": "ਅਰਬਾਂ ਲੋਕ ਖੋਜ ਰਹੇ ਹਨ",
-      "description": "ਫ਼ਸਲ ਤਿਆਰ ਹੈ। ਡਿਜ਼ਿਟਲ ਮੀਡੀਆ ਰਾਹੀਂ ਦੁਨੀਆ ਨਾਲ ਸੁਸਮਾਚਾਰ ਸਾਂਝਾ ਕਰਨ ਵਿੱਚ ਸਾਡੇ ਨਾਲ ਸ਼ਾਮਲ ਹੋਵੋ।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ਆਓ, ਇਕੱਠੇ ਚੱਲੀਏ",
-      "title": "ਯਿਸੂ ਦੀ ਕਹਾਣੀ, ਇਕੱਠੇ ਸੁਣਾਉਂਦੇ ਹੋਏ",
-      "description": "ਤਾਂ ਜੋ ਉਹ ਆਪਣੇ ਹੀ ਭਾਸ਼ਾ ਵਿੱਚ, ਜਿੱਥੇ ਉਹ ਹਨ, ਯਿਸੂ ਦਾ ਪਿਆਰ ਸੁਣ ਅਤੇ ਦੇਖ ਸਕਣ।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ਮੇਲ",

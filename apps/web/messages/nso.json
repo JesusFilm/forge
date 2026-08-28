@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fetola polelo ya modumo",
     "home": "Legae la JesusFilm",
     "closeSearch": "Tswalela nyakišišo",
-    "submitSearch": "Nyaka"
+    "submitSearch": "Nyaka",
+    "library": "Bokgobapuku"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Nyaka “{suggestion}” ka {language}",
     "inLanguage": "ka {language}",
     "browseByRegion": "Phetla ka selete",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Divideo ka moka letlakaleng le tee",
     "clearLanguages": "Phumula",
     "queryLanguageDetected": "{language} e lemogilwe",
     "searchInLanguage": "Nyaka ka {language}",
@@ -467,6 +468,7 @@
     "sports": "Dipapadi",
     "collections": "Dikgoboketšo",
     "subtitlesOnly": "Dikapotši feela",
+    "backToTop": "Boela godimo",
     "newlyAdded": "E sa tšwago go oketšwa",
     "newVideosTitle": "Divideo tše mpsha tša Bokriste ka {language}",
     "newestFirst": "Tša moragorago pele",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Divideo tše di ikemetšego",
     "videosFromCollection": "Divideo go tšwa go {collection}.",
     "standaloneDescription": "Divideo tše di ikemetšego ka polelong ye.",
-    "openCollection": "Bula kgoboketšo"
+    "openCollection": "Bula kgoboketšo",
+    "filters": "Difiltara",
+    "filterLength": "Botelele",
+    "filterLength_under5": "Ka fase ga metsotso ye 5",
+    "filterLength_5to10": "Metsotso ye 5-10",
+    "filterLength_10to30": "Metsotso ye 10-30",
+    "filterLength_over30": "Ka godimo ga metsotso ye 30",
+    "filterType": "Mohuta",
+    "clearFilters": "Phumola difiltara",
+    "filterResults": "{count} ya {total} ye bontšhitšwego",
+    "noFilterResults": "Ga go bidio yeo e sepelelanago le difiltara tše. Leka go tloša e tee.",
+    "filterAdded": "E okeditšwe",
+    "filterAdded_60d": "Matšatši a 60 a fetileng",
+    "filterAdded_6m": "Dikgwedi tše 6 tše fetileng",
+    "filterAdded_12m": "Dikgwedi tše 12 tše fetileng"
   },
   "WatchHome": {
     "pageTitle": "Bogela go Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ditiro tša letlakala le le sa hwetšagalego",
     "backToWatch": "Morago go Watch",
     "browseVideos": "Phetla divideo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bogela filimi ye kopana",
-    "actions": {
-      "joinUs": "Tsenela rena",
-      "shareMission": "Abelana ka morero wa rena"
-    },
-    "welcomeStart": {
-      "label": "Tumelo & Mangwalo",
-      "title": "Dikgetho tša Video tša Lehono",
-      "description": "Diteng tša video tše di theilwego tumelong go tšwa laeboraring ya rena tše di go hlohleletšago, di go hlohla, gomme tša tsosa ponelopele."
-    },
-    "welcomeMorning": {
-      "label": "Tlhotlheletšo ya Mesong",
-      "title": "Mesong ye Mebotse! Ditsela tša Beibele tša Lehono di a go leta.",
-      "description": "Thoma letšatši la gago ka ditsela tša Beibele tše di kgothatšago tšeo di hlametšwego go go hlohleletša le go go homotša moya wa gago."
-    },
-    "welcomeAfternoon": {
-      "label": "Tlhotlheletšo ya Thapama",
-      "title": "Thapama ye Mbotse! Ditsela tša Beibele tša Letšatši la Gago.",
-      "description": "Diteng tša Beibele tše di kgothatšago tše di swanetšego go ikhutša ga gago ga thapama goba go tšwela pele ga tlhotlheletšo."
-    },
-    "welcomeEvening": {
-      "label": "Tlhotlheletšo ya Mantšiboa",
-      "title": "Mantšiboa a Mabotse! Khutša ka Ditsela tša Beibele.",
-      "description": "Ditsela tša Beibele tša khutšo tše di go thušago go nagana le go hwetša kgomotšo ge letšatši la gago le fihla mafelelong."
-    },
-    "joinUs": {
-      "label": "Tsenela rena",
-      "title": "Dimilione tše dikete di a nyaka",
-      "description": "Kotulo e fihlile. Tsenela rena ge re abelana ebangedi le lefase ka media wa digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A re ye mmogo",
-      "title": "Go Anela Kanegelo ya Jesu, Mmogo",
-      "description": "Gore ba kgone go kwa le go bona lerato la Jesu ka polelo ya bona moo ba lego gona."
-    }
   },
   "VideoRecommendations": {
     "match": "E swana ka {percent}%",

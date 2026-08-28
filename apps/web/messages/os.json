@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио æвзаг æрхæсс",
     "home": "JesusFilm æрмæст",
     "closeSearch": "Æрхæссын сæйгæ",
-    "submitSearch": "Æрхæсс"
+    "submitSearch": "Æрхæсс",
+    "library": "Библиотекæ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео æрхæсс æмæ куыд æрхæсс",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} æвзагыл «{suggestion}» æрхæсс",
     "inLanguage": "{language} æвзагмæ",
     "browseByRegion": "Регионæй æрхæсс",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Ӕппӕт видео иу фарсы",
     "clearLanguages": "Æфæлдис",
     "queryLanguageDetected": "{language} æмæст",
     "searchInLanguage": "{language} æвзагыл æрхæсс",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Æмбырдтæ",
     "subtitlesOnly": "Æрмæст субтитртæ",
+    "backToTop": "Уæлæмæ",
     "newlyAdded": "Нæуæгæй æрхæсст",
     "newVideosTitle": "{language} æвзагмæ нæуæг христианон видеотæ",
     "newestFirst": "Æппæт нæуæгæй фæстæмæ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Æрмæст видеотæ",
     "videosFromCollection": "{collection}-æй видеотæ.",
     "standaloneDescription": "Ацы æвзагмæ æрмæст видеотæ.",
-    "openCollection": "Æмбырд æрхæсс"
+    "openCollection": "Æмбырд æрхæсс",
+    "filters": "Фильтртæ",
+    "filterLength": "Даргъдзинад",
+    "filterLength_under5": "5 минутæй къаддæр",
+    "filterLength_5to10": "5-10 минуты",
+    "filterLength_10to30": "10-30 минуты",
+    "filterLength_over30": "30 минутæй фылдæр",
+    "filterType": "Хуыз",
+    "clearFilters": "Фильтртæ ссæрдын",
+    "filterResults": "{total}-æй {count} æвдыст",
+    "noFilterResults": "Ацы фильтртæн æмбæлгæ видео нæй. Бафæлварут иу сисын.",
+    "filterAdded": "Бафтыд",
+    "filterAdded_60d": "Фæстаг 60 боны",
+    "filterAdded_6m": "Фæстаг 6 мæйы",
+    "filterAdded_12m": "Фæстаг 12 мæйы"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — кæсын",
@@ -646,44 +662,6 @@
     "actionsLabel": "Æмæг нæ фæуыд æрæгъдтæ",
     "backToWatch": "Watch-мæ æртов",
     "browseVideos": "Видеотæ æрхæсс"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Æрмæст фильм æрхæсс",
-    "actions": {
-      "joinUs": "Æмæ бæрæг кæн",
-      "shareMission": "Нæ миссионерон куыстæй хай кæн"
-    },
-    "welcomeStart": {
-      "label": "Арфæ æмæ Scripture",
-      "title": "Нырон видео-æрхæстытæ",
-      "description": "Нæ библиотекийæ арфæмæр æрмæг, цæмæй æрхæссын, фæдджын æмæ æмбырдæй æрзæрæн кæнын."
-    },
-    "welcomeMorning": {
-      "label": "Æрдынгон æрзæрæн",
-      "title": "Æрдыгæн! Нырон Библийы æгасæнтæ у æхцон.",
-      "description": "Куыд фæзынд æмæ зæрдæмæ æрæвæрд Библийы æгасæнтæй куыд æрхæсс, уыйæй ацы бон æрбæрæг кæн."
-    },
-    "welcomeAfternoon": {
-      "label": "Дымгæ æрзæрæн",
-      "title": "Фæстаг бон! Нырон Библийы æгасæнтæ уыд.",
-      "description": "Библийы зæрдæмæ æрæвæрд æмæ æрхæсст æмрæг, цæмæй фæстаг бонæй уæлхæсс æмæ æрзæрæн кæн."
-    },
-    "welcomeEvening": {
-      "label": "Æрдæг æрзæрæн",
-      "title": "Æрдæг! Библийы æгасæнтæй тыныд кæн.",
-      "description": "Æрхæст æмæ тыныд Библийы æгасæнтæ, цæмæй бонæй фæстæ æрæвзæрæн кæнæн æмæ æхсæн æнцæн фæуын."
-    },
-    "joinUs": {
-      "label": "Æмæ бæрæг кæн",
-      "title": "Миллиардтæ цæуын æй",
-      "description": "Дæргъæй бæстæ куыст фæзынд. Нæм æмæ бæрæг кæн, цæмæй digital media-æй дунейы Евангелие фæдзахæсс."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Æмæ цæугæй æй",
-      "title": "Jesus-и дард æрæвзæг æмæ иуæй фæзынд кæнын",
-      "description": "Цæмæй уыцы æвзагæй Jesus-и æхсæн æмæ ныууын уыды, цы уырд уыйæй."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% æмбæлы",

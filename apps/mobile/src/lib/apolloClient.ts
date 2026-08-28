@@ -28,7 +28,9 @@ import {
   reportDatadogError,
 } from "./datadog"
 
-const REQUEST_TIMEOUT_MS = 15_000
+// Exported so a caller-side deadline can assert it sits strictly below this
+// ceiling rather than restating the number.
+export const REQUEST_TIMEOUT_MS = 15_000
 
 // Read the Datadog op-name attribution header back off the request init so the
 // timeout marker can say WHICH operation blew the budget (feat-268). Only the

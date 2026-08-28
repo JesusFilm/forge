@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio yatı́ náke ɂekwé",
     "home": "JesusFilm kǫ́ę́",
     "closeSearch": "Search t’áh ɂáɂa",
-    "submitSearch": "Náɂa"
+    "submitSearch": "Náɂa",
+    "library": "Edaehtł'éh kų́ę́"
   },
   "SearchOverlay": {
     "dialogLabel": "Video náɂa ɂeyíle gho nats’edé",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} yatı́ t’á “{suggestion}” náɂa",
     "inLanguage": "Yatı́: {language}",
     "browseByRegion": "Region t’á gho nats’edé",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Video t’áh kúlú",
     "clearLanguages": "T’áh ɂáɂa",
     "queryLanguageDetected": "Yatı́ náɂá: {language}",
     "searchInLanguage": "{language} yatı́ t’á náɂa",
@@ -467,6 +468,7 @@
     "sports": "Sports gho",
     "collections": "Collections t’áh kúlú",
     "subtitlesOnly": "Subtitles ɂeyí ts’ę́",
+    "backToTop": "Yak'e nadéh",
     "newlyAdded": "Kǫ́ta náɂá",
     "newVideosTitle": "{language}: Christian video eɂǫ́",
     "newestFirst": "Eɂǫ́ góɂǫ́",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone videos t’áh kúlú",
     "videosFromCollection": "Collection {collection} gots’ǫ́ videos.",
     "standaloneDescription": "Di yatı́ t’á standalone videos.",
-    "openCollection": "Collection ɂeɣáda"
+    "openCollection": "Collection ɂeɣáda",
+    "filters": "Ghǫdaeya",
+    "filterLength": "Nedhé",
+    "filterLength_under5": "5 sah kǫ́lį́",
+    "filterLength_5to10": "5-10 sah",
+    "filterLength_10to30": "10-30 sah",
+    "filterLength_over30": "30 sah dahkǫ́lį́",
+    "filterType": "Dahdíh",
+    "clearFilters": "Ghǫdaeya nayeltį",
+    "filterResults": "{total} ts'ę {count} ghághǫ",
+    "noFilterResults": "Eyí ghǫdaeya ghą video kǫ́lį́ ílé. Łǫ́ǫ́t'ą nayeltį.",
+    "filterAdded": "Ghághǫ",
+    "filterAdded_60d": "Sah 60 dzenéh",
+    "filterAdded_6m": "Sah 6 sá",
+    "filterAdded_12m": "Sah 12 sá"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project gúhta",
@@ -646,44 +662,6 @@
     "actionsLabel": "Diɣe góɂǫ́ nɛ gha actions",
     "backToWatch": "Watch gots’ę́ náɂa",
     "browseVideos": "Videos gho nats’edé"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film dáne gúhta",
-    "actions": {
-      "joinUs": "Nezį́ nát’ı̨́",
-      "shareMission": "Nezį́ mission k’e nát’ı̨́"
-    },
-    "welcomeStart": {
-      "label": "Edáhts’ı̨́ ɂeyí Scripture",
-      "title": "Kǫ́ta video nezų́ ɂekwé",
-      "description": "Ne edáhts’ı̨́ gha nezų́, ne sı̨́ gha, ɂeyí gho nats’edá gha nezı̨́ library gots’ǫ́ videos."
-    },
-    "welcomeMorning": {
-      "label": "Morning gha yatı́ nezų́",
-      "title": "Morning nezų́! Kǫ́ta Bible gho dáne nats’edá.",
-      "description": "Bible yatı́ negha nezų́ ɂeyí ne nı̨́hts’ı̨ gha k’áh nezų́ ɂehtsı t’á ne dzę́ ɂeɣáda."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon gha yatı́ nezų́",
-      "title": "Afternoon nezų́! Ne dzę́ gha Bible gho dáne nats’edá.",
-      "description": "Afternoon k’e náı̨htá kǫ́ę́ ɂeyíle k’áh nezų́ edáhts’ı̨́ gha Bible content nezų́."
-    },
-    "welcomeEvening": {
-      "label": "Evening gha yatı́ nezų́",
-      "title": "Evening nezų́! Bible gho nats’edá t’á náı̨htá.",
-      "description": "Ne dzę́ t’áh ɂáɂá kǫ́ę́, Bible gho nats’edá t’á gho nezų́ nats’edá ɂeyí ne nı̨́hts’ı̨ gha náts’ehɂá."
-    },
-    "joinUs": {
-      "label": "Nezį́ nát’ı̨́",
-      "title": "Dǫ́ne billions náɂa",
-      "description": "Harvest kǫ́ta góɂǫ́. Digital media t’á Gospel world t’áh łégháts’ede k’e nezį́ nát’ı̨́."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Łe nats’eyá",
-      "title": "Jesus gogha yatı́ łe łégháts’ede",
-      "description": "Dáonı̨ góɂǫ́ kǫ́ę́, gots’ı̨ yatı́ t’á Jesus gots’ę́ ɂenegha nezų́ ɂáht’é ɂeyí gots’edáhts’ı̨́ ɂeyí gots’ehɂá gha."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% łe ɂáht’é",

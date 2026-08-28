@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda língua di áudio",
     "home": "Inisiu di JesusFilm",
     "closeSearch": "Fixa buska",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Kaŋ kayiti"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Buska \"{suggestion}\" na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Navega pa região",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Todus vídeus na un pájina",
     "clearLanguages": "Limpa",
     "queryLanguageDetected": "{language} detetadu",
     "searchInLanguage": "Buska na {language}",
@@ -467,6 +468,7 @@
     "sports": "Sportis",
     "collections": "Kolesons",
     "subtitlesOnly": "Só legendas",
+    "backToTop": "Fandiŋ jeegi",
     "newlyAdded": "Adisionadu resenti",
     "newVideosTitle": "Vídeus kriston novos na {language}",
     "newestFirst": "Mas novu primeru",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeus independente",
     "videosFromCollection": "Vídeus di {collection}.",
     "standaloneDescription": "Vídeus independente na es língua.",
-    "openCollection": "Abri koleson"
+    "openCollection": "Abri koleson",
+    "filters": "Ñoolaani",
+    "filterLength": "Ndooli",
+    "filterLength_under5": "Reki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopi 30 min",
+    "filterType": "Kaŋami",
+    "clearFilters": "Feesi ñoolaani",
+    "filterResults": "{count} ca {total} a woni",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaani yii. Feesi kenn.",
+    "filterAdded": "A yokki",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Odja Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Asons pa pájina ka atxadu",
     "backToWatch": "Volta pa Watch",
     "browseVideos": "Navega vídeus"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Odja filmi kurtu",
-    "actions": {
-      "joinUs": "Junta ku nu",
-      "shareMission": "Partilha na n'sa mison"
-    },
-    "welcomeStart": {
-      "label": "Fé i Skritura",
-      "title": "N'sa skolta di vídeus pa oji",
-      "description": "Kontéudu di vídeu ku fé di n'sa biblioteka pa inspirá, desafiá i desparta meditación."
-    },
-    "welcomeMorning": {
-      "label": "Inspirason di manhan",
-      "title": "Bon dia! Momentus di Bíblia pa oji sta ta spera.",
-      "description": "Bia di dia ku momentus di Bíblia pa inspirá i levantá bu espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirason di tardi",
-      "title": "Bon tardi! Momentus di Bíblia pa bu dia.",
-      "description": "Kontéudu di Bíblia pa animá, prudu pa bu pausa di tardi ou pa kontinua ta inspirá."
-    },
-    "welcomeEvening": {
-      "label": "Inspirason di noti",
-      "title": "Bon noti! Deskança ku momentus di Bíblia.",
-      "description": "Momentus di Bíblia pa trankilidá ta ajuda-bu medita i atxa konsolu na fin di dia."
-    },
-    "joinUs": {
-      "label": "Junta ku nu",
-      "title": "Milhoris ta buska",
-      "description": "Kosecha li. Junta ku nu enkuantu nu ta partilha evangelhu ku mundu pa média dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bai juntus",
-      "title": "Ta konta istória di Jesus, juntus",
-      "description": "Pa ki elis pudi obi i odja amor di Jesus na ses propi língua li ki elis sta."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% di korespondénsia",

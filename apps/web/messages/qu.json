@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Maqt’a rimay simita tikray",
     "home": "JesusFilm wasin",
     "closeSearch": "Maskayta wichq’ay",
-    "submitSearch": "Maskay"
+    "submitSearch": "Maskay",
+    "library": "Qillqa wasi"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-kunata maskay y qhaway",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-pi “{suggestion}” nisqata maskay",
     "inLanguage": "{language}-pi",
     "browseByRegion": "Suyuyninman qhaway",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Llapan video-kuna huk p’anqallapi",
     "clearLanguages": "Pichay",
     "queryLanguageDetected": "{language} tarisqa",
     "searchInLanguage": "{language}-pi maskay",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Huñuyninkuna",
     "subtitlesOnly": "Subtítuloslla",
+    "backToTop": "Wichaykuy",
     "newlyAdded": "Mushuq churisqa",
     "newVideosTitle": "{language}-pi mushuq cristiano video-kuna",
     "newestFirst": "Mushuq kaq ñawpaq",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapanchasqa video-kuna",
     "videosFromCollection": "{collection}manta video-kuna.",
     "standaloneDescription": "Kay simipi sapanchasqa video-kuna.",
-    "openCollection": "Huñuyninta kichay"
+    "openCollection": "Huñuyninta kichay",
+    "filters": "Suysunakuna",
+    "filterLength": "Sayay",
+    "filterLength_under5": "5 minutumanta pisi",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minutumanta aswan",
+    "filterType": "Rikch'aq",
+    "clearFilters": "Suysunakuna pichay",
+    "filterResults": "{total} ukhumanta {count} rikuchisqa",
+    "noFilterResults": "Mana ima videopas kay suysunakunawan tinkinchu. Hukta qichuy.",
+    "filterAdded": "Yapasqa",
+    "filterAdded_60d": "Qhipa 60 p'unchaw",
+    "filterAdded_6m": "Qhipa 6 killa",
+    "filterAdded_12m": "Qhipa 12 killa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Qhawana",
@@ -646,44 +662,6 @@
     "actionsLabel": "P’anqaqa mana tarisqachu ruwanakuykuna",
     "backToWatch": "Watchman kutiy",
     "browseVideos": "Video-kunata qhaway"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pisi filmta qhaway",
-    "actions": {
-      "joinUs": "Ñoqanchikwan huñunakuy",
-      "shareMission": "Misiónnchikwan t’aqachiy"
-    },
-    "welcomeStart": {
-      "label": "Yuyay & Escritura",
-      "title": "Kunan p’unchawpa video akllayninkuna",
-      "description": "Hamutayta, kuyuchiyta, yuyayta rikch’ariyta yanapakuq, biblioteca-ykuqmanta fe centrado video contenido."
-    },
-    "welcomeMorning": {
-      "label": "Tutamanta yuyaychay",
-      "title": "Allin qhawa! Kunan p’unchawpa Biblia kutikuna suyasachkan.",
-      "description": "P’unchaykita qallariy Biblia kutikunawan, yuyaychaypaq y allichaypaq ruwasqa."
-    },
-    "welcomeAfternoon": {
-      "label": "K’anchaymanta yuyaychay",
-      "title": "Allin k’anchay! Kunan p’unchawpaq Biblia kutikuna.",
-      "description": "Yanapakuq Biblia contenido, k’anchaymanta samayniki utaq ashka yuyaychaypaq allin."
-    },
-    "welcomeEvening": {
-      "label": "Tuta yuyaychay",
-      "title": "Allin tuta! Biblia kutikunawan samaykachiy.",
-      "description": "Samaykuchiq Biblia kutikuna, p’unchay tukukuyta yuyayta, sonqochayta yanapanapaq."
-    },
-    "joinUs": {
-      "label": "Ñoqanchikwan huñunakuy",
-      "title": "Waranqakuna maskachkan",
-      "description": "Mink’aqa chaypim. Mundo kaqman evangeliota digital mediawan willachispa, ñoqanchikwan huñunakuy."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Hamunanchik",
-      "title": "Jesuspa willakuyninta willaspa, huñusqa",
-      "description": "Jesuspa munayninta paykuna kikinkupaq simipi, kashanpi, uyariyta, qhawayta atinanpaq."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% tupan",

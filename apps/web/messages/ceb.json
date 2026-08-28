@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba ang pinulongan sa audio",
     "home": "Panid sa balay sa JesusFilm",
     "closeSearch": "Sirad-i ang pagpangita",
-    "submitSearch": "Pangitaa"
+    "submitSearch": "Pangitaa",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa ug i-browse ang mga video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Pangitaa ang “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "I-browse sumala sa rehiyon",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tanang video sa usa ka pahina",
     "clearLanguages": "Panghinlo",
     "queryLanguageDetected": "Nadetect ang {language}",
     "searchInLanguage": "Pangitaa sa {language}",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Balik sa taas",
     "newlyAdded": "Bag-ong nadugang",
     "newVideosTitle": "Bag-ong mga Kristohanong video sa {language}",
     "newestFirst": "Pinakabag-o una",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga nag-inusara",
     "videosFromCollection": "Mga video gikan sa {collection}.",
     "standaloneDescription": "Mga video nga nag-inusara sa niini nga pinulongan.",
-    "openCollection": "Ablihi ang koleksyon"
+    "openCollection": "Ablihi ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Gitas-on",
+    "filterLength_under5": "Ubos sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Kapin sa 30 min",
+    "filterType": "Matang",
+    "clearFilters": "Hawani ang mga filter",
+    "filterResults": "{count} sa {total} ang gipakita",
+    "noFilterResults": "Walay video nga mohaum niining mga filter. Sulayi pagtangtang ang usa.",
+    "filterAdded": "Gidugang",
+    "filterAdded_60d": "Ulahing 60 ka adlaw",
+    "filterAdded_6m": "Ulahing 6 ka bulan",
+    "filterAdded_12m": "Ulahing 12 ka bulan"
   },
   "WatchHome": {
     "pageTitle": "Tan-awa sa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga aksyon sa walay nakit-an nga panid",
     "backToWatch": "Balik sa Watch",
     "browseVideos": "I-browse ang mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa ang Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Apil Kanamo",
-      "shareMission": "Ipaambit ang Among Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ug Kasulatan",
-      "title": "Mga Gipilian nga Video Karon",
-      "description": "Mga video gikan sa among librarya nga nakasentro sa pagtuo aron makadasig, makapahagit, ug makapukaw sa pagpamalandong."
-    },
-    "welcomeMorning": {
-      "label": "Kadasig sa Kabuntagon",
-      "title": "Maayong buntag! Anaa na ang mga momen sa Biblia karon.",
-      "description": "Sugdi ang imong adlaw uban sa makapadasig nga mga momen sa Biblia nga gidesinyo aron makadasig ug makapalagsik sa imong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Kadasig sa Hapon",
-      "title": "Maayong hapon! Mga momen sa Biblia para sa imong adlaw.",
-      "description": "Makapadasig nga sulod sa Biblia nga angay sa imong pahulay sa hapon o sa padayon nga kadasig."
-    },
-    "welcomeEvening": {
-      "label": "Kadasig sa Gabii",
-      "title": "Maayong gabii! Pahuway uban sa mga momen sa Biblia.",
-      "description": "Makalinaw nga mga momen sa Biblia aron matabangan ka sa pagpamalandong ug pagpangita og kahupayan samtang modangat ang pagtapos sa imong adlaw."
-    },
-    "joinUs": {
-      "label": "Apil Kanamo",
-      "title": "Bilyon-bilyon ang nangita",
-      "description": "Ania na ang ani. Apil kanamo sa pagpaambit sa ebanghelyo sa kalibotan gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Moadto kita nga magkauban",
-      "title": "Pagsaysay sa Sugilanon ni Jesus, Magkauban",
-      "description": "Aron madungog ug makita nila ang gugma ni Jesus sa ilang kaugalingong pinulongan, bisan asa sila."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% nga katugma",

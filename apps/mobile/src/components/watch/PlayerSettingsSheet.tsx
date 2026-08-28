@@ -1,5 +1,19 @@
-import { useState, useSyncExternalStore } from "react"
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import {
+  Animated,
+  Easing,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -36,6 +50,12 @@ const QUALITY_LABELS: Record<QualityTier, string> = {
 
 type SheetBody = "root" | "speed" | "quality"
 
+// The scrim FADES while the panel SLIDES. RN's Modal `animationType="slide"`
+// translates its whole subtree, scrim included, which reads as a dark sheet
+// dragged up the screen with a hard moving edge instead of the room dimming.
+const ENTER_MS = 240
+const EXIT_MS = 180
+
 const BODY_TITLES: Record<SheetBody, string> = {
   root: "Settings",
   speed: "Playback speed",
@@ -63,6 +83,51 @@ export function PlayerSettingsSheet({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const insets = useSafeAreaInsets()
   const [body, setBody] = useState<SheetBody>("root")
+
+  // 0 = dismissed, 1 = presented. Drives BOTH the scrim's opacity and the
+  // panel's offset, so they share one clock while animating differently.
+  const progress = useRef(new Animated.Value(0)).current
+  const [panelHeight, setPanelHeight] = useState(0)
+  const closingRef = useRef(false)
+
+  // Presenting waits for the panel's measured height: its offset is expressed
+  // in points, so animating before the layout lands would slide it the wrong
+  // distance. The panel stays parked offscreen until then, one frame at most.
+  useEffect(() => {
+    if (panelHeight === 0 || closingRef.current) return
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: ENTER_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }, [panelHeight, progress])
+
+  // The host unmounts this component on `onClose`, so the exit has to finish
+  // BEFORE that call. The timer — not the animation callback — is what fires
+  // it: a native-driver completion never arrives under jest, and an animation
+  // interrupted on-device would otherwise strand the sheet open forever.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const close = useCallback(() => {
+    if (closingRef.current) return
+    closingRef.current = true
+    Animated.timing(progress, {
+      toValue: 0,
+      duration: EXIT_MS,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+    closeTimerRef.current = setTimeout(onClose, EXIT_MS)
+  }, [onClose, progress])
+
+  // An unmount from any OTHER path (route pop, player handover) would leave the
+  // timer above pending and fire onClose into a torn-down tree.
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
+    },
+    [],
+  )
 
   const qualityAvailable =
     !castActive && supportsQualityConstraint(streamingUrl)
@@ -156,22 +221,43 @@ export function PlayerSettingsSheet({
     <Modal
       visible
       transparent
-      animationType="slide"
+      // "none": this component owns both animations so they can differ.
+      animationType="none"
       statusBarTranslucent
       // Fullscreen locks the app to landscape while the Modal's default is
       // portrait-only; UIKit aborts a presentation with no common orientation.
       supportedOrientations={["portrait", "landscape"]}
-      onRequestClose={onClose}
+      onRequestClose={close}
     >
       <View style={styles.overlay}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.scrim, { opacity: progress }]}
+        />
         <Pressable
           style={styles.backdrop}
-          onPress={onClose}
+          onPress={close}
           accessibilityRole="button"
           accessibilityLabel="Dismiss settings"
         />
-        <View
-          style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 12) }]}
+        <Animated.View
+          onLayout={(e) => setPanelHeight(e.nativeEvent.layout.height)}
+          style={[
+            styles.panel,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+            {
+              transform: [
+                {
+                  translateY: progress.interpolate({
+                    inputRange: [0, 1],
+                    // Parked a full panel-height down until measured, so the
+                    // unmeasured first frame is offscreen rather than in place.
+                    outputRange: [panelHeight || 9999, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
         >
           <View style={styles.header}>
             {body !== "root" ? (
@@ -190,7 +276,7 @@ export function PlayerSettingsSheet({
             <Text style={styles.headerTitle}>{BODY_TITLES[body]}</Text>
             <Pressable
               style={styles.headerButton}
-              onPress={onClose}
+              onPress={close}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Close"
@@ -199,7 +285,7 @@ export function PlayerSettingsSheet({
             </Pressable>
           </View>
           {listRows}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   )
@@ -209,6 +295,10 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
+  },
+  // Carries the dimming so its opacity can animate independently of the panel.
+  scrim: {
+    ...StyleSheet.absoluteFill,
     backgroundColor: hexToRgba(BLACK, 0.5),
   },
   backdrop: {

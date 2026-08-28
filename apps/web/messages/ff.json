@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi ɗemngal ngal",
     "home": "JesusFilm keɓe",
     "closeSearch": "Uddu ceɗɗitugol",
-    "submitSearch": "Yiylo"
+    "submitSearch": "Yiylo",
+    "library": "Deftol"
   },
   "SearchOverlay": {
     "dialogLabel": "Yiylo e naatnu videeji",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Yiylo “{suggestion}” e {language}",
     "inLanguage": "e {language}",
     "browseByRegion": "Naɓaade e noore",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Kala video e hello gooto",
     "clearLanguages": "Momtu",
     "queryLanguageDetected": "{language} anndi",
     "searchInLanguage": "Yiylo e {language}",
@@ -467,6 +468,7 @@
     "sports": "Pijirɗe sport",
     "collections": "Jokkondiral",
     "subtitlesOnly": "Subtitles tan",
+    "backToTop": "Rutto dow",
     "newlyAdded": "Wujjondii ko hesi",
     "newVideosTitle": "Videeji Kiristaani hesi e {language}",
     "newestFirst": "Hesiiɗe ɗow",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videeji kala",
     "videosFromCollection": "Videeji e {collection}.",
     "standaloneDescription": "Videeji kala e ndee ɗemngal.",
-    "openCollection": "Uddit jokkondiral"
+    "openCollection": "Uddit jokkondiral",
+    "filters": "Cuɓe",
+    "filterLength": "Njuuteendi",
+    "filterLength_under5": "Les hojomaaji 5",
+    "filterLength_5to10": "Hojomaaji 5-10",
+    "filterLength_10to30": "Hojomaaji 10-30",
+    "filterLength_over30": "Dow hojomaaji 30",
+    "filterType": "Sifaa",
+    "clearFilters": "Momtu cuɓe",
+    "filterResults": "{count} e {total} hollirama",
+    "noFilterResults": "Alaa widewo jaaɓoowo e cuɓe ɗiin. Eto momtude gooto.",
+    "filterAdded": "Ɓeydaama",
+    "filterAdded_60d": "Balɗe 60 ɓennuɗe",
+    "filterAdded_6m": "Lebbi 6 ɓennuɗi",
+    "filterAdded_12m": "Lebbi 12 ɓennuɗi"
   },
   "WatchHome": {
     "pageTitle": "Jeeɓto Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Golle page heɓaaka",
     "backToWatch": "Ruttoto e Watch",
     "browseVideos": "Naatnu videeji"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Yiy Film Keetotooɗo",
-    "actions": {
-      "joinUs": "Yettu e min",
-      "shareMission": "Feccu e mission amen"
-    },
-    "welcomeStart": {
-      "label": "Iman e Kiitaaba",
-      "title": "Suɓe videeji hannde",
-      "description": "Ndee videeji e kiitaabaaji ngoodi e library amen ngam waɗde ɓeydude, heɓɓinde, kadi fuɗɗude hakkillooji."
-    },
-    "welcomeMorning": {
-      "label": "Heɓɓugol ngam subaka",
-      "title": "Jam nga subaka! Njaaɓnde Kiitaaba hannde ndee ndii no waɗi.",
-      "description": "Fuɗɗo ɗowndol maa e njiyawa Kiitaaba ɗii, nde ñiiɓnude, heɓɓinde, kadi kawtu hakkilo maa."
-    },
-    "welcomeAfternoon": {
-      "label": "Heɓɓugol ngam ñalawma",
-      "title": "Jam nga ñalawma! Njaaɓnde Kiitaaba ngam ñalawma maa.",
-      "description": "Ndee videeji Kiitaaba ngoodi ngam waawde yimɓe e jooni e ñalawma maa walla ngel heɓɓugol feewi."
-    },
-    "welcomeEvening": {
-      "label": "Heɓɓugol ngam jamma",
-      "title": "Jam nga jamma! Njaaɓ e njoɓdi e njaaɓnde Kiitaaba.",
-      "description": "Njaaɓnde Kiitaaba ndee ndii ndarii ngam waawaade, njaɓɓude kadi heɓɓude jomɗum so ñalngu maa ngoodi waɗi."
-    },
-    "joinUs": {
-      "label": "Yettu e min",
-      "title": "Milyooji ina ɗaɓɓoo",
-      "description": "Njaɓɓugol no woni ɗoo. Yettu e min ngam feccude Injiiil e duniyaru huse media dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Yah njaɓɓude e min",
-      "title": "Haalisiji kisal Isa, fuu ɗum e min",
-      "description": "Ngam ngol ɓe heɓa e yiyde ndee ndiyam Isa e ɗemngal maɓɓe e ko ndeen fiyee."
-    }
   },
   "VideoRecommendations": {
     "match": "Nanndugol {percent}%",

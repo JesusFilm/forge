@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडियो भाषा बदलू",
     "home": "JesusFilm होम",
     "closeSearch": "खोज बन्द करू",
-    "submitSearch": "खोजू"
+    "submitSearch": "खोजू",
+    "library": "पुस्तकालय"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजू आ ब्राउज़ करू",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} मे “{suggestion}” खोजू",
     "inLanguage": "{language} मे",
     "browseByRegion": "क्षेत्र अनुसार ब्राउज़ करू",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "सभ वीडियो एकहि पेज पर",
     "clearLanguages": "साफ करू",
     "queryLanguageDetected": "{language} पेल गेल",
     "searchInLanguage": "{language} मे खोजू",
@@ -467,6 +468,7 @@
     "sports": "खेल",
     "collections": "संग्रह",
     "subtitlesOnly": "केवल उपशीर्षक",
+    "backToTop": "उपर जाउ",
     "newlyAdded": "नव जोड़ल गेल",
     "newVideosTitle": "{language} मे नव ईसाई वीडियो",
     "newestFirst": "सबसँ नया पहिले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "अलग वीडियो",
     "videosFromCollection": "{collection} सँ वीडियो।",
     "standaloneDescription": "एहि भाषामे अलग वीडियो।",
-    "openCollection": "संग्रह खोलू"
+    "openCollection": "संग्रह खोलू",
+    "filters": "फिल्टर",
+    "filterLength": "अवधि",
+    "filterLength_under5": "5 मिनटसँ कम",
+    "filterLength_5to10": "5-10 मिनट",
+    "filterLength_10to30": "10-30 मिनट",
+    "filterLength_over30": "30 मिनटसँ बेसी",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर हटाउ",
+    "filterResults": "{total} मे सँ {count} देखाओल गेल",
+    "noFilterResults": "एहि फिल्टरसँ कोनो वीडियो नहि मिलैत अछि। एक हटाउ।",
+    "filterAdded": "जोड़ल गेल",
+    "filterAdded_60d": "पछिला 60 दिन",
+    "filterAdded_6m": "पछिला 6 मास",
+    "filterAdded_12m": "पछिला 12 मास"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project वॉच",
@@ -646,44 +662,6 @@
     "actionsLabel": "पेज नहि भेटल क्रियासभ",
     "backToWatch": "फेर वॉच पर जाउ",
     "browseVideos": "वीडियो ब्राउज़ करू"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु फिल्म देखू",
-    "actions": {
-      "joinUs": "हमर संग जुड़ू",
-      "shareMission": "हमर मिशनमे सहभागी बनू"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आ धर्मशास्त्र",
-      "title": "आजक वीडियो चुनाउ",
-      "description": "हमर संग्रहसँ विश्वास-केंद्रित वीडियो सामग्री, जे प्रेरित करए, चुनौती देए, आ मनन जगा देए।"
-    },
-    "welcomeMorning": {
-      "label": "प्रभातक प्रेरणा",
-      "title": "सुप्रभात! आजक बाइबल क्षण प्रतीक्षा क रहल अछि।",
-      "description": "अपन दिनक शुरुआत उत्साहजनक बाइबल क्षणसँ करू, जे अहाँक आत्माकेँ प्रेरित आ उत्साहित करबाक लेल बनाओल गेल अछि।"
-    },
-    "welcomeAfternoon": {
-      "label": "अपराह्णक प्रेरणा",
-      "title": "शुभ अपराह्ण! अहाँक दिन लेल बाइबल क्षण।",
-      "description": "उत्साहजनक बाइबल सामग्री, अहाँक दोपहरक विराम वा चलैत प्रेरणाक लेल उत्तम।"
-    },
-    "welcomeEvening": {
-      "label": "सांझक प्रेरणा",
-      "title": "शुभ संध्या! बाइबल क्षण संग दिन समेटू।",
-      "description": "शान्त बाइबल क्षण, जे दिन समाप्त होइत समय अहाँकेँ मनन करबामे आ सान्त्वना पाबयमे सहायता करत।"
-    },
-    "joinUs": {
-      "label": "हमर संग जुड़ू",
-      "title": "अरबो लोक खोजि रहल छथि",
-      "description": "कटनी तैयार अछि। डिजिटल मीडिया क उपयोग कए संसारक संग सुसमाचार साझा करैत हमर संग जुड़ू।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आबू, एक संग चलू",
-      "title": "एक संग, यीशुक कथा सुनबैत",
-      "description": "ताकि ओ सभ अपनहि भाषा मे, अपनहि स्थान पर, यीशुक प्रेम सुनि आ देखि सकथि।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% मिलान",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Změnit jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
     "closeSearch": "Zavřít hledání",
-    "submitSearch": "Hledat"
+    "submitSearch": "Hledat",
+    "library": "Knihovna"
   },
   "SearchOverlay": {
     "dialogLabel": "Hledat a procházet videa",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Vyhledat „{suggestion}“ v jazyce: {language}",
     "inLanguage": "v jazyce {language}",
     "browseByRegion": "Procházet podle regionu",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Všechna videa na jedné stránce",
     "clearLanguages": "Vymazat",
     "queryLanguageDetected": "Zjištěn jazyk {language}",
     "searchInLanguage": "Hledat v jazyce: {language}",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sbírky",
     "subtitlesOnly": "Pouze titulky",
+    "backToTop": "Zpět nahoru",
     "newlyAdded": "Nově přidáno",
     "newVideosTitle": "Nová křesťanská videa v jazyce {language}",
     "newestFirst": "Nejnovější nejdřív",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostatná videa",
     "videosFromCollection": "Videa ze sbírky {collection}.",
     "standaloneDescription": "Samostatná videa v tomto jazyce.",
-    "openCollection": "Otevřít sbírku"
+    "openCollection": "Otevřít sbírku",
+    "filters": "Filtry",
+    "filterLength": "Délka",
+    "filterLength_under5": "Do 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nad 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Vymazat filtry",
+    "filterResults": "Zobrazeno {count} z {total}",
+    "noFilterResults": "Žádné video neodpovídá těmto filtrům. Zkuste jeden odebrat.",
+    "filterAdded": "Přidáno",
+    "filterAdded_60d": "Posledních 60 dní",
+    "filterAdded_6m": "Posledních 6 měsíců",
+    "filterAdded_12m": "Posledních 12 měsíců"
   },
   "WatchHome": {
     "pageTitle": "Sledování Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Akce pro nenalezenou stránku",
     "backToWatch": "Zpět na sledování",
     "browseVideos": "Procházet videa"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sledovat krátký film",
-    "actions": {
-      "joinUs": "Přidejte se k nám",
-      "shareMission": "Podílejte se na našem poslání"
-    },
-    "welcomeStart": {
-      "label": "Víra a Písmo",
-      "title": "Dnešní výběr videí",
-      "description": "Videobsah zaměřený na víru z naší knihovny, který inspiruje, vyzývá a podněcuje k zamyšlení."
-    },
-    "welcomeMorning": {
-      "label": "Ranní inspirace",
-      "title": "Dobré ráno! Čekají vás dnešní biblické okamžiky.",
-      "description": "Začněte den povzbudivými biblickými momenty, které mají inspirovat a povzbudit vašeho ducha."
-    },
-    "welcomeAfternoon": {
-      "label": "Odpolední inspirace",
-      "title": "Dobré odpoledne! Biblické okamžiky pro váš den.",
-      "description": "Povzbudivý biblický obsah, ideální pro odpolední pauzu nebo další povzbuzení."
-    },
-    "welcomeEvening": {
-      "label": "Večerní inspirace",
-      "title": "Dobrý večer! Uvolněte se s biblickými okamžiky.",
-      "description": "Klidné biblické okamžiky, které vám pomohou rozjímat a nalézt útěchu na konci dne."
-    },
-    "joinUs": {
-      "label": "Přidejte se k nám",
-      "title": "Hledají miliardy lidí",
-      "description": "Žeň je tady. Přidejte se k nám, když sdílíme evangelium se světem prostřednictvím digitálních médií."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Pojďme do toho společně",
-      "title": "Vyprávění příběhu Ježíše společně",
-      "description": "Aby mohli slyšet a vidět Ježíšovu lásku ve svém vlastním jazyce přímo tam, kde jsou."
-    }
   },
   "VideoRecommendations": {
     "match": "Shoda: {percent} %",

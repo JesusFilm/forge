@@ -7,6 +7,7 @@ const isValidVideoMapperBearer = vi.fn()
 const isValidConsumerBearer = vi.fn()
 const resolveWebUserPrincipalFromToken = vi.fn()
 const resolveMobileUserPrincipalFromToken = vi.fn()
+const readWatchHomeCategoryRailRolloutCompleted = vi.fn()
 
 vi.mock("@/auth/session", () => ({
   resolvePrincipalFromRequest,
@@ -36,6 +37,10 @@ vi.mock("@/auth/mobile-user-token", () => ({
   resolveMobileUserPrincipalFromToken,
 }))
 
+vi.mock("@/services/watch-home-category-rail-rollout", () => ({
+  readWatchHomeCategoryRailRolloutCompleted,
+}))
+
 describe("createContext", () => {
   beforeEach(() => {
     resolvePrincipalFromRequest.mockReset()
@@ -51,6 +56,8 @@ describe("createContext", () => {
     isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
     resolveWebUserPrincipalFromToken.mockResolvedValue(null)
     resolveMobileUserPrincipalFromToken.mockResolvedValue(null)
+    readWatchHomeCategoryRailRolloutCompleted.mockReset()
+    readWatchHomeCategoryRailRolloutCompleted.mockResolvedValue(false)
   })
 
   it("returns PUBLIC when no session resolves", async () => {
@@ -62,6 +69,27 @@ describe("createContext", () => {
     })
 
     expect(ctx.user).toBeNull()
+    expect(ctx.watchHomeCategoryRailRolloutCompleted).toBe(false)
+    expect(readWatchHomeCategoryRailRolloutCompleted).toHaveBeenCalledOnce()
+  })
+
+  it("captures rollout completion independently for each request", async () => {
+    resolvePrincipalFromRequest.mockResolvedValue(null)
+    readWatchHomeCategoryRailRolloutCompleted
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+    const { createContext } = await import("@/graphql/context")
+
+    const beforeActivation = await createContext({
+      request: new Request("http://localhost/api/graphql"),
+    })
+    const afterActivation = await createContext({
+      request: new Request("http://localhost/api/graphql"),
+    })
+
+    expect(beforeActivation.watchHomeCategoryRailRolloutCompleted).toBe(false)
+    expect(afterActivation.watchHomeCategoryRailRolloutCompleted).toBe(true)
+    expect(readWatchHomeCategoryRailRolloutCompleted).toHaveBeenCalledTimes(2)
   })
 
   it("maps a resolved session principal into context", async () => {

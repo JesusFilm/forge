@@ -5,6 +5,7 @@
 import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 import enMessages from "../../../../messages/en.json"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
@@ -30,13 +31,33 @@ vi.mock("@/components/ui/carousel", () => ({
 const { WatchHomeCategoryRail } =
   await import("@/components/home/WatchHomeCategoryRail")
 
-function render(languageSlug: string) {
+type RailTileInput = Parameters<
+  typeof WatchHomeCategoryRail
+>[0]["tiles"] extends readonly (infer T)[] | null | undefined
+  ? T
+  : never
+
+function render(
+  languageSlug: string,
+  categoryIds?: readonly string[] | null,
+  tiles?: readonly RailTileInput[] | null,
+) {
   const markup = renderToStaticMarkup(
-    <WatchHomeCategoryRail languageSlug={languageSlug} />,
+    <WatchHomeCategoryRail
+      languageSlug={languageSlug}
+      categoryIds={categoryIds}
+      tiles={tiles}
+    />,
   )
   const container = document.createElement("div")
   container.innerHTML = markup
   return container
+}
+
+function card(container: HTMLElement, key: string) {
+  return container.querySelector(
+    `[data-testid="watch-home-category-card-${key}"]`,
+  )
 }
 
 describe("WatchHomeCategoryRail", () => {
@@ -46,6 +67,34 @@ describe("WatchHomeCategoryRail", () => {
       '[data-testid^="watch-home-category-card-"]',
     )
     expect(cards).toHaveLength(WATCH_HOME_CATEGORIES.length)
+  })
+
+  it("renders an authored subset once in its authored order", () => {
+    const container = render("english", [
+      "family",
+      "jesus",
+      "family",
+      "not-a-category",
+      "easter",
+    ])
+
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid^="watch-home-category-card-"]',
+        ),
+      ).map((card) => card.getAttribute("data-testid")),
+    ).toEqual([
+      "watch-home-category-card-family",
+      "watch-home-category-card-jesus",
+      "watch-home-category-card-easter",
+    ])
+  })
+
+  it("renders no section when an authored selection has no valid ids", () => {
+    expect(render("english", ["unknown", "still-unknown"]).innerHTML).toBe("")
+    expect(render("english", []).innerHTML).toBe("")
+    expect(render("english", null).innerHTML).toBe("")
   })
 
   it("links each card to its collection page on the language-less English route", () => {
@@ -106,6 +155,59 @@ describe("WatchHomeCategoryRail", () => {
     ).toBe("/spanish-latin-american.html/videos")
   })
 
+  it("leads the CTA with the library glyph at the larger size", () => {
+    const cta = render("english").querySelector(
+      '[data-testid="watch-home-category-see-all"]',
+    )
+    const icons = Array.from(cta?.querySelectorAll("svg") ?? [])
+
+    // Library glyph first, chevron last.
+    expect(icons).toHaveLength(2)
+    expect(cta?.firstElementChild).toBe(icons[0])
+    // Must be the SAME glyph the floating header uses for the video library —
+    // both controls open the language video index. They share
+    // `WatchLibraryIcon`, so this pins the rendered result of that sharing.
+    // lucide stamps its own name into the class list.
+    expect(icons[0]?.getAttribute("class")).toContain("lucide-list-video")
+    expect(icons.every((icon) => icon.classList.contains("size-5"))).toBe(true)
+    expect(cta?.textContent?.trim()).toBe(enMessages.WatchHomeCategories.seeAll)
+
+    // Larger than the 12px / 32px-tall pill it replaced. Browser-measured
+    // 2026-08-27: 32px -> 48px tall, 12px -> 14px text at 1280px.
+    expect(cta?.className).toContain("text-sm")
+    expect(cta?.className).not.toContain("text-xs")
+    expect(cta?.className).toContain("px-5")
+    expect(cta?.className).toContain("py-3")
+    expect(cta?.className).toContain("md:px-6")
+    expect(cta?.className).toContain("md:py-3.5")
+    // Wraps rather than overflowing on a very narrow viewport; `max-w-full`
+    // caps it and `text-center` keeps a wrapped label readable.
+    expect(cta?.className).toContain("max-w-full")
+    expect(cta?.className).toContain("text-center")
+  })
+
+  it("stacks the header copy and CTA on mobile without changing the desktop arrangement", () => {
+    const container = render("english")
+    const heading = container.querySelector("#watch-home-category-rail-title")
+    const header = heading?.parentElement
+    const description = Array.from(header?.querySelectorAll("p") ?? []).find(
+      (paragraph) =>
+        paragraph.textContent === enMessages.WatchHomeCategories.description,
+    )
+    const cta = container.querySelector(
+      '[data-testid="watch-home-category-see-all"]',
+    )
+
+    expect(header?.className).toContain("grid-cols-1")
+    expect(header?.className).toContain("md:grid-cols-[minmax(0,1fr)_auto]")
+    expect(description?.className).toContain("row-start-3")
+    expect(cta?.className).toContain("col-start-1")
+    expect(cta?.className).toContain("row-start-4")
+    expect(cta?.className).toContain("md:col-start-2")
+    expect(cta?.className).toContain("md:row-start-1")
+    expect(cta?.className).toContain("md:row-end-3")
+  })
+
   it("fades every card icon as one layer so crossing strokes stay solid", () => {
     const container = render("english")
     for (const category of WATCH_HOME_CATEGORIES) {
@@ -150,6 +252,12 @@ describe("WatchHomeCategoryRail", () => {
 })
 
 describe("WATCH_HOME_CATEGORIES config", () => {
+  it("covers the shared catalog exactly once in its shared order", () => {
+    expect(WATCH_HOME_CATEGORIES.map(({ id }) => id)).toEqual(
+      WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    )
+  })
+
   it("uses unique ids and unique collection slugs", () => {
     const ids = WATCH_HOME_CATEGORIES.map((category) => category.id)
     const slugs = WATCH_HOME_CATEGORIES.map((category) => category.slug)
@@ -167,6 +275,118 @@ describe("WATCH_HOME_CATEGORIES config", () => {
     const ids = WATCH_HOME_CATEGORIES.map((category) => category.id)
     expect(ids.slice(0, 3)).toEqual(["jesus", "gospels", "short-videos"])
     expect(ids.slice(-2)).toEqual(["easter", "christmas"])
+  })
+
+  describe("authored tiles", () => {
+    it("renders tiles instead of categoryIds when both are supplied", () => {
+      const container = render(
+        "english",
+        ["jesus", "family"],
+        [{ id: "t1", categoryId: "easter" }],
+      )
+
+      expect(
+        Array.from(
+          container.querySelectorAll(
+            '[data-testid^="watch-home-category-card-"]',
+          ),
+        ).map((element) => element.getAttribute("data-testid")),
+      ).toEqual(["watch-home-category-card-t1"])
+    })
+
+    it("renders an authored title literally and skips the message catalog", () => {
+      const container = render("english", null, [
+        { id: "t1", categoryId: "jesus", title: "Meet Jesus" },
+      ])
+      const titles = enMessages.WatchHomeCategories.categories as Record<
+        string,
+        string
+      >
+
+      expect(card(container, "t1")?.textContent).toContain("Meet Jesus")
+      expect(card(container, "t1")?.textContent).not.toContain(titles.jesus)
+    })
+
+    it("keeps the localized title on a tile that overrides only its colours", () => {
+      const container = render("english", null, [
+        { id: "t1", categoryId: "jesus", style: "forest", icon: "star" },
+      ])
+      const titles = enMessages.WatchHomeCategories.categories as Record<
+        string,
+        string
+      >
+
+      expect(card(container, "t1")?.textContent).toContain(titles.jesus)
+      expect(card(container, "t1")?.getAttribute("style")).toContain("#16a34a")
+    })
+
+    it("renders an external destination as a plain anchor with noopener noreferrer", () => {
+      // A `next/link` would try to client-route off-site, and a new tab
+      // without `noopener` hands the opener reference to a third party.
+      const container = render("english", null, [
+        { id: "t1", title: "Give", href: "https://example.org/give" },
+      ])
+      const element = card(container, "t1")
+
+      expect(element?.getAttribute("href")).toBe("https://example.org/give")
+      expect(element?.getAttribute("target")).toBe("_blank")
+      expect(element?.getAttribute("rel")).toBe("noopener noreferrer")
+    })
+
+    it("renders an internal destination without target or rel", () => {
+      const element = card(
+        render("english", null, [
+          { id: "t1", title: "Partners", href: "/partners" },
+        ]),
+        "t1",
+      )
+
+      expect(element?.getAttribute("href")).toBe("/partners")
+      expect(element?.getAttribute("target")).toBeNull()
+      expect(element?.getAttribute("rel")).toBeNull()
+    })
+
+    it("never emits an unsafe destination into an href", () => {
+      for (const href of [
+        "javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "//evil.example/watch",
+        "http://example.org",
+      ]) {
+        const container = render(
+          "english",
+          ["jesus"],
+          [{ id: "t1", title: "Bad", href }],
+        )
+        expect(container.innerHTML, href).toBe("")
+      }
+    })
+
+    it("mixes predefined and custom tiles in authored order", () => {
+      const container = render("english", null, [
+        { id: "c1", title: "Give", href: "/give" },
+        { id: "t-jesus", categoryId: "jesus" },
+        { id: "c2", title: "Pray", href: "https://example.org/pray" },
+      ])
+
+      expect(
+        Array.from(
+          container.querySelectorAll(
+            '[data-testid^="watch-home-category-card-"]',
+          ),
+        ).map((element) => element.getAttribute("data-testid")),
+      ).toEqual([
+        "watch-home-category-card-c1",
+        "watch-home-category-card-t-jesus",
+        "watch-home-category-card-c2",
+      ])
+    })
+
+    it("renders no section when every authored tile is unrenderable", () => {
+      expect(
+        render("english", null, [{ id: "t1", href: "/no-title" }]).innerHTML,
+      ).toBe("")
+    })
   })
 
   it("has an en.json title for every category and no orphan titles", () => {

@@ -83,6 +83,7 @@ function model(
     audioCollections: [],
     audioVideos: [],
     subtitleOnlyVideos: [],
+    collectionLanguageCounts: {},
     ...overrides,
   }
 }
@@ -241,6 +242,47 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     expect(
       sources(container).some((src) => src.includes("mux-frame-only")),
     ).toBe(true)
+  })
+
+  it("keeps the hero on authored artwork rather than a synthesized frame", () => {
+    act(() => {
+      root.render(
+        <LanguageInventoryPage
+          inventory={model({
+            // Newest collection has only a playback id, so the first group can
+            // synthesize a 448x252 frame. A later collection carries real
+            // artwork, and the `priority` / `sizes="100vw"` hero must take that
+            // instead of upscaling a thumbnail.
+            audioCollections: [
+              card({
+                id: "newest",
+                muxPlaybackId: "mux-newest-frame",
+                publishedAt: "2026-07-31 00:00:00+00",
+              }),
+              card({
+                id: "older",
+                imageUrl: "https://cdn.test/older-authored.jpg",
+                publishedAt: "2025-01-01 00:00:00+00",
+              }),
+            ],
+            audioVideos: [
+              card({
+                id: "newest-episode",
+                parentSlug: "newest",
+                muxPlaybackId: "mux-newest-episode",
+              }),
+              card({
+                id: "older-episode",
+                parentSlug: "older",
+                muxPlaybackId: "mux-older-episode",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(heroSource(container)).toBe("https://cdn.test/older-authored.jpg")
   })
 
   it("renders no image at all with neither artwork nor playback", () => {

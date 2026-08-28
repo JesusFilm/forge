@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Səs dilini dəyiş",
     "home": "JesusFilm ana səhifəsi",
     "closeSearch": "Axtarışı bağla",
-    "submitSearch": "Axtar"
+    "submitSearch": "Axtar",
+    "library": "Kitabxana"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} dilində “{suggestion}” üçün axtar",
     "inLanguage": "{language} dilində",
     "browseByRegion": "Regiona görə baxın",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Bütün videolar bir səhifədə",
     "clearLanguages": "Təmizlə",
     "queryLanguageDetected": "{language} aşkarlandı",
     "searchInLanguage": "{language} dilində axtar",
@@ -467,6 +468,7 @@
     "sports": "İdman",
     "collections": "Kolleksiyalar",
     "subtitlesOnly": "Yalnız altyazı",
+    "backToTop": "Yuxarıya qayıt",
     "newlyAdded": "Yeni əlavə olunub",
     "newVideosTitle": "{language} dilində yeni xristian videoları",
     "newestFirst": "Ən yenilər əvvəl",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Müstəqil videolar",
     "videosFromCollection": "{collection} kolleksiyasından videolar.",
     "standaloneDescription": "Bu dildə müstəqil videolar.",
-    "openCollection": "Kolleksiyanı aç"
+    "openCollection": "Kolleksiyanı aç",
+    "filters": "Filtrlər",
+    "filterLength": "Uzunluq",
+    "filterLength_under5": "5 dəqiqədən az",
+    "filterLength_5to10": "5-10 dəqiqə",
+    "filterLength_10to30": "10-30 dəqiqə",
+    "filterLength_over30": "30 dəqiqədən çox",
+    "filterType": "Növ",
+    "clearFilters": "Filtrləri təmizlə",
+    "filterResults": "{total} nəticədən {count} göstərilir",
+    "noFilterResults": "Bu filtrlərə uyğun video yoxdur. Birini silməyə çalışın.",
+    "filterAdded": "Əlavə edilib",
+    "filterAdded_60d": "Son 60 gün",
+    "filterAdded_6m": "Son 6 ay",
+    "filterAdded_12m": "Son 12 ay"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project İzləmə",
@@ -646,44 +662,6 @@
     "actionsLabel": "Səhifə tapılmadı hərəkətləri",
     "backToWatch": "İzləməyə qayıt",
     "browseVideos": "Videolara baxın"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Qısa filmi izləyin",
-    "actions": {
-      "joinUs": "Bizə qoşulun",
-      "shareMission": "Missiyamızı paylaşın"
-    },
-    "welcomeStart": {
-      "label": "İman və Müqəddəs Yazı",
-      "title": "Bu günün video seçimləri",
-      "description": "Düşünməyə, ruhlandırmağa və sual doğurmağa kömək edən iman mərkəzli video məzmunlarımız."
-    },
-    "welcomeMorning": {
-      "label": "Səhər ilhamı",
-      "title": "Günaydın! Bu günün Müqəddəs Kitab anları sizi gözləyir.",
-      "description": "Gününüzə ruhlandırmaq və ruhunuzu yüksəltmək üçün hazırlanmış ümidverici Müqəddəs Kitab anları ilə başlayın."
-    },
-    "welcomeAfternoon": {
-      "label": "Günorta ilhamı",
-      "title": "Günortanız xeyir! Gününüz üçün Müqəddəs Kitab anları.",
-      "description": "Günortadan sonra fasilə üçün və ya ilhamınızı davam etdirmək üçün uyğun ruhlandırıcı Müqəddəs Kitab məzmunu."
-    },
-    "welcomeEvening": {
-      "label": "Axşam ilhamı",
-      "title": "Axşamınız xeyir! Müqəddəs Kitab anları ilə günü yavaşladın.",
-      "description": "Gününüz başa çatarkən düşünməyə və təsəlli tapmağa kömək edən sakit Müqəddəs Kitab anları."
-    },
-    "joinUs": {
-      "label": "Bizə qoşulun",
-      "title": "Milyardlarla insan axtarışdadır",
-      "description": "Biçin hazırdır. Rəqəmsal media vasitəsilə müjdəni dünya ilə bölüşərkən bizə qoşulun."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gəlin birlikdə yola çıxaq",
-      "title": "İsanın hekayəsini birlikdə danışmaq",
-      "description": "Beləliklə, olduqları yerdəcə, öz dillərində İsanın məhəbbətini eşidib görə bilsinlər."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% uyğunluq",

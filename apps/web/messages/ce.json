@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
     "closeSearch": "Ларх дӀакхахьа",
-    "submitSearch": "Лар"
+    "submitSearch": "Лар",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» лар — мотт: {language}",
     "inLanguage": "{language} тӀехь",
     "browseByRegion": "Регион тӀехь лар",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Массо видеош цхьана агӀона тӀехь",
     "clearLanguages": "ДӀахьа",
     "queryLanguageDetected": "{language} кхийтина",
     "searchInLanguage": "Ларчаран мотт: {language}",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцеш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Лакхара юха",
     "newlyAdded": "Ийна дӀаяздина",
     "newVideosTitle": "{language} мотте цӀийча христиански видеолаш",
     "newestFirst": "Деррига халха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Къастийна видеолаш",
     "videosFromCollection": "{collection} чохь видеолаш.",
     "standaloneDescription": "Цу моттехь къастийна видеолаш.",
-    "openCollection": "Коллекци ачуьлла"
+    "openCollection": "Коллекци ачуьлла",
+    "filters": "Литтарш",
+    "filterLength": "Деха",
+    "filterLength_under5": "5 минотана к1езиг",
+    "filterLength_5to10": "5-10 минот",
+    "filterLength_10to30": "10-30 минот",
+    "filterLength_over30": "30 минотана дукха",
+    "filterType": "Тайпа",
+    "clearFilters": "Литтарш цIандар",
+    "filterResults": "{total} чуьра {count} гайтина",
+    "noFilterResults": "Оцу литтаршна тайна видео дац. Цхьаъ дIаяккха гIортта.",
+    "filterAdded": "Т1етоьхна",
+    "filterAdded_60d": "Т1аьххьара 60 де",
+    "filterAdded_6m": "Т1аьххьара 6 бутт",
+    "filterAdded_12m": "Т1аьххьара 12 бутт"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хьажар",
@@ -646,44 +662,6 @@
     "actionsLabel": "Страница йоцуш гӀуллакх",
     "backToWatch": "Watch ахь дӀахьа",
     "browseVideos": "Видеолаш хьажа"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Къеззиг фильм хьажа",
-    "actions": {
-      "joinUs": "Тхайца цхьаьна хилла",
-      "shareMission": "Хьалхе хила тхайн миссица"
-    },
-    "welcomeStart": {
-      "label": "Иман а Писани а",
-      "title": "ХӀинца хьажа видеолаш",
-      "description": "Тхайн библиотекара иманца дӀакхачийна видеоконтент, дехар дийла, тӀехьхьа хьалхе хетараш къобалдолла."
-    },
-    "welcomeMorning": {
-      "label": "Сехьа тӀехь хьалхе дӀахьа",
-      "title": "Сеха дӀахьа! ХӀинца Библияра хьалхараш күтт ду.",
-      "description": "Хьоьн дехар а сийлахь хетар а гӀо, хӀараран деза Библияра хьалхарашца денна хьалха дӀахьа."
-    },
-    "welcomeAfternoon": {
-      "label": "Шовда тӀехь хьалхе дӀахьа",
-      "title": "Шовда дӀахьа! Хьан денна Библияра хьалхараш.",
-      "description": "Шовда дӀахьарца я кхин а хьалхе хетарца деза Библияра контент."
-    },
-    "welcomeEvening": {
-      "label": "Санахьа тӀехь хьалхе дӀахьа",
-      "title": "Санахьа дӀахьа! Библияра хьалхарашца гӀерта.",
-      "description": "Саба Библияра хьалхараш, ден йолуш вуьзча хенахь хьоьн тӀехьхьа хетар а тӀасса хьажар а гӀо."
-    },
-    "joinUs": {
-      "label": "Тхайца цхьаьна хилла",
-      "title": "Миллиардш ларучуш ду",
-      "description": "Хъарчахьа хили. Digital media лелош, дуненанца Инжил дӀакхачахьа, тхайца цхьаьна хили."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Цхьаьна гӀо",
-      "title": "Исан тарих дӀакхачийна, цхьаьна",
-      "description": "Шайн моттехь, шен къастийна чохь, Исан мах, хьажар а хьалхара а дехар болуш хила."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% нийса догӀу",

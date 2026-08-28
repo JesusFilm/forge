@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Newid iaith sain",
     "home": "Hafan JesusFilm",
     "closeSearch": "Cau chwilio",
-    "submitSearch": "Chwilio"
+    "submitSearch": "Chwilio",
+    "library": "Llyfrgell"
   },
   "SearchOverlay": {
     "dialogLabel": "Chwilio a phori fideos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Chwilio am “{suggestion}” yn {language}",
     "inLanguage": "yn {language}",
     "browseByRegion": "Pori yn ôl rhanbarth",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Pob fideo ar un dudalen",
     "clearLanguages": "Clirio",
     "queryLanguageDetected": "Wedi canfod {language}",
     "searchInLanguage": "Chwilio yn {language}",
@@ -467,6 +468,7 @@
     "sports": "Chwaraeon",
     "collections": "Casgliadau",
     "subtitlesOnly": "Isdeitlau yn unig",
+    "backToTop": "Nôl i'r top",
     "newlyAdded": "Wedi’u hychwanegu’n ddiweddar",
     "newVideosTitle": "Fideos Cristnogol newydd yn {language}",
     "newestFirst": "Y diweddaraf yn gyntaf",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fideos annibynnol",
     "videosFromCollection": "Fideos o {collection}.",
     "standaloneDescription": "Fideos annibynnol yn yr iaith hon.",
-    "openCollection": "Agor y casgliad"
+    "openCollection": "Agor y casgliad",
+    "filters": "Hidlyddion",
+    "filterLength": "Hyd",
+    "filterLength_under5": "Llai na 5 mun",
+    "filterLength_5to10": "5-10 mun",
+    "filterLength_10to30": "10-30 mun",
+    "filterLength_over30": "Mwy na 30 mun",
+    "filterType": "Math",
+    "clearFilters": "Clirio hidlyddion",
+    "filterResults": "Dangos {count} o {total}",
+    "noFilterResults": "Nid yw unrhyw fideo yn cyfateb i'r hidlyddion hyn. Ceisiwch dynnu un.",
+    "filterAdded": "Ychwanegwyd",
+    "filterAdded_60d": "60 diwrnod diwethaf",
+    "filterAdded_6m": "6 mis diwethaf",
+    "filterAdded_12m": "12 mis diwethaf"
   },
   "WatchHome": {
     "pageTitle": "Watch Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Camau ar gyfer tudalen heb ei chanfod",
     "backToWatch": "Yn ôl i Wylio",
     "browseVideos": "Pori fideos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gwylio ffilm fer",
-    "actions": {
-      "joinUs": "Ymunwch â ni",
-      "shareMission": "Rhannu yn ein cenhadaeth"
-    },
-    "welcomeStart": {
-      "label": "Ffydd ac Ysgrythur",
-      "title": "Dewisiadau fideo heddiw",
-      "description": "Cynnwys fideo sy’n canolbwyntio ar ffydd o’n llyfrgell i ysbrydoli, herio, a chynnau myfyrdod."
-    },
-    "welcomeMorning": {
-      "label": "Ysbrydoliaeth y bore",
-      "title": "Bore da! Mae eiliadau Beiblaidd heddiw yn eich disgwyl.",
-      "description": "Dechreuwch eich diwrnod gydag eiliadau Beiblaidd calonogol sydd wedi’u cynllunio i ysbrydoli ac i godi’ch ysbryd."
-    },
-    "welcomeAfternoon": {
-      "label": "Ysbrydoliaeth y prynhawn",
-      "title": "Prynhawn da! Eiliadau Beiblaidd ar gyfer eich diwrnod.",
-      "description": "Cynnwys Beiblaidd calonogol sy’n berffaith ar gyfer eich egwyl brynhawn neu i barhau â’r ysbrydoliaeth."
-    },
-    "welcomeEvening": {
-      "label": "Ysbrydoliaeth y nos",
-      "title": "Noswaith dda! Ymlaciwch gydag eiliadau Beiblaidd.",
-      "description": "Eiliadau Beiblaidd tawel i’ch helpu i fyfyrio a chael cysur wrth i’ch diwrnod ddirwyn i ben."
-    },
-    "joinUs": {
-      "label": "Ymunwch â ni",
-      "title": "Mae biliynau yn chwilio",
-      "description": "Mae’r cynhaeaf yma. Ymunwch â ni wrth i ni rannu’r efengyl â’r byd drwy gyfryngau digidol."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Awn gyda’n gilydd",
-      "title": "Adrodd stori Iesu, gyda’n gilydd",
-      "description": "Fel y gallant glywed a gweld cariad Iesu yn eu hiaith eu hunain, yn union lle maent."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% yn cyfateb",

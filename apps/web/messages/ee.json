@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
     "home": "JesusFilm ƒe home",
     "closeSearch": "Tso se la ŋu",
-    "submitSearch": "Se"
+    "submitSearch": "Se",
+    "library": "Agbalẽdzraɖoƒe"
   },
   "SearchOverlay": {
     "dialogLabel": "Se eye kpɔ video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Se “{suggestion}” le {language} me",
     "inLanguage": "le {language} me",
     "browseByRegion": "Kpɔ ɖe region me",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Video siwo katã le axa ɖeka dzi",
     "clearLanguages": "Tso",
     "queryLanguageDetected": "{language} la kɔtɔ",
     "searchInLanguage": "Se le {language} me",
@@ -467,6 +468,7 @@
     "sports": "Fefe",
     "collections": "Nuƒuƒoƒowo",
     "subtitlesOnly": "Subtitles ko",
+    "backToTop": "Trɔ yi dziƒo",
     "newlyAdded": "Wɔe yeyeye",
     "newVideosTitle": "Christian video yeye le {language} me",
     "newestFirst": "Yeyetɔ teti",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siwo li ɖeka",
     "videosFromCollection": "Video tso {collection} me.",
     "standaloneDescription": "Video siwo li ɖeka le gbegblẽ sia me.",
-    "openCollection": "Vae collection la ŋu"
+    "openCollection": "Vae collection la ŋu",
+    "filters": "Dzobenuwo",
+    "filterLength": "Didime",
+    "filterLength_under5": "Le aɖabaƒoƒo 5 te",
+    "filterLength_5to10": "Aɖabaƒoƒo 5-10",
+    "filterLength_10to30": "Aɖabaƒoƒo 10-30",
+    "filterLength_over30": "Wu aɖabaƒoƒo 30",
+    "filterType": "Ƒomevi",
+    "clearFilters": "Tutu dzobenuwo",
+    "filterResults": "Wofia {count} le {total} me",
+    "noFilterResults": "Video aɖeke mesɔ kple dzobenu siawo o. Te ɖe ɖeka ɖa kpɔ.",
+    "filterAdded": "Wotsɔ kpe ɖe eŋu",
+    "filterAdded_60d": "Ŋkeke 60 si va yi",
+    "filterAdded_6m": "Ɣleti 6 si va yi",
+    "filterAdded_12m": "Ɣleti 12 si va yi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kpɔƒe",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page medzɔ o actions",
     "backToWatch": "Kpɔ yi Watch ŋu",
     "browseVideos": "Kpɔ videowo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kpɔ short film",
-    "actions": {
-      "joinUs": "Kplɔ mí",
-      "shareMission": "Kple míaƒe mission me"
-    },
-    "welcomeStart": {
-      "label": "Faith kple Scripture",
-      "title": "Egbe ƒe video siwo míatia",
-      "description": "Míaƒe library me video siwo le faith dzi, be wòafɔ dɔ, akpe ɖe ŋu, eye wòawɔ nusia."
-    },
-    "welcomeMorning": {
-      "label": "Ɣetrɔmɔ ƒe akɔm",
-      "title": "Ŋdi makɛ! Egbe ƒe Biblia ƒe nɔnɔmewo li ɖe ŋuwò.",
-      "description": "Dze wò ŋdi gɔme kple Biblia ƒe nɔnɔme siwo na bubu, fɔɖeɖe, eye woakpɔ wò gbɔgbɔ dzi."
-    },
-    "welcomeAfternoon": {
-      "label": "Ŋdi megbe ƒe akɔm",
-      "title": "Ɣetrɔmakɛ! Biblia ƒe nɔnɔmewo na wò ŋkeke.",
-      "description": "Biblia ƒe nusiwo naa akɔdzedze, sɔ gbɔ na wò ŋdi megbe break alo akɔm si gblɔ nà."
-    },
-    "welcomeEvening": {
-      "label": "Fiɛɖeƒe ƒe akɔm",
-      "title": "Fiɛɖe makɛ! Ɖi asi na Biblia ƒe nɔnɔmewo.",
-      "description": "Biblia ƒe nɔnɔme siwo le anyi le peace me be wòakpe ɖe ŋuwò eye nàkpɔ gbɔgbɔdodo ne wòŋkeke va nu."
-    },
-    "joinUs": {
-      "label": "Kplɔ mí",
-      "title": "Milliardwo le didim",
-      "description": "Harvest la va ɖo. Kplɔ mí be míakpɔm nà yina gɔme kple míaƒe gospel gbɔgblɔ dzi le digital media me."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nyae nu kple mí",
-      "title": "Jesus ƒe nyanyui gbɔgblɔ le nuƒoƒo me, kple mí",
-      "description": "Be woate ŋu ase eye woakpɔ Jesus ƒe lɔlɔ̃ le woƒe gbegblẽ me, le afisi wonɔe ke."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% sɔ ɖe eŋu",

@@ -189,7 +189,8 @@
     "changeAudioLanguage": "Изменить язык аудио",
     "closeSearch": "Закрыть поиск",
     "home": "Главная JesusFilm",
-    "submitSearch": "Найти"
+    "submitSearch": "Найти",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -223,7 +224,7 @@
     "searchSuggestionWithLanguage": "Поиск на {language} по запросу «{suggestion}»",
     "inLanguage": "Язык: {language}",
     "browseByRegion": "Просмотр по регионам",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Все видео на одной странице",
     "clearLanguages": "Очистить",
     "queryLanguageDetected": "Определен язык: {language}",
     "searchInLanguage": "Язык поиска: {language}",
@@ -476,6 +477,7 @@
     "sports": "Спорт",
     "collections": "Коллекции",
     "subtitlesOnly": "Только субтитры",
+    "backToTop": "Наверх",
     "newlyAdded": "Недавно добавлено",
     "newVideosTitle": "Новые христианские видео. Язык: {language}",
     "newestFirst": "Сначала новые",
@@ -506,7 +508,21 @@
     "standaloneVideos": "Отдельные видео",
     "videosFromCollection": "Видео из коллекции «{collection}».",
     "standaloneDescription": "Отдельные видео на этом языке.",
-    "openCollection": "Открыть коллекцию"
+    "openCollection": "Открыть коллекцию",
+    "filters": "Фильтры",
+    "filterLength": "Длительность",
+    "filterLength_under5": "Менее 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Более 30 мин",
+    "filterType": "Тип",
+    "clearFilters": "Сбросить фильтры",
+    "filterResults": "Показано {count} из {total}",
+    "noFilterResults": "Нет видео, соответствующих этим фильтрам. Попробуйте убрать один.",
+    "filterAdded": "Добавлено",
+    "filterAdded_60d": "Последние 60 дней",
+    "filterAdded_6m": "Последние 6 месяцев",
+    "filterAdded_12m": "Последние 12 месяцев"
   },
   "WatchHome": {
     "pageTitle": "Видео Jesus Film Project",
@@ -521,44 +537,6 @@
     "scrollToVideo": "Перейти к видео «{title}»",
     "previousVideoPreview": "Предыдущее видео в предпросмотре",
     "nextVideoPreview": "Следующее видео в предпросмотре"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} — {title}",
-    "watchShortFilm": "Смотреть короткометражный фильм",
-    "actions": {
-      "joinUs": "Присоединиться",
-      "shareMission": "Поддержать нашу миссию"
-    },
-    "welcomeStart": {
-      "label": "Вера и Писание",
-      "title": "Сегодняшняя подборка видео",
-      "description": "Видео о вере из нашей библиотеки — для вдохновения, духовного роста и размышлений."
-    },
-    "welcomeMorning": {
-      "label": "Утреннее вдохновение",
-      "title": "Доброе утро! Начните день с библейских историй.",
-      "description": "Начните день с ободряющих библейских историй, которые вдохновят и укрепят вас."
-    },
-    "welcomeAfternoon": {
-      "label": "Дневное вдохновение",
-      "title": "Добрый день! Библейские истории для вашего дня.",
-      "description": "Ободряющие библейские материалы для дневной паузы и нового вдохновения."
-    },
-    "welcomeEvening": {
-      "label": "Вечернее вдохновение",
-      "title": "Добрый вечер! Завершите день с библейскими историями.",
-      "description": "Спокойные библейские истории помогут осмыслить прошедший день и обрести утешение."
-    },
-    "joinUs": {
-      "label": "Присоединяйтесь к нам",
-      "title": "Миллиарды людей ищут ответы",
-      "description": "Жатва уже созрела. Присоединяйтесь к нам, чтобы с помощью цифровых медиа делиться Евангелием со всем миром."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Вместе — вперёд",
-      "title": "Расскажем историю Иисуса вместе",
-      "description": "Чтобы люди могли услышать и увидеть любовь Иисуса на родном языке — там, где они живут."
-    }
   },
   "WatchFooter": {
     "home": "Главная Jesus Film Project",

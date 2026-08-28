@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Spremeni jezik zvoka",
     "home": "Domača stran JesusFilm",
     "closeSearch": "Zapri iskanje",
-    "submitSearch": "Išči"
+    "submitSearch": "Išči",
+    "library": "Knjižnica"
   },
   "SearchOverlay": {
     "dialogLabel": "Iskanje in brskanje po videoposnetkih",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Išči »{suggestion}« v jeziku {language}",
     "inLanguage": "v jeziku {language}",
     "browseByRegion": "Brskaj po regiji",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Vsi videoposnetki na eni strani",
     "clearLanguages": "Počisti",
     "queryLanguageDetected": "Zaznan jezik: {language}",
     "searchInLanguage": "Išči v jeziku {language}",
@@ -467,6 +468,7 @@
     "sports": "Šport",
     "collections": "Zbirke",
     "subtitlesOnly": "Samo podnapisi",
+    "backToTop": "Nazaj na vrh",
     "newlyAdded": "Nedavno dodano",
     "newVideosTitle": "Novi krščanski videoposnetki v jeziku {language}",
     "newestFirst": "Najnovejše najprej",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostojni videoposnetki",
     "videosFromCollection": "Videoposnetki iz {collection}.",
     "standaloneDescription": "Samostojni videoposnetki v tem jeziku.",
-    "openCollection": "Odpri zbirko"
+    "openCollection": "Odpri zbirko",
+    "filters": "Filtri",
+    "filterLength": "Dolžina",
+    "filterLength_under5": "Manj kot 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Več kot 30 min",
+    "filterType": "Vrsta",
+    "clearFilters": "Počisti filtre",
+    "filterResults": "Prikazano {count} od {total}",
+    "noFilterResults": "Nobeden videoposnetek ne ustreza tem filtrom. Poskusite odstraniti enega.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Zadnjih 60 dni",
+    "filterAdded_6m": "Zadnjih 6 mesecev",
+    "filterAdded_12m": "Zadnjih 12 mesecev"
   },
   "WatchHome": {
     "pageTitle": "Ogled | Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Dejanja za stran ni najdena",
     "backToWatch": "Nazaj na ogled",
     "browseVideos": "Brskaj po videoposnetkih"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Glej kratki film",
-    "actions": {
-      "joinUs": "Pridružite se nam",
-      "shareMission": "Delite naše poslanstvo"
-    },
-    "welcomeStart": {
-      "label": "Vera in Sveto pismo",
-      "title": "Današnji izbor videoposnetkov",
-      "description": "Video vsebine iz naše knjižnice, osredotočene na vero, ki navdihujejo, izzivajo in spodbujajo k premisleku."
-    },
-    "welcomeMorning": {
-      "label": "Jutranji navdih",
-      "title": "Dobro jutro! Današnji svetopisemski trenutki vas čakajo.",
-      "description": "Začnite dan s spodbudnimi svetopisemskimi utrinki, ustvarjenimi za navdih in okrepitev duha."
-    },
-    "welcomeAfternoon": {
-      "label": "Popoldanski navdih",
-      "title": "Dober dan! Svetopisemski trenutki za vaš dan.",
-      "description": "Spodbudne svetopisemske vsebine, popolne za popoldanski odmor ali nadaljnji navdih."
-    },
-    "welcomeEvening": {
-      "label": "Večerni navdih",
-      "title": "Dober večer! Umirite se s svetopisemskimi trenutki.",
-      "description": "Mirni svetopisemski trenutki, ki vam pomagajo pri premisleku in prinašajo tolažbo ob koncu dneva."
-    },
-    "joinUs": {
-      "label": "Pridružite se nam",
-      "title": "Milijarde iščejo",
-      "description": "Žetev je tu. Pridružite se nam pri deljenju evangelija s svetom prek digitalnih medijev."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Pojdimo skupaj",
-      "title": "Skupaj pripovedujemo Jezusovo zgodbo",
-      "description": "Da bodo lahko slišali in videli Jezusovo ljubezen v svojem jeziku, prav tam, kjer so."
-    }
   },
   "VideoRecommendations": {
     "match": "Ujemanje: {percent} %",

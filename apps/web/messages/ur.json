@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڈیو زبان تبدیل کریں",
     "home": "JesusFilm ہوم",
     "closeSearch": "تلاش بند کریں",
-    "submitSearch": "تلاش کریں"
+    "submitSearch": "تلاش کریں",
+    "library": "لائبریری"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیوز تلاش اور براؤز کریں",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} میں ”{suggestion}“ تلاش کریں",
     "inLanguage": "{language} میں",
     "browseByRegion": "علاقے کے لحاظ سے براؤز کریں",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "تمام ویڈیوز ایک صفحے پر",
     "clearLanguages": "صاف کریں",
     "queryLanguageDetected": "{language} کی زبان کا پتہ چلا",
     "searchInLanguage": "{language} میں تلاش کریں",
@@ -467,6 +468,7 @@
     "sports": "کھیل",
     "collections": "مجموعے",
     "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "اوپر واپس",
     "newlyAdded": "نیا شامل شدہ",
     "newVideosTitle": "{language} میں نئی مسیحی ویڈیوز",
     "newestFirst": "نئی ترین پہلے",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الگ ویڈیوز",
     "videosFromCollection": "{collection} سے ویڈیوز۔",
     "standaloneDescription": "اس زبان میں الگ ویڈیوز۔",
-    "openCollection": "مجموعہ کھولیں"
+    "openCollection": "مجموعہ کھولیں",
+    "filters": "فلٹرز",
+    "filterLength": "دورانیہ",
+    "filterLength_under5": "5 منٹ سے کم",
+    "filterLength_5to10": "5-10 منٹ",
+    "filterLength_10to30": "10-30 منٹ",
+    "filterLength_over30": "30 منٹ سے زیادہ",
+    "filterType": "قسم",
+    "clearFilters": "فلٹرز صاف کریں",
+    "filterResults": "{total} میں سے {count} دکھائے گئے",
+    "noFilterResults": "ان فلٹرز سے کوئی ویڈیو میل نہیں کھاتی۔ ایک ہٹا کر دیکھیں۔",
+    "filterAdded": "شامل کیا گیا",
+    "filterAdded_60d": "پچھلے 60 دن",
+    "filterAdded_6m": "پچھلے 6 ماہ",
+    "filterAdded_12m": "پچھلے 12 ماہ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -646,44 +662,6 @@
     "actionsLabel": "صفحہ نہ ملنے کے اقدامات",
     "backToWatch": "واچ پر واپس جائیں",
     "browseVideos": "ویڈیوز براؤز کریں"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "مختصر فلم دیکھیں",
-    "actions": {
-      "joinUs": "ہمارے ساتھ شامل ہوں",
-      "shareMission": "ہمارے مشن میں شریک ہوں"
-    },
-    "welcomeStart": {
-      "label": "ایمان اور صحیفہ",
-      "title": "آج کی منتخب ویڈیوز",
-      "description": "ہماری لائبریری سے ایمان پر مبنی ویڈیو مواد، جو حوصلہ دے، چیلنج کرے، اور غور و فکر کو جنم دے۔"
-    },
-    "welcomeMorning": {
-      "label": "صبح کی تحریک",
-      "title": "صبح بخیر! آج کے بائبل لمحات آپ کے منتظر ہیں۔",
-      "description": "اپنے دن کا آغاز بائبل کے حوصلہ افزا لمحات کے ساتھ کریں، جو آپ کے دل کو تحریک اور تازگی دینے کے لیے بنائے گئے ہیں۔"
-    },
-    "welcomeAfternoon": {
-      "label": "دوپہر کی تحریک",
-      "title": "دوپہر بخیر! آپ کے دن کے لیے بائبل لمحات۔",
-      "description": "حوصلہ افزا بائبل مواد، جو آپ کے دوپہر کے وقفے یا مزید تحریک کے لیے بہترین ہے۔"
-    },
-    "welcomeEvening": {
-      "label": "شام کی تحریک",
-      "title": "شام بخیر! بائبل لمحات کے ساتھ دن سمیٹیں۔",
-      "description": "پُرسکون بائبل لمحات، جو دن کے اختتام پر غور کرنے اور تسلی پانے میں مدد دیں۔"
-    },
-    "joinUs": {
-      "label": "ہمارے ساتھ شامل ہوں",
-      "title": "اربوں لوگ تلاش میں ہیں",
-      "description": "فصل تیار ہے۔ ڈیجیٹل میڈیا کے ذریعے دنیا کو خوشخبری سنانے میں ہمارے ساتھ شامل ہوں۔"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "آئیے مل کر آگے بڑھیں",
-      "title": "یسوع کی کہانی، مل کر سناتے ہیں",
-      "description": "تاکہ وہ جہاں ہیں وہیں اپنی زبان میں یسوع کی محبت سن اور دیکھ سکیں۔"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",

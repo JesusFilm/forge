@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Beddel luqadda codka",
     "home": "Bogga hore ee JesusFilm",
     "closeSearch": "Xir raadinta",
-    "submitSearch": "Raadi"
+    "submitSearch": "Raadi",
+    "library": "Maktabad"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Ku raadi \"{suggestion}\" gudaha {language}",
     "inLanguage": "gudaha {language}",
     "browseByRegion": "Ku dhex-dhaqaaq gobol ahaan",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Dhammaan fiidiyowyada bog keliya",
     "clearLanguages": "Nadiifi",
     "queryLanguageDetected": "{language} ayaa la ogaaday",
     "searchInLanguage": "Ku raadi gudaha {language}",
@@ -467,6 +468,7 @@
     "sports": "Ciyaaraha",
     "collections": "Uruurino",
     "subtitlesOnly": "Kaliya qoraal-hoosaadyo",
+    "backToTop": "Ku noqo kor",
     "newlyAdded": "Cusub lagu daray",
     "newVideosTitle": "Fiidiyowyo Masiixi ah oo cusub gudaha {language}",
     "newestFirst": "Kuwa ugu cusub marka hore",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fiidiyowyo kaligood ah",
     "videosFromCollection": "Fiidiyowyo ka yimid {collection}.",
     "standaloneDescription": "Fiidiyowyo kaligood ah oo luqaddan ku jira.",
-    "openCollection": "Fur ururinta"
+    "openCollection": "Fur ururinta",
+    "filters": "Shaandhooyin",
+    "filterLength": "Dherer",
+    "filterLength_under5": "Ka yar 5 daqiiqo",
+    "filterLength_5to10": "5-10 daqiiqo",
+    "filterLength_10to30": "10-30 daqiiqo",
+    "filterLength_over30": "Ka badan 30 daqiiqo",
+    "filterType": "Nooc",
+    "clearFilters": "Tirtir shaandhooyinka",
+    "filterResults": "{count} ka mid ah {total} ayaa la muujiyay",
+    "noFilterResults": "Ma jiro fiidiyow ku habboon shaandhooyinkan. Isku day inaad mid ka saarto.",
+    "filterAdded": "Lagu daray",
+    "filterAdded_60d": "60-kii maalmood ee la soo dhaafay",
+    "filterAdded_6m": "6-dii bilood ee la soo dhaafay",
+    "filterAdded_12m": "12-kii bilood ee la soo dhaafay"
   },
   "WatchHome": {
     "pageTitle": "Daawashada Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ficillada bogga lama helin",
     "backToWatch": "Ku noqo Daawashada",
     "browseVideos": "Dhex-dhaqaaq fiidiyowyada"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Daawo filim gaaban",
-    "actions": {
-      "joinUs": "Nagu soo biir",
-      "shareMission": "La wadaag howlteenna"
-    },
-    "welcomeStart": {
-      "label": "Iimaan & Qorniin",
-      "title": "Xulashada fiidiyowyada maanta",
-      "description": "Waxyaabo fiidiyow ah oo ku salaysan iimaan, kana yimid maktabaddeenna, si ay kuu dhiirrigeliyaan, kuu xujeeyaan, oo ay kuu kiciyaan fikir."
-    },
-    "welcomeMorning": {
-      "label": "Dhiirrigelinta subaxnimo",
-      "title": "Subax wanaagsan! Qaybaha Baybalka ee maanta ayaa ku sugaya.",
-      "description": "Ku bilow maalintaada qaybaha Baybalka ee dhiirrigeliya, kuwaas oo loo sameeyay inay ku xoojiyaan oo ay ruuxaaga kiciyaan."
-    },
-    "welcomeAfternoon": {
-      "label": "Dhiirrigelinta galabnimo",
-      "title": "Galab wanaagsan! Qaybaha Baybalka ee maalintaada.",
-      "description": "Waxyaabo Baybal ah oo dhiirrigelin leh, ku habboon nasashadaada galabta ama dhiirrigelin sii socota."
-    },
-    "welcomeEvening": {
-      "label": "Dhiirrigelinta fiidnimo",
-      "title": "Habeen wanaagsan! Ku naso qaybaha Baybalka.",
-      "description": "Qaybaha Baybalka ee deggan si ay kaaga caawiyaan inaad milicsato oo aad hesho qalbi qabow marka maalintaadu dhammaanayso."
-    },
-    "joinUs": {
-      "label": "Nagu soo biir",
-      "title": "Bilyanno ayaa raadinaya",
-      "description": "Goosashadu waa timid. Nagu soo biir anagoo dunida ula wadaageyna injiilka warbaahin dijitaal ah."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Aan wada soconno",
-      "title": "Sheekada Jesus waan wada sheegaynaa",
-      "description": "Si ay meesha ay joogaan uga maqlaan uguna arkaan jacaylka Jesus oo ku jira afkooda."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% waafaqid",

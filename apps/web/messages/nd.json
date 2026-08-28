@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
     "closeSearch": "Vala usesho",
-    "submitSearch": "Sesha"
+    "submitSearch": "Sesha",
+    "library": "Ilayibhulari"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Sesha okuthi “{suggestion}” ngolimi: {language}",
     "inLanguage": "ngo-{language}",
     "browseByRegion": "Phequlula ngokwesifunda",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Wonke amavideo ekhasini elilodwa",
     "clearLanguages": "Sula",
     "queryLanguageDetected": "Kutholwe {language}",
     "searchInLanguage": "Sesha ngolimi: {language}",
@@ -467,6 +468,7 @@
     "sports": "Ezemidlalo",
     "collections": "Amaqoqo",
     "subtitlesOnly": "Izihlokwana kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Okusanda kwengezwa",
     "newVideosTitle": "Amavidiyo amaKristu amasha ngo-{language}",
     "newestFirst": "Okusha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Amavidiyo azimele",
     "videosFromCollection": "Amavidiyo avela ku-{collection}.",
     "standaloneDescription": "Amavidiyo azimele kulolu limi.",
-    "openCollection": "Vula iqoqo"
+    "openCollection": "Vula iqoqo",
+    "filters": "Izihlungi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphansi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eli-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engu-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Susa izihlungi",
+    "filterResults": "{count} kwe-{total} okuboniswayo",
+    "noFilterResults": "Akulamavidiyo ahambelana lalezi zihlungi. Zama ukususa esinye.",
+    "filterAdded": "Kwengezwe",
+    "filterAdded_60d": "Insuku ezingu-60 ezedlulayo",
+    "filterAdded_6m": "Inyanga eziyisi-6 ezedlulayo",
+    "filterAdded_12m": "Inyanga eziyi-12 ezedlulayo"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Bukela",
@@ -646,44 +662,6 @@
     "actionsLabel": "Izenzo zekhasi elingatholakali",
     "backToWatch": "Buyela ku-Watch",
     "browseVideos": "Phequlula amavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka Ifilimu Emfishane",
-    "actions": {
-      "joinUs": "Joyina Thina",
-      "shareMission": "Yabelana Emsebenzini Wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukukholwa & ImiBhalo",
-      "title": "Okukhethiwe Namuhla Kwevidiyo",
-      "description": "Okuqukethwe kwevidiyo okugxile ekukholweni okuvela emtatsheni wethu ukuze kukhuthaze, kuphonsele inselelo, futhi kuvuse ukucabangisisa."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi Lwasekuseni",
-      "title": "Sawubona! Izikhathi ZeBhayibheli Zanamuhla Zikulindile.",
-      "description": "Qala usuku lwakho ngezingxenye zeBhayibheli ezikhuthazayo eziklanyelwe ukukugqugquzela nokukuphakamisa umoya."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi Lwasemini",
-      "title": "Ntambama enhle! Izikhathi ZeBhayibheli Zosuku Lwakho.",
-      "description": "Okuqukethwe kweBhayibheli okukhuthazayo okulungele ikhefu lakho lasemini noma ukuqhubeka nokuthola ugqozi."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi Lwasebusuku",
-      "title": "Ubusuku obuhle! Phumula Ngezingxenye ZeBhayibheli.",
-      "description": "Izingxenye zeBhayibheli ezinokuthula ezikusiza ucabangisise futhi uthole induduzo njengoba usuku lwakho luphela."
-    },
-    "joinUs": {
-      "label": "Joyina Thina",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isikhathi sesivuno sesifikile. Hlanganyela nathi njengoba sabelana ngevangeli nomhlaba sisebenzisa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Masihambe ndawonye",
-      "title": "Ukuxoxa Indaba KaJesu, Ndawonye",
-      "description": "Ukuze bakwazi ukuzwa futhi babone uthando lukaJesu ngolimi lwabo lapho bekhona khona."
-    }
   },
   "VideoRecommendations": {
     "match": "Kuhambelana ngo-{percent}%",

@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./callbacks": "./src/callbacks.ts",
     "./download": "./src/download.ts",
-    "./routes": "./src/routes.ts"
+    "./routes": "./src/routes.ts",
+    "./watch-home-categories": "./src/watch-home-categories.ts",
+    "./watch-home-tiles": "./src/watch-home-tiles.ts"
   },
   "scripts": {
     "lint": "eslint .",

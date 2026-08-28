@@ -180,7 +180,8 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جستجو",
-    "submitSearch": "جستجو"
+    "submitSearch": "جستجو",
+    "library": "کتابخانه"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "جستجوی «{suggestion}» به زبان {language}",
     "inLanguage": "به زبان {language}",
     "browseByRegion": "مرور بر اساس منطقه",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "همهٔ ویدیوها در یک صفحه",
     "clearLanguages": "پاک کردن",
     "queryLanguageDetected": "زبان {language} شناسایی شد",
     "searchInLanguage": "جستجو به زبان {language}",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "مجموعه‌ها",
     "subtitlesOnly": "فقط زیرنویس",
+    "backToTop": "بازگشت به بالا",
     "newlyAdded": "تازه اضافه‌شده",
     "newVideosTitle": "ویدیوهای جدید مسیحی به زبان {language}",
     "newestFirst": "جدیدترین ابتدا",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدیوهای مستقل",
     "videosFromCollection": "ویدیوهای از {collection}.",
     "standaloneDescription": "ویدیوهای مستقل در این زبان.",
-    "openCollection": "باز کردن مجموعه"
+    "openCollection": "باز کردن مجموعه",
+    "filters": "فیلترها",
+    "filterLength": "مدت",
+    "filterLength_under5": "کمتر از ۵ دقیقه",
+    "filterLength_5to10": "۵-۱۰ دقیقه",
+    "filterLength_10to30": "۱۰-۳۰ دقیقه",
+    "filterLength_over30": "بیش از ۳۰ دقیقه",
+    "filterType": "نوع",
+    "clearFilters": "پاک کردن فیلترها",
+    "filterResults": "{count} از {total} نمایش داده شد",
+    "noFilterResults": "هیچ ویدیویی با این فیلترها مطابقت ندارد. یکی را حذف کنید.",
+    "filterAdded": "افزوده‌شده",
+    "filterAdded_60d": "۶۰ روز گذشته",
+    "filterAdded_6m": "۶ ماه گذشته",
+    "filterAdded_12m": "۱۲ ماه گذشته"
   },
   "WatchHome": {
     "pageTitle": "تماشای Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "اقدامات برای صفحه پیدا نشد",
     "backToWatch": "بازگشت به تماشا",
     "browseVideos": "مرور ویدیوها"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "تماشای فیلم کوتاه",
-    "actions": {
-      "joinUs": "به ما بپیوندید",
-      "shareMission": "در مأموریت ما سهیم شوید"
-    },
-    "welcomeStart": {
-      "label": "ایمان و کتاب‌مقدس",
-      "title": "انتخاب‌های ویدیویی امروز",
-      "description": "محتوای ویدیوییِ ایمانی از کتابخانهٔ ما برای الهام‌بخشی، به چالش کشیدن و برانگیختن تأمل."
-    },
-    "welcomeMorning": {
-      "label": "الهام صبحگاهی",
-      "title": "صبح بخیر! لحظات کتاب‌مقدسِ امروز در انتظارند.",
-      "description": "روزتان را با لحظات دلگرم‌کنندهٔ کتاب‌مقدس آغاز کنید؛ لحظاتی برای الهام‌بخشی و تقویت روح شما."
-    },
-    "welcomeAfternoon": {
-      "label": "الهام عصرگاهی",
-      "title": "عصر بخیر! لحظات کتاب‌مقدس برای امروز شما.",
-      "description": "محتوای دلگرم‌کنندهٔ کتاب‌مقدس که برای استراحت عصرگاهی یا ادامهٔ الهام‌بخشی مناسب است."
-    },
-    "welcomeEvening": {
-      "label": "الهام شبانه",
-      "title": "شب بخیر! با لحظات کتاب‌مقدس آرام بگیرید.",
-      "description": "لحظات آرامِ کتاب‌مقدس برای کمک به تأمل و یافتن آرامش در پایان روز."
-    },
-    "joinUs": {
-      "label": "به ما بپیوندید",
-      "title": "میلیاردها نفر در جست‌وجو هستند",
-      "description": "زمانِ برداشت فرا رسیده است. با ما همراه شوید تا از طریق رسانه‌های دیجیتال انجیل را با جهان در میان بگذاریم."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بیایید با هم برویم",
-      "title": "بازگویی داستان عیسی، با هم",
-      "description": "تا بتوانند محبت عیسی را به زبان خودشان، درست همان‌جا که هستند، بشنوند و ببینند."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}٪ مطابقت",

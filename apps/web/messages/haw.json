@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hoʻololi i ka ʻōlelo leo",
     "home": "ʻAoʻao home o JesusFilm",
     "closeSearch": "Pani i ka huli",
-    "submitSearch": "Huli"
+    "submitSearch": "Huli",
+    "library": "Waihona"
   },
   "SearchOverlay": {
     "dialogLabel": "Huli a nānā i nā wikiō",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "E huli iā “{suggestion}” ma {language}",
     "inLanguage": "ma {language}",
     "browseByRegion": "Nānā ma ka ʻāina",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Nā wikiō a pau ma ka ʻaoʻao hoʻokahi",
     "clearLanguages": "Holoi",
     "queryLanguageDetected": "Ua ʻike ʻia ka {language}",
     "searchInLanguage": "Huli ma {language}",
@@ -467,6 +468,7 @@
     "sports": "Haʻuki",
     "collections": "Nā Hōʻiliʻili",
     "subtitlesOnly": "Nā wehewehe ma lalo wale nō",
+    "backToTop": "Hoʻi i luna",
     "newlyAdded": "Hoʻohui hou ʻia",
     "newVideosTitle": "Nā wikiō Kalikiano hou ma {language}",
     "newestFirst": "Nā mea hou ma mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Nā wikiō kūʻokoʻa",
     "videosFromCollection": "Nā wikiō mai {collection}.",
     "standaloneDescription": "Nā wikiō kūʻokoʻa ma kēia ʻōlelo.",
-    "openCollection": "Wehe i ka hōʻiliʻili"
+    "openCollection": "Wehe i ka hōʻiliʻili",
+    "filters": "Nā kānana",
+    "filterLength": "Lōʻihi",
+    "filterLength_under5": "Ma lalo o 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Ma luna o 30 min",
+    "filterType": "ʻAno",
+    "clearFilters": "Hoʻomaʻemaʻe i nā kānana",
+    "filterResults": "Hōʻike ʻia {count} o {total}",
+    "noFilterResults": "ʻAʻohe wikiō e kūlike me kēia mau kānana. E hoʻāʻo e wehe i kekahi.",
+    "filterAdded": "Hoʻohui ʻia",
+    "filterAdded_60d": "Nā lā 60 i hala",
+    "filterAdded_6m": "Nā mahina 6 i hala",
+    "filterAdded_12m": "Nā mahina 12 i hala"
   },
   "WatchHome": {
     "pageTitle": "Nānā ʻo Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Nā hana no ka ʻaoʻao ʻaʻole i loaʻa",
     "backToWatch": "Hoʻi i Nānā",
     "browseVideos": "Nānā i nā wikiō"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Nānā Kiʻiʻoniʻoni Pōkole",
-    "actions": {
-      "joinUs": "E hui pū me mākou",
-      "shareMission": "E kaʻana i kā mākou mikionali"
-    },
-    "welcomeStart": {
-      "label": "ʻO ka manaʻoʻiʻo a me ka Palapala Hemolele",
-      "title": "Nā Koho Wikiō o kēia Lā",
-      "description": "Nā wikiō ma muli o ka manaʻoʻiʻo mai kā mākou waihona e hoʻoulu, e hoʻāʻo, a e hoʻāla i ka noʻonoʻo."
-    },
-    "welcomeMorning": {
-      "label": "Hoʻoulu no ke Kakahiaka",
-      "title": "Aloha kakahiaka! E kali mai ana nā manawa Baibala o kēia lā.",
-      "description": "E hoʻomaka i kou lā me nā manawa Baibala hoʻoulu e paipai a hoʻokiʻekiʻe i kou ʻuhane."
-    },
-    "welcomeAfternoon": {
-      "label": "Hoʻoulu no ke Auinalā",
-      "title": "Aloha auinalā! Nā manawa Baibala no kou lā.",
-      "description": "Nā maʻiʻo Baibala hoʻoulu kūpono no kou wā hoʻomaha auinalā a i ʻole no ka hoʻomau ʻana i ka hoʻoikaika."
-    },
-    "welcomeEvening": {
-      "label": "Hoʻoulu no ke Ahiahi",
-      "title": "Aloha ahiahi! E hoʻomaha me nā manawa Baibala.",
-      "description": "Nā manawa Baibala mālie e kōkua iā ʻoe e noʻonoʻo a loaʻa ka hōʻoluʻolu i ka pau ʻana o kou lā."
-    },
-    "joinUs": {
-      "label": "E hui pū me mākou",
-      "title": "Ke ʻimi nei nā piliona",
-      "description": "Aia ka ʻohi. E hui pū me mākou i ko kākou kaʻana ʻana i ka ʻeuanelio i ka honua ma o nā media kikohoʻe."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "E hele pū kākou",
-      "title": "Ke haʻi pū nei i ka Moʻolelo no Iesu",
-      "description": "I lohe a ʻike lākou i ke aloha o Iesu ma kā lākou ʻōlelo iho ma kahi a lākou e noho ai."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% kūlike",

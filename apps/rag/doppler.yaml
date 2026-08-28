@@ -1,0 +1,5 @@
+# Secret-free target metadata. Run Doppler commands from apps/rag, or pass
+# --project forge-rag --config prd explicitly. Never print secret values.
+setup:
+  project: forge-rag
+  config: prd

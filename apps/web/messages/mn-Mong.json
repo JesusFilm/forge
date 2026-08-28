@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлтыг хаах",
-    "submitSearch": "ᠬᠠᠢᠬᠤ"
+    "submitSearch": "ᠬᠠᠢᠬᠤ",
+    "library": "ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ᠬᠡᠯᠡ ᠪᠡᠷ {suggestion} ᠭᠡᠵᠦ ᠬᠠᠢᠬᠤ",
     "inLanguage": "{language} дээр",
     "browseByRegion": "Бүс нутгаар үзэх",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Бүх видео нэг хуудсанд",
     "clearLanguages": "Цэвэрлэх",
     "queryLanguageDetected": "{language} илэрлээ",
     "searchInLanguage": "{language} ᠬᠡᠯᠡ ᠪᠡᠷ ᠬᠠᠢᠬᠤ",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "ᠳᠡᠭᠡᠷ᠎ᠡ ᠪᠤᠴᠠᠬᠤ",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language}-д шинэ Христийн видеонууд",
     "newestFirst": "Шинэ эхлээд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-оос авсан видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "ᠰᠢᠭᠦᠭᠦᠷ",
+    "filterLength": "ᠤᠷᠲᠤ",
+    "filterLength_under5": "5 ᠮᠢᠨᠦ᠋ᠲ᠎ᠠᠴᠠ ᠪᠠᠭ᠎ᠠ",
+    "filterLength_5to10": "5-10 ᠮᠢᠨᠦ᠋ᠲ",
+    "filterLength_10to30": "10-30 ᠮᠢᠨᠦ᠋ᠲ",
+    "filterLength_over30": "30 ᠮᠢᠨᠦ᠋ᠲ᠎ᠠᠴᠠ ᠶᠡᠬᠡ",
+    "filterType": "ᠲᠥᠷᠥᠯ",
+    "clearFilters": "ᠰᠢᠭᠦᠭᠦᠷ ᠢ ᠠᠷᠢᠯᠭᠠᠬᠤ",
+    "filterResults": "{total}᠎ᠠᠴᠠ {count} ᠬᠠᠷᠠᠭᠤᠯᠵᠤ ᠪᠠᠢᠨ᠎ᠠ",
+    "noFilterResults": "ᠡᠳᠡᠭᠡᠷ ᠰᠢᠭᠦᠭᠦᠷ ᠲᠦ ᠲᠣᠬᠢᠷᠠᠬᠤ ᠪᠢᠴᠢᠯᠭᠡ ᠦᠭᠡᠢ᠃ ᠨᠢᠭᠡ ᠶᠢ ᠬᠠᠰᠤᠵᠤ ᠦᠵᠡᠭᠡᠷᠡᠢ᠃",
+    "filterAdded": "ᠨᠡᠮᠡᠭᠳᠡᠭᠰᠡᠨ",
+    "filterAdded_60d": "ᠰᠡᠭᠦᠯ ᠦᠨ 60 ᠬᠣᠨᠣᠭ",
+    "filterAdded_6m": "ᠰᠡᠭᠦᠯ ᠦᠨ 6 ᠰᠠᠷ᠎ᠠ",
+    "filterAdded_12m": "ᠰᠡᠭᠦᠯ ᠦᠨ 12 ᠰᠠᠷ᠎ᠠ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project үзэх",
@@ -646,44 +662,6 @@
     "actionsLabel": "Хуудас олдсонгүй үйлдлүүд",
     "backToWatch": "Үзэх хуудас руу буцах",
     "browseVideos": "Видеонуудыг үзэх"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Богино киног үзэх",
-    "actions": {
-      "joinUs": "Бидэнтэй нэгдээрэй",
-      "shareMission": "Бидний номлолд нэгдээрэй"
-    },
-    "welcomeStart": {
-      "label": "Итгэл ба Бичээс",
-      "title": "Өнөөдрийн видеон сонголтууд",
-      "description": "Манай сангаас авсан итгэл төвтэй видеонууд танд урам өгч, сорьж, эргэцүүлэл төрүүлэхэд зориулагдсан."
-    },
-    "welcomeMorning": {
-      "label": "Өглөөний урам",
-      "title": "Өглөөний мэнд! Өнөөдрийн Библийн агшнууд таныг хүлээж байна.",
-      "description": "Сүнсийг тань урамшуулж, өргөхөд зориулагдсан Библийн урам өгөгч агшнуудаар өдрөө эхлүүлээрэй."
-    },
-    "welcomeAfternoon": {
-      "label": "Өдрийн урам",
-      "title": "Өдрийн мэнд! Таны өдөрт зориулсан Библийн агшнууд.",
-      "description": "Үдээс хойших амралтад тань тохирох эсвэл урам зориг өгсөөр байх Библийн урам өгөгч контент."
-    },
-    "welcomeEvening": {
-      "label": "Оройн урам",
-      "title": "Оройн мэнд! Библийн агшнаар тайвшир.",
-      "description": "Өдөр тань өндөрлөхөд эргэцүүлж, тайтгарал олоход туслах тайван Библийн агшнууд."
-    },
-    "joinUs": {
-      "label": "Бидэнтэй нэгдээрэй",
-      "title": "Тэрбум тэрбум хүн хайж байна",
-      "description": "Ургац бэлэн байна. Дижитал медиагаар дамжуулан сайн мэдээг дэлхийтэй хуваалцахад бидэнтэй нэгдээрэй."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хамтдаа явцгаая",
-      "title": "Есүсийн түүхийг хамтдаа өгүүлцгээе",
-      "description": "Тэд Есүсийн хайрыг өөрсдийн хэлээр, өөрсдийн байгаа газар дээрээ сонсож, харж чадна."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% нийцэл",

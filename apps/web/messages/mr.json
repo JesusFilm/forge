@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडिओ भाषा बदला",
     "home": "JesusFilm मुख्यपृष्ठ",
     "closeSearch": "शोध बंद करा",
-    "submitSearch": "शोधा"
+    "submitSearch": "शोधा",
+    "library": "लायब्ररी"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ शोधा आणि ब्राउझ करा",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} मध्ये “{suggestion}” शोधा",
     "inLanguage": "{language} मध्ये",
     "browseByRegion": "प्रदेशानुसार ब्राउझ करा",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "सर्व व्हिडिओ एका पानावर",
     "clearLanguages": "साफ करा",
     "queryLanguageDetected": "{language} आढळले",
     "searchInLanguage": "{language} मध्ये शोधा",
@@ -467,6 +468,7 @@
     "sports": "क्रीडा",
     "collections": "संग्रह",
     "subtitlesOnly": "फक्त सबटायटल्स",
+    "backToTop": "वर परत",
     "newlyAdded": "नवीन जोडलेले",
     "newVideosTitle": "{language} मधील नवीन ख्रिस्ती व्हिडिओ",
     "newestFirst": "नवीनतम पहिले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र व्हिडिओ",
     "videosFromCollection": "{collection} मधील व्हिडिओ.",
     "standaloneDescription": "या भाषेतील स्वतंत्र व्हिडिओ.",
-    "openCollection": "संग्रह उघडा"
+    "openCollection": "संग्रह उघडा",
+    "filters": "फिल्टर",
+    "filterLength": "लांबी",
+    "filterLength_under5": "5 मिनिटांपेक्षा कमी",
+    "filterLength_5to10": "5-10 मिनिटे",
+    "filterLength_10to30": "10-30 मिनिटे",
+    "filterLength_over30": "30 मिनिटांपेक्षा जास्त",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर साफ करा",
+    "filterResults": "{total} पैकी {count} दाखवले",
+    "noFilterResults": "या फिल्टरशी कोणताही व्हिडिओ जुळत नाही. एक काढून पहा.",
+    "filterAdded": "जोडले",
+    "filterAdded_60d": "गेल्या 60 दिवस",
+    "filterAdded_6m": "गेल्या 6 महिने",
+    "filterAdded_12m": "गेल्या 12 महिने"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पाहा",
@@ -646,44 +662,6 @@
     "actionsLabel": "पृष्ठ सापडले नाही क्रिया",
     "backToWatch": "पुन्हा Watch वर जा",
     "browseVideos": "व्हिडिओ ब्राउझ करा"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघुपट पाहा",
-    "actions": {
-      "joinUs": "आमच्यात सामील व्हा",
-      "shareMission": "आमच्या मिशनमध्ये सहभागी व्हा"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आणि शास्त्रलेखन",
-      "title": "आजची व्हिडिओ निवड",
-      "description": "प्रेरणा देणारे, आव्हान करणारे आणि चिंतनाला चालना देणारे आमच्या संग्रहातील विश्वासकेंद्रित व्हिडिओ."
-    },
-    "welcomeMorning": {
-      "label": "सकाळची प्रेरणा",
-      "title": "शुभ प्रभात! आजचे बायबल क्षण तुमची वाट पाहत आहेत.",
-      "description": "तुमचा दिवस बायबलमधील प्रेरणादायी क्षणांनी सुरू करा, जे तुम्हाला उभारी देतील आणि मनोबल वाढवतील."
-    },
-    "welcomeAfternoon": {
-      "label": "दुपारची प्रेरणा",
-      "title": "शुभ दुपार! तुमच्या दिवसासाठी बायबल क्षण.",
-      "description": "दुपारच्या विश्रांतीसाठी किंवा पुढील प्रेरणेसाठी उपयुक्त असे बायबलमधील प्रोत्साहनपर कंटेंट."
-    },
-    "welcomeEvening": {
-      "label": "संध्याकाळची प्रेरणा",
-      "title": "शुभ संध्या! बायबल क्षणांसह विश्रांती घ्या.",
-      "description": "दिवस संपताना चिंतन करण्यास आणि दिलासा मिळवण्यास मदत करणारे शांत, बायबलमधील क्षण."
-    },
-    "joinUs": {
-      "label": "आमच्यात सामील व्हा",
-      "title": "अब्जावधी लोक शोधत आहेत",
-      "description": "कापणीची वेळ आली आहे. डिजिटल माध्यमांचा वापर करून सुवार्ता जगापर्यंत पोहोचवण्यासाठी आमच्यात सामील व्हा."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "चला एकत्र जाऊया",
-      "title": "येशूची कहाणी, एकत्र सांगत",
-      "description": "जेणेकरून ते जिथे आहेत तिथेच, त्यांच्या स्वतःच्या भाषेत येशूचे प्रेम ऐकू आणि पाहू शकतील."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% जुळते",

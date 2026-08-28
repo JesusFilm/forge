@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Canvia l’idioma de l’àudio",
     "home": "Inici de JesusFilm",
     "closeSearch": "Tanca la cerca",
-    "submitSearch": "Cerca"
+    "submitSearch": "Cerca",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca i navega pels vídeos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Cerca «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navega per regió",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Tots els vídeos en una pàgina",
     "clearLanguages": "Esborra",
     "queryLanguageDetected": "S’ha detectat {language}",
     "searchInLanguage": "Cerca en {language}",
@@ -467,6 +468,7 @@
     "sports": "Esports",
     "collections": "Col·leccions",
     "subtitlesOnly": "Només subtítols",
+    "backToTop": "Tornar a dalt",
     "newlyAdded": "Afegits recentment",
     "newVideosTitle": "Nous vídeos cristians en {language}",
     "newestFirst": "Més recents primer",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos independents",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos independents en aquest idioma.",
-    "openCollection": "Obre la col·lecció"
+    "openCollection": "Obre la col·lecció",
+    "filters": "Filtres",
+    "filterLength": "Durada",
+    "filterLength_under5": "Menys de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Més de 30 min",
+    "filterType": "Tipus",
+    "clearFilters": "Esborra els filtres",
+    "filterResults": "{count} de {total} mostrats",
+    "noFilterResults": "Cap vídeo coincideix amb aquests filtres. Prova de treure'n un.",
+    "filterAdded": "Afegit",
+    "filterAdded_60d": "Últims 60 dies",
+    "filterAdded_6m": "Últims 6 mesos",
+    "filterAdded_12m": "Últims 12 mesos"
   },
   "WatchHome": {
     "pageTitle": "Mira Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Accions de pàgina no trobada",
     "backToWatch": "Torna a Watch",
     "browseVideos": "Navega pels vídeos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mira el curtmetratge",
-    "actions": {
-      "joinUs": "Uneix-te a nosaltres",
-      "shareMission": "Comparteix la nostra missió"
-    },
-    "welcomeStart": {
-      "label": "Fe i Escriptura",
-      "title": "Selecció de vídeos d’avui",
-      "description": "Vídeos de la nostra biblioteca centrats en la fe per inspirar, provocar i convidar a la reflexió."
-    },
-    "welcomeMorning": {
-      "label": "Inspiració matinal",
-      "title": "Bon dia! T’esperen els moments bíblics d’avui.",
-      "description": "Comença el dia amb moments bíblics encoratjadors pensats per inspirar-te i aixecar-te l’ànim."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiració de la tarda",
-      "title": "Bona tarda! Moments bíblics per al teu dia.",
-      "description": "Contingut bíblic encoratjador, perfecte per a la pausa de la tarda o per continuar inspirant-te."
-    },
-    "welcomeEvening": {
-      "label": "Inspiració del vespre",
-      "title": "Bona nit! Desconnecta amb moments bíblics.",
-      "description": "Moments bíblics de pau per ajudar-te a reflexionar i trobar consol mentre s’acaba el dia."
-    },
-    "joinUs": {
-      "label": "Uneix-te a nosaltres",
-      "title": "Milers de milions de persones busquen respostes",
-      "description": "La collita ja és aquí. Uneix-te a nosaltres per compartir l’evangeli amb el món mitjançant els mitjans digitals."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Anem junts",
-      "title": "Explicant junts la història de Jesús",
-      "description": "Perquè puguin sentir i veure l’amor de Jesús en la seva pròpia llengua, allà on siguin."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent} % de coincidència",

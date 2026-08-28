@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Овоз тилини ўзгартириш",
     "home": "JesusFilm бош саҳифаси",
     "closeSearch": "Қидирувни ёпиш",
-    "submitSearch": "Қидириш"
+    "submitSearch": "Қидириш",
+    "library": "Кутубхона"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларни қидириш ва кўриб чиқиш",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} тилида «{suggestion}»ни қидириш",
     "inLanguage": "{language} тилида",
     "browseByRegion": "Ҳудуд бўйича кўриш",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Барча видеолар битта саҳифада",
     "clearLanguages": "Тозалаш",
     "queryLanguageDetected": "{language} аниқланди",
     "searchInLanguage": "{language} тилида қидириш",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Тўпламлар",
     "subtitlesOnly": "Фақат субтитрлар",
+    "backToTop": "Юқорига",
     "newlyAdded": "Янги қўшилган",
     "newVideosTitle": "{language} тилидаги янги христиан видеолари",
     "newestFirst": "Энг янги аввал",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Мустақил видеолар",
     "videosFromCollection": "{collection} дан видеолар.",
     "standaloneDescription": "Бу тилдаги мустақил видеолар.",
-    "openCollection": "Тўпламни очиш"
+    "openCollection": "Тўпламни очиш",
+    "filters": "Филтрлар",
+    "filterLength": "Давомийлиги",
+    "filterLength_under5": "5 дақиқадан кам",
+    "filterLength_5to10": "5-10 дақиқа",
+    "filterLength_10to30": "10-30 дақиқа",
+    "filterLength_over30": "30 дақиқадан кўп",
+    "filterType": "Тури",
+    "clearFilters": "Филтрларни тозалаш",
+    "filterResults": "{total} дан {count} кўрсатилди",
+    "noFilterResults": "Бу филтрларга мос видео йўқ. Биттасини олиб ташлаб кўринг.",
+    "filterAdded": "Қўшилган",
+    "filterAdded_60d": "Охирги 60 кун",
+    "filterAdded_6m": "Охирги 6 ой",
+    "filterAdded_12m": "Охирги 12 ой"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project кўриш",
@@ -646,44 +662,6 @@
     "actionsLabel": "Саҳифа топилмади амаллари",
     "backToWatch": "Кўришга қайтиш",
     "browseVideos": "Видеоларни кўриш"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Қисқа фильмни кўриш",
-    "actions": {
-      "joinUs": "Бизга қўшилинг",
-      "shareMission": "Миссиямизда иштирок этинг"
-    },
-    "welcomeStart": {
-      "label": "Имон ва Муқаддас Ёзув",
-      "title": "Бугунги видео танловлари",
-      "description": "Руҳлантириш, ўйлантириш ва мулоҳаза уйғотиш учун кутубхонамиздан имонга йўналтирилган видео мазмун."
-    },
-    "welcomeMorning": {
-      "label": "Тонгги илҳом",
-      "title": "Ассалому алайкум! Бугунги Библия лаҳзалари сизни кутмоқда.",
-      "description": "Кунни руҳлантирувчи, илҳом бағишлаш ва қалбингизни кўтариш учун тайёрланган Библия лаҳзалари билан бошланг."
-    },
-    "welcomeAfternoon": {
-      "label": "Пешинги илҳом",
-      "title": "Кундуз хайр! Кунингиз учун Библия лаҳзалари.",
-      "description": "Кундузги танаффусингиз ёки руҳланишингиз учун мос, кўнгилни кўтарувчи Библия мазмуни."
-    },
-    "welcomeEvening": {
-      "label": "Оқшомги илҳом",
-      "title": "Оқшом хайр! Библия лаҳзалари билан тин олинг.",
-      "description": "Кун охирида мулоҳаза қилиш ва тасалли топишга ёрдам берадиган осойишта Библия лаҳзалари."
-    },
-    "joinUs": {
-      "label": "Бизга қўшилинг",
-      "title": "Миллиардлаб одамлар излаяпти",
-      "description": "Ҳосил бу ерда. Рақамли медиа орқали бутун дунёга хушхабарни етказишда бизга қўшилинг."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Бирга йўл олдик",
-      "title": "Исо ҳақидаги ҳикояни бирга баён қиламиз",
-      "description": "Шунда улар Исо муҳаббатини ўз тилида, ўзи турган жойда эшитиб, кўра оладилар."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% мос келади",

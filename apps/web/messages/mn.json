@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлтыг хаах",
-    "submitSearch": "Хайх"
+    "submitSearch": "Хайх",
+    "library": "Номын сан"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} хэлээр «{suggestion}» гэж хайх",
     "inLanguage": "{language} дээр",
     "browseByRegion": "Бүс нутгаар үзэх",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Бүх видео нэг хуудсанд",
     "clearLanguages": "Цэвэрлэх",
     "queryLanguageDetected": "{language} илэрлээ",
     "searchInLanguage": "{language} хэлээр хайх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээш буцах",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language} хэл дээрх шинэ Христийн видео",
     "newestFirst": "Хамгийн шинэ эхэнд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-оос видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүр",
+    "filterLength": "Урт",
+    "filterLength_under5": "5 минутаас бага",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутаас их",
+    "filterType": "Төрөл",
+    "clearFilters": "Шүүлтүүрийг арилгах",
+    "filterResults": "{total}-аас {count} харуулж байна",
+    "noFilterResults": "Эдгээр шүүлтүүрт тохирох видео байхгүй. Нэгийг хасаж үзээрэй.",
+    "filterAdded": "Нэмэгдсэн",
+    "filterAdded_60d": "Сүүлийн 60 хоног",
+    "filterAdded_6m": "Сүүлийн 6 сар",
+    "filterAdded_12m": "Сүүлийн 12 сар"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project үзэх хэсэг",
@@ -646,44 +662,6 @@
     "actionsLabel": "Хуудас олдсонгүй үйлдлүүд",
     "backToWatch": "Үзэх хэсэг рүү буцах",
     "browseVideos": "Видео үзэх"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Богино хэмжээний кино үзэх",
-    "actions": {
-      "joinUs": "Бидэнтэй нэгдэх",
-      "shareMission": "Бидний эрхэм зорилгыг түгээх"
-    },
-    "welcomeStart": {
-      "label": "Итгэл ба Судар",
-      "title": "Өнөөдрийн онцлох видеонууд",
-      "description": "Манай сангаас итгэл төвтэй видео контент — урам зориг өгөх, сорих, эргэцүүлэхэд туслах агуулга."
-    },
-    "welcomeMorning": {
-      "label": "Өглөөний урам зориг",
-      "title": "Өглөөний мэнд! Өнөөдрийн Библийн мөчүүд таныг хүлээж байна.",
-      "description": "Өдрөө эхлүүлэхэд тань урам өгч, сэтгэлийг тань өргөх Библийн мөчүүдээр эхлээрэй."
-    },
-    "welcomeAfternoon": {
-      "label": "Үдээс хойшхи урам зориг",
-      "title": "Өдрийн мэнд! Өнөөдрийн Библийн мөчүүд таны төлөө байна.",
-      "description": "Үдээс хойших завсарлагадаа үзэхэд тохиромжтой, эсвэл урам зориг үргэлжлүүлэн өгөх Библийн агуулга."
-    },
-    "welcomeEvening": {
-      "label": "Оройн урам зориг",
-      "title": "Оройн мэнд! Библийн мөчүүдээр тайвширъя.",
-      "description": "Өдрөө дүгнэж, тайвшрал олоход тань туслах амар тайван Библийн мөчүүд."
-    },
-    "joinUs": {
-      "label": "Бидэнтэй нэгдэх",
-      "title": "Тэрбум тэрбумаар нь хайж байна",
-      "description": "Хадуур бэлэн байна. Дижитал медиа ашиглан дэлхийд сайн мэдээг түгээхэд бидэнтэй нэгдээрэй."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хамтдаа явцгаая",
-      "title": "Есүсийн түүхийг хамтдаа өгүүлэх нь",
-      "description": "Тэгснээр тэд Есүсийн хайрыг өөрсдийн хэлээр, байгаа газарт нь сонсож, харж чадна."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% тохирч байна",

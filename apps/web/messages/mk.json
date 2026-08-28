@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
     "closeSearch": "Затвори пребарување",
-    "submitSearch": "Пребарај"
+    "submitSearch": "Пребарај",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Пребарај на {language}: „{suggestion}“",
     "inLanguage": "на {language}",
     "browseByRegion": "Прелистувај по регион",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Сите видеа на една страница",
     "clearLanguages": "Исчисти",
     "queryLanguageDetected": "Детектиран е {language}",
     "searchInLanguage": "Пребарувај на {language}",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекции",
     "subtitlesOnly": "Само преводи",
+    "backToTop": "Назад на врв",
     "newlyAdded": "Ново додадено",
     "newVideosTitle": "Нови христијански видеа на {language}",
     "newestFirst": "Најновите први",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостојни видеа",
     "videosFromCollection": "Видеа од {collection}.",
     "standaloneDescription": "Самостојни видеа на овој јазик.",
-    "openCollection": "Отвори колекција"
+    "openCollection": "Отвори колекција",
+    "filters": "Филтри",
+    "filterLength": "Траење",
+    "filterLength_under5": "Помалку од 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Повеќе од 30 мин",
+    "filterType": "Вид",
+    "clearFilters": "Исчисти филтри",
+    "filterResults": "Прикажани {count} од {total}",
+    "noFilterResults": "Ниту едно видео не одговара на овие филтри. Пробајте да отстраните еден.",
+    "filterAdded": "Додадено",
+    "filterAdded_60d": "Последните 60 дена",
+    "filterAdded_6m": "Последните 6 месеци",
+    "filterAdded_12m": "Последните 12 месеци"
   },
   "WatchHome": {
     "pageTitle": "Гледање на Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Акции за не пронајдена страница",
     "backToWatch": "Назад на Гледање",
     "browseVideos": "Прелистувај видеа"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Гледај краток филм",
-    "actions": {
-      "joinUs": "Придружете ни се",
-      "shareMission": "Споделете ја нашата мисија"
-    },
-    "welcomeStart": {
-      "label": "Вера и Свето Писмо",
-      "title": "Денешни видео препораки",
-      "description": "Видеосодржина од нашата библиотека фокусирана на верата, за да инспирира, предизвика и поттикне размислување."
-    },
-    "welcomeMorning": {
-      "label": "Утринска инспирација",
-      "title": "Добро утро! Ве очекуваат денешните библиски моменти.",
-      "description": "Започнете го денот со охрабрувачки библиски моменти осмислени да ве инспирираат и да ви го подигнат духот."
-    },
-    "welcomeAfternoon": {
-      "label": "Попладневна инспирација",
-      "title": "Добар ден! Библиски моменти за вашиот ден.",
-      "description": "Охрабрувачка библиска содржина, идеална за вашата попладневна пауза или за дополнителна инспирација."
-    },
-    "welcomeEvening": {
-      "label": "Вечерна инспирација",
-      "title": "Добра вечер! Опуштете се со библиски моменти.",
-      "description": "Мирни библиски моменти што ќе ви помогнат да размислите и да најдете утеха додека денот завршува."
-    },
-    "joinUs": {
-      "label": "Придружете ни се",
-      "title": "Милијарди бараат",
-      "description": "Жетвата е тука. Придружете ни се додека го споделуваме евангелието со светот преку дигитални медиуми."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ајде заедно",
-      "title": "Да ја раскажуваме приказната за Исус, заедно",
-      "description": "За да можат да ја слушнат и видат љубовта на Исус на својот јазик, токму таму каде што се."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% совпаѓање",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
     "home": "سەرەکیی JesusFilm",
     "closeSearch": "داخستنی گەڕان",
-    "submitSearch": "بگەڕێ"
+    "submitSearch": "بگەڕێ",
+    "library": "کتێبخانە"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "بە {language} بۆ «{suggestion}» بگەڕێ",
     "inLanguage": "بە {language}",
     "browseByRegion": "گەڕان بە پێی ناوچە",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "هەموو ویدیۆکان لە یەک پەیجدا",
     "clearLanguages": "پاککردنەوە",
     "queryLanguageDetected": "{language} دۆزرایەوە",
     "searchInLanguage": "بە {language} بگەڕێ",
@@ -467,6 +468,7 @@
     "sports": "وەرزش",
     "collections": "کۆمەڵەکان",
     "subtitlesOnly": "تەنها ژێرنوسین",
+    "backToTop": "گەڕانەوە بۆ سەرەوە",
     "newlyAdded": "تازە زیادکراو",
     "newVideosTitle": "ویدۆی مەسیحی نوێ بە {language}",
     "newestFirst": "نوێترین لە سەرەوە",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ویدۆی سەربەخۆ",
     "videosFromCollection": "ویدۆ لە {collection}.",
     "standaloneDescription": "ویدۆی سەربەخۆ لەم زمانەدا.",
-    "openCollection": "کردنەوەی کۆمەڵە"
+    "openCollection": "کردنەوەی کۆمەڵە",
+    "filters": "فلتەرەکان",
+    "filterLength": "درێژی",
+    "filterLength_under5": "کەمتر لە 5 خولەک",
+    "filterLength_5to10": "5-10 خولەک",
+    "filterLength_10to30": "10-30 خولەک",
+    "filterLength_over30": "زیاتر لە 30 خولەک",
+    "filterType": "جۆر",
+    "clearFilters": "سڕینەوەی فلتەرەکان",
+    "filterResults": "{count} لە {total} پیشاندرا",
+    "noFilterResults": "هیچ ڤیدیۆیەک لەگەڵ ئەم فلتەرەکان ناگونجێت. هەوڵ بدە یەکێکیان لابەریت.",
+    "filterAdded": "زیادکراو",
+    "filterAdded_60d": "60 ڕۆژی ڕابردوو",
+    "filterAdded_6m": "6 مانگی ڕابردوو",
+    "filterAdded_12m": "12 مانگی ڕابردوو"
   },
   "WatchHome": {
     "pageTitle": "Watchی Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "کردارەکانی پەڕە نەدۆزرایەوە",
     "backToWatch": "گەڕانەوە بۆ Watch",
     "browseVideos": "گەڕان لە ویدۆکان"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "فیلمی کورت ببینە",
-    "actions": {
-      "joinUs": "پەیوەندیمان پێوە بکە",
-      "shareMission": "له‌ میسۆنەکەماندا هاوبەش بە"
-    },
-    "welcomeStart": {
-      "label": "باوەڕ و دەقی پیرۆز",
-      "title": "هەڵبژاردەکانی ویدۆی ئەمڕۆ",
-      "description": "ناوەڕۆکی ویدۆیی بنەڕەت باوەڕیی لە کۆگاکەمانەوە بۆ هاندان، ڕووبەڕووبوونەوە، و هەڵچوونی بیرکردنەوە."
-    },
-    "welcomeMorning": {
-      "label": "هاندان بۆ بەیانی",
-      "title": "بەیانی باش! خولەکەکانی کتێبی پیرۆزت ئەمڕۆ چاوەڕێت دەکەن.",
-      "description": "ڕۆژەکەت بە خولەکە هاندانکەرەکانی کتێبی پیرۆز دەست پێ بکە کە بۆ هاندانی دڵ و بەرزکردنەوەی ڕووحەت دروستکراون."
-    },
-    "welcomeAfternoon": {
-      "label": "هاندان بۆ نیوەڕۆ",
-      "title": "نیوەڕۆ باش! خولەکەکانی کتێبی پیرۆز بۆ ڕۆژەکەت.",
-      "description": "ناوەڕۆکی هاندانکەری کتێبی پیرۆز کە بۆ پشووی نیوەڕۆکەت یان بۆ بەردەوامبوونی هاندانت گونجاوە."
-    },
-    "welcomeEvening": {
-      "label": "هاندان بۆ ئێوارە",
-      "title": "شەوی باش! بە خولەکەکانی کتێبی پیرۆز ئارام ببە.",
-      "description": "خولەکە ئارامەکانی کتێبی پیرۆز بۆ ئەوەی بیر بکەیتەوە و ئاسوودەیی بدۆزیەوە کە ڕۆژەکەت کۆتایی دێت."
-    },
-    "joinUs": {
-      "label": "پەیوەندیمان پێوە بکە",
-      "title": "میلیاردەها کەس دەگەڕێن",
-      "description": "کاتی دڕوو دەگات. پەیوەندیمان پێوە بکە لەکاتی هاوبەشکردنی ئینجیل لەگەڵ جیهان بە بەکارهێنانی میدیای دیجیتاڵ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "بە یەکەوە بڕۆین",
-      "title": "چیرۆکی عیسا، بە یەکەوە دەگێڕینەوە",
-      "description": "تا بتوانن لە زمانە خۆیاندا، لەو شوێنەی خۆیانن، خۆشەویستی عیسا بشنێن و ببینن."
-    }
   },
   "VideoRecommendations": {
     "match": "لە سەدا {percent} هاوتایە",

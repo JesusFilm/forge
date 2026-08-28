@@ -109,7 +109,7 @@ describe("Experience draft preview page", () => {
     const heroModel = {
       heroSlides: [],
       sections: [],
-      carousel: { pools: [], muxInserts: [] },
+      carousel: { pools: [] },
       missingData: [],
     }
     resolveWatchHomePreviewMock.mockResolvedValue({
@@ -132,6 +132,7 @@ describe("Experience draft preview page", () => {
       heroModel,
       blocks: draft.blocks,
       languageSlug: "russian",
+      dynamicCollectionCacheScope: "preview",
     })
   })
 

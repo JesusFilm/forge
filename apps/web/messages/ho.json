@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Tahua"
+    "submitSearch": "Tahua",
+    "library": "Buka haus"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "{language} dekenai “{suggestion}” tahua",
     "inLanguage": "long {language}",
     "browseByRegion": "Brosim long hap",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Olgeta video long wan pej",
     "clearLanguages": "Rausim",
     "queryLanguageDetected": "I painim {language}",
     "searchInLanguage": "{language} dekenai tahua",
@@ -467,6 +468,7 @@
     "sports": "Spos",
     "collections": "Ol koleksen",
     "subtitlesOnly": "Sutaitol tasol",
+    "backToTop": "Lou lao guba",
     "newlyAdded": "Nau tasol i go insait",
     "newVideosTitle": "Nupela Kristen video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video i stap nating",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video i stap nating long dispela tokples.",
-    "openCollection": "Opim koleksen"
+    "openCollection": "Opim koleksen",
+    "filters": "Hahekere",
+    "filterLength": "Lababa",
+    "filterLength_under5": "5 miniti latanai",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "30 miniti hereva",
+    "filterType": "Bamona",
+    "clearFilters": "Hahekere kokia",
+    "filterResults": "{total} amo {count} hahedinaraia",
+    "noFilterResults": "Video ta be inai hahekere ida hegeregere lasi. Ta kokia toho.",
+    "filterAdded": "Atoa vada",
+    "filterAdded_60d": "Dina 60 idohore",
+    "filterAdded_6m": "Hua 6 idohore",
+    "filterAdded_12m": "Hua 12 idohore"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ol aksen bilong page i no kamap",
     "backToWatch": "Go bek long Watch",
     "browseVideos": "Brosim ol video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lukluk long shotpela film",
-    "actions": {
-      "joinUs": "Joinim mipela",
-      "shareMission": "Serim misin bilong mipela"
-    },
-    "welcomeStart": {
-      "label": "Bilip & Skripcha",
-      "title": "Video pick bilong tude",
-      "description": "Ol video i stap long bilip long library bilong mipela long kirapim yu, challengeim yu, na kirapim tingting bilong yu."
-    },
-    "welcomeMorning": {
-      "label": "Moning inspiration",
-      "title": "Moning gut! Ol Baibel moment bilong tude i wetim yu.",
-      "description": "Statim de bilong yu wantaim ol gutpela Baibel moment we inap kirapim na strongim spirit bilong yu."
-    },
-    "welcomeAfternoon": {
-      "label": "Aftenun inspiration",
-      "title": "Aftenun gut! Ol Baibel moment bilong de bilong yu.",
-      "description": "Ol gutpela Baibel stori i stret long aftenun brek o long kisim moa inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Gutnait! Sindaun isi wantaim ol Baibel moment.",
-      "description": "Ol isi Baibel moment bilong helpim yu long tingim na kisim comfort taim de i pinis."
-    },
-    "joinUs": {
-      "label": "Joinim mipela",
-      "title": "Bilikn are dispela i painim",
-      "description": "Harvest i stap nau. Joinim mipela taim mipela i serim gospel wantaim wol long digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Go wantaim mipela",
-      "title": "Tokaut long stori bilong Jisas, wantaim mipela",
-      "description": "Ol bai harim na lukim laik bilong Jisas long tokples bilong ol yet stret long hap ol i stap."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% i hegeregere",

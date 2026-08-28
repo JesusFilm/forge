@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar idioma del audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Cerrar búsqueda",
-    "submitSearch": "Tzukuj"
+    "submitSearch": "Tzukuj",
+    "library": "Wuj ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Tzukuj pa {language}: «{suggestion}»",
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Todos los videos en una sola página",
     "clearLanguages": "Borrar",
     "queryLanguageDetected": "Se detectó {language}",
     "searchInLanguage": "Tzukuj pa {language}",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Kꞌamtzalij chikaj",
     "newlyAdded": "Agregado recientemente",
     "newVideosTitle": "Nuevos videos cristianos en {language}",
     "newestFirst": "Más recientes primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos independientes",
     "videosFromCollection": "Videos de {collection}.",
     "standaloneDescription": "Videos independientes en este idioma.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Chaꞌonc",
+    "filterLength": "Rakan",
+    "filterLength_under5": "Taꞌ nim chiwch 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chiwch 30 minutos",
+    "filterType": "Rwach",
+    "clearFilters": "Chchupsaj mak chaꞌonc",
+    "filterResults": "{count} re {total} ticꞌutsaj",
+    "noFilterResults": "Taꞌ ni jun video ticꞌul rikꞌil mak chaꞌonc ri. Chesajbꞌi jun.",
+    "filterAdded": "Xcoj chic",
+    "filterAdded_60d": "Qꞌisbꞌi 60 kꞌij",
+    "filterAdded_6m": "Qꞌisbꞌi 6 icꞌ",
+    "filterAdded_12m": "Qꞌisbꞌi 12 icꞌ"
   },
   "WatchHome": {
     "pageTitle": "Watch rech Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Acciones de página no encontrada",
     "backToWatch": "Volver a Watch",
     "browseVideos": "Explorar videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraje",
-    "actions": {
-      "joinUs": "Únase a nosotros",
-      "shareMission": "Comparta nuestra misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Videos recomendados para hoy",
-      "description": "Contenido en video centrado en la fe de nuestra biblioteca para inspirar, retar y provocar reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración de la mañana",
-      "title": "¡Buenos días! Le esperan los momentos bíblicos de hoy.",
-      "description": "Comience el día con momentos bíblicos alentadores diseñados para inspirar y animar su espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Buenas tardes! Momentos bíblicos para su día.",
-      "description": "Contenido bíblico alentador, perfecto para su descanso de la tarde o para seguir inspirándose."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración de la noche",
-      "title": "¡Buenas noches! Relájese con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para ayudarle a reflexionar y encontrar consuelo al terminar el día."
-    },
-    "joinUs": {
-      "label": "Únase a nosotros",
-      "title": "Miles de millones están buscando",
-      "description": "La cosecha ya está aquí. Únase a nosotros mientras compartimos el evangelio con el mundo usando medios digitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vayamos juntos",
-      "title": "Contando juntos la historia de Jesús",
-      "description": "Para que puedan oír y ver el amor de Jesús en su propio idioma, dondequiera que estén."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% junam",

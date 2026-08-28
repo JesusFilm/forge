@@ -1,13 +1,15 @@
 /**
  * Admin GraphQL operations for Experience blocks and search, via adminGraphql()
- * with the shared AdminWatchExperience fragment composing all block fragments.
+ * with the rollout-safe AdminLegacyWatchExperience fragment. Mobile does not
+ * render the Web-only category rail, so its operation stays valid across an
+ * Admin rollback while that compatibility window remains open.
  */
 import {
   adminGraphql,
   type AdminFragmentOf,
   type AdminResultOf,
 } from "@forge/admin-graphql"
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
+import { adminLegacyWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 
 // ── Experience queries ──────────────────────────────────────────────
 
@@ -15,11 +17,11 @@ export const GET_EXPERIENCE_BY_SLUG = adminGraphql(
   `
     query GetExperienceBySlug($locale: String!, $slug: String!) {
       experienceBySlug(locale: $locale, slug: $slug) {
-        ...AdminWatchExperience
+        ...AdminLegacyWatchExperience
       }
     }
   `,
-  [adminWatchExperienceFragment],
+  [adminLegacyWatchExperienceFragment],
 )
 
 export const GET_WATCH_SETTING = adminGraphql(
@@ -28,12 +30,12 @@ export const GET_WATCH_SETTING = adminGraphql(
       watchSetting(locale: $locale) {
         documentId
         homepageExperience {
-          ...AdminWatchExperience
+          ...AdminLegacyWatchExperience
         }
       }
     }
   `,
-  [adminWatchExperienceFragment],
+  [adminLegacyWatchExperienceFragment],
 )
 
 // ── Watch search query ──────────────────────────────────────────────
@@ -117,7 +119,7 @@ export const RECORD_WATCH_SEARCH_EVENT = adminGraphql(`
 // ── Derived types ───────────────────────────────────────────────────
 
 export type WatchExperience = NonNullable<
-  AdminFragmentOf<typeof adminWatchExperienceFragment>
+  AdminFragmentOf<typeof adminLegacyWatchExperienceFragment>
 >
 
 // Blocks appear at multiple nesting levels (top-level, SectionBlock.sectionContent,
@@ -278,6 +280,41 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 )
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
+
+// ── Bible passage companion query ──────────────────────────────────
+// KTD1: `passage` stays OUT of watchVideoFragment. Five call sites execute that
+// fragment (watch screen, home hero + its prefetch, search prefetch, per-episode
+// subtitle fan-out) and only the watch screen renders a Bible card, so a
+// selection there taxes every one of them with an uncached provider round trip.
+//
+// KTD2: `documentId: id` on `videoBySlug` ITSELF is load-bearing, not decoration.
+// Without it this write cannot normalize the video, so it replaces the shared
+// reference with a plain object and the player-gating read collapses — silently,
+// because a SUCCESSFUL passage read is what triggers it.
+export const GET_VIDEO_BIBLE_PASSAGES = adminGraphql(`
+  query GetVideoBiblePassages($slug: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
+      bibleCitations {
+        documentId: id
+        passage {
+          content
+          copyright
+          humanReference
+          provider
+          reference
+          versionAbbreviation
+          versionId
+          versionTitle
+        }
+      }
+    }
+  }
+`)
+
+export type VideoBiblePassagesData = AdminResultOf<
+  typeof GET_VIDEO_BIBLE_PASSAGES
+>
 
 // ── Lean series-screen video fragment ──────────────────────────────
 // SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`. Leaner sibling of watchVideoFragment;

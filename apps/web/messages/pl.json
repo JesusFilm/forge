@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmień język audio",
     "home": "Strona główna JesusFilm",
     "closeSearch": "Zamknij wyszukiwanie",
-    "submitSearch": "Szukaj"
+    "submitSearch": "Szukaj",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Szukaj i przeglądaj filmy",
@@ -214,7 +215,7 @@
     "searchSuggestionWithLanguage": "Wyszukaj „{suggestion}” w języku: {language}",
     "inLanguage": "w języku {language}",
     "browseByRegion": "Przeglądaj według regionu",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Wszystkie filmy na jednej stronie",
     "clearLanguages": "Wyczyść",
     "queryLanguageDetected": "Wykryto język {language}",
     "searchInLanguage": "Szukaj w języku: {language}",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Kolekcje",
     "subtitlesOnly": "Tylko napisy",
+    "backToTop": "Powrót na górę",
     "newlyAdded": "Nowo dodane",
     "newVideosTitle": "Nowe filmy chrześcijańskie w języku {language}",
     "newestFirst": "Najnowsze najpierw",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Filmy samodzielne",
     "videosFromCollection": "Filmy z kolekcji {collection}.",
     "standaloneDescription": "Samodzielne filmy w tym języku.",
-    "openCollection": "Otwórz kolekcję"
+    "openCollection": "Otwórz kolekcję",
+    "filters": "Filtry",
+    "filterLength": "Długość",
+    "filterLength_under5": "Poniżej 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Powyżej 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Wyczyść filtry",
+    "filterResults": "Pokazano {count} z {total}",
+    "noFilterResults": "Żadne wideo nie odpowiada tym filtrom. Spróbuj usunąć jeden.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Ostatnie 60 dni",
+    "filterAdded_6m": "Ostatnie 6 miesięcy",
+    "filterAdded_12m": "Ostatnie 12 miesięcy"
   },
   "WatchHome": {
     "pageTitle": "Oglądaj w Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Oglądaj film krótkometrażowy",
-    "actions": {
-      "joinUs": "Dołącz do nas",
-      "shareMission": "Weź udział w naszej misji"
-    },
-    "welcomeStart": {
-      "label": "Wiara i Pismo Święte",
-      "title": "Dzisiejsze propozycje filmowe",
-      "description": "Filmy z naszej biblioteki oparte na wierze, które inspirują, stawiają wyzwania i skłaniają do refleksji."
-    },
-    "welcomeMorning": {
-      "label": "Poranna inspiracja",
-      "title": "Dzień dobry! Czekają dzisiejsze biblijne chwile.",
-      "description": "Rozpocznij dzień od budujących biblijnych momentów, które mają inspirować i podnosić na duchu."
-    },
-    "welcomeAfternoon": {
-      "label": "Popołudniowa inspiracja",
-      "title": "Dzień dobry! Biblijne chwile na Twój dzień.",
-      "description": "Budujące treści biblijne idealne na popołudniową przerwę albo jako dalsza inspiracja."
-    },
-    "welcomeEvening": {
-      "label": "Wieczorna inspiracja",
-      "title": "Dobry wieczór! Zrelaksuj się przy biblijnych chwilach.",
-      "description": "Spokojne biblijne chwile, które pomogą Ci się zatrzymać, pomyśleć i znaleźć pocieszenie na koniec dnia."
-    },
-    "joinUs": {
-      "label": "Dołącz do nas",
-      "title": "Miliardy ludzi szukają",
-      "description": "Żniwo jest już gotowe. Dołącz do nas, gdy dzielimy się ewangelią ze światem za pomocą mediów cyfrowych."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Idźmy razem",
-      "title": "Opowiadając razem historię Jezusa",
-      "description": "Aby mogli słyszeć i widzieć miłość Jezusa we własnym języku, tam, gdzie są."
     }
   },
   "VideoRecommendations": {

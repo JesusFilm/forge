@@ -1,0 +1,23 @@
+# Railway reads this only when forge/production/@forge/rag has Config-as-code
+# Path set exactly to apps/rag/railway.toml. The database is a separate Railway
+# PostgreSQL service and DATABASE_URL must be a reference to that service.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/rag db:generate"
+watchPatterns = [
+  "/apps/rag/**",
+  "/packages/rag-contracts/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+preDeployCommand = "pnpm --filter @forge/rag db:migrate:deploy"
+startCommand = "pnpm --filter @forge/rag start"
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
