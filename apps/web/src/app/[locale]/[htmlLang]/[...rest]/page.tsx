@@ -21,6 +21,7 @@ import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
+  rankSelectableCarouselParents,
   type CarouselParent,
   type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
@@ -323,6 +324,11 @@ function selectableParentsForStandaloneVideo(
         slug: parentSlug,
         title: filteredParent.title,
         children,
+        // Load-bearing, not decorative: `rankSelectableCarouselParents` reads
+        // this to open the carousel on the film/series a video is a chapter of
+        // rather than on whichever collection lists it earliest. Dropping it
+        // silently reverts to admin's VideoRelation.order.
+        label: filteredParent.label,
       },
     ]
   })
@@ -1018,8 +1024,18 @@ async function renderVideo(
       watchVideo.selectedVariant,
       formatAvailabilityCounts,
     )
+    // Rank for the filename prefix too, or the page contradicts itself: the
+    // rail would read "Chapter 41 of 49" under the film while the saved file
+    // is named `05_...` — numbered inside whichever collection admin happened
+    // to return first. Before parent ranking both sides read `parents[0]` and
+    // agreed by accident; ranking one side without the other is what breaks it.
+    // Deliberately ranks the UNFILTERED `video.parents`, not `selectableParents`:
+    // `resolveDownloadSequence` derives `total` (and so the zero-padding width)
+    // from the parent's full child list, and manifest-filtered children would
+    // silently narrow it.
     const downloadSequence = resolveDownloadSequence(
-      watchVideo.canonicalParent,
+      rankSelectableCarouselParents(watchVideo.video.parents)[0] ??
+        watchVideo.canonicalParent,
       watchVideo.video.documentId,
     )
     const clientVideo = pruneWatchVideoForClient(

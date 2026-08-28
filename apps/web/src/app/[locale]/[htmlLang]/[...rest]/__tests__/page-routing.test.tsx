@@ -1521,6 +1521,124 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(carousel).not.toHaveProperty("selectableParents")
   })
 
+  // Production repro for the standalone default-parent bug: this video is #5
+  // in a curated collection and #41 in the film it is a chapter of, and admin
+  // hands `parents` back sorted by that intra-parent index, so the collection
+  // arrived first. This is the call-site pin for the `label` threaded in
+  // `selectableParentsForStandaloneVideo` — dropping that one property
+  // silently restores admin's order, and no unit test of
+  // `rankSelectableCarouselParents` can see it.
+  it("opens a standalone carousel on the containing film, not the collection that lists the video earlier", async () => {
+    const result = makeWatchVideoResult("segment")
+    // `order` is the child's index INSIDE its parent — the same column admin
+    // sorts `parents` by, and what the download filename prefix is numbered
+    // from. The two parents give this video different orders on purpose, so a
+    // sequence read from the wrong parent is visibly wrong.
+    const child = (
+      documentId: string,
+      slug: string,
+      title: string,
+      order: number,
+    ) => ({
+      documentId,
+      slug,
+      title,
+      order,
+      label: "segment",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: `mux-${documentId}`,
+      muxThumbnailBlurDataUrl: null,
+    })
+    const collectionChildren = [
+      child("peer-1", "peer-one", "Peer One", 1),
+      child("v1", "storyclubs", "StoryClubs", 2),
+    ]
+    const filmChildren = [
+      child("film-1", "film-one", "Film One", 1),
+      child("film-2", "film-two", "Film Two", 2),
+      child("v1", "storyclubs", "StoryClubs", 3),
+    ]
+    const parents = [
+      {
+        documentId: "parent-collection",
+        slug: "anticipate-the-resurrection",
+        title: "Anticipate the Resurrection",
+        noIndex: false,
+        label: "COLLECTION",
+        images: [],
+        children: collectionChildren,
+      },
+      {
+        documentId: "parent-film",
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+        noIndex: false,
+        label: "FEATURE_FILM",
+        images: [],
+        children: filmChildren,
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: unknown[]
+        parents: typeof parents
+      }
+    ).children = []
+    ;(
+      result.video as unknown as {
+        children: unknown[]
+        parents: typeof parents
+      }
+    ).parents = parents
+    // Mirror production: the resolver sets `canonicalParent` to admin's
+    // parents[0] — the collection. Without this the unranked path would yield
+    // null and the download-sequence assertion below would discriminate
+    // "present vs absent" instead of "ranked vs unranked", passing for the
+    // wrong reason.
+    ;(
+      result as unknown as { canonicalParent: (typeof parents)[number] | null }
+    ).canonicalParent = parents[0]!
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-27T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "anticipate-the-resurrection": ["peer-one", "storyclubs"],
+        "life-of-jesus-gospel-of-john": ["film-one", "film-two", "storyclubs"],
+      },
+      audioLanguageSlugs: ["english"],
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      downloadSequence?: { position?: number; total?: number } | null
+      mergedBlocks: Array<{
+        kind?: string
+        canonicalParent?: { slug?: string }
+        selectableParents?: Array<{ slug?: string }>
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("life-of-jesus-gospel-of-john")
+    // The collection is still offered, just no longer the default, and the
+    // picker's first entry matches what the carousel opened on.
+    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "life-of-jesus-gospel-of-john",
+      "anticipate-the-resurrection",
+    ])
+    // The download filename prefix must be numbered inside the SAME parent the
+    // rail opened on. Ranking only the carousel would show "3 of 3" under the
+    // film while naming the file `02_...` from the collection — the two agreed
+    // before ranking existed, and only because both read admin's parents[0].
+    expect(props.downloadSequence).toEqual({ position: 3, total: 3 })
+  })
+
   it("does not append own Chapters when a legacy manifest cannot prove their exact language", async () => {
     const result = makeWatchVideoResult("featureFilm")
     const child = (documentId: string, slug: string, title: string) => ({

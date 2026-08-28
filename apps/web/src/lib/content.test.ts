@@ -1503,6 +1503,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.snippet).toBe("Russian snippet")
     expect(result?.video.imageAlt).toBe("Russian still")
     expect(result?.video.parents[0]?.title).toBe("LUMO Gospels")
+    // Load-bearing since the standalone carousel started ranking parents by
+    // it: this is the only assertion that admin's raw parent `label` survives
+    // normalization at all. Without it, a normalizer change could drop the
+    // field and every ranking test would still pass on hand-built fixtures.
+    expect(result?.video.parents[0]?.label).toBe("SERIES")
     expect(result?.video.children[0]?.title).toBe("The Beginning")
   })
 

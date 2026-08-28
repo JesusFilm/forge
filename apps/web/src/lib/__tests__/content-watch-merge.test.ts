@@ -9,6 +9,7 @@ import {
   buildWatchBodyBlock,
   isWatchBlock,
   mergeWatchExperience,
+  rankSelectableCarouselParents,
   WatchVideoError,
 } from "@/lib/content"
 
@@ -69,6 +70,7 @@ function makeParent(
     documentId: string
     slug: string
     title: string
+    label: string | null
     children: TestWatchChild[]
   }> = {},
 ) {
@@ -665,6 +667,138 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
         selectableParents as never,
       ),
     ).toBeNull()
+  })
+})
+
+describe("rankSelectableCarouselParents", () => {
+  const collection = makeParent({
+    documentId: "parent-collection",
+    slug: "anticipate-the-resurrection",
+    label: "COLLECTION",
+  })
+  const film = makeParent({
+    documentId: "parent-film",
+    slug: "life-of-jesus-gospel-of-john",
+    label: "FEATURE_FILM",
+  })
+  const series = makeParent({
+    documentId: "parent-series",
+    slug: "some-series",
+    label: "SERIES",
+  })
+
+  it("promotes the containing film ahead of a collection admin listed first", () => {
+    expect(
+      rankSelectableCarouselParents([collection, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["life-of-jesus-gospel-of-john", "anticipate-the-resurrection"])
+  })
+
+  it("promotes a SERIES parent the same way as a FEATURE_FILM parent", () => {
+    expect(
+      rankSelectableCarouselParents([collection, series] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["some-series", "anticipate-the-resurrection"])
+  })
+
+  // Admin's wire enum is SNAKE_CASE, but web sees other spellings of the same
+  // label, and every mismatch fails in the SILENT direction — straight back to
+  // admin's VideoRelation.order with nothing else going red. `normalizeLabel`
+  // is the repo's existing canonicalizer for exactly this; a bare
+  // `toUpperCase()` would pass the first case and fail the camelCase one.
+  it.each([
+    ["SNAKE_CASE (admin's wire enum)", "FEATURE_FILM"],
+    ["lowercase", "feature_film"],
+    ["camelCase", "featureFilm"],
+    ["space-separated", "Feature Film"],
+    ["surrounding whitespace", "  FEATURE_FILM  "],
+  ])("promotes a film labelled in %s", (_spelling, label) => {
+    const film = makeParent({
+      documentId: "parent-film",
+      slug: "life-of-jesus-gospel-of-john",
+      label,
+    })
+    expect(
+      rankSelectableCarouselParents([collection, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["life-of-jesus-gospel-of-john", "anticipate-the-resurrection"])
+  })
+
+  it("leaves admin's order untouched when no parent is a film or series", () => {
+    const second = makeParent({
+      documentId: "parent-collection-2",
+      slug: "another-collection",
+      label: "COLLECTION",
+    })
+    const missingLabel = makeParent({
+      documentId: "parent-unknown",
+      slug: "unlabelled",
+      label: null,
+    })
+    // The whole point of the two-tier rule: a page with no containing work —
+    // including one whose labels never arrived — renders exactly as it did
+    // before this change rather than getting reshuffled.
+    expect(
+      rankSelectableCarouselParents([
+        collection,
+        missingLabel,
+        second,
+      ] as never).map((parent) => parent.slug),
+    ).toEqual([
+      "anticipate-the-resurrection",
+      "unlabelled",
+      "another-collection",
+    ])
+  })
+
+  it("is stable among several containing works", () => {
+    expect(
+      rankSelectableCarouselParents([collection, series, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual([
+      "some-series",
+      "life-of-jesus-gospel-of-john",
+      "anticipate-the-resurrection",
+    ])
+  })
+
+  it("does not mutate the array it was handed", () => {
+    const parents = [collection, film]
+    rankSelectableCarouselParents(parents as never)
+    expect(parents.map((parent) => parent.slug)).toEqual([
+      "anticipate-the-resurrection",
+      "life-of-jesus-gospel-of-john",
+    ])
+  })
+
+  it("ranks the block's default and its picker list identically", () => {
+    const video = makeVideo({ documentId: "video-1", children: [] })
+    const withCurrentVideo = (parent: ReturnType<typeof makeParent>) => ({
+      ...parent,
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild(`${parent.documentId}-peer`, "peer", "Peer"),
+      ],
+    })
+
+    const block = buildSiblingCarouselBlock(
+      null,
+      video as never,
+      [withCurrentVideo(collection), withCurrentVideo(film)] as never,
+    )
+
+    expect(block!.canonicalParent.slug).toBe("life-of-jesus-gospel-of-john")
+    expect(block!.selectableParents?.[0]?.slug).toBe(
+      block!.canonicalParent.slug,
+    )
+    expect(block!.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "life-of-jesus-gospel-of-john",
+      "anticipate-the-resurrection",
+    ])
   })
 })
 
