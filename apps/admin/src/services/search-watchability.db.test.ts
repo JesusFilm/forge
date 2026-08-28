@@ -258,6 +258,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         childPublished?: boolean
         childDeleted?: boolean
         childRestrictedFromWatch?: boolean
+        intermediateRestrictedFromWatch?: boolean
         dubPublished?: boolean
         dubHls?: string | null
         dubLanguage?: "target" | "fallback"
@@ -282,6 +283,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           childPublished = true,
           childDeleted = false,
           childRestrictedFromWatch = false,
+          intermediateRestrictedFromWatch = false,
           dubPublished = true,
           dubHls = "https://example.test/child.m3u8",
           dubLanguage = "target",
@@ -351,6 +353,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                     coreId: `db-c-mid-${level}-${suffix}`,
                     slug: `db-c-mid-${level}-${suffix}`,
                     label: "SERIES",
+                    restrictViewPlatforms: intermediateRestrictedFromWatch
+                      ? ["watch"]
+                      : [],
                   },
                 })
                 await tx.videoLocale.create({
@@ -570,6 +575,28 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(await resolveContainer({ dubHls: "" })).toMatchObject({
           kind: "unavailable",
         })
+      }, 35_000)
+
+      it("does not reach a grandchild through a watch-restricted intermediate", async () => {
+        // The grandchild is fully visible and playable; only the series
+        // between it and the container is hidden. Filtering the evaluated
+        // descendant alone would call this container browsable, while the
+        // series page renders the intermediate out and shows nothing.
+        expect(
+          await resolveContainer({
+            depth: 2,
+            intermediateRestrictedFromWatch: true,
+          }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("still reaches a grandchild through a visible intermediate", async () => {
+        expect(
+          await resolveContainer({
+            depth: 2,
+            intermediateRestrictedFromWatch: false,
+          }),
+        ).toMatchObject({ kind: "container", languageSlug: "target" })
       }, 35_000)
 
       it("does not admit a non-Series-Shaped parent that carries children", async () => {

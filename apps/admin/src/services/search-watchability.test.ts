@@ -514,17 +514,34 @@ describe("SearchWatchabilityService", () => {
       })
 
       const sql = rawSql(prisma, CONTAINER_QUERY)
-      expect(sql).toContain("child.deleted_at IS NULL")
-      expect(sql).toContain("child.no_index = FALSE")
+      expect(sql).toContain("descendant_video.deleted_at IS NULL")
+      expect(sql).toContain("descendant_video.no_index = FALSE")
       expect(sql).toContain(
-        "NOT ('watch' = ANY(child.restrict_view_platforms))",
+        "NOT ('watch' = ANY(descendant_video.restrict_view_platforms))",
       )
-      expect(sql).toContain("child_locale.status = 'published'")
+      expect(sql).toContain("descendant_locale.status = 'published'")
       expect(sql).toContain("child_dub.deleted_at IS NULL")
       expect(sql).toContain("child_dub.published = TRUE")
       expect(sql).toContain("NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL")
       expect(sql).toContain("child_edition.deleted_at IS NULL")
       expect(sql).toContain("dub_language.slug ~ '^[a-z0-9-]+$'")
+    })
+
+    it("gates traversal on visibility, not only the evaluated descendant", async () => {
+      await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+        includeOtherLanguageFallback: false,
+      })
+
+      // Both terms of the recursive CTE join through the visibility predicate,
+      // so a hidden intermediate cannot carry a visible grandchild into the
+      // result. Asserting the count catches a fix applied to one term only.
+      const sql = rawSql(prisma, CONTAINER_QUERY)
+      const gatedTraversals = sql.match(/descendant_video\.deleted_at IS NULL/g)
+      // One per CTE term. Filtering only the evaluated descendant lets a
+      // hidden intermediate carry a visible grandchild through.
+      expect(gatedTraversals).toHaveLength(2)
     })
 
     it("bounds the descendant walk to two relation levels", async () => {

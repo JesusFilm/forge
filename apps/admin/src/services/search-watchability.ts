@@ -114,6 +114,29 @@ const SERIES_SHAPED_LABELS = ["collection", "series"] as const
  */
 const CONTAINER_DESCENDANT_MAX_DEPTH = 2
 
+/**
+ * Public-Watch visibility for one node of the descendant walk, written once and
+ * interpolated into both terms of the recursive CTE. It gates TRAVERSAL, not
+ * just evaluation: a hidden intermediate must not carry a visible grandchild
+ * into the result, or a collection whose only playable descendant sits behind a
+ * watch-restricted series reads as browsable while its series page renders that
+ * intermediate out and shows nothing.
+ *
+ * Mirrors `playableDubWhere()`'s nested `video` clause. Raw SQL cannot import
+ * that Prisma helper; the db-suite cases are the enforcement point for parity.
+ */
+const VISIBLE_DESCENDANT_SQL = Prisma.sql`
+           descendant_video.deleted_at IS NULL
+       AND descendant_video.no_index = FALSE
+       AND NOT ('watch' = ANY(descendant_video.restrict_view_platforms))
+       AND EXISTS (
+         SELECT 1
+         FROM video_locale descendant_locale
+         WHERE descendant_locale.video_id = descendant_video.id
+           AND descendant_locale.deleted_at IS NULL
+           AND descendant_locale.status = 'published'
+       )`
+
 const EMPTY_WATCHABILITY: Omit<SearchWatchability, "videoId"> = {
   kind: "unavailable",
   languageSlug: null,
@@ -453,13 +476,19 @@ export class SearchWatchabilityService {
           )
       ),
       descendant(root_id, video_id, depth) AS (
-        SELECT root.id, relation.child_id, 1
+        SELECT root.id, descendant_video.id, 1
         FROM root
         JOIN video_relation relation ON relation.parent_id = root.id
+        JOIN video descendant_video
+          ON descendant_video.id = relation.child_id
+         AND ${VISIBLE_DESCENDANT_SQL}
         UNION ALL
-        SELECT descendant.root_id, relation.child_id, descendant.depth + 1
+        SELECT descendant.root_id, descendant_video.id, descendant.depth + 1
         FROM descendant
         JOIN video_relation relation ON relation.parent_id = descendant.video_id
+        JOIN video descendant_video
+          ON descendant_video.id = relation.child_id
+         AND ${VISIBLE_DESCENDANT_SQL}
         WHERE descendant.depth < ${CONTAINER_DESCENDANT_MAX_DEPTH}
       )
       SELECT DISTINCT ON (descendant.root_id)
@@ -470,20 +499,8 @@ export class SearchWatchabilityService {
           'name', dub_language.name
         ) AS language
       FROM descendant
-      JOIN video child
-        ON child.id = descendant.video_id
-       AND child.deleted_at IS NULL
-       AND child.no_index = FALSE
-       AND NOT ('watch' = ANY(child.restrict_view_platforms))
-       AND EXISTS (
-         SELECT 1
-         FROM video_locale child_locale
-         WHERE child_locale.video_id = child.id
-           AND child_locale.deleted_at IS NULL
-           AND child_locale.status = 'published'
-       )
       JOIN video_dub child_dub
-        ON child_dub.video_id = child.id
+        ON child_dub.video_id = descendant.video_id
        AND child_dub.deleted_at IS NULL
        AND child_dub.published = TRUE
        AND NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL
@@ -568,38 +585,38 @@ export class SearchWatchabilityService {
     const unresolvedVideoIds = videoIds.filter(
       (videoId) => result.get(videoId)?.kind === "unavailable",
     )
-    let fallbackLanguageIds: string[] = []
-    if (includeOtherLanguageFallback && unresolvedVideoIds.length > 0) {
-      const fallbackLanguages = await this.relatedFallbackLanguages(
-        targetLanguage.id,
+    // Resolved once and shared with the container tier below, so a run that
+    // needs both does not read language_fallback twice.
+    const fallbackLanguages =
+      includeOtherLanguageFallback && unresolvedVideoIds.length > 0
+        ? await this.relatedFallbackLanguages(targetLanguage.id)
+        : []
+    const fallbackLanguageIds = fallbackLanguages.map((row) => row.id)
+    if (fallbackLanguageIds.length > 0) {
+      const priorityByLanguageId = new Map(
+        fallbackLanguages.map((row) => [row.id, row.priority]),
       )
-      fallbackLanguageIds = fallbackLanguages.map((row) => row.id)
-      if (fallbackLanguageIds.length > 0) {
-        const priorityByLanguageId = new Map(
-          fallbackLanguages.map((row) => [row.id, row.priority]),
-        )
-        const fallbackDubs = await this.prisma.videoDub.findMany({
-          where: {
-            ...playableDubWhere(unresolvedVideoIds),
-            languageId: { in: fallbackLanguageIds },
-            language: { deletedAt: null, slug: { not: null } },
-          },
-          orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
-          select: {
-            id: true,
-            videoId: true,
-            duration: true,
-            language: { select: { id: true, slug: true, name: true } },
-            muxVideo: { select: { playbackId: true } },
-          },
-        })
+      const fallbackDubs = await this.prisma.videoDub.findMany({
+        where: {
+          ...playableDubWhere(unresolvedVideoIds),
+          languageId: { in: fallbackLanguageIds },
+          language: { deletedAt: null, slug: { not: null } },
+        },
+        orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
+        select: {
+          id: true,
+          videoId: true,
+          duration: true,
+          language: { select: { id: true, slug: true, name: true } },
+          muxVideo: { select: { playbackId: true } },
+        },
+      })
 
-        for (const [videoId, row] of firstFallbackByVideoId(
-          fallbackDubs as TargetDubRow[],
-          priorityByLanguageId,
-        )) {
-          result.set(videoId, watchabilityFromDub(row, "related_language"))
-        }
+      for (const [videoId, row] of firstFallbackByVideoId(
+        fallbackDubs as TargetDubRow[],
+        priorityByLanguageId,
+      )) {
+        result.set(videoId, watchabilityFromDub(row, "related_language"))
       }
     }
 

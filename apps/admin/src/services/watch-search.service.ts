@@ -23,6 +23,7 @@ import {
   resolveSearchLanguageSignals,
   type SearchLanguageSignalSource,
 } from "./search-language-resolution"
+import { availabilityScoreForKind } from "./watch-search-availability-score"
 import {
   SearchWatchabilityService,
   type SearchWatchability,
@@ -1366,15 +1367,7 @@ function resultCandidateScore(entry: RankedWatchCandidate): number {
 export function availabilityScore(
   watchability: SearchWatchability | undefined,
 ): number {
-  if (watchability?.kind === "target_audio") return 0.25
-  if (watchability?.kind === "target_subtitle") return 0.18
-  // A container offers browsing, not direct playback, so it scores with the
-  // subtitle tier rather than above it. A zero here would leave containers
-  // below passesMinimumConfidence in the metadata and semantic lanes — the
-  // recall half of the same defect the ranking fix addresses.
-  if (watchability?.kind === "container") return 0.18
-  if (watchability?.kind === "related_language") return 0.08
-  return 0
+  return availabilityScoreForKind(watchability?.kind)
 }
 
 function matchScore(entry: RankedWatchCandidate, query: string): number {
