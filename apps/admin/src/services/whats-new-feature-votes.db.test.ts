@@ -9,9 +9,17 @@
  *
  * Skipped unless a database is reachable, so it stays a local/CI-with-DB check
  * rather than a hard dependency for everyone running unit tests.
+ *
+ * The client is built in `beforeAll`, NOT in the describe body, and that is
+ * the whole reason this file is safe to have in the default suite.
+ * `describe.skip` skips the TESTS; it still runs the body to collect them, so
+ * a `new PrismaClient()` sitting there is constructed even when the suite is
+ * skipped — with `url: undefined`, which Prisma rejects outright. That threw
+ * at collection time and failed the whole file, and it only surfaced once a
+ * change made CI run the admin suite at all.
  */
 import { PrismaClient } from "@prisma/client"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
 import {
   WHATS_NEW_VOTE_BUDGET,
@@ -24,9 +32,14 @@ const databaseUrl = process.env.WHATS_NEW_VOTE_TEST_DATABASE_URL
 const suite = databaseUrl == null ? describe.skip : describe
 
 suite("WhatsNewFeatureVoteService against Postgres", () => {
-  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } })
-  const service = new WhatsNewFeatureVoteService(prisma)
+  let prisma: PrismaClient
+  let service: WhatsNewFeatureVoteService
   const ballot = "ballot_dbtest01"
+
+  beforeAll(() => {
+    prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } })
+    service = new WhatsNewFeatureVoteService(prisma)
+  })
 
   beforeEach(async () => {
     await prisma.whatsNewFeatureVote.deleteMany({})
