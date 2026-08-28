@@ -1,8 +1,17 @@
 // TV-side single source of truth for watch-experience external content so consumers can't drift.
-// SYNC: mirror apps/mobile useBibleVerses.ts + RelatedQuestionsRenderer.tsx (web uses same
-// photos at larger widths); rotate any image/URL across all three apps.
+// SYNC: the promotional image and the call-to-action URLs below are genuinely shared — mirror
+// apps/mobile useBibleVerses.ts + RelatedQuestionsRenderer.tsx and apps/web
+// BibleQuotesSection.tsx, and rotate any of them across all three apps.
+// BIBLE_IMAGES is NOT shared; see its own comment.
 
-/** Decorative wallpapers cycled by citation index — not curated per verse. */
+/**
+ * Decorative wallpapers cycled by citation index — not curated per verse.
+ *
+ * Do not sync. apps/mobile no longer cycles these: it draws each citation card
+ * from a still of the video being watched, and keeps its own copy only as the
+ * last rung of that fallback ladder, which most videos never reach. apps/web
+ * renders a derived gradient and no photograph at all.
+ */
 export const BIBLE_IMAGES = [
   "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
   "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
