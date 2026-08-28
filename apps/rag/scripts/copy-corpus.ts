@@ -13,6 +13,12 @@ const DEFAULT_REPORT = fileURLToPath(
     import.meta.url,
   ),
 )
+const PRODUCTION_REPORT = fileURLToPath(
+  new URL(
+    "../../../docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json",
+    import.meta.url,
+  ),
+)
 const RETRIEVAL_SCORE_TOLERANCE = 1e-5
 const REQUIRED_TABLES = [
   "sources",
@@ -75,6 +81,10 @@ type CopyOptions = {
   batchSize: number
   maxBatches: number | null
   reportPath: string
+  production: boolean
+  expectedTargetHostHash: string | null
+  sourceSnapshotReference: string | null
+  sourceCutoff: string | null
 }
 
 type SafeReport = {
@@ -83,6 +93,11 @@ type SafeReport = {
   source: { database: string; hostHash: string }
   target: { database: string; hostHash: string }
   copiedRows: Partial<Record<TableName, number>>
+  operation?: {
+    mode: "local" | "production"
+    sourceSnapshotReference: string | null
+    sourceCutoff: string | null
+  }
   reconciliation: unknown
 }
 
@@ -220,24 +235,47 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     batchSize: 250,
     maxBatches: null,
     reportPath: DEFAULT_REPORT,
+    production: false,
+    expectedTargetHostHash: null,
+    sourceSnapshotReference: null,
+    sourceCutoff: null,
   }
-  let confirmed = false
+  let localConfirmed = false
+  let productionConfirmed = false
+  let reportOverridden = false
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === "--copy") options.dryRun = false
     else if (arg === "--verify-only") {
       options.dryRun = false
       options.verifyOnly = true
-    } else if (arg === "--confirm-local-copy") confirmed = true
-    else if (arg === "--resume") options.resume = true
+    } else if (arg === "--confirm-local-copy") localConfirmed = true
+    else if (arg === "--confirm-production-copy") {
+      productionConfirmed = true
+      options.production = true
+    } else if (arg === "--expected-target-host-hash")
+      options.expectedTargetHostHash = argv[++index] ?? ""
+    else if (arg === "--source-snapshot-reference")
+      options.sourceSnapshotReference = argv[++index] ?? ""
+    else if (arg === "--source-cutoff") {
+      const value = argv[++index] ?? ""
+      const parsed = new Date(value)
+      if (!value || Number.isNaN(parsed.valueOf()))
+        throw new MigrationUsageError(
+          "--source-cutoff requires an ISO-8601 timestamp",
+        )
+      options.sourceCutoff = parsed.toISOString()
+    } else if (arg === "--resume") options.resume = true
     else if (arg === "--source-env") options.sourceEnv = argv[++index] ?? ""
     else if (arg === "--target-env") options.targetEnv = argv[++index] ?? ""
     else if (arg === "--batch-size")
       options.batchSize = positiveInteger(arg, argv[++index])
     else if (arg === "--max-batches")
       options.maxBatches = positiveInteger(arg, argv[++index])
-    else if (arg === "--report") options.reportPath = argv[++index] ?? ""
-    else
+    else if (arg === "--report") {
+      options.reportPath = argv[++index] ?? ""
+      reportOverridden = true
+    } else
       throw new MigrationUsageError(
         `Unknown argument ${arg}; database URLs must be supplied through named environment variables`,
       )
@@ -246,8 +284,32 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     throw new MigrationUsageError(
       "Environment variable names and report path cannot be empty",
     )
-  if (!options.dryRun && !options.verifyOnly && !confirmed)
+  if (localConfirmed && productionConfirmed)
+    throw new MigrationUsageError(
+      "Choose exactly one local or production copy acknowledgement",
+    )
+  if (
+    !options.dryRun &&
+    !options.verifyOnly &&
+    !localConfirmed &&
+    !productionConfirmed
+  )
     throw new MigrationUsageError("--copy requires --confirm-local-copy")
+  if (options.production) {
+    if (!/^[a-f0-9]{16}$/.test(options.expectedTargetHostHash ?? ""))
+      throw new MigrationUsageError(
+        "Production mode requires --expected-target-host-hash from a read-only preflight",
+      )
+    if (!options.sourceSnapshotReference)
+      throw new MigrationUsageError(
+        "Production mode requires a recoverable source snapshot reference",
+      )
+    if (!options.sourceCutoff)
+      throw new MigrationUsageError(
+        "Production mode requires a recorded source cutoff",
+      )
+    if (!reportOverridden) options.reportPath = PRODUCTION_REPORT
+  }
   return options
 }
 
@@ -510,7 +572,15 @@ async function run(options: CopyOptions): Promise<SafeReport> {
   if (sourceUrl === targetUrl)
     throw new MigrationUsageError("Source and target databases must differ")
 
-  const source = new PrismaClient({ datasourceUrl: sourceUrl })
+  const readOnlySourceUrl = new URL(sourceUrl)
+  const existingOptions = readOnlySourceUrl.searchParams.get("options")
+  readOnlySourceUrl.searchParams.set(
+    "options",
+    [existingOptions, "-c default_transaction_read_only=on"]
+      .filter(Boolean)
+      .join(" "),
+  )
+  const source = new PrismaClient({ datasourceUrl: readOnlySourceUrl.href })
   const target = new PrismaClient({ datasourceUrl: targetUrl })
   try {
     await Promise.all([source.$connect(), target.$connect()])
@@ -528,6 +598,13 @@ async function run(options: CopyOptions): Promise<SafeReport> {
     )
       throw new MigrationUsageError(
         "Source and target resolve to the same database",
+      )
+    if (
+      options.production &&
+      targetIdentity.hostHash !== options.expectedTargetHostHash
+    )
+      throw new MigrationUsageError(
+        "Production target identity does not match --expected-target-host-hash",
       )
     if (
       !options.dryRun &&
@@ -593,6 +670,11 @@ async function run(options: CopyOptions): Promise<SafeReport> {
       source: sourceIdentity,
       target: targetIdentity,
       copiedRows,
+      operation: {
+        mode: options.production ? "production" : "local",
+        sourceSnapshotReference: options.sourceSnapshotReference,
+        sourceCutoff: options.sourceCutoff,
+      },
       reconciliation: {
         equivalent,
         factsEquivalent,

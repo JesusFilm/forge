@@ -3,7 +3,7 @@ id: "feat-430"
 title: "Copy the production RAG corpus into Forge Railway"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-16"
 duration: 2
 depends_on: ["feat-429"]
@@ -41,3 +41,17 @@ Execute the approved database-to-database copy and record redacted operational e
 
 - Production reconciliation matches the local rehearsal gates.
 - Forge retrieval/eval meets recorded tolerance with no unexplained loss.
+
+## Progress — 2026-08-28
+
+The production database copy is complete and the redacted receipt at
+`docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json` is
+equivalent: all seven table counts, integrity checks, fingerprints, embedding
+provenance/dimensions, and stored-vector retrieval probes match, with zero
+embedding calls. The source backup is retained and jfrag remains online.
+
+Live `/v1` comparison identified one receiver drift: Forge lacked
+`EMBED_QUERY_INSTRUCTION`. The matching value is now staged on `@forge/rag`
+with deployments suppressed. Keep this ticket in progress until the normal
+PR-to-main deployment activates it and old/new `/v1` ranking equivalence is
+recorded.

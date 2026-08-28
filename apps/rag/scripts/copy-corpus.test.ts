@@ -63,6 +63,51 @@ describe("corpus copy CLI contract", () => {
     ).toThrow(MigrationUsageError)
   })
 
+  it("requires production provenance and an exact target identity", () => {
+    expect(() =>
+      parseCorpusCopyArgs([
+        "--copy",
+        "--confirm-production-copy",
+        "--expected-target-host-hash",
+        "0123456789abcdef",
+      ]),
+    ).toThrow(/source snapshot reference/)
+
+    expect(
+      parseCorpusCopyArgs([
+        "--copy",
+        "--confirm-production-copy",
+        "--expected-target-host-hash",
+        "0123456789abcdef",
+        "--source-snapshot-reference",
+        "jfrag-backup-2026-08-28",
+        "--source-cutoff",
+        "2026-08-28T02:00:00Z",
+      ]),
+    ).toMatchObject({
+      production: true,
+      expectedTargetHostHash: "0123456789abcdef",
+      sourceSnapshotReference: "jfrag-backup-2026-08-28",
+      sourceCutoff: "2026-08-28T02:00:00.000Z",
+    })
+  })
+
+  it("rejects ambiguous or malformed production acknowledgements", () => {
+    expect(() =>
+      parseCorpusCopyArgs([
+        "--copy",
+        "--confirm-local-copy",
+        "--confirm-production-copy",
+        "--expected-target-host-hash",
+        "0123456789abcdef",
+        "--source-snapshot-reference",
+        "backup",
+        "--source-cutoff",
+        "not-a-date",
+      ]),
+    ).toThrow(MigrationUsageError)
+  })
+
   it("serializes reports without connection strings or corpus text", () => {
     const output = serializeReport({
       schemaVersion: 1,
@@ -70,6 +115,11 @@ describe("corpus copy CLI contract", () => {
       source: { database: "jfrag", hostHash: "abc" },
       target: { database: "forge_rag", hostHash: "def" },
       copiedRows: { sources: 1 },
+      operation: {
+        mode: "production",
+        sourceSnapshotReference: "backup-1",
+        sourceCutoff: "2026-08-28T02:00:00.000Z",
+      },
       reconciliation: { equivalent: true },
     })
 
