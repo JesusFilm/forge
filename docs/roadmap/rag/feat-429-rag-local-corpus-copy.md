@@ -3,7 +3,7 @@ id: "feat-429"
 title: "Rehearse the RAG corpus copy locally"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-12"
 duration: 4
 depends_on: ["feat-428"]
