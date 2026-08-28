@@ -99,13 +99,17 @@ export type FollowUpsGenerateSeam = (input: {
   tracingOptions?: FollowUpsTracingOptions["tracingOptions"]
 }) => Promise<FollowUpsGenerateRawResult>
 
-/** Narrow generate surface of the generator agent (structural for tests). */
+/** Narrow generate surface of the generator agent (structural for tests).
+ * Deliberately declares NO top-level `maxOutputTokens`: the runtime never
+ * reads that slot (see the dist-fact comment at the default seam), so
+ * declaring it would let the cap silently revert to a no-op. The honored
+ * home is `modelSettings`. */
 export type FollowUpsAgentLike = {
   generate: (
     prompt: string,
     options: {
       abortSignal?: AbortSignal
-      maxOutputTokens?: number
+      modelSettings?: { maxOutputTokens?: number }
       requestContext?: RequestContext
       tracingOptions?: FollowUpsTracingOptions["tracingOptions"]
     },
@@ -235,9 +239,15 @@ export async function generateSeekerFollowUps(input: {
     input.generateSeam ??
     (async (seamInput) => {
       const agent = input.agent ?? getFollowUpsGeneratorAgent()
+      // The cap MUST ride modelSettings: the runtime never reads a top-level
+      // maxOutputTokens — generate() spreads the caller's options wholesale,
+      // but the model call is rebuilt from an explicit field list that
+      // carries only modelSettings, so a top-level key is a silent no-op
+      // (verified 2026-08-28 vs @mastra/core 1.55.0 dist; re-verify on
+      // bumps). Pinned by the modelSettings tests in the sibling suite.
       const output = await agent.generate(seamInput.prompt, {
         abortSignal: seamInput.abortSignal,
-        maxOutputTokens: FOLLOW_UPS_MAX_OUTPUT_TOKENS,
+        modelSettings: { maxOutputTokens: FOLLOW_UPS_MAX_OUTPUT_TOKENS },
         requestContext: seamInput.requestContext,
         tracingOptions: seamInput.tracingOptions,
       })
