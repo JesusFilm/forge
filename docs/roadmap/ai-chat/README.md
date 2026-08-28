@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 27, 2026)
+## Status (August 28, 2026)
 
 - **Total tickets:** 62
-- ✅ **Complete:** 50
+- ✅ **Complete:** 51
 - 🟡 **In progress:** 2
-- 🔵 **Not started:** 10
+- 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -83,5 +83,5 @@ from the main DS Year 1 roadmap.
 | [feat-367](feat-367-seeker-follow-up-question-evals.md)                       | Automated quality evals for Seeker follow-up questions                       | jian wei | P2       | 2026-09-08 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)                | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | ✅ complete    | [#1984](https://github.com/JesusFilm/forge/pull/1984)                                                        |
 | [feat-401](feat-401-sidebar-no-placeholder-row-for-unstarted-conversation.md) | Sidebar: no placeholder row for an unstarted conversation                    | jian wei | P3       | 2026-09-01 | 1    | ✅ complete    | [#2068](https://github.com/JesusFilm/forge/pull/2068)                                                        |
-| [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | ✅ complete    | [#2088](https://github.com/JesusFilm/forge/pull/2088)                                                        |
 | [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | 🟡 in-progress | —                                                                                                            |
