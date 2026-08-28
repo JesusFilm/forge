@@ -75,6 +75,19 @@ const CARD_GAP = 12
 const FALLBACK_BG = "#292524"
 const READ_PASSAGE_LABEL = "Read full passage"
 
+/**
+ * Every text node on the card sits over artwork the card does not choose, and
+ * some of it is light — the Psalm 19 card's is near-white. The gradient scrim
+ * only covers the lower part, so white text on a light frame needs its own
+ * separation. Faint on purpose: enough to hold an edge, not enough to read as
+ * a style. Layout-neutral, so it costs the fit arithmetic nothing.
+ */
+const CARD_TEXT_SHADOW = {
+  textShadowColor: "rgba(0, 0, 0, 0.6)",
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 3,
+} as const
+
 // ── QuoteCard ───────────────────────────────────────────────────────────────
 
 /** Reserved-height stand-in for the verse while the passage read is in flight. */
@@ -494,28 +507,35 @@ const styles = StyleSheet.create({
     padding: CARD_CONTENT_PADDING,
   },
   attribution: {
+    ...CARD_TEXT_SHADOW,
     fontWeight: "800",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
+  // Not bold: the verse now carries the card's weight, and two heavy elements
+  // stacked read as competing headings. The uppercase letterSpacing is what
+  // keeps this an eyebrow.
   reference: {
-    fontWeight: "800",
+    ...CARD_TEXT_SHADOW,
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 1.5,
     marginBottom: REFERENCE_MARGIN,
   },
   quoteText: {
+    ...CARD_TEXT_SHADOW,
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     marginBottom: VERSE_MARGIN,
   },
-  // Scripture reads upright, not italic, and larger than the body copy around
-  // it. Its size comes from `verseTypography` so the fit budget cannot drift.
+  // Scripture reads upright and bold, larger than the body copy around it. Its
+  // size comes from `verseTypography` so the fit budget cannot drift. Weight
+  // does not affect the fit: the budget is by line height, not by glyph width.
   passageVerse: {
     fontStyle: "normal",
+    fontWeight: "700",
   },
   // The Experience carousel's authored quotes keep today's presentation.
   authoredVerse: {
@@ -524,12 +544,14 @@ const styles = StyleSheet.create({
   // NOT routed through `attribution` above: that field renders as an uppercase
   // heavy eyebrow, which is wrong for a translation name and a copyright line.
   translation: {
+    ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: "rgba(255, 255, 255, 0.65)",
     fontFamily: "System",
     marginBottom: TRANSLATION_MARGIN,
   },
   copyright: {
+    ...CARD_TEXT_SHADOW,
     color: "rgba(255, 255, 255, 0.55)",
     fontFamily: "System",
   },
@@ -546,6 +568,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   passageLinkText: {
+    ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
@@ -573,6 +596,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.35)",
   },
   ctaText: {
+    ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",

@@ -217,7 +217,7 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     ).toBe(TRANSLATION_MAX_LINES)
   })
 
-  it("renders scripture upright and larger than the body copy", () => {
+  it("renders scripture upright, bold, and larger than the body copy", () => {
     const renderer = render([PASSAGE_QUOTE])
     const verse = findText(renderer, "Let’s make man in our image")
     const style = flatStyle(verse)
@@ -226,6 +226,7 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     )
 
     expect(style.fontStyle).not.toBe("italic")
+    expect(style.fontWeight).toBe("700")
     expect(style.fontSize).toBe(
       typography.body.fontSize + VERSE_FONT_SIZE_INCREASE,
     )
@@ -256,7 +257,52 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     )
 
     expect(style.fontStyle).toBe("italic")
+    expect(style.fontWeight).toBeUndefined()
     expect(style.fontSize).toBe(typography.body.fontSize)
+  })
+
+  it("renders the reference unbold", () => {
+    const renderer = render([PASSAGE_QUOTE])
+    const style = flatStyle(findText(renderer, "GENESIS 1:26-27"))
+
+    expect(style.fontWeight).toBeUndefined()
+    expect(style.letterSpacing).toBe(1.5)
+  })
+
+  // Card artwork is not chosen for contrast — the Psalm 19 frame is near-white
+  // — and the gradient scrim only covers the lower part. EVERY text node needs
+  // its own separation, so this asserts over all of them rather than a sample:
+  // a future style edit that adds a region without the shadow goes red.
+  it("gives every text node on the card a drop shadow", () => {
+    const renderer = render([PASSAGE_QUOTE])
+    // The section heading sits above the carousel on the page background, not
+    // on card artwork, so it is not in scope.
+    const texts = textNodes(renderer).filter(
+      (node) =>
+        String(node.props.children).trim().length > 0 &&
+        node.props.accessibilityRole !== "header",
+    )
+
+    expect(texts.length).toBeGreaterThanOrEqual(5)
+    for (const node of texts) {
+      const style = flatStyle(node)
+      expect(style.textShadowColor).toBeDefined()
+      expect(style.textShadowRadius).toBeGreaterThan(0)
+    }
+  })
+
+  it("gives the promotional card's text the same shadow", () => {
+    const renderer = render([
+      {
+        reference: "FREE RESOURCES",
+        text: "Want to explore life's biggest questions?",
+        ctaLabel: "Join Our Bible Study",
+        ctaLink: "https://join.bsfinternational.org/",
+      },
+    ])
+
+    const cta = findText(renderer, "Join Our Bible Study")
+    expect(flatStyle(cta).textShadowColor).toBeDefined()
   })
 
   // Covers AE3.

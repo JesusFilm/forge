@@ -30,7 +30,7 @@ export const TRANSLATION_MAX_LINES = 2
 export const COPYRIGHT_MAX_LINES = 2
 
 /** Scripture reads larger than the surrounding body copy. */
-export const VERSE_FONT_SIZE_INCREASE = 6
+export const VERSE_FONT_SIZE_INCREASE = 4
 
 // The ratio `typography.body` itself uses (16/24). Keeping it means the extra
 // size buys taller lines too, rather than crowding them together.
