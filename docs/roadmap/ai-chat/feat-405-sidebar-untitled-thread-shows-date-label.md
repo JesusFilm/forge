@@ -14,7 +14,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-28 via [#NNNN](https://github.com/JesusFilm/forge/pull/NNNN) (`fix(mastra): gateway-first titling and daily title-repair sweep`). <!-- fill the real PR number in the shipping commit -->
+**Shipped:** 2026-08-28 via [#2089](https://github.com/JesusFilm/forge/pull/2089) (`fix(mastra): gateway-first titling and daily title-repair sweep (feat-405)`).
 
 **What landed.** Per-turn titling moved off the retired single free-Gemma
 `AI_CHAT_TITLE_MODEL` string onto a function-valued default returning the
