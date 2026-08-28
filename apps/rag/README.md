@@ -22,6 +22,7 @@ gates complete.
 - `src/acquisition` — fetching, discovery, source registry, and staging
 - `src/indexing` — normalize, chunk, embed, and corpus writes
 - `src/retrieval` — deterministic ranked retrieval
+- `docs/ops/corpus-copy.md` — resumable local corpus-copy rehearsal and reconciliation
 - `src/serving` — thin HTTP `/v1` adapter
 - `src/adapters` — external systems behind core ports
 - `prisma` — the RAG-owned database schema and migrations
