@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar llingua del audiu",
     "home": "páxina d'inici de JesusFilm",
     "closeSearch": "Zarrar busca",
-    "submitSearch": "Buscar"
+    "submitSearch": "Buscar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y navegar per vídeos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Volver arriba",
     "newlyAdded": "Amestáu recién",
     "newVideosTitle": "Vídeos cristianos nuevos en {language}",
     "newestFirst": "Más nuevos primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos sueltos",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos sueltos nesta llingua.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Duración",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Más de 30 min",
+    "filterType": "Tipu",
+    "clearFilters": "Llimpiar filtros",
+    "filterResults": "{count} de {total} amosaos",
+    "noFilterResults": "Nengún vídeu concasa con estos filtros. Prueba a quitar unu.",
+    "filterAdded": "Amestáu",
+    "filterAdded_60d": "Últimos 60 díes",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Watch de Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Aiciones de páxina non atopada",
     "backToWatch": "Volver a Watch",
     "browseVideos": "Navegar per vídeos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraxe",
-    "actions": {
-      "joinUs": "Únete",
-      "shareMission": "Comparte la nuesa misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Los vídeos escoyíos d'anguaño",
-      "description": "Conteníu en videu centráu na fe de la nuesa biblioteca, pa inspirar, retar y espabilar la reflexón."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración de la mañana",
-      "title": "¡Bon día! Espérente los momentos bíblios d'anguaño.",
-      "description": "Empieza'l día con momentos bíblios animosos, preparaos pa inspirate y alegrate l'ánimu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Bones tardes! Momentos bíblios pa güei.",
-      "description": "Conteníu bíblicu animoso, perfectu pal descansu de la tarde o pa siguir inspirándote."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración de la nueche",
-      "title": "¡Bones nueches! Reláxate con momentos bíblios.",
-      "description": "Momentos bíblios tranquilos pa ayudate a reflexonar y atopar consuelu al rematar el día."
-    },
-    "joinUs": {
-      "label": "Únete",
-      "title": "Miles de millones tan buscando",
-      "description": "La güerta ta equí. Únete a nós mientres compartimos l'evanxeliu col mundu usando medios dixitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos xuntos",
-      "title": "Contando xuntos la historia de Jesús",
-      "description": "Pa que puedan sentir y ver l'amor de Jesús na so propia llingua y allí onde tán."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% de coincidencia",

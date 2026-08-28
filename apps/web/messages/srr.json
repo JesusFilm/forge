@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Waññi làkk bu baat bi",
     "home": "JesusFilm kër",
     "closeSearch": "Tëj seet bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayit"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak xool videos",
@@ -467,6 +468,7 @@
     "sports": "Wàllu sports",
     "collections": "Koleksyon yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Fandiŋ kaŋ jeeg",
     "newlyAdded": "Bu ñu dolli",
     "newVideosTitle": "Video yu xamle ci {language}",
     "newestFirst": "Bu bees ci topp",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos yu àndul",
     "videosFromCollection": "Videos yu jóge ci {collection}.",
     "standaloneDescription": "Videos yu àndul ci làkk bii.",
-    "openCollection": "Ubbi koleksyon bi"
+    "openCollection": "Ubbi koleksyon bi",
+    "filters": "Ñoolaan",
+    "filterLength": "Ndoolo",
+    "filterLength_under5": "Rek 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fop 30 min",
+    "filterType": "Kaŋam",
+    "clearFilters": "Fees ñoolaan",
+    "filterResults": "{count} ca {total} a wonwaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaan yiin. Fees kiin.",
+    "filterAdded": "A yokku",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Xool ci Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Jëf yu page bi amul",
     "backToWatch": "Dellu ci Watch",
     "browseVideos": "Xool videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Wone film bu gàtt",
-    "actions": {
-      "joinUs": "Bokk",
-      "shareMission": "Bokk ci sunu mission"
-    },
-    "welcomeStart": {
-      "label": "Ngëm ak Téere bu Sell",
-      "title": "Video yu ñu tànne teg",
-      "description": "Video yu ngëm bu nekk ci sunu bibliotèk ngir jox xel, jéemal, ak tax xalaat."
-    },
-    "welcomeMorning": {
-      "label": "Xelal bu Suba",
-      "title": "Suba jàmm! Momen yu Biibël bi ci tey ñu ngi nax.",
-      "description": "Tambali sa bés ak momen yu Biibël bu rafet ngir jox la xel ak doole."
-    },
-    "welcomeAfternoon": {
-      "label": "Xelal bu Ndegam",
-      "title": "Ndegam jàmm! Momen yu Biibël ngir sa bés.",
-      "description": "Xibaar yu Biibël yu neex ngir sa wàccu bu ndegam walla ngir yeneen xelal."
-    },
-    "welcomeEvening": {
-      "label": "Xelal bu Ngoon",
-      "title": "Ngoon jàmm! Dëppal ak momen yu Biibël.",
-      "description": "Momen yu Biibël yu jàmm ngir aajowoo te gis jàmm bu sa bés di jeex."
-    },
-    "joinUs": {
-      "label": "Bokk ak nun",
-      "title": "Milliyoŋ yi di seet",
-      "description": "Jàngaaji bi fii la. Bokk ak nun ci xamle xibaar bu baax bi ci àddina bi ak media bu dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nub nuy dem",
-      "title": "Xamle xibaaru Jesus, ñun ñépp",
-      "description": "Ngir ñu dégg te gis mbëggeelu Jesus ci seen làkk bi ci kanam ñu nekka."
-    }
   },
   "VideoRecommendations": {
     "match": "Méngoo na {percent}% bi",

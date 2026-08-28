@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
     "home": "Peji guru reJesusFilm",
     "closeSearch": "Vhara kutsvaga",
-    "submitSearch": "Tsvaga"
+    "submitSearch": "Tsvaga",
+    "library": "Raibhurari"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Muunganidzwa",
     "subtitlesOnly": "Zvidhindo chete",
+    "backToTop": "Dzokera kumusoro",
     "newlyAdded": "Zvichangobva kuwedzerwa",
     "newVideosTitle": "Mavhidhiyo echiKristu matsva mu {language}",
     "newestFirst": "Zvitsva kutanga",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavhidhiyo akazvimirira",
     "videosFromCollection": "Mavhidhiyo kubva mu {collection}.",
     "standaloneDescription": "Mavhidhiyo akazvimirira mumutauro uyu.",
-    "openCollection": "Vhura muunganidzwa"
+    "openCollection": "Vhura muunganidzwa",
+    "filters": "Zvisefo",
+    "filterLength": "Kureba",
+    "filterLength_under5": "Pasi pemaminitsi 5",
+    "filterLength_5to10": "Maminitsi 5-10",
+    "filterLength_10to30": "Maminitsi 10-30",
+    "filterLength_over30": "Anopfuura maminitsi 30",
+    "filterType": "Rudzi",
+    "clearFilters": "Bvisa zvisefo",
+    "filterResults": "{count} pa{total} zvinoratidzwa",
+    "noFilterResults": "Hapana vhidhiyo inoenderana nezvisefo izvi. Edza kubvisa chimwe.",
+    "filterAdded": "Kwawedzerwa",
+    "filterAdded_60d": "Mazuva 60 apfuura",
+    "filterAdded_6m": "Mwedzi 6 yapfuura",
+    "filterAdded_12m": "Mwedzi 12 yapfuura"
   },
   "WatchHome": {
     "pageTitle": "Tarisa paJesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Zviito zvepeji harisi kuwanikwa",
     "backToWatch": "Dzokera kuWatch",
     "browseVideos": "Browse mavhidhiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tarisa Firimu Pfupi",
-    "actions": {
-      "joinUs": "Joina nesu",
-      "shareMission": "Goverana muBasa redu"
-    },
-    "welcomeStart": {
-      "label": "Kutenda neMagwaro",
-      "title": "Sarudzo dzeVhidhiyo dzeNhasi",
-      "description": "Zviri muvhidhiyo zvine chekuita nekutenda kubva muraibhurari yedu, kuti zvikukurudzire, zvikupikise, uye zvikupesvedzere kufungisisa."
-    },
-    "welcomeMorning": {
-      "label": "Kukurudzirwa kweMangwanani",
-      "title": "Mangwanani akanaka! Zvinhu zveBhaibheri zvenhasi zviri kukumirira.",
-      "description": "Tanga zuva rako nezvinokukurudzira zveBhaibheri zvakagadzirirwa kukupembedza uye kusimudzira mweya wako."
-    },
-    "welcomeAfternoon": {
-      "label": "Kukurudzirwa kweMasikati",
-      "title": "Masikati akanaka! Zvinhu zveBhaibheri zvemazuva enyu.",
-      "description": "Zviri muBhaibheri zvinokurudzira, zvakakodzera kuzororo rako remasikati kana kuramba uchikurudzirwa."
-    },
-    "welcomeEvening": {
-      "label": "Kukurudzirwa kweManheru",
-      "title": "Manheru akanaka! Zororai nezvinhu zveBhaibheri.",
-      "description": "Zvinhu zveBhaibheri zvine rugare zvinokubatsira kufungisisa uye kuwana nyaradzo zuva rako richipera."
-    },
-    "joinUs": {
-      "label": "Joina nesu",
-      "title": "Mabhiriyoni ari kutsvaga",
-      "description": "Nguva yekukohwa yasvika. Joinai nesu patinogovera evhangeri nenyika tichishandisa midhiya yedhijitari."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ngatiendei pamwe chete",
-      "title": "Kutaura Nyaya yaJesu, pamwe chete",
-      "description": "Kuti vanzwe vaone rudo rwaJesu mumutauro wavo pachavo, ipapo pavanenge vari."
-    }
   },
   "VideoRecommendations": {
     "match": "Zvinoenderana ne{percent}%",

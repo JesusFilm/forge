@@ -180,7 +180,8 @@
     "changeAudioLanguage": "變更音訊語言",
     "home": "JesusFilm 首頁",
     "closeSearch": "關閉搜尋",
-    "submitSearch": "搜尋"
+    "submitSearch": "搜尋",
+    "library": "影片庫"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋與瀏覽影片",
@@ -467,6 +468,7 @@
     "sports": "運動",
     "collections": "合集",
     "subtitlesOnly": "僅字幕",
+    "backToTop": "轉到頂端",
     "newlyAdded": "新加入",
     "newVideosTitle": "{language} 的新基督教影片",
     "newestFirst": "最新優先",
@@ -497,7 +499,21 @@
     "standaloneVideos": "獨立影片",
     "videosFromCollection": "來自 {collection} 的影片。",
     "standaloneDescription": "此語言的獨立影片。",
-    "openCollection": "開啟合集"
+    "openCollection": "開啟合集",
+    "filters": "篩選",
+    "filterLength": "長度",
+    "filterLength_under5": "5 分鐘以內",
+    "filterLength_5to10": "5-10 分鐘",
+    "filterLength_10to30": "10-30 分鐘",
+    "filterLength_over30": "30 分鐘以上",
+    "filterType": "類型",
+    "clearFilters": "清除篩選",
+    "filterResults": "已顯示 {count} / {total}",
+    "noFilterResults": "無影片符合這些篩選條件。試看移除一項。",
+    "filterAdded": "加入時間",
+    "filterAdded_60d": "最近 60 日",
+    "filterAdded_6m": "最近 6 個月",
+    "filterAdded_12m": "最近 12 個月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 觀看頁面",
@@ -646,44 +662,6 @@
     "actionsLabel": "找不到頁面的操作",
     "backToWatch": "返回觀看頁面",
     "browseVideos": "瀏覽影片"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "觀看短片",
-    "actions": {
-      "joinUs": "加入我們",
-      "shareMission": "一同參與我們的使命"
-    },
-    "welcomeStart": {
-      "label": "信仰與聖經",
-      "title": "今日精選影片",
-      "description": "來自我們影片庫、以信仰為中心的影片內容，帶來激勵、挑戰與反思的火花。"
-    },
-    "welcomeMorning": {
-      "label": "晨間激勵",
-      "title": "早安！今日的聖經時刻在等你。",
-      "description": "用鼓舞人心的聖經片段展開一天，激勵並提升你的心靈。"
-    },
-    "welcomeAfternoon": {
-      "label": "午後激勵",
-      "title": "午安！給你一天的聖經時刻。",
-      "description": "適合午後休息時觀看的鼓勵性聖經內容，為你帶來持續激勵。"
-    },
-    "welcomeEvening": {
-      "label": "晚間激勵",
-      "title": "晚安！用聖經時刻放鬆一下。",
-      "description": "平靜的聖經時刻，幫助你在一天結束時反思並找到安慰。"
-    },
-    "joinUs": {
-      "label": "加入我們",
-      "title": "有數十億人正在尋找",
-      "description": "莊稼已經成熟。加入我們，一同用數位媒體向世界傳揚福音。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一起往前走",
-      "title": "一起述說耶穌的故事",
-      "description": "好讓他們能在自己所在之處，用自己的語言聽見並看見耶穌的愛。"
-    }
   },
   "VideoRecommendations": {
     "match": "相合度 {percent}%",

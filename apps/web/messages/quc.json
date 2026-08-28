@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijaläx ri ch'ab'äl richin q'ojom",
     "home": "JesusFilm rupalaj q'ij",
     "closeSearch": "Titz'apïx kanoxïk",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Wuja ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx y tatz'eta' videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Taq kolección",
     "subtitlesOnly": "Subtítulos alone",
+    "backToTop": "Katzalij chikaj",
     "newlyAdded": "K'ak'a' tz'aqat",
     "newVideosTitle": "K'ak'a' taq video cristianos pa {language}",
     "newestFirst": "Ri k'ak'a' nab'ey",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Taq video ch'utch'uj",
     "videosFromCollection": "Taq video pa {collection}.",
     "standaloneDescription": "Taq video ch'utch'uj pa re ch'ab'äl re'.",
-    "openCollection": "Tijaq colección"
+    "openCollection": "Tijaq colección",
+    "filters": "Chaꞌoj",
+    "filterLength": "Raqan",
+    "filterLength_under5": "Nim ta chuwach 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chuwach 30 minutos",
+    "filterType": "Uwach",
+    "clearFilters": "Chachupij ri chaꞌoj",
+    "filterResults": "{count} chike {total} kakꞌut",
+    "noFilterResults": "Man kꞌo ta jun video kajunamataj rukꞌ we chaꞌoj riꞌ. Chawesaj jun.",
+    "filterAdded": "Xkoj chi",
+    "filterAdded_60d": "Kꞌisbꞌal 60 qꞌij",
+    "filterAdded_6m": "Kꞌisbꞌal 6 ikꞌ",
+    "filterAdded_12m": "Kꞌisbꞌal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Tatz'eta' pa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Taq b'anikil richin página man xk'ulmataj ta",
     "backToWatch": "Titzolin pa Watch",
     "browseVideos": "Tatz'eta' videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tatz'eta' ri k'oöl film",
-    "actions": {
-      "joinUs": "Katjoin chik",
-      "shareMission": "Taqa' junam pa qamision"
-    },
-    "welcomeStart": {
-      "label": "Tz'ij y Escritura",
-      "title": "Ruchapb'al videos richin wakami",
-      "description": "Taq video richin nimaläj rutzijol ri k'o pa ri qach'utam, richin nuyakik, nuch'ey, y nuchop na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Nab'ey q'ij rutzijol",
-      "title": "Saqarik! Ri Biblia taq k'utunem richin wakami k'o chik.",
-      "description": "Tatzukuj ri awq'ij rik'in q'axaninaq taq Biblia k'utunem b'anon richin nuyakik y nutz'uyuj ri awanima."
-    },
-    "welcomeAfternoon": {
-      "label": "Ti'ij rutzijol",
-      "title": "Saqer! Biblia k'utunem richin awq'ij.",
-      "description": "Taq Biblia k'utunem richin noyob'äl, utz richin ri ti'ij descanso o chik na rutzijol."
-    },
-    "welcomeEvening": {
-      "label": "Aq'ab' rutzijol",
-      "title": "Saqir! Titz'ila' awi' rik'in Biblia taq k'utunem.",
-      "description": "K'uxla'anem taq Biblia richin katit'ix y katk'iwb'ej pa ruq'ijil ri q'ij."
-    },
-    "joinUs": {
-      "label": "Katjoin chik",
-      "title": "Jun nïm taq winaq tajin yekanoj",
-      "description": "Ri q'iq'aj k'o chik. Katjoin chik chi ke'k'utuj ri evangelio chwach ruwach'ulew rik'in digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kojb'e junam",
-      "title": "Rutzijoxik ri rutzijol ri Jesús, junam",
-      "description": "Richin ketamaj y kitz'eta' ri rutzilal ri Jesús pa ri kach'ab'äl, chila' wi k'o wi."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% junam",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
     "closeSearch": "Vuala kusaka",
-    "submitSearch": "Saka"
+    "submitSearch": "Saka",
+    "library": "Nzubu wa mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Mibumba",
     "subtitlesOnly": "Subtitles kaka",
+    "backToTop": "Pinganyina kuulu",
     "newlyAdded": "Bikatswa pya",
     "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
     "newestFirst": "Bya pya kumpala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavidiyo a mueyele",
     "videosFromCollection": "Mavidiyo aku mu {collection}.",
     "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
-    "openCollection": "Vula kusangula"
+    "openCollection": "Vula kusangula",
+    "filters": "Bilubulukishi",
+    "filterLength": "Buule",
+    "filterLength_under5": "Muinshi wa minitshi 5",
+    "filterLength_5to10": "Minitshi 5-10",
+    "filterLength_10to30": "Minitshi 10-30",
+    "filterLength_over30": "Kupita minitshi 30",
+    "filterType": "Mushindu",
+    "clearFilters": "Umbusha bilubulukishi",
+    "filterResults": "{count} pa {total} bileja",
+    "noFilterResults": "Kakuena vidyo udi upetangana ne bilubulukishi ebi. Tshima kumbusha kimwe.",
+    "filterAdded": "Mbadikilu",
+    "filterAdded_60d": "Matuku 60 mapite",
+    "filterAdded_6m": "Ngondo 6 mipite",
+    "filterAdded_12m": "Ngondo 12 mipite"
   },
   "WatchHome": {
     "pageTitle": "Talala pa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Bikorwa bya paji kayifwanyanga",
     "backToWatch": "Lwela ku Watch",
     "browseVideos": "Selebula mavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talala filme ya mukese",
-    "actions": {
-      "joinUs": "Kanga na betu",
-      "shareMission": "Kabana mu mision yetu"
-    },
-    "welcomeStart": {
-      "label": "Lukwikilu ne Maandishe a Bulemu",
-      "title": "Mavidiyo a lelo a kusankula",
-      "description": "Mavidiyo a mu mutshima wa lukwikilu a mu bufuku bwa betu, a kufwasa, a kukumina, ne a kubuulula mabanza."
-    },
-    "welcomeMorning": {
-      "label": "Bwambile bwa mu tshiambo",
-      "title": "Mpepo ya mu tshiandi! Bintu bya Biblia bya lelo bidi kulaya.",
-      "description": "Tshikala tshebe na mavidiyo a Biblia a kulonga mutshima ne kukulombola mu dikolo dia lelo."
-    },
-    "welcomeAfternoon": {
-      "label": "Bwambile bwa mu ditumba",
-      "title": "Mpepo ya mu ditumba! Bintu bya Biblia bya lelo bidi ku yebe.",
-      "description": "Mavidiyo a Biblia a kulomba mutshima, a kufwasa mu dikolo dia mu ditumba ne kuikala luishi."
-    },
-    "welcomeEvening": {
-      "label": "Bwambile bwa mu diloba",
-      "title": "Mpepo ya mu diloba! Pumuka ne bintu bya Biblia.",
-      "description": "Bintu bya Biblia bya kimpepe bi kukwasa kusambuka ne kupata lulendo luwama ne dikolo dia lelo diishi."
-    },
-    "joinUs": {
-      "label": "Kanga na betu",
-      "title": "Bilonda bidi kusaka",
-      "description": "Buvuna buleli. Kanga na betu mu kusakidila evangile pa buloba ne media ya digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tenda na betu",
-      "title": "Kutenda Nsangu ya Yesu, na betu",
-      "description": "Tudi kuleta mukanda ne luse lwa Yesu mu lulaka lwabo, mu njiya yawu mene."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% idi iwendangana",

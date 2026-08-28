@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промијени језик звука",
     "home": "JesusFilm почетна",
     "closeSearch": "Затвори претрагу",
-    "submitSearch": "Претражи"
+    "submitSearch": "Претражи",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Претражите и прегледајте видео записе",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекције",
     "subtitlesOnly": "Само титлови",
+    "backToTop": "Натраг на врх",
     "newlyAdded": "Ново додато",
     "newVideosTitle": "Нови хришћански видео записи на {language}",
     "newestFirst": "Најновији прво",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостални видео записи",
     "videosFromCollection": "Видео записи из {collection}.",
     "standaloneDescription": "Самостални видео записи на овом језику.",
-    "openCollection": "Отвори колекцију"
+    "openCollection": "Отвори колекцију",
+    "filters": "Филтери",
+    "filterLength": "Трајање",
+    "filterLength_under5": "Мање од 5 мин",
+    "filterLength_5to10": "5-10 мин",
+    "filterLength_10to30": "10-30 мин",
+    "filterLength_over30": "Више од 30 мин",
+    "filterType": "Врста",
+    "clearFilters": "Очисти филтере",
+    "filterResults": "Приказано {count} од {total}",
+    "noFilterResults": "Ниједан видео не одговара овим филтерима. Покушајте уклонити један.",
+    "filterAdded": "Додано",
+    "filterAdded_60d": "Задњих 60 дана",
+    "filterAdded_6m": "Задњих 6 мјесеци",
+    "filterAdded_12m": "Задњих 12 мјесеци"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project гледање",
@@ -646,44 +662,6 @@
     "actionsLabel": "Акције за страницу која није пронађена",
     "backToWatch": "Назад на гледање",
     "browseVideos": "Прегледај видео записе"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Гледај кратки филм",
-    "actions": {
-      "joinUs": "Придружите нам се",
-      "shareMission": "Учествујте у нашој мисији"
-    },
-    "welcomeStart": {
-      "label": "Вјера и Писмо",
-      "title": "Данашњи видео избор",
-      "description": "Видео садржај из наше библиотеке усредсређен на вјеру, да инспирише, изазове и подстакне размишљање."
-    },
-    "welcomeMorning": {
-      "label": "Јутарња инспирација",
-      "title": "Добро јутро! Чекају вас данашњи библијски тренуци.",
-      "description": "Започните дан охрабрујућим библијским тренуцима осмишљеним да инспиришу и уздигну ваш дух."
-    },
-    "welcomeAfternoon": {
-      "label": "Поподневна инспирација",
-      "title": "Добар дан! Библијски тренуци за ваш дан.",
-      "description": "Охрабрујући библијски садржај, савршен за поподневну паузу или додатну инспирацију."
-    },
-    "welcomeEvening": {
-      "label": "Вечерња инспирација",
-      "title": "Добро вече! Опустите се уз библијске тренутке.",
-      "description": "Мирни библијски тренуци који ће вам помоћи да размишљате и пронађете утјеху док се дан ближи крају."
-    },
-    "joinUs": {
-      "label": "Придружите нам се",
-      "title": "Милијарде траже одговоре",
-      "description": "Жетва је ту. Придружите нам се док дијелимо јеванђеље са свијетом путем дигиталних медија."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Хајде заједно",
-      "title": "Причамо причу о Исусу, заједно",
-      "description": "Да би могли да чују и виде Исусову љубав на свом језику, тамо гдје се налазе."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% подударања",

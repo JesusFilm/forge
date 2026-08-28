@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar idioma de audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Cerrar búsqueda",
-    "submitSearch": "Buscar"
+    "submitSearch": "Buscar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -283,6 +284,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Volver arriba",
     "newlyAdded": "Recién añadido",
     "newVideosTitle": "Nuevos videos cristianos en {language}",
     "newestFirst": "Más recientes primero",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Videos independientes",
     "videosFromCollection": "Videos de {collection}.",
     "standaloneDescription": "Videos independientes en este idioma.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Duración",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Más de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Borrar filtros",
+    "filterResults": "{count} de {total} mostrados",
+    "noFilterResults": "Ningún video coincide con estos filtros. Prueba a quitar uno.",
+    "filterAdded": "Añadido",
+    "filterAdded_60d": "Últimos 60 días",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Ver | Jesus Film Project",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraje",
-    "actions": {
-      "joinUs": "Únete a nosotros",
-      "shareMission": "Participa en nuestra misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Selecciones de video de hoy",
-      "description": "Contenido en video centrado en la fe de nuestra biblioteca para inspirarte, retarte y despertar la reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración matutina",
-      "title": "¡Buenos días! Los momentos bíblicos de hoy te esperan.",
-      "description": "Empieza el día con momentos bíblicos alentadores pensados para inspirarte y levantar tu espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Buenas tardes! Momentos bíblicos para tu día.",
-      "description": "Contenido bíblico alentador, perfecto para tu pausa de la tarde o para seguir recibiendo inspiración."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración de la noche",
-      "title": "¡Buenas noches! Termina el día con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para ayudarte a reflexionar y encontrar consuelo al cerrar el día."
-    },
-    "joinUs": {
-      "label": "Únete a nosotros",
-      "title": "Miles de millones están buscando",
-      "description": "La cosecha ya está aquí. Únete a nosotros mientras compartimos el evangelio con el mundo mediante medios digitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vayamos juntos",
-      "title": "Contando juntos la historia de Jesús",
-      "description": "Para que puedan escuchar y ver el amor de Jesús en su propio idioma, dondequiera que estén."
     }
   },
   "VideoRecommendations": {

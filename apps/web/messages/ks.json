@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڈیو زبان بدلیو",
     "home": "JesusFilm ہوم",
     "closeSearch": "تلاش بند کرو",
-    "submitSearch": "تلاش کرو"
+    "submitSearch": "تلاش کرو",
+    "library": "لائبریری"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",
@@ -467,6 +468,7 @@
     "sports": "کھیل",
     "collections": "مجموعہ",
     "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "بۆنہٕ پؠٹھ",
     "newlyAdded": "ہنٛز شامل",
     "newVideosTitle": "{language} منز نَو مسیحی ویڈیو",
     "newestFirst": "سبن منٛز نَو پہلے",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الگ ویڈیو",
     "videosFromCollection": "{collection} سۭتۍ ویڈیو۔",
     "standaloneDescription": "اس زبان منز الگ ویڈیو۔",
-    "openCollection": "مجموعہ کھولیو"
+    "openCollection": "مجموعہ کھولیو",
+    "filters": "فلٹر",
+    "filterLength": "ڈؠنگر",
+    "filterLength_under5": "5 مِنٹھ کھۄتہ کم",
+    "filterLength_5to10": "5-10 مِنٹھ",
+    "filterLength_10to30": "10-30 مِنٹھ",
+    "filterLength_over30": "30 مِنٹھ کھۄتہ زیادٕ",
+    "filterType": "قِسم",
+    "clearFilters": "فلٹر صاف کریو",
+    "filterResults": "{total} منٛز {count} ہاوان",
+    "noFilterResults": "یِمَو فلٹرَو سٟتؠ کانٛہہ ویڈیو نہٕ چھُ میلان۔ اکھ ہٹاویو۔",
+    "filterAdded": "شٲمِل کرنہٕ آو",
+    "filterAdded_60d": "پؠٹھِم 60 دۄہ",
+    "filterAdded_6m": "پؠٹھِم 6 ریتھ",
+    "filterAdded_12m": "پؠٹھِم 12 ریتھ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -646,44 +662,6 @@
     "actionsLabel": "صفحہ نہٕ ملنہٕ کاروائیاں",
     "backToWatch": "واچ کُن واپس",
     "browseVideos": "ویڈیو براؤز کرو"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "مختصر فلم دیکھیو",
-    "actions": {
-      "joinUs": "ساں شامل گژھیو",
-      "shareMission": "ساں مشن منز شریک گژھیو"
-    },
-    "welcomeStart": {
-      "label": "ایمان تہٕ صحیفہ",
-      "title": "آج ہنٛز ویڈیو پسندیاں",
-      "description": "سایہٕ لائبریری سۭتۍ ایمان مرکوز ویڈیو مواد، جو حوصلہ دِیہ، چیلنج کرِ، تہٕ سوچ پیدا کرِ۔"
-    },
-    "welcomeMorning": {
-      "label": "صبحی حوصلہ",
-      "title": "سوبھ بخیر! آج بائبل لمحات تیار چھنہٕ۔",
-      "description": "پنٛنۍ دۄہک شروعات حوصلہ افزا بائبل لمحات سۭتۍ کرو، جو اُمید تہٕ ہمت دِنہٕ لئی بناونہٕ گژھنہٕ۔"
-    },
-    "welcomeAfternoon": {
-      "label": "دوپہر حوصلہ",
-      "title": "دوپہر بخیر! تُہندِس دۄہ لئی بائبل لمحات۔",
-      "description": "حوصلہ افزا بائبل مواد، دوپہرک وقفے لئی موزوں، یا مزید حوصلہ لئی۔"
-    },
-    "welcomeEvening": {
-      "label": "شام حوصلہ",
-      "title": "شام بخیر! بائبل لمحات سۭتۍ آرام کرو۔",
-      "description": "پُرسکون بائبل لمحات، جو دۄہ ختم گژھنہٕ پر سوچن تہٕ تسلی پَتھ آسنہٕ منز مدد کرنہٕ۔"
-    },
-    "joinUs": {
-      "label": "ساں شامل گژھیو",
-      "title": "اربوں لوٚک تلاش کران چھنہٕ",
-      "description": "فصل تیار چھُ۔ ڈیجیٹل میڈیا سۭتۍ دنیہَ تام خوشخبری شِئر کران ساں شامل گژھیو۔"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "آو سۭتۍ چلو",
-      "title": "یسوع ہُند قصہ، سۭتۍ شِئریو",
-      "description": "تاکہ اوہ پنٛنۍ زبان منز، پنٛنۍ جگہہٕ تام، یسوع ہُند پیار سنن تہٕ دیکھی سکِن۔"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% میچ",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pabalian so lengguahe na audio",
     "home": "Home na JesusFilm",
     "closeSearch": "Isara so saliksik",
-    "submitSearch": "Saliksiken"
+    "submitSearch": "Saliksiken",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Saliksiken tan liboten so mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle laeng",
+    "backToTop": "Ompawil ed tagey",
     "newlyAdded": "Kakabalo a naidugang",
     "newVideosTitle": "Balo a Kristiyanong video ed {language}",
     "newestFirst": "Pinakabalo anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video a nag-iisa",
     "videosFromCollection": "Mga video gapo ed {collection}.",
     "standaloneDescription": "Mga video a nag-iisa ed sayan a lengguahe.",
-    "openCollection": "I-abri so koleksyon"
+    "openCollection": "I-abri so koleksyon",
+    "filters": "Filter",
+    "filterLength": "Kaabigan",
+    "filterLength_under5": "Kulang ed 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Masulok ed 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Ekalen so filter",
+    "filterResults": "{count} ed {total} so nipanengneng",
+    "noFilterResults": "Anggapoy video ya mitunosan ed sarayan filter. Salien mo ekalen so sakey.",
+    "filterAdded": "Niyarum",
+    "filterAdded_60d": "Sampot ya 60 agew",
+    "filterAdded_6m": "Sampot ya 6 bulan",
+    "filterAdded_12m": "Sampot ya 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood ed Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Mga aksyon no aga nabot so pahina",
     "backToWatch": "Balik ed Watch",
     "browseVideos": "Liboten so mga video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Panooren so Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumapi ka ed Amin",
-      "shareMission": "Ibahagi so Ating Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya & Kasulatan",
-      "title": "Mga Pinili a Video ya Ngatan",
-      "description": "Mga video a nakasentro ed pananampalataya gapo ed library mi a mangengganyo, manghamon, tan mangpaiduma na pagsariwa."
-    },
-    "welcomeMorning": {
-      "label": "Agsabi a Inspirasion",
-      "title": "Naimbag a Agsabi! Antayen so Mga Momento na Biblia ed Ngatan.",
-      "description": "Umpisan so aldaw mo kaibat so nakakapagpasigla a mga biblikal a momento a dinisenyo para mangengganyo tan mangpalakas na espiritu mo."
-    },
-    "welcomeAfternoon": {
-      "label": "Aldew a Inspirasion",
-      "title": "Naimbag a Aldew! Mga Momento na Biblia para ed Aldew mo.",
-      "description": "Nakakapagpasigla a nilalaman na Biblia a bagay para ed aldew a pahinga mo o tuloy a inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Labat a Inspirasion",
-      "title": "Naimbag a Labat! Mamaral so daya kaibat so Mga Momento na Biblia.",
-      "description": "Mapayapa a mga momonto na Biblia a mangtulong ya makapagmuni-muni ka tan makatalaw na awas habang mamagbabba so aldaw mo."
-    },
-    "joinUs": {
-      "label": "Sumapi ka ed Amin",
-      "title": "Bilyones so maaarap",
-      "description": "Andi so aaningen. Sumapi ka ed amin ya ipamulong mi so ebanghelyo ed bilog a mundo paagi ed digital a media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Manganibang tayo!",
-      "title": "Ikuwento so Istorya ni Jesus, Akin a Tayo",
-      "description": "Tapno marinig dan makit-an so ayat ni Jesus ed sikara ya sariling lengguahe, mismo ya agta lugar da."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% a katugma",

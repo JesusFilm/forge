@@ -180,7 +180,8 @@
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
     "closeSearch": "لټون وتړئ",
-    "submitSearch": "ولټوئ"
+    "submitSearch": "ولټوئ",
+    "library": "کتابتون"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "ټولګې",
     "subtitlesOnly": "یوازې سرلیکونه",
+    "backToTop": "بېرته پورته",
     "newlyAdded": "تازه زیات شوي",
     "newVideosTitle": "په {language} کې نوې مسيحي ویډیوګانې",
     "newestFirst": "تر ټولو نوي لومړی",
@@ -497,7 +499,21 @@
     "standaloneVideos": "جلا ویډیوګانې",
     "videosFromCollection": "له {collection} څخه ویډیوګانې.",
     "standaloneDescription": "په دې ژبه کې جلا ویډیوګانې.",
-    "openCollection": "ټولګه پرانیزئ"
+    "openCollection": "ټولګه پرانیزئ",
+    "filters": "چاڼګرې",
+    "filterLength": "اوږدوالی",
+    "filterLength_under5": "له 5 دقیقو کم",
+    "filterLength_5to10": "5-10 دقیقې",
+    "filterLength_10to30": "10-30 دقیقې",
+    "filterLength_over30": "له 30 دقیقو زیات",
+    "filterType": "ډول",
+    "clearFilters": "چاڼګرې پاکې کړه",
+    "filterResults": "{count} له {total} څخه ښودل شو",
+    "noFilterResults": "هېڅ ویډیو دې چاڼګرو سره نه خوري. یوه یې لرې کړه.",
+    "filterAdded": "اضافه شو",
+    "filterAdded_60d": "تېر 60 ورځې",
+    "filterAdded_6m": "تېر 6 میاشتې",
+    "filterAdded_12m": "تېر 12 میاشتې"
   },
   "WatchHome": {
     "pageTitle": "د Jesus Film Project Watch",
@@ -646,44 +662,6 @@
     "actionsLabel": "د پاڼې نه موندلو کړنې",
     "backToWatch": "بېرته Watch ته",
     "browseVideos": "ویډیوګانې وپلټئ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "لنډ فلم وګورئ",
-    "actions": {
-      "joinUs": "موږ سره یوځای شئ",
-      "shareMission": "په زموږ له ماموریت سره برخه واخلئ"
-    },
-    "welcomeStart": {
-      "label": "ایمان او مقدس کتاب",
-      "title": "د نن ورځې د ویډیو انتخابونه",
-      "description": "زموږ له کتابتون څخه د ایمان پر بنسټ ویډیو مواد چې الهام، ننګونه او د فکر کولو هڅونه وکړي."
-    },
-    "welcomeMorning": {
-      "label": "د سهار الهام",
-      "title": "سهار مو پخير! د نن ورځې د بایبل شېبې ستاسو په تمه دي.",
-      "description": "خپله ورځ د بایبل د هڅوونکو شېبو سره پیل کړئ چې ستاسو روح الهام او لوړ کړي."
-    },
-    "welcomeAfternoon": {
-      "label": "د غرمنۍ الهام",
-      "title": "غرمه مو پخير! د ورځې لپاره د بایبل شېبې.",
-      "description": "هڅوونکې د بایبل منځپانګه چې ستاسو د غرمنۍ د دمې یا د دوامدار الهام لپاره مناسبه ده."
-    },
-    "welcomeEvening": {
-      "label": "د ماښام الهام",
-      "title": "ماښام مو پخير! د بایبل له شېبو سره ارام شئ.",
-      "description": "د بایبل اراموونکي شېبې چې له تاسو سره د ورځې په پای کې د فکر او تسلي په موندلو کې مرسته کوي."
-    },
-    "joinUs": {
-      "label": "موږ سره یوځای شئ",
-      "title": "میلیارډونه کسان لټون کوي",
-      "description": "حاصلات دلته دي. د ډیجیټل رسنیو له لارې له نړۍ سره د انجیل د شریکولو په دې کار کې له موږ سره یوځای شئ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "راځئ یوځای لاړ شو",
-      "title": "د عیسی کیسه، په ګډه ویلو",
-      "description": "تر څو دوی په خپله ژبه، همالته چې دي، د عیسی مینه واوري او وویني."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}٪ سمون",

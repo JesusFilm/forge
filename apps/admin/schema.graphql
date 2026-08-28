@@ -1502,6 +1502,13 @@ type Query {
   """
   watchCollectionFeed(after: String, cardsPerParent: Int!, excludedIds: [String!], excludedSlugs: [String!], first: Int, languageSlug: String!, locale: String!): WatchCollectionFeed!
   """
+  Batched audio/subtitle language counts for collection slugs. Deliberately separate from `watchLanguageInventory`: the counts are not language-scoped, and a slow aggregate must degrade the /videos availability indicator rather than blank the page. Unknown slugs are omitted from the result; callers must tolerate a short array.
+  """
+  watchCollectionLanguageCounts(
+    """Collection slugs. Deduplicated; capped at 400 entries."""
+    slugs: [String!]!
+  ): [WatchCollectionLanguageCounts!]!
+  """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
@@ -2209,6 +2216,19 @@ type WatchCollectionFeedNode {
 type WatchCollectionFeedPageInfo {
   endCursor: String
   hasNextPage: Boolean!
+}
+
+"""
+Distinct audio and subtitle language counts aggregated across a collection's visible children. Powers the Watch /videos sidebar availability indicator.
+"""
+type WatchCollectionLanguageCounts {
+  """
+  Distinct playable audio languages across the collection's visible children. Uses the same predicate as `Video.childDubLanguages`, so the two never disagree for the same collection.
+  """
+  audioLanguageCount: Int!
+  slug: String!
+  """Distinct subtitle languages across the collection's visible children."""
+  subtitleLanguageCount: Int!
 }
 
 type WatchEvent {

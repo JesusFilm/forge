@@ -281,6 +281,41 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
 
+// ── Bible passage companion query ──────────────────────────────────
+// KTD1: `passage` stays OUT of watchVideoFragment. Five call sites execute that
+// fragment (watch screen, home hero + its prefetch, search prefetch, per-episode
+// subtitle fan-out) and only the watch screen renders a Bible card, so a
+// selection there taxes every one of them with an uncached provider round trip.
+//
+// KTD2: `documentId: id` on `videoBySlug` ITSELF is load-bearing, not decoration.
+// Without it this write cannot normalize the video, so it replaces the shared
+// reference with a plain object and the player-gating read collapses — silently,
+// because a SUCCESSFUL passage read is what triggers it.
+export const GET_VIDEO_BIBLE_PASSAGES = adminGraphql(`
+  query GetVideoBiblePassages($slug: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
+      bibleCitations {
+        documentId: id
+        passage {
+          content
+          copyright
+          humanReference
+          provider
+          reference
+          versionAbbreviation
+          versionId
+          versionTitle
+        }
+      }
+    }
+  }
+`)
+
+export type VideoBiblePassagesData = AdminResultOf<
+  typeof GET_VIDEO_BIBLE_PASSAGES
+>
+
 // ── Lean series-screen video fragment ──────────────────────────────
 // SYNC: mirrors apps/tv/src/lib/videoQueries.ts `seriesWatchVideoFragment`. Leaner sibling of watchVideoFragment;
 // OMITS the `parents→parent→children` sibling chain (grid uses OWN `children`) + each dub's `duration`/`muxVideo.playbackId`.

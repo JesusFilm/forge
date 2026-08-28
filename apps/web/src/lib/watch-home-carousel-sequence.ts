@@ -1,15 +1,31 @@
-import type {
-  WatchHomeMuxInsertAction,
-  WatchHomeMuxInsertConfig,
-  WatchHomeMuxInsertCopyId,
-} from "@/lib/watch-home-config"
-
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
 export const WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY = "carousel-played-ids"
 export const WATCH_HOME_TV_CURRENT_VIDEO_STORAGE_KEY = "carousel-current-video"
-export const WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY = "mux-insert-selections"
-export const WATCH_HOME_TV_MUX_SELECTIONS_SEED_STORAGE_KEY =
-  "mux-insert-selections-seed"
+export const WATCH_HOME_TV_VERTICAL_IDS_STORAGE_KEY = "carousel-vertical-ids"
+
+/**
+ * The hero is a wide cinematic frame filled with `object-cover`, so anything
+ * squarer than this comes out as a heavily cropped centre strip. 16:9 (1.78)
+ * and 4:3 (1.33) pass; 1:1, 4:5 and 9:16 do not.
+ */
+export const WATCH_HOME_HERO_MIN_ASPECT_RATIO = 1.2
+
+/**
+ * Decided from the DECODED video, which is the only orientation signal the
+ * catalog actually carries — admin exposes no video dimensions, and image
+ * dimensions are a false proxy (landscape films routinely ship portrait
+ * posters). Unknown or not-yet-measured sizes are allowed through: this guard
+ * only ever acts on a confident portrait measurement.
+ */
+export function isWatchHomeHeroPlayableAspect(
+  width: number | null | undefined,
+  height: number | null | undefined,
+): boolean {
+  if (typeof width !== "number" || typeof height !== "number") return true
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return true
+  if (width <= 0 || height <= 0) return true
+  return width / height >= WATCH_HOME_HERO_MIN_ASPECT_RATIO
+}
 
 export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
@@ -30,26 +46,11 @@ export type WatchHomeTvCarouselVideoSlide = {
   poolIndex?: number
 }
 
-export type WatchHomeTvCarouselMuxSlide = {
-  kind: "mux"
-  id: string
-  copyId: WatchHomeMuxInsertCopyId
-  href: string | null
-  action: WatchHomeMuxInsertAction | null
-  secondaryAction: { type: "watch-short-film" } | null
-  posterUrl: string | null
-  thumbnailUrl: string | null
-  src: string | null
-  playbackId: string | null
-  durationSeconds: number | null
-  logo: boolean
-  playbackIndex: number
-  titleDate: string | null
-}
-
-export type WatchHomeTvCarouselSlide =
-  | WatchHomeTvCarouselVideoSlide
-  | WatchHomeTvCarouselMuxSlide
+/**
+ * The homepage hero plays catalog videos only. The branded Mux insert slide
+ * kind was removed in feat-440, so this alias is the single slide shape.
+ */
+export type WatchHomeTvCarouselSlide = WatchHomeTvCarouselVideoSlide
 
 export type WatchHomeCarouselPool = {
   id: string
@@ -59,7 +60,6 @@ export type WatchHomeCarouselPool = {
 
 export type WatchHomeCarouselSequenceData = {
   pools: readonly WatchHomeCarouselPool[]
-  muxInserts: readonly WatchHomeMuxInsertConfig[]
 }
 
 export type WatchHomeCurrentVideoSession = {
@@ -78,11 +78,20 @@ type PlayedIdsStorageValue = {
 type QueueBuildInput = {
   pools: readonly WatchHomeCarouselPool[]
   existingVideos?: readonly WatchHomeTvCarouselVideoSlide[]
+  /** Hard exclusion — see `pickRandomWatchHomeHeroVideo`. */
+  excludedIds?: readonly string[]
   playedIds?: readonly string[]
   startPoolIndex?: number
   targetVideoCount: number
   now?: Date
   useStoredProgress?: boolean
+  /**
+   * Supplying a random source swaps the date-seeded pool offset for a
+   * per-visit draw, so two visitors loading the same cached homepage HTML get
+   * different lineups. Left undefined the queue stays deterministic, which is
+   * what server render and hydration need.
+   */
+  randomSource?: () => number
 }
 
 function simpleHash(value: string): number {
@@ -180,6 +189,47 @@ export function addWatchHomeTvPlayedId(slideId: string, now = new Date()) {
         month: currentStorageMonth(now),
         ids,
       }),
+    )
+  } catch {
+    // Ignore storage errors from private browsing or disabled storage.
+  }
+}
+
+/**
+ * Videos a previous load measured as portrait. Kept in the same monthly bucket
+ * as played ids so a re-encode or catalog correction self-heals within a month
+ * instead of blacklisting a video forever.
+ */
+export function readWatchHomeVerticalVideoIds(now = new Date()): string[] {
+  if (typeof window === "undefined") return []
+
+  try {
+    const stored = localStorage.getItem(WATCH_HOME_TV_VERTICAL_IDS_STORAGE_KEY)
+    if (!stored) return []
+
+    const data = JSON.parse(stored) as PlayedIdsStorageValue
+    if (data.month !== currentStorageMonth(now)) {
+      localStorage.removeItem(WATCH_HOME_TV_VERTICAL_IDS_STORAGE_KEY)
+      return []
+    }
+
+    return Array.isArray(data.ids)
+      ? data.ids.filter((id): id is string => typeof id === "string")
+      : []
+  } catch {
+    return []
+  }
+}
+
+export function addWatchHomeVerticalVideoId(slideId: string, now = new Date()) {
+  if (typeof window === "undefined") return
+
+  try {
+    const current = readWatchHomeVerticalVideoIds(now)
+    const ids = current.includes(slideId) ? current : [...current, slideId]
+    localStorage.setItem(
+      WATCH_HOME_TV_VERTICAL_IDS_STORAGE_KEY,
+      JSON.stringify({ month: currentStorageMonth(now), ids }),
     )
   } catch {
     // Ignore storage errors from private browsing or disabled storage.
@@ -339,11 +389,61 @@ export function loadWatchHomeCurrentVideoSession(
   }
 }
 
+export function boundedRandomIndex(length: number, random: () => number) {
+  if (length <= 0) return 0
+  const raw = Math.floor(random() * length)
+  if (!Number.isFinite(raw) || raw < 0) return 0
+  return Math.min(length - 1, raw)
+}
+
+/**
+ * Draws one playable video uniformly from every pool the server shipped, which
+ * is the widest slice of the video library available to the browser without a
+ * second round trip. Videos this browser already played are skipped until the
+ * whole set has been seen.
+ */
+export function pickRandomWatchHomeHeroVideo({
+  excludedIds,
+  playedIds,
+  pools,
+  random = Math.random,
+}: {
+  /**
+   * Hard exclusion, unlike `playedIds`: an excluded id is never drawn, even
+   * once every remaining candidate has been played. Carries the videos a
+   * previous load measured as portrait.
+   */
+  excludedIds?: readonly string[]
+  playedIds?: readonly string[]
+  pools: readonly WatchHomeCarouselPool[]
+  random?: () => number
+}): WatchHomeTvCarouselVideoSlide | null {
+  const excluded = new Set(excludedIds ?? [])
+  const byId = new Map<string, WatchHomeTvCarouselVideoSlide>()
+  pools.forEach((pool, poolIndex) => {
+    for (const video of pool.videos) {
+      if (!video.src || byId.has(video.id) || excluded.has(video.id)) continue
+      byId.set(video.id, { ...video, poolId: pool.id, poolIndex })
+    }
+  })
+
+  const candidates = [...byId.values()]
+  if (candidates.length === 0) return null
+
+  const played = new Set(playedIds ?? [])
+  const unplayed = candidates.filter((video) => !played.has(video.id))
+  const drawFrom = unplayed.length > 0 ? unplayed : candidates
+
+  return drawFrom[boundedRandomIndex(drawFrom.length, random)] ?? null
+}
+
 export function buildWatchHomeVideoQueue({
   existingVideos = [],
+  excludedIds,
   now = new Date(),
   playedIds,
   pools,
+  randomSource,
   startPoolIndex = 0,
   targetVideoCount,
   useStoredProgress = true,
@@ -351,15 +451,21 @@ export function buildWatchHomeVideoQueue({
   videos: WatchHomeTvCarouselVideoSlide[]
   nextPoolIndex: number
 } {
+  const excluded = new Set(excludedIds ?? [])
   if (targetVideoCount <= existingVideos.length || pools.length === 0) {
-    return { videos: [...existingVideos], nextPoolIndex: startPoolIndex }
+    // Filtered on the early-exit path too, so no branch of this builder can
+    // return an excluded id.
+    return {
+      videos: existingVideos.filter((video) => !excluded.has(video.id)),
+      nextPoolIndex: startPoolIndex,
+    }
   }
 
   if (existingVideos.length > 0 && existingVideos.length % 50 === 0) {
     resetWatchHomeTvPlayedIds()
   }
 
-  const videos = [...existingVideos]
+  const videos = existingVideos.filter((video) => !excluded.has(video.id))
   const seen = new Set(videos.map((video) => video.id))
   const persistentPlayed = new Set(
     playedIds ?? (useStoredProgress ? readWatchHomeTvPlayedIds(now) : []),
@@ -387,6 +493,7 @@ export function buildWatchHomeVideoQueue({
     const candidates = pool.videos.filter(
       (video) =>
         Boolean(video.src) &&
+        !excluded.has(video.id) &&
         !seen.has(video.id) &&
         !persistentPlayed.has(video.id) &&
         !poolPlayed.has(video.id),
@@ -400,11 +507,13 @@ export function buildWatchHomeVideoQueue({
       continue
     }
 
-    const offset = getWatchHomeDeterministicOffset(pool.id, candidates.length, {
-      now,
-      poolIndex,
-      totalVideosLoaded: videos.length,
-    })
+    const offset = randomSource
+      ? boundedRandomIndex(candidates.length, randomSource)
+      : getWatchHomeDeterministicOffset(pool.id, candidates.length, {
+          now,
+          poolIndex,
+          totalVideosLoaded: videos.length,
+        })
     const candidate = candidates[offset]
     if (candidate) {
       const video = {
@@ -423,217 +532,4 @@ export function buildWatchHomeVideoQueue({
   }
 
   return { videos, nextPoolIndex: poolIndex }
-}
-
-function muxStreamUrl(playbackId: string) {
-  return `https://stream.mux.com/${playbackId}.m3u8`
-}
-
-function muxPosterUrl(playbackId: string, width = 1280) {
-  return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
-}
-
-function timeRangeMatches(start: number, end: number, hour: number) {
-  if (start === end) return true
-  if (start < end) return hour >= start && hour < end
-  return hour >= start || hour < end
-}
-
-function currentEasternHour(now: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    hour12: false,
-    timeZone: "America/New_York",
-  }).formatToParts(now)
-  const hour = parts.find((part) => part.type === "hour")?.value
-  return hour ? Number(hour) : now.getHours()
-}
-
-function overlayForInsert(insert: WatchHomeMuxInsertConfig, now: Date) {
-  const overlays = insert.conditionalOverlays ?? []
-  const hour = currentEasternHour(now)
-  const selected = overlays
-    .filter((overlay) =>
-      overlay.conditions.every((condition) =>
-        condition.type === "time-range"
-          ? timeRangeMatches(condition.range.start, condition.range.end, hour)
-          : false,
-      ),
-    )
-    .sort((a, b) => b.priority - a.priority)[0]
-
-  if (!selected) {
-    return {
-      copyId: insert.copyId,
-      action: insert.action,
-    }
-  }
-
-  return {
-    copyId: selected.copyId,
-    action: selected.overlay.action ?? insert.action,
-  }
-}
-
-function readMuxSelections(): Record<string, string> {
-  if (typeof window === "undefined") return {}
-
-  try {
-    return safeParseJson<Record<string, string>>(
-      sessionStorage.getItem(WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY),
-      {},
-    )
-  } catch {
-    return {}
-  }
-}
-
-function writeMuxSelection(insertId: string, playbackId: string) {
-  if (typeof window === "undefined") return
-
-  try {
-    const selections = readMuxSelections()
-    sessionStorage.setItem(
-      WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY,
-      JSON.stringify({ ...selections, [insertId]: playbackId }),
-    )
-  } catch {
-    // Ignore storage errors from private browsing or disabled storage.
-  }
-}
-
-function getMuxSessionSeed(): string | undefined {
-  if (typeof window === "undefined") return undefined
-
-  try {
-    const existing = sessionStorage.getItem(
-      WATCH_HOME_TV_MUX_SELECTIONS_SEED_STORAGE_KEY,
-    )
-    if (existing) return existing
-    const seed =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    sessionStorage.setItem(WATCH_HOME_TV_MUX_SELECTIONS_SEED_STORAGE_KEY, seed)
-    return seed
-  } catch {
-    return undefined
-  }
-}
-
-function selectMuxPlaybackId(
-  insert: WatchHomeMuxInsertConfig,
-  options: { useStoredSelections?: boolean } = {},
-): {
-  playbackId: string | null
-  playbackIndex: number
-} {
-  const playbackIds = insert.playbackIds.filter(Boolean)
-  if (playbackIds.length === 0) return { playbackId: null, playbackIndex: -1 }
-
-  const useStoredSelections = options.useStoredSelections ?? true
-  const stored = useStoredSelections ? readMuxSelections()[insert.id] : null
-  if (stored && playbackIds.includes(stored)) {
-    return { playbackId: stored, playbackIndex: playbackIds.indexOf(stored) }
-  }
-
-  const seed = useStoredSelections ? getMuxSessionSeed() : undefined
-  const index =
-    simpleHash(`${seed ?? "watch-home"}:${insert.id}`) % playbackIds.length
-  const playbackId = playbackIds[index]
-  if (!playbackId) return { playbackId: null, playbackIndex: -1 }
-
-  if (useStoredSelections) {
-    writeMuxSelection(insert.id, playbackId)
-  }
-  return { playbackId, playbackIndex: index }
-}
-
-function muxInsertToSlide(
-  insert: WatchHomeMuxInsertConfig,
-  options: {
-    now: Date
-    prefixTitleWithDate?: boolean
-    useStoredSelections?: boolean
-  },
-): WatchHomeTvCarouselMuxSlide | null {
-  const { playbackId, playbackIndex } = selectMuxPlaybackId(insert, {
-    useStoredSelections: options.useStoredSelections,
-  })
-  if (!playbackId) return null
-
-  const overlay = overlayForInsert(insert, options.now)
-  const posterUrl = insert.posterOverride ?? muxPosterUrl(playbackId)
-
-  return {
-    kind: "mux",
-    id: `mux-${insert.id}`,
-    copyId: overlay.copyId,
-    href: null,
-    action: overlay.action,
-    secondaryAction: overlay.action ? { type: "watch-short-film" } : null,
-    posterUrl,
-    thumbnailUrl: muxPosterUrl(playbackId, 640),
-    src: muxStreamUrl(playbackId),
-    playbackId,
-    durationSeconds: insert.durationSeconds,
-    logo: insert.logo,
-    playbackIndex,
-    titleDate: options.prefixTitleWithDate ? options.now.toISOString() : null,
-  }
-}
-
-export function mergeWatchHomeMuxInserts(
-  videos: readonly WatchHomeTvCarouselVideoSlide[],
-  inserts: readonly WatchHomeMuxInsertConfig[],
-  now = new Date(),
-  options: { useStoredSelections?: boolean } = {},
-): WatchHomeTvCarouselSlide[] {
-  const enabled = inserts.filter((insert) => insert.enabled)
-  if (enabled.length === 0) return [...videos]
-
-  const sequenceStart = enabled.filter(
-    (insert) => insert.trigger.type === "sequence-start",
-  )
-  const afterCount = enabled.filter(
-    (
-      insert,
-    ): insert is WatchHomeMuxInsertConfig & {
-      trigger: { type: "after-count"; count: number }
-    } => insert.trigger.type === "after-count",
-  )
-  const inserted = new Set<string>()
-  const slides: WatchHomeTvCarouselSlide[] = []
-  const firstStartId = sequenceStart[0]?.id
-
-  for (const insert of sequenceStart) {
-    const slide = muxInsertToSlide(insert, {
-      now,
-      prefixTitleWithDate: insert.id === firstStartId,
-      useStoredSelections: options.useStoredSelections,
-    })
-    if (slide) {
-      slides.push(slide)
-      inserted.add(insert.id)
-    }
-  }
-
-  videos.forEach((video, index) => {
-    slides.push(video)
-
-    for (const insert of afterCount) {
-      if (inserted.has(insert.id)) continue
-      if (index + 1 < insert.trigger.count) continue
-      const slide = muxInsertToSlide(insert, {
-        now,
-        useStoredSelections: options.useStoredSelections,
-      })
-      if (slide) {
-        slides.push(slide)
-        inserted.add(insert.id)
-      }
-    }
-  })
-
-  return slides
 }

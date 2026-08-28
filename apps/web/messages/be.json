@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Змяніць мову аўдыё",
     "home": "Галоўная JesusFilm",
     "closeSearch": "Закрыць пошук",
-    "submitSearch": "Шукаць"
+    "submitSearch": "Шукаць",
+    "library": "Бібліятэка"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і прагляд відэа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Калекцыі",
     "subtitlesOnly": "Толькі субцітры",
+    "backToTop": "Уверх",
     "newlyAdded": "Нядаўна дададзеныя",
     "newVideosTitle": "Новыя хрысціянскія відэа на {language}",
     "newestFirst": "Спачатку найноўшыя",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Асобныя відэа",
     "videosFromCollection": "Відэа з {collection}.",
     "standaloneDescription": "Асобныя відэа на гэтай мове.",
-    "openCollection": "Адкрыць калекцыю"
+    "openCollection": "Адкрыць калекцыю",
+    "filters": "Фільтры",
+    "filterLength": "Працягласць",
+    "filterLength_under5": "Менш за 5 хв",
+    "filterLength_5to10": "5-10 хв",
+    "filterLength_10to30": "10-30 хв",
+    "filterLength_over30": "Больш за 30 хв",
+    "filterType": "Тып",
+    "clearFilters": "Скінуць фільтры",
+    "filterResults": "Паказана {count} з {total}",
+    "noFilterResults": "Няма відэа, якія адпавядаюць гэтым фільтрам. Спрабуйце зняць адзін.",
+    "filterAdded": "Дадана",
+    "filterAdded_60d": "Останнія 60 дзён",
+    "filterAdded_6m": "Останнія 6 месяцаў",
+    "filterAdded_12m": "Останнія 12 месяцаў"
   },
   "WatchHome": {
     "pageTitle": "Прагляд Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Дзеянні для старонкі не знойдзена",
     "backToWatch": "Назад да прагляду",
     "browseVideos": "Праглядзець відэа"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Прагледзець кароткаметражны фільм",
-    "actions": {
-      "joinUs": "Далучайцеся да нас",
-      "shareMission": "Удзельнічайце ў нашай місіі"
-    },
-    "welcomeStart": {
-      "label": "Вера і Пісанне",
-      "title": "Сённяшнія відэавыбары",
-      "description": "Відэакантэнт з нашай бібліятэкі пра веру, каб натхніць, кінуць выклік і заахвоціць да разважанняў."
-    },
-    "welcomeMorning": {
-      "label": "Ранішняе натхненне",
-      "title": "Добрай раніцы! Чакаюць біблейскія моманты на сёння.",
-      "description": "Пачніце дзень з натхняльных біблейскіх момантаў, створаных, каб узняць настрой і натхніць ваш дух."
-    },
-    "welcomeAfternoon": {
-      "label": "Дзённае натхненне",
-      "title": "Добры дзень! Біблейскія моманты на ваш дзень.",
-      "description": "Натхняльны біблейскі кантэнт, які ідэальна падыходзіць для дзённага перапынку або працягнення натхнення."
-    },
-    "welcomeEvening": {
-      "label": "Вячэрняе натхненне",
-      "title": "Добры вечар! Супакойцеся з біблейскімі момантамі.",
-      "description": "Спакойныя біблейскія моманты, якія дапамогуць вам паразважаць і знайсці суцяшэнне ў канцы дня."
-    },
-    "joinUs": {
-      "label": "Далучайцеся да нас",
-      "title": "Мільярды шукаюць",
-      "description": "Жніво ўжо тут. Далучайцеся да нас, калі мы дзелімся Евангеллем з светам праз лічбавыя медыя."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Пойдзем разам",
-      "title": "Расказваем гісторыю Езуса разам",
-      "description": "Каб яны маглі чуць і бачыць любоў Езуса на сваёй мове там, дзе яны ёсць."
-    }
   },
   "VideoRecommendations": {
     "match": "Супадзенне: {percent}%",

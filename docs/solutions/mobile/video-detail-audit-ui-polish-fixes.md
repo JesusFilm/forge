@@ -2,7 +2,7 @@
 title: "Video Detail Audit — UI Polish Fixes"
 category: "mobile"
 date: "2026-04-08"
-last_updated: "2026-04-09"
+last_updated: "2026-08-28"
 module: "apps/mobile"
 problem_type: "ui-bugs"
 severity: "medium"
@@ -41,6 +41,7 @@ related:
   - "docs/solutions/mobile/typography-token-scope-shared-vs-purpose-specific.md"
   - "docs/solutions/mobile/decorative-icon-view-text-pattern.md"
   - "docs/solutions/best-practices/shared-stylesheet-extraction-mobile-v2-20260409.md"
+  - "docs/solutions/logic-errors/fit-budget-render-contract-numberoflines-zero-sentinel.md"
 ---
 
 ## Problem
@@ -193,6 +194,15 @@ In addition to the round 1 prevention items:
 7. **Never use Unicode emoji literals for UI icons in React Native.** Use `@expo/vector-icons` (Ionicons, MaterialIcons, etc.) — they render identically on both platforms. The `apps/mobile` (deprecated) `View+Text` workaround is superseded by Ionicons in mobile-v2.
 8. **Use a single color token for a logical icon group.** All interactive header icons should share `ACCENT`. Mixing semantic tokens across siblings signals a styling error.
 9. **Avoid `numberOfLines` on content that must not be truncated.** Prefer `overflow: "hidden"` on the container if visual clipping is the actual constraint.
+
+   > **Superseded for `BibleQuotesCarouselRenderer` on 2026-08-28.** This rule
+   > holds only while the container can grow. That card is now a fixed square
+   > with bottom-aligned content. `overflow: "hidden"` therefore clips the top
+   > of the stack and removes the reference. The card now gives every region a
+   > `numberOfLines` from a shared line budget. See
+   > `docs/solutions/logic-errors/fit-budget-render-contract-numberoflines-zero-sentinel.md`,
+   > which also records why a budget of `0` must never reach the prop.
+
 10. **Always test icon/typography changes on a physical Android device or emulator.** iOS renders many emoji as monochrome by default, masking platform inconsistencies.
 11. **Lint for duplicate object keys.** Enable ESLint `no-dupe-keys` to catch static duplicates in `StyleSheet.create` calls at build time.
 

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
     "closeSearch": "Serrá search",
-    "submitSearch": "Ekka"
+    "submitSearch": "Ekka",
+    "library": "Bibliotekan"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Koleksión siha",
     "subtitlesOnly": "Subtítulos lang",
+    "backToTop": "Hånao tåtte gi hilo'",
     "newlyAdded": "Ma'añadi' nuebu",
     "newVideosTitle": "Bago na Christian videos gi {language}",
     "newestFirst": "I pinakanuebu sa'ot",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siha na ha'ågu",
     "videosFromCollection": "Video siha ginen {collection}.",
     "standaloneDescription": "Video siha na ha'ågu gi este na lenguahe.",
-    "openCollection": "Abri koleksión"
+    "openCollection": "Abri koleksión",
+    "filters": "Fifiltro",
+    "filterLength": "Anaku",
+    "filterLength_under5": "Menos ki 5 na minutu",
+    "filterLength_5to10": "5-10 na minutu",
+    "filterLength_10to30": "10-30 na minutu",
+    "filterLength_over30": "Mås ki 30 na minutu",
+    "filterType": "Klasi",
+    "clearFilters": "Na'suha i fifiltro",
+    "filterResults": "Manafanhanao {count} gi {total}",
+    "noFilterResults": "Taya' video ni parehu yan este siha na fifiltro. Prueba na un na'suha unu.",
+    "filterAdded": "Manaña'i",
+    "filterAdded_60d": "Ultimo 60 dias",
+    "filterAdded_6m": "Ultimo 6 mes",
+    "filterAdded_12m": "Ultimo 12 mes"
   },
   "WatchHome": {
     "pageTitle": "Atan gi Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Aksyon para page ma'fandiskubre",
     "backToWatch": "Bumalik gi Watch",
     "browseVideos": "Guya video siha"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Atan i ma'ikli' na pelikula",
-    "actions": {
-      "joinUs": "Mångge' guiya ham",
-      "shareMission": "Isparti i misión-måme"
-    },
-    "welcomeStart": {
-      "label": "P'å'na yan Scripture",
-      "title": "I napogo' na video siha para hoy",
-      "description": "Video content ginen i library-måme na nakå'halom i p'uma'å'ni, ma'leffok, yan ma'na'isisok para i refleksión."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasión gi mañåna",
-      "title": "Buenas días! I Bible moments para hoy guaha.",
-      "description": "Sugod i día-mu yan ma'añonggue na Bible moments na ma'designa para ma'inspira yan na'ånnok i espiritu-mu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasión gi harriåga",
-      "title": "Buenas tardes! Mga Bible moments para i día-mu.",
-      "description": "Ma'añonggue na Bible content na akma para i rest-mu gi harriåga pat para umula' mas inspirasión."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasión gi pupuenge",
-      "title": "Buenas puenge! Pumehla yan Bible moments.",
-      "description": "Mamåyo' na Bible moments para un makapausa yan makahunong cómodo habang matatapos i día-mu."
-    },
-    "joinUs": {
-      "label": "Mångge' guiya ham",
-      "title": "Bilyones na taotao man-ga'ga' i katnan",
-      "description": "Guaha na i pag-ani. Mångge' guiya ham habang ta'ätaya i ebanghelyo gi sanlibutan gamit digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Håfå ije yan guiya ham",
-      "title": "Na'i i Istoria ni Jesus, yan guiya ham",
-      "description": "Påra siña ti guaha i taotao siha na dumingge' yan manaitsi i gugua ni Jesus gi i lenguahe-ña mismo gi anda ya guaha siya."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% na parehu",

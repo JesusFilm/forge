@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tshintsha ulwimi lweaudio",
     "home": "Ikhaya leJesusFilm",
     "closeSearch": "Vala ukukhangela",
-    "submitSearch": "Khangela"
+    "submitSearch": "Khangela",
+    "library": "Ithala leencwadi"
   },
   "SearchOverlay": {
     "dialogLabel": "Khangela uze ubhrawuze iividiyo",
@@ -467,6 +468,7 @@
     "sports": "Imidlalo",
     "collections": "Iingqokelela",
     "subtitlesOnly": "IMibhalo engezantsi kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Esanda kongezwa",
     "newVideosTitle": "Iividiyo zamaKristu ezintsha ngesi {language}",
     "newestFirst": "Ezintsha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Iividiyo ezizimeleyo",
     "videosFromCollection": "Iividiyo ezivela ku {collection}.",
     "standaloneDescription": "Iividiyo ezizimeleyo kulo lwimi.",
-    "openCollection": "Vula ingqokelela"
+    "openCollection": "Vula ingqokelela",
+    "filters": "Izihluzi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphantsi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eli-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engama-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Cima izihluzi",
+    "filterResults": "{count} kwe-{total} eboniswayo",
+    "noFilterResults": "Akukho ividiyo ihambelana nezi zihluzi. Zama ukususa esinye.",
+    "filterAdded": "Kongezwe",
+    "filterAdded_60d": "Iintsuku ezingama-60 ezidlulileyo",
+    "filterAdded_6m": "Iinyanga ezi-6 ezidlulileyo",
+    "filterAdded_12m": "Iinyanga ezi-12 ezidlulileyo"
   },
   "WatchHome": {
     "pageTitle": "Ukubukela kweJesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Izenzo zephepha ezingafunyanwanga",
     "backToWatch": "Buyela kuBukela",
     "browseVideos": "Bhrawuza iividiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bukela ifilimu emfutshane",
-    "actions": {
-      "joinUs": "Sijoyine",
-      "shareMission": "Yiba nenxaxheba kwimishini yethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo neZibhalo",
-      "title": "Iividiyo esizikhethileyo namhlanje",
-      "description": "Umxholo wevidiyo ojolise kukholo ovela kwithala lethu ukuze ukhuthaze, ucele umngeni, uze uvuse ukucamngca."
-    },
-    "welcomeMorning": {
-      "label": "Inkuthazo yasekuseni",
-      "title": "Mholo kusasa! Nantsi imizuzu yeBhayibhile yanamhlanje.",
-      "description": "Qala usuku lwakho ngemizuzu yeBhayibhile ekhuthazayo eyilelwe ukukukhuthaza nokuphakamisa umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Inkuthazo yasemva kwemini",
-      "title": "Mholo emva kwemini! Imizuzu yeBhayibhile yosuku lwakho.",
-      "description": "Umxholo weBhayibhile okhuthazayo ofanelekile kwikhefu lakho lasemva kwemini okanye ukuqhubeka nokukhuthazeka."
-    },
-    "welcomeEvening": {
-      "label": "Inkuthazo yangokuhlwa",
-      "title": "Mholo ngokuhlwa! Phola ngemizuzu yeBhayibhile.",
-      "description": "Imizuzu yeBhayibhile enoxolo ekunceda ucamngce uze ufumane intuthuzelo njengokuba usuku lwakho lusondela esiphelweni."
-    },
-    "joinUs": {
-      "label": "Sijoyine",
-      "title": "Iibhiliyoni ziyafuna",
-      "description": "Isivuno silapha. Sijoyine xa sisasaza iindaba ezilungileyo kwihlabathi usebenzisa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Masihambe kunye",
-      "title": "Ukubalisa ibali likaYesu, kunye",
-      "description": "Ukuze beve baze babone uthando lukaYesu ngolwimi lwabo kanye apho bakhoyo."
-    }
   },
   "VideoRecommendations": {
     "match": "Ihambelana nge-{percent}%",

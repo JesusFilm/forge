@@ -308,6 +308,35 @@ describe("Granted malformed deep link (feat-399)", () => {
     expect(window.location.pathname).toBe("/")
   })
 
+  it("feat-402: the pane's CTA is a client-side button that releases the pane and keeps the hydrated rail", async () => {
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    renderSeeker(() => [], {
+      listFor: () => ({ threads: [A, B] }),
+      deepLinkUnresolvable: true,
+    })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+    await waitFor(() => expect(navRowTitles()).toContain("Alpha thread"))
+
+    // The ELEMENT discriminates under jsdom (an anchor never navigates
+    // there): a granted shell gets a BUTTON with no href, never the anchor.
+    expect(
+      screen.queryByRole("link", { name: "Start new conversation" }),
+    ).toBeNull()
+    const cta = screen.getByRole("button", { name: "Start new conversation" })
+    expect(cta).not.toHaveAttribute("href")
+
+    await user.click(cta)
+
+    // Pane released client-side; the hydrated rows survived (no reload).
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+    expect(navRowTitles()).toEqual(["Alpha thread", "Beta thread"])
+  })
+
   it("RELEASES the pane when the user selects a rail row", async () => {
     window.history.replaceState(null, "", "/c/not-a-uuid")
     renderSeeker(() => [], {
@@ -454,6 +483,48 @@ describe("Client-side escalation (KTD5)", () => {
     )
     // The full denial pane, not chat.tsx's in-pane state: NO composer at all.
     expect(screen.queryByRole("textbox")).toBeNull()
+    // feat-402: this is a GRANTED shell, so the pane's CTA is the same
+    // client-side button as the rail's New — never the KTD6 reload anchor.
+    expect(
+      screen.queryByRole("link", { name: "Start new conversation" }),
+    ).toBeNull()
+    const cta = screen.getByRole("button", { name: "Start new conversation" })
+    expect(cta).not.toHaveAttribute("href")
+
+    // Click-and-release on THIS arm too: it releases through a different
+    // mechanism than the unresolvable pane — newConversation() moves activeId
+    // off the dead adopted row, so the escalation predicate goes false.
+    await user.click(cta)
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+  })
+
+  it("feat-402 belt: a flag-OFF escalation pane keeps the reload anchor", async () => {
+    // SYNTHETIC prop pair (2026-08-28, feat-402): deepLinkShell
+    // (lib/deep-link-entry.ts) never emits it; only the non-gate-gated
+    // maybeStartReplay reaches it. Pins onStartNew on grantedShell.
+    view.unmount()
+    const fetchMock = vi.fn().mockImplementation((url) => {
+      if (String(url) === "/api/history/thread") {
+        return Promise.resolve(jsonRes(404, { reason: "thread_not_found" }))
+      }
+      return Promise.resolve(jsonRes(200, { threads: [], hasMore: false }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    renderShell(false, { initialConversationId: DEEP })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+    // Not granted → the PANE keeps the KTD6 reload anchor (the rail's own
+    // New still keys on deniedShell; this pins the pane's stricter belt).
+    expect(
+      screen.getByRole("link", { name: "Start new conversation" }),
+    ).toHaveAttribute("href", "/")
+    expect(
+      screen.queryByRole("button", { name: "Start new conversation" }),
+    ).toBeNull()
   })
 
   it("keeps today's in-pane state (disabled composer) for a rail-selected OTHER conversation", async () => {

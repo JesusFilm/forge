@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ଅଡିଓ ଭାଷା ବଦଳାନ୍ତୁ",
     "home": "JesusFilm ହୋମ୍",
     "closeSearch": "ସନ୍ଧାନ ବନ୍ଦ କରନ୍ତୁ",
-    "submitSearch": "ଖୋଜନ୍ତୁ"
+    "submitSearch": "ଖୋଜନ୍ତୁ",
+    "library": "ଲାଇବ୍ରେରୀ"
   },
   "SearchOverlay": {
     "dialogLabel": "ଭିଡିଓଗୁଡ଼ିକୁ ଖୋଜନ୍ତୁ ଓ ବ୍ରାଉଜ୍ କରନ୍ତୁ",
@@ -467,6 +468,7 @@
     "sports": "ଖେଳ",
     "collections": "ସଙ୍ଗ୍ରହଗୁଡ଼ିକ",
     "subtitlesOnly": "କେବଳ ସବ୍‌ଟାଇଟଲ୍",
+    "backToTop": "ଉପରକୁ ଫେରନ୍ତୁ",
     "newlyAdded": "ନୂଆ ଯୋଡ଼ାଯାଇଛି",
     "newVideosTitle": "{language}ରେ ନୂଆ ଖ୍ରୀଷ୍ଟିୟ ଭିଡିଓ",
     "newestFirst": "ସବୁଠାରୁ ନୂଆ ପ୍ରଥମେ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ସ୍ୱତନ୍ତ୍ର ଭିଡିଓ",
     "videosFromCollection": "{collection}ରୁ ଭିଡିଓ।",
     "standaloneDescription": "ଏହି ଭାଷାରେ ସ୍ୱତନ୍ତ୍ର ଭିଡିଓଗୁଡ଼ିକ।",
-    "openCollection": "ସଙ୍ଗ୍ରହ ଖୋଲନ୍ତୁ"
+    "openCollection": "ସଙ୍ଗ୍ରହ ଖୋଲନ୍ତୁ",
+    "filters": "ଫିଲ୍ଟର",
+    "filterLength": "ଅବଧି",
+    "filterLength_under5": "5 ମିନିଟ୍ ତଳେ",
+    "filterLength_5to10": "5-10 ମିନିଟ୍",
+    "filterLength_10to30": "10-30 ମିନିଟ୍",
+    "filterLength_over30": "30 ମିନିଟ୍ ଉପରେ",
+    "filterType": "ପ୍ରକାର",
+    "clearFilters": "ଫିଲ୍ଟର ସଫା କରନ୍ତୁ",
+    "filterResults": "{total} ମଧ୍ୟରୁ {count} ଦେଖାଯାଉଛି",
+    "noFilterResults": "ଏହି ଫିଲ୍ଟରଗୁଡ଼ିକ ସହ କୌଣସି ଭିଡିଓ ମେଳ ହେଉନାହିଁ। ଏକ ହଟାଇ ଦେଖନ୍ତୁ।",
+    "filterAdded": "ଯୋଡ଼ାଗଲା",
+    "filterAdded_60d": "ଗତ 60 ଦିନ",
+    "filterAdded_6m": "ଗତ 6 ମାସ",
+    "filterAdded_12m": "ଗତ 12 ମାସ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ଓଚ୍",
@@ -646,44 +662,6 @@
     "actionsLabel": "ପେଜ୍ ମିଳିଲା ନାହିଁ କାର୍ଯ୍ୟଗୁଡ଼ିକ",
     "backToWatch": "ୱାଚ୍‌କୁ ଫେରନ୍ତୁ",
     "browseVideos": "ଭିଡିଓଗୁଡ଼ିକୁ ବ୍ରାଉଜ୍ କରନ୍ତୁ"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ସ୍ୱଳ୍ପ ଚଳଚ୍ଚିତ୍ର ଦେଖନ୍ତୁ",
-    "actions": {
-      "joinUs": "ଆମ ସହ ଯୋଗଦିଅନ୍ତୁ",
-      "shareMission": "ଆମର ମିଶନ୍‌ରେ ଭାଗୀଦାର ହୁଅନ୍ତୁ"
-    },
-    "welcomeStart": {
-      "label": "ବିଶ୍ୱାସ ଓ ଶାସ୍ତ୍ର",
-      "title": "ଆଜିର ଭିଡିଓ ପସନ୍ଦଗୁଡ଼ିକ",
-      "description": "ଆମର ଲାଇବ୍ରେରୀରୁ ବିଶ୍ୱାସ-କେନ୍ଦ୍ରିକ ଭିଡିଓ ସାମଗ୍ରୀ, ଯାହା ପ୍ରେରଣା ଦେବା, ଚ୍ୟାଲେଞ୍ଜ କରିବା, ଏବଂ ଚିନ୍ତନ ଜଗାଇବା ପାଇଁ ତିଆରି।"
-    },
-    "welcomeMorning": {
-      "label": "ପ୍ରଭାତୀ ପ୍ରେରଣା",
-      "title": "ସୁପ୍ରଭାତ! ଆଜିର ବାଇବେଲ୍ ମୁହୂର୍ତ୍ତଗୁଡ଼ିକ ଆପଣଙ୍କୁ ଅପେକ୍ଷା କରୁଛି।",
-      "description": "ପ୍ରେରଣାଦାୟକ ବାଇବେଲ୍ ମୁହୂର୍ତ୍ତଗୁଡ଼ିକ ସହିତ ଆପଣଙ୍କ ଦିନ ଆରମ୍ଭ କରନ୍ତୁ, ଯାହା ଉତ୍ସାହ ଓ ଆତ୍ମାକୁ ଉନ୍ନତ କରିବା ପାଇଁ ତିଆରି।"
-    },
-    "welcomeAfternoon": {
-      "label": "ଅପରାହ୍ନ ପ୍ରେରଣା",
-      "title": "ସୁଭ ଅପରାହ୍ନ! ଆପଣଙ୍କ ଦିନ ପାଇଁ ବାଇବେଲ୍ ମୁହୂର୍ତ୍ତଗୁଡ଼ିକ।",
-      "description": "ଆପଣଙ୍କ ଅପରାହ୍ନ ବିରତି ପାଇଁ କିମ୍ବା ଅବିରତ ପ୍ରେରଣା ପାଇଁ ଉପଯୁକ୍ତ ପ୍ରେରଣାଦାୟକ ବାଇବେଲ୍ ସାମଗ୍ରୀ।"
-    },
-    "welcomeEvening": {
-      "label": "ସନ୍ଧ୍ୟା ପ୍ରେରଣା",
-      "title": "ସୁସନ୍ଧ୍ୟା! ବାଇବେଲ୍ ମୁହୂର୍ତ୍ତଗୁଡ଼ିକ ସହିତ ଆରାମ କରନ୍ତୁ।",
-      "description": "ଦିନ ଶେଷ ହେବା ସମୟରେ ଚିନ୍ତନ କରିବା ଓ ସାନ୍ତ୍ୱନା ପାଇବାରେ ସହାୟକ ଶାନ୍ତ ବାଇବେଲ୍ ମୁହୂର୍ତ୍ତଗୁଡ଼ିକ।"
-    },
-    "joinUs": {
-      "label": "ଆମ ସହ ଯୋଗଦିଅନ୍ତୁ",
-      "title": "କୋଟିକୋଟି ଲୋକ ଖୋଜୁଛନ୍ତି",
-      "description": "ଫସଲ ପକିଯାଇଛି। ଡିଜିଟାଲ୍ ମିଡିଆ ବ୍ୟବହାର କରି ସମଗ୍ର ବିଶ୍ୱ ସହ ସୁସମାଚାର ଭାଗ କରିବାରେ ଆମ ସହ ଯୋଗଦିଅନ୍ତୁ।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ଚଳନ୍ତୁ, ଏକାସାଥିରେ",
-      "title": "ଏକାସାଥିରେ Jesusଙ୍କ କାହାଣୀ କୁହିବା",
-      "description": "ଯାହାଦ୍ୱାରା ସେମାନେ ନିଜ ଭାଷାରେ, ନିଜ ଥିବା ସ୍ଥାନରେ, Jesusଙ୍କ ପ୍ରେମକୁ ଶୁଣି ଓ ଦେଖିପାରିବେ।"
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ମେଳ",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Yí èdè ohun padà",
     "home": "Ojú-ìbẹ̀rẹ̀ JesusFilm",
     "closeSearch": "Pàdé ìwádìí",
-    "submitSearch": "Wa"
+    "submitSearch": "Wa",
+    "library": "Ìkàwé"
   },
   "SearchOverlay": {
     "dialogLabel": "Wa kí o sì lọ kiri àwọn fídíò",
@@ -467,6 +468,7 @@
     "sports": "Eré ìdárayá",
     "collections": "Àkójọpọ̀",
     "subtitlesOnly": "Àwọn ìtúpalẹ̀ ọrọ̀ nìkan",
+    "backToTop": "Padà sí orí",
     "newlyAdded": "Tó ṣẹ̀ṣẹ̀ fi kún",
     "newVideosTitle": "Àwọn fídíò Kristẹni tuntun ní {language}",
     "newestFirst": "Tuntun jù lọ kọ́kọ́",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Àwọn fídíò aládàáyébá",
     "videosFromCollection": "Àwọn fídíò látinú {collection}.",
     "standaloneDescription": "Àwọn fídíò aládàáyébá ní èdè yìí.",
-    "openCollection": "Ṣí àkójọpọ̀"
+    "openCollection": "Ṣí àkójọpọ̀",
+    "filters": "Àwọn àṣẹ̀",
+    "filterLength": "Gígùn",
+    "filterLength_under5": "Kéré sí ìṣẹ́jú 5",
+    "filterLength_5to10": "Ìṣẹ́jú 5-10",
+    "filterLength_10to30": "Ìṣẹ́jú 10-30",
+    "filterLength_over30": "Ju ìṣẹ́jú 30",
+    "filterType": "Irú",
+    "clearFilters": "Nu àwọn àṣẹ̀ kúrò",
+    "filterResults": "{count} nínú {total} ni a fihàn",
+    "noFilterResults": "Kò sí fídíò tí ó bá àwọn àṣẹ̀ wọ̀nyí. Gbìyànjú láti mú ọ̀kan kúrò.",
+    "filterAdded": "Fikun",
+    "filterAdded_60d": "Ọjọ́ 60 tí ó kọjá",
+    "filterAdded_6m": "Oṣù 6 tí ó kọjá",
+    "filterAdded_12m": "Oṣù 12 tí ó kọjá"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Wo",
@@ -646,44 +662,6 @@
     "actionsLabel": "Àwọn ìṣe fún ojúewé tí a kò rí",
     "backToWatch": "Padà sí Watch",
     "browseVideos": "Lọ kiri àwọn fídíò"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Wo Fídíò Kúkúrú",
-    "actions": {
-      "joinUs": "Darapọ̀ mọ́ wa",
-      "shareMission": "Pín nínú Iṣẹ́ Ìránṣẹ́ Wa"
-    },
-    "welcomeStart": {
-      "label": "Ìgbàgbọ́ àti Ìwé Mímọ́",
-      "title": "Àwọn Fídíò Tó Yà Yàn Lónìí",
-      "description": "Àkóónú fídíò tó dojú kọ ìgbàgbọ́ láti inú ilé-ìkànsí wa láti fún ọ ní ìmísí, láti pè ọ́ ní ìdánwò, àti láti dá ìrònú sílẹ̀."
-    },
-    "welcomeMorning": {
-      "label": "Ìmísí Òwúrọ̀",
-      "title": "Ẹ kú àárọ̀! Àwọn Ohun Ìṣẹ̀lẹ̀ Bíbélì Ọjọ́ Yìí N dúró De Ọ.",
-      "description": "Bẹ̀rẹ̀ ọjọ́ rẹ pẹ̀lú àwọn ohun ìṣẹ̀lẹ̀ Bíbélì tó ń fún ní ìṣírí, tí a ṣe láti fún ẹ ní ìmísí àti láti gbé ẹ̀mí rẹ sókè."
-    },
-    "welcomeAfternoon": {
-      "label": "Ìmísí Ọ̀sán",
-      "title": "Ẹ kú ọ̀sán! Àwọn Ohun Ìṣẹ̀lẹ̀ Bíbélì Fún Ọjọ́ Rẹ.",
-      "description": "Àkóónú Bíbélì tó ń fún ní ìṣírí, tó dára fún ìsinmi ọ̀sán rẹ tàbí fún ìmísí tó ń bá a lọ."
-    },
-    "welcomeEvening": {
-      "label": "Ìmísí Alẹ́",
-      "title": "Ẹ kú alẹ́! Mú Ara Rẹ Ní Ìsinmi Pẹ̀lú Àwọn Ohun Ìṣẹ̀lẹ̀ Bíbélì.",
-      "description": "Àwọn ohun ìṣẹ̀lẹ̀ Bíbélì tó ní àlàáfíà láti ràn ọ́ lọ́wọ́ láti ronú jinlẹ̀, kí o sì rí ìtùnú bí ọjọ́ rẹ ṣe ń parí."
-    },
-    "joinUs": {
-      "label": "Darapọ̀ mọ́ wa",
-      "title": "Àwọn ọkẹ́ àìmọye ń wá",
-      "description": "Ìkórè wà níbí. Darapọ̀ mọ́ wa bí a ṣe ń pín ìhìnrere káàkiri ayé pẹ̀lú media onínọmbà."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ẹ jẹ́ ká lọ pọ̀",
-      "title": "Ṣíṣàlàyé Ìtàn Jésù, Papọ̀",
-      "description": "Kí wọ́n lè gbọ́ àti rí ìfẹ́ Jésù ní èdè tiwọn, níbìkan náà tí wọ́n wà."
-    }
   },
   "VideoRecommendations": {
     "match": "Ìbámu {percent}%",

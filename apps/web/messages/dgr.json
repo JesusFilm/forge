@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language nàtł’ı̨",
     "home": "JesusFilm kǫ̀",
     "closeSearch": "Search nàahdee",
-    "submitSearch": "Search hòɂǫ"
+    "submitSearch": "Search hòɂǫ",
+    "library": "Enı̨htł'è kǫ̀"
   },
   "SearchOverlay": {
     "dialogLabel": "Video łè search hı̨la, weghàda",
@@ -467,6 +468,7 @@
     "sports": "Sports eghàlats’èeda łè",
     "collections": "Collection łè",
     "subtitlesOnly": "Subtitles sı̀ı̀ t’ą̀a",
+    "backToTop": "Yaghǫ̀ǫ nàwo",
     "newlyAdded": "Łahdàa gı̨la",
     "newVideosTitle": "{language}: Christian video łahdàa łè",
     "newestFirst": "T’àa łahdàa sı̀ı̀ nàtsǫǫ̀",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video ede t’alàa łè",
     "videosFromCollection": "{collection} gots’ǫ̀ video łè.",
     "standaloneDescription": "Dı̀ı̀ yatıı̀ k’e video ede t’alàa łè.",
-    "openCollection": "Collection open hòɂǫ"
+    "openCollection": "Collection open hòɂǫ",
+    "filters": "Wets'ǫ̀ eghàlats'eeda",
+    "filterLength": "Nezı̨",
+    "filterLength_under5": "Sìı 5 dzę̀ hòt'a",
+    "filterLength_5to10": "5-10 dzę̀",
+    "filterLength_10to30": "10-30 dzę̀",
+    "filterLength_over30": "30 dzę̀ hazǫǫ̀",
+    "filterType": "Wek'èezhǫ",
+    "clearFilters": "Wets'ǫ̀ eghàlats'eeda nàgedı",
+    "filterResults": "{total} gots'ǫ̀ {count} wek'èahsǫ",
+    "noFilterResults": "Eyıts'ǫ wets'ǫ̀ eghàlats'eeda gha video hazǫǫ̀ ìle. Įłè nàgedı.",
+    "filterAdded": "Kǫ̀ta ghǫ",
+    "filterAdded_60d": "Dzę̀ 60 wets'ǫ̀",
+    "filterAdded_6m": "Sà 6 wets'ǫ̀",
+    "filterAdded_12m": "Sà 12 wets'ǫ̀"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project eghàeda",
@@ -646,44 +662,6 @@
     "actionsLabel": "Page nàgı̨ı̨t’į ghà asìı̀ hı̨la",
     "backToWatch": "Watch k’e nàke gòɂǫ",
     "browseVideos": "Video łè weghàda"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Short Film eghàeda",
-    "actions": {
-      "joinUs": "Nàke nàgı̨ı̨t’į",
-      "shareMission": "Dèè t’àa mission ełàa gòɂǫ"
-    },
-    "welcomeStart": {
-      "label": "Yek’eè̀dı eyits’ǫ Bible yatıı̀",
-      "title": "Dı̀ı̀ dzàa video t’àa gı̀lı̨",
-      "description": "Library gots’ǫ̀ faith-centered video łè, inspire ha, challenge ha, eyits’ǫ nàowo hı̨la ha."
-    },
-    "welcomeMorning": {
-      "label": "Sahdèè nàowo hı̨la",
-      "title": "Good Morning! Dı̀ı̀ dzàa Bible moments gı̀lı̨.",
-      "description": "Dzàa nàtsǫǫ̀ k’e Bible moments łè, nàowo hı̨la eyits’ǫ spirit t’àa hòɂǫ ha."
-    },
-    "welcomeAfternoon": {
-      "label": "Dzàa edzàa k’e nàowo hı̨la",
-      "title": "Good Afternoon! Dı̀ı̀ dzàa Bible moments łè.",
-      "description": "Bible content łè nàowo hı̨la ha, afternoon break ghà ełexèè, kǫ inspire ha."
-    },
-    "welcomeEvening": {
-      "label": "Xèhts’ǫ̀ nàowo hı̨la",
-      "title": "Good Evening! Bible moments k’e eghàeda.",
-      "description": "Bible moments łè, nàowo hı̨la eyits’ǫ comfort nàke ha, dzàa gots’ǫ̀ end k’e."
-    },
-    "joinUs": {
-      "label": "Nàke nàgı̨ı̨t’į",
-      "title": "Billions search adlè",
-      "description": "Harvest nàt’è. Digital media k’e gospel nàts’ǫ̀, nàke nàgı̨ı̨t’į."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ełexèè hòɂǫ",
-      "title": "Jesus t’àa story ełàa gòɂǫ",
-      "description": "Dǫ wɔnàhts’ǫ̀ Jesus weghà love, nı̨ yatıı̀ k’e, nı̨ hı̨t’è gots’ǫ̀, eghǫ gòɂǫ ha."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% ełàa gı̀lı̨",

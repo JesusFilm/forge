@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "home": "Tsamba loyambira la JesusFilm",
     "closeSearch": "Tsekani kusaka",
-    "submitSearch": "Sakani"
+    "submitSearch": "Sakani",
+    "library": "Laibulale"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Masewera",
     "collections": "Magulu",
     "subtitlesOnly": "Malembalo okha",
+    "backToTop": "Bwererani pamwamba",
     "newlyAdded": "Zangowonjezedwa",
     "newVideosTitle": "Mavidiyo achikhristu atsopano mu {language}",
     "newestFirst": "Zatsopano kaye",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavidiyo odziyimira okha",
     "videosFromCollection": "Mavidiyo kuchokera ku {collection}.",
     "standaloneDescription": "Mavidiyo odziyimira okha mu chinenerochi.",
-    "openCollection": "Tsegulani gulu"
+    "openCollection": "Tsegulani gulu",
+    "filters": "Zosefera",
+    "filterLength": "Utali",
+    "filterLength_under5": "Osachepera mphindi 5",
+    "filterLength_5to10": "Mphindi 5-10",
+    "filterLength_10to30": "Mphindi 10-30",
+    "filterLength_over30": "Kupitirira mphindi 30",
+    "filterType": "Mtundu",
+    "clearFilters": "Chotsani zosefera",
+    "filterResults": "{count} mwa {total} zikuwonetsedwa",
+    "noFilterResults": "Palibe kanema wogwirizana ndi zosefera izi. Yesani kuchotsa imodzi.",
+    "filterAdded": "Zawonjezedwa",
+    "filterAdded_60d": "Masiku 60 apitawo",
+    "filterAdded_6m": "Miyezi 6 yapitayo",
+    "filterAdded_12m": "Miyezi 12 yapitayo"
   },
   "WatchHome": {
     "pageTitle": "Onerani pa Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Zochita za tsamba silinapezeke",
     "backToWatch": "Kubwerera ku Watch",
     "browseVideos": "Fufuzani mavidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Onerani filimu yachidule",
-    "actions": {
-      "joinUs": "Lowani nafe",
-      "shareMission": "Gawani mu utumiki wathu"
-    },
-    "welcomeStart": {
-      "label": "Chikhulupiriro ndi Malemba",
-      "title": "Mavidiyo osankhidwa lero",
-      "description": "Zamavidiyo zochokera mu laibulale yathu zokhudza chikhulupiriro, zokulimbikitsani, kukutsutsani, ndi kukupatsani nthawi yoganizira."
-    },
-    "welcomeMorning": {
-      "label": "Kulimbikitsidwa kwa m'mawa",
-      "title": "M'mawa wabwino! Mphindi za Baibulo za lero zikukudikirirani.",
-      "description": "Yambani tsiku lanu ndi mphindi zolimbikitsa za Baibulo zokonzedwa kukulimbikitsani ndi kukweza mzimu wanu."
-    },
-    "welcomeAfternoon": {
-      "label": "Kulimbikitsidwa kwa masana",
-      "title": "Masana abwino! Mphindi za Baibulo za tsiku lanu.",
-      "description": "Zamkati za Baibulo zolimbikitsa, zoyenera kupuma masana kapena kupitiriza kulimbikitsidwa."
-    },
-    "welcomeEvening": {
-      "label": "Kulimbikitsidwa kwa madzulo",
-      "title": "Madzulo abwino! Pumulani ndi mphindi za Baibulo.",
-      "description": "Mphindi za Baibulo za mtendere zokuthandizani kuganizira ndi kupeza chitonthozo pamene tsiku lanu likutha."
-    },
-    "joinUs": {
-      "label": "Lowani nafe",
-      "title": "Mabiliyoni akufufuza",
-      "description": "Nthawi yokolola yafika. Lowani nafe tikamagawana uthenga wabwino ndi dziko lonse pogwiritsa ntchito media ya digito."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tiyeni tipite limodzi",
-      "title": "Kufotokoza Nkhani ya Yesu Pamodzi",
-      "description": "Kuti amve ndi kuwona chikondi cha Yesu m'chinenero chawo komwe ali."
-    }
   },
   "VideoRecommendations": {
     "match": "Zikufanana ndi {percent}%",

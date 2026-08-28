@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language-ть вастомс",
     "home": "JesusFilm прявт лопа",
     "closeSearch": "Вешемась питнемс",
-    "submitSearch": "Вешемс"
+    "submitSearch": "Вешемс",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцият",
     "subtitlesOnly": "Ансяк subtitles",
+    "backToTop": "Верев мекев",
     "newlyAdded": "Неень шкань поладозь",
     "newVideosTitle": "Од христианонь видеот — {language}",
     "newestFirst": "Васня седе одтне",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Башка видеот",
     "videosFromCollection": "Collection: {collection}.",
     "standaloneDescription": "Те кельсэ башка видеот.",
-    "openCollection": "Collection-ть аштямс"
+    "openCollection": "Collection-ть аштямс",
+    "filters": "Ванстомат",
+    "filterLength": "Кувалмозо",
+    "filterLength_under5": "5 минутадо седе аламо",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутадо седе ламо",
+    "filterType": "Тип",
+    "clearFilters": "Ванстоматнень нардамс",
+    "filterResults": "{total}-стэ {count} невтезь",
+    "noFilterResults": "Те ванстоматненень лаксема видео арась. Вейкеде нардак ды вант.",
+    "filterAdded": "Поладозь",
+    "filterAdded_60d": "Остатка 60 чи",
+    "filterAdded_6m": "Остатка 6 ков",
+    "filterAdded_12m": "Остатка 12 ков"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — вановтома",
@@ -646,44 +662,6 @@
     "actionsLabel": "Лопась а муеви — тевть",
     "backToWatch": "Watch-ть лангс велявтомс",
     "browseVideos": "Videos-ть вановтомс"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Нурькине фильм вановтомс",
-    "actions": {
-      "joinUs": "Минек марто совамс",
-      "shareMission": "Минек миссиянь коряс явомс"
-    },
-    "welcomeStart": {
-      "label": "Вера ды Святой Сёрмадовкс",
-      "title": "Тонеть неень видеокочкат",
-      "description": "Минек библиотекасо верань видеот, кона теть витсь, вешемс, ды оймезь вешемс."
-    },
-    "welcomeMorning": {
-      "label": "Кирань вдохновениесь",
-      "title": "Доброе утро! Неень Bible moments васькстат.",
-      "description": "Кичень вельде тыныцят Bible moments-ть, кона теть вить, лемдь, ды оймезь вельть лездезь."
-    },
-    "welcomeAfternoon": {
-      "label": "Пельгень вдохновениесь",
-      "title": "Добрый день! Тонеть Bible moments.",
-      "description": "Ведьме Bible content, кона пек лезь тонеть пельгень пурныньштямсто эли седе лемс вдохновениесе."
-    },
-    "welcomeEvening": {
-      "label": "Вечерь вдохновениесь",
-      "title": "Добрый вечер! Bible moments марто оймсэ тон.",
-      "description": "Парь Bible moments, кона теть оймезь вешемс ды тыныцямс лезь, кода келензь шкатнешк."
-    },
-    "joinUs": {
-      "label": "Минек марто совамс",
-      "title": "Миллиардась те вешень",
-      "description": "Пайремась седе те. Совамс минек марто, кода минек цифровой media лангсо gospel-ть явтомс масторсонть."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кода тов совамс",
-      "title": "Иисус-ть повесть явомс, минек марто",
-      "description": "Тие лембт, сонтне и вазьт Iisus-ть кенярдома, өзсень кельсэнзэ, кода сонтне сонзэ теевтстат."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% вастови",

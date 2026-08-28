@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
     "closeSearch": "Pfala ku lava",
-    "submitSearch": "Lava"
+    "submitSearch": "Lava",
+    "library": "Layiburari"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Miqoqo",
     "subtitlesOnly": "Switsalwana ntsena",
+    "backToTop": "Tlhelela ehenhla",
     "newlyAdded": "Swa ha ku engeteriwa",
     "newVideosTitle": "Tivhidiyo ta Vukreste letintshwa hi {language}",
     "newestFirst": "Leswintshwa ku sungula",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Tivhidiyo leti yimaka toxe",
     "videosFromCollection": "Tivhidiyo ku suka eka {collection}.",
     "standaloneDescription": "Tivhidiyo leti yimaka toxe eka ririmi leri.",
-    "openCollection": "Pfula muqoqo"
+    "openCollection": "Pfula muqoqo",
+    "filters": "Swifiltara",
+    "filterLength": "Ku leha",
+    "filterLength_under5": "Ehansi ka timinete ta 5",
+    "filterLength_5to10": "Timinete ta 5-10",
+    "filterLength_10to30": "Timinete ta 10-30",
+    "filterLength_over30": "Ehenhla ka timinete ta 30",
+    "filterType": "Muxaka",
+    "clearFilters": "Sula swifiltara",
+    "filterResults": "{count} ya {total} leyi kombisiwaka",
+    "noFilterResults": "A ku na vhidiyo leyi fambelanaka na swifiltara leswi. Ringeta ku susa xin'we.",
+    "filterAdded": "Ku engeteriwe",
+    "filterAdded_60d": "Masiku ya 60 lama hundzeke",
+    "filterAdded_6m": "Tin'hweti ta 6 leti hundzeke",
+    "filterAdded_12m": "Tin'hweti ta 12 leti hundzeke"
   },
   "WatchHome": {
     "pageTitle": "Ku Languta ka Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Swendlo swa tluka a ri kumeki",
     "backToWatch": "Tlhelela eka Watch",
     "browseVideos": "Languta tivhidiyo"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Languta filimi yo koma",
-    "actions": {
-      "joinUs": "Nghena na hina",
-      "shareMission": "Avelana na hina ntirho wa vurhumiwa"
-    },
-    "welcomeStart": {
-      "label": "Ripfumelo & Matsalwa",
-      "title": "Swihlawulekisi swa vhidiyo swa namuntlha",
-      "description": "Swilo swa vhidiyo leswi kongomisiweke eka ripfumelo leswi humaka eka layiburari ya hina ku hlohlotela, ku nyika mivangelo, ni ku pfuxeta ku anakanyisisa."
-    },
-    "welcomeMorning": {
-      "label": "Ku Hlohlotela ka Nimixo",
-      "title": "Mixo lowunene! Tinhungu ta Bibele ta namuntlha ti mi rindzerile.",
-      "description": "Sungula siku ra wena hi tinhungu ta Bibele leti hlohlotelaka leti endleriweke ku khensisa ni ku tlakusa moya wa wena."
-    },
-    "welcomeAfternoon": {
-      "label": "Ku Hlohlotela ka Nhlikanhi",
-      "title": "Nhlikanhi lowunene! Tinhungu ta Bibele ta siku ra wena.",
-      "description": "Swilo swa Bibele leswi hlohlotelaka leswi faneleke nkarhi wa wena wa nhlikanhi kumbe ku ya emahlweni ni ku hlohlotela."
-    },
-    "welcomeEvening": {
-      "label": "Ku Hlohlotela ka Nimadyambu",
-      "title": "Vusiku lebyinene! Tinyikete eka tinhungu ta Bibele.",
-      "description": "Tinhungu ta Bibele ta ku rhula ku ku pfuna ku anakanyisisa ni ku kuma nchavelelo loko siku ra wena ri ya emakumu."
-    },
-    "joinUs": {
-      "label": "Nghena na hina",
-      "title": "Timiliyoni ta lava swo karhi",
-      "description": "Ku tshovela kona. Nghena na hina loko hi avelana evhangeli ni misava hi ku tirhisa swihangalasamahungu swa xidijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A hi fambeni swin’we",
-      "title": "Ku vulavula hi mhaka ya Yesu, swin’we",
-      "description": "Leswaku va kota ku twa ni ku vona rirhandzu ra Yesu hi ririmi ra vona eka laha va nga kona."
-    }
   },
   "VideoRecommendations": {
     "match": "Ku fambelana ka {percent}%",

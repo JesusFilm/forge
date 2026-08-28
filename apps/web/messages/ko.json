@@ -180,7 +180,8 @@
     "changeAudioLanguage": "오디오 언어 변경",
     "home": "JesusFilm 홈",
     "closeSearch": "검색 닫기",
-    "submitSearch": "검색"
+    "submitSearch": "검색",
+    "library": "라이브러리"
   },
   "SearchOverlay": {
     "dialogLabel": "동영상 검색 및 둘러보기",
@@ -283,6 +284,7 @@
     "sports": "스포츠",
     "collections": "컬렉션",
     "subtitlesOnly": "자막만 제공",
+    "backToTop": "맨 위로",
     "newlyAdded": "새로 추가됨",
     "newVideosTitle": "{language}의 새로운 기독교 동영상",
     "newestFirst": "최신순",
@@ -313,7 +315,21 @@
     "standaloneVideos": "단독 동영상",
     "videosFromCollection": "{collection}의 동영상.",
     "standaloneDescription": "이 언어의 단독 동영상입니다.",
-    "openCollection": "컬렉션 열기"
+    "openCollection": "컬렉션 열기",
+    "filters": "필터",
+    "filterLength": "길이",
+    "filterLength_under5": "5분 미만",
+    "filterLength_5to10": "5~10분",
+    "filterLength_10to30": "10~30분",
+    "filterLength_over30": "30분 이상",
+    "filterType": "유형",
+    "clearFilters": "필터 지우기",
+    "filterResults": "{total}개 중 {count}개 표시",
+    "noFilterResults": "이 필터와 일치하는 동영상이 없습니다. 하나를 해제해 보세요.",
+    "filterAdded": "추가일",
+    "filterAdded_60d": "최근 60일",
+    "filterAdded_6m": "최근 6개월",
+    "filterAdded_12m": "최근 12개월"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 시청",
@@ -645,44 +661,6 @@
       "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
       "followUpFailed": "We could not add your email. Please use the support form to contact us.",
       "openSupportForm": "Open support form"
-    }
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "단편 영화 시청",
-    "actions": {
-      "joinUs": "함께하기",
-      "shareMission": "우리의 사명에 함께하세요"
-    },
-    "welcomeStart": {
-      "label": "믿음과 성경",
-      "title": "오늘의 추천 동영상",
-      "description": "우리 라이브러리에서 엄선한 믿음 중심의 동영상으로, 마음에 영감을 주고 도전을 주며 묵상을 이끌어 줍니다."
-    },
-    "welcomeMorning": {
-      "label": "아침의 영감",
-      "title": "좋은 아침입니다! 오늘의 성경 묵상을 만나 보세요.",
-      "description": "격려와 힘이 되는 성경의 순간들로 하루를 시작해 보세요."
-    },
-    "welcomeAfternoon": {
-      "label": "오후의 영감",
-      "title": "좋은 오후입니다! 오늘을 위한 성경의 순간들.",
-      "description": "오후 휴식 시간이나 계속되는 영감이 필요할 때 잘 어울리는 성경 콘텐츠입니다."
-    },
-    "welcomeEvening": {
-      "label": "저녁의 영감",
-      "title": "좋은 저녁입니다! 성경의 순간들로 하루를 마무리하세요.",
-      "description": "하루를 마치며 묵상하고 위로를 얻을 수 있도록 평안한 성경의 순간들을 전해 드립니다."
-    },
-    "joinUs": {
-      "label": "함께하기",
-      "title": "수십억 명이 찾고 있습니다",
-      "description": "추수할 때가 왔습니다. 디지털 미디어를 통해 세상에 복음을 전하는 일에 함께해 주세요."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "함께 갑시다",
-      "title": "예수님의 이야기를 함께 전합니다",
-      "description": "사람들이 있는 바로 그곳에서, 각자의 언어로 예수님의 사랑을 듣고 볼 수 있도록 하기 위함입니다."
     }
   },
   "VideoRecommendations": {

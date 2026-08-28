@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom pes",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Painim"
+    "submitSearch": "Painim",
+    "library": "Haus buk"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na browseim ol video",
@@ -467,6 +468,7 @@
     "sports": "Sapot",
     "collections": "Ol collection",
     "subtitlesOnly": "Subtitles tasol",
+    "backToTop": "Go bek antap",
     "newlyAdded": "Nupela i go pinis",
     "newVideosTitle": "Nupela Christian video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video wanpis",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video wanpis long dispela tokples.",
-    "openCollection": "Openim collection"
+    "openCollection": "Openim collection",
+    "filters": "Filta",
+    "filterLength": "Longpela",
+    "filterLength_under5": "Aninit long 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Antap long 30 minit",
+    "filterType": "Kain",
+    "clearFilters": "Rausim ol filta",
+    "filterResults": "Soim {count} bilong {total}",
+    "noFilterResults": "I no gat video i wankain wantaim ol dispela filta. Traim rausim wanpela.",
+    "filterAdded": "Putim pinis",
+    "filterAdded_60d": "Las 60 de",
+    "filterAdded_6m": "Las 6 mun",
+    "filterAdded_12m": "Las 12 mun"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",
@@ -646,44 +662,6 @@
     "actionsLabel": "Ol action bilong page i no stap",
     "backToWatch": "Go bek long Watch",
     "browseVideos": "Browseim ol video"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lukluk long Sotpela Film",
-    "actions": {
-      "joinUs": "Kam wantaim mipela",
-      "shareMission": "Serim mission bilong mipela"
-    },
-    "welcomeStart": {
-      "label": "Bilip & Scripture",
-      "title": "Ol video bilong tude we mipela i makim",
-      "description": "Ol video i stap long library bilong mipela i strongim bilip, givim challenge, na kirapim tingting."
-    },
-    "welcomeMorning": {
-      "label": "Inspiresen bilong moning",
-      "title": "Moning gut! Ol Bible moment bilong tude i stap.",
-      "description": "Statim de wantaim ol strongim Bible moment we i wok long kirapim na leftimap spirit bilong yu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiresen bilong apinun",
-      "title": "Apinun gut! Ol Bible moment bilong de bilong yu.",
-      "description": "Ol gutpela Bible content bilong strongim yu, stret long apinun spel o long painim inspiresen moa."
-    },
-    "welcomeEvening": {
-      "label": "Inspiresen bilong nait",
-      "title": "Nait gut! Rilaks wantaim ol Bible moment.",
-      "description": "Ol isi Bible moment bilong helpim yu long tingting na painim comfort taim de i pinis."
-    },
-    "joinUs": {
-      "label": "Kam wantaim mipela",
-      "title": "Bilions i painim samting",
-      "description": "Harvest i stap pinis. Kam wantaim mipela taim mipela i serim gospel wantaim wol long digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bai yumi go wantaim",
-      "title": "Yumi toktok long Stori bilong Jisas, wantaim",
-      "description": "Bai ol i ken harim na lukim pasin laik bilong Jisas long tokples bilong ol yet long hap we ol i stap."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% i stret",

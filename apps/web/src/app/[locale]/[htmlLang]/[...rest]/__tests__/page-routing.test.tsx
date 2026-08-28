@@ -173,7 +173,7 @@ beforeEach(() => {
     data: {
       heroSlides: [],
       sections: [],
-      carousel: { pools: [], muxInserts: [] },
+      carousel: { pools: [] },
       missingData: [],
     },
     error: null,
@@ -609,7 +609,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-es" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -637,7 +637,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
         heroModel: {
           heroSlides: [{ id: "hero-es" }],
           sections: [],
-          carousel: { pools: [], muxInserts: [] },
+          carousel: { pools: [] },
           missingData: [],
         },
         blocks: [],
@@ -666,7 +666,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           },
         ],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -714,7 +714,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-ru" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,
@@ -736,7 +736,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       data: {
         heroSlides: [{ id: "hero-ru" }],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       },
       error: null,

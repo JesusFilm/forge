@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
     "closeSearch": "Valani ṱhoḓisiso",
-    "submitSearch": "Ṱolani"
+    "submitSearch": "Ṱolani",
+    "library": "Bugu ya vhutanzi"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Miṱaṱisano",
     "subtitlesOnly": "Zwibulo fhedzi",
+    "backToTop": "Vhuya nṱha",
     "newlyAdded": "Zwo engedzwa zwenezwino",
     "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
     "newestFirst": "Zwine zwa vha zwiswa nga phanda",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidio dzi imelelaho",
     "videosFromCollection": "Vidio u bva kha {collection}.",
     "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
-    "openCollection": "Vulani muṱaṱisano"
+    "openCollection": "Vulani muṱaṱisano",
+    "filters": "Zwifhaṱi",
+    "filterLength": "Vhulapfu",
+    "filterLength_under5": "Nga fhasi ha mimunithi ya 5",
+    "filterLength_5to10": "Mimunithi ya 5-10",
+    "filterLength_10to30": "Mimunithi ya 10-30",
+    "filterLength_over30": "Nga nṱha ha mimunithi ya 30",
+    "filterType": "Lushaka",
+    "clearFilters": "Phumula zwifhaṱi",
+    "filterResults": "{count} kha {total} zwo sumbedzwa",
+    "noFilterResults": "A hu na vidio ine ya tshimbidzana na zwifhaṱi hezwi. Lingedza u bvisa tshiṅwe.",
+    "filterAdded": "Yo engedzwa",
+    "filterAdded_60d": "Maḓuvha a 60 o fhelaho",
+    "filterAdded_6m": "Miṅwedzi ya 6 yo fhelaho",
+    "filterAdded_12m": "Miṅwedzi ya 12 yo fhelaho"
   },
   "WatchHome": {
     "pageTitle": "U Lavhelesa ha Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Zwiito zwa pheji a i wanali",
     "backToWatch": "Vhuyelani kha Watch",
     "browseVideos": "Ṱolani vidio"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lavhelani Filimu Pfufhi",
-    "actions": {
-      "joinUs": "Dzhianani na Rine",
-      "shareMission": "Avelani kha Mishumo Yashu"
-    },
-    "welcomeStart": {
-      "label": "Lutendo na Maṅwalo",
-      "title": "Zwaṋu zwa Vidio zwa Ṋamusi",
-      "description": "Zwi re ngomu zwa vidio zwa lutendo u bva kha layibureari yashu zwi itelaho u ṱuṱuwedza, u ṱhasela mihumbulo, na u ita uri muṅwe a elekanye."
-    },
-    "welcomeMorning": {
-      "label": "U ṱuṱuwedza ha Muṅwe Na Muṅwe",
-      "title": "Matsheloni! Zwipiḓa zwa Bivhili zwa ṋamusi zwi khou lindela.",
-      "description": "Thomani ḓuvha ḽaṋu nga zwipiḓa zwa Bivhili zwi ṱuṱuwedzaho zwo itelwaho u ṱuṱuwedza na u khwinisa muya waṋu."
-    },
-    "welcomeAfternoon": {
-      "label": "U ṱuṱuwedza ha Thafha",
-      "title": "Masikuwani! Zwipiḓa zwa Bivhili zwa ḓuvha ḽaṋu.",
-      "description": "Zwi re ngomu zwa Bivhili zwi ṱuṱuwedzaho zwi faneleaho u awela masikuwani kana u isa phanḓa na u ṱuṱuwedzwa."
-    },
-    "welcomeEvening": {
-      "label": "U ṱuṱuwedza ha Madekwana",
-      "title": "Vhusiku! Awelani nga zwipiḓa zwa Bivhili.",
-      "description": "Zwipiḓa zwa Bivhili zwine zwa fha mulalo zwi a ni thusa u elekanya na u wana khuthadzo musi ḓuvha ḽiṋu ḽi tshi khou fhela."
-    },
-    "joinUs": {
-      "label": "Dzhianani na Rine",
-      "title": "Vhabiliyoni vha khou ṱoḓa",
-      "description": "Ṱhoḓea i fhano. Dzhianani na rine musi ri tshi kovhela vhathu vhoṱhe mafhungo maḓifha nga media dza dijithala."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A ri tshimbile roṱhe",
-      "title": "U Anḓadza Nyambo ya Yesu, Roṱhe",
-      "description": "Uri vha kone u pfa na u vhona lufuno lwa Yesu nga luambo lwavho, fhethu he vha vha vha hone."
-    }
   },
   "VideoRecommendations": {
     "match": "Zwi fana nga {percent}%",

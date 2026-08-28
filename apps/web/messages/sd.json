@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
     "closeSearch": "ڳولا بند ڪريو",
-    "submitSearch": "ڳوليو"
+    "submitSearch": "ڳوليو",
+    "library": "لائبريري"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -467,6 +468,7 @@
     "sports": "راندين",
     "collections": "مجموعا",
     "subtitlesOnly": "صرف سب ٽائيٽلز",
+    "backToTop": "مٿي واپس",
     "newlyAdded": "نئون شامل ٿيل",
     "newVideosTitle": "{language} ۾ نيون مسيحي وڊيوز",
     "newestFirst": "سڀ کان نئون پهريان",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الڳ وڊيوز",
     "videosFromCollection": "{collection} مان وڊيوز.",
     "standaloneDescription": "هن ٻولي ۾ الڳ وڊيوز.",
-    "openCollection": "مجموعو کوليو"
+    "openCollection": "مجموعو کوليو",
+    "filters": "فلٽر",
+    "filterLength": "ڊگھائي",
+    "filterLength_under5": "5 منٽن کان گھٽ",
+    "filterLength_5to10": "5-10 منٽ",
+    "filterLength_10to30": "10-30 منٽ",
+    "filterLength_over30": "30 منٽن کان وڌيڪ",
+    "filterType": "قسم",
+    "clearFilters": "فلٽر صاف ڪريو",
+    "filterResults": "{total} مان {count} ڏيکاريل",
+    "noFilterResults": "انهن فلٽرن سان ڪوبه وڊيو نه ٿو ملي. هڪ هٽائي ڏسو.",
+    "filterAdded": "شامل ڪيو ويو",
+    "filterAdded_60d": "گذريل 60 ڏينهن",
+    "filterAdded_6m": "گذريل 6 مهينا",
+    "filterAdded_12m": "گذريل 12 مهينا"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",
@@ -646,44 +662,6 @@
     "actionsLabel": "صفحو نه ملڻ جا عمل",
     "backToWatch": "واپس Watch ڏانهن",
     "browseVideos": "وڊيوز براؤز ڪريو"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "مختصر فلم ڏسو",
-    "actions": {
-      "joinUs": "اسان سان شامل ٿيو",
-      "shareMission": "اسان جي مشن ۾ حصو وٺو"
-    },
-    "welcomeStart": {
-      "label": "ايمان ۽ صحيفو",
-      "title": "اڄ جون وڊيو چونڊون",
-      "description": "اسان جي لائبريري مان ايمان مرڪوز وڊيو مواد، جيڪو همت ڏئي، چئلينج ڪري، ۽ سوچ ويچار کي اُڀاري."
-    },
-    "welcomeMorning": {
-      "label": "صبح جي همت افزائي",
-      "title": "صبح بخير! اڄ جا بائبل جا لمحات توهان جو انتظار ڪري رهيا آهن.",
-      "description": "پنهنجو ڏينهن بائبل جي همت ڏيندڙ لمحن سان شروع ڪريو، جيڪي توهان جي روح کي اُڀارڻ لاءِ ٺاهيا ويا آهن."
-    },
-    "welcomeAfternoon": {
-      "label": "منجهند جي همت افزائي",
-      "title": "منجهند بخير! توهان جي ڏينهن لاءِ بائبل جا لمحات.",
-      "description": "منجهند جي وقفي يا وڌيڪ همت لاءِ موزون همت افزا بائبل مواد."
-    },
-    "welcomeEvening": {
-      "label": "شام جي همت افزائي",
-      "title": "شام بخير! بائبل جي لمحن سان آرام ڪريو.",
-      "description": "سڪون ڏيندڙ بائبل لمحات، جيڪي توهان کي سوچ ويچار ۽ آرام ڏيڻ ۾ مدد ڪن جيئن ڏينهن پورو ٿئي."
-    },
-    "joinUs": {
-      "label": "اسان سان شامل ٿيو",
-      "title": "اربين ماڻهو ڳولي رهيا آهن",
-      "description": "فصل تيار آهي. ڊجيٽل ميڊيا ذريعي دنيا سان انجيل شيئر ڪرڻ ۾ اسان سان شامل ٿيو."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "اچو گڏ هلون",
-      "title": "عيسيٰ جي ڪهاڻي گڏجي ٻڌايون",
-      "description": "ته جيئن هو پنهنجي ئي ٻولي ۾، جتي هو آهن اتي ئي، عيسيٰ جي محبت ٻڌي ۽ ڏسي سگهن."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",

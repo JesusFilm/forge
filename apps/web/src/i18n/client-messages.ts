@@ -33,7 +33,6 @@ export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [
   "WatchFooter",
   "WatchHome",
   "WatchHomeCategories",
-  "WatchHomeMuxInserts",
   "WatchHomePromo",
   "WatchHomeSections",
   "WatchModal",

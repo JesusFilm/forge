@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar idioma del audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Cerrar búsqueda",
-    "submitSearch": "Tz'ib'an"
+    "submitSearch": "Tz'ib'an",
+    "library": "Libreria"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Naru pari",
     "newlyAdded": "Recién agregado",
     "newVideosTitle": "Videos cristianos nuevos en {language}",
     "newestFirst": "Más recientes primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos independientes",
     "videosFromCollection": "Videos de {collection}.",
     "standaloneDescription": "Videos independientes en este idioma.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Wapal",
+    "filterLength_under5": "Kanan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Muy 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Nakiya filtros",
+    "filterResults": "{count} kanan {total} nakinuki",
+    "noFilterResults": "Xawi video sanaka filtros ini. Nakiya ku'una.",
+    "filterAdded": "Sanaki",
+    "filterAdded_60d": "Nak 60 pari",
+    "filterAdded_6m": "Nak 6 wari",
+    "filterAdded_12m": "Nak 12 wari"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ver",
@@ -646,44 +662,6 @@
     "actionsLabel": "Acciones de página no encontrada",
     "backToWatch": "Volver a Ver",
     "browseVideos": "Explorar videos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraje",
-    "actions": {
-      "joinUs": "Únete a nosotros",
-      "shareMission": "Comparte nuestra misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Selecciones de video de hoy",
-      "description": "Contenido de video centrado en la fe de nuestra biblioteca para inspirar, desafiar y despertar reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración matutina",
-      "title": "¡Buenos días! Te esperan los momentos bíblicos de hoy.",
-      "description": "Empieza el día con momentos bíblicos alentadores, pensados para inspirarte y levantar tu espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Buenas tardes! Momentos bíblicos para tu día.",
-      "description": "Contenido bíblico alentador, perfecto para tu descanso de la tarde o para seguir recibiendo inspiración."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración nocturna",
-      "title": "¡Buenas noches! Relájate con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para ayudarte a reflexionar y encontrar consuelo al terminar el día."
-    },
-    "joinUs": {
-      "label": "Únete a nosotros",
-      "title": "Miles de millones están buscando",
-      "description": "La cosecha ya está lista. Únete a nosotros mientras compartimos el evangelio con el mundo por medio de los medios digitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vayamos juntos",
-      "title": "Contar juntos la historia de Jesús",
-      "description": "Para que puedan oír y ver el amor de Jesús en su propio idioma, dondequiera que estén."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% de coincidencia",

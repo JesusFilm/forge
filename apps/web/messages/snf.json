@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Changer la langue audio",
     "home": "Accueil de JesusFilm",
     "closeSearch": "Fermer la recherche",
-    "submitSearch": "Wut"
+    "submitSearch": "Wut",
+    "library": "Kaŋ kayitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Rechercher et parcourir des vidéos",
@@ -467,6 +468,7 @@
     "sports": "Po ak tàggat-yaram",
     "collections": "Dencukaay yi",
     "subtitlesOnly": "Sous-titres seulement",
+    "backToTop": "Fandiŋ kajeeg",
     "newlyAdded": "Ajouté récemment",
     "newVideosTitle": "Nouvelles vidéos chrétiennes en {language}",
     "newestFirst": "Les plus récentes d'abord",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidéos autonomes",
     "videosFromCollection": "Vidéos de {collection}.",
     "standaloneDescription": "Vidéos autonomes dans cette langue.",
-    "openCollection": "Ouvrir la collection"
+    "openCollection": "Ouvrir la collection",
+    "filters": "Ñoolaaŋ",
+    "filterLength": "Ndoolaa",
+    "filterLength_under5": "Rekan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopan 30 min",
+    "filterType": "Kaŋaam",
+    "clearFilters": "Feesaŋ ñoolaaŋ",
+    "filterResults": "{count} ca {total} a wonaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaaŋ yii. Feesaŋ kenn.",
+    "filterAdded": "A yokkul",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Visionnage Jesus Film Project",
@@ -646,44 +662,6 @@
     "actionsLabel": "Actions de page introuvable",
     "backToWatch": "Retour au visionnage",
     "browseVideos": "Parcourir les vidéos"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Regarder le court métrage",
-    "actions": {
-      "joinUs": "Rejoignez-nous",
-      "shareMission": "Participez à notre mission"
-    },
-    "welcomeStart": {
-      "label": "Foi et Écriture",
-      "title": "Les choix vidéo du jour",
-      "description": "Des vidéos centrées sur la foi, tirées de notre bibliothèque, pour inspirer, interpeller et nourrir la réflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiration du matin",
-      "title": "Bonjour ! Les moments bibliques du jour vous attendent.",
-      "description": "Commencez votre journée avec des moments bibliques encourageants pour inspirer et fortifier votre esprit."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiration de l’après-midi",
-      "title": "Bon après-midi ! Des moments bibliques pour votre journée.",
-      "description": "Du contenu biblique encourageant, parfait pour votre pause de l’après-midi ou pour continuer à vous inspirer."
-    },
-    "welcomeEvening": {
-      "label": "Inspiration du soir",
-      "title": "Bonsoir ! Terminez la journée avec des moments bibliques.",
-      "description": "Des moments bibliques paisibles pour vous aider à méditer et à trouver du réconfort en fin de journée."
-    },
-    "joinUs": {
-      "label": "Rejoignez-nous",
-      "title": "Des milliards de personnes cherchent",
-      "description": "La moisson est là. Rejoignez-nous pour partager l’Évangile avec le monde à travers les médias numériques."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Allons-y ensemble",
-      "title": "Raconter ensemble l’histoire de Jésus",
-      "description": "Pour qu’ils puissent entendre et voir l’amour de Jésus dans leur propre langue, là où ils se trouvent."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% méngoo",

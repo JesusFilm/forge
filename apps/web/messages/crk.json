@@ -189,7 +189,8 @@
     "clearSearch": "Clear search",
     "changeAudioLanguage": "Change audio language",
     "closeSearch": "Close search",
-    "home": "JesusFilm home"
+    "home": "JesusFilm home",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Search and browse videos",
@@ -476,6 +477,7 @@
     "sports": "Sports",
     "collections": "Collections",
     "subtitlesOnly": "Subtitles only",
+    "backToTop": "Back to top",
     "newlyAdded": "Newly added",
     "newVideosTitle": "New Christian videos in {language}",
     "newestFirst": "Newest first",
@@ -506,7 +508,21 @@
     "standaloneVideos": "Standalone videos",
     "videosFromCollection": "Videos from {collection}.",
     "standaloneDescription": "Standalone videos in this language.",
-    "openCollection": "Open collection"
+    "openCollection": "Open collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch",
@@ -521,44 +537,6 @@
     "scrollToVideo": "Scroll to {title} video",
     "previousVideoPreview": "Previous video preview",
     "nextVideoPreview": "Next video preview"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Watch Short Film",
-    "actions": {
-      "joinUs": "Join Us",
-      "shareMission": "Share in Our Mission"
-    },
-    "welcomeStart": {
-      "label": "Faith & Scripture",
-      "title": "Today's Video Picks",
-      "description": "Faith-centered video content from our library to inspire, challenge, and spark reflection."
-    },
-    "welcomeMorning": {
-      "label": "Morning Inspiration",
-      "title": "Good Morning! Today's Bible Moments Await.",
-      "description": "Begin your day with encouraging Bible moments designed to inspire and uplift your spirit."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon Inspiration",
-      "title": "Good Afternoon! Bible Moments for Your Day.",
-      "description": "Encouraging Bible content perfect for your afternoon break or continued inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Evening Inspiration",
-      "title": "Good Evening! Wind Down with Bible Moments.",
-      "description": "Peaceful Bible moments to help you reflect and find comfort as your day comes to a close."
-    },
-    "joinUs": {
-      "label": "Join Us",
-      "title": "Billions are searching",
-      "description": "The harvest is here. Join us as we share the gospel with the world using digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Let's go together",
-      "title": "Telling the Story of Jesus, Together",
-      "description": "So they can hear and see the love of Jesus in their own language right where they are."
-    }
   },
   "WatchFooter": {
     "home": "Jesus Film Project home",

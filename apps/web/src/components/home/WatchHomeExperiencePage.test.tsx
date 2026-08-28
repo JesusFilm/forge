@@ -131,7 +131,7 @@ import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePa
 const heroModel = {
   heroSlides: [],
   sections: [],
-  carousel: { pools: [], muxInserts: [] },
+  carousel: { pools: [] },
   missingData: [],
 } satisfies WatchHomeModel
 

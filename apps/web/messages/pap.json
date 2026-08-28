@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda idioma di audio",
     "home": "Página prome di JesusFilm",
     "closeSearch": "Sera buskeda",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i eksplora video",
@@ -467,6 +468,7 @@
     "sports": "Spòrt",
     "collections": "Kolekshon",
     "subtitlesOnly": "Subtítulonan solamente",
+    "backToTop": "Bai bèk ariba",
     "newlyAdded": "Adishoná recientemente",
     "newVideosTitle": "Video Kristian nobo den {language}",
     "newestFirst": "Mas nobo prome",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video apart",
     "videosFromCollection": "Video di {collection}.",
     "standaloneDescription": "Video apart den e idioma aki.",
-    "openCollection": "Habri kolekshon"
+    "openCollection": "Habri kolekshon",
+    "filters": "Filternan",
+    "filterLength": "Duracion",
+    "filterLength_under5": "Menos ku 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mas ku 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Kita filternan",
+    "filterResults": "{count} di {total} mustrá",
+    "noFilterResults": "Ningun video no ta koresponde ku e filternan aki. Purba kita un.",
+    "filterAdded": "Agregá",
+    "filterAdded_60d": "Último 60 dia",
+    "filterAdded_6m": "Último 6 luna",
+    "filterAdded_12m": "Último 12 luna"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Mira",
@@ -646,44 +662,6 @@
     "actionsLabel": "Akshonnan pa página no hañá",
     "backToWatch": "Bèk na Watch",
     "browseVideos": "Eksplora videonan"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mira pelíkula kortiku",
-    "actions": {
-      "joinUs": "Bini ku nos",
-      "shareMission": "Komparti den nos misión"
-    },
-    "welcomeStart": {
-      "label": "Fe & Skritura",
-      "title": "Selekshonnan di video pa awe",
-      "description": "Contenido di video sentrá riba fe for di nos biblioteka pa inspirá, desafia, i yama refleksyon."
-    },
-    "welcomeMorning": {
-      "label": "Inspirashon di mainta",
-      "title": "Bon dia! Momentonan bíbliko di awe ta spèra bo.",
-      "description": "Kuminsa bo dia ku momentonan bíbliko alentadó ku ta destiná pa inspirá i leventá bo espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirashon di atardi",
-      "title": "Bon tardi! Momentonan bíbliko pa bo dia.",
-      "description": "Contenido bíbliko alentadó perfekt pa bo pauza di atardi òf pa sigui resibi inspirashon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirashon di anochi",
-      "title": "Bon anochi! Relaha ku momentonan bíbliko.",
-      "description": "Momentonan bíbliko trankil pa yuda bo reflektá i sentí konsuelo ora bo dia ta terminando."
-    },
-    "joinUs": {
-      "label": "Bini ku nos",
-      "title": "Milyonan ta kereando",
-      "description": "E sega ta aki. Bini ku nos mientras nos ta komparti e evangelio ku mundo bou di media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Biaha hunto",
-      "title": "Tuma e historia di Jesus, huntu",
-      "description": "Pa por yega tende i mira e amor di Jesus den nan propio idioma, hemen unda nan ta."
-    }
   },
   "VideoRecommendations": {
     "match": "{percent}% koinsidensia",
