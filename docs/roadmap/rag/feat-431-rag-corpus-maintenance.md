@@ -3,7 +3,7 @@ id: "feat-431"
 title: "Port RAG acquisition, ingestion, and maintenance"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-18"
 duration: 5
 depends_on: ["feat-430"]
@@ -41,3 +41,7 @@ Port acquisition, staging, normalization, chunking, embedding, indexing, and sou
 
 - Fake-based unit tests and real-adapter integration tests pass.
 - Dry-run and explicit-target safeguards cover every production command.
+
+## Resolution
+
+Implemented in [Forge PR #2093](https://github.com/JesusFilm/forge/pull/2093).
