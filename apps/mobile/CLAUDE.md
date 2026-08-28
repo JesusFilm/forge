@@ -265,21 +265,33 @@ constrain iOS.
 
 ## EAS builder toolchain pins
 
-`eas.json` pins `node` and `pnpm` in a `base` profile that every build
-profile extends. Keep them equal to the repo's own pins: `pnpm` to
-`packageManager` in the root `package.json`, `node` to `.nvmrc`. Bump all
-three together.
+`eas.json` has a `base` profile that every build profile extends. It pins
+`node` and `pnpm` and sets `SHARP_IGNORE_GLOBAL_LIBVIPS=1`. Keep the pins
+equal to the repo's own: `pnpm` to `packageManager` in the root
+`package.json`, `node` to `.nvmrc`. Bump all three together.
 
-Why: EAS picks its toolchain from the current default VM image, not from
+Why: EAS takes its toolchain from the current default VM image, not from
 `packageManager`. On 2026-08-28 the default moved to macOS Tahoe / Xcode
-26.6 / Node 22 / pnpm 11.9.0, and the first mobile build on it failed in
-`Install dependencies`: pnpm 11 ignores the root `package.json` `pnpm`
-field (`packageExtensions`, `overrides`, `patchedDependencies`), and
-`sharp@0.34.5` (an `apps/admin` dependency the icon script borrows) lost
-its prebuilt binary, fell back to node-gyp, and died. The last good builds
-(mobile 2026-07-16, TV 2026-08-19) ran on the older image with pnpm
-10.16.1. `apps/tv` carries no pin yet and will hit the same failure on its
-next build.
+26.6 / Node 22 / pnpm 11.9.0, and two mobile production builds failed in
+`Install dependencies` on `sharp@0.34.5` (an `apps/admin` dependency the
+icon script borrows). Two separate facts, verified from the build logs:
+
+- pnpm 11 ignores the root `package.json` `pnpm` field
+  (`packageExtensions`, `overrides`, `patchedDependencies`). The pins fix
+  that. They did NOT fix sharp — build `dfabe6e3` failed the same way on
+  Node 24.14.1 / pnpm 9.12.3.
+- The new image carries a global libvips. sharp's `install/check.js`
+  exits 1 silently when `useGlobalLibvips()` is true, so pnpm runs
+  `npm run build`, which needs `node-gyp` and dies with "Please add
+  node-gyp to your dependencies". The prebuilt `@img/sharp-darwin-arm64`
+  package is in the lockfile the whole time; `SHARP_IGNORE_GLOBAL_LIBVIPS=1`
+  makes sharp use it. The last good builds (mobile 2026-07-16, TV
+  2026-08-19) ran on the older Sequoia image, which had no global libvips.
+
+`apps/tv` carries neither the pins nor the env and will hit the same
+failure on its next build. EAS build logs are Brotli-encoded JSON lines;
+fetch `logFiles[0]` from `eas build:view <id> --json` with Node and
+`zlib.brotliDecompressSync` (python and curl on this machine lack Brotli).
 
 ## Observability (Datadog)
 

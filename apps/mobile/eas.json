@@ -7,7 +7,10 @@
   "build": {
     "base": {
       "node": "24.14.1",
-      "pnpm": "9.12.3"
+      "pnpm": "9.12.3",
+      "env": {
+        "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
+      }
     },
     "development": {
       "extends": "base",
