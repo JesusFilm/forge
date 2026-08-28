@@ -332,6 +332,16 @@ const envSchema = z.object({
   // (feat-208). Unset → follows MASTRA_STORAGE_BACKEND. `.optional()` so the
   // kill-switch adds zero required-at-boot env vars.
   AI_CHAT_MEMORY_BACKEND: z.enum(["postgres", "memory"]).optional(),
+  // Default-off arming flag for the daily ai-chat title-repair sweep
+  // (feat-405, KTD4): the `title-repair` workflow's scheduled and manual runs
+  // are counted skips unless this is exactly `"true"`. Optional + no default.
+  // Read via the repo's string-boolean convention (`=== "true"`, matching
+  // SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `AI_CHAT_TITLE_REPAIR_ENABLED="false"` stays disabled. The sweep's other
+  // gates (lane kill switch, gateway key, postgres backend, explicit
+  // DATABASE_URL) live in workflows/title-repair.ts. No new required-at-boot
+  // var.
+  AI_CHAT_TITLE_REPAIR_ENABLED: z.string().optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
@@ -956,6 +966,9 @@ export const env = envSchema.parse({
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
   AI_CHAT_MEMORY_BACKEND: emptyToUndefined(process.env.AI_CHAT_MEMORY_BACKEND),
+  AI_CHAT_TITLE_REPAIR_ENABLED: emptyToUndefined(
+    process.env.AI_CHAT_TITLE_REPAIR_ENABLED,
+  ),
   MASTRA_STORAGE_BACKEND: emptyToUndefined(process.env.MASTRA_STORAGE_BACKEND),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
@@ -2060,6 +2073,19 @@ export function isSeekerVideoEnabled(): boolean {
  */
 export function isSeekerFollowUpsEnabled(): boolean {
   return env.SEEKER_FOLLOWUPS_ENABLED === "true"
+}
+
+/**
+ * Whether the daily ai-chat title-repair sweep is armed (feat-405, KTD4).
+ * Default-off: the scheduled `title-repair` workflow reports a counted skip
+ * unless this is explicitly set to the string `"true"`. Uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value) keeps the sweep skipping.
+ * This is the fine-grained lever; `SEEKER_ROUTE_ENABLED=false` darkens the
+ * whole ai-chat lane including this sweep (the sweep gates on both).
+ */
+export function isTitleRepairEnabled(): boolean {
+  return env.AI_CHAT_TITLE_REPAIR_ENABLED === "true"
 }
 
 /**

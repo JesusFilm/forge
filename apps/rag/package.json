@@ -10,6 +10,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:schema:check": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5435/forge_rag} prisma validate && vitest run tests/schema.test.mjs tests/schema-drift.test.ts",
     "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts",
+    "db:copy-corpus": "tsx scripts/copy-corpus.ts",
     "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
     "env:check": "tsx scripts/check-env.ts",
     "env:check:ci": "DATABASE_URL=postgresql://ci:ci@localhost:5432/rag OPENROUTER_API_KEY=ci-placeholder tsx scripts/check-env.ts ci",

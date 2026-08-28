@@ -296,7 +296,14 @@ export function AppShell({
           <BrandLockup />
         </header>
         {paneDenial !== undefined ? (
-          <DenialScreen screen={paneDenial} returnTo={signInReturnTo} />
+          <DenialScreen
+            screen={paneDenial}
+            returnTo={signInReturnTo}
+            // feat-402: ONLY the granted causes (escalation, unresolvable
+            // deep link) get the client-side New; grantedShell — never
+            // deniedScreen === undefined — keeps that structural (KTD6).
+            onStartNew={grantedShell ? newConversationFocused : undefined}
+          />
         ) : (
           <Chat
             conversation={activeConversation}
