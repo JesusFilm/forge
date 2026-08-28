@@ -202,6 +202,21 @@ external collections are a fallback only when that intrinsic rail does not
 qualify; they do not become the standalone Video's canonical or next-item
 identity.
 
+### Containing Work
+
+A parent Video that the child is a constituent part of — a film whose Chapters
+it is one of, or a series whose Episodes it is one of — as distinct from a
+curated collection the child was merely gathered into alongside unrelated
+material. The distinction is carried by the parent's own label, not by the
+parent/child link, which is why a link alone cannot settle it.
+
+Where a Video has several eligible parents and only one may be presented, a
+Containing Work outranks a curated collection: it is the work the viewer is
+already inside. The relationship's playback position does not decide this — it
+orders a child within one parent and says nothing about how two parents compare.
+When several Containing Works are eligible, the relationship carries no signal
+that separates them.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to

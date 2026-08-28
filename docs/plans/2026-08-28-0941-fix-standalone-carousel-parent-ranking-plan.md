@@ -77,6 +77,19 @@ All deferred, none launch-blocking — the ranking is implementable without them
 - Is `SERIES` correctly grouped with `FEATURE_FILM`? The Assumptions entry justifies it as "a clip is a chapter of" both, but `CONCEPTS.md` reserves Chapter for a film's children and defines a series' children as Episodes that are works in their own right. No production page with a `SERIES` parent alongside another eligible parent was located, so the pairing ships unverified.
 - When a clip sits under two containing works, the default still falls back to Admin's `VideoRelation.order` — the same key this plan calls coincidence. U1 pins the behavior; no requirement states whether it is an accepted limit.
 
+#### Addendum 2026-08-28 — three of the four questions above are now answered
+
+The questions are left standing as written; this note records what was measured after they were raised. Method and caveats: `docs/solutions/best-practices/blast-radius-from-public-sitemap-and-rsc-payload.md`.
+
+All 1,154 English one-segment `/watch/<slug>.html` pages were read from production via the public sitemap and their RSC flight payloads, so the counts are a whole-population read rather than a sample.
+
+- **Blast radius (Q1) — measured.** 200 pages carry two or more eligible parents; **43** change their default. Of the 157 that do not move, 81 already opened on a film or series and 76 have only collection parents. The claim above that this "is not answerable from this worktree" was wrong: it needed no Admin credentials.
+- **`SHORT_FILM` / `EPISODE` (Q2) — moot on current data.** Only three labels are ever used as a parent container across the corpus: COLLECTION 32, SERIES 10, FEATURE_FILM 5. Neither `SHORT_FILM` nor `EPISODE` occupies a parent slot, so promoting them would be a no-op today.
+- **`SERIES` pairing (Q3) — verified, and the opposing concern falsified.** All ten SERIES parents are genuine multi-part works (`rivka` ~235 children, `walking-with-jesus-africa` ~148, `following-jesus-india` ~148, `new-believer-course` ~146, `reflections-of-hope` ~129); every playlist-shaped container is a COLLECTION. The review concern that the two labels are used interchangeably, and that promoting SERIES could therefore rank a playlist above a film, does not hold in this data.
+- **Two containing works (Q4) — bounded, not resolved.** 44 pages resolve to two promoted parents, and every one is the same pair: `magdalena-2` and `magdalena`, two cuts of one film. Only one of the 44 also changes default. This is a scoping decision about duplicate editions rather than an open design hole.
+
+Scope: English one-segment pages only; other languages unscanned; a point-in-time read of what production renders (a cached ISR view), not a repeatable gate.
+
 ### Sources
 
 - `apps/admin/src/graphql/loaders.ts` — `videoRelationOrderBy` and `loadVideoRelationsByVideoId`, the production DataLoader behind `Video.parents`.
