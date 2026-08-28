@@ -55,6 +55,7 @@ KD1. **Stills are fixed per video, never sampled at random.** (session-settled: 
 KD2. **Stills come from one pinned dub, not the dub the viewer is listening to.** (session-settled: user-directed — chosen over following the active dub: per-dub artwork multiplies the URL set by the dub count and shifts the picture on a language switch.) Governs R3, R4.
 
 KD3. **No per-still quality screen ships.** (session-settled: user-directed — chosen over a brightness or variance check: the failures are tonal, and a brightness screen passes the frames that fail.) Governs R5.
+
 > **Conflict call-out.** Research found a second class of blank card the decision did not weigh: a still can be fully black. Two causes, one now removed. An out-of-range or zero timestamp returns HTTP 200 carrying an all-black image, which R5's runtime precondition and clamp eliminate. An in-film black frame remains reachable — one of fifteen stills sampled on `pilgrims-progress` measured mean luma 0.00 at every pixel. The decision stands and is workable; the residual is recorded in Risks & Dependencies.
 
 KD4. **A heavier scrim carries legibility instead of a screen.** (session-settled: user-approved — chosen over a desaturation treatment: `mixBlendMode` is inert below Android API 29, and the two treatments stack rather than fork.) Governs R9, R10.
@@ -122,21 +123,25 @@ R16. TV's copy of the stock image set no longer claims mobile mirrors the cycled
 ### Key Flows
 
 F1. Viewer opens a video that carries Bible citations.
+
 - **Trigger:** the watch screen mounts for a video with at least one citation.
 - **Steps:** the carousel renders its first cards against the card background colour; each card resolves its still through the ladder; stills fade in as they arrive; the app requests a bounded set of upcoming stills ahead of the viewer.
 - **Outcome:** each citation card carries a distinct still from this film. **Covers R1, R2, R11, R12, R13.**
 
 F2. Viewer switches audio language while the carousel is on screen.
+
 - **Trigger:** the viewer selects a different dub.
 - **Steps:** the active dub changes; the pinned dub does not; the card artwork does not.
 - **Outcome:** the same stills stay in place. **Covers R4.**
 
 F3. Viewer opens a video the ladder cannot serve a still for.
+
 - **Trigger:** the watch screen mounts for a video whose pinned dub yields no usable still.
 - **Steps:** each card falls to the authored artwork, then to the stock set.
 - **Outcome:** every card carries artwork; none is blank. **Covers R6, R7, R8.**
 
 F4. A still fails to load after the card has already chosen it.
+
 - **Trigger:** the still request 404s, times out, or the device is offline.
 - **Steps:** the card reports the failure; the ladder advances that card one tier and re-renders.
 - **Outcome:** the card lands on artwork rather than staying at its background colour. **Covers R17.**
@@ -325,16 +330,16 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 
 ### Risks & Dependencies
 
-| Risk | Mitigation |
-|---|---|
-| Stills are requested at watch-screen mount, not when the carousel is reached, so they contend with player startup on the design-centre device. The nested horizontal list virtualises on its own offset, so its first cells mount regardless of parent scroll. | KTD14 pins an explicit low priority on the card image, matching this app's convention for non-hero card art. The Verification Contract measures the mount window directly rather than assuming it is clear. |
-| The prefetch cannot be de-prioritised — the API accepts no priority — so an off-screen prefetch can outrank the still the viewer is looking at. | KTD14 sequences it behind the visible card's own load. U6 tests that ordering. |
-| Cold render is POP-local and expires after seven days with no revalidation, so warmth is neither global nor permanent. Most of these URLs will be cold on most first views. | Accepted. The loading state is sized for a recurring one-to-three-second wait, not a one-time warm-up. |
-| Adding or removing one citation in admin moves every timestamp for that video, cold-rendering every card again and minting fresh derivatives against the per-asset budget. | Accepted and recorded. Citation lists are near-static and the budget is roughly 679 for a feature-length film against ten citations. |
-| An in-film black frame renders as a card with no visible artwork. This is KD3's residual after the clamp removes the out-of-range class. | Accepted per KD3. Under the heavier scrim the result reads as a dark card rather than a broken one, which is close to what web ships deliberately. |
-| The ladder's outcome is invisible in production. A mass fall-through to stock, a wrong pinned dub, or an all-black video would look identical to success. | U4's hook emits one structured log per video per screen open, behind a per-slug ref, carrying the resolved top tier, slug, and citation count. The derivation returns the tier but stays pure and does not emit — it re-runs several times per open, so emitting there would weight the signal by render count and bias it toward false stock outcomes. Field naming follows this app's reserved-attribute rule. |
-| Every tier's load can fail. The stock tier is the same uncontracted third-party host the Problem Frame names as unreliable, so a card can exhaust the ladder and land on its background colour — visually identical to still loading, with no recovery and no signal. | Accepted as a terminal state rather than adding a retry. The card emits a distinct runtime signal on ladder exhaustion, separate from the derivation-time tier log, so the case is countable even though it looks like loading. |
-| There is no runtime kill switch. A bad still rule cannot be turned off without a republish. | Operational Notes names the rollback lever and requires it to be rehearsed on preview before the first production publish. |
+| Risk                                                                                                                                                                                                                                                                  | Mitigation                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stills are requested at watch-screen mount, not when the carousel is reached, so they contend with player startup on the design-centre device. The nested horizontal list virtualises on its own offset, so its first cells mount regardless of parent scroll.        | KTD14 pins an explicit low priority on the card image, matching this app's convention for non-hero card art. The Verification Contract measures the mount window directly rather than assuming it is clear.                                                                                                                                                                                                      |
+| The prefetch cannot be de-prioritised — the API accepts no priority — so an off-screen prefetch can outrank the still the viewer is looking at.                                                                                                                       | KTD14 sequences it behind the visible card's own load. U6 tests that ordering.                                                                                                                                                                                                                                                                                                                                   |
+| Cold render is POP-local and expires after seven days with no revalidation, so warmth is neither global nor permanent. Most of these URLs will be cold on most first views.                                                                                           | Accepted. The loading state is sized for a recurring one-to-three-second wait, not a one-time warm-up.                                                                                                                                                                                                                                                                                                           |
+| Adding or removing one citation in admin moves every timestamp for that video, cold-rendering every card again and minting fresh derivatives against the per-asset budget.                                                                                            | Accepted and recorded. Citation lists are near-static and the budget is roughly 679 for a feature-length film against ten citations.                                                                                                                                                                                                                                                                             |
+| An in-film black frame renders as a card with no visible artwork. This is KD3's residual after the clamp removes the out-of-range class.                                                                                                                              | Accepted per KD3. Under the heavier scrim the result reads as a dark card rather than a broken one, which is close to what web ships deliberately.                                                                                                                                                                                                                                                               |
+| The ladder's outcome is invisible in production. A mass fall-through to stock, a wrong pinned dub, or an all-black video would look identical to success.                                                                                                             | U4's hook emits one structured log per video per screen open, behind a per-slug ref, carrying the resolved top tier, slug, and citation count. The derivation returns the tier but stays pure and does not emit — it re-runs several times per open, so emitting there would weight the signal by render count and bias it toward false stock outcomes. Field naming follows this app's reserved-attribute rule. |
+| Every tier's load can fail. The stock tier is the same uncontracted third-party host the Problem Frame names as unreliable, so a card can exhaust the ladder and land on its background colour — visually identical to still loading, with no recovery and no signal. | Accepted as a terminal state rather than adding a retry. The card emits a distinct runtime signal on ladder exhaustion, separate from the derivation-time tier log, so the case is countable even though it looks like loading.                                                                                                                                                                                  |
+| There is no runtime kill switch. A bad still rule cannot be turned off without a republish.                                                                                                                                                                           | Operational Notes names the rollback lever and requires it to be rehearsed on preview before the first production publish.                                                                                                                                                                                                                                                                                       |
 
 ### Operational Notes
 
@@ -361,10 +366,12 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** None.
 
 **Files.**
+
 - `apps/mobile/src/lib/muxThumbnail.ts`
 - `apps/mobile/src/lib/__tests__/muxThumbnail.test.ts`
 
 **Approach.**
+
 1. Add the builder beside `muxThumbnailFromPlaybackId`, reusing that file's playback-id regex and its `null`-on-reject contract.
 2. Emit webp with both `width` and `height` at the fixed size KTD2 names, plus smartcrop and the timestamp. A bare `width` makes smartcrop keep the source height, which the file's own header records.
 3. Take the timestamp as a caller-supplied number and emit it to two decimal places (KTD1). The builder does no clamping and no spacing — that is U2's job.
@@ -372,6 +379,7 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Patterns to follow.** The existing builder in the same file, including its comment style for measured constants.
 
 **Test scenarios.**
+
 1. A valid playback id and a timestamp produce a URL carrying both dimensions, smartcrop, and that timestamp.
 2. A playback id containing a character outside the allowed set returns `null`.
 3. An empty or null playback id returns `null`.
@@ -392,10 +400,12 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** U1.
 
 **Files.**
+
 - `apps/mobile/src/lib/bibleCardArt.ts` (new)
 - `apps/mobile/src/lib/__tests__/bibleCardArt.test.ts` (new)
 
 **Approach.**
+
 1. Accept the video's variants, its authored images, the citation records, and a flag saying whether the payload has settled. Return one ordered candidate list per citation — every tier that validated, best first — never a single value (KTD8) — plus the resolved top tier per video for the caller to log.
 2. Pick the pinned dub deterministically per KTD4 — sort by a stable identifier, then take the first dub that is published AND resolves a playback id AND reports a positive finite runtime, falling back to the first playable dub only when none qualifies. Read the playback id and the runtime from that same dub. A playback id can be recovered from the dub's stream URL when the mux record is absent; the app already has a helper for that.
 3. Order the citations by their `order` field with a stable identifier as the tie-break before assigning positions (KTD4). Nulls collapse to zero, so without the tie-break two citations can swap positions between requests and every still changes.
@@ -406,20 +416,21 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 8. Key each list on the citation's ordered position, not its reference label, so the result is stable when labels change (R19).
 
 **Test scenarios.**
-1. Ten citations on a 6794-second runtime produce ten distinct URLs, all inside 679–6115 seconds. *Covers AE1.*
-2. The same inputs called twice produce byte-identical output. *Covers AE2, AE3.*
+
+1. Ten citations on a 6794-second runtime produce ten distinct URLs, all inside 679–6115 seconds. _Covers AE1._
+2. The same inputs called twice produce byte-identical output. _Covers AE2, AE3._
 3. Shuffling the variants array produces the same pinned dub and the same URLs.
-4. A null runtime with a settled payload yields no still tier; every entry falls to the next tier. *Covers AE10.*
+4. A null runtime with a settled payload yields no still tier; every entry falls to the next tier. _Covers AE10._
 5. A zero runtime behaves the same as null.
 6. A runtime so short the window collapses still produces in-range timestamps, never a negative or zero one, and never two identical ones.
-7. No playback id yields authored artwork for every entry, the same image on each. *Covers AE4.*
-8. Neither a playback id nor authored artwork yields stock images. *Covers AE5.*
-9. An authored image field that is an empty string falls through to stock rather than being selected. *Covers AE6.*
+7. No playback id yields authored artwork for every entry, the same image on each. _Covers AE4._
+8. Neither a playback id nor authored artwork yields stock images. _Covers AE5._
+9. An authored image field that is an empty string falls through to stock rather than being selected. _Covers AE6._
 10. An authored image whose value fails URL validation falls through rather than being selected.
-11. Two citations sharing a reference label produce different URLs. *Covers AE9.*
+11. Two citations sharing a reference label produce different URLs. _Covers AE9._
 12. One citation produces one list; zero citations produce an empty array.
 13. Each returned list is ordered still, authored, stock, with rejected tiers omitted rather than left as holes.
-14. Absent dub fields with an unsettled payload return empty lists; the same variant shape with a settled payload returns a stock-only list. *Covers AE12 in part.*
+14. Absent dub fields with an unsettled payload return empty lists; the same variant shape with a settled payload returns a stock-only list. _Covers AE12 in part._
 15. Every returned URL is already validated: a candidate the validator rejects never appears in a list.
 16. A sorted-first dub carrying no playback id is passed over for a later dub that carries one.
 17. Shuffling citations that share an `order` value produces the same position-to-URL map.
@@ -439,10 +450,12 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** None.
 
 **Files.**
+
 - `apps/mobile/src/hooks/useReduceMotion.ts` (new)
 - `apps/mobile/src/hooks/__tests__/useReduceMotion.test.tsx` (new)
 
 **Approach.**
+
 1. Mirror `apps/tv/src/hooks/useReduceMotion.ts` in shape, adapted to this app's conventions.
 2. Read the initial value asynchronously and subscribe to the change event; unsubscribe on unmount.
 3. Do not migrate the four existing inline copies in this unit — that is unrelated churn. Leave them, including the one in the watch route that will coexist with the new hook on the same screen.
@@ -450,6 +463,7 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Execution note.** Render this suite under StrictMode: the hook holds a subscription whose cleanup mutates hook-lifetime state, which is the repo's recorded trigger for a remount-safety defect.
 
 **Test scenarios.**
+
 1. Reports false before the initial read resolves.
 2. Reports the initial value once the read resolves.
 3. Re-renders when the change event fires with a new value.
@@ -469,28 +483,31 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** U1, U2.
 
 **Files.**
+
 - `apps/mobile/src/hooks/useBibleVerses.ts`
 - `apps/mobile/app/watch/[slug].tsx`
 - `apps/mobile/src/hooks/__tests__/useBibleVerses.test.tsx`
 
 **Approach.**
+
 1. Call U2's derivation once per video and hand each citation card its whole candidate list by position. Add the list as a named field on the card type rather than relying on the untyped block bag — the hook's card type and the renderer's item type meet through an index signature, so a field added on one side typechecks clean and silently renders nothing.
 2. Own the per-card failure index here, keyed by video and citation position, so it survives a card unmounting and remounting (KTD13). This layer owns it; the card only reports upward.
 3. Thread the derivation's inputs from the watch route, which is the hook's only call site and the only place the variants and authored images are in scope. The route file is in this unit's Files for that reason.
 4. Emit the ladder-outcome log here, behind a fired-once-per-slug ref, mirroring the shape the hook already uses for its passage read. Suppress it while the payload is unsettled.
-2. Build the promotional card after the citation map, keeping its existing fixed image. It must not be reachable from the ladder.
-5. Keep the stock array in the module as the ladder's last tier (KD5); do not delete it.
+5. Build the promotional card after the citation map, keeping its existing fixed image. It must not be reachable from the ladder.
+6. Keep the stock array in the module as the ladder's last tier (KD5); do not delete it.
 
 **Patterns to follow.** The existing suite's helper that separates citation cards from the promotional card.
 
 **Test scenarios.**
-1. A video with citations yields one artwork entry per citation, plus an unchanged promotional card. *Covers AE1.*
+
+1. A video with citations yields one artwork entry per citation, plus an unchanged promotional card. _Covers AE1._
 2. The promotional card's image is byte-identical to today's value.
-3. Cards keep their artwork when the passage read settles and reference labels change. *Covers AE12.*
+3. Cards keep their artwork when the passage read settles and reference labels change. _Covers AE12._
 4. A video with no citations yields only the promotional card and requests no still.
-5. Switching the active dub does not change any card's artwork. *Covers AE3.*
+5. Switching the active dub does not change any card's artwork. _Covers AE3._
 6. The stock array is still reachable as the final tier.
-7. A first render with partial variants paints no artwork, and the republished full payload fills it in without a second request for a discarded tier. *Covers AE12.*
+7. A first render with partial variants paints no artwork, and the republished full payload fills it in without a second request for a discarded tier. _Covers AE12._
 8. A card whose top candidate failed stays advanced after unmounting and remounting — the index lives here, so this is the unit that proves it.
 9. Three re-derivations for one slug emit exactly one ladder-outcome log.
 10. No ladder-outcome log is emitted while the payload is unsettled.
@@ -508,10 +525,12 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** U3, U4.
 
 **Files.**
+
 - `apps/mobile/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 - `apps/mobile/src/components/sections/__tests__/BibleQuotesCarouselRenderer.test.tsx`
 
 **Approach.**
+
 1. Move the scrim to the card's top edge and give its first stop a non-zero opacity (R9). Moving the gradient's origin alone leaves the top stop fully transparent and changes nothing. Derive that opacity from a pure-white backdrop so every text region clears 4.5:1 for any still, and pin the arithmetic in a unit test over the chosen colour values.
 2. Correct the text-shadow comment above the card, which currently justifies itself with the scrim covering only the lower part.
 3. Set `cachePolicy` to memory-disk and `transition` to an explicit numeric duration, gated to zero by U3's hook (KTD6, KTD11).
@@ -526,22 +545,23 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Execution note.** Verify on Android as well as iOS. Both the group-opacity hazard and the transition-duration default differ by platform, and an iOS-only check passes while Android fails.
 
 **Test scenarios.**
-1. The scrim's top stop clears 4.5:1 for all four of R10's text regions against a pure-white backdrop, asserted arithmetically over the chosen colour values. *Covers AE13.*
+
+1. The scrim's top stop clears 4.5:1 for all four of R10's text regions against a pure-white backdrop, asserted arithmetically over the chosen colour values. _Covers AE13._
 2. The image receives `cachePolicy` memory-disk.
 3. The transition duration is the configured number when reduce-motion is off.
-4. The transition duration is zero when reduce-motion is on. *Covers AE8.*
-5. Two cards whose citations share a reference label receive different image sources. *Covers AE9.*
-6. An image error advances that card to the next tier's source. *Covers AE11.*
+4. The transition duration is zero when reduce-motion is on. _Covers AE8._
+5. Two cards whose citations share a reference label receive different image sources. _Covers AE9._
+6. An image error advances that card to the next tier's source. _Covers AE11._
 7. An image error on the last candidate leaves the card at its background colour and does not loop.
-11. A card renders an image element at all when handed a non-null candidate, so the prop assertions cannot pass against an absent node.
-12. A card handed a ladder-resolved URL renders it without re-validating.
-13. The card image carries the low priority KTD14 names.
-14. A quote item carrying authored artwork under admin's own field name still renders no image — pinning today's parity gap, not endorsing it.
-15. A card whose candidates are exhausted emits the ladder-exhaustion signal once and settles at the background colour without looping.
-16. A quote item arriving with a non-null image field from the Experience path is still resolved and validated at render.
-8. The still is hidden from assistive technology and the card announces one composed label. *Covers AE14.*
-9. A card with no artwork renders the background colour and no image element. *Covers AE7 in part.*
-10. Rendered at a narrow width and a large font scale, the card's text regions still fit and the reference is not clipped.
+8. A card renders an image element at all when handed a non-null candidate, so the prop assertions cannot pass against an absent node.
+9. A card handed a ladder-resolved URL renders it without re-validating.
+10. The card image carries the low priority KTD14 names.
+11. A quote item carrying authored artwork under admin's own field name still renders no image — pinning today's parity gap, not endorsing it.
+12. A card whose candidates are exhausted emits the ladder-exhaustion signal once and settles at the background colour without looping.
+13. A quote item arriving with a non-null image field from the Experience path is still resolved and validated at render.
+14. The still is hidden from assistive technology and the card announces one composed label. _Covers AE14._
+15. A card with no artwork renders the background colour and no image element. _Covers AE7 in part._
+16. Rendered at a narrow width and a large font scale, the card's text regions still fit and the reference is not clipped.
 
 **Verification.** On a device, a card carrying a bright still shows all four of R10's text regions readable — verse and reference included — and Android shows the scrim covering the still rather than blending with it.
 
@@ -556,27 +576,30 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** U5.
 
 **Files.**
+
 - `apps/mobile/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 - `apps/mobile/src/components/sections/__tests__/BibleQuotesCarouselRenderer.test.tsx`
 
 **Approach.**
+
 1. On the settled card index, prefetch the next card's top candidate at the depth the Outstanding Question names, pinning the same cache policy as the render (KTD6). Issue it only after the visible card's own image has settled — the API accepts no priority, so ordering is the only lever (KTD14).
 2. Return early when the URL list is empty — the prefetch promise never settles on an empty array, and a card at either end of the carousel produces one on the ordinary path (KTD5).
 3. Do not attempt cancellation on unmount; it is not offered. Bound the work by issuing fewer requests instead.
 4. No other suite needs a mock update. None of the app's existing image-library stubs mounts this carousel — the one SDUI suite that could mocks the dispatcher out entirely — so a missing prefetch static cannot throw there. The local mock U5 adds to the carousel's own suite is the only one this change needs.
 
 **Test scenarios.**
+
 1. Settling on a card prefetches the next card's still exactly once.
 2. Settling on the last card issues no prefetch call rather than calling with an empty list.
 3. A video whose ladder yields no still URLs issues no prefetch call.
 4. The prefetch passes the same cache policy the render uses.
 5. Re-settling on an already-prefetched card does not re-issue the request.
-7. No prefetch is issued before the visible card settles.
-8. A visible card holding at its background colour still prefetches once the release fires.
-9. A visible card whose image errors still prefetches.
-10. A visible card with no candidate to load still prefetches.
-11. The prefetch fires after the release, not merely absent before it.
-6. Every previously green suite still passes.
+6. No prefetch is issued before the visible card settles.
+7. A visible card holding at its background colour still prefetches once the release fires.
+8. A visible card whose image errors still prefetches.
+9. A visible card with no candidate to load still prefetches.
+10. The prefetch fires after the release, not merely absent before it.
+11. Every previously green suite still passes.
 
 **Verification.** With the network throttled, moving to the next card shows its still already present. No suite throws on a missing static.
 
@@ -591,9 +614,11 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 **Dependencies.** None.
 
 **Files.**
+
 - `apps/tv/src/lib/bibleContent.ts`
 
 **Approach.**
+
 1. Move the cycled-photographs claim onto the stock array's own doc comment and record there that mobile no longer mirrors it.
 2. Leave the file header's rotation instruction intact for the promotional image and the call-to-action URLs, which remain genuinely shared.
 3. Correct the header's claim that web uses the same photographs, which was already false.
@@ -607,11 +632,13 @@ Pure derivation modules land first (U1, U2), so the surfaces that consume them c
 ## Verification Contract
 
 **Commands.**
+
 - `pnpm --filter @forge/mobile test` — the full jest suite. Every unit above adds to it.
 - `pnpm --filter @forge/mobile typecheck` — `tsc --noEmit`.
 - `pnpm --filter @forge/mobile lint`.
 
 **Device verification.** Required, not optional — three of this plan's decisions have platform-divergent behaviour that jest cannot see.
+
 - iOS simulator and an Android device or emulator, on a video with several citations. `pilgrims-progress` carries ten in production and is the reference case.
 - Android specifically: confirm the scrim covers the still rather than blending with it, and that the fade actually runs.
 - Reduce-motion on: confirm stills appear without a fade on both platforms.
@@ -631,6 +658,7 @@ Report each for two videos: one carrying a single citation, the production media
 ## Definition of Done
 
 **Global.**
+
 - Every requirement R1–R13 and R15–R19 is implemented or explicitly traced to a unit that implements it. R14 is retired and must not reappear.
 - The three commands above pass.
 - Device verification is done on both platforms, including the Android scrim and fade checks.
@@ -641,6 +669,7 @@ Report each for two videos: one carrying a single citation, the production media
 - Abandoned experiments are removed. Any timestamp-selection or prefetch variant tried and discarded leaves no dead code, no unused export, and no commented-out block.
 
 **Per unit.**
+
 - U1: the builder is the only place the timestamped URL shape exists, and its size is a constant.
 - U2: the module is pure, returns ordered candidate lists, and every ladder tier plus the runtime gate has a test that only that branch satisfies.
 - U3: the hook reports both states and leaves no listener after unmount.
