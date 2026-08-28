@@ -3,7 +3,7 @@ id: "feat-429"
 title: "Rehearse the RAG corpus copy locally"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-12"
 duration: 4
 depends_on: ["feat-428"]
@@ -41,3 +41,10 @@ Create read-only preflight, resumable copy, reconciliation, and rollback-safe lo
 
 - Reconcile counts, integrity, provenance, dimensions, deterministic samples/hashes, retrieval, and eval.
 - Interrupt and resume the copy without duplicates or loss.
+
+## Resolution
+
+Implemented in [Forge PR #2086](https://github.com/JesusFilm/forge/pull/2086).
+The committed redacted receipt records a real mid-table interruption and resume,
+matching corpus and retrieval facts, all expected indexes, and zero embedding
+calls.
