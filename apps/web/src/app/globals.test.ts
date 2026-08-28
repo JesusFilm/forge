@@ -383,6 +383,183 @@ describe("scroll-driven timeline choreography", () => {
     }
   })
 
+  it("drives the transcript reel at every width, not only the pinned one", () => {
+    // The inverse of the test above, and a bug that shipped. Every other
+    // rule in this block is scoped to `>= 48rem` because the era stack
+    // needs desktop room. The transcript does not: below that breakpoint
+    // the phone still pins, and if the rule is scoped with its neighbours
+    // the reel silently never runs on a phone — the reader arrives on a
+    // static transcript. Nothing else fails when that happens, because
+    // `translateY(0)` is a legitimate resting state.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const pinned = blockBody(guard, "@media (width >= 48rem)")
+    const rule = blockBody(guard, ".watch-scroll-chat-stage {")
+
+    expect(rule).toContain("animation-timeline: view()")
+    expect(pinned).not.toContain(".watch-scroll-chat-stage")
+  })
+
+  it("scrolls the transcript in the same units the exchange is timed in", () => {
+    // The reel's scroll and the steps of the exchange are one
+    // choreography split across two files, so they have to share an axis.
+    // A percentage is a fraction of the whole contain phase and a length
+    // is an absolute offset into it — and the phone now sticks for the
+    // length of the entire argument, so the same number means wildly
+    // different places. Left as `%` while the steps became `svh`, the reel
+    // scrolled roughly 800px after the content it follows, leaving the
+    // citation card clipped off the bottom of the screen the whole time.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-chat-stage {")
+    const range =
+      /animation-range:\s*contain\s+(\d+)svh\s+contain\s+(\d+)svh/.exec(rule)
+
+    expect(range, rule).not.toBeNull()
+    const [, head, tail] = range!.map(Number)
+    expect(tail).toBeGreaterThan(head)
+    // It follows content that has outgrown the screen, so it belongs in
+    // the back half of the exchange, never at the head.
+    expect(head).toBeGreaterThan(50)
+  })
+
+  it("rests on a FINISHED exchange, not a half-played animation", () => {
+    // What a reader gets with no scroll-driven animation at all: no
+    // support, or reduced motion. The section's whole claim is that our
+    // catalogue gets cited inside someone else's answer, so the resting
+    // state has to be the answer — every step OPEN. A step resting closed
+    // would leave those readers a blank phone, and no test that renders
+    // the DOM would notice, because the markup is all there.
+    const step = blockBody(css, ".watch-chat-step {")
+    const think = blockBody(css, ".watch-chat-think {")
+    const typed = blockBody(css, ".watch-chat-typed {")
+    const staging = blockBody(css, ".watch-chat-home,")
+    const app = blockBody(css, ".watch-chat-app {")
+
+    expect(step).toContain("grid-template-rows: 1fr")
+    // The exceptions are all things that only exist mid-play: a finished
+    // exchange is not still waiting for its answer, the question has
+    // already left the composer for the bubble, and the app has already
+    // been opened — so a home screen and a pointer aiming at it would
+    // strand these readers in front of a tap that never comes.
+    expect(think).toContain("grid-template-rows: 0fr")
+    expect(typed).toContain("max-height: 0")
+    expect(staging).toContain("opacity: 0")
+    expect(app).toContain("opacity: 1")
+  })
+
+  it("recedes the home screen without fading it", () => {
+    // The app above is opaque by the time it covers the home screen, so
+    // fading the home screen out as well only makes both layers
+    // translucent at once — which turned a dark wallpaper over a white app
+    // into flat grey for the whole transition. Scale, no opacity.
+    const home = blockBody(css, "@keyframes watch-chat-home")
+    const app = blockBody(css, "@keyframes watch-chat-app")
+
+    expect(home).toContain("scale")
+    expect(home).not.toContain("opacity")
+    // And the app has to reach full opacity EARLY, so it covers rather
+    // than blends for most of its travel.
+    expect(app).toContain("opacity: 1")
+  })
+
+  it("puts a step's gap inside the box that clips it", () => {
+    // `overflow: hidden` clips a box's CONTENT, never its own padding. A
+    // closed step with padding still draws that padding, so the
+    // conversation sits in a ladder of blank strips waiting for content
+    // that has not arrived — measured at 14px per unopened step. The gap
+    // has to be a child's margin, which is content and so gets clipped.
+    const inner = blockBody(css, ".watch-chat-step-inner {")
+    const child = blockBody(css, ".watch-chat-step-inner > * {")
+
+    expect(inner).toContain("overflow: hidden")
+    expect(inner).toContain("min-height: 0")
+    expect(inner).not.toMatch(/padding/)
+    expect(child).toContain("margin-block-start")
+  })
+
+  it("sizes the typed line against the device, not the page", () => {
+    // The character budget on `phone.typedLines` only means anything if
+    // the type scales with the phone: font and available width have to
+    // move together, or a line that fits one device size is clipped at
+    // another. `cqw` is what ties them.
+    const line = blockBody(css, ".watch-chat-typed-line {")
+    const device = blockBody(css, ".watch-chat-device {")
+
+    expect(line).toContain("white-space: nowrap")
+    expect(line).toMatch(/font-size:\s*clamp\([^)]*cqw/)
+    expect(device).toContain("container-type: inline-size")
+  })
+
+  it("stacks the composer's two states in flow, not out of it", () => {
+    // Placeholder and typed text occupy one grid cell so the pill's height
+    // is the taller of them, which is how it grows a line at a time.
+    // Absolute positioning stacks them equally well and is wrong: it takes
+    // the typed text out of layout, so the pill stays one line tall and
+    // the text spills through its bottom border.
+    const slot = blockBody(css, ".watch-chat-slot {")
+    const cell = blockBody(css, ".watch-chat-slot > * {")
+
+    expect(slot).toContain("display: grid")
+    expect(cell).toContain("grid-area: 1 / 1")
+    expect(cell).not.toContain("position: absolute")
+  })
+
+  it("blinks the caret on its own clock, on its own element", () => {
+    // Two elements because reveal and blink both drive opacity: in one
+    // `animation` list the filling reveal wins outright and the caret
+    // never blinks. And the blink is time-based — a cursor tied to scroll
+    // freezes whenever the reader stops, which is most of the time.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const reveal = blockBody(guard, ".watch-scroll-chat-caret {")
+    const blink = blockBody(
+      guard,
+      ".watch-scroll-chat-caret .watch-chat-caret {",
+    )
+
+    expect(reveal).toContain("animation-timeline: --watch-chat")
+    expect(blink).toContain("infinite")
+    expect(blink).not.toContain("animation-timeline")
+  })
+
+  it("names the timeline every step of the exchange reads", () => {
+    // Each step attaches its own range to ONE timeline whose subject is
+    // the pin stage. A step cannot use `view()` on itself: it starts at
+    // zero height inside a pinned column inside an overflow-hidden screen,
+    // so its own view progress says nothing about where the reader is.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const stage = blockBody(guard, ".watch-scroll-chat-stage {")
+
+    expect(stage).toContain("view-timeline-name: --watch-chat")
+    for (const name of [
+      "watch-scroll-chat-step",
+      "watch-scroll-chat-think",
+      "watch-scroll-chat-typed-line",
+      "watch-scroll-chat-placeholder",
+      "watch-scroll-chat-send",
+    ]) {
+      const rule = blockBody(guard, `.${name} {`)
+      expect(rule, name).toContain("animation-timeline: --watch-chat")
+      expect(rule, name).toContain("animation-range: var(--step-range)")
+    }
+  })
+
+  it("measures the reel's screenful off its container, not a shared constant", () => {
+    // These two rules are one calculation: the reel travels its own
+    // height less ONE SCREENFUL of the phone's conversation viewport. It
+    // reads that screenful as `100cqh`, which is why the viewport has to
+    // be a size container. Before this it was a rem constant duplicated
+    // in the component, where the two could drift with nothing to catch
+    // it; now the viewport is free to be sized by flex layout so the
+    // device can hold the iPhone ratio at any height.
+    const viewport = blockBody(css, ".watch-chat-viewport {")
+    const reel = blockBody(css, ".watch-chat-reel {")
+
+    expect(viewport).toContain("container-type: size")
+    expect(reel).toContain("100cqh")
+    expect(reel).toContain("-100%")
+    // Not a length constant standing in for the viewport height.
+    expect(reel).not.toMatch(/--chat-viewport/)
+  })
+
   it("scales the opening zoom from the viewport, not from a guessed number", () => {
     // A hard-coded scale is right at one viewport height and wrong at
     // every other: too small leaves a strip of page showing around the

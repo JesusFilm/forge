@@ -7,6 +7,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { CHAT_SEQUENCE_END_SVH } from "@/components/whats-new/WhatsNewAssistantPhone"
 import { WatchWhatsNewPage } from "@/components/whats-new/WatchWhatsNewPage"
 import {
   WHATS_NEW_ASSISTANTS,
@@ -14,17 +15,14 @@ import {
   WHATS_NEW_CONTENTS,
   WHATS_NEW_FORMATS,
   WHATS_NEW_DELIVERY,
-  WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
   WHATS_NEW_FAQ,
   WHATS_NEW_HERO,
-  WHATS_NEW_ICEBERG,
   WHATS_NEW_IMPROVEMENTS,
   WHATS_NEW_LEDE,
   WHATS_NEW_PARTNER_LETTER,
   WHATS_NEW_QUIZ,
   WHATS_NEW_SELF_ID,
-  WHATS_NEW_TEAM,
 } from "@/components/whats-new/whats-new-content"
 import { WHATS_NEW_LANGUAGE_SWITCHER } from "@/components/whats-new/whats-new-content"
 import { WATCH_FEEDBACK_OPEN_EVENT } from "@/lib/watch-feedback-events"
@@ -904,24 +902,45 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("stops the colour band above the copy", () => {
-    // The whole point of sizing the band off the shot: it must not sit
-    // behind the heading or body text. Put it back on the cell and the
-    // copy is inside the coloured element again.
+  it("paints the colour band BEHIND the copy, not over it", () => {
+    // The band used to stop just below the shot, so it could not reach the
+    // copy at all. It now runs down behind the heading and into the first
+    // lines of body text, which makes the layering the thing that protects
+    // legibility: an absolutely positioned element paints ABOVE static
+    // siblings, so without a negative z-index the band would cover the
+    // copy instead of sitting under it.
+    //
+    // Contrast measured in Chromium at 1440px on 2026-08-27, at the
+    // band's brightest point under text: 7.0:1 for the heading and 4.78:1
+    // for the body's white/76 — both over the 4.5:1 floor. jsdom computes
+    // no colour, so no test holds those numbers; re-measure if the tints
+    // or the mask change.
     for (const cell of container.querySelectorAll(
       '[data-testid="whats-new-improvement-card"]',
     )) {
-      const band = cell.querySelector('[data-testid="whats-new-tint-band"]')!
+      const band = cell.querySelector<HTMLElement>(
+        '[data-testid="whats-new-tint-band"]',
+      )!
       const wrapper = band.parentElement!
 
-      expect(wrapper.contains(cell.querySelector("h3"))).toBe(false)
-      expect(wrapper.contains(cell.querySelector("p"))).toBe(false)
+      // What keeps it under the text.
+      expect(band.className).toMatch(/-z-10/)
+      // And the negative index only resolves against this cell if the cell
+      // is a stacking context. It used to be one only by accident, through
+      // the `will-change: opacity` on its scroll reveal — which sits inside
+      // a reduced-motion media query, so the layering depended on the
+      // reader not having asked for reduced motion.
+      expect(cell.className).toMatch(/(^|\s)isolate(\s|$)/)
+      // The bottom inset is proportional to the shot, which scales with
+      // the card: a fixed step reaches a different fraction of the
+      // two-up cells, the full-width cell and every breakpoint.
+      expect(band.className).toMatch(/-bottom-\[\d+%\]/)
       // Containment alone is not enough, and jsdom has no layout to check:
       // the band is absolutely positioned, so what actually bounds it is
       // its nearest POSITIONED ancestor. Drop `relative` here (or make the
       // wrapper `display:contents`, which generates no box at all) and the
-      // band resolves against the cell again and covers the copy, with
-      // every containment assertion above still green.
+      // band resolves against the cell again, losing the insets that let
+      // it bleed to the cell's edges.
       expect(wrapper.className).toMatch(/(^|\s)relative(\s|$)/)
       expect(wrapper.className).not.toMatch(/(^|\s)contents(\s|$)/)
       expect(
@@ -967,19 +986,10 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("renders the audience, direction, and team copy in full", () => {
+  it("renders the audience copy in full", () => {
     for (const card of WHATS_NEW_AUDIENCES.cards) {
       expect(textContent()).toContain(card.title)
       expect(textContent()).toContain(card.body)
-    }
-    for (const item of WHATS_NEW_DIRECTIONS.items) {
-      expect(textContent()).toContain(item)
-    }
-    for (const note of WHATS_NEW_DIRECTIONS.notes) {
-      expect(textContent()).toContain(note)
-    }
-    for (const contribution of WHATS_NEW_TEAM.contributions) {
-      expect(textContent()).toContain(contribution)
     }
   })
 
@@ -1343,38 +1353,6 @@ describe("WatchWhatsNewPage", () => {
     // deleting it should still fail here.
     expect(container.querySelector('section[id="partners"]')).not.toBeNull()
     expect(container.querySelector('nav[aria-label="On this page"]')).toBeNull()
-  })
-
-  it("illustrates the team section with a labelled iceberg", () => {
-    const berg = container.querySelector('[data-testid="whats-new-iceberg"]')
-
-    expect(berg).not.toBeNull()
-    expect(
-      berg?.closest("section")?.getAttribute("id"),
-      "the iceberg belongs to the team section, not a neighbouring one",
-    ).toBe("team")
-
-    // The argument only lands if BOTH halves are named: a tip on its own
-    // is just an icon.
-    expect(berg?.textContent).toContain(WHATS_NEW_ICEBERG.tip)
-    expect(berg?.textContent).toContain(WHATS_NEW_ICEBERG.mass)
-    // Described for anyone who cannot see it.
-    expect(berg?.querySelector("svg")?.getAttribute("role")).toBe("img")
-    expect(berg?.querySelector("svg")?.getAttribute("aria-label")).toBe(
-      WHATS_NEW_ICEBERG.alt,
-    )
-  })
-
-  it("hides the submerged mass only where the reveal can run", () => {
-    // `clip-path: inset(0 0 100% 0)` is the start state. If it were applied
-    // outside the scroll-driven guard, a browser without support would
-    // render the iceberg as a tip floating above an empty waterline.
-    const submerged = container.querySelector(
-      '[data-testid="whats-new-iceberg"] .watch-scroll-berg',
-    )
-
-    expect(submerged).not.toBeNull()
-    expect(submerged?.getAttribute("style") ?? "").not.toContain("clip-path")
   })
 
   it("draws the whole delivery arc as one diagram, reel to assistant", () => {
@@ -1880,6 +1858,92 @@ describe("WatchWhatsNewPage", () => {
           '[data-testid="whats-new-phone-source-chip"]',
         ).length,
       ).toBeGreaterThan(0)
+    })
+
+    it("draws the device at iPhone proportions, sized by height", () => {
+      // "Same aspect as an iPhone" is 9:19.5 — the display ratio from the
+      // iPhone 12 through the 17. HEIGHT has to be the driver with an auto
+      // width: constrain the width instead and any viewport-height cap
+      // flattens the phone into a tile, which is the shape this replaced.
+      const device = container.querySelector(
+        '[data-testid="whats-new-phone-device"]',
+      )
+      const cls = device?.className ?? ""
+
+      expect(cls).toContain("aspect-[9/19.5]")
+      expect(cls).toMatch(/\bh-\[/)
+      expect(cls).toContain("w-auto")
+      // A fixed width would re-introduce the squashing this guards.
+      expect(cls).not.toMatch(/\bw-full\b/)
+    })
+
+    it("gives the pinned phone its dwell as height, never as padding", () => {
+      // LOAD-BEARING, and it cost an afternoon. A sticky element is
+      // constrained to its parent's CONTENT box, and padding sits outside
+      // that — so `pb-[88svh]` made this stage render 88svh taller while
+      // leaving the sticky range at exactly ZERO, and the phone scrolled
+      // away like any other element. Both versions look identical in the
+      // DOM, in a screenshot of a static page, and to every other test
+      // here; only scrolling reveals it, and jsdom cannot scroll.
+      const stage = container.querySelector(".watch-scroll-chat-stage")
+      const cls = stage?.className ?? ""
+      const pin = stage?.querySelector(".sticky")
+
+      expect(stage).not.toBeNull()
+      expect(pin, "the stage exists to hold a sticky child").not.toBeNull()
+      // Its own height, in viewport units, so the dwell survives any
+      // content length.
+      expect(cls).toMatch(/min-h-\[\d+svh\]/)
+      // The trap: vertical padding on the stage buys no sticky travel.
+      expect(cls).not.toMatch(/\bp[by]-\[/)
+    })
+
+    it("gives the sequence enough stage to finish playing", () => {
+      // The exchange is timed in `svh` offsets into the stage's CONTAIN
+      // phase, which is the stage's height less one viewport. So the stage
+      // has to be at least the sequence length plus a screen. Too short
+      // and the tail simply never plays — no error, no layout change, and
+      // the later a step is the more certain it is to be the one lost.
+      // This is the only place the two numbers meet.
+      const stage = container.querySelector<HTMLElement>(
+        ".watch-scroll-chat-stage",
+      )
+      const minHeight = /min-h-\[(\d+)svh\]/.exec(stage?.className ?? "")
+
+      expect(minHeight, stage?.className).not.toBeNull()
+      expect(Number(minHeight![1]) - 100).toBeGreaterThanOrEqual(
+        CHAT_SEQUENCE_END_SVH,
+      )
+    })
+
+    it("sticks the phone beside the whole argument, to its last paragraph", () => {
+      // The device is meant to stay on the right until the end of the
+      // "what we owe it" argument, and what makes that true is that the
+      // text blocks and the phone are in ONE grid with the phone spanning
+      // every text row. Move a block out of the grid, or add a fourth one
+      // without widening the span, and the phone quietly lets go early —
+      // the layout still renders, and nothing else here notices.
+      const stage = container.querySelector<HTMLElement>(
+        ".watch-scroll-chat-stage",
+      )
+      const grid = stage?.parentElement
+      const leftColumn = [
+        ...(grid?.querySelectorAll(":scope > .lg\\:col-start-1") ?? []),
+      ]
+      const span = /lg:row-span-(\d+)/.exec(stage?.className ?? "")
+
+      expect(stage).not.toBeNull()
+      expect(stage?.className).toContain("lg:col-start-2")
+      expect(span, "phone must span the text rows").not.toBeNull()
+      // The span is only correct relative to how many rows there are.
+      expect(leftColumn.length).toBeGreaterThan(1)
+      expect(Number(span![1])).toBe(leftColumn.length)
+
+      // And the last of those rows must be the closing argument, since
+      // that is the point the phone is supposed to stay until.
+      expect(leftColumn.at(-1)?.textContent).toContain(
+        WHATS_NEW_ASSISTANTS.closing.at(-1),
+      )
     })
 
     it("leaves the phone screen itself inert", () => {

@@ -5,7 +5,6 @@ import {
   Globe2,
   Handshake,
   House,
-  Info,
   MessagesSquare,
   PlayCircle,
   Projector,
@@ -24,7 +23,6 @@ import { WhatsNewFaq } from "@/components/whats-new/WhatsNewFaq"
 import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
 import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiagram"
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
-import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
 import { WhatsNewNoteBoard } from "@/components/whats-new/WhatsNewNoteBoard"
 import { WhatsNewShot } from "@/components/whats-new/WhatsNewShot"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
@@ -34,7 +32,6 @@ import {
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_CLOSING,
   WHATS_NEW_DELIVERY,
-  WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
   WHATS_NEW_FAQ,
   WHATS_NEW_HERO,
@@ -42,7 +39,6 @@ import {
   WHATS_NEW_LANGUAGE_SWITCHER,
   WHATS_NEW_LEDE,
   WHATS_NEW_PARTNER_LETTER,
-  WHATS_NEW_TEAM,
   type WhatsNewIconKey,
 } from "@/components/whats-new/whats-new-content"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
@@ -650,18 +646,30 @@ export function WatchWhatsNewPage({
               </h3>
             </div>
 
-            {/* The three reasons stack in a column beside a mocked-up
-                phone: they each describe one facet of the same moment, so
-                the illustration shows that moment once rather than having
-                the reader assemble it from three abstractions.
+            {/* Everything the phone illustrates, in one grid with the phone
+                as a sticky right-hand column: the three reasons, the
+                research, and the argument that turns on it. The device
+                stays put beside all of it and only lets go at the end of
+                the section.
 
-                The phone column is `auto` — sized by the device, not by a
-                fraction of the row — so the cards take whatever is left
-                and the mockup never stretches. It sticks, because the
-                cards are the taller column. Below `lg` the phone drops
-                underneath the cards it illustrates. */}
-            <div className="watch-scroll-chat-stage mt-10 grid items-start gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
-              <ul className="grid gap-6 lg:gap-8">
+                Placement is EXPLICIT rather than by DOM order, because the
+                two breakpoints need different orders and there is only one
+                DOM. Source order is cards, phone, research, closing — which
+                is the reading order on a phone, where each part follows the
+                one it belongs to. Above `lg` the phone is lifted out into
+                column two spanning all three rows, so the text runs down
+                the left in the same order with the device alongside.
+
+                The phone column is `auto` — sized by the device, not a
+                fraction of the row — so the text takes whatever is left and
+                the mockup never stretches. */}
+            <div className="mt-10 grid items-start gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-16 lg:gap-y-0">
+              {/* Above `lg` the cards spread across the full height of the
+                  phone's pin stage instead of stacking at the top and
+                  leaving a void beside it. It also earns the composition:
+                  the phone holds still while one card at a time comes
+                  level with it, which is the reading these three are for. */}
+              <ul className="grid gap-6 lg:col-start-1 lg:row-start-1 lg:gap-8">
                 {WHATS_NEW_ASSISTANTS.reasons.map((reason) => {
                   const Icon = ICONS[reason.icon]
 
@@ -698,84 +706,113 @@ export function WatchWhatsNewPage({
                 })}
               </ul>
 
-              <div className="justify-self-center lg:sticky lg:top-28">
-                <WhatsNewAssistantPhone />
+              {/* Pin stage: the box the phone is held still inside. Its
+                  height IS the dwell, so the phone stays put until the
+                  reader reaches the end of it and then releases into the
+                  next block.
+
+                  `min-h`, NOT padding. A sticky element is constrained to
+                  its parent's CONTENT box, and padding sits outside that —
+                  so `pb-[88svh]` made the stage visibly 88svh taller while
+                  leaving the sticky range at exactly zero, and the phone
+                  scrolled away like any other element. Nothing about the
+                  rendered height reveals the difference; only the pin
+                  failing to pin does.
+
+                  Below `lg` the stage carries its own height, and that
+                  height is a BUDGET, not a look: the sequence inside the
+                  phone is timed in `svh` offsets into this box's contain
+                  phase, which is its height less one screen. So this has
+                  to stay at least `CHAT_SEQUENCE_END_SVH + 100svh` or the
+                  tail of the exchange silently never plays. There is a
+                  test that compares the two.
+
+                  Borrowing the cards' height instead looked tidier and
+                  gave the phone a 146px dwell against its own 704px
+                  height — it pinned for about a fifth of a second of
+                  scrolling and let go. */}
+              <div className="watch-scroll-chat-stage min-h-[225svh] justify-self-center lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:min-h-0 lg:self-stretch">
+                <div className="sticky top-20 lg:top-28">
+                  <WhatsNewAssistantPhone />
+                </div>
               </div>
-            </div>
 
-            {/* The research */}
-            <div className="mt-20 max-w-3xl lg:mt-28">
-              <p className={EYEBROW_CLASS}>
-                {WHATS_NEW_ASSISTANTS.researchEyebrow}
-              </p>
-              <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
-                {WHATS_NEW_ASSISTANTS.researchHeading}
-              </h3>
-              <div className="mt-6 space-y-5">
-                {WHATS_NEW_ASSISTANTS.researchIntro.map((paragraph) => (
-                  <p key={paragraph} className={BODY_CLASS}>
-                    {paragraph}
-                  </p>
-                ))}
+              {/* The research */}
+              <div className="mt-20 max-w-3xl lg:col-start-1 lg:row-start-2 lg:mt-28">
+                <p className={EYEBROW_CLASS}>
+                  {WHATS_NEW_ASSISTANTS.researchEyebrow}
+                </p>
+                <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
+                  {WHATS_NEW_ASSISTANTS.researchHeading}
+                </h3>
+                <div className="mt-6 space-y-5">
+                  {WHATS_NEW_ASSISTANTS.researchIntro.map((paragraph) => (
+                    <p key={paragraph} className={BODY_CLASS}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* The argument and its evidence sit side by side: the closing
-                copy opens with "put those findings next to each other",
-                and on a wide screen they literally are. The copy sticks
-                while the studies scroll past it.
+              {/* One column: the studies and the argument that turns on them
+                read as a single piece, with each quote sitting in the prose
+                that uses it rather than in a card alongside it.
 
-                DOM order is studies-then-copy so the single-column phone
-                layout still reads in argument order — the grid only swaps
-                them once there are two columns to swap. */}
-            <div className="mt-20 grid items-start gap-12 lg:mt-28 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] lg:gap-16">
-              {/* Every claim is a link. A statistic on a public page that a
-                  reader cannot check is worth less than no statistic. */}
-              <ol className="grid gap-px overflow-hidden rounded-3xl border border-white/12 bg-white/12 lg:order-2">
-                {WHATS_NEW_ASSISTANTS.sources.map((source) => (
-                  <li
-                    key={source.id}
-                    data-testid="whats-new-assistant-source"
-                    className="flex flex-col gap-4 bg-stone-950 p-7 sm:p-8"
-                  >
-                    <blockquote className="border-l-2 border-red-100/50 pl-5 text-base leading-7 font-medium text-balance text-white sm:text-lg sm:leading-8">
-                      <p>&ldquo;{source.quote}&rdquo;</p>
-                      <footer className="mt-2 text-sm leading-6 font-normal text-white/50">
-                        — {source.quoteNote}
-                      </footer>
-                    </blockquote>
-
-                    <p className="text-base leading-7 text-white/76">
-                      {source.finding}
-                    </p>
-
-                    <p className="mt-auto text-sm leading-6 text-white/50">
-                      <a
-                        href={source.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
-                      >
-                        {source.publication}
-                      </a>
-                      <span className="mx-2 text-white/25">·</span>
-                      {source.attribution}
-                      <span className="mx-2 text-white/25">·</span>
-                      <span className="tabular-nums">{source.date}</span>
-                    </p>
-                  </li>
-                ))}
-              </ol>
-
-              {/* The turn: what the research obliges us to do. */}
-              <div className="lg:sticky lg:top-28 lg:order-1">
+                They come BEFORE the copy because the copy's first line is
+                "put those findings next to each other" — it has to have
+                findings above it to point at. Reordering these is a copy
+                change, not just a layout one. */}
+              <div className="mt-16 max-w-3xl lg:col-start-1 lg:row-start-3 lg:mt-20">
                 <p className={EYEBROW_CLASS}>
                   {WHATS_NEW_ASSISTANTS.closingEyebrow}
                 </p>
                 <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
                   {WHATS_NEW_ASSISTANTS.closingHeading}
                 </h3>
-                <div className="mt-6 space-y-5">
+
+                {/* Every claim is a link. A statistic on a public page that a
+                  reader cannot check is worth less than no statistic.
+
+                  Hairline rules rather than the card frames these used to
+                  have: in a prose column a bordered box reads as an aside
+                  the eye can skip, which is the opposite of the job here —
+                  these ARE the argument, not a sidebar to it. */}
+                <ol className="mt-10 grid gap-8 border-t border-white/10 pt-8">
+                  {WHATS_NEW_ASSISTANTS.sources.map((source) => (
+                    <li
+                      key={source.id}
+                      data-testid="whats-new-assistant-source"
+                      className="grid gap-3 border-b border-white/10 pb-8 last:border-b-0 last:pb-0"
+                    >
+                      <blockquote className="border-l-2 border-red-100/50 pl-5 text-lg leading-8 font-medium text-balance text-white sm:text-xl sm:leading-9">
+                        <p>&ldquo;{source.quote}&rdquo;</p>
+                        <footer className="mt-2 text-sm leading-6 font-normal text-white/50">
+                          — {source.quoteNote}
+                        </footer>
+                      </blockquote>
+
+                      <p className={BODY_CLASS}>{source.finding}</p>
+
+                      <p className="text-sm leading-6 text-white/50">
+                        <a
+                          href={source.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+                        >
+                          {source.publication}
+                        </a>
+                        <span className="mx-2 text-white/25">·</span>
+                        {source.attribution}
+                        <span className="mx-2 text-white/25">·</span>
+                        <span className="tabular-nums">{source.date}</span>
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+
+                {/* The turn: what the research obliges us to do. */}
+                <div className="mt-10 space-y-5">
                   {WHATS_NEW_ASSISTANTS.closing.map((paragraph) => (
                     <p key={paragraph} className={BODY_CLASS}>
                       {paragraph}
@@ -805,10 +842,6 @@ export function WatchWhatsNewPage({
                 {WHATS_NEW_AUDIENCES.heading}
               </h2>
             </div>
-
-            {/* The surprise comes before the three cards: it is the reason
-                the audiences are weighted the way they are. */}
-            <WhatsNewAudienceQuiz />
 
             {/* `watch-scroll-fan-hand` grows the gathered hand as one piece.
                 Per-card growth cannot be paid for by the rem gather below:
@@ -888,9 +921,18 @@ export function WatchWhatsNewPage({
               {WHATS_NEW_AUDIENCES.closing}
             </p>
 
-            {/* The section has told the reader who Watch is for; the last
-                move is to let them say which of the three they are, so it
-                closes on their situation rather than on our numbers. */}
+            {/* The two prompts close the section together, in the order
+                they ask things of the reader: first a guess about everyone
+                else, then a question about themselves.
+
+                The guess used to sit above the three cards, as the reason
+                the audiences are weighted the way they are. Down here it
+                does different work — the cards have already made that
+                case, so the guess lands as a check on it rather than a
+                set-up for it, and the section ends on the reader instead
+                of on our numbers. */}
+            <WhatsNewAudienceQuiz />
+
             <WhatsNewSelfId />
           </div>
         </section>
@@ -1038,19 +1080,61 @@ export function WatchWhatsNewPage({
                         "--tint-to": item.tint.to,
                       } as CSSProperties
                     }
-                    className={`watch-scroll-card relative flex flex-col border-white/10 px-6 py-10 sm:px-8 lg:px-12 lg:py-14 ${
+                    // `isolate` so the cell is a stacking context in its own
+                    // right. The colour band below sits at `-z-10` to stay
+                    // behind the copy, and that only resolves against this
+                    // cell if the cell IS one — it otherwise happened to be,
+                    // via the `will-change: opacity` on its scroll reveal,
+                    // which lives inside a reduced-motion media query. So the
+                    // band's layering silently depended on the reader not
+                    // asking for reduced motion.
+                    className={`watch-scroll-card relative isolate flex flex-col border-white/10 px-6 py-10 sm:px-8 lg:px-12 lg:py-14 ${
                       item.featured ? "lg:col-span-2" : ""
                     } ${row === IMPROVEMENT_LAST_ROW ? "" : "border-b"} ${
                       column === 1 ? "lg:border-l lg:border-l-white/10" : ""
                     }`}
                   >
                     <div className="relative">
-                      {/* The colour band, sized off the SHOT rather than the
-                          cell: negative insets cancel the cell's padding so
-                          it still bleeds to three cell edges, but it stops
-                          just below the clip instead of running the full
-                          height. Each inset mirrors a padding step above —
-                          change one and the band stops reaching that edge.
+                      {/* The colour band. Negative insets cancel the cell's
+                          padding so it bleeds to three cell edges; each one
+                          mirrors a padding step above, so dropping one
+                          makes the band stop short of that edge at that
+                          breakpoint.
+
+                          The bottom inset runs the colour WELL past the
+                          shot — it used to stop about 20px below it, which
+                          faded the colour out at roughly a third of the
+                          card and left the rest flat black. It now carries
+                          down behind the heading and into the first lines
+                          of copy.
+
+                          A PERCENTAGE, not a pixel step, and it resolves
+                          against the shot's own height: the shot scales
+                          with the card across breakpoints and between the
+                          two-up and full-width cells, so a fixed inset
+                          would reach a different fraction of every one of
+                          them. 128% is the ceiling the FULL-WIDTH cell
+                          sets — its shot is taller, so the same percentage
+                          buys more pixels there, and at 150% its band box
+                          ran 14px past the bottom of the card and into the
+                          next one. Invisible, because the mask has faded to
+                          nothing long before, which is exactly why it would
+                          have gone unnoticed until something downstream
+                          started clipping. Note the visible colour dies well before
+                          the band's own bottom edge — the mask's stops are
+                          fractions of the gradient LINE, not the height,
+                          so a taller band pushes the fade down
+                          proportionally rather than moving its end to the
+                          edge. Measured, not derived.
+
+                          Which is why `-z-10` is not decorative: an
+                          absolutely positioned element paints above static
+                          siblings, so without it the band would cover the
+                          copy rather than sit behind it. The cell is a
+                          stacking context (its scroll reveal declares
+                          `will-change: opacity`), so the negative index
+                          lands the band above the cell's own background and
+                          below its text.
 
                           The layered radials and the slanted foot mask are
                           in globals.css under `.whats-new-tint-band`; only
@@ -1068,7 +1152,7 @@ export function WatchWhatsNewPage({
                         // A div rather than a span because it now has a
                         // block child; the mask above applies to children
                         // too, so the grain fades out with the colour.
-                        className="whats-new-tint-band pointer-events-none absolute isolate -top-10 -right-6 -bottom-4 -left-6 sm:-right-8 sm:-left-8 lg:-top-14 lg:-right-12 lg:-bottom-5 lg:-left-12"
+                        className="whats-new-tint-band pointer-events-none absolute -z-10 isolate -top-10 -right-6 -bottom-[128%] -left-6 sm:-right-8 sm:-left-8 lg:-top-14 lg:-right-12 lg:-left-12"
                       >
                         <NoiseOverlay />
                       </div>
@@ -1175,108 +1259,6 @@ export function WatchWhatsNewPage({
               <p className={`mt-12 max-w-3xl ${BODY_CLASS}`}>
                 {WHATS_NEW_DELIVERY.closing}
               </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Where Watch is going next */}
-        <section
-          id="next"
-          aria-labelledby="whats-new-directions-heading"
-          className="relative border-t border-white/10 bg-stone-950 scroll-mt-24 md:scroll-mt-32"
-        >
-          <div
-            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
-          >
-            <div className="grid gap-x-10 gap-y-10 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] xl:gap-x-24 xl:gap-y-0">
-              <header className="max-w-2xl">
-                <p className={EYEBROW_CLASS}>{WHATS_NEW_DIRECTIONS.eyebrow}</p>
-                <h2
-                  id="whats-new-directions-heading"
-                  className={`mt-4 ${SECTION_HEADING_CLASS}`}
-                >
-                  {WHATS_NEW_DIRECTIONS.heading}
-                </h2>
-              </header>
-              <div className="max-w-3xl">
-                <p className={BODY_CLASS}>{WHATS_NEW_DIRECTIONS.intro}</p>
-                <ul
-                  className={`mt-6 sm:grid-cols-2 sm:gap-x-10 ${HAIRLINE_LIST_CLASS}`}
-                >
-                  {WHATS_NEW_DIRECTIONS.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <aside className="mt-12 flex max-w-4xl gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm lg:mt-14 lg:p-8">
-              <Info
-                aria-hidden
-                className="mt-1 size-5 shrink-0 text-white opacity-45"
-              />
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold tracking-wide text-white uppercase">
-                  {WHATS_NEW_DIRECTIONS.noteTitle}
-                </h3>
-                <div className="mt-3 space-y-3">
-                  {WHATS_NEW_DIRECTIONS.notes.map((note) => (
-                    <p
-                      key={note}
-                      className="text-sm leading-relaxed text-white/70 sm:text-base sm:leading-7"
-                    >
-                      {note}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        {/* Built by a broad team */}
-        <section
-          id="team"
-          aria-labelledby="whats-new-team-heading"
-          className="relative border-t border-white/10 scroll-mt-24 md:scroll-mt-32"
-        >
-          <div
-            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
-          >
-            <div className="grid items-center gap-x-10 gap-y-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-x-20 lg:gap-y-0">
-              <div className="order-2 space-y-5 lg:order-1">
-                <p className={EYEBROW_CLASS}>{WHATS_NEW_TEAM.eyebrow}</p>
-                <h2
-                  id="whats-new-team-heading"
-                  className={`mt-4 ${SECTION_HEADING_CLASS}`}
-                >
-                  {WHATS_NEW_TEAM.heading}
-                </h2>
-                {WHATS_NEW_TEAM.paragraphs.map((paragraph) => (
-                  <p key={paragraph} className={BODY_CLASS}>
-                    {paragraph}
-                  </p>
-                ))}
-                <div className="pt-3">
-                  <p className="text-xs font-semibold tracking-[0.22em] text-white/55 uppercase">
-                    {WHATS_NEW_TEAM.contributionsLabel}
-                  </p>
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    {WHATS_NEW_TEAM.contributions.map((contribution) => (
-                      <li
-                        key={contribution}
-                        className="rounded-full border border-white/12 bg-white/5 px-3.5 py-1.5 text-xs tracking-wide text-white/70"
-                      >
-                        {contribution}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="order-1 lg:order-2">
-                <WhatsNewIceberg />
-              </div>
             </div>
           </div>
         </section>

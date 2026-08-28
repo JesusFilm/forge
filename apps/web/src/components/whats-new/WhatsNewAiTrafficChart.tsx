@@ -117,16 +117,6 @@ export function WhatsNewAiTrafficChart() {
             </linearGradient>
           </defs>
 
-          {/* Baseline only. Horizontal gridlines would imply a vertical
-              scale that this figure deliberately does not publish. */}
-          <path
-            d={`M${PLOT_LEFT} ${PLOT_BOTTOM}H${PLOT_RIGHT}`}
-            stroke="#ffffff"
-            strokeOpacity="0.14"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-
           <g>
             <path d={AREA_PATH} fill="url(#whats-new-trend-fill)" />
             <path

@@ -728,98 +728,261 @@
   animation-delay: 480ms;
 }
 
-/* --- Iceberg -----------------------------------------------------------
-   Slow bob, drifting waterline, and a submerged mass that is revealed
-   downward as the section scrolls in — reading the section uncovers the
-   work holding the visible changes up. */
+/* --- Assistant phone: opening the app ---------------------------------
+   A tap on an icon, and the app it opens. The point is cause and effect:
+   the reader watches a person reach for ChatGPT, so the exchange that
+   follows is something someone DID, not a screenshot of a product. */
 
-@keyframes watch-berg-bob {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -1.1%;
-  }
-}
-
-@keyframes watch-berg-ripple {
-  0%,
-  100% {
-    translate: 0 0;
-    opacity: 0.85;
-  }
-  50% {
-    translate: -2% 0.5%;
-    opacity: 1;
-  }
-}
-
-@keyframes watch-berg-rays {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes watch-scroll-berg {
+/* The home screen receding as the app comes forward over it. Scale only,
+   deliberately NO fade: the app above is opaque by the time it covers
+   this, so fading it out here would only make both layers translucent at
+   once — which turned a dark wallpaper over a white app into flat grey. */
+@keyframes watch-chat-home {
   from {
-    clip-path: inset(0 0 100% 0);
+    scale: 1;
+  }
+  62% {
+    scale: 1;
   }
   to {
-    clip-path: inset(0 0 0 0);
+    scale: 1.06;
   }
 }
 
-/* --- AI-traffic trend line -------------------------------------------
-   The chart's argument is the SHAPE over time, so it is revealed left to
-   right as the section scrolls: the reader watches the flat years pass
-   before the climb arrives, which is the point the section is making.
-   Clipping the whole group (line plus area fill) rather than animating a
-   stroke dash keeps the two in step for free. */
-
-@keyframes watch-scroll-trend {
+/* The app arriving. Starts slightly small so it reads as coming forward
+   rather than cross-fading. */
+@keyframes watch-chat-app {
   from {
+    opacity: 0;
+    scale: 0.9;
+  }
+  38% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* The pointer crossing the screen. It comes in from the lower left — the
+   direction a thumb arrives from — decelerating into the icon, and leaves
+   once the tap has landed. Translate is a percentage of the pointer's own
+   box, which is sized against the icon, so the travel scales with the
+   device instead of drifting off target as the phone gets smaller. */
+@keyframes watch-chat-pointer {
+  from {
+    opacity: 0;
+    translate: -180% 260%;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    translate: 0 0;
+  }
+  88% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 0;
+  }
+}
+
+/* The tap: the ring contracts onto the icon and fades, the way the click
+   indicator in the iOS Simulator does. */
+@keyframes watch-chat-tap {
+  from {
+    scale: 1;
+    opacity: 0.9;
+  }
+  55% {
+    scale: 0.55;
+    opacity: 1;
+  }
+  to {
+    scale: 1.5;
+    opacity: 0;
+  }
+}
+
+/* The icon pressing in under the tap, then releasing as the app opens. */
+@keyframes watch-chat-icon {
+  from {
+    scale: 1;
+  }
+  55% {
+    scale: 0.88;
+  }
+  to {
+    scale: 1;
+  }
+}
+
+/* --- Assistant phone: the exchange, step by step ----------------------
+   Each of these is driven by a RANGE on the pin stage's timeline rather
+   than a duration, so the reader's scroll is the clock. */
+
+/* A step opening: height from nothing to its own content height. */
+@keyframes watch-chat-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+/* An answer arriving. Same growth, no opacity ramp — text that fades in
+   reads as a fade; text uncovered a line at a time reads as streaming,
+   which is what it is standing in for. */
+@keyframes watch-chat-say {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+/* The wait: opens, holds, then collapses as the answer takes over. One
+   animation with four stops rather than two animations, so the open and
+   the close cannot be retimed independently and end up overlapping. */
+@keyframes watch-chat-think {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  18% {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  72% {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/* One line being typed. The box appears at once — a text field makes room
+   for the cursor before there is anything in it — and the text is then
+   uncovered left to right. */
+@keyframes watch-chat-type {
+  from {
+    max-height: 0;
     clip-path: inset(0 100% 0 0);
   }
+  4% {
+    max-height: 1.4rem;
+  }
   to {
+    max-height: 1.4rem;
     clip-path: inset(0 0 0 0);
   }
 }
 
-/* --- Scroll-linked chat reel -----------------------------------------
-   The phone beside the three "why this traffic matters" cards plays its
-   conversation as the reader scrolls those cards: question, answer, then
-   the cited film. The phone column is sticky, so the cards move past a
-   held device and the transcript advances with them.
+/* Placeholder: out as the first line lands, back once the question has
+   been sent and the field is empty again. */
+@keyframes watch-chat-placeholder {
+  from {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0;
+  }
+  84% {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
-   Travel is the reel's own height less one screenful, which lands the
-   last message flush with the bottom of the viewport rather than
-   scrolling past into blank space. `--chat-viewport` is set by the
-   component; the two halves of that arithmetic must move together. */
+/* The typed copy leaving the composer as the bubble takes it, collapsing
+   the composer back to one line on the way out. The `from` state is what
+   holds for the whole typing phase, since the animation fills backwards. */
+@keyframes watch-chat-clear {
+  from {
+    opacity: 1;
+    max-height: var(--typed-height);
+  }
+  70% {
+    opacity: 0;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+  }
+}
 
-/* Driven through an animated custom property rather than a named view
-   timeline. `view-timeline-name` + `animation-timeline: --name` DOES
-   resolve here — the reel gets a real ViewTimeline object — but that
-   timeline never advances: its currentTime sat at -354% at the top of the
-   page and was still -354% with the stage centred in the viewport.
-   Anonymous `view()` on the same page tracks correctly, so the progress
-   is measured on the stage with `view()` and inherited down to the reel,
-   which cannot use `view()` itself (its own subject is a sticky column
-   inside an `overflow-hidden` screen, where its progress is meaningless).
+/* Caret arrives with the end of the last line and leaves on send. */
+@keyframes watch-chat-caret-in {
+  from {
+    opacity: 1;
+  }
+  76% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
 
-   `inherits: true` is the whole mechanism; without the `@property`
-   registration the value is an unanimatable token and the reel never
-   moves. Initial value 0 means every fallback path — no scroll-driven
-   animation, reduced motion, no `@property` support — parks the
-   transcript at the top on the question rather than mid-conversation. */
-@property --watch-chat-progress {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
+/* Blink. A time-based loop, not a scroll one: a cursor blinks on its own
+   clock, and tying it to scroll would freeze it whenever the reader stops
+   — which is most of the time. */
+@keyframes watch-chat-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Send control waking up while there is something to send. */
+@keyframes watch-chat-send {
+  from {
+    opacity: 0.3;
+    scale: 0.86;
+  }
+  14% {
+    opacity: 1;
+    scale: 1;
+  }
+  88% {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0.3;
+    scale: 0.86;
+  }
+}
+
+/* Waiting dots, staggered by index via a negative delay. */
+@keyframes watch-chat-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    translate: 0 0;
+  }
+  50% {
+    opacity: 0.9;
+    translate: 0 -0.12rem;
+  }
 }
 
 @keyframes watch-scroll-chat-progress {
@@ -831,107 +994,158 @@
   }
 }
 
+/* The conversation viewport, as a SIZE container. Sole purpose: give the
+   reel below a unit for "one screenful of this phone" (`100cqh`). The
+   height itself is set by flex layout in the component — the device holds
+   the iPhone ratio, the chrome takes what it needs, this takes the rest. */
+.watch-chat-viewport {
+  container-type: size;
+}
+
+/* --- Assistant phone: resting state of the typed exchange -------------
+   These are the states a reader gets with no scroll-driven animation at
+   all — no support, or reduced motion. They have to read as a FINISHED
+   exchange, because that is what the section is evidence for: question
+   asked, answer given, sources cited. So every step rests OPEN, and only
+   the things that exist to be typed rest hidden.
+
+   None of these may be named `watch-scroll-*`: those all live inside the
+   scroll-driven block, and its guard test enforces that.
+
+   A step is a grid with one row so it can be opened from `0fr` to `1fr`.
+   That is the only way to animate to a content height without knowing the
+   height: a `max-height` ceiling either clips the content when it guesses
+   low, or finishes the reveal early and sits still when it guesses high,
+   and every guess is wrong at a different viewport width. */
+.watch-chat-step {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+/* The clipped half of the pair. Without `min-height: 0` a grid item
+   refuses to shrink below its content and `0fr` does nothing at all. */
+.watch-chat-step-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The gap above a step's content, set on the CHILD rather than on the
+   clipping box. `overflow: hidden` clips a box's content, never its own
+   padding, so a closed-but-padded step still draws its padding — measured
+   at 14px of blank strip per unopened step, which put the conversation in
+   a ladder of empty rows waiting for content. A child's margin is part of
+   the content it clips, so it collapses with everything else. (Margins on
+   the outer grid item are also fine: a `0fr` track collapses those.) */
+.watch-chat-step-inner > * {
+  margin-block-start: var(--step-gap, 0rem);
+}
+
+/* The wait, unlike the steps, rests CLOSED: a finished exchange is not
+   still waiting for its answer. Nothing but the scroll animation opens it,
+   so a reader who never gets that animation never sees it. */
+.watch-chat-think {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* Home-screen app label, sized against the device like the typed line —
+   a fixed rem is either illegible on a small phone or oversized on a large
+   one, and this sits directly under an icon whose size is proportional. */
+.watch-chat-app-label {
+  font-size: clamp(0.34rem, 2.6cqw, 0.58rem);
+}
+
+/* Home screen, pointer and tap all rest HIDDEN. The resting state of this
+   device is the finished exchange — a reader with no scroll-driven
+   animation should get the answer the section is evidence for, not a home
+   screen waiting for a tap that will never come. Only the animation shows
+   them, so it is structurally impossible for them to strand a reader. */
+.watch-chat-home,
+.watch-chat-pointer {
+  opacity: 0;
+}
+
+/* The app rests fully open, for the same reason. */
+.watch-chat-app {
+  opacity: 1;
+}
+
+/* The device sizes the typed line's type below. Its own width comes from
+   the aspect ratio and height, never from its contents, so containing it
+   costs nothing. */
+.watch-chat-device {
+  container-type: inline-size;
+  container-name: watch-chat-device;
+}
+
+/* Placeholder and typed text stacked in ONE grid cell. Both need to be in
+   flow: the pill's height is the taller of the two, and that is how it
+   grows a line at a time as the question is typed. Absolute positioning
+   stacks them just as well and is wrong — it takes the typed text out of
+   layout, so the pill stays one line tall and the text spills straight
+   through its bottom border. */
+.watch-chat-slot {
+  display: grid;
+}
+
+.watch-chat-slot > * {
+  grid-area: 1 / 1;
+}
+
+/* Typed text rests hidden for the same reason as the steps: the question
+   has already been sent, and it is on screen in the bubble. This is the
+   composer's transient copy of it.
+
+   It also rests COLLAPSED, and the send has to collapse it: fading it out
+   alone leaves it occupying its four lines invisibly, so the composer
+   stays four lines tall for the rest of the page with a placeholder
+   floating at the top of it. The height is exact rather than a guessed
+   ceiling — every line is `nowrap` at a fixed 1.4rem line-height, so the
+   count is the height. */
+.watch-chat-typed {
+  --typed-height: calc(var(--typed-lines, 0) * 1.4rem);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+/* `nowrap` is load-bearing. It fixes each line's height at exactly one
+   line-height, which is what lets the reveal below animate the height
+   exactly; a wrapped line would be clipped to its first line instead.
+   The cost is that an over-long line is cut off rather than wrapped —
+   see the length constraint on `phone.typedLines`. */
+.watch-chat-typed-line {
+  max-height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(0 100% 0 0);
+  /* Proportional to the DEVICE width, which is the whole reason a fixed
+     character budget for `phone.typedLines` can hold: font and available
+     width scale together, so a line that fits at one phone size fits at
+     every other. The clamp keeps it legible on a tiny phone and stops it
+     outgrowing the rest of the chrome on a large one. Line-height stays a
+     fixed 1.4rem because the typing reveal animates to exactly that. */
+  font-size: clamp(0.6rem, 4.2cqw, 0.8rem);
+}
+
+.watch-chat-caret {
+  opacity: 0;
+}
+
 /* Not named `watch-scroll-*`: this is a static declaration that must apply
    everywhere, and the guard test requires every `.watch-scroll-` rule to
-   live inside the scroll-driven block. At progress 0 it is a no-op. */
+   live inside the scroll-driven block. At progress 0 it is a no-op.
+
+   `-100%` is the reel's own height; `100cqh` is one screenful of the
+   viewport it sits in. So the travel is "scroll me by everything except
+   the last screenful" — the transcript ends resting on its final message
+   rather than running off the top. Reading the screenful as a container
+   unit rather than a shared rem constant means the two cannot drift. */
 .watch-chat-reel {
-  transform: translateY(
-    calc(var(--watch-chat-progress, 0) * (-100% + var(--chat-viewport)))
-  );
+  transform: translateY(calc(var(--watch-chat-progress, 0) * (-100% + 100cqh)));
 }
 
-.watch-berg-bob {
-  transform-box: view-box;
-  transform-origin: 160px 200px;
-  animation: watch-berg-bob 9s ease-in-out infinite;
-}
-
-.watch-berg-ripple {
-  transform-box: view-box;
-  animation: watch-berg-ripple 7.4s ease-in-out infinite;
-}
-
-.watch-berg-rays {
-  animation: watch-berg-rays 11s ease-in-out infinite;
-}
-
-/* --- Rainy-window bokeh, format diagram -------------------------------
-   Out-of-focus lights sliding along the bottom of the section: the view
-   through a wet cafe window, where nothing outside resolves but the
-   lights still go past. Only compositor-friendly properties animate —
-   `translate`, `scale`, `opacity` — and the softness comes from radial
-   gradients rather than `filter: blur()`, which would have to re-blur
-   every light on every frame.
-
-   Three separate animations, one property each, because they need
-   different clocks: the crossing is linear and one-way, the swell is
-   eased and reverses, and the fade belongs to the ENDS of the crossing.
-   Splitting them by property is what lets them coexist — put two of them
-   in one keyframe block and the last declaration wins.
-
-   Per-light values are set at the call site (WhatsNewFormatDiagram). */
-
-/* The crossing. Left to right, never back: `alternate` here would drag
-   every light backwards across the frame, which reads as a wobble rather
-   than as traffic. */
-@keyframes watch-bokeh-drift {
-  from {
-    translate: var(--bokeh-from, -30vw) var(--bokeh-y, 0rem);
-  }
-  to {
-    translate: var(--bokeh-to, 130vw) var(--bokeh-y-end, -3rem);
-  }
-}
-
-/* Faded in and out at the ends of the same crossing, so a light arrives
-   and leaves rather than popping at the clip edge. Shares the crossing's
-   duration and delay — see the paired `animation-delay` below. */
-@keyframes watch-bokeh-fade {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  14%,
-  86% {
-    opacity: var(--bokeh-lit, 0.8);
-  }
-}
-
-/* The swell, on its own slower clock so it never lines up with the
-   crossing — a light that brightens at the same point of every pass
-   reads as a loop. */
-@keyframes watch-bokeh-breathe {
-  from {
-    scale: 1;
-  }
-  to {
-    scale: var(--bokeh-scale, 1.25);
-  }
-}
-
-.watch-bokeh-orb {
-  opacity: 0;
-  animation:
-    watch-bokeh-drift var(--bokeh-duration, 60s) linear infinite,
-    watch-bokeh-fade var(--bokeh-duration, 60s) linear infinite,
-    watch-bokeh-breathe var(--bokeh-breath, 10s) ease-in-out infinite alternate;
-  /* The first two MUST share a delay: they describe one crossing, and a
-     drift that starts before its own fade arrives already lit. */
-  animation-delay: var(--bokeh-delay, 0s), var(--bokeh-delay, 0s), 0s;
-  will-change: translate, opacity, scale;
-}
-
-/* Grain over the light field. Same texture as the era-card film grain, but
-   its own layer: `screen` is the only blend that survives against a
-   near-black backdrop, and it is stepped so it reads as speckle rather than
-   a sliding sheet.
-
-   It draws the FINE field at its authored 317px, not the coarse one at 148.
-   `baseFrequency` is per user unit, so a 512-unit field drawn at 148px comes
-   out as 0.3px blobs and averages to flat grey — the layer would cost paint
-   and show nothing. The two never share a screen (this sits in the format
-   diagram, the card grain in the era stage), so reusing the field costs
-   nothing. */
 .watch-bokeh-grain {
   position: absolute;
   /* Oversized past the drift so the step never exposes a tile edge. */
@@ -1049,6 +1263,160 @@
       animation-timeline: view();
       animation-range: cover 0% cover 88%;
       will-change: transform;
+    }
+
+    /* --- Assistant transcript reel --------------------------------------
+       The subject is the phone's own PIN STAGE, whose height is the
+       distance the phone is held still for. The reasons grid is the wrong
+       subject: below `lg` the phone sits underneath the three cards, so by
+       the time it is on screen the grid is most of the way through its own
+       traversal and the transcript has already run past the question. That
+       was the reported bug.
+
+       `contain` is the phase meaning "while this box covers the viewport",
+       which for a stage taller than the viewport is exactly the pinned
+       window. It requires that the stage IS taller than the viewport at
+       every width — a subject shorter than the viewport has no contain
+       phase at all, and progress then jumps 0 to 1 with nothing in
+       between. That is why the stage owns an `svh` height instead of
+       borrowing the cards' height on desktop, where it measured 146px
+       against a 704px phone.
+
+       The 34% of dead range at the head is the fix for not being able to
+       read the question: progress holds at 0 through it, so the reader
+       arrives on the question and it stays until they scroll on. The tail
+       rests on the citation card, which is the point of the illustration.
+
+       Start state is `translateY(0)`, which is also the no-animation
+       default, so a browser without scroll-driven animation and a reader
+       with reduced motion both get the transcript parked at the top on the
+       question. Nothing is hidden that the reveal has to give back. */
+    .watch-scroll-chat-stage {
+      /* Named so every step inside the phone can attach its OWN range to
+         this one timeline. Without a name each step would have to use
+         `view()` on itself, and a step's own box is meaningless here: it is
+         inside a pinned column inside an `overflow-hidden` screen, and it
+         starts at zero height, so its view progress says nothing about
+         where the reader is. */
+      view-timeline-name: --watch-chat;
+      /* The reel's own scroll, retimed to the late steps. Until then the
+         conversation is still being built and fits, so there is nothing to
+         scroll; from here the answer has outgrown the screen and the phone
+         follows it down, ending on the citation card.
+
+         `svh`, not `%`, and it must match the units the steps in
+         WhatsNewAssistantPhone.tsx use. Left as a percentage while they
+         became lengths, this fired roughly 800px after the content it is
+         supposed to follow — the citation card had already appeared and
+         sat clipped off the bottom of the screen the whole time. */
+      animation: watch-scroll-chat-progress linear both;
+      animation-timeline: view();
+      animation-range: contain 76svh contain 97svh;
+    }
+
+    .watch-scroll-chat-home {
+      animation: watch-chat-home linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      /* Overrides the resting `opacity: 0`: with the animation running,
+         the home screen is where the sequence starts. */
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-app {
+      animation: watch-chat-app linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-pointer {
+      animation: watch-chat-pointer linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-tap {
+      animation: watch-chat-tap linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-icon {
+      animation: watch-chat-icon linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* Each step carries its own `--step-range` from the choreography table
+       in WhatsNewAssistantPhone.tsx, so the sequence is readable in one
+       place as a list of moments rather than scattered across this file. */
+    .watch-scroll-chat-step {
+      animation: watch-chat-open linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* Answers stream rather than fade; see the keyframes. Its own class,
+       not a selector matching the range literal in the style attribute:
+       that would silently stop applying the day a step is retimed. */
+    .watch-scroll-chat-say {
+      animation-name: watch-chat-say;
+    }
+
+    .watch-scroll-chat-think {
+      animation: watch-chat-think linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-typed-line {
+      animation: watch-chat-type linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-typed {
+      animation: watch-chat-clear linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      /* Overrides the resting `opacity: 0`: once the animation is running
+         the composer copy is what the reader is watching. */
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-placeholder {
+      animation: watch-chat-placeholder linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-caret {
+      animation: watch-chat-caret-in linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* The blink itself, on the inner element. Two elements because both
+       drive opacity and a single `animation` list would let the filling
+       reveal win outright, leaving a caret that never blinks. */
+    .watch-scroll-chat-caret .watch-chat-caret {
+      opacity: 1;
+      animation: watch-chat-caret-blink 1.06s steps(1, end) infinite;
+    }
+
+    .watch-scroll-chat-send {
+      animation: watch-chat-send linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-chat-dot {
+      animation: watch-chat-dot 1.25s ease-in-out infinite;
+      /* Index-driven negative delay: the loop is already part-way through
+         when it starts, which is what staggers three otherwise identical
+         dots without three sets of keyframes. */
+      animation-delay: calc(var(--dot-index, 0) * -0.42s);
     }
 
     /* --- Pinned stack: desktop and tablet only -----------------------
@@ -1286,16 +1654,6 @@
         will-change: opacity, scale;
       }
 
-      /* The mass is only hidden where the reveal can actually run. Without
-         scroll-driven animation support the clip never opens, so the
-         start state must not exist outside this guard. */
-      .watch-scroll-berg {
-        animation: watch-scroll-berg linear both;
-        animation-timeline: view();
-        animation-range: entry 18% cover 42%;
-        will-change: clip-path;
-      }
-
       /* One wipe over the whole plot box — the SVG and the endpoint marker
          together — rather than an animation each.
 
@@ -1311,31 +1669,15 @@
          sweep that draws the line uncovers the dot at the exact moment the
          line arrives under it, at every width, for free.
 
-         Same "start state lives inside the guard" rule as the berg — a
-         browser without scroll-driven animation must get the finished
-         chart, never a permanently clipped one. */
+         The start state lives inside the guard for the same reason every
+         reveal on this page does: a browser without scroll-driven
+         animation must get the finished chart, never a permanently
+         clipped one. */
       .watch-scroll-trend {
         animation: watch-scroll-trend linear both;
         animation-timeline: view();
         animation-range: entry 30% cover 55%;
         will-change: clip-path;
-      }
-
-      /* The reasons/phone grid names the timeline; the reel inside the
-         phone reads it. A named timeline rather than `view()` because the
-         subject has to be the STAGE the reader is scrolling past, not the
-         reel itself — the reel is inside a sticky column and inside an
-         `overflow-hidden` screen, so its own view() progress is close to
-         meaningless.
-
-         Start state is `translateY(0)`, which is also the no-animation
-         default, so a browser without scroll-driven animation and a reader
-         with reduced motion both get the transcript parked at the top on
-         the question. Nothing is hidden that the reveal has to give back. */
-      .watch-scroll-chat-stage {
-        animation: watch-scroll-chat-progress linear both;
-        animation-timeline: view();
-        animation-range: cover 25% cover 80%;
       }
 
       .watch-scroll-fan {
@@ -1605,10 +1947,7 @@
   /* Keep the grain, drop the motion — the texture is part of the look,
      the jitter is the part that can bother people. */
   .watch-grain,
-  .watch-grain-fine,
-  .watch-berg-bob,
-  .watch-berg-ripple,
-  .watch-berg-rays {
+  .watch-grain-fine {
     animation: none;
     opacity: 0;
   }

@@ -38,8 +38,6 @@ export const WHATS_NEW_CONTENTS = [
   { id: "why", label: "Why it matters" },
   { id: "partners", label: "For partners" },
   { id: "improving", label: "What is improving" },
-  { id: "next", label: "What's next" },
-  { id: "team", label: "The team" },
   { id: "board", label: "The board" },
   { id: "faq", label: "Questions" },
 ] as const
@@ -47,7 +45,7 @@ export const WHATS_NEW_CONTENTS = [
 export const WHATS_NEW_LEDE = {
   eyebrow: "A history of changing formats",
   heading:
-    "From a projector in a field, to page one of Google, to answers inside AI chats",
+    "From a projector in a field, to first page in Google search, to answer the spiritual questions in ChatGPT",
   /**
    * Closing line, rendered AFTER the stage. Every other paragraph of the
    * argument is a `beat` sitting above the era card it introduces, so the
@@ -362,6 +360,31 @@ export const WHATS_NEW_ASSISTANTS = {
     ],
     /** Placeholder in the mocked composer; never a real input. */
     composer: "Ask ChatGPT",
+    /**
+     * The question again, pre-split into the lines the composer types it
+     * on. Two constraints, both guarded by tests:
+     *
+     * 1. Joined with single spaces these MUST equal `messages[0].text`.
+     *    The composer types one thing and the bubble sends another the
+     *    moment they drift, and nothing about the rendered page would
+     *    look wrong — the two are never on screen at the same time.
+     * 2. Each line is set `white-space: nowrap`, so its height is exactly
+     *    one line-height and the typing reveal stays exact. That means a
+     *    line too long to fit is CLIPPED rather than wrapped: keep them
+     *    to 22 characters or fewer.
+     *
+     * The 22 is MEASURED, not guessed — an earlier 28 put "What is the
+     * most accurate" straight under the send button with its tail cut off.
+     * The line's type size is proportional to the device width (`cqw`), so
+     * a line that fits at one phone size fits at all of them, which is
+     * what makes a fixed character budget meaningful here at all.
+     */
+    typedLines: [
+      "What is the most",
+      "accurate movie about",
+      "Jesus that I can watch",
+      "online for free?",
+    ],
     disclaimer: "A real ChatGPT conversation, abridged to fit.",
     sourcesLabel: "Sources",
     sourceLabel: "See the full exchange",
@@ -852,28 +875,6 @@ export const WHATS_NEW_PARTNER_LETTER = {
   feedbackCta: "Tell me how it is going",
 } as const
 
-export const WHATS_NEW_DIRECTIONS = {
-  eyebrow: "Where Jesus Film Watch is going next",
-  heading: "The foundation being built now makes these possible",
-  intro: "The work underway provides a foundation for capabilities such as:",
-  items: [
-    "Shareable search results and topic pages",
-    "Dedicated language and Bible-passage experiences",
-    "Smaller, shareable video scenes and “video verses”",
-    "Clearer next steps involving questions, Bible study, conversation, and connection",
-    "Optional accounts that can preserve progress across web, mobile, and TV",
-    "More relevant recommendations grounded in trusted content",
-    "Expanded metadata, subtitles, and translations",
-    "Connected experiences across Jesus Film Watch, mobile, and television",
-    "New pages and journeys that can be assembled for particular audiences and ministry needs",
-  ],
-  noteTitle: "Directions, not release dates",
-  notes: [
-    "These are directions, not a promise that every capability is available today. We will introduce them carefully, learn from real use, and continue improving the experience.",
-    "Watching, searching, and sharing will remain open without requiring an account. When sign-in is useful — for example, to retain progress or support particular tools — we want its purpose to be clear.",
-  ],
-} as const
-
 /** Icon keys for the upcoming-features vote carousel. */
 export type WhatsNewVoteIcon =
   | "search"
@@ -898,7 +899,7 @@ export type WhatsNewVoteIcon =
  * any of this as signal.
  */
 export const WHATS_NEW_VOTES = {
-  eyebrow: "Help us prioritise",
+  eyebrow: "Vote for features",
   /**
    * Frames the ask around the reader's own use of Watch, not around our
    * backlog. "The three" is the only place the budget appears in the heading —
@@ -1032,41 +1033,6 @@ export const WHATS_NEW_VOTES = {
   }[]
 }
 
-export const WHATS_NEW_TEAM = {
-  eyebrow: "Built by a broad team",
-  heading: "The visible changes represent only part of the work",
-  paragraphs: [
-    "Developers, designers, product teams, video specialists, translators, content teams, data teams, and ministry partners have contributed to the new foundation.",
-    "We want to recognize that work and continue building Jesus Film Watch together.",
-  ],
-  contributionsLabel: "Contributions include",
-  contributions: [
-    "Streaming infrastructure",
-    "Search",
-    "Accessibility",
-    "Language support",
-    "Performance",
-    "Playback controls",
-    "Metadata",
-    "Downloads",
-    "Feedback systems",
-    "Jesus Film Watch authoring tools",
-  ],
-} as const
-
-export const WHATS_NEW_ICEBERG = {
-  alt: "An iceberg: a small bright tip above the waterline and a far larger mass below it.",
-  tip: "What you see",
-  mass: "What holds it up",
-} as const
-
-/**
- * FAQ.
- *
- * Answers are deliberately conservative: this page is public, so an
- * over-promise here is a support ticket later. Two need confirming before
- * launch — see the flags in the answers marked NEEDS-CONFIRMATION.
- */
 export const WHATS_NEW_FAQ = {
   eyebrow: "Frequently asked",
   heading: "Questions? Answers.",
@@ -1137,7 +1103,7 @@ export const WHATS_NEW_CLOSING = {
 export const WHATS_NEW_METADATA = {
   title: "Jesus Film Watch is changing. Here's why. | Jesus Film Project",
   description:
-    "Why the Jesus Film Project Jesus Film Watch experience is changing: from projectors and VHS, to one of the first free gospel video sites online, to page one of Google, to a library people can find through AI assistants — in their own language.",
+    "Why the Jesus Film Watch experience is changing: from projectors and VHS, to one of the first free gospel video sites online, to first page in Google search, to a library people can find through AI assistants — in their own language.",
 } as const
 
 /**
@@ -1168,7 +1134,7 @@ export const WHATS_NEW_METADATA = {
  *    asserting its text does not overflow.
  */
 export const WHATS_NEW_BOARD = {
-  eyebrow: "The wall",
+  eyebrow: "Share your opinion",
   heading: "Grab a pen. Put something on the board.",
   body: "Three boards, one pad of paper. Write a note, pick your colour, and stick it wherever you like — drag it around until it sits right.",
   provenance:

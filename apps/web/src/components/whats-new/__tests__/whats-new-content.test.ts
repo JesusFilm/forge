@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import * as content from "../whats-new-content"
+import { WHATS_NEW_ASSISTANTS } from "../whats-new-content"
 
 /**
  * Every string reachable from the module's exports, paired with the dotted
@@ -34,6 +35,31 @@ function copyStrings(): { path: string; text: string }[] {
   return found
 }
 
+describe("the phone's typed question", () => {
+  const { phone } = WHATS_NEW_ASSISTANTS
+
+  it("types exactly the question it then sends", () => {
+    // The composer types `typedLines` and the bubble shows
+    // `messages[0].text`. They are never on screen at the same moment, so
+    // if they drift the phone types one question and sends a different one
+    // and the page looks completely fine doing it.
+    const sent = phone.messages[0]
+
+    expect(sent.from).toBe("person")
+    expect(phone.typedLines.join(" ")).toBe(sent.text)
+  })
+
+  it("keeps every typed line inside the measured character budget", () => {
+    // Each line is `nowrap` so its height stays exactly one line-height,
+    // which is what the typing reveal animates to. The cost is that a long
+    // line is CLIPPED, not wrapped. 22 is measured, not guessed: at 28 the
+    // first line ran under the send button with its tail cut off.
+    for (const line of phone.typedLines) {
+      expect(line.length, line).toBeLessThanOrEqual(22)
+    }
+  })
+})
+
 describe("whats-new copy", () => {
   it("names the product 'Jesus Film Watch', never a bare 'Watch'", () => {
     /**
@@ -59,6 +85,23 @@ describe("whats-new copy", () => {
       .map(({ path, text }) => `${path}: ${text}`)
 
     expect(bare).toEqual([])
+  })
+
+  it("never doubles a brand name", () => {
+    // The bare-'Watch' guard above is blind to the opposite failure: a
+    // blanket "Watch" -> "Jesus Film Watch" rename over copy that already
+    // read "Jesus Film Project Watch" produces "Jesus Film Project Jesus
+    // Film Watch", which is fully qualified and so passes that check. The
+    // meta description shipped exactly that.
+    const doubled = copyStrings()
+      .filter(({ text }) =>
+        /Jesus Film (Project )?Jesus Film|Watch Watch|Jesus Film Watch Library Library/.test(
+          text,
+        ),
+      )
+      .map(({ path, text }) => `${path}: ${text}`)
+
+    expect(doubled).toEqual([])
   })
 
   it("keeps both bare-'Watch' exemptions pointing at real strings", () => {
