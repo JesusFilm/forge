@@ -31,7 +31,7 @@ Watch search classifies a Series-Shaped Video by the Dubs attached to that Video
 
 `SearchWatchabilityService.hydrate` resolves playback from rows scoped to the candidate's own `videoId` across three tiers — target audio, target subtitle, related language. A COLLECTION or SERIES owns no `video_dub`; its playability lives in its children. Every container therefore falls through all three tiers to the empty watchability record and is returned as `UNAVAILABLE`.
 
-Web then renders the "Not available · English" badge, greys the artwork, drops the Mux hover preview, suppresses the episode-count pill and type badge, sets `prefetch={false}`, and Admin's ranking demotes the row. The link still works: for an unavailable result `defaultHrefBuilder` emits `watchUnavailableLanguagePath(slug, english)`, whose wire shape is identical to the canonical route these containers legitimately have. The viewer opens a working series page from under a badge that says it is unavailable — which is the report in FGE-108: *"I searched for Easter and it pulls up things that say Not available in English, but when I click on them, they are available."*
+Web then renders the "Not available · English" badge, greys the artwork, drops the Mux hover preview, suppresses the episode-count pill and type badge, sets `prefetch={false}`, and Admin's ranking demotes the row. The link still works: for an unavailable result `defaultHrefBuilder` emits `watchUnavailableLanguagePath(slug, english)`, whose wire shape is identical to the canonical route these containers legitimately have. The viewer opens a working series page from under a badge that says it is unavailable — which is the report in FGE-108: _"I searched for Easter and it pulls up things that say Not available in English, but when I click on them, they are available."_
 
 Production evidence on 2026-08-28 confirms the class and its bounds. A `watchSearch` for `Easter` returned 11 results, of which 4 were `UNAVAILABLE`, and all 4 were containers whose public routes return HTTP 200. Across `Jesus`, `LUMO - The Gospel of John`, `Christmas`, and `Easter`, every `UNAVAILABLE` result was a container and no leaf video was affected. A sweep of all 986 catalog videos found 101 containers, 98 with playable direct children. The 3 with no playable direct child — `the-bibleproject-collection`, `life-of-jesus-series`, `days-with-jesus` — are two-level nests whose children are themselves SERIES with playable grandchildren, so no production container is genuinely without playable content. `Nua_Know_God` is the one record that is correctly `UNAVAILABLE`: it has no working public route at all, tracked separately in FGE-97, FGE-98, and FGE-2.
 
@@ -241,7 +241,7 @@ Direction is confirmed against the production DataLoader: `videoChildrenByParent
   - `apps/web/src/lib/watch-search-client.test.ts`
 - **Approach:**
   1. Add `"container"` to `SearchAvailabilityKind` and a `CONTAINER` case to both `mapWatchSearchAvailabilityKind` implementations — the server mapper in `search.ts` and the browser mapper in `watch-search-client.ts`. Both must change; they are independent copies on independent request paths.
-  1b. Confirm the card's media path degrades as R6 states: with a null `playbackId`, `muxSearchThumbnail` is skipped and `thumbnailSrc` falls to `result.imageUrl`, while `resolveMuxAnimatedPreviewUrl(null)` leaves `MuxHoverPreview` with nothing to play. A container with no authored image falls to the generic play-icon placeholder, which is the existing behavior for any image-less video result.
+     1b. Confirm the card's media path degrades as R6 states: with a null `playbackId`, `muxSearchThumbnail` is skipped and `thumbnailSrc` falls to `result.imageUrl`, while `resolveMuxAnimatedPreviewUrl(null)` leaves `MuxHoverPreview` with nothing to play. A container with no authored image falls to the generic play-icon placeholder, which is the existing behavior for any image-less video result.
   2. Confirm `defaultHrefBuilder` needs no container branch: with the kind no longer `unavailable`, it falls through to `watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)`, and `resolveSearchResultLanguages` puts the action href language on `languageSlug`.
   3. Confirm the `isUnavailable` gates in `VideoCard` — greyscale, scrim, badge, pill, type badge, hover preview, `prefetch`, and the recovery-context write — all fall the correct way once the kind is not `unavailable`, and add a branch only where one is actually required.
   4. Verify `writeWatchUnavailableRecoveryContext` stays inert for a container: its own guard already tests `availabilityKind !== "unavailable"`.
@@ -286,14 +286,14 @@ Direction is confirmed against the production DataLoader: `videoChildrenByParent
 
 ## Verification Contract
 
-| Gate | Command | Applies to |
-|---|---|---|
-| Admin unit tests | `pnpm --filter @forge/admin test search-watchability watch-search` | U1, U2 |
-| Admin real-DB tier tests | `WATCH_SEARCH_DB_TEST=1 DATABASE_URL=<db> pnpm --filter @forge/admin test search-watchability.db` | U4 |
-| Web unit tests | `pnpm --filter @forge/web test` | U3 |
-| Schema artifact drift | `pnpm --filter @forge/admin schema:print` then `pnpm --filter @forge/admin-graphql generate`, with a clean `git status` after | U2 |
-| Typecheck | `pnpm --filter @forge/admin typecheck` and `pnpm --filter @forge/web typecheck` | all |
-| Lint | `pnpm --filter @forge/admin lint` and `pnpm --filter @forge/web lint` | all |
+| Gate                     | Command                                                                                                                       | Applies to |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Admin unit tests         | `pnpm --filter @forge/admin test search-watchability watch-search`                                                            | U1, U2     |
+| Admin real-DB tier tests | `WATCH_SEARCH_DB_TEST=1 DATABASE_URL=<db> pnpm --filter @forge/admin test search-watchability.db`                             | U4         |
+| Web unit tests           | `pnpm --filter @forge/web test`                                                                                               | U3         |
+| Schema artifact drift    | `pnpm --filter @forge/admin schema:print` then `pnpm --filter @forge/admin-graphql generate`, with a clean `git status` after | U2         |
+| Typecheck                | `pnpm --filter @forge/admin typecheck` and `pnpm --filter @forge/web typecheck`                                               | all        |
+| Lint                     | `pnpm --filter @forge/admin lint` and `pnpm --filter @forge/web lint`                                                         | all        |
 
 Production reproduction, re-run after deploy rather than as a merge gate: a `watchSearch` for `Easter` at `displayLanguageSlug: english` returns `CONTAINER` for `easter`, `nua-easter`, `anticipate-the-resurrection`, and `guide-episode-6`, and continues to return the no-option state for `Nua_Know_God`.
 
@@ -313,9 +313,9 @@ Page-load evidence is not required. The Web change alters no rendering, hydratio
 
 **Per unit**
 
-| Unit | Done signal |
-|---|---|
-| U1 | The container tier returns `container` for admitted candidates and leaves every earlier-resolved candidate untouched; mocked branch cases pass. |
-| U2 | `CONTAINER` reaches the GraphQL surface with the ranking, scoring, and fallback treatment KTD6 and KTD8 specify; generated artifacts show no drift. |
-| U3 | A container result renders as an available card with a canonical href on both the server and browser search paths; the unavailable-card contract is unregressed. |
-| U4 | The discriminating real-DB cases exist and pass against a real PostgreSQL instance. If the environment cannot run them, the run stops and reports that as a blocker rather than declaring the unit done. |
+| Unit | Done signal                                                                                                                                                                                              |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| U1   | The container tier returns `container` for admitted candidates and leaves every earlier-resolved candidate untouched; mocked branch cases pass.                                                          |
+| U2   | `CONTAINER` reaches the GraphQL surface with the ranking, scoring, and fallback treatment KTD6 and KTD8 specify; generated artifacts show no drift.                                                      |
+| U3   | A container result renders as an available card with a canonical href on both the server and browser search paths; the unavailable-card contract is unregressed.                                         |
+| U4   | The discriminating real-DB cases exist and pass against a real PostgreSQL instance. If the environment cannot run them, the run stops and reports that as a blocker rather than declaring the unit done. |
