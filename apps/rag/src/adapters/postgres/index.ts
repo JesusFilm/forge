@@ -23,6 +23,101 @@ import { assertQueryDimensions, toVectorLiteral } from "./vector.js"
 
 export { EMBEDDING_DIMENSIONS } from "./vector.js"
 
+export type StoredLanguageCandidate = {
+  id: string
+  sourceKey: string
+  canonicalUrl: string
+  language: string | null
+  rawContent: string
+}
+
+export type StoredLanguageChange = {
+  id: string
+  sourceKey: string
+  oldLanguage: string | null
+  newLanguage: string | null
+}
+
+export class PostgresLanguageMaintenanceStore {
+  constructor(private readonly db: PrismaClient) {}
+
+  async listCandidates(options: {
+    sourceKey?: string
+    blanksOnly: boolean
+    limit?: number
+  }): Promise<StoredLanguageCandidate[]> {
+    return this.db.$queryRaw(Prisma.sql`
+      SELECT DISTINCT ON (d.id)
+        d.id, s.key AS "sourceKey", d.canonical_url AS "canonicalUrl",
+        d.language, r.raw_content AS "rawContent"
+      FROM documents d
+      JOIN sources s ON s.id = d.source_id
+      JOIN raw_documents r
+        ON r.source_key = s.key AND r.canonical_url = d.canonical_url
+      WHERE (${options.sourceKey ?? null}::text IS NULL OR s.key = ${options.sourceKey ?? null})
+        AND (${options.blanksOnly} = FALSE OR d.language IS NULL)
+      ORDER BY d.id, r.fetched_at DESC
+      ${options.limit ? Prisma.sql`LIMIT ${options.limit}` : Prisma.empty}
+    `)
+  }
+
+  async applyLanguageChanges(
+    sourceKey: string,
+    changes: ReadonlyArray<Omit<StoredLanguageChange, "sourceKey">>,
+  ): Promise<StoredLanguageChange[]> {
+    return this.db.$transaction(async (tx) => {
+      const committed: StoredLanguageChange[] = []
+      for (const change of changes) {
+        const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          UPDATE documents d SET language = ${change.newLanguage}, updated_at = NOW()
+          FROM sources s
+          WHERE d.id = ${change.id}::uuid AND d.source_id = s.id
+            AND s.key = ${sourceKey}
+            AND d.language IS NOT DISTINCT FROM ${change.oldLanguage}
+          RETURNING d.id
+        `)
+        if (rows.length) committed.push({ ...change, sourceKey })
+      }
+      return committed
+    })
+  }
+
+  async revertLanguageChanges(
+    changes: ReadonlyArray<{
+      id: string
+      sourceKey: string
+      expectedLanguage: string | null
+      restoreLanguage: string | null
+    }>,
+  ): Promise<number> {
+    let reverted = 0
+    const bySource = new Map<string, (typeof changes)[number][]>()
+    for (const change of changes) {
+      const sourceChanges = bySource.get(change.sourceKey) ?? []
+      sourceChanges.push(change)
+      bySource.set(change.sourceKey, sourceChanges)
+    }
+    for (const [sourceKey, sourceChanges] of bySource) {
+      reverted += await this.db.$transaction(async (tx) => {
+        let sourceReverted = 0
+        for (const change of sourceChanges) {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          UPDATE documents d SET language = ${change.restoreLanguage}, updated_at = NOW()
+          FROM sources s
+          WHERE d.id = ${change.id}::uuid AND d.source_id = s.id
+            AND s.key = ${sourceKey}
+            AND d.language IS NOT DISTINCT FROM ${change.expectedLanguage}
+          RETURNING d.id
+        `)
+          sourceReverted += rows.length
+        }
+        return sourceReverted
+      })
+    }
+    return reverted
+  }
+}
+
 const iso = (value: Date): string => value.toISOString()
 
 export class PostgresFetchStateStore implements FetchStateStore {
