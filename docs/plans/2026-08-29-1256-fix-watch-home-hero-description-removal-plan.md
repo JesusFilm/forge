@@ -199,6 +199,15 @@ The page-load gate is not optional: this change alters above-the-fold rendering,
 
 Run the browser proof against `next build` + `next start`, not `next dev`.
 
+### Evidence captured (2026-08-29)
+
+The R5 byte signal was measured, and the browser/LCP half was not. Recording both here so the claim is auditable rather than living only in a run transcript.
+
+- **Method.** No admin GraphQL endpoint is reachable from a worktree, so `/watch` cannot render real data locally and the `next build` + `next start` browser proof could not run. The substitute is the technique in `docs/solutions/performance-issues/per-visit-randomness-on-a-statically-cached-route-20260827.md`: a jsdom probe over the real component tree with a production-shaped fixture, comparing server-rendered bytes before and after.
+- **Result.** Rendering the hero through `WatchHomePage` with the reported LUMO string measured **21,667 B** of server-rendered HTML with the paragraph and **20,903 B** without — **−764 B per rendered slide**. Serialized hero-slide props measured **1,033 B** before and **480 B** after — **−553 B per slide**, the payload that crosses the RSC boundary. Both move in the reduction direction, so the pass/fail signal passes.
+- **Still uncaptured.** LCP / Web Vitals medians and the named LCP element, which need a reachable backend. The route is `force-static`, so the served HTML carries one slide's paragraph while the flight payload carries every hero slide and pooled video.
+- **Not gated on a CI assertion.** The byte comparison is a point-in-time measurement, not a test. A later change could reintroduce payload weight on this path without any suite failing.
+
 ## Definition of Done
 
 - R1 through R5 hold.

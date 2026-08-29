@@ -270,14 +270,20 @@ describe("WatchHomePage", () => {
     expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
     expect(activeTitle?.tagName).toBe("P")
     expect(activeTitle?.textContent).toBe("Jesus")
-    // The overlay copy block is exactly the eyebrow and the title. This is the
-    // structural guard for the removed secondary paragraph: re-adding any copy
-    // element beside them fails here.
+    // Structural guard for the removed secondary paragraph. Both levels are
+    // load-bearing: the copy block pins eyebrow + title, and the overlay root
+    // pins that the only other child is the action wrapper — otherwise a
+    // paragraph re-added as a sibling of the action would slip past the inner
+    // check.
     const copyBlock = activeTitle?.parentElement
     expect(
       Array.from(copyBlock?.children ?? []).map((el) => el.tagName),
     ).toEqual(["P", "P"])
     expect(copyBlock?.textContent).toBe("FeaturedJesus")
+    const overlayRoot = copyBlock?.parentElement
+    expect(
+      Array.from(overlayRoot?.children ?? []).map((el) => el.tagName),
+    ).toEqual(["DIV", "DIV"])
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
