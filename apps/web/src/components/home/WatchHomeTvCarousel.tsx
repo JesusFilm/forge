@@ -456,8 +456,9 @@ function WatchHomeTvOverlayContent({
   playbackTimeSeconds: number
   slide: WatchHomeTvCarouselSlide
 }) {
-  const enterDelays = [0, 70, 140, 210]
-  const exitDelays = [0, 35, 70, 105]
+  // One entry per overlay item: eyebrow, title, primary action.
+  const enterDelays = [0, 70, 140]
+  const exitDelays = [0, 35, 70]
   const itemClassName =
     mode === "entering" ? "watch-home-copy-enter" : "watch-home-copy-exit"
   const wrapperClassName =
@@ -497,19 +498,8 @@ function WatchHomeTvOverlayContent({
         >
           {slide.title}
         </p>
-        {slide.description ? (
-          <p
-            className={cn(
-              itemClassName,
-              "mt-2 hidden max-w-[min(52rem,calc(100vw-2.5rem))] text-base leading-7 font-semibold text-white/78 sm:mt-3 sm:line-clamp-3 sm:block sm:text-lg md:text-xl",
-            )}
-            style={delayStyle(2)}
-          >
-            {slide.description}
-          </p>
-        ) : null}
       </div>
-      <div className={itemClassName} style={delayStyle(3)}>
+      <div className={itemClassName} style={delayStyle(2)}>
         <PrimaryAction
           slide={slide}
           playbackTimeSeconds={playbackTimeSeconds}

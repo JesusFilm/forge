@@ -279,6 +279,30 @@ describe("WatchHomePage", () => {
     )
   })
 
+  it("renders the hero overlay identically whether or not the slide carries a description", () => {
+    const overlayOf = (description: string | null) => {
+      const host = document.createElement("div")
+      host.innerHTML = renderToStaticMarkup(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              { ...makeCard({ description }), eyebrow: "Featured" },
+            ] as WatchHomeModel["heroSlides"],
+          })}
+        />,
+      )
+      return host.querySelector('[data-testid="watch-home-tv-carousel"]')
+    }
+
+    const populated = overlayOf("The story of Jesus")
+    const empty = overlayOf(null)
+
+    expect(populated?.querySelectorAll("p")).toHaveLength(
+      empty?.querySelectorAll("p").length ?? -1,
+    )
+    expect(populated?.textContent).not.toContain("The story of Jesus")
+  })
+
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {
     setRequestLocale("ru")
     await act(async () => {
@@ -383,7 +407,10 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
-    expect(container.textContent).toContain("The story of Jesus")
+    // The hero overlay renders eyebrow, title and action only. "The story of
+    // Jesus" is the shared fixture description; section cards never rendered
+    // it, so this assertion is meaningful only against the hero.
+    expect(container.textContent).not.toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
     const sectionCta = Array.from(container.querySelectorAll("a")).find(
       (link) => link.textContent?.trim() === "Watch",
