@@ -31,7 +31,6 @@ export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
   id: string
   title: string
-  description: string | null
   label: string
   href: string | null
   posterUrl: string | null

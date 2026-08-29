@@ -100,7 +100,6 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
       kind: "video",
       id: slide.coreId,
       title: slide.title,
-      description: slide.description,
       label: slide.eyebrow || slide.label,
       href: slide.href,
       posterUrl,

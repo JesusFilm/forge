@@ -139,7 +139,6 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     sourceId: "1_jf-0-0",
     coreId: "1_jf-0-0",
     title: "Jesus",
-    description: "The story of Jesus",
     label: "Feature film",
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
@@ -191,7 +190,6 @@ function makeCarouselSlide(
     kind: "video",
     id: "queued-1",
     title: "Queued One",
-    description: "Queued from the playlist pool",
     label: "Short film",
     href: "/queued-one.html/english.html",
     posterUrl: "https://cdn.example/queued-one.jpg",
@@ -272,35 +270,19 @@ describe("WatchHomePage", () => {
     expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
     expect(activeTitle?.tagName).toBe("P")
     expect(activeTitle?.textContent).toBe("Jesus")
+    // The overlay copy block is exactly the eyebrow and the title. This is the
+    // structural guard for the removed secondary paragraph: re-adding any copy
+    // element beside them fails here.
+    const copyBlock = activeTitle?.parentElement
+    expect(
+      Array.from(copyBlock?.children ?? []).map((el) => el.tagName),
+    ).toEqual(["P", "P"])
+    expect(copyBlock?.textContent).toBe("FeaturedJesus")
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
-  })
-
-  it("renders the hero overlay identically whether or not the slide carries a description", () => {
-    const overlayOf = (description: string | null) => {
-      const host = document.createElement("div")
-      host.innerHTML = renderToStaticMarkup(
-        <WatchHomePage
-          model={makeModel({
-            heroSlides: [
-              { ...makeCard({ description }), eyebrow: "Featured" },
-            ] as WatchHomeModel["heroSlides"],
-          })}
-        />,
-      )
-      return host.querySelector('[data-testid="watch-home-tv-carousel"]')
-    }
-
-    const populated = overlayOf("The story of Jesus")
-    const empty = overlayOf(null)
-
-    expect(populated?.querySelectorAll("p")).toHaveLength(
-      empty?.querySelectorAll("p").length ?? -1,
-    )
-    expect(populated?.textContent).not.toContain("The story of Jesus")
   })
 
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {
@@ -407,10 +389,6 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
-    // The hero overlay renders eyebrow, title and action only. "The story of
-    // Jesus" is the shared fixture description; section cards never rendered
-    // it, so this assertion is meaningful only against the hero.
-    expect(container.textContent).not.toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
     const sectionCta = Array.from(container.querySelectorAll("a")).find(
       (link) => link.textContent?.trim() === "Watch",
