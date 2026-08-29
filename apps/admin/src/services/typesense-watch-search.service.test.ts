@@ -31,6 +31,7 @@ import {
 } from "./typesense-watch-search-profile"
 import {
   containerWatchability,
+  previewWatchabilityKind,
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
@@ -4128,6 +4129,143 @@ describe("TypesenseWatchSearchService", () => {
         languageSlug: "spanish-castilian",
       })
       expect(response.results[0]?.playbackId).toBeNull()
+    })
+
+    // The container branch exists in THREE resolvers, and the tests above only
+    // drive the native/full-hydration one. These two cover the other two live
+    // paths: the availability-alias fallback (resolveLegacyWatchability) and the
+    // lexical-projection fallback (previewWatchabilityKind). Without them,
+    // deleting either branch leaves the whole suite green while containers
+    // silently report unavailable during exactly the degraded windows where
+    // nobody is watching.
+    it("resolves a container on the legacy catalog path when the availability alias is absent", async () => {
+      const containerDocument: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        id: "video-legacy-container",
+        coreId: "core-legacy-container",
+        slug: "legacy-container",
+        label: "collection",
+        childCount: 4,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "french", languageEnglishName: "French" },
+        ]),
+      }
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          lexical: [containerDocument],
+          availabilityError: new TypesenseRequestError(
+            "availability alias missing",
+            404,
+          ),
+        }) as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+      )
+
+      const response = await service.search({
+        query: "communion",
+        targetLanguageSlug: "french",
+      })
+
+      expect(response.results[0]).toMatchObject({
+        availability: { kind: "container", languageSlug: "french" },
+        playbackId: null,
+      })
+    })
+
+    it("ranks a container on the lexical-projection fallback path", async () => {
+      const containerDocument: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        id: "video-preview-container",
+        coreId: "core-preview-container",
+        slug: "preview-container",
+        label: "collection",
+        childCount: 4,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "french", languageEnglishName: "French" },
+        ]),
+      }
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          lexical: [containerDocument],
+          hybridError: new TypesenseRequestError(
+            "Field canonicalVideoId not found",
+            400,
+          ),
+        }) as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), logger: { warn: vi.fn() } },
+      )
+
+      const { response, diagnostics } = await service.searchWithDiagnostics({
+        query: "communion",
+        targetLanguageSlug: "french",
+      })
+
+      // Proves the compatibility retrieval path actually ran; otherwise this
+      // would silently be another test of the native path.
+      expect(diagnostics.rankingImplementation).toBe("legacy-rrf")
+      expect(response.results[0]).toMatchObject({
+        availability: { kind: "container", languageSlug: "french" },
+        playbackId: null,
+      })
+    })
+
+    // previewWatchabilityKind only affects RANK on the compatibility path -- the
+    // emitted kind still comes from resolveWatchability -- so an end-to-end
+    // assertion on a result's availability cannot discriminate it. Pinned here
+    // directly: deleting its container branch turns exactly this red.
+    it("classifies a container during compatibility-path ranking", () => {
+      const preview = {
+        id: "video-preview",
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(preview, target)).toBe("container")
+      // Anti-vacuous companion: the same document with nothing projected must
+      // stay unavailable, so the assertion above is about the projection and
+      // not about the classifier returning "container" unconditionally.
+      expect(
+        previewWatchabilityKind(
+          { ...preview, containerLanguagesJson: "[]" },
+          target,
+        ),
+      ).toBe("unavailable")
+    })
+
+    it("keeps a container behind self-scoped kinds during ranking", () => {
+      const withOwnAudio = {
+        id: "video-preview-audio",
+        audioLanguageSlugs: ["japanese"],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(withOwnAudio, target)).toBe("target_audio")
+
+      const withFallbackAudio = {
+        id: "video-preview-fallback",
+        audioLanguageSlugs: ["english"],
+        subtitleLanguageSlugs: [],
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "japanese", languageEnglishName: "Japanese" },
+        ]),
+      }
+      expect(previewWatchabilityKind(withFallbackAudio, target)).toBe(
+        "related_language",
+      )
     })
 
     it("ignores a projected entry with no language slug", () => {

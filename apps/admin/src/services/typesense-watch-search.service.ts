@@ -113,6 +113,17 @@ const CATALOG_PREVIEW_EXCLUDED_FIELDS =
 const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
 const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
   "id,audioLanguageSlugs,subtitleLanguageSlugs,containerLanguagesJson"
+// `containerLanguagesJson` is requested unconditionally, including during the
+// window between deploying this code and running the operator reindex, when no
+// document in the live collection carries the key yet.
+//
+// Verified by hand 2026-08-28 against Typesense 30.2 (the pinned local build,
+// `scripts/typesense-watch-search-local.sh start`): an `include_fields` list
+// naming a field that NO document in the collection carries returns HTTP 200
+// and simply omits it — it is not a 400. That matters because a 400 here would
+// land in hydrateResultDocuments' catch, whose classifiers only recognise
+// AVAILABILITY-side field failures, and would be rethrown — failing the whole
+// search rather than degrading one card. Re-verify on a major Typesense upgrade.
 const CATALOG_RESULT_FIELDS =
   "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson"
 const AVAILABILITY_RESULT_FIELDS =
@@ -304,13 +315,20 @@ type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
   "id" | "titles" | "localesJson"
 >
 
+/**
+ * Optional because a catalog document written by a generation that predates the
+ * container projection carries no such key at all. Every reader must tolerate
+ * its absence rather than assume the current projection.
+ */
+type WithOptionalContainerLanguages = Partial<
+  Pick<TypesenseWatchCatalogDocument, "containerLanguagesJson">
+>
+
 type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
 > &
-  // Optional because a catalog document written by a generation that predates
-  // the container projection carries no such key (R13).
-  Partial<Pick<TypesenseWatchCatalogDocument, "containerLanguagesJson">>
+  WithOptionalContainerLanguages
 
 type TypesenseWatchCatalogResultDocument = Pick<
   TypesenseWatchCatalogDocument,
@@ -323,7 +341,7 @@ type TypesenseWatchCatalogResultDocument = Pick<
   | "imageUrl"
   | "imageBlurDataUrl"
 > &
-  Partial<Pick<TypesenseWatchCatalogDocument, "containerLanguagesJson">>
+  WithOptionalContainerLanguages
 
 type TypesenseWatchLegacyCatalogResultDocument =
   TypesenseWatchCatalogResultDocument &
@@ -663,9 +681,18 @@ function semanticLaneRequest(
   }
 }
 
-function previewWatchabilityKind(
+/**
+ * Pre-hydration watchability classifier for the compatibility retrieval path.
+ *
+ * Exported for unit testing: this runs during RANKING only, and the emitted
+ * availability kind still comes from `resolveWatchability` afterwards, so an
+ * end-to-end assertion on a result's kind cannot discriminate this function at
+ * all. Its observable effect is result ORDER, and therefore which rows survive
+ * the page slice -- which is why it is pinned directly.
+ */
+export function previewWatchabilityKind(
   document: TypesenseWatchCatalogWatchabilityPreviewDocument,
-  target: TargetLanguageContext,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
 ): IndexedWatchability["kind"] {
   if (document.audioLanguageSlugs.includes(target.slug)) return "target_audio"
   if (document.subtitleLanguageSlugs.includes(target.slug)) {

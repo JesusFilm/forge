@@ -262,7 +262,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         intermediateRestrictedFromWatch?: boolean
         dubPublished?: boolean
         dubHls?: string | null
-        dubLanguage?: "target" | "fallback"
+        dubLanguage?: "target" | "fallback" | "both"
         cycle?: boolean
         selfLoop?: boolean
         dubLanguagePublicSlug?: boolean
@@ -279,13 +279,17 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
        * assertion for free -- a gate implemented in only one of the two
        * loaders turns its own case red rather than passing silently.
        */
-      async function resolveContainer(
-        fixture: ContainerFixture,
-      ): Promise<ContainerResolution & { indexed: ContainerResolution }> {
+      async function resolveContainer(fixture: ContainerFixture): Promise<
+        ContainerResolution & {
+          indexed: ContainerResolution
+          indexedLanguageSlugs?: string[]
+        }
+      > {
         const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
         const rollback = new RollbackFixture()
         let resolved: ContainerResolution = {}
         let indexedResolved: ContainerResolution = {}
+        let indexedLanguageSlugs: string[] | undefined
 
         const {
           containerSlug = `db-container-${suffix}`,
@@ -455,15 +459,29 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                   videoId: leaf.id,
                   videoEditionId: edition.id,
                   languageId:
-                    dubLanguage === "target"
-                      ? targetLanguage.id
-                      : fallbackLanguage.id,
+                    dubLanguage === "fallback"
+                      ? fallbackLanguage.id
+                      : targetLanguage.id,
                   muxVideoId: mux.id,
                   duration: 120,
                   hls: dubHls,
                   published: dubPublished,
                 },
               })
+              if (dubLanguage === "both") {
+                await tx.videoDub.create({
+                  data: {
+                    coreId: `db-c-dub-fallback-${suffix}`,
+                    videoId: leaf.id,
+                    videoEditionId: edition.id,
+                    languageId: fallbackLanguage.id,
+                    muxVideoId: mux.id,
+                    duration: 120,
+                    hls: dubHls,
+                    published: dubPublished,
+                  },
+                })
+              }
               if (containerOwnDub) {
                 const ownMux = await tx.muxVideo.create({
                   data: {
@@ -518,6 +536,17 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 kind: indexed?.kind ?? "unavailable",
                 languageSlug: indexed?.languageSlug ?? null,
               }
+              indexedLanguageSlugs = (
+                JSON.parse(
+                  containerDocument?.containerLanguagesJson ?? "[]",
+                ) as Array<{ languageSlug: string }>
+              ).map((entry) =>
+                entry.languageSlug === targetLanguage.slug
+                  ? "target"
+                  : entry.languageSlug === fallbackLanguage.slug
+                    ? "fallback"
+                    : entry.languageSlug,
+              )
 
               // Keep the expected language slugs addressable by the caller.
               const nameLanguage = (slug: string | null | undefined) =>
@@ -564,7 +593,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           })
         }
 
-        return { ...resolved, indexed: indexedResolved }
+        return { ...resolved, indexed: indexedResolved, indexedLanguageSlugs }
       }
 
       it("resolves a container from a playable target-language child", async () => {
@@ -617,6 +646,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           await resolveContainer({ dubLanguagePublicSlug: false }),
         ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      // The index-time projection stores a SET of languages, not the single
+      // row the per-request tier's DISTINCT ON picks -- that is the whole basis
+      // for resolving target-first at query time. Every other fixture creates
+      // exactly one descendant Dub, so reintroducing a DISTINCT ON (root_id)
+      // row-pick in the indexer loader would leave all of them green.
+      it("projects every descendant language, not just the selected one", async () => {
+        const resolution = await resolveContainer({ dubLanguage: "both" })
+        expect(resolution.indexed).toMatchObject({
+          kind: "container",
+          languageSlug: "target",
+        })
+        expect(resolution.indexedLanguageSlugs?.slice().sort()).toEqual([
+          "fallback",
+          "target",
+        ])
       }, 35_000)
 
       it("falls back to a related-language descendant", async () => {

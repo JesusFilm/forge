@@ -88,6 +88,13 @@ type DescendantRow = {
 const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
 
 /**
+ * The same public-language-slug shape as `PUBLIC_LANGUAGE_SLUG_PATTERN`, in the
+ * string form raw SQL needs. Exported so index-time queries match the
+ * per-request ones by construction rather than by a hand-copied literal.
+ */
+export const PUBLIC_LANGUAGE_SLUG_SQL_PATTERN = "^[a-z0-9-]+$"
+
+/**
  * Public Watch content-slug shape, matching web's `ContentSlug` pattern in
  * apps/web/src/lib/routes.ts. Lowercase is load-bearing: internal-style Core
  * slugs (`Nua_Know_God`) have no public Watch route at all, so a container
@@ -379,7 +386,7 @@ export class SearchWatchabilityService {
         ON target_language.id = vs.language_id
        AND target_language.deleted_at IS NULL
        AND target_language.slug IS NOT NULL
-       AND target_language.slug ~ '^[a-z0-9-]+$'
+       AND target_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
       JOIN LATERAL (
         SELECT
           fallback_dub.id,
@@ -401,7 +408,7 @@ export class SearchWatchabilityService {
           ON fallback_language.id = fallback_dub.language_id
          AND fallback_language.deleted_at IS NULL
          AND fallback_language.slug IS NOT NULL
-         AND fallback_language.slug ~ '^[a-z0-9-]+$'
+         AND fallback_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
         LEFT JOIN mux_video
           ON mux_video.id = fallback_dub.mux_video_id
          AND mux_video.deleted_at IS NULL
@@ -447,6 +454,11 @@ export class SearchWatchabilityService {
    * Descendant conditions mirror `playableDubWhere()` field for field. The
    * db-suite cases in search-watchability.db.test.ts are the enforcement point
    * for that parity — raw SQL cannot import the Prisma helper.
+   *
+   * `loadContainerLanguageRows` in typesense-watch-search-indexer.ts is this
+   * query's INDEX-TIME mirror and must stay semantically identical to it. Any
+   * change to the gate here needs the same change there; the db-suite resolves
+   * every container fixture through both and is what catches drift.
    */
   private async containersForCandidates(
     videoIds: readonly string[],
@@ -511,7 +523,7 @@ export class SearchWatchabilityService {
         ON dub_language.id = child_dub.language_id
        AND dub_language.deleted_at IS NULL
        AND dub_language.slug IS NOT NULL
-       AND dub_language.slug ~ '^[a-z0-9-]+$'
+       AND dub_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
       WHERE (child_dub.video_edition_id IS NULL OR child_edition.deleted_at IS NULL)
       ORDER BY
         descendant.root_id,

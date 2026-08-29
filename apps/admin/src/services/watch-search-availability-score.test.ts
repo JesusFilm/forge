@@ -65,6 +65,12 @@ describe("availabilityScoreForKind", () => {
     )
     // The ternary form the Typesense copy used.
     expect(source).not.toMatch(/kind === "target_audio"\s*\n?\s*\?\s*0\.25/)
+    // The RANK ladder is a separate private copy from the SCORE map, and the
+    // patterns above only catch the score. Without this, a re-inlined
+    // `if (kind === "target_audio") return 0` chain would leave the suite green
+    // while the two serving paths silently ordered results differently.
+    expect(source).not.toMatch(/kind === "target_audio"\) return 0\s*$/m)
+    expect(source).not.toMatch(/kind === "related_language"\) return 2/)
   })
 })
 

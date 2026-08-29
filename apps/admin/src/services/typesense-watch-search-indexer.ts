@@ -4,6 +4,7 @@ import {
   CONTAINER_DESCENDANT_MAX_DEPTH,
   notRestrictedFromWatchWhere,
   PUBLIC_CONTENT_SLUG_SQL_PATTERN,
+  PUBLIC_LANGUAGE_SLUG_SQL_PATTERN,
   SERIES_SHAPED_LABELS,
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
@@ -174,11 +175,24 @@ export function parseTypesenseVector(value: string): number[] {
 
 export { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 
-function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
-  const result = new Map<string, TypesenseWatchSubtitleOption[]>()
+/** Group ordered rows into per-video lists, preserving row order within a video. */
+function groupByVideoId<Row extends { videoId: string }, Value>(
+  rows: readonly Row[],
+  toValue: (row: Row) => Value,
+): Map<string, Value[]> {
+  const result = new Map<string, Value[]>()
   for (const row of rows) {
-    const options = result.get(row.videoId) ?? []
-    options.push({
+    const values = result.get(row.videoId) ?? []
+    values.push(toValue(row))
+    result.set(row.videoId, values)
+  }
+  return result
+}
+
+function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
+  return groupByVideoId(
+    rows,
+    (row): TypesenseWatchSubtitleOption => ({
       id: row.id,
       videoEditionId: row.videoEditionId,
       languageId: row.languageId,
@@ -189,10 +203,8 @@ function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
       durationSeconds: row.durationSeconds,
       actionVideoDubId: row.actionVideoDubId,
       actionPriority: row.actionPriority,
-    })
-    result.set(row.videoId, options)
-  }
-  return result
+    }),
+  )
 }
 
 type ContainerLanguageRow = {
@@ -303,7 +315,7 @@ async function loadContainerLanguageRows(
       ON dub_language.id = child_dub.language_id
      AND dub_language.deleted_at IS NULL
      AND dub_language.slug IS NOT NULL
-     AND dub_language.slug ~ '^[a-z0-9-]+$'
+     AND dub_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
     WHERE (child_dub.video_edition_id IS NULL OR child_edition.deleted_at IS NULL)
     ORDER BY descendant.root_id, dub_language.slug
   `)
@@ -312,16 +324,13 @@ async function loadContainerLanguageRows(
 function containerLanguagesByVideo(
   rows: readonly ContainerLanguageRow[],
 ): Map<string, TypesenseWatchContainerLanguage[]> {
-  const result = new Map<string, TypesenseWatchContainerLanguage[]>()
-  for (const row of rows) {
-    const languages = result.get(row.videoId) ?? []
-    languages.push({
+  return groupByVideoId(
+    rows,
+    (row): TypesenseWatchContainerLanguage => ({
       languageSlug: row.languageSlug,
       languageEnglishName: englishName(row.languageName),
-    })
-    result.set(row.videoId, languages)
-  }
-  return result
+    }),
+  )
 }
 
 async function loadSubtitleRows(
@@ -357,7 +366,7 @@ async function loadSubtitleRows(
         ON fallback_language.id = video_dub.language_id
        AND fallback_language.deleted_at IS NULL
        AND fallback_language.slug IS NOT NULL
-       AND fallback_language.slug ~ '^[a-z0-9-]+$'
+       AND fallback_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
       LEFT JOIN mux_video
         ON mux_video.id = video_dub.mux_video_id
        AND mux_video.deleted_at IS NULL
@@ -402,7 +411,7 @@ async function loadSubtitleRows(
       ON target_language.id = vs.language_id
      AND target_language.deleted_at IS NULL
      AND target_language.slug IS NOT NULL
-     AND target_language.slug ~ '^[a-z0-9-]+$'
+     AND target_language.slug ~ ${PUBLIC_LANGUAGE_SLUG_SQL_PATTERN}
     WHERE vs.deleted_at IS NULL
       AND (vs.video_id IS NULL OR vs.video_id = preferred_dub.video_id)
       AND NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL

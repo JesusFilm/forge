@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
 
 import {
+  PUBLIC_LANGUAGE_SLUG_SQL_PATTERN,
   notRestrictedFromWatchWhere,
   SearchWatchabilityService,
   watchVisibilityWhere,
@@ -245,10 +246,11 @@ describe("SearchWatchabilityService", () => {
     expect(sql).toContain("published_locale.status = 'published'")
     expect(sql).toContain("ve.deleted_at IS NULL")
     expect(sql).toContain("target_language.deleted_at IS NULL")
-    expect(sql).toContain("target_language.slug ~ '^[a-z0-9-]+$'")
+    expect(sql).toContain("target_language.slug ~ ")
     expect(sql).toContain("fallback_dub.deleted_at IS NULL")
     expect(sql).toContain("fallback_dub.published = TRUE")
-    expect(sql).toContain("fallback_language.slug ~ '^[a-z0-9-]+$'")
+    expect(sql).toContain("fallback_language.slug ~ ")
+    expect(PUBLIC_LANGUAGE_SLUG_SQL_PATTERN).toBe("^[a-z0-9-]+$")
     expect(sql).toContain("NULLIF(BTRIM(fallback_dub.hls), '') IS NOT NULL")
     expect(sql).toContain("NULLIF(BTRIM(vs.vtt_src), '') IS NOT NULL")
     expect(sql).not.toContain("BTRIM(vs.srt_src)")
@@ -524,7 +526,8 @@ describe("SearchWatchabilityService", () => {
       expect(sql).toContain("child_dub.published = TRUE")
       expect(sql).toContain("NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL")
       expect(sql).toContain("child_edition.deleted_at IS NULL")
-      expect(sql).toContain("dub_language.slug ~ '^[a-z0-9-]+$'")
+      expect(sql).toContain("dub_language.slug ~ ")
+      expect(PUBLIC_LANGUAGE_SLUG_SQL_PATTERN).toBe("^[a-z0-9-]+$")
     })
 
     it("gates traversal on visibility, not only the evaluated descendant", async () => {

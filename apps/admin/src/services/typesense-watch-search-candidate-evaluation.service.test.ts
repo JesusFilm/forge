@@ -35,7 +35,7 @@ const candidateProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: "generation-1",
-  applicationRevision: "watch-search-candidate/v2",
+  applicationRevision: "watch-search-candidate/v3",
   transcriptProjectionRevision: 7n,
   qrelsRevision: "qrels-reviewed-1",
   fieldManifests: {
@@ -131,7 +131,7 @@ function fixture() {
       resourceKey: `watch-search-candidate-eval:${source.toLowerCase()}:${evaluationId}`,
       holderToken: `holder-${evaluationId}`,
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
@@ -292,7 +292,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       resourceKey: "watch-search-candidate-eval:stale",
       holderToken: "holder-stale",
       generationId: "generation-stale",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
@@ -337,7 +337,10 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       candidateSearchEvaluationRevision({
         profile: {
           ...candidateProfile,
-          applicationRevision: "watch-search-candidate/v3",
+          // Varies ONLY the application revision, so it must differ from the
+          // baseline -- this is the entry proving a projection/retrieval-field
+          // change moves the evaluation identity.
+          applicationRevision: "watch-search-candidate/v4",
         },
         currentProfile,
         rankingRevision: "title-and-brand-v2",
@@ -430,7 +433,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const profile = await resolveServingCandidateWatchSearchProfile({
       generations,
       currentProfile,
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       rankingRevision: "title-and-brand-v2",
       transcriptProjectionRevision: 7n,
       qrelsRevision: "qrels-reviewed-1",
@@ -442,7 +445,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     expect(generations.getPointer).toHaveBeenCalledWith("SERVING")
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-serving",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: currentProfile.binding.transcript,
       transcriptProjectionRevision: 7n,
       requireQualified: true,
@@ -478,7 +481,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
         resolveServingCandidateWatchSearchProfile({
           generations,
           currentProfile,
-          applicationRevision: "watch-search-candidate/v2",
+          applicationRevision: "watch-search-candidate/v3",
           rankingRevision: "title-and-brand-v2",
           transcriptProjectionRevision: 7n,
           qrelsRevision: "qrels-reviewed-1",
