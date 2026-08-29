@@ -1,0 +1,13 @@
+{
+  "name": "jfp-admin",
+  "version": "0.1.0",
+  "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+  "author": {
+    "name": "Jesus Film Project",
+    "url": "https://www.jesusfilm.org"
+  },
+  "homepage": "https://admin.jesusfilm.org/dashboard/mcp",
+  "repository": "https://github.com/JesusFilm/forge",
+  "license": "UNLICENSED",
+  "keywords": ["jesus-film", "admin", "mcp", "localization"]
+}
