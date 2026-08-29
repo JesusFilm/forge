@@ -436,30 +436,7 @@ export async function getExperiencePreview(
     }
   }
 
-  try {
-    return await getLegacyExperiencePreview(token)
-  } catch {
-    throw new Error("Experience preview query failed")
-  }
-}
-
-async function getLegacyExperiencePreview(
-  token: string,
-): Promise<ExperiencePreview | null> {
-  const result = await client.query({
-    query: LEGACY_EXPERIENCE_PREVIEW,
-    variables: { token },
-    fetchPolicy: "no-cache",
-    context: {
-      fetchOptions: { cache: "no-store" },
-    },
-  })
-  const response = result as typeof result & {
-    error?: ErrorLike
-    errors?: readonly unknown[]
-  }
-  if (response.error || response.errors?.length) {
-    throw new Error("Experience preview query failed")
-  }
-  return (result.data?.experiencePreview ?? null) as ExperiencePreview | null
+  const legacy = await runPreviewTier(LEGACY_EXPERIENCE_PREVIEW, token)
+  if (!legacy.ok) throw new Error("Experience preview query failed")
+  return legacy.preview
 }
