@@ -22,6 +22,7 @@
  */
 
 import type { TypographyScale } from "../hooks/useTypography"
+import { clamp } from "./scrubber"
 
 export const REFERENCE_MAX_LINES = 2
 export const VERSE_MAX_LINES = 4
@@ -86,9 +87,8 @@ export type PassageCardFitInput = {
 }
 
 /**
- * How tall the bottom-aligned text stack will be, from the same arithmetic that
- * chose the regions. The scrim reads this to decide where it must be fully
- * opaque, so a measured round trip — which lands after paint — is not needed.
+ * How tall the bottom-aligned text stack will be, from the arithmetic that
+ * chose the regions. The scrim reads it instead of measuring after paint.
  */
 export function passageCardStackHeight(
   input: PassageCardFitInput,
@@ -98,18 +98,14 @@ export function passageCardStackHeight(
 }
 
 /**
- * Where the card's scrim must have reached the card colour: the top of the text
- * stack, as a fraction of the card's height.
- *
- * Every text pixel then sits over the solid colour, so the 4.5:1 floor holds
- * for any still the ladder can produce — including a pure-white one — rather
- * than resting on one sampled frame.
- *
- * Capped at the gradient's previous fixed stop, so the scrim is never LIGHTER
- * than the one this replaced; a tall stack only pushes it higher. Floored above
- * zero because a gradient's stops must increase.
+ * Where the scrim must have reached the card colour: the top of the text stack.
+ * Every text pixel then sits over solid colour, so the 4.5:1 floor holds for
+ * ANY still rather than resting on one sampled frame.
  */
+// The gradient's previous fixed stop, kept as a ceiling so the scrim is never
+// LIGHTER than the one it replaced; a tall stack only pushes it higher.
 export const SCRIM_MAX_SOLID_STOP = 0.6
+// Above zero: a gradient's stops must increase.
 const SCRIM_MIN_SOLID_STOP = 0.02
 
 export function scrimSolidStop(
@@ -121,10 +117,7 @@ export function scrimSolidStop(
   }
   const stackTop =
     (cardHeight - CARD_CONTENT_PADDING - stackHeight) / cardHeight
-  return Math.min(
-    SCRIM_MAX_SOLID_STOP,
-    Math.max(SCRIM_MIN_SOLID_STOP, stackTop),
-  )
+  return clamp(stackTop, SCRIM_MIN_SOLID_STOP, SCRIM_MAX_SOLID_STOP)
 }
 
 function stackHeight(

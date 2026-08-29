@@ -1,15 +1,7 @@
 /**
- * Which artwork each Bible quote card on a video may draw, best tier first.
- *
- * A pure derivation from the video's dubs, its authored image, and its
- * citations. The card used to take one of seven stock photographs by index, so
- * a viewer finishing Pilgrim's Progress read a Hebrews citation over a candle
- * that would sit equally well on any other film. Here the artwork comes from
- * the film itself.
- *
- * It returns an ordered LIST per card rather than one resolved URL. A single
- * value leaves the card nothing to advance to when a still fails to load, and
- * the card would sit at its background colour with no way down the ladder.
+ * Which artwork each Bible quote card may draw, best tier first. An ordered
+ * LIST per card, not one URL: a single value leaves a card that fails to load
+ * nothing to fall to. See the plan for the tiers and their reasons.
  */
 
 import { extractMuxPlaybackId, muxThumbnailAtSecond } from "./muxThumbnail"
@@ -33,10 +25,9 @@ export type BibleCardArtInput = {
   /** The last rung of the ladder, owned by the caller so this module stays data-free. */
   stockImages: readonly string[]
   /**
-   * False while the watch query is still filling in from partial cached data.
-   * An incomplete payload and a genuinely still-less video arrive as the SAME
-   * shape — a dub with a null runtime and a null playback id — so this is the
-   * only input that can tell them apart.
+   * False while the watch query is filling in from partial cached data. A
+   * partial payload and a still-less video arrive as the SAME shape, so this
+   * is the only input that can tell them apart.
    */
   payloadSettled: boolean
 }
@@ -50,9 +41,8 @@ export type BibleCardArt = {
 }
 
 /**
- * Stills come from the middle 80% of the film. The opening and closing tenths
- * carry titles, logos, and credits — the frames least likely to say anything
- * about the story.
+ * The middle 80% of the film. The opening and closing tenths carry titles,
+ * logos, and credits.
  */
 export const STILL_WINDOW_START = 0.1
 export const STILL_WINDOW_END = 0.9
@@ -70,13 +60,9 @@ function hasUsableRuntime(duration: number | null): duration is number {
 }
 
 /**
- * Admin's dub relation has no ORDER BY, so the array can reorder between
- * requests. Sorting by documentId first is what keeps a card's still identical
- * on every view; without it every still on the video can move.
- *
- * The pin also carries the still tier's own preconditions. Taking merely the
- * first playable dub would demote a whole video whose sibling dub could serve
- * it, and the monitoring signal would read that as a defect.
+ * Admin's dub relation has no ORDER BY, so sorting by documentId is what keeps
+ * a card's still identical on every view. Preferring a dub that also resolves
+ * a runtime stops an unlucky pick demoting a video a sibling dub could serve.
  */
 function pinDub(variants: readonly WatchVariant[]): WatchVariant | null {
   const published = [...variants]
@@ -90,16 +76,16 @@ function pinDub(variants: readonly WatchVariant[]): WatchVariant | null {
 }
 
 /**
- * Even spacing across the window, indexed by the citation's position. Pure in
- * `(runtime, index, count)`, which is what makes a card's still identical on
- * every device and across launches without any per-video data.
- *
- * The half-step offset puts a lone citation at the exact middle of the film and
- * keeps every timestamp strictly inside the window.
+ * Even spacing across the window. Pure in `(runtime, index, count)`, which is
+ * what makes a still identical on every device without per-video data. The
+ * half-step offset puts a lone citation at the exact middle of the film.
  */
 function stillSecond(runtime: number, index: number, count: number): number {
   const span = STILL_WINDOW_END - STILL_WINDOW_START
   const fraction = STILL_WINDOW_START + (span * (index + 0.5)) / count
+  // NOT `clamp`: on a sub-second runtime the window's top falls below
+  // MIN_STILL_SECOND, and a clamp would return the floor — a timestamp past
+  // the end of the film. Nested this way the window cap always wins.
   return Math.min(
     Math.max(runtime * fraction, MIN_STILL_SECOND),
     runtime * STILL_WINDOW_END,
@@ -107,9 +93,9 @@ function stillSecond(runtime: number, index: number, count: number): number {
 }
 
 /**
- * Citations sort on `order` with nulls collapsing to zero, so two of them can
- * swap between requests. The documentId tie-break pins each one to a position,
- * and the position is what picks its timestamp.
+ * Admin collapses a null `order` to zero, so two citations can swap between
+ * requests. The documentId tie-break pins each to the position that picks its
+ * timestamp.
  */
 function orderedPositions(
   citations: readonly WatchBibleCitation[],
@@ -124,6 +110,18 @@ function orderedPositions(
     })
     .forEach(({ inputIndex }, position) => positions.set(inputIndex, position))
   return positions
+}
+
+/** The best rung any card reached — the value the caller logs per video. */
+function resolvedTier(
+  canServeStill: boolean,
+  hasAuthored: boolean,
+  hasStock: boolean,
+): BibleCardArtTier {
+  if (canServeStill) return "still"
+  if (hasAuthored) return "authored"
+  if (hasStock) return "stock"
+  return "none"
 }
 
 export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
@@ -181,13 +179,11 @@ export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
     return list
   })
 
-  const topTier: BibleCardArtTier = canServeStill
-    ? "still"
-    : authored != null
-      ? "authored"
-      : candidates.some((list) => list.length > 0)
-        ? "stock"
-        : "none"
+  const topTier = resolvedTier(
+    canServeStill,
+    authored != null,
+    candidates.some((list) => list.length > 0),
+  )
 
   return { candidates, tier: topTier, hasPlaybackId: playbackId != null }
 }

@@ -4,8 +4,9 @@ const MUX_STREAM_RE = /stream\.mux\.com\/([a-zA-Z0-9]+)/
 // into a URL so a tainted seed value can't inject a different host/path.
 const MUX_PLAYBACK_ID_RE = /^[a-zA-Z0-9]+$/
 
-// One-way door: Mux caches per exact URL, so changing this cold-renders the
-// whole catalogue again and discards every warmed entry. See muxThumbnailAtSecond.
+// One-way door, and never device-derived: Mux caches per exact URL, so a change
+// here cold-renders the whole catalogue and discards every warmed entry.
+// Measured 2026-08-28: 640 = 33.9 KB, 800 = 41.4 KB, 1080 = 57.5 KB.
 const STILL_SIZE = 800
 
 export function deriveMuxThumbnailUrl(
@@ -24,41 +25,40 @@ export function muxHlsUrlFromPlaybackId(
   return `https://stream.mux.com/${playbackId}.m3u8`
 }
 
-// Same smartcrop shape as deriveMuxThumbnailUrl, but keyed straight off the
-// playback ID an Experience item already carries — the last-resort card poster
-// when a MediaCollection item has no authored image and no hydrated video art.
-//
-// webp, not png: measured 2026-08-19 on a real asset, the png is 988,478 B and
-// this url is 59,262 B for the same frame. `height` is not optional — with a
-// bare `width`, smartcrop keeps the SOURCE height and returns a side-cropped
-// 1280x1080, not 16:9.
+// Keyed straight off the playback ID an Experience item carries — the
+// last-resort card poster. webp, not png: measured 2026-08-19 on a real asset,
+// the png is 988,478 B against 59,262 B here for the same frame.
 export function muxThumbnailFromPlaybackId(
   playbackId: string | null | undefined,
 ): string | null {
-  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
-  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop`
+  return muxStillUrl(playbackId, 1280, 720)
 }
 
 /**
- * A still from one moment of the asset, for the Bible quote cards.
- *
- * Fixed 800x800, never a size derived from the device: Mux caches per exact
- * URL, so a layout-derived width gives every screen geometry its own cold
- * render. Measured 2026-08-28 on one asset — 640 = 33.9 KB, 800 = 41.4 KB,
- * 1080 = 57.5 KB — and the still sits behind a heavy scrim as texture, so the
- * upscale on a 3x screen is not perceptible where 39% more bytes would be.
- *
- * The second is emitted to two decimal places because on a short runtime the
- * caller's window collapses and whole-second rounding would merge several
- * cards onto one URL. Caller owns the spacing and the clamp; this owns the URL.
+ * A still from one moment of the asset, for the Bible quote cards. Two decimal
+ * places because a short runtime collapses the caller's window and whole-second
+ * rounding would merge several cards onto one URL.
  */
 export function muxThumbnailAtSecond(
   playbackId: string | null | undefined,
   second: number,
 ): string | null {
-  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
   if (!Number.isFinite(second) || second < 0) return null
-  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=${STILL_SIZE}&height=${STILL_SIZE}&fit_mode=smartcrop&time=${second.toFixed(2)}`
+  return muxStillUrl(playbackId, STILL_SIZE, STILL_SIZE, second)
+}
+
+// The one owner of the still URL shape, so the two public builders above cannot
+// drift. `height` is not optional: with a bare `width`, smartcrop keeps the
+// SOURCE height and returns a side-cropped frame rather than the ratio asked for.
+function muxStillUrl(
+  playbackId: string | null | undefined,
+  width: number,
+  height: number,
+  second?: number,
+): string | null {
+  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
+  const time = second == null ? "" : `&time=${second.toFixed(2)}`
+  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=${width}&height=${height}&fit_mode=smartcrop${time}`
 }
 
 /**

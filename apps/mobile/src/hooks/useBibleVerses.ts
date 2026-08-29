@@ -26,11 +26,9 @@ const PROMO_IMAGE_URL =
   "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
 
 /**
- * The last rung of the artwork ladder, not the source of it. A citation card
- * draws from a still of the video being watched; these seven photographs are
- * what a video with neither a still nor authored art falls back to, so a card
- * is never bare. Do not delete them, and do not sync them to `apps/tv`, which
- * still cycles its own copy per citation.
+ * The ladder's LAST rung, not the source of card art. Keeps a video with
+ * neither a still nor authored art from rendering bare. Do not delete, and do
+ * not sync to `apps/tv`, which still cycles its own copy per citation.
  */
 const BIBLE_IMAGES = [
   "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
@@ -53,10 +51,8 @@ const BIBLE_IMAGES = [
 export const PASSAGE_FETCH_DEADLINE_MS = 8000
 
 /**
- * KTD15's second belt. A card holds at its background colour while the watch
- * payload is filling in, because a partial payload and a genuinely still-less
- * video arrive as the same shape. A payload that never settles must not strand
- * every card there for the session, so the hold releases on its own.
+ * The artwork hold's own release. A payload that never settles must not strand
+ * every card at its background colour for the session.
  */
 export const ART_HOLD_RELEASE_MS = 8000
 
@@ -75,10 +71,9 @@ export type BibleQuoteBlock = {
   attribution: string | null
   imageUrl: string | null
   /**
-   * Every artwork tier that validated for this card, best first. A NAMED field,
-   * not a passenger on the untyped block bag: the hook's card type and the
-   * renderer's item type meet through an index signature, so a field added on
-   * one side alone typechecks clean and silently renders nothing.
+   * Every validated tier for this card, best first. NAMED, not a passenger on
+   * the untyped block bag: the two sides meet through an index signature, so a
+   * field added on one alone typechecks clean and silently renders nothing.
    */
   artCandidates: string[]
   /** Which candidate `imageUrl` came from; the index a load failure reports. */
@@ -99,10 +94,9 @@ export type BibleQuotesState = {
   /** True until the passage read settles, on every path including failure. */
   loading: boolean
   /**
-   * A card's artwork failed to load; advance it one rung. Owned HERE and not in
-   * the card: the carousel is a plain list that unmounts off-window cells, so a
-   * tier index held in card state would reset on scroll-back and re-request the
-   * URL that just failed, every time.
+   * A card's artwork failed; advance it one rung. Owned HERE, not in the card:
+   * the carousel unmounts off-window cells, so card-local state would reset on
+   * scroll-back and re-request the URL that just failed, every time.
    */
   reportArtworkFailure: (cardIndex: number, failedIndex: number) => void
 }
@@ -110,6 +104,9 @@ export type BibleQuotesState = {
 type PassageMap = ReadonlyMap<string, RenderableBiblePassage>
 
 const NO_PASSAGES: PassageMap = new Map()
+
+/** Stable identity so re-arming the per-video reset cannot loop a re-render. */
+const NO_ART_FAILURES: Record<string, number> = {}
 
 type ReadState =
   | { status: "idle" }
@@ -306,6 +303,10 @@ export function useBibleVerses(
   const [holdReleased, setHoldReleased] = useState(false)
   useEffect(() => {
     setHoldReleased(false)
+    // Memory hygiene, not behaviour — the keys are already slug-scoped. Up
+    // Next replaces the route params rather than remounting, so without this
+    // the map grows for every video watched in the session.
+    setArtFailures(NO_ART_FAILURES)
     const timer = setTimeout(() => setHoldReleased(true), ART_HOLD_RELEASE_MS)
     return () => clearTimeout(timer)
   }, [slug])
@@ -325,7 +326,8 @@ export function useBibleVerses(
   // Keyed by video AND citation position so an advance survives the cell
   // unmounting; the keys are slug-scoped so one video's failures cannot move
   // another video's cards.
-  const [artFailures, setArtFailures] = useState<Record<string, number>>({})
+  const [artFailures, setArtFailures] =
+    useState<Record<string, number>>(NO_ART_FAILURES)
   const reportArtworkFailure = useCallback(
     (cardIndex: number, failedIndex: number) => {
       setArtFailures((prev) => {
@@ -388,8 +390,7 @@ export function useBibleVerses(
 
     // Built AFTER the citation map, never inside it: that is what keeps the
     // promotional card out of the ladder, rather than an index check a later
-    // edit could break. Its empty candidate list makes it unreachable from
-    // `reportArtworkFailure` too.
+    // edit could break. Its empty candidate list is the second belt.
     cards.push({
       reference: "FREE RESOURCES",
       text: "Want to explore life's biggest questions?",

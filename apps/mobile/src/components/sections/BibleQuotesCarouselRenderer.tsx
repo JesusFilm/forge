@@ -94,11 +94,9 @@ const FALLBACK_BG = "#292524"
 const READ_PASSAGE_LABEL = "Read full passage"
 
 /**
- * Every text node on the card sits over artwork the card does not choose, and
- * a still drawn from the film can be near-white. The scrim is fully opaque
- * behind the text stack, so this is not what carries the contrast floor — it
- * holds an edge where a bright still meets the ramp above the stack. Faint on
- * purpose. Layout-neutral, so it costs the fit arithmetic nothing.
+ * The scrim is opaque behind the text stack, so this does NOT carry the
+ * contrast floor — it holds an edge where a bright still meets the ramp above
+ * the stack. Layout-neutral, so it costs the fit arithmetic nothing.
  */
 const CARD_TEXT_SHADOW = {
   textShadowColor: "rgba(0, 0, 0, 0.6)",
@@ -107,35 +105,27 @@ const CARD_TEXT_SHADOW = {
 } as const
 
 /**
- * The scrim's opacity at the card's TOP edge, so no still ever renders at full
- * strength. The 4.5:1 floor is not carried here — `scrimSolidStop` puts the
- * whole text stack over the solid card colour — so this only has to keep a
- * bright still from fighting the card it sits in.
+ * Opacity at the card's TOP edge, so no still renders at full strength. Does
+ * NOT carry the 4.5:1 floor — `scrimSolidStop` puts the text over solid colour.
  */
 const SCRIM_TOP_OPACITY = 0.3
 
 /**
- * Explicit, and a number rather than an object without one: the transition
- * record defaults to 100ms on iOS and 0 on Android, so an object-form
- * transition carrying no duration fades on iOS and does not fade at all on
- * Android — and an iOS-only device check would pass. Matches the poster
- * elsewhere in the app; the search thumbnail's 400ms reads slow at card size.
+ * A NUMBER, never an object without a duration: that form defaults to 100ms on
+ * iOS and 0 on Android, so it would fade on iOS and not at all on Android —
+ * and an iOS-only device check would pass.
  */
 const STILL_FADE_MS = 200
 
 /**
- * How far ahead of the viewer stills are requested. The carousel already mounts
- * its immediate neighbours, so one is enough; the bound is the point, because
- * `Image.prefetch` is a module static with no cancel token and no view
- * association — leaving the screen does not stop work already in flight.
+ * How far ahead stills are requested. The bound IS the guard: `Image.prefetch`
+ * has no cancel token, so leaving the screen does not stop work in flight.
  */
 const PREFETCH_AHEAD = 1
 
 /**
- * The final release for the prefetch gate. The prefetch API accepts no
- * priority, so ordering behind the visible card's own load is the only lever —
- * but a load that neither completes nor errors would otherwise suppress the
- * prefetch for the rest of the session.
+ * Final release for the prefetch gate, so a load that neither completes nor
+ * errors cannot suppress the prefetch for the rest of the session.
  */
 const PREFETCH_RELEASE_MS = 3000
 
@@ -191,10 +181,8 @@ function QuoteCard({
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
   const scrimTop = hexToRgba(bgColor, SCRIM_TOP_OPACITY)
-  // Retained deliberately (KTD12). The derivation already validated everything
-  // it produced and this is idempotent on an absolute URL, so it costs nothing
-  // there — and it is the ONLY URL check the Experience and SDUI paths get,
-  // which reach this component with no derivation in between.
+  // Retained deliberately: idempotent on a URL the derivation already
+  // validated, and the ONLY URL check the Experience and SDUI paths get.
   const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
   const loading = quote.loading === true
 
@@ -250,10 +238,9 @@ function QuoteCard({
     onArtworkSettled?.(cardIndex)
     if (artCandidates.length === 0) return
     if (artIndex >= artCandidates.length - 1) {
-      // The terminal state. Every rung failed, including the stock host the
-      // problem frame names as unreliable, so the card settles at its
-      // background colour — visually identical to loading, and countable only
-      // through this signal.
+      // Terminal: every rung failed, so the card settles at its background
+      // colour — visually identical to loading. This signal is the only way
+      // the state is countable.
       datadogLog.warn("bible_card_art.exhausted", {
         reference: quote.reference,
         candidate_count: artCandidates.length,
@@ -670,10 +657,9 @@ const styles = StyleSheet.create({
   cardImage: {
     borderRadius: 12,
   },
-  // From the card's TOP edge, not 20% down. Starting lower left the still at
-  // full strength across the whole upper band, which is where a bright frame
-  // fights the card hardest. The first stop carries the opacity; moving the
-  // origin alone would have changed nothing.
+  // From the card's TOP edge, not 20% down: starting lower left the still at
+  // full strength across the upper band. The first STOP carries the opacity —
+  // moving the origin alone would have changed nothing.
   gradient: {
     ...StyleSheet.absoluteFill,
   },

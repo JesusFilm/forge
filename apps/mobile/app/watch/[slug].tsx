@@ -236,11 +236,9 @@ export default function WatchVideoPage() {
   // request for the last one's — and paint its references for a frame.
   const routeCitations =
     video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
-  // The card artwork comes from the video's own Mux asset, so the derivation's
-  // inputs are threaded from here — the hook's only call site, and the only
-  // place the dubs and the authored image are in scope. `loading` is the
-  // settled signal: the query returns partial cached data, on which the lean
-  // series fragment carries neither a runtime nor a playback id.
+  // Threaded from here: the hook's only call site, and the only place the dubs
+  // and authored image are in scope. `loading` is the settled signal — the
+  // query returns partial cached data with neither runtime nor playback id.
   const bibleQuotes = useBibleVerses(decodedSlug, routeCitations, {
     variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
     authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
@@ -836,7 +834,11 @@ export default function WatchVideoPage() {
 
             {bibleCitationsBlock != null && (
               <View style={styles.sectionGap}>
+                {/* Keyed per video: Up Next replaces the route params rather
+                    than remounting, and a stale prefetch-gate latch would let
+                    the next video skip the wait. */}
                 <BibleQuotesCarouselRenderer
+                  key={decodedSlug}
                   section={bibleCitationsBlock}
                   onArtworkFailed={bibleQuotes.reportArtworkFailure}
                 />

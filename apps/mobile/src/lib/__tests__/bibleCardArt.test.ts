@@ -217,6 +217,23 @@ describe("deriveBibleCardArt — still selection", () => {
     }
   })
 
+  it("keeps a sub-second runtime's timestamp inside the film, not above it", () => {
+    // The window's top (runtime * 0.9) falls BELOW the minimum-second floor
+    // here, so the two bounds invert. The cap has to win: a generic clamp
+    // returns the floor, which would ask Mux for a frame past the end.
+    const runtime = 0.005
+    const result = deriveBibleCardArt(
+      input({
+        variants: [variant({ duration: runtime })],
+        citations: citations(2),
+      }),
+    )
+    for (const list of result.candidates) {
+      const second = secondsOf(list[0] as string)
+      expect(second).toBeLessThanOrEqual(runtime * STILL_WINDOW_END)
+    }
+  })
+
   it("draws a single citation from the middle of the film", () => {
     const result = deriveBibleCardArt(
       input({

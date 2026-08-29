@@ -850,6 +850,34 @@ describe("useBibleVerses card artwork", () => {
     expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
   })
 
+  it("scopes a recorded failure to its own video, not the next one", async () => {
+    // Up Next replaces the route params rather than remounting the screen, so
+    // this hook outlives the video whose failures it recorded. The failure keys
+    // carry the slug, which is what keeps them apart.
+    //
+    // This does NOT observe the per-video reset in the hook's slug effect —
+    // that is memory hygiene, and the slug-scoped keys make it behaviourally
+    // invisible. Removing the reset leaves this test green, deliberately.
+    const hook = renderHook({
+      slug: "pilgrims-progress",
+      citations: [citation("c1")],
+      art: { ...WITH_STILLS, authoredImageUrl: null },
+    })
+    await flush()
+    act(() => hook.latest().reportArtworkFailure(0, 0))
+    expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
+
+    hook.rerender({
+      slug: "the-beginning",
+      citations: [citation("c1")],
+      art: { ...WITH_STILLS, authoredImageUrl: null },
+    })
+    await flush()
+
+    // The new video starts at the top of the ladder, not one rung down.
+    expect(verseCards(hook.latest())[0]?.imageUrl).toContain("image.mux.com")
+  })
+
   it("ignores a failure reported against a candidate no longer on screen", async () => {
     const hook = renderHook({
       slug: "pilgrims-progress",
