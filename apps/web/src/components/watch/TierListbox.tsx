@@ -280,7 +280,10 @@ export function TierListbox({
                           ? "bg-brand-red text-white"
                           : "text-stone-100 hover:bg-white/10",
                         keyboardNav && isActive
-                          ? "bg-white/10 ring-2 ring-inset ring-white/70"
+                          ? "ring-2 ring-inset ring-white/70"
+                          : "",
+                        keyboardNav && isActive && !isSelected
+                          ? "bg-white/10"
                           : "",
                       )}
                     >
