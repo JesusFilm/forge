@@ -258,9 +258,17 @@ The physical compatibility identity that binds a Watch Search Candidate
 Generation to the schema, projection, and retrieval-field contract able to use
 its collections.
 
-It remains stable across unrelated application deployments. A change means
-existing generations require rebuilding; ordinary deploy identity and
-application-side ranking behavior are not Candidate collection compatibility.
+It remains stable across unrelated application deployments. Ordinary deploy
+identity and application-side ranking behavior are not Candidate collection
+compatibility.
+
+A change is retroactive, not forward-looking: it reclassifies every generation
+already built under the previous revision as incompatible, including one the
+Serving pointer currently names. Resolution then fails closed by refusing to
+serve rather than falling back to another search implementation, so changing
+this revision while a generation is serving public traffic removes that traffic's
+only backend. Treat a revision change as a change to the Serving pointer and
+sequence it the same way.
 
 ### Watch Search Candidate Ranking Revision
 
