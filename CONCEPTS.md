@@ -573,6 +573,13 @@ language, duplication, degradation, latency, and capacity evidence must agree
 with pointwise judgment and named operator review before the candidate can
 become a baseline.
 
+Its pointwise measures are computed over successfully judged cases only, so a
+run in which some cases fail reports rates over a subsample rather than over the
+query set. Coverage — cases judged against cases attempted — is therefore part
+of reading the gate's evidence, and two runs' rates are comparable only at equal
+coverage. A failed case lowers coverage without lowering the rate, so a more
+degraded run can report a better score than a clean one.
+
 ### Search Candidate Identity
 
 The immutable identity under which one search release candidate was evaluated:
