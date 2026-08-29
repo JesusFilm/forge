@@ -64,6 +64,9 @@ export function TierListbox({
   const [mounted, setMounted] = useState(false)
   const [rect, setRect] = useState<PopupRect | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
+  // The highlight ring is a keyboard affordance; a mouse-opened list shows
+  // hover styling only, so the selected row does not wear a ring at rest.
+  const [keyboardNav, setKeyboardNav] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const listRef = useRef<HTMLUListElement | null>(null)
   const baseId = useId()
@@ -89,6 +92,7 @@ export function TierListbox({
     if (disabled || tiers.length === 0) return
     updateRect()
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
+    setKeyboardNav(false)
     setMounted(false)
     setOpen(true)
   }, [disabled, selectedIndex, tiers.length, updateRect])
@@ -163,8 +167,12 @@ export function TierListbox({
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
         openList()
+        setKeyboardNav(true)
       }
       return
+    }
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      setKeyboardNav(true)
     }
     switch (event.key) {
       case "ArrowDown":
@@ -261,15 +269,20 @@ export function TierListbox({
                       data-tier={tier}
                       data-active={isActive ? "true" : undefined}
                       tabIndex={-1}
-                      onMouseEnter={() => setActiveIndex(index)}
+                      onMouseEnter={() => {
+                        setKeyboardNav(false)
+                        setActiveIndex(index)
+                      }}
                       onClick={() => select(tier)}
                       className={cn(
                         "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-base sm:text-sm transition",
                         isSelected
                           ? "bg-brand-red text-white"
                           : "text-stone-100 hover:bg-white/10",
-                        isActive && !isSelected ? "bg-white/10" : "",
-                        isActive && isSelected
+                        keyboardNav && isActive && !isSelected
+                          ? "bg-white/10"
+                          : "",
+                        keyboardNav && isActive && isSelected
                           ? "ring-2 ring-inset ring-white/60"
                           : "",
                       )}
