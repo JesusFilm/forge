@@ -106,7 +106,11 @@ describe("TierListbox", () => {
     expect(button.textContent).toContain("Highest")
     expect(button.getAttribute("aria-expanded")).toBe("false")
     expect(button.getAttribute("aria-haspopup")).toBe("listbox")
+    expect(button.hasAttribute("aria-controls")).toBe(false)
     expect(list()).toBeNull()
+
+    click(button)
+    expect(button.getAttribute("aria-controls")).toBe(list()?.id)
   })
 
   it("renders the placeholder and selects nothing when value is null", () => {
@@ -138,7 +142,13 @@ describe("TierListbox", () => {
       options().map((option) => option.getAttribute("aria-selected")),
     ).toEqual(["false", "true", "false"])
     expect(list()?.getAttribute("aria-labelledby")).toBe("quality-label")
-    expect(trigger().getAttribute("aria-labelledby")).toBe("quality-label")
+    // The trigger's name must carry the current value as well as the field
+    // label, otherwise aria-labelledby hides "High" from screen readers.
+    const [labelRef, valueRef] = (
+      trigger().getAttribute("aria-labelledby") ?? ""
+    ).split(" ")
+    expect(labelRef).toBe("quality-label")
+    expect(document.getElementById(valueRef ?? "")?.textContent).toBe("High")
   })
 
   it("selects a clicked option, closes, and keeps focus on the trigger", async () => {

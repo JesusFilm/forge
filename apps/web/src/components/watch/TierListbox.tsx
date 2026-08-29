@@ -71,39 +71,58 @@ export function TierListbox({
   const listRef = useRef<HTMLUListElement | null>(null)
   const baseId = useId()
   const listId = `${baseId}-list`
+  const valueId = `${baseId}-value`
   const optionId = (tier: DownloadTier) => `${baseId}-option-${tier}`
 
   const selectedIndex = value == null ? -1 : tiers.indexOf(value)
   const selected = selectedIndex >= 0 ? tiers[selectedIndex] : null
+  // aria-labelledby replaces the button's content in the accessible name, so
+  // the selected value must be referenced explicitly or screen readers hear
+  // only the field label ("Video quality") and never the current tier.
+  const triggerLabelledBy = selected ? `${labelledBy} ${valueId}` : labelledBy
   const activeTier = open ? tiers[activeIndex] : undefined
 
   const updateRect = useCallback(() => {
     const trigger = triggerRef.current
     if (!trigger) return
     const bounds = trigger.getBoundingClientRect()
-    setRect({
+    const next: PopupRect = {
       left: bounds.left,
       top: bounds.bottom + POPUP_GAP_PX,
       width: bounds.width,
-    })
+    }
+    // Same-reference return skips the re-render when nothing moved, so the
+    // scroll/resize listeners below do not churn while the list is open.
+    setRect((prev) =>
+      prev &&
+      prev.left === next.left &&
+      prev.top === next.top &&
+      prev.width === next.width
+        ? prev
+        : next,
+    )
   }, [])
 
-  const openList = useCallback(() => {
-    if (disabled || tiers.length === 0) return
-    updateRect()
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
-    setKeyboardNav(false)
-    setMounted(false)
-    setOpen(true)
-  }, [disabled, selectedIndex, tiers.length, updateRect])
+  const openList = useCallback(
+    (viaKeyboard = false) => {
+      if (disabled || tiers.length === 0) return
+      updateRect()
+      setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
+      setKeyboardNav(viaKeyboard)
+      setMounted(false)
+      setOpen(true)
+    },
+    [disabled, selectedIndex, tiers.length, updateRect],
+  )
 
-  const closeList = useCallback((options: { refocus?: boolean } = {}) => {
-    setOpen((wasOpen) => {
-      if (wasOpen) setMounted(true)
-      return false
-    })
-    if (options.refocus !== false) triggerRef.current?.focus()
-  }, [])
+  const closeList = useCallback(
+    (options: { refocus?: boolean } = {}) => {
+      if (open) setMounted(true)
+      setOpen(false)
+      if (options.refocus !== false) triggerRef.current?.focus()
+    },
+    [open],
+  )
 
   const select = useCallback(
     (tier: DownloadTier) => {
@@ -166,8 +185,7 @@ export function TierListbox({
     if (!open) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault()
-        openList()
-        setKeyboardNav(true)
+        openList(true)
       }
       return
     }
@@ -219,14 +237,14 @@ export function TierListbox({
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={listId}
-        aria-labelledby={labelledBy}
+        aria-controls={open ? listId : undefined}
+        aria-labelledby={triggerLabelledBy}
         aria-activedescendant={activeTier ? optionId(activeTier) : undefined}
         onClick={() => (open ? closeList() : openList())}
         onKeyDown={handleTriggerKeyDown}
         className={cn(BASE_TRIGGER_CLASSES, triggerClassName)}
       >
-        <span className={selected ? undefined : "text-stone-400"}>
+        <span id={valueId} className={selected ? undefined : "text-stone-400"}>
           {selected ? getLabel(selected) : placeholder}
         </span>
         <ChevronDown

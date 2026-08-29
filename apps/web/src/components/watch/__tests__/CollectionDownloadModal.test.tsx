@@ -352,11 +352,14 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-modal"] select',
       ),
     ).toBeNull()
-    const labelId = quality.getAttribute("aria-labelledby")
-    expect(labelId).toBeTruthy()
-    expect(document.getElementById(labelId as string)?.textContent).toBe(
+    const [labelId, valueId] = (
+      quality.getAttribute("aria-labelledby") ?? ""
+    ).split(" ")
+    expect(document.getElementById(labelId ?? "")?.textContent).toBe(
       "Video quality",
     )
+    // Accessible name also carries the current tier (review finding #1).
+    expect(document.getElementById(valueId ?? "")?.textContent).toBe("Highest")
   })
 
   it("lists every common tier in order with the highest selected", async () => {
