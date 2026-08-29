@@ -299,8 +299,9 @@ const CATEGORY_RAIL_SCHEMA_LAG_MESSAGES = [
 // with one unknown-field error PER nesting path, so this arrives four at a
 // time. Match the prefix only: graphql-js appends a `Did you mean ...?`
 // suggestion whose contents depend on the other field names on the type.
-const PREVIEW_TITLE_SCHEMA_LAG_MESSAGE =
-  /^Cannot query field "previewResolvedTitle" on type "MediaCollectionItem"\./
+const PREVIEW_TITLE_SCHEMA_LAG_MESSAGES = [
+  /^Cannot query field "previewResolvedTitle" on type "MediaCollectionItem"\./,
+]
 
 type PreviewSchemaLag = "none" | "titles" | "category-rail"
 
@@ -318,7 +319,7 @@ function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
   return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
 }
 
-function matches(
+function matchesSchemaLagMessage(
   entry: GraphqlErrorCandidate,
   patterns: readonly RegExp[],
 ): boolean {
@@ -345,15 +346,22 @@ function classifyPreviewSchemaLag(value: unknown): PreviewSchemaLag {
   if (errors.length === 0) return "none"
 
   if (
-    errors.some((entry) => matches(entry, CATEGORY_RAIL_SCHEMA_LAG_MESSAGES))
+    errors.some((entry) =>
+      matchesSchemaLagMessage(entry, CATEGORY_RAIL_SCHEMA_LAG_MESSAGES),
+    )
   ) {
     return "category-rail"
   }
 
-  const titleLag = errors.filter((entry) =>
-    matches(entry, [PREVIEW_TITLE_SCHEMA_LAG_MESSAGE]),
-  )
-  if (titleLag.length > 0 && titleLag.length === errors.length) return "titles"
+  // `every` over a known non-empty array: a title lag routes to tier 2 only
+  // when it is the WHOLE story.
+  if (
+    errors.every((entry) =>
+      matchesSchemaLagMessage(entry, PREVIEW_TITLE_SCHEMA_LAG_MESSAGES),
+    )
+  ) {
+    return "titles"
+  }
 
   return "none"
 }

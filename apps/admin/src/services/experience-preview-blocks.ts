@@ -19,8 +19,16 @@
  * deeper case.
  */
 
-/** Non-persisted key this projection adds to each media collection item. */
-export const PREVIEW_LOCALE_KEY = "previewLocale"
+/**
+ * Non-persisted key this projection adds to each media collection item.
+ *
+ * Two sites in `graphql/types/blocks.ts` mirror this literal and CANNOT import
+ * it: the `MediaCollectionItem` type key (a type position cannot reference a
+ * runtime const) and `previewResolvedTitle`'s `row.previewLocale` read. Rename
+ * all three together — a partial rename type-checks and passes every unit
+ * test, then silently resolves every preview title to null.
+ */
+const PREVIEW_LOCALE_KEY = "previewLocale"
 
 type UnknownRecord = Record<string, unknown>
 

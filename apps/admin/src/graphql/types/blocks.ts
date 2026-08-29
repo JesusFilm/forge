@@ -84,6 +84,8 @@ type AuthoredMediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
  * and describes persisted JSON, and this is a read-time projection.
  */
 type MediaCollectionItem = AuthoredMediaCollectionItem & {
+  // Mirrors PREVIEW_LOCALE_KEY in services/experience-preview-blocks.ts, which
+  // a type position cannot import. Rename both together.
   previewLocale?: string
 }
 type NavigationCarouselBlock = z.infer<typeof NavigationCarouselBlockSchema>
@@ -479,9 +481,9 @@ async function resolveItemTitle(
     visibleOnly: true,
   })
 
-  for (const row of locales) {
-    if (row.locale !== locale) continue
-    const title = row.title?.trim()
+  for (const localeRow of locales) {
+    if (localeRow.locale !== locale) continue
+    const title = localeRow.title?.trim()
     if (title) return title
   }
   return null
