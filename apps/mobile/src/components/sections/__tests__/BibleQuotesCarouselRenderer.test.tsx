@@ -933,6 +933,32 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
     expect(mockWarn.mock.calls[0]?.[0]).toBe("bible_card_art.exhausted")
   })
 
+  it("emits the exhaustion signal once when one load reports twice", () => {
+    // SDWebImage's completion closure can call `onError` more than once for a
+    // single failed load. Both calls land in the same render pass, reading the
+    // same props, so the terminal check alone would double-count the only
+    // signal that distinguishes an exhausted card from a loading one.
+    const onArtworkFailed = jest.fn()
+    render(
+      [
+        stillQuote({
+          imageUrl: STOCK_A,
+          artCandidates: [STOCK_A],
+          artIndex: 0,
+        }),
+      ],
+      onArtworkFailed,
+    )
+
+    act(() => {
+      const onError = imageProps()?.onError as () => void
+      onError()
+      onError()
+    })
+
+    expect(mockWarn).toHaveBeenCalledTimes(1)
+  })
+
   it("stays quiet when a failure still has somewhere to fall to", () => {
     render([stillQuote()], jest.fn())
     act(() => {

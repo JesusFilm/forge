@@ -153,6 +153,37 @@ describe("deriveBibleCardArt — still selection", () => {
     expect(result.candidates[0]?.[0]).toContain("/playbackB/")
   })
 
+  it("falls back to the sorted-first dub when none qualifies", () => {
+    // Every dub carries an id but no runtime, so the qualified pass finds
+    // nothing and the fallback decides. It must still be deterministic, or the
+    // authored/stock rung a video lands on could differ between requests.
+    const variants = [
+      variant({
+        documentId: "dub-c",
+        muxPlaybackId: "playbackC",
+        duration: null,
+      }),
+      variant({
+        documentId: "dub-a",
+        muxPlaybackId: "playbackA",
+        duration: null,
+      }),
+      variant({
+        documentId: "dub-b",
+        muxPlaybackId: "playbackB",
+        duration: null,
+      }),
+    ]
+    const forward = deriveBibleCardArt(input({ variants }))
+    const shuffled = deriveBibleCardArt(
+      input({ variants: [variants[1]!, variants[2]!, variants[0]!] }),
+    )
+
+    expect(forward.candidates).toEqual(shuffled.candidates)
+    expect(forward.tier).toBe("authored")
+    expect(forward.hasPlaybackId).toBe(true)
+  })
+
   it("skips an unpublished dub even when it sorts first and is complete", () => {
     const variants = [
       variant({

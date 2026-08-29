@@ -188,6 +188,7 @@ function QuoteCard({
 
   const artCandidates = quote.artCandidates ?? []
   const artIndex = quote.artIndex ?? 0
+  const warnedIndexRef = useRef<number | null>(null)
 
   const passageUrl =
     quote.passageUrl != null && validateActionUrl(quote.passageUrl)
@@ -237,10 +238,14 @@ function QuoteCard({
     // for the rest of the session on an ordinary failure.
     onArtworkSettled?.(cardIndex)
     if (artCandidates.length === 0) return
-    if (artIndex >= artCandidates.length - 1) {
-      // Terminal: every rung failed, so the card settles at its background
-      // colour — visually identical to loading. This signal is the only way
-      // the state is countable.
+    // Terminal: every rung failed, so the card settles at its background
+    // colour — visually identical to loading, and countable only here. Deduped
+    // per rung because one failed load can report `onError` more than once.
+    if (
+      artIndex >= artCandidates.length - 1 &&
+      warnedIndexRef.current !== artIndex
+    ) {
+      warnedIndexRef.current = artIndex
       datadogLog.warn("bible_card_art.exhausted", {
         reference: quote.reference,
         candidate_count: artCandidates.length,
