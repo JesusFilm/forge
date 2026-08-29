@@ -69,6 +69,28 @@ type InventoryCardImage = Pick<
   "imageUrl" | "muxPlaybackId"
 >
 
+type InventoryCardOrientation = Pick<
+  WatchLanguageInventoryCard,
+  "coreId" | "slug" | "parentSlug" | "title" | "parentTitle"
+>
+
+const PORTRAIT_INVENTORY_MARKER =
+  /(?:^|[^a-z0-9])(?:vertical|9x16)(?=$|[^a-z0-9])/i
+
+function hasPortraitInventoryMarker(candidate: string | null): boolean {
+  return candidate != null && PORTRAIT_INVENTORY_MARKER.test(candidate)
+}
+
+function isPortraitInventoryVideo(item: InventoryCardOrientation): boolean {
+  return (
+    hasPortraitInventoryMarker(item.coreId) ||
+    hasPortraitInventoryMarker(item.slug) ||
+    hasPortraitInventoryMarker(item.parentSlug) ||
+    hasPortraitInventoryMarker(item.title) ||
+    hasPortraitInventoryMarker(item.parentTitle)
+  )
+}
+
 function cardImageUrl(item: InventoryCardImage): string | null {
   return item.imageUrl ?? resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
 }
@@ -463,6 +485,7 @@ function CompactVideoRow({
   const videoLabels = useTranslations("VideoLabels")
   const runtime = formatRuntime(item.durationSeconds)
   const thumbnailUrl = cardImageUrl(item)
+  const isPortrait = isPortraitInventoryVideo(item)
   const metadata = [videoLabels(videoLabelMessageKey(item.label)), runtime]
     .filter((value): value is string => Boolean(value))
     .join(" / ")
@@ -471,14 +494,28 @@ function CompactVideoRow({
       <span className="mr-1 w-10 shrink-0 text-right text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:text-lg">
         {index + 1}
       </span>
-      <span className="relative h-12 w-20 shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10 sm:h-14 sm:w-24">
+      <span
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10",
+          isPortrait
+            ? "h-12 aspect-[2/3] sm:h-14"
+            : "h-12 w-20 sm:h-14 sm:w-24",
+        )}
+      >
         {thumbnailUrl ? (
           <Image
             src={thumbnailUrl}
             alt=""
             fill
-            sizes="(max-width: 640px) 80px, 96px"
-            className="object-cover object-left-top transition duration-300 group-hover:scale-105"
+            sizes={
+              isPortrait
+                ? "(max-width: 640px) 32px, 37px"
+                : "(max-width: 640px) 80px, 96px"
+            }
+            className={cn(
+              "object-cover transition duration-300 group-hover:scale-105",
+              isPortrait ? "object-center" : "object-left-top",
+            )}
           />
         ) : (
           <span className="absolute inset-0 bg-[linear-gradient(135deg,#1c1917,#44403c_55%,#292524)]" />
