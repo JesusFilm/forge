@@ -1,8 +1,18 @@
 export type WatchSearchRankingMode = "TITLE_AND_BRAND" | "SEMANTIC"
 
 export const WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION = "legacy-rrf"
+/**
+ * Application-side ranking identity for the Candidate lane.
+ *
+ * v2 adds the `container` watchability tier to the rank ladder, which sorts
+ * between `target_subtitle` and `related_language`. That changes which member
+ * represents a canonical group, so a qualification recorded against v1 no
+ * longer describes this behaviour. Bumping the identity forces requalification
+ * while leaving the physical collections — whose field manifest is unchanged —
+ * valid; the separate application revision is deliberately NOT bumped.
+ */
 export const WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION =
-  "title-and-brand-v1"
+  "title-and-brand-v2"
 
 export type WatchSearchRankingImplementation =
   | typeof WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION

@@ -389,7 +389,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       generationId: "candidate-1",
       status: "PASSED",
       applicationRevision: "admin-app-sha-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
@@ -405,7 +405,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         requireQualified: true,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).resolves.toMatchObject({ generationId: "candidate-1" })
     db.prisma.$queryRaw.mockResolvedValueOnce([{ acquired: false }])
@@ -417,7 +417,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
     expect(db.pointers.get("SERVING")?.generationId).toBeNull()
@@ -429,7 +429,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings: ["new-current-binding"],
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await expect(
@@ -440,7 +440,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "stale-qrels",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await service.pinServingGeneration({
@@ -450,7 +450,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       expectedPointerVersion: 0,
       currentBindings,
       qrelsRevision: "qrels-reviewed-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
 
     await ready("candidate-2")
@@ -469,7 +469,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 1,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
@@ -482,7 +482,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
@@ -501,7 +501,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
@@ -532,7 +532,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
@@ -548,7 +548,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
           expectedPointerVersion: 0,
           currentBindings,
           qrelsRevision: "qrels-reviewed-1",
-          rankingRevision: "title-and-brand-v1",
+          rankingRevision: "title-and-brand-v2",
         }),
       ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
       expect(db.pointers.get("SERVING")?.generationId).toBeNull()
@@ -566,7 +566,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
           generationId: "candidate-1",
           status: "PASSED",
           applicationRevision: "admin-app-sha-1",
-          rankingRevision: "title-and-brand-v1",
+          rankingRevision: "title-and-brand-v2",
           transcriptCollection: "watch_search_transcripts_active",
           transcriptProjectionRevision: 17n,
           qrelsRevision: "qrels-reviewed-1",
@@ -591,7 +591,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
           generationId: "candidate-1",
           status: "PASSED",
           applicationRevision: "admin-app-sha-1",
-          rankingRevision: "title-and-brand-v1",
+          rankingRevision: "title-and-brand-v2",
           transcriptCollection: "watch_search_transcripts_active",
           transcriptProjectionRevision: 17n,
           qrelsRevision: "qrels-reviewed-1",
@@ -614,7 +614,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
@@ -654,7 +654,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         requireQualified: true,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
 
@@ -666,7 +666,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     expect(db.pointers.get("SERVING")?.generationId).toBeNull()
@@ -679,7 +679,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       generationId: "candidate-1",
       status: "PASSED",
       applicationRevision: "admin-app-sha-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
@@ -695,7 +695,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
 
@@ -714,7 +714,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     expect(typesense.getAlias).toHaveBeenCalledTimes(4)
@@ -735,7 +735,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-2",

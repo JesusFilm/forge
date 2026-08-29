@@ -325,7 +325,7 @@ export function passingQualificationReport(input: {
     identity: {
       generationId: input.generationId ?? "candidate-1",
       applicationRevision: "admin-app-sha-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: "17",
       qrelsRevision: input.qrelsRevision ?? "qrels-reviewed-1",
@@ -354,7 +354,7 @@ export function operatorAcceptanceReport(input: {
     identity: {
       generationId: "candidate-1",
       applicationRevision: "admin-app-sha-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: "17",
       qrelsRevision: `none:operator-accepted:${decisionId}`,

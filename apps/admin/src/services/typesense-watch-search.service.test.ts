@@ -30,6 +30,7 @@ import {
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
 import {
+  containerWatchability,
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
@@ -701,7 +702,7 @@ describe("TypesenseWatchSearchService", () => {
       profile: "CANDIDATE",
       generationId: "generation-1",
       applicationRevision: "revision-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptProjectionRevision: "7",
       evaluationRevision: "none:operator-accepted:launch-1",
     })
@@ -1153,7 +1154,7 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
-      rankingImplementation: "title-and-brand-v1",
+      rankingImplementation: "title-and-brand-v2",
       rankingMode: "TITLE_AND_BRAND",
       rankingAnchor: {
         compactCore: "bibleproject",
@@ -3946,5 +3947,196 @@ describe("TypesenseWatchSearchService", () => {
     ).rejects.toThrow("upstream unavailable")
     expect(embedder).toHaveBeenCalledTimes(1)
     expect(typesense.multiSearch).toHaveBeenCalledTimes(1)
+  })
+
+  describe("container availability", () => {
+    const containerLanguages = (
+      ...languages: Array<[slug: string, englishName: string | null]>
+    ) =>
+      JSON.stringify(
+        languages.map(([languageSlug, languageEnglishName]) => ({
+          languageSlug,
+          languageEnglishName,
+        })),
+      )
+
+    const target = {
+      slug: "japanese",
+      fallbackLanguageSlugs: ["english", "french"],
+    }
+
+    it("selects the target language when a descendant carries it", () => {
+      expect(
+        containerWatchability(
+          containerLanguages(["english", "English"], ["japanese", "Japanese"]),
+          target,
+        ),
+      ).toMatchObject({
+        kind: "container",
+        languageSlug: "japanese",
+        languageEnglishName: "Japanese",
+        hrefLanguageSlug: "japanese",
+      })
+    })
+
+    it("prefers the highest-priority fallback when the target is absent", () => {
+      // `french` is listed FIRST in the projection and `english` second, so a
+      // selector that scanned the projection instead of the fallback priority
+      // order would pick french. Falsify by reversing the fallback loop.
+      expect(
+        containerWatchability(
+          containerLanguages(["french", "French"], ["english", "English"]),
+          target,
+        ),
+      ).toMatchObject({ kind: "container", languageSlug: "english" })
+    })
+
+    it("carries no playback identity", () => {
+      const resolved = containerWatchability(
+        containerLanguages(["japanese", "Japanese"]),
+        target,
+      )
+      expect(resolved).toMatchObject({
+        playbackId: null,
+        durationSeconds: null,
+        audio: false,
+        subtitles: false,
+      })
+    })
+
+    it("resolves nothing when no projected language is accepted", () => {
+      expect(
+        containerWatchability(
+          containerLanguages(["swahili", "Swahili"]),
+          target,
+        ),
+      ).toBeNull()
+    })
+
+    it("treats an absent projection as unavailable without throwing", () => {
+      // A catalog document written by a generation predating the container
+      // projection carries no key at all. An unguarded parse here throws
+      // inside hydrateResultDocuments' try, where the classifier rethrows and
+      // fails the whole search rather than one card.
+      expect(() => containerWatchability(undefined, target)).not.toThrow()
+      expect(containerWatchability(undefined, target)).toBeNull()
+      expect(containerWatchability("", target)).toBeNull()
+    })
+
+    it("degrades a malformed projection to unavailable without throwing", () => {
+      expect(() => containerWatchability("{not json", target)).not.toThrow()
+      expect(containerWatchability("{not json", target)).toBeNull()
+    })
+
+    it("keeps a container's own playable Dub ahead of its descendants", async () => {
+      // KTD9: the container branch runs LAST in every resolver's cascade, so a
+      // Series-Shaped Video carrying its own Dub keeps the state that Dub
+      // earned it. This is deliberately the OPPOSITE of watchabilityRank,
+      // which sorts container ABOVE related_language. Falsify by moving the
+      // container branch ahead of the related-language branch in
+      // resolveWatchability: this goes red while the rank tests stay green.
+      const containerWithOwnDub: TypesenseWatchCatalogDocument = {
+        ...japaneseCatalogDocument,
+        id: "video-collection",
+        coreId: "core-collection",
+        slug: "collection",
+        label: "collection",
+        childCount: 3,
+        // Its own Dub is in a FALLBACK language, and a descendant is playable
+        // in the TARGET language. Direct playback must still win.
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "spanish-castilian", languageEnglishName: "Spanish" },
+        ]),
+      }
+      const profile = candidateProfile()
+      const typesense = typesenseFixture({
+        lexical: [containerWithOwnDub],
+        binding: profile.binding,
+      })
+      const prisma = prismaFixture({
+        targetLanguage: {
+          id: "language-es",
+          slug: "spanish-castilian",
+          name: { en: "Spanish" },
+        },
+        fallbackLanguages: [{ id: "language-japanese", slug: "japanese" }],
+        evidenceLanguages: [
+          { slug: "japanese", bcp47: "ja" },
+          { slug: "spanish-castilian", bcp47: "es" },
+        ],
+      })
+      const service = new TypesenseWatchSearchService(
+        prisma,
+        typesense as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "hope",
+        targetLanguageSlug: "spanish-castilian",
+      })
+
+      expect(response.results[0]?.availability?.kind).toBe("related_language")
+      expect(response.results[0]?.availability?.kind).not.toBe("container")
+    })
+
+    it("resolves a container with no Dub of its own from its descendants", async () => {
+      // The anti-vacuous companion: strip the own-Dub evidence and the same
+      // document must resolve to container, proving the case above is about
+      // precedence rather than the container branch simply never firing.
+      const container: TypesenseWatchCatalogDocument = {
+        ...japaneseCatalogDocument,
+        id: "video-collection-bare",
+        coreId: "core-collection-bare",
+        slug: "collection-bare",
+        label: "collection",
+        childCount: 3,
+        audioLanguageSlugs: [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: "[]",
+        subtitleOptionsJson: "[]",
+        containerLanguagesJson: JSON.stringify([
+          { languageSlug: "spanish-castilian", languageEnglishName: "Spanish" },
+        ]),
+      }
+      const profile = candidateProfile()
+      const typesense = typesenseFixture({
+        lexical: [container],
+        binding: profile.binding,
+      })
+      const prisma = prismaFixture({
+        targetLanguage: {
+          id: "language-es",
+          slug: "spanish-castilian",
+          name: { en: "Spanish" },
+        },
+        evidenceLanguages: [{ slug: "spanish-castilian", bcp47: "es" }],
+      })
+      const service = new TypesenseWatchSearchService(
+        prisma,
+        typesense as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "hope",
+        targetLanguageSlug: "spanish-castilian",
+      })
+
+      expect(response.results[0]?.availability).toMatchObject({
+        kind: "container",
+        languageSlug: "spanish-castilian",
+      })
+      expect(response.results[0]?.playbackId).toBeNull()
+    })
+
+    it("ignores a projected entry with no language slug", () => {
+      expect(
+        containerWatchability(
+          JSON.stringify([{ languageEnglishName: "Nameless" }]),
+          target,
+        ),
+      ).toBeNull()
+    })
   })
 })

@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { availabilityScore } from "./watch-search.service"
-import { availabilityScoreForKind } from "./watch-search-availability-score"
+import { availabilityScore, watchabilityRank } from "./watch-search.service"
+import {
+  availabilityScoreForKind,
+  watchabilityRankForKind,
+} from "./watch-search-availability-score"
 
 describe("availabilityScoreForKind", () => {
   it("scores a container with the subtitle tier, not zero", () => {
@@ -48,6 +51,11 @@ describe("availabilityScoreForKind", () => {
     ["src/services/watch-search.service.ts"],
     ["src/services/search-trace.service.ts"],
     ["src/app/dashboard/ops-data.ts"],
+    // The Typesense serving path was a FOURTH private copy, written as a
+    // nested ternary rather than an if-chain, so neither pattern above would
+    // have caught it. It went unnoticed long enough for the shared owner's own
+    // doc comment to say "three surfaces".
+    ["src/services/typesense-watch-search.service.ts"],
   ])("%s reads the shared owner rather than its own copy", (relativePath) => {
     const source = readFileSync(join(process.cwd(), relativePath), "utf8")
     expect(source).toContain("watch-search-availability-score")
@@ -55,5 +63,41 @@ describe("availabilityScoreForKind", () => {
     expect(source).not.toMatch(
       /if \(watchability\?\.kind === "target_audio"\) return 0\.25/,
     )
+    // The ternary form the Typesense copy used.
+    expect(source).not.toMatch(/kind === "target_audio"\s*\n?\s*\?\s*0\.25/)
+  })
+})
+
+describe("watchabilityRankForKind", () => {
+  it("sorts a container between target subtitles and a related language", () => {
+    expect(watchabilityRankForKind("target_audio")).toBe(0)
+    expect(watchabilityRankForKind("target_subtitle")).toBe(1)
+    expect(watchabilityRankForKind("container")).toBe(2)
+    expect(watchabilityRankForKind("related_language")).toBe(3)
+    expect(watchabilityRankForKind("unavailable")).toBe(4)
+  })
+
+  it("sorts an unknown or absent persisted kind last rather than throwing", () => {
+    expect(watchabilityRankForKind(null)).toBe(4)
+    expect(watchabilityRankForKind(undefined)).toBe(4)
+    expect(watchabilityRankForKind("kind_from_a_future_deploy")).toBe(4)
+  })
+
+  // Both serving paths must order results identically, so neither may hold a
+  // private ladder. The PostgreSQL adapter is exercised through its own
+  // exported wrapper; the Typesense one is pinned by source above.
+  it("is the order the PostgreSQL serving path applies", () => {
+    const kinds = [
+      "target_audio",
+      "target_subtitle",
+      "container",
+      "related_language",
+      "unavailable",
+    ] as const
+    for (const kind of kinds) {
+      expect(
+        watchabilityRank({ kind } as Parameters<typeof watchabilityRank>[0]),
+      ).toBe(watchabilityRankForKind(kind))
+    }
   })
 })

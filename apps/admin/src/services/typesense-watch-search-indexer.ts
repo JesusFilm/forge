@@ -232,6 +232,22 @@ type ContainerLanguageRow = {
  * point for parity with the per-request tier — raw SQL cannot import a Prisma
  * where-helper, and the indexer's mocked suite cannot discriminate the label
  * gate at all.
+ *
+ * Of the root-gate conditions below, only three are load-bearing HERE, and each
+ * was falsified individually against a real database (remove it, watch exactly
+ * one case go red, restore):
+ *
+ *   - the Series-Shaped label test
+ *   - the public content-slug pattern
+ *   - the public language-slug pattern on the descendant's Dub
+ *
+ * Publication, `no_index`, and the `watch` platform restriction are restated
+ * for faithfulness to the tier this mirrors, but they are REDUNDANT in this
+ * context: `buildCatalogDocuments`' own `where` already excludes such videos,
+ * so a container failing them has no catalog document to carry the projection.
+ * Removing any of the three turns nothing red, and that is expected — do not
+ * read their presence as covered, and do not delete them either, because this
+ * query must keep matching the per-request tier it mirrors.
  */
 async function loadContainerLanguageRows(
   prisma: PrismaClient,

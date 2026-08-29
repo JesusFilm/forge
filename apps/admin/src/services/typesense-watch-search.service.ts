@@ -942,17 +942,24 @@ function resolveWatchability(
  * is built by dropping null-slug entries, so it is NOT index-aligned with
  * `target.fallbackLanguageIds`; never pair the two by index.
  */
-function containerWatchability(
+export function containerWatchability(
   containerLanguagesJson: string | undefined,
-  target: TargetLanguageContext,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
 ): IndexedWatchability | null {
-  // `?? ""` is load-bearing: a catalog document written by a generation that
-  // predates this field carries no key at all, and an unguarded parse here
-  // throws inside hydrateResultDocuments' try, where the error classifier
-  // rethrows it and fails the whole search.
-  const languages = parseJsonArray<TypesenseWatchContainerLanguage>(
-    containerLanguagesJson ?? "",
-  )
+  // Never let a parse failure escape. A catalog document written by a
+  // generation that predates this field carries no key at all (`undefined`,
+  // normalised to an empty array below), and a malformed value would throw.
+  // Either throw would land inside hydrateResultDocuments' try, where the
+  // error classifier does not recognise it and rethrows — failing the whole
+  // search rather than degrading one card to unavailable.
+  let languages: TypesenseWatchContainerLanguage[]
+  try {
+    languages = parseJsonArray<TypesenseWatchContainerLanguage>(
+      containerLanguagesJson ?? "[]",
+    )
+  } catch {
+    return null
+  }
   if (languages.length === 0) return null
 
   const bySlug = new Map(

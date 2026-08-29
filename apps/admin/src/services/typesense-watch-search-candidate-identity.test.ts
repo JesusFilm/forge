@@ -21,7 +21,7 @@ describe("candidateWatchSearchApplicationRevision", () => {
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v1")
+    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v2")
   })
 
   it("is the only revision source used by every candidate boundary", () => {

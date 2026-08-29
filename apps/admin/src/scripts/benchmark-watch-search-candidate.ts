@@ -12,6 +12,7 @@ import {
   type CandidateQualificationEvidence,
 } from "@/services/typesense-watch-search-candidate-qualification"
 import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
+import type { WatchSearchRankingImplementation } from "@/services/typesense-watch-search-ranking"
 import {
   candidateWatchSearchApplicationRevision,
   candidateWatchSearchRankingRevision,
@@ -53,7 +54,7 @@ const REQUIRED_SLICES = REQUIRED_CANDIDATE_BENCHMARK_SLICES
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
-  rankingRevision: "title-and-brand-v1"
+  rankingRevision: WatchSearchRankingImplementation
   transcriptCollection: string
   transcriptProjectionRevision: string
   qrelsRevision: string
@@ -79,7 +80,7 @@ type CandidateDiagnostics = {
   groupedHits: number
   candidates: number
   hydratedRecords: number
-  rankingImplementation: "legacy-rrf" | "title-and-brand-v1"
+  rankingImplementation: WatchSearchRankingImplementation
   rankingMode: "TITLE_AND_BRAND" | "SEMANTIC"
 }
 

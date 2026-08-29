@@ -9,6 +9,7 @@ import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
 } from "./typesense-watch-search-indexer"
+import { containerWatchability } from "./typesense-watch-search.service"
 
 const RUN_REAL_DB_TEST = env.WATCH_SEARCH_DB_TEST === "1"
 
@@ -263,14 +264,28 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         dubHls?: string | null
         dubLanguage?: "target" | "fallback"
         cycle?: boolean
+        selfLoop?: boolean
+        dubLanguagePublicSlug?: boolean
       }
 
+      type ContainerResolution = {
+        kind?: string
+        languageSlug?: string | null
+      }
+
+      /**
+       * Resolve one fixture through BOTH serving paths and assert they agree
+       * before returning. Every case below therefore carries a parity
+       * assertion for free -- a gate implemented in only one of the two
+       * loaders turns its own case red rather than passing silently.
+       */
       async function resolveContainer(
         fixture: ContainerFixture,
-      ): Promise<{ kind?: string; languageSlug?: string | null }> {
+      ): Promise<ContainerResolution & { indexed: ContainerResolution }> {
         const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
         const rollback = new RollbackFixture()
-        let resolved: { kind?: string; languageSlug?: string | null } = {}
+        let resolved: ContainerResolution = {}
+        let indexedResolved: ContainerResolution = {}
 
         const {
           containerSlug = `db-container-${suffix}`,
@@ -288,6 +303,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           dubHls = "https://example.test/child.m3u8",
           dubLanguage = "target",
           cycle = false,
+          selfLoop = false,
+          dubLanguagePublicSlug = true,
         } = fixture
 
         try {
@@ -296,7 +313,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               const targetLanguage = await tx.language.create({
                 data: {
                   coreId: `db-c-target-${suffix}`,
-                  slug: `db-c-target-${suffix}`,
+                  // An internal-style language slug has no public Watch route,
+                  // so a container must not be admitted in that language.
+                  slug: dubLanguagePublicSlug
+                    ? `db-c-target-${suffix}`
+                    : `DB_C_Target_${suffix}`,
                   bcp47: "ru",
                   name: { en: "Container Target" },
                 },
@@ -416,6 +437,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                   data: { parentId: leaf.id, childId: container.id },
                 })
               }
+              if (selfLoop) {
+                await tx.videoRelation.create({
+                  data: { parentId: container.id, childId: container.id },
+                })
+              }
 
               const mux = await tx.muxVideo.create({
                 data: {
@@ -470,12 +496,40 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 kind: watchability?.kind,
                 languageSlug: watchability?.languageSlug,
               }
-              // Keep the expected language slugs addressable by the caller.
-              if (resolved.languageSlug === targetLanguage.slug) {
-                resolved.languageSlug = "target"
-              } else if (resolved.languageSlug === fallbackLanguage.slug) {
-                resolved.languageSlug = "fallback"
+
+              // Resolve the SAME fixture through the Typesense index-time
+              // projection and its real query-time selector. This is the
+              // enforcement point for the mirrored container tier: the
+              // indexer's own mocked suite cannot discriminate the label gate
+              // at all, because Prisma emits `COLLECTION` / `SERIES` while the
+              // SQL compares the stored `collection` / `series` @map values.
+              const catalog = await buildCatalogDocuments(db)
+              const containerDocument = catalog.find(
+                (document) => document.id === container.id,
+              )
+              const indexed = containerWatchability(
+                containerDocument?.containerLanguagesJson,
+                {
+                  slug: targetLanguage.slug!,
+                  fallbackLanguageSlugs: [fallbackLanguage.slug!],
+                },
+              )
+              indexedResolved = {
+                kind: indexed?.kind ?? "unavailable",
+                languageSlug: indexed?.languageSlug ?? null,
               }
+
+              // Keep the expected language slugs addressable by the caller.
+              const nameLanguage = (slug: string | null | undefined) =>
+                slug === targetLanguage.slug
+                  ? "target"
+                  : slug === fallbackLanguage.slug
+                    ? "fallback"
+                    : slug
+              resolved.languageSlug = nameLanguage(resolved.languageSlug)
+              indexedResolved.languageSlug = nameLanguage(
+                indexedResolved.languageSlug,
+              )
 
               throw rollback
             },
@@ -484,7 +538,33 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         } catch (error) {
           if (error !== rollback) throw error
         }
-        return resolved
+
+        // Parity is asserted on the CONTAINER TIER only. The PostgreSQL
+        // result is a full cascade, so when a container carries its own
+        // playable Dub it legitimately resolves to a self-scoped kind that the
+        // index-time projection -- which computes the container tier alone --
+        // knows nothing about. The Typesense side enforces that same
+        // precedence by running its container branch last in each resolver,
+        // which the service suite covers.
+        //
+        // For every other fixture the two must agree exactly. Comparing
+        // `unavailable` as a kind means a container the index-time root gate
+        // wrongly ADMITS fails here too, not only one it wrongly rejects.
+        const selfScoped =
+          resolved.kind === "target_audio" ||
+          resolved.kind === "target_subtitle" ||
+          resolved.kind === "related_language"
+        if (!selfScoped) {
+          expect({
+            kind: indexedResolved.kind,
+            languageSlug: indexedResolved.languageSlug ?? null,
+          }).toEqual({
+            kind: resolved.kind,
+            languageSlug: resolved.languageSlug ?? null,
+          })
+        }
+
+        return { ...resolved, indexed: indexedResolved }
       }
 
       it("resolves a container from a playable target-language child", async () => {
@@ -515,6 +595,30 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         )
       }, 35_000)
 
+      // No analogue in the per-request tier: that one only runs over ids no
+      // self-scoped tier resolved, so a container carrying its own Dub never
+      // reaches it. The index-time loader has no such gate, so without an
+      // explicit self-exclusion a `video_relation` self-loop would let a
+      // container admit itself from its own Dub and render as browse-only.
+      it("does not admit a self-looped container from its own Dub", async () => {
+        const resolution = await resolveContainer({
+          selfLoop: true,
+          containerOwnDub: true,
+          childPublished: false,
+        })
+        expect(resolution.indexed).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      // The index-time projection is the ONLY place the public-language-slug
+      // pattern is enforced for containers: query time reads the stored slug
+      // straight into `hrefLanguageSlug` without re-checking it. Drop this
+      // gate and a container gains a link that bounces off /watch.
+      it("does not admit a descendant whose language slug is not publicly routable", async () => {
+        expect(
+          await resolveContainer({ dubLanguagePublicSlug: false }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
       it("falls back to a related-language descendant", async () => {
         expect(
           await resolveContainer({ depth: 1, dubLanguage: "fallback" }),
@@ -537,6 +641,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           await resolveContainer({ containerSlug: "Nua_Know_God" }),
         ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      // PUBLIC_CONTENT_SLUG_SQL_PATTERN is `^[a-z0-9_-]+$`, so UPPERCASE is
+      // what excludes `Nua_Know_God` -- the underscore does not. The fixture
+      // above confounds both, so on its own it would pass just as happily
+      // against a gate that wrongly rejected every underscore. These two
+      // isolate the characters that actually decide admission.
+      it("leaves an uppercase slug unavailable", async () => {
+        expect(
+          await resolveContainer({ containerSlug: "NuaKnowGod" }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("admits a lowercase slug containing underscores", async () => {
+        expect(
+          await resolveContainer({ containerSlug: "nua_know_god" }),
+        ).toMatchObject({ kind: "container", languageSlug: "target" })
       }, 35_000)
 
       it("leaves a watch-restricted container unavailable despite a visible playable child", async () => {
