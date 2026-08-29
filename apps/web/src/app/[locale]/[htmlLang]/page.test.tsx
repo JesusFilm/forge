@@ -189,7 +189,6 @@ describe("Watch root homepage", () => {
                   kind: "video",
                   id: "jesus",
                   title: "JESUS",
-                  description: null,
                   label: "Feature film",
                   href: "/watch/jesus.html/english.html",
                   posterUrl: null,

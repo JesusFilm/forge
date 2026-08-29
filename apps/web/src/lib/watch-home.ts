@@ -96,7 +96,6 @@ export type WatchHomeCard = {
   sourceId: string
   coreId: string
   title: string
-  description: string | null
   label: string
   metaLabel: string | null
   href: string | null
@@ -448,7 +447,6 @@ function normalizeCard(args: {
     sourceId: args.sourceId,
     coreId: args.video.coreId,
     title,
-    description: locale?.snippet ?? locale?.description ?? null,
     label,
     metaLabel: buildMetaLabel({
       label,
@@ -639,7 +637,6 @@ function cardToCarouselSlide(
     kind: "video",
     id: card.coreId,
     title: card.title,
-    description: card.description,
     label: card.label,
     href: card.href,
     posterUrl: card.imageUrl,
