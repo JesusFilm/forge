@@ -347,7 +347,11 @@ export function useBibleVerses(
   // while the payload holds, when the outcome is not yet a real one.
   const loggedSlugRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!hasCitations || cardArt.tier === "unsettled") return
+    // Gated on the REAL payload, not the hold's timed release. Releasing early
+    // resolves the ladder to stock and then flips to the still when the payload
+    // lands — logging the released state would report a stock outcome for a
+    // video that ends on a still, the alert's own false positive.
+    if (!hasCitations || !payloadSettled) return
     if (loggedSlugRef.current === slug) return
     loggedSlugRef.current = slug
     datadogLog.info("bible_card_art.resolved", {
@@ -356,7 +360,7 @@ export function useBibleVerses(
       citation_count: citations.length,
       has_playback_id: cardArt.hasPlaybackId,
     })
-  }, [slug, hasCitations, cardArt, citations.length])
+  }, [slug, hasCitations, payloadSettled, cardArt, citations.length])
 
   const loading = read.status === "unsettled"
   const passages = read.status === "settled" ? read.passages : NO_PASSAGES

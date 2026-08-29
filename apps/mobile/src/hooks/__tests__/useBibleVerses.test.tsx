@@ -970,6 +970,37 @@ describe("useBibleVerses card artwork", () => {
     })
   })
 
+  it("does not log a stock outcome for a video the payload later serves", async () => {
+    // The hold's timed release resolves the ladder to stock so the card is not
+    // stranded. Logging THAT would report a stock outcome for a video that
+    // ends on a still — a false positive for the one alert this metric feeds.
+    jest.useFakeTimers()
+    const hook = renderHook(
+      {
+        slug: "pilgrims-progress",
+        citations: [citation("c1")],
+        art: PARTIAL_PAYLOAD,
+      },
+      { strict: false },
+    )
+    await flush()
+
+    act(() => {
+      jest.advanceTimersByTime(ART_HOLD_RELEASE_MS)
+    })
+    expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
+    expect(artLogs()).toHaveLength(0)
+
+    hook.rerender({
+      slug: "pilgrims-progress",
+      citations: [citation("c1")],
+      art: WITH_STILLS,
+    })
+
+    expect(artLogs()).toHaveLength(1)
+    expect(artLogs()[0]?.[1]).toMatchObject({ tier: "still" })
+  })
+
   it("emits no ladder-outcome log while the payload is unsettled", async () => {
     renderHook({
       slug: "pilgrims-progress",

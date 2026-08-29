@@ -279,10 +279,31 @@ describe("deriveBibleCardArt — still selection", () => {
     }
   })
 
-  it("keeps a sub-second runtime's timestamp inside the film, not above it", () => {
-    // The window's top (runtime * 0.9) falls BELOW the minimum-second floor
-    // here, so the two bounds invert. The cap has to win: a generic clamp
-    // returns the floor, which would ask Mux for a frame past the end.
+  it("keeps the shortest real runtime off second zero and off one URL", () => {
+    // Admin types duration as an Int, so ONE SECOND is the shortest runtime
+    // production can hand us — the case where the window is tightest and the
+    // two-decimal format has least room to keep ten citations apart.
+    const result = deriveBibleCardArt(
+      input({
+        variants: [variant({ duration: 1 })],
+        citations: citations(10),
+      }),
+    )
+    const stills = result.candidates.map((list) => list[0] as string)
+
+    // Second zero returns an all-black frame, and `toFixed(2)` is where a
+    // collapsed window would round several cards onto it — or onto each other.
+    expect(new Set(stills).size).toBe(10)
+    for (const url of stills) {
+      expect(url).not.toContain("time=0.00")
+      expect(secondsOf(url)).toBeGreaterThan(0)
+    }
+  })
+
+  it("lets the window cap win over the floor when the two invert", () => {
+    // SYNTHETIC runtime: `duration` is an Int upstream, so a sub-second value
+    // cannot occur — this fixture exists only to pin the clamp ORDER inside
+    // `stillSecond`, where the window's top falls below the minimum second.
     const runtime = 0.005
     const result = deriveBibleCardArt(
       input({
