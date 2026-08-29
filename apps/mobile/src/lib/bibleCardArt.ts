@@ -4,7 +4,11 @@
  * nothing to fall to. See the plan for the tiers and their reasons.
  */
 
-import { extractMuxPlaybackId, muxThumbnailAtSecond } from "./muxThumbnail"
+import {
+  extractMuxPlaybackId,
+  isMuxPlaybackId,
+  muxThumbnailAtSecond,
+} from "./muxThumbnail"
 import type { WatchBibleCitation, WatchVariant } from "./normalizeVideo"
 import { resolveImageUrl } from "./resolveImageUrl"
 
@@ -51,8 +55,20 @@ export const STILL_WINDOW_END = 0.9
 // timestamp may round down to it however short the runtime is.
 const MIN_STILL_SECOND = 0.01
 
+/**
+ * A USABLE id, never merely a non-null one. A malformed stored value must not
+ * short-circuit the stream-URL fallback, which can still recover a clean id —
+ * and must not let a caller claim a still it cannot build.
+ */
 function playbackIdOf(variant: WatchVariant): string | null {
-  return variant.muxPlaybackId ?? extractMuxPlaybackId(variant.hls)
+  if (isMuxPlaybackId(variant.muxPlaybackId)) return variant.muxPlaybackId
+  return extractMuxPlaybackId(variant.hls)
+}
+
+/** Whether admin supplied an id at all — the monitor's denominator, so a
+ *  malformed one still counts as "this video should have served a still". */
+function suppliesPlaybackId(variant: WatchVariant): boolean {
+  return variant.muxPlaybackId != null || variant.hls != null
 }
 
 function hasUsableRuntime(duration: number | null): duration is number {
@@ -131,12 +147,18 @@ export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
   const playbackId = pinned == null ? null : playbackIdOf(pinned)
   const runtime = pinned?.duration ?? null
   const canServeStill = playbackId != null && hasUsableRuntime(runtime)
+  // Deliberately NOT `playbackId != null`: a video whose stored id is
+  // malformed still belongs in the monitor's denominator, or the one alert for
+  // a mass validation failure goes blind exactly when it fires.
+  const hasPlaybackId = input.variants.some(
+    (v) => v.published && suppliesPlaybackId(v),
+  )
 
   if (citations.length === 0) {
     return {
       candidates: [],
       tier: canServeStill ? "still" : "none",
-      hasPlaybackId: playbackId != null,
+      hasPlaybackId,
     }
   }
 
@@ -147,7 +169,7 @@ export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
     return {
       candidates: citations.map(() => []),
       tier: "unsettled",
-      hasPlaybackId: playbackId != null,
+      hasPlaybackId,
     }
   }
 
@@ -185,5 +207,5 @@ export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
     candidates.some((list) => list.length > 0),
   )
 
-  return { candidates, tier: topTier, hasPlaybackId: playbackId != null }
+  return { candidates, tier: topTier, hasPlaybackId }
 }

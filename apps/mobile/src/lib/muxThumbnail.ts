@@ -9,6 +9,17 @@ const MUX_PLAYBACK_ID_RE = /^[a-zA-Z0-9]+$/
 // Measured 2026-08-28: 640 = 33.9 KB, 800 = 41.4 KB, 1080 = 57.5 KB.
 const STILL_SIZE = 800
 
+/**
+ * Whether a stored playback id can actually build a URL. Admin passes these
+ * through raw and this catalogue is known to carry trailing whitespace on Mux
+ * fields, so a non-null id is not yet a usable one.
+ */
+export function isMuxPlaybackId(
+  playbackId: string | null | undefined,
+): playbackId is string {
+  return playbackId != null && MUX_PLAYBACK_ID_RE.test(playbackId)
+}
+
 export function deriveMuxThumbnailUrl(
   streamingUrl: string | null | undefined,
 ): string | null {

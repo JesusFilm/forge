@@ -177,6 +177,37 @@ describe("deriveBibleCardArt — still selection", () => {
     expect(result.candidates[0]?.[0]).toContain("/playbackFromHls/")
   })
 
+  it("recovers a clean id from the stream URL when the stored one is malformed", () => {
+    // Admin passes these through raw, and this catalogue is known to carry a
+    // trailing newline on stored Mux fields. A malformed value must not
+    // short-circuit the fallback that can still recover a usable id.
+    const variants = [
+      variant({
+        muxPlaybackId: "playbackA\n",
+        hls: "https://stream.mux.com/playbackClean.m3u8",
+      }),
+    ]
+    const result = deriveBibleCardArt(input({ variants }))
+    expect(result.candidates[0]?.[0]).toContain("/playbackClean/")
+    expect(result.tier).toBe("still")
+  })
+
+  it("reports the real tier when a malformed id can serve no still", () => {
+    // The still rung is silently absent here. Reporting "still" anyway would
+    // make the plan's one alert — videos that carry a playback id yet resolve
+    // to stock — read this exact failure as healthy.
+    const variants = [variant({ muxPlaybackId: "play-back_A", hls: null })]
+    const result = deriveBibleCardArt(
+      input({ variants, authoredImageUrl: null }),
+    )
+
+    expect(result.candidates[0]?.some(isStill)).toBe(false)
+    expect(result.tier).toBe("stock")
+    // Still in the denominator: admin DID supply an id, so this video is
+    // exactly what the alert is meant to catch.
+    expect(result.hasPlaybackId).toBe(true)
+  })
+
   it("gives every citation a still when the reference labels collide (AE9)", () => {
     // Two citations that resolve to the same reference label are still two
     // positions, so they take two timestamps.
