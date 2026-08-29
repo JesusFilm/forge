@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { applySourceChanges, revertChanges } from "./language-maintenance.js"
+import {
+  applySourceChanges,
+  previewReverts,
+  revertChanges,
+} from "./language-maintenance.js"
 
 describe("language maintenance guards", () => {
   it("writes one source transaction and logs committed rows only", async () => {
@@ -11,6 +15,7 @@ describe("language maintenance guards", () => {
           { id: "a", sourceKey: "cru", oldLanguage: null, newLanguage: "en" },
         ]),
       revertLanguageChanges: vi.fn(),
+      previewLanguageReverts: vi.fn(),
     }
     const append = vi.fn()
 
@@ -25,13 +30,6 @@ describe("language maintenance guards", () => {
     )
 
     expect(store.applyLanguageChanges).toHaveBeenCalledOnce()
-    const record = store.applyLanguageChanges.mock.calls[0][2]
-    await record({
-      id: "a",
-      sourceKey: "cru",
-      oldLanguage: null,
-      newLanguage: "en",
-    })
     expect(append).toHaveBeenCalledOnce()
     expect(JSON.parse(append.mock.calls[0][0])).toMatchObject({ id: "a" })
   })
@@ -40,6 +38,7 @@ describe("language maintenance guards", () => {
     const store = {
       applyLanguageChanges: vi.fn(),
       revertLanguageChanges: vi.fn().mockResolvedValue(1),
+      previewLanguageReverts: vi.fn(),
     }
     await revertChanges(store, [
       { id: "a", sourceKey: "cru", oldLanguage: null, newLanguage: "en" },
@@ -54,13 +53,31 @@ describe("language maintenance guards", () => {
     ])
   })
 
-  it("does not allow the store transaction to finish when audit recording fails", async () => {
+  it("previews the same optimistic guards without mutation", async () => {
     const store = {
-      applyLanguageChanges: vi.fn(async (_source, changes, record) => {
-        await record({ ...changes[0], sourceKey: "cru" })
-        return []
-      }),
+      applyLanguageChanges: vi.fn(),
       revertLanguageChanges: vi.fn(),
+      previewLanguageReverts: vi.fn().mockResolvedValue(1),
+    }
+    await expect(
+      previewReverts(store, [
+        { id: "a", sourceKey: "cru", oldLanguage: null, newLanguage: "en" },
+      ]),
+    ).resolves.toBe(1)
+    expect(store.previewLanguageReverts).toHaveBeenCalledWith([
+      { id: "a", sourceKey: "cru", expectedLanguage: "en" },
+    ])
+  })
+
+  it("compensates committed rows when audit recording fails", async () => {
+    const store = {
+      applyLanguageChanges: vi
+        .fn()
+        .mockResolvedValue([
+          { id: "a", sourceKey: "cru", oldLanguage: null, newLanguage: "en" },
+        ]),
+      revertLanguageChanges: vi.fn().mockResolvedValue(1),
+      previewLanguageReverts: vi.fn(),
     }
     await expect(
       applySourceChanges(
@@ -72,5 +89,13 @@ describe("language maintenance guards", () => {
         },
       ),
     ).rejects.toThrow("audit unavailable")
+    expect(store.revertLanguageChanges).toHaveBeenCalledWith([
+      {
+        id: "a",
+        sourceKey: "cru",
+        expectedLanguage: "en",
+        restoreLanguage: null,
+      },
+    ])
   })
 })

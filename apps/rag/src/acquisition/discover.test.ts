@@ -145,4 +145,47 @@ describe("discoverUrls", () => {
     expect(result.urls).toEqual(["https://example.org/learn/x"])
     expect(result.sitemapsFetched).toBe(3) // index + missing + pages
   })
+
+  it("contains a throwing child sitemap and continues with siblings", async () => {
+    const fetcher = new FakeFetcher()
+      .set(
+        "https://example.org/sitemap_index.xml",
+        ok(
+          sitemapIndex(
+            "https://example.org/throws.xml",
+            "https://example.org/sitemap-pages.xml",
+          ),
+        ),
+      )
+      .set(
+        "https://example.org/sitemap-pages.xml",
+        ok(urlset("https://example.org/learn/x")),
+      )
+    const original = fetcher.fetch.bind(fetcher)
+    fetcher.fetch = async (url, conditional) => {
+      if (url.endsWith("/throws.xml")) throw new Error("network failed")
+      return original(url, conditional)
+    }
+
+    const result = await discoverUrls({ fetcher }, policy())
+
+    expect(result.urls).toEqual(["https://example.org/learn/x"])
+    expect(result.sitemapsFetched).toBe(3)
+  })
+
+  it("unwraps CDATA child sitemap locations", async () => {
+    const fetcher = new FakeFetcher()
+      .set(
+        "https://example.org/sitemap_index.xml",
+        ok(sitemapIndex("<![CDATA[https://example.org/sitemap-pages.xml]]>")),
+      )
+      .set(
+        "https://example.org/sitemap-pages.xml",
+        ok(urlset("https://example.org/learn/x")),
+      )
+
+    const result = await discoverUrls({ fetcher }, policy())
+
+    expect(result.urls).toEqual(["https://example.org/learn/x"])
+  })
 })

@@ -1,15 +1,19 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 
+import { z } from "zod"
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import { PostgresLanguageMaintenanceStore } from "../src/adapters/postgres/index.js"
 import { allSources, getSource } from "../src/registry/index.js"
 import { parseLanguageArgs } from "./lib/maintenance-args.js"
 import {
   applySourceChanges,
+  previewReverts,
   revertChanges,
   type LanguageChange,
-} from "./lib/language-maintenance.js"
+} from "../src/indexing/language-maintenance.js"
+import { cleanText } from "../src/indexing/normalize.js"
+import { decideLanguageFromDetection } from "../src/indexing/decide-language.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
 
 async function pool<T>(
@@ -18,11 +22,23 @@ async function pool<T>(
   run: (item: T) => Promise<void>,
 ) {
   let next = 0
+  let failed = false
+  let firstError: unknown
   await Promise.all(
     Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) await run(items[next++])
+      while (!failed && next < items.length) {
+        try {
+          await run(items[next++])
+        } catch (error) {
+          if (!failed) {
+            failed = true
+            firstError = error
+          }
+        }
+      }
     }),
   )
+  if (failed) throw firstError
 }
 
 async function main() {
@@ -34,17 +50,40 @@ async function main() {
   const store = new PostgresLanguageMaintenanceStore(db)
   try {
     if (args.kind === "revert") {
+      const languageChangeSchema = z.object({
+        id: z.string().uuid(),
+        sourceKey: z.string().min(1),
+        oldLanguage: z.string().min(1).nullable(),
+        newLanguage: z.string().min(1).nullable(),
+        detectorModel: z.string().min(1).optional(),
+      })
       const changes = (await readFile(args.changelog, "utf8"))
         .split("\n")
         .filter(Boolean)
-        .map((line) => JSON.parse(line) as LanguageChange)
+        .map((line, index) => {
+          try {
+            return languageChangeSchema.parse(
+              JSON.parse(line),
+            ) as LanguageChange
+          } catch (error) {
+            throw new Error(`invalid language changelog line ${index + 1}`, {
+              cause: error,
+            })
+          }
+        })
+      const matched = await previewReverts(store, changes)
       if (!args.apply) {
         console.log(
-          `DRY RUN: ${changes.length} guarded reversal(s); corpus unchanged`,
+          `DRY RUN: ${matched}/${changes.length} reversible; ` +
+            `${changes.length - matched} refused; corpus unchanged`,
         )
         return
       }
-      console.log(`reverted ${await revertChanges(store, changes)} row(s)`)
+      const reverted = await revertChanges(store, changes)
+      console.log(
+        `reverted ${reverted}/${changes.length} row(s); ` +
+          `${changes.length - reverted} refused`,
+      )
       return
     }
     const entries = args.all ? allSources() : [getSource(args.source as string)]
@@ -68,21 +107,33 @@ async function main() {
           sourceKey: entry.key,
           blanksOnly: args.mode === "blanks",
           limit: args.limit,
+          afterId: args.afterId,
         })
         const changes: Array<Omit<LanguageChange, "sourceKey">> = []
         await pool(candidates, args.concurrency, async (candidate) => {
+          const content = cleanText(candidate.rawContent)
           const detected = await wiring.languageDetector.detect(
-            candidate.rawContent.slice(0, 8_000),
+            content.slice(0, 8_000),
             { declared: entry.languages },
           )
+          const decision = detected.language
+            ? decideLanguageFromDetection(
+                content.length,
+                {
+                  language: detected.language,
+                  confidence: detected.confidence,
+                },
+                { declared: entry.languages },
+              )
+            : { language: null }
           if (
-            detected.language !== candidate.language &&
-            detected.language !== null
+            decision.language !== candidate.language &&
+            decision.language !== null
           )
             changes.push({
               id: candidate.id,
               oldLanguage: candidate.language,
-              newLanguage: detected.language,
+              newLanguage: decision.language,
             })
         })
         console.log(
@@ -91,6 +142,7 @@ async function main() {
             scanned: candidates.length,
             proposed: changes.length,
             detectorModel: wiring.languageDetector.model,
+            nextCursor: candidates.at(-1)?.id ?? null,
           }),
         )
         if (args.apply)
@@ -98,7 +150,7 @@ async function main() {
             store,
             entry.key,
             changes,
-            (line) => appendFile(changelog, line),
+            (content) => appendFile(changelog, content),
             wiring.languageDetector.model,
           )
       }

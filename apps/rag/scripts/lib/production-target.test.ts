@@ -24,4 +24,30 @@ describe("production maintenance target", () => {
     expect(() => installProductionEnvironment(env, false)).toThrow(/host/i)
     expect(env).not.toHaveProperty("DATABASE_URL")
   })
+
+  it("requires the explicit production write signal", () => {
+    const env = {
+      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+      JFRAG_OPENROUTER_API_KEY: "key",
+      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+    }
+    expect(() => installProductionEnvironment(env, true)).toThrow(
+      /ALLOW_PROD_WRITE/,
+    )
+    expect(env).not.toHaveProperty("DATABASE_URL")
+  })
+
+  it("installs production values only when both write guards match", () => {
+    const env = {
+      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+      JFRAG_OPENROUTER_API_KEY: "key",
+      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      JFRAG_ALLOW_PROD_WRITE: "1",
+    }
+    installProductionEnvironment(env, true)
+    expect(env).toMatchObject({
+      DATABASE_URL: "postgresql://u:p@prod.example/rag",
+      OPENROUTER_API_KEY: "key",
+    })
+  })
 })

@@ -48,8 +48,10 @@ describe("PostgresRawDocumentReader model-aware batches", () => {
     expect(first.map(({ id }) => id)).toEqual(["old-a"])
     expect(second.map(({ id }) => id)).toEqual(["old-b"])
     const sql = queries[0].strings.join("?")
+    expect(sql.indexOf("DISTINCT ON")).toBeLessThan(sql.indexOf("LIMIT"))
     expect(sql.indexOf("e.embedding_model <>")).toBeLessThan(
       sql.indexOf("LIMIT"),
     )
+    expect(sql).toContain("r.ingested_at IS NULL")
   })
 })

@@ -7,6 +7,7 @@ import {
   PostgresCorpusSearchStore,
   PostgresCorpusWriteStore,
   PostgresFetchStateStore,
+  PostgresLanguageMaintenanceStore,
   PostgresRawDocumentReader,
   PostgresRawDocumentStore,
 } from "../src/adapters/postgres/index.js"
@@ -109,6 +110,11 @@ describe("Prisma-backed RAG adapters", () => {
   const rawStore = new PostgresRawDocumentStore(db)
   const rawReader = new PostgresRawDocumentReader(db)
   const fetchState = new PostgresFetchStateStore(db)
+  const languageStore = new PostgresLanguageMaintenanceStore(db)
+  const resetCorpusFixture = async () => {
+    await db.source.deleteMany({ where: { key } })
+    await db.rawDocument.deleteMany({ where: { sourceKey: key } })
+  }
 
   it("upserts caches and preserves ISO timestamps", async () => {
     await fetchState.putHttpCache({
@@ -244,6 +250,95 @@ describe("Prisma-backed RAG adapters", () => {
     })
     expect(second).toHaveLength(1)
     expect(second[0].id).not.toBe(first[0].id)
+  })
+
+  it("selects the newest raw snapshot before bounding a forced batch", async () => {
+    await resetCorpusFixture()
+    const slug = `snapshot-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("older snapshot", slug))
+    const [older] = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested([older.id])
+    await rawStore.putRawDocument({
+      ...raw("newer snapshot", slug),
+      fetch: {
+        ...raw("newer snapshot", slug).fetch,
+        fetchedAt: "2026-08-28T01:00:00.000Z",
+      },
+    })
+    await writes.replaceDocument(
+      { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, "Old model", 0, "fixture/model-old")],
+    )
+
+    const [selected] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected.rawContent).toBe("newer snapshot")
+    expect(selected.id).not.toBe(older.id)
+  })
+
+  it("does not let drained non-indexable residue starve forced batches", async () => {
+    await resetCorpusFixture()
+    const residueSlug = `residue-${crypto.randomUUID()}`
+    const migratableSlug = `migratable-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("thin", residueSlug))
+    const residue = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(residue.map(({ id }) => id))
+    await rawStore.putRawDocument(raw("migratable", migratableSlug))
+    const staged = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(staged.map(({ id }) => id))
+    await writes.replaceDocument(
+      {
+        ...document(migratableSlug, "en"),
+        canonicalUrl: `${prefix}${migratableSlug}`,
+      },
+      [chunk(0, "Old model", 0, "fixture/model-old")],
+    )
+
+    const selected = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected.map(({ canonicalUrl }) => canonicalUrl)).toEqual([
+      `${prefix}${migratableSlug}`,
+    ])
+  })
+
+  it("advances bounded full language sweeps with an explicit cursor", async () => {
+    await resetCorpusFixture()
+    const sourceId = await writes.upsertSource(source)
+    for (const slug of ["language-a", "language-b"]) {
+      await rawStore.putRawDocument(raw(`content ${slug}`, slug))
+      await writes.replaceDocument(
+        { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+        [chunk(0, slug, 0)],
+      )
+    }
+    const first = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: false,
+      limit: 1,
+    })
+    const second = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: false,
+      limit: 1,
+      afterId: first[0].id,
+    })
+
+    expect(first).toHaveLength(1)
+    expect(second).toHaveLength(1)
+    expect(second[0].id).not.toBe(first[0].id)
+    expect(await db.document.count({ where: { sourceId } })).toBeGreaterThan(1)
   })
 
   it("fails before SQL when the query vector width is wrong", async () => {

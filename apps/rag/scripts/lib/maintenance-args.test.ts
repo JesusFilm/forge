@@ -38,6 +38,9 @@ describe("maintenance command arguments", () => {
     expect(() => parseIndexArgs(["--all", "--all"])).toThrow(
       /only be specified once/,
     )
+    expect(() =>
+      parseIndexArgs(["--source", "cru", "--force-all", "--limit", "10"]),
+    ).toThrow(/cannot be combined/)
   })
 
   it("makes sweep and revert read-only unless apply is explicit", () => {
@@ -52,5 +55,28 @@ describe("maintenance command arguments", () => {
       changelog: "changes.jsonl",
       apply: false,
     })
+    expect(() =>
+      parseLanguageArgs(["--revert", "changes.jsonl", "--source", "cru"]),
+    ).toThrow(/cannot be combined/)
+    expect(
+      parseLanguageArgs([
+        "--source",
+        "cru",
+        "--mode",
+        "full",
+        "--after-id",
+        "00000000-0000-0000-0000-000000000001",
+      ]),
+    ).toMatchObject({
+      kind: "sweep",
+      afterId: "00000000-0000-0000-0000-000000000001",
+    })
+    expect(() =>
+      parseLanguageArgs([
+        "--all",
+        "--after-id",
+        "00000000-0000-0000-0000-000000000001",
+      ]),
+    ).toThrow(/source-scoped/)
   })
 })

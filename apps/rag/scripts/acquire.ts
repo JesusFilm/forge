@@ -14,19 +14,33 @@ async function main() {
   const { wire } = await import("../src/main.js")
   const wiring = wire()
   try {
+    const failures: Error[] = []
     for (const entry of entries) {
       if (!entry) continue
-      const result = await acquireSource(
-        { fetcher: wiring.fetcherFor(entry), store: wiring.rawDocumentStore },
-        entry,
-        {
-          dryRun: args.dryRun,
-          resume: args.resume,
-          onProgress: console.log,
-        },
-      )
-      console.log(JSON.stringify(result))
+      try {
+        const result = await acquireSource(
+          { fetcher: wiring.fetcherFor(entry), store: wiring.rawDocumentStore },
+          entry,
+          {
+            dryRun: args.dryRun,
+            resume: args.resume,
+            onProgress: console.log,
+          },
+        )
+        console.log(JSON.stringify(result))
+      } catch (error) {
+        const failure =
+          error instanceof Error ? error : new Error(String(error))
+        if (!args.all) throw failure
+        failures.push(new Error(`${entry.key}: ${failure.message}`))
+        console.error(`  ⤫ ${entry.key} — ${failure.message}`)
+      }
     }
+    if (failures.length)
+      throw new AggregateError(
+        failures,
+        `${failures.length} source acquisition(s) failed`,
+      )
   } finally {
     await wiring.shutdown()
   }

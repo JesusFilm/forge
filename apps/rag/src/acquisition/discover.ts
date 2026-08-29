@@ -74,7 +74,15 @@ export async function discoverUrls(
 
   while (queue.length > 0 && sitemapsFetched < MAX_SITEMAP_FETCHES) {
     const sm = queue.shift() as string
-    const res = await deps.fetcher.fetch(sm)
+    let res
+    try {
+      res = await deps.fetcher.fetch(sm)
+    } catch (error) {
+      sitemapsFetched++
+      const message = error instanceof Error ? error.message : String(error)
+      opts.onProgress?.(`  ⤫ sitemap ${sm} — fetch error: ${message}`)
+      continue
+    }
     sitemapsFetched++
     if (res.status == null || res.status >= 400 || res.body == null) {
       opts.onProgress?.(`  ⤫ sitemap ${sm} — status ${res.status ?? "—"}`)
@@ -84,11 +92,24 @@ export async function discoverUrls(
 
     // <sitemapindex> → enqueue child sitemaps (deduped).
     for (const loc of root.querySelectorAll("sitemap loc")) {
-      const child = loc.text.trim()
-      if (child && !seenSitemaps.has(child)) {
-        seenSitemaps.add(child)
-        queue.push(child)
+      const rawChild = loc.text
+        .trim()
+        .replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, "$1")
+        .trim()
+      if (!rawChild) continue
+      let child: string
+      try {
+        const parsed = new URL(rawChild, sm)
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+          continue
+        child = parsed.href
+      } catch {
+        opts.onProgress?.(`  ⤫ sitemap child from ${sm} — invalid URL`)
+        continue
       }
+      if (seenSitemaps.has(child)) continue
+      seenSitemaps.add(child)
+      queue.push(child)
     }
     // <urlset> → page candidates.
     for (const loc of root.querySelectorAll("url loc")) {

@@ -86,7 +86,9 @@ model filter is applied before `--limit`, which means repeated bounded runs
 advance through old-model documents instead of repeatedly selecting the oldest
 already-migrated rows.
 `--force-all` re-embeds even rows already on that model and should be reserved
-for an intentional same-model chunker rebuild. For production, use
+for an intentional same-model chunker rebuild. It cannot be combined with
+`--limit`: without persisted run state, bounded force-all runs would repeatedly
+select the same prefix. For production, use
 `index:production` under the same Doppler injection and write preflight shown
 above. Record source key, limit, model identifier, summary counts, and pass/fail
 only.
@@ -103,10 +105,15 @@ pnpm --filter @forge/rag language:sweep --source <source-key> --mode blanks --li
 An applied sweep writes a JSONL changelog containing row identifiers, old/new
 languages, source keys, and detector-model provenance. Treat it as restricted
 operational data: keep it outside the repository and do not paste it into logs
-or tickets. Each guarded database update awaits its reversal-record append
-inside the transaction, so an audit-write failure rolls back the source batch.
-`--mode full` revisits already labelled rows; use it only for a
-bounded, approved repair.
+or tickets. The source batch commits before its JSONL records are appended. If
+that one batch append fails, the command immediately performs a compare-and-set
+compensating reversal and exits non-zero. `--mode full` revisits already
+labelled rows; use it only for a bounded, approved repair. Continue a bounded
+full sweep with the `nextCursor` from the previous summary:
+
+```sh
+pnpm --filter @forge/rag language:sweep --source <source-key> --mode full --limit 10 --after-id <nextCursor>
+```
 
 Reverse exactly a reviewed changelog with an initial dry run:
 
@@ -115,8 +122,10 @@ pnpm --filter @forge/rag language:sweep --revert <changelog.jsonl>
 pnpm --filter @forge/rag language:sweep --revert <changelog.jsonl> --apply
 ```
 
-Reversal is compare-and-set guarded: a row changes only when its current
-language still equals the changelog's proposed language. Production uses
+Reversal validates every JSONL record before querying or writing. Its dry run
+executes the same compare-and-set predicate and reports reversible and refused
+counts. A row changes only when its current language still equals the
+changelog's proposed language. Production uses
 `language:sweep:production` under Doppler injection and the production write
 gate. Archive or destroy the changelog according to the approved evidence
 policy after the rollback window closes.

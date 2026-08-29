@@ -86,10 +86,15 @@ export function parseIndexArgs(argv: string[]): IndexArgs {
   const concurrency = positive(argv, "--concurrency") ?? 4
   if (concurrency > 4) throw new Error("--concurrency must be in 1..4")
   const forceAll = argv.includes("--force-all")
+  const limit = positive(argv, "--limit")
+  if (forceAll && limit !== undefined)
+    throw new Error(
+      "--force-all cannot be combined with --limit; use --force for resumable bounded reindexing",
+    )
   return {
     all,
     source,
-    limit: positive(argv, "--limit"),
+    limit,
     concurrency,
     force: argv.includes("--force") || forceAll,
     forceAll,
@@ -107,22 +112,43 @@ export type LanguageArgs =
       concurrency: number
       apply: boolean
       outDir?: string
+      afterId?: string
     }
   | { kind: "revert"; changelog: string; apply: boolean }
 
 export function parseLanguageArgs(argv: string[]): LanguageArgs {
   validateArgs(
     argv,
-    ["--revert", "--source", "--mode", "--limit", "--concurrency", "--out-dir"],
+    [
+      "--revert",
+      "--source",
+      "--mode",
+      "--limit",
+      "--concurrency",
+      "--out-dir",
+      "--after-id",
+    ],
     ["--all", "--apply"],
   )
   const revert = valueAfter(argv, "--revert")
-  if (revert)
+  if (revert) {
+    const conflicting = [
+      "--source",
+      "--mode",
+      "--limit",
+      "--concurrency",
+      "--out-dir",
+      "--after-id",
+      "--all",
+    ].find((flag) => argv.includes(flag))
+    if (conflicting)
+      throw new Error(`${conflicting} cannot be combined with --revert`)
     return {
       kind: "revert",
       changelog: revert,
       apply: argv.includes("--apply"),
     }
+  }
   const all = argv.includes("--all")
   const source = valueAfter(argv, "--source")
   if (all === Boolean(source))
@@ -132,6 +158,9 @@ export function parseLanguageArgs(argv: string[]): LanguageArgs {
     throw new Error("--mode must be blanks or full")
   const concurrency = positive(argv, "--concurrency") ?? 3
   if (concurrency > 4) throw new Error("--concurrency must be in 1..4")
+  const afterId = valueAfter(argv, "--after-id")
+  if (all && afterId)
+    throw new Error("--after-id requires --source; cursors are source-scoped")
   return {
     kind: "sweep",
     source,
@@ -141,5 +170,6 @@ export function parseLanguageArgs(argv: string[]): LanguageArgs {
     concurrency,
     apply: argv.includes("--apply"),
     outDir: valueAfter(argv, "--out-dir"),
+    afterId,
   }
 }
