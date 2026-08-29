@@ -1158,6 +1158,10 @@ type MediaCollectionItem {
   languageSlug: String
   linkToSectionKey: String
   """
+  Same projection as resolvedTitle, resolved against the locale of the Experience being previewed. Takes no locale argument, so a preview caller cannot request a different locale than the one on screen. Null outside an ExperiencePreview, where no preview locale is bound to the item.
+  """
+  previewResolvedTitle: String
+  """
   Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
   """
   resolvedTitle(locale: String!): String

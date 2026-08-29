@@ -72,7 +72,20 @@ type InfoBlockItem = z.infer<typeof InfoBlockItemSchema>
 type InfoBlocksBlock = z.infer<typeof InfoBlocksBlockSchema>
 type LanguageGlobeBlock = z.infer<typeof LanguageGlobeBlockSchema>
 type MediaCollectionBlock = z.infer<typeof MediaCollectionBlockSchema>
-type MediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
+type AuthoredMediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
+
+/**
+ * Authored item plus the non-persisted preview locale that
+ * `services/experience-preview-blocks.ts` stamps on when the item is read
+ * through `ExperiencePreview`. The key is absent on every published read, so
+ * `previewResolvedTitle` resolves to null there rather than borrowing a locale.
+ *
+ * Kept off `MediaCollectionItemSchema` on purpose: that schema is `.strict()`
+ * and describes persisted JSON, and this is a read-time projection.
+ */
+type MediaCollectionItem = AuthoredMediaCollectionItem & {
+  previewLocale?: string
+}
 type NavigationCarouselBlock = z.infer<typeof NavigationCarouselBlockSchema>
 type NavigationCarouselItem = z.infer<typeof NavigationCarouselItemSchema>
 type PromoBannerBlock = z.infer<typeof PromoBannerBlockSchema>
@@ -436,6 +449,44 @@ InfoBlockItemRef.implement({
   }),
 })
 
+/**
+ * Shared title projection behind both `resolvedTitle` (published, caller
+ * supplies the locale) and `previewResolvedTitle` (preview, the locale is
+ * bound to the row). One body is what keeps the two from drifting; splitting
+ * it would reintroduce exactly the preview/published divergence this exists to
+ * close.
+ */
+async function resolveItemTitle(
+  row: MediaCollectionItem,
+  locale: string | null,
+  ctx: ContextShape,
+): Promise<string | null> {
+  const titleOverride = row.titleOverride?.trim()
+  if (titleOverride) return titleOverride
+
+  if (!locale) return null
+
+  const videoId = optionalString(row.videoId)
+  if (!videoId) return null
+
+  const video = await ctx.loaders.videoById.load(videoId)
+  if (video == null || video.deletedAt) return null
+
+  const locales = await ctx.loaders.videoLocalesByVideoIdAndFilter.load({
+    videoId,
+    locale,
+    languageSlug: null,
+    visibleOnly: true,
+  })
+
+  for (const row of locales) {
+    if (row.locale !== locale) continue
+    const title = row.title?.trim()
+    if (title) return title
+  }
+  return null
+}
+
 const MediaCollectionItemRef = builder.objectRef<MediaCollectionItem>(
   "MediaCollectionItem",
 )
@@ -513,30 +564,14 @@ MediaCollectionItemRef.implement({
       args: {
         locale: t.arg.string({ required: true }),
       },
-      resolve: async (row, args, ctx) => {
-        const titleOverride = row.titleOverride?.trim()
-        if (titleOverride) return titleOverride
-
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-
-        const video = await ctx.loaders.videoById.load(videoId)
-        if (video == null || video.deletedAt) return null
-
-        const locales = await ctx.loaders.videoLocalesByVideoIdAndFilter.load({
-          videoId,
-          locale: args.locale,
-          languageSlug: null,
-          visibleOnly: true,
-        })
-
-        for (const locale of locales) {
-          if (locale.locale !== args.locale) continue
-          const title = locale.title?.trim()
-          if (title) return title
-        }
-        return null
-      },
+      resolve: (row, args, ctx) => resolveItemTitle(row, args.locale, ctx),
+    }),
+    previewResolvedTitle: t.string({
+      nullable: true,
+      description:
+        "Same projection as resolvedTitle, resolved against the locale of the Experience being previewed. Takes no locale argument, so a preview caller cannot request a different locale than the one on screen. Null outside an ExperiencePreview, where no preview locale is bound to the item.",
+      resolve: (row, _args, ctx) =>
+        resolveItemTitle(row, optionalString(row.previewLocale), ctx),
     }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     labelOverride: t.exposeString("labelOverride", { nullable: true }),
