@@ -903,6 +903,30 @@ describe("WatchHomePage", () => {
       container.querySelector('button[aria-label="Next video"]'),
     ).not.toBeNull()
 
+    // R2: with the secondary paragraph gone, the copy stagger runs
+    // eyebrow -> title -> action with no dead beat where the paragraph used to
+    // animate. Both the incoming and the outgoing overlay are checked, because
+    // the enter and exit delay tables are indexed separately.
+    const delayOf = (el: Element | null | undefined) =>
+      (el as HTMLElement | null)?.style.getPropertyValue(
+        "--watch-home-copy-delay",
+      )
+    const entering = carousel?.querySelector(".watch-home-copy-enter")
+      ?.parentElement?.parentElement
+    const leaving = carousel?.querySelector(".watch-home-copy-exit")
+      ?.parentElement?.parentElement
+    // Entering runs offset by 430ms while the outgoing copy clears: 430+0/70/140.
+    expect(
+      Array.from(
+        entering?.querySelectorAll(".watch-home-copy-enter") ?? [],
+      ).map(delayOf),
+    ).toEqual(["430ms", "500ms", "570ms"])
+    expect(
+      Array.from(leaving?.querySelectorAll(".watch-home-copy-exit") ?? []).map(
+        delayOf,
+      ),
+    ).toEqual(["0ms", "35ms", "70ms"])
+
     // The hero reveals the shell chrome on mount; it never hides it now that
     // there is no full-player takeover.
     const chromeVisibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
