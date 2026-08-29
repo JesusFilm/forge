@@ -25,7 +25,7 @@ export default async function AdminMcpPage() {
   await requireAdminSession()
   const metadata = getAdminMcpProtectedResourceMetadata()
   const mcpCommand = `codex mcp add jfp-admin --url ${metadata.resource}`
-  const claudeMcpCommand = `claude mcp add --transport http jfp-admin ${metadata.resource}`
+  const claudeMcpCommand = `claude mcp add --scope user --transport http jfp-admin ${metadata.resource}`
   const genericMcpConfig = `{
   "name": "jfp-admin",
   "type": "http",
