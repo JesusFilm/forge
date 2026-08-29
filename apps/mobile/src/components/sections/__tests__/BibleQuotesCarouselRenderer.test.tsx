@@ -138,7 +138,7 @@ const mounted: TestInstance[] = []
 
 function render(
   quotes: Quote[],
-  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void,
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
 ): TestInstance {
   let renderer!: TestInstance
   act(() => {
@@ -158,7 +158,7 @@ function render(
 /** Lets the reduce-motion read resolve before anything is asserted. */
 async function renderSettled(
   quotes: Quote[],
-  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void,
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
 ): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
@@ -810,10 +810,13 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
     const renderer = renderAtSize([stillQuote()], { width, fontScale: 1 })
     const { locations } = scrim(renderer)
 
-    const typography = computeTypographyScale(1)
+    // The SCREEN WIDTH the component itself reads, not a scale factor:
+    // `computeTypographyScale` takes a width, so passing 1 here would clamp to
+    // the smallest type, inflate the expected stack top, and let any real stop
+    // satisfy the assertion.
     const fitInput = {
       contentHeight: cardWidth - CARD_CONTENT_PADDING * 2,
-      typography,
+      typography: computeTypographyScale(width),
       fontScale: 1,
       hasVerse: true,
       hasTranslation: true,
@@ -826,7 +829,10 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
         passageCardStackHeight(fitInput, fitPassageCardRegions(fitInput))) /
       cardWidth
 
-    expect(locations[1]).toBeLessThanOrEqual(stackTop + 1e-9)
+    // Equality, not an upper bound: with the component's own typography the
+    // rendered stop IS the stack top, and `<=` would still pass if the geometry
+    // silently drifted lower.
+    expect(locations[1]).toBeCloseTo(stackTop, 10)
     expect(locations[1]).toBeGreaterThan(0)
   })
 
@@ -856,7 +862,10 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
       .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
       .mockResolvedValue(false)
     await renderSettled([stillQuote()])
-    expect(imageProps()?.transition).toBe(200)
+    // `.at(-1)`, not call zero: the first render still carries the hook's
+    // initial false, so reading it would pass without the resolved value ever
+    // being exercised.
+    expect(mockImage.mock.calls.at(-1)?.[0]?.transition).toBe(200)
   })
 
   it("snaps rather than fades when reduce motion is on (AE8)", async () => {
@@ -909,7 +918,7 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
     act(() => {
       ;(imageProps()?.onError as () => void)()
     })
-    expect(onArtworkFailed).toHaveBeenCalledWith(0, 0)
+    expect(onArtworkFailed).toHaveBeenCalledWith(0, STILL_A)
   })
 
   it("emits the exhaustion signal once when the last rung fails", () => {

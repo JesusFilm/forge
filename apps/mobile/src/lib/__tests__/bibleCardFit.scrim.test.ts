@@ -13,14 +13,18 @@ import {
 } from "../bibleCardFit"
 import { computeTypographyScale } from "../../hooks/useTypography"
 
-const CARD = 358
+// The screen width the watch card actually renders at, NOT a scale factor:
+// `computeTypographyScale` takes a width, and a small number clamps to the
+// minimum type, quietly changing what every expectation below is measuring.
+const SCREEN = 390
+const CARD = SCREEN - 32
 
 function fitInput(
   overrides: Partial<Parameters<typeof fitPassageCardRegions>[0]> = {},
 ) {
   return {
     contentHeight: CARD - CARD_CONTENT_PADDING * 2,
-    typography: computeTypographyScale(1),
+    typography: computeTypographyScale(SCREEN),
     fontScale: 1,
     hasVerse: true,
     hasTranslation: true,
@@ -76,17 +80,24 @@ describe("passageCardStackHeight", () => {
     )
   })
 
-  it("grows with the reader's text size", () => {
-    const normal = fitInput()
-    const large = fitInput({
-      typography: computeTypographyScale(1.5),
-      fontScale: 1.5,
-    })
+  it("never exceeds the card's content box, at any reader text size", () => {
+    // The invariant the scrim leans on. A larger reader size does NOT make the
+    // stack taller — the fit sheds regions to stay inside the box — so the
+    // solid stop can never be pushed off the top of the card.
+    for (const fontScale of [1, 1.3, 1.5, 2, 3]) {
+      const input = fitInput({ fontScale })
+      const stack = passageCardStackHeight(input, fitPassageCardRegions(input))
+      expect(stack).toBeLessThanOrEqual(input.contentHeight)
+    }
+  })
 
-    expect(
-      passageCardStackHeight(large, fitPassageCardRegions(large)),
-    ).toBeGreaterThan(
-      passageCardStackHeight(normal, fitPassageCardRegions(normal)),
-    )
+  it("sheds regions rather than overflowing when the text size grows", () => {
+    const normal = fitPassageCardRegions(fitInput())
+    const huge = fitPassageCardRegions(fitInput({ fontScale: 3 }))
+
+    expect(normal.link).toBe(true)
+    // The drop order: the link goes first, then the verse shortens.
+    expect(huge.link).toBe(false)
+    expect(huge.verseLines).toBeLessThan(normal.verseLines)
   })
 })

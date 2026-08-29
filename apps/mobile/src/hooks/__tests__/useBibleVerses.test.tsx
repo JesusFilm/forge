@@ -835,7 +835,7 @@ describe("useBibleVerses card artwork", () => {
     const card = verseCards(hook.latest())[0]!
     expect(card.imageUrl).toContain("image.mux.com")
 
-    act(() => hook.latest().reportArtworkFailure(0, card.artIndex))
+    act(() => hook.latest().reportArtworkFailure(0, card.imageUrl!))
 
     const advanced = verseCards(hook.latest())[0]!
     expect(advanced.imageUrl).toContain("unsplash.com")
@@ -848,6 +848,40 @@ describe("useBibleVerses card artwork", () => {
       art: { ...WITH_STILLS, authoredImageUrl: null },
     })
     expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
+  })
+
+  it("still tries a still that only arrives after a stock failure", async () => {
+    // The cascade: the payload never settles, the hold releases onto stock,
+    // stock fails, and only THEN does the real payload land. A failure
+    // recorded by position would make the newly-prepended still look already
+    // tried, and the card would skip the one image this feature exists to show.
+    jest.useFakeTimers()
+    const hook = renderHook(
+      {
+        slug: "pilgrims-progress",
+        citations: [citation("c1")],
+        art: PARTIAL_PAYLOAD,
+      },
+      { strict: false },
+    )
+    await flush()
+    expect(verseCards(hook.latest())[0]?.imageUrl).toBeNull()
+
+    act(() => {
+      jest.advanceTimersByTime(ART_HOLD_RELEASE_MS)
+    })
+    const stock = verseCards(hook.latest())[0]!.imageUrl!
+    expect(stock).toContain("unsplash.com")
+
+    act(() => hook.latest().reportArtworkFailure(0, stock))
+
+    hook.rerender({
+      slug: "pilgrims-progress",
+      citations: [citation("c1")],
+      art: WITH_STILLS,
+    })
+
+    expect(verseCards(hook.latest())[0]?.imageUrl).toContain("image.mux.com")
   })
 
   it("scopes a recorded failure to its own video, not the next one", async () => {
@@ -864,7 +898,8 @@ describe("useBibleVerses card artwork", () => {
       art: { ...WITH_STILLS, authoredImageUrl: null },
     })
     await flush()
-    act(() => hook.latest().reportArtworkFailure(0, 0))
+    const still = verseCards(hook.latest())[0]!.imageUrl!
+    act(() => hook.latest().reportArtworkFailure(0, still))
     expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
 
     hook.rerender({
@@ -888,8 +923,9 @@ describe("useBibleVerses card artwork", () => {
 
     // expo-image can report the same source twice; a duplicate must not skip
     // a whole rung.
-    act(() => hook.latest().reportArtworkFailure(0, 0))
-    act(() => hook.latest().reportArtworkFailure(0, 0))
+    const still = verseCards(hook.latest())[0]!.imageUrl!
+    act(() => hook.latest().reportArtworkFailure(0, still))
+    act(() => hook.latest().reportArtworkFailure(0, still))
 
     expect(verseCards(hook.latest())[0]?.imageUrl).toContain("unsplash.com")
   })
@@ -902,11 +938,12 @@ describe("useBibleVerses card artwork", () => {
     })
     await flush()
 
-    act(() => hook.latest().reportArtworkFailure(0, 0))
+    const stock = verseCards(hook.latest())[0]!.imageUrl!
+    act(() => hook.latest().reportArtworkFailure(0, stock))
     expect(verseCards(hook.latest())[0]?.imageUrl).toBeNull()
 
     // Exhausted, not looping: another report cannot wrap back to rung zero.
-    act(() => hook.latest().reportArtworkFailure(0, 1))
+    act(() => hook.latest().reportArtworkFailure(0, stock))
     expect(verseCards(hook.latest())[0]?.imageUrl).toBeNull()
   })
 

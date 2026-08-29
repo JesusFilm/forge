@@ -98,7 +98,7 @@ export type BibleQuotesState = {
    * the carousel unmounts off-window cells, so card-local state would reset on
    * scroll-back and re-request the URL that just failed, every time.
    */
-  reportArtworkFailure: (cardIndex: number, failedIndex: number) => void
+  reportArtworkFailure: (cardIndex: number, failedUrl: string) => void
 }
 
 type PassageMap = ReadonlyMap<string, RenderableBiblePassage>
@@ -106,7 +106,7 @@ type PassageMap = ReadonlyMap<string, RenderableBiblePassage>
 const NO_PASSAGES: PassageMap = new Map()
 
 /** Stable identity so re-arming the per-video reset cannot loop a re-render. */
-const NO_ART_FAILURES: Record<string, number> = {}
+const NO_ART_FAILURES: Record<string, true> = {}
 
 type ReadState =
   | { status: "idle" }
@@ -327,15 +327,16 @@ export function useBibleVerses(
   // unmounting; the keys are slug-scoped so one video's failures cannot move
   // another video's cards.
   const [artFailures, setArtFailures] =
-    useState<Record<string, number>>(NO_ART_FAILURES)
+    useState<Record<string, true>>(NO_ART_FAILURES)
   const reportArtworkFailure = useCallback(
-    (cardIndex: number, failedIndex: number) => {
+    (cardIndex: number, failedUrl: string) => {
       setArtFailures((prev) => {
-        const key = `${slug}:${cardIndex}`
-        // Only the candidate currently on screen can advance the ladder. Without
-        // this, a duplicate error event for one source would skip a whole tier.
-        if ((prev[key] ?? 0) !== failedIndex) return prev
-        return { ...prev, [key]: failedIndex + 1 }
+        // Keyed by the URL that failed, not by its POSITION. A held card can
+        // paint stock, fail, and only then receive the settled payload — which
+        // prepends the still. A positional record would skip that new top rung.
+        const key = `${slug}:${cardIndex}:${failedUrl}`
+        if (prev[key]) return prev
+        return { ...prev, [key]: true }
       })
     },
     [slug],
@@ -364,12 +365,12 @@ export function useBibleVerses(
     const cards: BibleQuoteBlock[] = citations.map((citation, index) => {
       const passage = passages.get(citation.documentId)
       const artCandidates = cardArt.candidates[index] ?? []
-      // Clamped, not trusted: a failure recorded against a longer list must not
-      // index past a shorter one after the payload republishes.
-      const artIndex = Math.min(
-        artFailures[`${slug}:${index}`] ?? 0,
-        artCandidates.length,
+      // The best rung this card has not already failed. Resolved by URL, so a
+      // list that gains a higher tier after a republish is still tried.
+      const firstUsable = artCandidates.findIndex(
+        (url) => artFailures[`${slug}:${index}:${url}`] !== true,
       )
+      const artIndex = firstUsable === -1 ? artCandidates.length : firstUsable
       return {
         // R10: a citation with no renderable passage keeps its own reference.
         reference: passage?.reference ?? formatCitationLabel(citation),

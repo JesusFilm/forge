@@ -83,7 +83,7 @@ export interface BibleQuotesCarouselRendererProps {
    * explicit prop, not a passenger on the block bag: the ladder's index lives
    * above this component and the card only reports upward.
    */
-  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ function QuoteCard({
   fontScale: number
   reduceMotion: boolean
   onOpenPassage?: (url: string) => void
-  onArtworkFailed?: (cardIndex: number, failedIndex: number) => void
+  onArtworkFailed?: (cardIndex: number, failedUrl: string) => void
   onArtworkSettled?: (cardIndex: number) => void
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
@@ -251,7 +251,10 @@ function QuoteCard({
         candidate_count: artCandidates.length,
       })
     }
-    onArtworkFailed?.(cardIndex, artIndex)
+    // The URL, not the index: the owning layer records failures by source so a
+    // candidate list that gains a higher tier later is still tried.
+    const failedUrl = artCandidates[artIndex]
+    if (failedUrl != null) onArtworkFailed?.(cardIndex, failedUrl)
   }
 
   return (
