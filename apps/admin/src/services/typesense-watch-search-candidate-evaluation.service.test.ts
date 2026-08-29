@@ -35,7 +35,7 @@ const candidateProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: "generation-1",
-  applicationRevision: "watch-search-candidate/v2",
+  applicationRevision: "watch-search-candidate/v3",
   transcriptProjectionRevision: 7n,
   qrelsRevision: "qrels-reviewed-1",
   fieldManifests: {
@@ -114,7 +114,7 @@ function searchResult(): {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
-      rankingImplementation: "title-and-brand-v1" as const,
+      rankingImplementation: "title-and-brand-v2" as const,
       rankingMode: "SEMANTIC" as const,
       rankingAnchor: null,
       rankingTrace: [],
@@ -131,7 +131,7 @@ function fixture() {
       resourceKey: `watch-search-candidate-eval:${source.toLowerCase()}:${evaluationId}`,
       holderToken: `holder-${evaluationId}`,
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
@@ -147,7 +147,7 @@ function fixture() {
     renewLease: vi.fn(async () => true),
     releaseLease: vi.fn(async () => true),
     verifyCandidateProfile: vi.fn(async () => true),
-    rankingRevision: vi.fn(() => "title-and-brand-v1"),
+    rankingRevision: vi.fn(() => "title-and-brand-v2"),
     leaseReleaseTimeoutMs: 10,
     onCleanupFailure: vi.fn(),
   }
@@ -292,7 +292,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       resourceKey: "watch-search-candidate-eval:stale",
       holderToken: "holder-stale",
       generationId: "generation-stale",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
@@ -326,36 +326,42 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const baseline = candidateSearchEvaluationRevision({
       profile: candidateProfile,
       currentProfile,
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
     const revisions = [
       candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, generationId: "generation-2" },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
       candidateSearchEvaluationRevision({
         profile: {
           ...candidateProfile,
-          applicationRevision: "watch-search-candidate/v3",
+          // Varies ONLY the application revision, so it must differ from the
+          // baseline -- this is the entry proving a projection/retrieval-field
+          // change moves the evaluation identity.
+          applicationRevision: "watch-search-candidate/v4",
         },
-        currentProfile,
-        rankingRevision: "title-and-brand-v1",
-      }),
-      candidateSearchEvaluationRevision({
-        profile: candidateProfile,
         currentProfile,
         rankingRevision: "title-and-brand-v2",
       }),
       candidateSearchEvaluationRevision({
+        profile: candidateProfile,
+        currentProfile,
+        // Varies ONLY the ranking revision, so it must differ from the
+        // baseline above -- this is the entry that proves a ranking change
+        // moves the evaluation identity.
+        rankingRevision: "title-and-brand-v3",
+      }),
+      candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, transcriptProjectionRevision: 8n },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
       candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, qrelsRevision: "qrels-reviewed-2" },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
       candidateSearchEvaluationRevision({
         profile: {
@@ -366,7 +372,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           },
         },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ]
 
@@ -377,7 +383,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const baseline = candidateSearchEvaluationRevision({
       profile: candidateProfile,
       currentProfile,
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
     const movedCurrent = candidateSearchEvaluationRevision({
       profile: candidateProfile,
@@ -388,7 +394,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           lexical: "watch_search_lexical_physical-v2",
         },
       },
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
 
     expect(movedCurrent).not.toBe(baseline)
@@ -399,7 +405,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       candidateSearchEvaluationRevision({
         profile: currentProfile,
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).toThrow(CandidateSearchEvaluationError)
   })
@@ -427,8 +433,8 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const profile = await resolveServingCandidateWatchSearchProfile({
       generations,
       currentProfile,
-      applicationRevision: "watch-search-candidate/v2",
-      rankingRevision: "title-and-brand-v1",
+      applicationRevision: "watch-search-candidate/v3",
+      rankingRevision: "title-and-brand-v2",
       transcriptProjectionRevision: 7n,
       qrelsRevision: "qrels-reviewed-1",
     })
@@ -439,13 +445,13 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     expect(generations.getPointer).toHaveBeenCalledWith("SERVING")
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-serving",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       transcriptCollection: currentProfile.binding.transcript,
       transcriptProjectionRevision: 7n,
       requireQualified: true,
       currentBindings: Object.values(currentProfile.binding),
       qrelsRevision: "qrels-reviewed-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
   })
 
@@ -475,8 +481,8 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
         resolveServingCandidateWatchSearchProfile({
           generations,
           currentProfile,
-          applicationRevision: "watch-search-candidate/v2",
-          rankingRevision: "title-and-brand-v1",
+          applicationRevision: "watch-search-candidate/v3",
+          rankingRevision: "title-and-brand-v2",
           transcriptProjectionRevision: 7n,
           qrelsRevision: "qrels-reviewed-1",
         }),

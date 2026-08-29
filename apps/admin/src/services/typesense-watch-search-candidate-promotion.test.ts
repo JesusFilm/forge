@@ -27,7 +27,7 @@ describe("Typesense Watch search Candidate promotion", () => {
       generationId: "candidate-1",
       status: "OPERATOR_ACCEPTED",
       applicationRevision: "admin-app-sha-1",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: 17n,
       qrelsRevision: `none:operator-accepted:${decisionId}`,
@@ -47,7 +47,7 @@ describe("Typesense Watch search Candidate promotion", () => {
         requireQualified: true,
         currentBindings,
         qrelsRevision: `none:operator-accepted:${decisionId}`,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).resolves.toMatchObject({ generationId: "candidate-1" })
     await expect(
@@ -58,7 +58,7 @@ describe("Typesense Watch search Candidate promotion", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: `none:operator-accepted:${decisionId}`,
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toThrow(/exact passed qualification/i)
     await service.pinServingGeneration({
@@ -69,7 +69,7 @@ describe("Typesense Watch search Candidate promotion", () => {
       expectedPointerVersion: 0,
       currentBindings,
       qrelsRevision: `none:operator-accepted:${decisionId}`,
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
     })
     expect(db.pointers.get("SERVING")?.generationId).toBe("candidate-1")
   })
@@ -83,7 +83,7 @@ describe("Typesense Watch search Candidate promotion", () => {
         generationId: "candidate-1",
         status: "OPERATOR_ACCEPTED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: `none:operator-accepted:${decisionId}`,
@@ -100,7 +100,7 @@ describe("Typesense Watch search Candidate promotion", () => {
         generationId: "candidate-1",
         status: "OPERATOR_ACCEPTED",
         applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
+        rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: `none:operator-accepted:${decisionId}`,

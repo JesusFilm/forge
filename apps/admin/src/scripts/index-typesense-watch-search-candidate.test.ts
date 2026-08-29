@@ -42,6 +42,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     },
   ],
   availability: [],
@@ -409,7 +410,7 @@ describe("Typesense Watch candidate index CLI", () => {
     await expect(
       publishTypesenseWatchSearchCandidate({
         ...input,
-        applicationRevision: "watch-search-candidate/v2",
+        applicationRevision: "watch-search-candidate/v3",
       }),
     ).rejects.toThrow(/immutable publication input/)
     expect(generation.lifecycle.createBuildingGeneration).toHaveBeenCalledTimes(
@@ -430,7 +431,7 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        applicationRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
         transcript: {
           collection: "watch_search_transcripts_active",
@@ -463,7 +464,7 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        applicationRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
         transcript: {
           collection: "watch_search_transcripts_active",
@@ -509,7 +510,7 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        applicationRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
         transcript: {
           collection: "watch_search_transcripts_active",

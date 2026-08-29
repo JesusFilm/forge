@@ -42,8 +42,8 @@ function report(overrides: Record<string, unknown> = {}) {
     reasons: [],
     identity: {
       generationId: "candidate-1",
-      applicationRevision: "watch-search-candidate/v2",
-      rankingRevision: "title-and-brand-v1",
+      applicationRevision: "watch-search-candidate/v3",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_transcripts_current_42",
       transcriptProjectionRevision: "17",
       qrelsRevision: "public-watch-qrels/reviewed-v2",
@@ -63,8 +63,8 @@ function operatorAcceptanceBundle(overrides: Record<string, unknown> = {}) {
     status: "OPERATOR_ACCEPTED",
     identity: {
       generationId: "candidate-1",
-      applicationRevision: "watch-search-candidate/v2",
-      rankingRevision: "title-and-brand-v1",
+      applicationRevision: "watch-search-candidate/v3",
+      rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_transcripts_current_42",
       transcriptProjectionRevision: "17",
       qrelsRevision: "none:operator-accepted:candidate-launch-2026-08-16",
@@ -129,7 +129,7 @@ function fixture(
       id: "candidate-1",
       state: "READY",
       applicationRevision:
-        input.generationApplicationRevision ?? "watch-search-candidate/v2",
+        input.generationApplicationRevision ?? "watch-search-candidate/v3",
       catalogCollection: candidateBindings.catalog,
       availabilityCollection: candidateBindings.availability,
       lexicalCollection: candidateBindings.lexical,
@@ -420,11 +420,11 @@ describe("watch search Candidate qualification operator", () => {
     })
     expect(service.pinServingGeneration).toHaveBeenCalledWith({
       generationId: "candidate-1",
-      applicationRevision: "watch-search-candidate/v2",
+      applicationRevision: "watch-search-candidate/v3",
       expectedPointerVersion: 4,
       currentBindings,
       qrelsRevision: "public-watch-qrels/reviewed-v2",
-      rankingRevision: "title-and-brand-v1",
+      rankingRevision: "title-and-brand-v2",
       qualificationAudit: {
         reviewerIdentity: "reviewer@example.org",
         operatorIdentity: "operator@example.org",

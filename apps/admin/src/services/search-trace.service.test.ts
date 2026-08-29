@@ -283,8 +283,8 @@ describe("search trace service", () => {
           retrievalIdentity: {
             profile: "CANDIDATE",
             generationId: "generation-17",
-            applicationRevision: "watch-search-candidate/v2",
-            rankingRevision: "title-and-brand-v1",
+            applicationRevision: "watch-search-candidate/v3",
+            rankingRevision: "title-and-brand-v2",
             transcriptProjectionRevision: "42",
             evaluationRevision: "none:operator-accepted:launch-1",
           },
@@ -394,8 +394,8 @@ describe("search trace service", () => {
       retrievalIdentity: {
         profile: "CANDIDATE",
         generationId: "generation-17",
-        applicationRevision: "watch-search-candidate/v2",
-        rankingRevision: "title-and-brand-v1",
+        applicationRevision: "watch-search-candidate/v3",
+        rankingRevision: "title-and-brand-v2",
         transcriptProjectionRevision: "42",
         evaluationRevision: "none:operator-accepted:launch-1",
       },

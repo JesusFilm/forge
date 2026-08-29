@@ -17,11 +17,34 @@ describe("candidateWatchSearchApplicationRevision", () => {
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-b")
 
     expect(candidateWatchSearchApplicationRevision()).toBe(firstRevision)
-    expect(firstRevision).toBe("watch-search-candidate/v2")
+    expect(firstRevision).toBe("watch-search-candidate/v3")
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v1")
+    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v2")
+  })
+
+  it("invalidates generations built before the container projection", () => {
+    // The container languages ride the catalog document, so a generation built
+    // before this projection carries documents with no such key and resolves
+    // every container as unavailable. Leaving the application revision at v2
+    // would keep that generation compatible -- free to requalify and be
+    // promoted with the benchmark green while serving the very defect the
+    // projection removes. The undeclared-field precedent settles only whether
+    // Typesense accepts the field, not whether a stale generation may serve.
+    expect(candidateWatchSearchApplicationRevision()).toBe(
+      "watch-search-candidate/v3",
+    )
+  })
+
+  it("keeps the two revisions independently variable", () => {
+    // They answer different questions -- physical/projection compatibility vs
+    // application-side ranking behaviour -- so they must never be aliased to
+    // one value, or a ranking-only change would force a needless rebuild and a
+    // projection change could hide behind a requalification.
+    expect(candidateWatchSearchApplicationRevision()).not.toBe(
+      candidateWatchSearchRankingRevision(),
+    )
   })
 
   it("is the only revision source used by every candidate boundary", () => {

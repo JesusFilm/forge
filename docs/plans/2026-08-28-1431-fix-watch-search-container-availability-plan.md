@@ -102,6 +102,9 @@ Production evidence on 2026-08-28 confirms the class and its bounds. A `watchSea
 #### Deferred to Follow-Up Work
 
 - The Typesense availability projection (`buildAvailabilityDocuments` and `watchabilityRank` in `apps/admin/src/services/typesense-watch-search-indexer.ts` and `apps/admin/src/services/typesense-watch-search.service.ts`) carries the same self-scoped assumption and will reintroduce this defect when it starts serving results. It needs its own ticket before that cutover. Production currently reports `searchMode: "watch-search"`, so it serves nothing today.
+
+  > **Correction, 2026-08-28 — the last sentence above was false when written, and this deferral did not hold.** `searchMode` was measured with a request that sent no `Origin` header. `resolveWatchSearchInputForRequest` applies `WATCH_SEARCH_PRIMARY_MODE` only when the request `Origin` equals `WEB_CANONICAL_ORIGIN`, and that variable defaults to `MODERN` — so an un-originated probe is routed to PostgreSQL and truthfully reports the PostgreSQL mode, while the browser it was meant to model is routed to Typesense. Re-probed the same day with `Origin: https://www.jesusfilm.org`, production returned `searchMode: "watch-search-typesense"` and `UNAVAILABLE` for `easter`, `nua-easter`, `guide-episode-6`, `worth-episode-2`, and `anticipate-the-resurrection`; a real browser on `https://www.jesusfilm.org/watch` still rendered the "Not available · English" badge. The Typesense path was therefore the live path for real viewers the whole time, and FGE-108 stayed broken after this plan shipped. The mirror is FGE-109, planned in `docs/plans/2026-08-28-2019-fix-typesense-container-availability-plan.md`. When probing this seam, always send the canonical `Origin` header and confirm the `searchMode` the response reports.
+
 - `SeriesHero` poster artwork for containers without an authored image is tracked in `todos/023` and is untouched here.
 
 ---
