@@ -72,8 +72,8 @@ holds for one variable says nothing about its neighbour.
 `watch-search-candidate-generation-stable-application-revision.md` already said
 to "deliberately bump `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`
 and rebuild the generation" when the projection changes. PR #2100 did exactly
-that. The rule covers *when* to bump; it says nothing about *what a bump
-invalidates* or *in what order to ship it*, which is the gap this incident
+that. The rule covers _when_ to bump; it says nothing about _what a bump
+invalidates_ or _in what order to ship it_, which is the gap this incident
 exposed.
 
 **Assuming "fails closed" meant degradation.** The runbook said an incompatible
@@ -106,7 +106,7 @@ WATCH_SEARCH_PRIMARY_MODE=DEFAULT   # redeploy; expect searchMode: watch-search
 
 This was chosen deliberately. The DEFAULT PostgreSQL lane already carried the
 user-facing fix from PR #2098, so a deploy rollback would have restored search
-*by reinstating the bug the deploy was fixing*. The config flip restored search
+_by reinstating the bug the deploy was fixing_. The config flip restored search
 and kept the fix.
 
 Recovery then required, in this order:
