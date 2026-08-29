@@ -522,6 +522,40 @@ Monitor and page on:
 
 ## Rollout and Rollback
 
+### Precondition — does this change move the application revision?
+
+Answer this **before** merging, not after. Bumping
+`TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION` does not only gate the
+next publish. It retroactively invalidates the generation already pinned by
+`WATCH_SEARCH_TYPESENSE_PROFILE`, including a generation currently `SERVING`
+production traffic. `assertExactIdentity` then throws
+`CandidateGenerationCompatibilityError` on **every** MODERN request.
+
+"Fails closed" in the promotion section below means the request returns
+`INTERNAL_SERVER_ERROR`. There is no automatic request fallback to DEFAULT in
+this release, so an invalidated pin is a total outage of the canonical-browser
+search path, not a degradation. The SSR first paint keeps working — it sends no
+`Origin` header and therefore resolves DEFAULT — so the failure surfaces only
+on the second and subsequent searches in a session, and a smoke test that
+checks page load alone will not see it.
+
+If the change moves the application revision, the merge is a **two-part
+sequence**, and the two parts cannot be reordered:
+
+1. Set `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` and redeploy Admin. Confirm the
+   canonical-origin smoke reports `searchMode: "watch-search"`.
+2. Merge the application change. MODERN is now dark, so the invalidated pin
+   serves no traffic.
+3. Publish a fresh candidate generation on the new revision, qualify it, and
+   CAS-pin it per the sections below.
+4. Restore `WATCH_SEARCH_PRIMARY_MODE=MODERN` and re-run the acceptance smoke.
+
+> **This is not hypothetical.** PR #2100 bumped the revision to
+> `watch-search-candidate/v3` on 2026-08-29 and took canonical-browser Watch
+> search down for 36 minutes (12:37:12Z–13:13:13Z). The deploy reported
+> `SUCCESS`; only live traffic revealed it. Mitigated with step 1 above. See
+> FGE-109.
+
 1. Merge the application changes through the normal PR process. The production
    browser continues to omit `mode` and `shadowMode`. Admin recognizes an
    anonymous request whose `Origin` exactly matches `WEB_CANONICAL_ORIGIN` and
@@ -564,13 +598,43 @@ Monitor and page on:
    `searchMode: "watch-search-typesense"`. Repeat without the canonical origin
    to confirm the public compatibility path still reports `watch-search`.
 
+   Run this smoke **after every Admin deploy that touches Watch search**, not
+   only when promoting a candidate. A canonical-origin request is the only
+   check that exercises the pinned serving generation; a request without the
+   `Origin` header resolves DEFAULT and passes even while MODERN is returning
+   500s to every browser. Assert on the response body, not the status code
+   alone — and treat a `null` `watchSearch` with an `errors` array as a
+   failure:
+
+   ```bash
+   curl -s -X POST https://admin.jesusfilm.org/api/graphql \
+     -H 'Content-Type: application/json' \
+     -H 'Origin: https://www.jesusfilm.org' \
+     -d '{"query":"{ watchSearch(input:{query:\"Easter\",limit:3}) { searchMode } }"}'
+   ```
+
 ## Native-language candidate operations
 
 All settings below live on Railway's `@forge/admin` service. Deploying the
 code does not replace public search: keep
-`WATCH_SEARCH_TYPESENSE_PROFILE=CURRENT` and
 `WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=false`. The browser and public
 GraphQL contract cannot select a candidate.
+
+> **Read the live value before assuming `CURRENT`.** This section describes
+> publishing a candidate from a `CURRENT` baseline, but that is not necessarily
+> the production posture. A qualified candidate that has been promoted stays
+> pinned — `WATCH_SEARCH_TYPESENSE_PROFILE=CANDIDATE:<generation-id>` is a
+> normal steady state, not a transient one. As of 2026-08-29 production is
+> pinned to a promoted candidate, not `CURRENT`.
+>
+> This matters because a promoted pin is a **live serving index**, so anything
+> that invalidates it — most importantly an application-revision bump — takes
+> production traffic with it. Check the deployed value first:
+>
+> ```bash
+> railway variables --service "@forge/admin" --environment production --kv \
+>   | grep -E '^WATCH_SEARCH_(TYPESENSE_PROFILE|PRIMARY_MODE)='
+> ```
 
 ### Publish, enable, and compare
 
@@ -579,8 +643,10 @@ GraphQL contract cannot select a candidate.
    `pnpm --filter @forge/admin index:typesense-watch-search-candidate`. Record
    the immutable generation ID, application revision, transcript collection
    and revision, physical members, counts, digests, and capacity prechecks.
-2. Publishing moves only the Admin evaluation pointer. Confirm public
-   `MODERN` still resolves `CURRENT` before enabling comparison.
+2. Publishing moves only the Admin evaluation pointer. Confirm public `MODERN`
+   still resolves the serving pin it resolved before you published — whichever
+   value that is — before enabling comparison. Do not assert `CURRENT` here
+   unless you read it; see the note above.
 3. Configure a dedicated `CANDIDATE_SEARCH_EVAL_API_KEYS` value, then set
    `WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=true`. Use the private Admin
    comparison page. A busy/lease/rate-limit failure is expected to reject
@@ -763,6 +829,14 @@ reviewed, stored, and CAS-pinned to `SERVING`, promote by setting
 `@forge/admin`. A missing, stale, incompatible, unqualified, or
 transcript-drifted pin fails closed. Publishing a newer candidate does not move
 this serving pin.
+
+**"Fails closed" means every MODERN request returns `INTERNAL_SERVER_ERROR`,
+not that it degrades to DEFAULT.** A pin can become incompatible without anyone
+touching it: bumping the application revision in application code invalidates
+the pinned generation retroactively, and the resulting deploy reports `SUCCESS`
+while serving 500s. Treat any change to
+`TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION` as a change to the
+serving pin, and follow the two-part sequence in **Rollout and Rollback**.
 
 - Normal rollback: set `WATCH_SEARCH_TYPESENSE_PROFILE=CURRENT` and redeploy
   Admin. Current physical indexes are retained throughout the experiment.

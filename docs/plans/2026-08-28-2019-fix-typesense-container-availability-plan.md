@@ -196,9 +196,16 @@ That selects the first row below. Re-verify on a major Typesense upgrade; the se
 
 The application revision moves to `watch-search-candidate/v3` (KTD6), so a candidate generation predating this change is invalidated and must be rebuilt before it can qualify or serve. Production's CURRENT lane is not gated by that revision and picks the field up on the next operator rebuild.
 
+> **Corrected 2026-08-29 — the preceding sentence about the CURRENT lane was false, and it caused a production outage.** Production does not serve from the CURRENT lane. It is pinned to a promoted candidate: `WATCH_SEARCH_TYPESENSE_PROFILE=CANDIDATE:candidate-revision-v2-runtimefix-20260817t034500z`. A promoted pin is a live serving index, so the v3 bump did not merely gate a future publish — it invalidated the generation under production traffic, and `assertExactIdentity` throws `CandidateGenerationCompatibilityError` rather than degrading. Canonical-browser Watch search returned `INTERNAL_SERVER_ERROR` for 36 minutes (12:37:12Z–13:13:13Z) until `WATCH_SEARCH_PRIMARY_MODE=DEFAULT` was set.
+>
+> The error in method, worth more than the fact: the claim was derived from the repo, and the repo does not contain Railway's deployed configuration. Read the deployed value before reasoning about which generation production serves. See FGE-109 and the **Rollout and Rollback** precondition in `docs/operations/typesense-watch-search-production-readiness.md`.
+
 ### Assumptions
 
 - Production's `WATCH_SEARCH_PRIMARY_MODE` is at its `MODERN` default. The 2026-08-28 probe pair is consistent with this and no Railway override is visible from the repo.
+
+  > **Corrected 2026-08-29.** "No override is visible from the repo" is not evidence about production; Railway service variables are not in the repo. The deployed value was in fact `MODERN`, so this assumption held by luck rather than by verification — while the neighbouring `WATCH_SEARCH_TYPESENSE_PROFILE`, reasoned about the same way, was wrong. Verify service configuration against Railway, not against the absence of a repo file.
+
 - The production index rebuild is operator-run. This plan does not schedule or perform it; U9 assigns it.
 
 Both of the following were assumptions in an earlier draft and are now U0 measurements rather than beliefs: the per-document cost of the container list, and the new loader's wall-clock cost inside `buildTypesenseWatchCandidateProjectionSnapshot`'s 60-second `RepeatableRead` transaction ceiling, which it shares with the existing whole-table read and the subtitle loader.
