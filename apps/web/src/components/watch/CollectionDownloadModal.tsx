@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
@@ -27,6 +27,7 @@ import {
   LanguageCombobox,
   type LanguageComboboxOption,
 } from "@/components/watch/LanguageCombobox"
+import { TierListbox } from "@/components/watch/TierListbox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { languageCodeFor } from "@/lib/language-code"
 import { loadWatchCollectionDownloads } from "@/lib/watch-collection-download-actions"
@@ -176,6 +177,7 @@ export function CollectionDownloadModal({
   onClose,
 }: CollectionDownloadModalProps) {
   const t = useTranslations("CollectionDownloadModal")
+  const qualityLabelId = useId()
   const [languageSlug, setLanguageSlug] = useState(currentLanguageSlug)
   const [loadState, setLoadState] = useState<LoadState>({ status: "idle" })
   const [selectedTier, setSelectedTier] = useState<DownloadTier>("highest")
@@ -519,24 +521,20 @@ export function CollectionDownloadModal({
                     triggerClassName="border-white/15 bg-stone-900/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 focus-visible:ring-amber-400"
                   />
                 </div>
-                <label className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
-                  <span>{t("qualityLabel")}</span>
-                  <select
-                    data-testid="watch-collection-download-quality"
-                    value={effectiveTier ?? ""}
+                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
+                  <span id={qualityLabelId}>{t("qualityLabel")}</span>
+                  <TierListbox
+                    tiers={options?.commonTiers ?? []}
+                    value={effectiveTier}
+                    onChange={setSelectedTier}
+                    getLabel={(tier) => t(tierMessageKey(tier))}
+                    placeholder={t("qualityLabel")}
                     disabled={busy || !effectiveTier}
-                    onChange={(event) =>
-                      setSelectedTier(event.target.value as DownloadTier)
-                    }
-                    className="scheme-dark h-14 rounded-xl border border-white/15 bg-stone-900/70 px-4 text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition-colors hover:border-white/25 hover:bg-white/10 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
-                  >
-                    {(options?.commonTiers ?? []).map((tier) => (
-                      <option key={tier} value={tier}>
-                        {t(tierMessageKey(tier))}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    labelledBy={qualityLabelId}
+                    testIdPrefix="watch-collection-download-quality"
+                    triggerClassName="h-14 rounded-xl border-white/15 bg-stone-900/70 px-4 py-0 text-base sm:text-sm text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 focus-visible:border-amber-400/70 focus-visible:ring-amber-400"
+                  />
+                </div>
               </div>
 
               {loadState.status === "loading" ? (

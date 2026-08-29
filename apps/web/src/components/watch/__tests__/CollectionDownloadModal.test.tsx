@@ -128,6 +128,34 @@ async function flush() {
   })
 }
 
+// `bucketDownloads` yields only `highest` for a single download, so tier
+// selection needs three downloads per dub (highest / high / low).
+const threeTierDubs = ["episode-1", "episode-2"].map((videoId, index) => ({
+  documentId: `dub-${index + 1}`,
+  videoId,
+  downloads: [2160, 1080, 480].map((height) => ({
+    documentId: `download-${index + 1}-${height}`,
+    height,
+    quality: height >= 1080 ? "high" : "low",
+    size: height * 1000,
+  })),
+}))
+
+function qualityTrigger(): HTMLButtonElement {
+  return container.querySelector(
+    '[data-testid="watch-collection-download-quality"]',
+  ) as HTMLButtonElement
+}
+
+// The listbox is portaled to `document.body`, so query the document.
+function qualityOptions(): HTMLButtonElement[] {
+  return Array.from(
+    document.querySelectorAll(
+      '[data-testid="watch-collection-download-quality-option"]',
+    ),
+  ) as HTMLButtonElement[]
+}
+
 beforeEach(() => {
   window.sessionStorage.clear()
   loadWatchCollectionDownloadsMock.mockReset()
@@ -312,15 +340,137 @@ describe("CollectionDownloadModal", () => {
     })
   })
 
-  it("uses a dark native menu for video quality options", async () => {
+  it("renders video quality as an app-styled listbox, not a native select", async () => {
     renderModal()
     await flush()
 
+    const quality = qualityTrigger()
+    expect(quality.tagName).toBe("BUTTON")
+    expect(quality.getAttribute("aria-haspopup")).toBe("listbox")
     expect(
       container.querySelector(
-        '[data-testid="watch-collection-download-quality"]',
-      )?.className,
-    ).toContain("scheme-dark")
+        '[data-testid="watch-collection-download-modal"] select',
+      ),
+    ).toBeNull()
+    const labelId = quality.getAttribute("aria-labelledby")
+    expect(labelId).toBeTruthy()
+    expect(document.getElementById(labelId as string)?.textContent).toBe(
+      "Video quality",
+    )
+  })
+
+  it("lists every common tier in order with the highest selected", async () => {
+    loadWatchCollectionDownloadsMock.mockResolvedValue({
+      ok: true,
+      dubs: threeTierDubs,
+    })
+    renderModal()
+    await flush()
+
+    expect(qualityTrigger().textContent).toContain("Highest")
+    await act(async () => {
+      qualityTrigger().click()
+    })
+
+    const options = qualityOptions()
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Highest",
+      "High",
+      "Low",
+    ])
+    expect(
+      options.map((option) => option.getAttribute("aria-selected")),
+    ).toEqual(["true", "false", "false"])
+  })
+
+  it("builds the queue for the chosen tier", async () => {
+    loadWatchCollectionDownloadsMock.mockResolvedValue({
+      ok: true,
+      dubs: threeTierDubs,
+    })
+    runCollectionDownloadQueueMock.mockImplementationOnce(
+      async ({ items }) => ({
+        active: null,
+        authRequired: false,
+        canceled: false,
+        completed: items,
+        failed: [],
+        total: items.length,
+      }),
+    )
+    renderModal()
+    await flush()
+
+    await act(async () => {
+      qualityTrigger().click()
+    })
+    await act(async () => {
+      ;(
+        qualityOptions().find(
+          (option) => option.getAttribute("data-tier") === "high",
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(qualityTrigger().textContent).toContain("High")
+    expect(
+      document
+        .querySelector('[data-testid="watch-collection-download-quality-list"]')
+        ?.getAttribute("data-open"),
+    ).toBe("false")
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    const call = runCollectionDownloadQueueMock.mock.calls[0]?.[0] as {
+      items: Array<{ id: string; url: string }>
+    }
+    expect(call.items.map((item) => item.id)).toEqual([
+      "episode-1",
+      "episode-2",
+    ])
+    expect(call.items[0]?.url).toContain("downloadId=download-1-1080")
+    expect(call.items[1]?.url).toContain("downloadId=download-2-1080")
+  })
+
+  it("disables the quality trigger while the queue is running", async () => {
+    runCollectionDownloadQueueMock.mockImplementationOnce(
+      () => new Promise(() => {}),
+    )
+    renderModal()
+    await flush()
+    expect(qualityTrigger().disabled).toBe(false)
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(qualityTrigger().disabled).toBe(true)
+  })
+
+  it("shows the placeholder on a disabled trigger when no tier is available", async () => {
+    loadWatchCollectionDownloadsMock.mockResolvedValue({ ok: true, dubs: [] })
+    renderModal()
+    await flush()
+
+    const quality = qualityTrigger()
+    expect(quality.disabled).toBe(true)
+    expect(quality.textContent).toContain("Video quality")
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
   })
 
   it("renders the form without parent container chrome", async () => {
