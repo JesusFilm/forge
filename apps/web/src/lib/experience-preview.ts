@@ -99,7 +99,6 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
             ...AdminWatchHomeHero
           }
         }
-      }
     }
   `,
   [

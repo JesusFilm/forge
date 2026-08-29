@@ -1,8 +1,18 @@
+import { parse } from "graphql"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+// The mock stands in for gql.tada's document builder, but it PARSES what it is
+// handed before returning the stub. Without that, no test in this file ever
+// reads the operation text — the module could compose syntactically invalid
+// GraphQL and every assertion here would still pass, leaving `next build` (the
+// first thing to run the real builder) as the only detector. That is exactly
+// how a malformed fragment reached CI once.
 const { adminGraphqlMock, queryMock } = vi.hoisted(() => ({
   adminGraphqlMock: vi.fn(
-    (_source: string, _dependencies?: readonly unknown[]) => ({}),
+    (source: string, _dependencies?: readonly unknown[]) => {
+      parse(source)
+      return {}
+    },
   ),
   queryMock: vi.fn(),
 }))
@@ -114,6 +124,27 @@ describe("getExperiencePreview", () => {
     // Tier 2 is the fallback for a title-lagging Admin, so it must not carry
     // the very selection that Admin cannot serve.
     expect(shapeOnly).not.toContain("...PreviewMediaCollectionTitles")
+  })
+
+  it("composes every preview document as parseable GraphQL", () => {
+    // The hoisted mock parses on construction, so reaching this assertion at
+    // all means all four documents parsed. Pin the count so a new document
+    // cannot be added outside that guard unnoticed.
+    expect(adminGraphqlMock.mock.calls.length).toBeGreaterThanOrEqual(4)
+    for (const [source] of adminGraphqlMock.mock.calls) {
+      expect(() => parse(source)).not.toThrow()
+    }
+  })
+
+  it("balances the shared shape fragment as a fragment, not a query body", () => {
+    const shape = sources().find((source) =>
+      source.includes("fragment ExperiencePreviewShape on ExperiencePreview"),
+    )
+
+    expect(shape).toBeDefined()
+    const definitions = parse(shape as string).definitions
+    expect(definitions).toHaveLength(1)
+    expect(definitions[0].kind).toBe("FragmentDefinition")
   })
 
   it("keeps the legacy operation free of the title overlay", () => {
