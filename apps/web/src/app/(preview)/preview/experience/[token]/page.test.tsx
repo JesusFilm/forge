@@ -52,6 +52,19 @@ import ExperiencePreviewPage, {
   revalidate,
 } from "@/app/(preview)/preview/experience/[token]/page"
 
+// The media collection carries the enriched-item fields the renderer reads.
+// `resolvedTitle` is the one this suite exists to protect: it arrives from
+// Admin under a response alias, and nothing between the fetch and the renderer
+// is allowed to drop or reshape it.
+const mediaCollectionBlock = {
+  __typename: "MediaCollectionBlock",
+  sectionKey: "collection",
+  items: [
+    { videoId: "video-1", resolvedTitle: "Иисус", labelOverride: "COLLECTION" },
+    { videoId: "video-2", resolvedTitle: null, labelOverride: "COLLECTION" },
+  ],
+}
+
 const draft = {
   experienceId: "experience-1",
   localeId: "locale-1",
@@ -59,7 +72,10 @@ const draft = {
   slug: "home",
   title: "Главная",
   isHomepage: false,
-  blocks: [{ __typename: "TextBlock", sectionKey: "intro" }],
+  blocks: [
+    { __typename: "TextBlock", sectionKey: "intro" },
+    mediaCollectionBlock,
+  ],
 }
 
 beforeEach(() => {
@@ -134,6 +150,92 @@ describe("Experience draft preview page", () => {
       languageSlug: "russian",
       dynamicCollectionCacheScope: "preview",
     })
+  })
+
+  it("forwards resolved card titles to the section renderer", async () => {
+    getExperiencePreviewMock.mockResolvedValue(draft)
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "capability-token" }),
+    })
+    const [, content] = page.props.children.props.children
+
+    const forwarded = content.props.blocks.find(
+      (block: { __typename: string }) =>
+        block.__typename === "MediaCollectionBlock",
+    )
+
+    expect(forwarded.items).toEqual(mediaCollectionBlock.items)
+    expect(forwarded.items[0].resolvedTitle).toBe("Иисус")
+  })
+
+  it("forwards resolved card titles through the Homepage composition", async () => {
+    getExperiencePreviewMock.mockResolvedValue({ ...draft, isHomepage: true })
+    resolveWatchHomePreviewMock.mockResolvedValue({
+      data: {
+        heroSlides: [],
+        sections: [],
+        carousel: { pools: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "homepage-token" }),
+    })
+    const home = page.props.children.props.children[1]
+
+    const forwarded = home.props.blocks.find(
+      (block: { __typename: string }) =>
+        block.__typename === "MediaCollectionBlock",
+    )
+
+    expect(forwarded.items[0].resolvedTitle).toBe("Иисус")
+    // watch-home-visible-content.ts enriches items off these same staged
+    // blocks, so the homepage path must receive them unchanged too.
+    expect(resolveWatchHomePreviewMock).toHaveBeenCalledWith(
+      "ru",
+      "russian",
+      draft.blocks,
+    )
+  })
+
+  it("forwards an absent title as null rather than dropping the item", async () => {
+    getExperiencePreviewMock.mockResolvedValue(draft)
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "capability-token" }),
+    })
+    const [, content] = page.props.children.props.children
+
+    const forwarded = content.props.blocks.find(
+      (block: { __typename: string }) =>
+        block.__typename === "MediaCollectionBlock",
+    )
+
+    expect(forwarded.items).toHaveLength(2)
+    expect(forwarded.items[1].resolvedTitle).toBeNull()
+  })
+
+  it("preserves block and item order on the way to the renderer", async () => {
+    getExperiencePreviewMock.mockResolvedValue(draft)
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "capability-token" }),
+    })
+    const [, content] = page.props.children.props.children
+
+    expect(
+      content.props.blocks.map(
+        (block: { __typename: string }) => block.__typename,
+      ),
+    ).toEqual(["TextBlock", "MediaCollectionBlock"])
+    expect(
+      content.props.blocks[1].items.map(
+        (item: { videoId: string }) => item.videoId,
+      ),
+    ).toEqual(["video-1", "video-2"])
   })
 
   it("returns not found for an invalidated capability", async () => {
