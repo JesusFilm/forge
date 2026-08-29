@@ -342,6 +342,34 @@ same provenance and visibility predicates as the full indexer:
 | Image, label, slug, or child relation change             | Rebuild catalog document                                                                                                               | None                                                    | None                                                                                                     |
 | Language slug/name or fallback change                    | Rebuild affected catalog documents when stored display fields change                                                                   | Rebuild records for slug/name changes; no fallback copy | No vector rewrite; Admin continues to resolve fallback policy at query time                              |
 
+#### Ancestor fan-out for container availability (added 2026-08-28, FGE-109)
+
+Every row above is keyed by the **affected** video id. The catalog document now
+also carries `containerLanguagesJson` — the languages in which a Series-Shaped
+Video has a visible playable descendant within two levels — so three of those
+rows acquire a second target that the per-video keying cannot express:
+
+| Source change                                                                                        | Additional catalog action                                                                                     |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Dub create/update/delete/publication/HLS change                                                      | Rebuild the catalog document of every Series-Shaped ancestor within two `video_relation` levels               |
+| Child relation change                                                                                | Rebuild the catalog document of every Series-Shaped ancestor within two levels of both the old and new parent |
+| Video visibility change (soft delete, `noIndex`, last published locale removed, `watch` restriction) | Rebuild the catalog document of every Series-Shaped ancestor within two levels                                |
+
+A dub added to a grandchild changes its grandparent collection's availability.
+An implementer who enqueues only the affected video id will ship a worker that
+cannot maintain this field, which converts today's bounded staleness into
+permanent drift — so treat this as a **blocking requirement** on the
+incremental-sync work, not a refinement.
+
+**Until that worker exists**, no incremental path maintains this field at all:
+the only refresh is the operator-run full rebuild
+(`pnpm --filter @forge/admin index:typesense-watch-search`), and that rebuild is
+therefore also the only lever for an urgent descendant visibility change. The
+staleness window is bounded by the interval between rebuilds and nothing
+narrower. Nothing restricted is served through it — a hidden descendant is
+gated out of the series page independently — so the exposure is a stale
+availability claim on a card, not restricted content.
+
 ### Reconciliation and generation publication
 
 Incremental synchronization is not the only correctness mechanism:
