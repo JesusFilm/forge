@@ -11,6 +11,7 @@ const mockEnv = vi.hoisted(() => ({
   env: {
     DATABASE_URL: undefined as string | undefined,
     AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,
+    AI_GATEWAY_CHAT_ALLOWED_HOSTS: undefined as string | undefined,
     AI_GATEWAY_CHAT_BASE_URL: undefined as string | undefined,
     AI_GATEWAY_CHAT_MODEL: undefined as string | undefined,
     AI_GATEWAY_SEEKER_ENABLED: undefined as string | undefined,
@@ -33,6 +34,7 @@ vi.mock("../../config/env", async (importOriginal) => ({
 }))
 
 import { USER_RESOURCE_PREFIX } from "../ai-chat-thread-ownership"
+import { buildSeekerGatewayModelEntry } from "../seeker-model-list"
 import {
   buildTitleRepairAgent,
   buildTitleRepairPrompt,
@@ -60,6 +62,7 @@ function armGates() {
 
 beforeEach(() => {
   armGates()
+  mockEnv.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS = undefined
   mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
   mockEnv.env.AI_GATEWAY_CHAT_MODEL = undefined
   mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = undefined
@@ -225,6 +228,116 @@ describe("resolveTitleRepairSkip (KTD4 gate ladder)", () => {
     // A seeker incident rollback (flag off) must NOT disable title repair.
     mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = "false"
     expect(resolveTitleRepairSkip()).toBeNull()
+  })
+
+  it("returns gateway_unconfigured when the base URL fails the feat-440 allowlist (counted skip, not a throw)", () => {
+    // Equivalence guard: with a disallowed URL, buildSeekerGatewayModelEntry
+    // returns null, so the ladder must skip here — otherwise the run reaches
+    // buildTitleRepairAgent's defensive throw and a config mistake becomes a
+    // failed run instead of a counted skip. The real allowlist predicate runs
+    // (the env-module mock spreads importOriginal).
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    expect(resolveTitleRepairSkip()).toBe("gateway_unconfigured")
+  })
+
+  it("passes the gateway gate for a custom https host listed in the allowlist", () => {
+    // Anti-vacuous companion for the case above: the same custom host passes
+    // once allowlisted, so the skip came from the list — not the non-default
+    // URL.
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    mockEnv.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS = "other.example"
+    expect(resolveTitleRepairSkip()).toBeNull()
+  })
+
+  it("logs the distinguishing enum-only event on the allowlist rung — and not on the missing-key rung (feat-440 review)", () => {
+    // Both causes share the gateway_unconfigured skip enum, and the ladder
+    // never calls the builder (whose own warn would otherwise disambiguate).
+    // This extra line is the ONLY operator-visible discriminator, so pin it
+    // on the URL rung and pin its ABSENCE on the key rung.
+    const info = vi.spyOn(console, "info").mockImplementation(() => {})
+
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    expect(resolveTitleRepairSkip()).toBe("gateway_unconfigured")
+    const urlRungLines = info.mock.calls.map((call) => String(call[0]))
+    expect(
+      urlRungLines.some((line) =>
+        line.includes("event=gateway_base_url_not_allowed"),
+      ),
+    ).toBe(true)
+    // Leak pin: the configured URL/host never reaches the log line.
+    expect(urlRungLines.every((line) => !line.includes("other.example"))).toBe(
+      true,
+    )
+
+    info.mockClear()
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
+    expect(resolveTitleRepairSkip()).toBe("gateway_unconfigured")
+    expect(
+      info.mock.calls.every(
+        (call) =>
+          !String(call[0]).includes("event=gateway_base_url_not_allowed"),
+      ),
+    ).toBe(true)
+  })
+
+  it("pins the builder-null <-> ladder-gateway-skip equivalence over one shared fixture table (feat-440 review)", () => {
+    // The ladder deliberately never calls buildSeekerGatewayModelEntry, so
+    // their equivalence is otherwise held only by prose. Drive BOTH boundaries
+    // through the same env shapes: any fixture where the builder returns null
+    // must skip at the gateway rung, and vice versa — a condition added to one
+    // side only goes red here (mocked-shape-vs-real-contract table law).
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.spyOn(console, "info").mockImplementation(() => {})
+    const fixtures: Array<{
+      name: string
+      key: string | undefined
+      url: string | undefined
+      hosts: string | undefined
+    }> = [
+      { name: "key unset", key: undefined, url: undefined, hosts: undefined },
+      {
+        name: "all defaults",
+        key: "sk-test",
+        url: undefined,
+        hosts: undefined,
+      },
+      {
+        name: "unlisted https host",
+        key: "sk-test",
+        url: "https://other.example/v1",
+        hosts: undefined,
+      },
+      {
+        name: "http default host",
+        key: "sk-test",
+        url: "http://ai-gateway.jesusfilm.org/v1",
+        hosts: undefined,
+      },
+      {
+        name: "allowlisted custom host",
+        key: "sk-test",
+        url: "https://other.example/v1",
+        hosts: "other.example",
+      },
+      {
+        name: "allowlist override excluding the default host",
+        key: "sk-test",
+        url: undefined,
+        hosts: "other.example",
+      },
+    ]
+    for (const fixture of fixtures) {
+      mockEnv.env.AI_GATEWAY_CHAT_API_KEY = fixture.key
+      mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = fixture.url
+      mockEnv.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS = fixture.hosts
+      const builderNull = buildSeekerGatewayModelEntry() === null
+      const ladderGatewaySkip =
+        resolveTitleRepairSkip() === "gateway_unconfigured"
+      expect({ fixture: fixture.name, builderNull, ladderGatewaySkip }).toEqual(
+        { fixture: fixture.name, builderNull, ladderGatewaySkip: builderNull },
+      )
+    }
   })
 
   it("skipped report carries the reason and zero counts", () => {

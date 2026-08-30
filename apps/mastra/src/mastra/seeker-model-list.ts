@@ -18,7 +18,11 @@ import { createRequire } from "node:module"
 import type { ModelWithRetries } from "@mastra/core/agent"
 import type { MastraModelConfig } from "@mastra/core/llm"
 
-import { env, isAiGatewaySeekerEnabled } from "../config/env"
+import {
+  env,
+  isAiGatewaySeekerEnabled,
+  isAllowedAiGatewayChatBaseUrl,
+} from "../config/env"
 import {
   AI_GATEWAY_USER_AGENT,
   DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
@@ -82,6 +86,17 @@ export function createGatewayFetchWithTimeout(
   return (input, init) =>
     fetchImpl(input, {
       ...init,
+      // After the spread so nothing upstream can re-enable following. The
+      // feat-440 allowlist bounds the CONFIGURED URL only; refusing redirects
+      // is what keeps the credentialed POST from being 3xx'd off the
+      // allowlisted host (the house pattern of this app's hand-written HTTP
+      // clients — RAG, Langfuse, admin-agent-tools. The experience-side
+      // gateway clients in providers.ts / default-chat-agent.ts /
+      // specialized-agents.ts pass no custom fetch and still follow
+      // redirects: a pre-existing gap, out of feat-440's scope). A rejected
+      // redirect throws, which the existing failover already treats as a
+      // gateway failure.
+      redirect: "error",
       signal:
         init?.signal != null
           ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
@@ -90,8 +105,12 @@ export function createGatewayFetchWithTimeout(
 }
 
 /**
- * Build the JesusFilm gateway chat entry, or null when `AI_GATEWAY_CHAT_API_KEY`
- * is unset (feat-405 U1, KTD4's key-presence rule). Deliberately does NOT read
+ * Build the JesusFilm gateway chat entry, or null when
+ * `AI_GATEWAY_CHAT_API_KEY` is unset (feat-405 U1, KTD4's key-presence rule)
+ * OR the effective base URL fails the feat-440 host allowlist (runtime
+ * defense-in-depth; the null contract is "key unset or base URL not
+ * allowed" — `resolveTitleRepairSkip`'s gateway rung mirrors both
+ * conditions). Deliberately does NOT read
  * `AI_GATEWAY_SEEKER_ENABLED`: that flag is feat-237's documented seeker
  * incident-rollback lever, and the title-repair sweep must keep its gateway
  * access during exactly the outage that strands threads. The model id resolves
@@ -102,6 +121,23 @@ export function createGatewayFetchWithTimeout(
  */
 export function buildSeekerGatewayModelEntry(): ModelWithRetries | null {
   if (!env.AI_GATEWAY_CHAT_API_KEY) return null
+
+  // feat-440 defense-in-depth (the production boot assert in config/env.ts is
+  // the primary enforcement; this covers entrypoints that never run
+  // assertMastraRuntimeEnv). A disallowed effective base URL degrades to the
+  // existing null contract — the seeker/titling callers fall back to the
+  // free-Gemma chain, the title-repair gate reports its counted skip — with
+  // one enum-only log line (never the URL or host: config values stay out of
+  // logs on this path).
+  if (
+    !isAllowedAiGatewayChatBaseUrl(
+      env.AI_GATEWAY_CHAT_BASE_URL,
+      env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+    )
+  ) {
+    console.warn("[seeker-gateway] event=gateway_base_url_not_allowed")
+    return null
+  }
 
   // JesusFilm AI gateway (OpenAI-compatible). The @ai-sdk/openai SDK is
   // loaded via the createRequire shim (not imported from ./providers) to

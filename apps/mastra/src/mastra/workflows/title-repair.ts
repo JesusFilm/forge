@@ -16,11 +16,14 @@
  *   - `SEEKER_ROUTE_ENABLED === "true"` — the lane-wide kill switch: darkening
  *     the ai-chat lane must also stop this sweep's scheduled content egress;
  *     `AI_CHAT_TITLE_REPAIR_ENABLED` stays the fine-grained lever;
- *   - `AI_GATEWAY_CHAT_API_KEY` present — the sweep is GATEWAY-ONLY (KD3):
+ *   - `AI_GATEWAY_CHAT_API_KEY` present AND the effective gateway base URL
+ *     passing the feat-440 host allowlist — the sweep is GATEWAY-ONLY (KD3):
  *     conversation content never goes to the free OpenRouter pool from here,
- *     and a missing key is a counted skip, never a fallback. Key presence is
- *     exactly `buildSeekerGatewayModelEntry()`'s null condition (that builder
- *     supplies the agent's model below), read directly so the ladder stays
+ *     and a missing key or disallowed base URL is a counted skip, never a
+ *     fallback. The pair is exactly `buildSeekerGatewayModelEntry()`'s null
+ *     condition (that builder supplies the agent's model below), read
+ *     directly — key presence plus the construction-free
+ *     `isAllowedAiGatewayChatBaseUrl` predicate — so the ladder stays
  *     construction-free. Deliberately NOT gated on
  *     `isAiGatewaySeekerEnabled()`: that flag is feat-237's seeker
  *     incident-rollback lever, and coupling it in would disable title repair
@@ -88,6 +91,7 @@ import { z } from "zod"
 import {
   canAiChatDataPersist,
   env,
+  isAllowedAiGatewayChatBaseUrl,
   isSeekerRouteEnabled,
   isTitleRepairEnabled,
   resolveAiChatMemoryBackend,
@@ -239,17 +243,33 @@ export type TitleRepairDeps = {
  * injectable seam, so a registration cannot accidentally rewire the gates
  * (feat-283 call-site discipline); tests drive it through the env mock.
  *
- * The gateway rung reads the KEY directly rather than calling
- * `buildSeekerGatewayModelEntry()` — the two are null/non-null-equivalent by
- * that builder's own contract (it returns null iff the key is unset), and the
- * direct read keeps this ladder genuinely construction-free: the builder
- * constructs a real provider client, which a skip path must never do (review
- * finding, 2026-08-28).
+ * The gateway rung reads the KEY (plus the feat-440 pure allowlist
+ * predicate) directly rather than calling `buildSeekerGatewayModelEntry()` —
+ * the two are null/non-null-equivalent by that builder's own contract (it
+ * returns null iff the key is unset OR the effective base URL fails the
+ * feat-440 host allowlist), and the direct read keeps this ladder genuinely
+ * construction-free: the builder constructs a real provider client, which a
+ * skip path must never do (review finding, 2026-08-28).
  */
 export function resolveTitleRepairSkip(): TitleRepairSkipReason | null {
   if (!isTitleRepairEnabled()) return "flag_disabled"
   if (!isSeekerRouteEnabled()) return "lane_disabled"
   if (env.AI_GATEWAY_CHAT_API_KEY === undefined) return "gateway_unconfigured"
+  // feat-440: a disallowed effective base URL means the builder returns null,
+  // so the run must skip here (same counted enum) rather than reach
+  // buildTitleRepairAgent's defensive throw. Construction-free by design.
+  // The extra enum-only log line disambiguates this cause from a missing key
+  // for operators: the ladder never calls the builder, so the builder's own
+  // `[seeker-gateway]` warn is never emitted on this path.
+  if (
+    !isAllowedAiGatewayChatBaseUrl(
+      env.AI_GATEWAY_CHAT_BASE_URL,
+      env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+    )
+  ) {
+    logEvent("gateway_base_url_not_allowed", {})
+    return "gateway_unconfigured"
+  }
   if (resolveAiChatMemoryBackend() !== "postgres") return "backend_not_postgres"
   if (!canAiChatDataPersist()) return "persistence_unavailable"
   if (env.DATABASE_URL === undefined) return "database_url_missing"
