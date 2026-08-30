@@ -27,8 +27,17 @@ export interface FetchResult {
   notModified: boolean
 }
 
+export type FetchDestinationPolicy = {
+  expectedHost: string
+  allowPatterns: readonly string[]
+}
+
 export interface Fetcher {
-  fetch(url: string, conditional?: ConditionalHeaders): Promise<FetchResult>
+  fetch(
+    url: string,
+    conditional?: ConditionalHeaders,
+    destinationPolicy?: FetchDestinationPolicy,
+  ): Promise<FetchResult>
 }
 
 export interface HttpCacheEntry {
@@ -86,9 +95,11 @@ export interface RawDocumentReader {
     sourceKey?: string
     limit?: number
     includeIngested?: boolean
+    /** When present, return only rows whose corpus document is not fully embedded with this model. */
+    targetEmbeddingModel?: string
   }): Promise<PendingRawDocument[]>
   /** Mark these `raw_documents` rows consumed (set `ingested_at`). */
-  markIngested(ids: string[]): Promise<void>
+  markIngested(ids: string[], attemptedModel?: string): Promise<void>
 }
 
 export interface Embedder {
@@ -172,6 +183,7 @@ export interface CorpusWriteStore {
   replaceDocument(
     doc: NormalizedDocument,
     chunks: EmbeddedChunk[],
+    staging?: { rawDocumentId: string; attemptedModel: string },
   ): Promise<void>
 }
 

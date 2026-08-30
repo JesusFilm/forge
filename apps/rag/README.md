@@ -9,6 +9,9 @@ live in [`docs/ops/environment-and-secrets.md`](docs/ops/environment-and-secrets
 Fresh database migration, local pgvector, Railway config-as-code, and
 metadata-only production verification live in
 [`docs/ops/postgres-and-schema.md`](docs/ops/postgres-and-schema.md).
+Source acquisition, indexing, source-scoped reindexing, language maintenance,
+and their production write gates live in
+[`docs/ops/corpus-maintenance.md`](docs/ops/corpus-maintenance.md).
 
 HTTP deployment, public/private reachability, bearer scope, and smoke procedures
 live in [`docs/ops/http-service.md`](docs/ops/http-service.md).

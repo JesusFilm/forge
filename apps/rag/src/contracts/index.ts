@@ -3,6 +3,7 @@ export type * from "./retrieval.js"
 export * from "./serving.js"
 export type * from "./sources.js"
 export type * from "./ports.js"
+export * from "./operational-error.js"
 export type {
   Citation,
   RankedResult,
