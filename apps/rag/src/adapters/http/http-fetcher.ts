@@ -6,6 +6,8 @@ import type {
 } from "../../contracts/index.js"
 import { isIP } from "node:net"
 import { lookup } from "node:dns/promises"
+import { assertAllowedDestinationUrl } from "./destination-policy.js"
+import { RagOperationalError } from "../../contracts/index.js"
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
@@ -52,25 +54,7 @@ async function assertDestination(
   policy: FetchDestinationPolicy | undefined,
   resolver: Resolver,
 ): Promise<URL> {
-  const url = new URL(rawUrl)
-  if (url.protocol !== "http:" && url.protocol !== "https:")
-    throw new Error(
-      `fetch destination refused: unsupported protocol ${url.protocol}`,
-    )
-  if (url.username || url.password)
-    throw new Error(
-      "fetch destination refused: URL credentials are not allowed",
-    )
-  if (policy) {
-    const allowed = policy.allowPatterns.map((pattern) => new RegExp(pattern))
-    if (
-      (allowed.length > 0 && !allowed.some((re) => re.test(url.href))) ||
-      (allowed.length === 0 && url.hostname !== policy.expectedHost)
-    )
-      throw new Error(
-        `fetch destination refused: ${url.href} is outside source policy`,
-      )
-  }
+  const url = assertAllowedDestinationUrl(rawUrl, policy)
   const addresses = isIP(url.hostname)
     ? [{ address: url.hostname, family: isIP(url.hostname) }]
     : await resolver(url.hostname)
@@ -78,7 +62,8 @@ async function assertDestination(
     addresses.length === 0 ||
     addresses.some(({ address }) => privateAddress(address))
   )
-    throw new Error(
+    throw new RagOperationalError(
+      "fetch_destination_refused",
       `fetch destination refused: ${url.hostname} resolves to a private or reserved address`,
     )
   return url
@@ -130,14 +115,21 @@ export class HttpFetcher implements Fetcher {
         const location = response.headers.get("location")
         if (!location) break
         if (redirects === (this.options.maxRedirects ?? 5))
-          throw new Error("fetch destination refused: redirect limit exceeded")
+          throw new RagOperationalError(
+            "fetch_destination_refused",
+            "fetch destination refused: redirect limit exceeded",
+          )
         destination = await assertDestination(
           new URL(location, destination).href,
           destinationPolicy,
           resolver,
         )
       }
-      if (!response) throw new Error("fetch failed before receiving a response")
+      if (!response)
+        throw new RagOperationalError(
+          "fetch_failed",
+          "fetch failed before receiving a response",
+        )
       const metadata = {
         status: response.status,
         etag: response.headers.get("etag"),

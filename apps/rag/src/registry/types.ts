@@ -75,5 +75,10 @@ export interface SourceEntry {
   defaultTags: string[]
   defaultCategory: string | null
   rights: string | null
+  /** Operational acquisition state. Omit when the source is ready to acquire. */
+  acquisition?: {
+    enabled: false
+    reason: string
+  }
   crawl: CrawlPolicy
 }

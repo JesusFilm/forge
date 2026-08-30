@@ -41,6 +41,19 @@ describe("maintenance command arguments", () => {
     expect(() =>
       parseIndexArgs(["--source", "cru", "--force-all", "--limit", "10"]),
     ).toThrow(/cannot be combined/)
+    expect(() =>
+      parseIndexArgs(["--production", "--source", "cru", "--apply"]),
+    ).toThrow(/requires an explicit --limit/)
+    expect(
+      parseIndexArgs([
+        "--production",
+        "--source",
+        "cru",
+        "--apply",
+        "--limit",
+        "100",
+      ]),
+    ).toMatchObject({ apply: true, limit: 100 })
   })
 
   it("makes sweep and revert read-only unless apply is explicit", () => {
@@ -81,5 +94,26 @@ describe("maintenance command arguments", () => {
     expect(() =>
       parseLanguageArgs(["--all", "--mode", "full", "--limit", "10"]),
     ).toThrow(/cannot be combined with --limit/)
+    expect(() =>
+      parseLanguageArgs(["--production", "--source", "cru", "--apply"]),
+    ).toThrow(/requires an explicit --limit/)
+    expect(() =>
+      parseLanguageArgs(["--production", "--all", "--apply", "--limit", "10"]),
+    ).toThrow(/requires --source/)
+    expect(
+      parseLanguageArgs([
+        "--production",
+        "--revert",
+        "changes.jsonl",
+        "--apply",
+        "--limit",
+        "25",
+      ]),
+    ).toEqual({
+      kind: "revert",
+      changelog: "changes.jsonl",
+      apply: true,
+      limit: 25,
+    })
   })
 })

@@ -2,6 +2,7 @@ import { ingestPending } from "../src/indexing/index.js"
 import { parseIndexArgs } from "./lib/maintenance-args.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
 import { getSource } from "../src/registry/index.js"
+import { RagOperationalError } from "../src/contracts/index.js"
 
 async function main() {
   const argv = process.argv.slice(2)
@@ -9,7 +10,10 @@ async function main() {
   const args = parseIndexArgs(argv)
   if (production) installProductionEnvironment(process.env, args.apply)
   if (args.source && !getSource(args.source))
-    throw new Error(`unknown source '${args.source}'`)
+    throw new RagOperationalError(
+      "argument_invalid",
+      `unknown source '${args.source}'`,
+    )
   const { wire } = await import("../src/main.js")
   const wiring = wire()
   try {

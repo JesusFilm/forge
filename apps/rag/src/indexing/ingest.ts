@@ -22,6 +22,7 @@ import type {
 import { getSource, type SourceEntry } from "../registry/index.js"
 import { normalizeDocument } from "./normalize.js"
 import { chunkDocument } from "./chunk.js"
+import { RagOperationalError } from "../contracts/index.js"
 
 const MAX_INGEST_CONCURRENCY = 4
 
@@ -147,7 +148,10 @@ async function ingestDocument(
   if (chunks.length === 0)
     return { status: "skipped-no-chunks", chunks: 0, warning }
 
-  await deps.writer.replaceDocument(doc, chunks)
+  await deps.writer.replaceDocument(doc, chunks, {
+    rawDocumentId: raw.id,
+    attemptedModel: deps.embedder.model,
+  })
   return {
     status: existing ? "updated" : "inserted",
     chunks: chunks.length,
@@ -178,7 +182,8 @@ function validateConcurrency(value: number): void {
     value < 1 ||
     value > MAX_INGEST_CONCURRENCY
   ) {
-    throw new Error(
+    throw new RagOperationalError(
+      "argument_invalid",
       `ingestPending: concurrency must be a safe integer from 1 to ` +
         `${MAX_INGEST_CONCURRENCY}, got ${value}`,
     )
@@ -258,7 +263,12 @@ export async function ingestPending(
             force,
             forceAll,
           })
-          await deps.reader.markIngested([raw.id], deps.embedder.model)
+          await deps.reader.markIngested(
+            [raw.id],
+            result.status === "inserted" || result.status === "updated"
+              ? undefined
+              : deps.embedder.model,
+          )
           recordResult(summary, raw, result, opts.onProgress)
         }
       } catch (error) {

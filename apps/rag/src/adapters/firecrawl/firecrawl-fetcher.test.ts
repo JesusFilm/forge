@@ -13,7 +13,11 @@ describe("FirecrawlFetcher", () => {
             success: true,
             data: {
               rawHtml: "<html>rendered</html>",
-              metadata: { statusCode: 200 },
+              metadata: {
+                statusCode: 200,
+                sourceURL: "https://walled.test",
+                url: "https://walled.test/final",
+              },
             },
           }),
           { status: 200 },
@@ -41,6 +45,62 @@ describe("FirecrawlFetcher", () => {
       maxAge: 0,
       storeInCache: false,
     })
+  })
+
+  it("refuses a provider-followed destination outside the source policy", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                rawHtml: "<html>foreign</html>",
+                metadata: {
+                  statusCode: 200,
+                  sourceURL: "https://walled.test/article",
+                  url: "https://foreign.test/article",
+                },
+              },
+            }),
+          ),
+      ),
+    )
+
+    await expect(
+      new FirecrawlFetcher({ apiKey: "fc-test" }).fetch(
+        "https://walled.test/article",
+        undefined,
+        { expectedHost: "walled.test", allowPatterns: [] },
+      ),
+    ).rejects.toMatchObject({ code: "fetch_destination_refused" })
+  })
+
+  it("fails closed when Firecrawl does not attest the final URL", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                rawHtml: "<html>unknown destination</html>",
+                metadata: { statusCode: 200 },
+              },
+            }),
+          ),
+      ),
+    )
+
+    await expect(
+      new FirecrawlFetcher({ apiKey: "fc-test" }).fetch(
+        "https://walled.test/article",
+        undefined,
+        { expectedHost: "walled.test", allowPatterns: [] },
+      ),
+    ).rejects.toThrow(/did not attest the final URL/)
   })
 
   it("throws on provider and payload failures", async () => {

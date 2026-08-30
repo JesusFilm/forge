@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-18"
 duration: 5
 depends_on: ["feat-430"]
-blocks: ["feat-432"]
+blocks: ["feat-432", "feat-445", "feat-446"]
 tags: ["rag", "acquisition", "indexing"]
 ---
 
@@ -52,3 +52,11 @@ fresh-snapshot force selection, bounded-sweep refusal, source-scoped redirect
 and sitemap destination checks, private-address rejection, and consistent
 CDATA decoding. The migration and adapter behavior were verified against a
 clean disposable PostgreSQL database.
+
+The final review-fix pass made deferred-source acquisition state executable,
+validated Firecrawl's provider-reported final URL against source policy,
+committed document replacement and model-attempt state atomically, and required
+explicit source-scoped limits for production maintenance writes. The direct
+HTTP DNS-rebinding residual risk and its expansion triggers are recorded in the
+operator runbook. Broader registry-test consolidation and typed-error cleanup
+continue in `feat-445` and `feat-446`.

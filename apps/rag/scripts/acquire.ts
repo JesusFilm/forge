@@ -1,5 +1,11 @@
 import { acquireSource } from "../src/acquisition/index.js"
-import { allSources, getSource } from "../src/registry/index.js"
+import {
+  acquirableSources,
+  acquisitionDisabledReason,
+  disabledAcquisitionSources,
+  getSource,
+} from "../src/registry/index.js"
+import { RagOperationalError } from "../src/contracts/index.js"
 import { parseAcquireArgs } from "./lib/maintenance-args.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
 
@@ -8,9 +14,31 @@ async function main() {
   const production = argv.includes("--production")
   const args = parseAcquireArgs(argv)
   if (production) installProductionEnvironment(process.env, args.apply)
-  const entries = args.all ? allSources() : [getSource(args.source as string)]
+  const entries = args.all
+    ? acquirableSources()
+    : [getSource(args.source as string)]
   if (entries.some((entry) => !entry))
-    throw new Error(`unknown source '${args.source}'`)
+    throw new RagOperationalError(
+      "argument_invalid",
+      `unknown source '${args.source}'`,
+    )
+  if (!args.all && entries[0]) {
+    const reason = acquisitionDisabledReason(entries[0])
+    if (reason)
+      throw new RagOperationalError(
+        "acquisition_source_disabled",
+        `source '${entries[0].key}' is not acquirable: ${reason}`,
+      )
+  }
+  if (args.all)
+    for (const entry of disabledAcquisitionSources())
+      console.log(
+        JSON.stringify({
+          source: entry.key,
+          skipped: "acquisition-disabled",
+          reason: acquisitionDisabledReason(entry),
+        }),
+      )
   const { wire } = await import("../src/main.js")
   const wiring = wire()
   try {

@@ -245,6 +245,10 @@ export const everystudentSr: SourceEntry = {
   defaultCategory: "article",
   rights:
     "© StudentskiKutak.com (Cru) — partner ministry content; used for retrieval/attribution.",
+  acquisition: {
+    enabled: false,
+    reason: "DNS is blackholed from the production network",
+  },
   crawl: {
     baseUrl: "https://www.studentskikutak.com",
     // No `fetchStrategy`: verified 2026-07-29 that plain HTTP (Apache/HTTP2, no

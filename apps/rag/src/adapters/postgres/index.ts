@@ -18,6 +18,7 @@ import type {
   SearchFilter,
   SourceRecord,
 } from "../../contracts/index.js"
+import { RagOperationalError } from "../../contracts/index.js"
 
 import { assertQueryDimensions, toVectorLiteral } from "./vector.js"
 
@@ -395,6 +396,7 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
   async replaceDocument(
     doc: NormalizedDocument,
     chunks: EmbeddedChunk[],
+    staging?: { rawDocumentId: string; attemptedModel: string },
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       const source = await tx.source.findUnique({
@@ -402,7 +404,8 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
         select: { id: true },
       })
       if (!source) {
-        throw new Error(
+        throw new RagOperationalError(
+          "corpus_state_invalid",
           `replaceDocument: unknown source key '${doc.sourceKey}' — call upsertSource first`,
         )
       }
@@ -468,6 +471,15 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
           ),
         )}
       `)
+      if (staging)
+        await tx.rawDocument.update({
+          where: { id: staging.rawDocumentId },
+          data: {
+            ingestedAt: new Date(),
+            indexAttemptedAt: new Date(),
+            indexAttemptedModel: staging.attemptedModel,
+          },
+        })
     })
   }
 }

@@ -12,6 +12,11 @@ corpus.
   `JesusFilm/jesusfilm-rag#164`.
 - Every index invocation must name exactly one scope: `--source <source-key>`
   or the deliberately explicit `--all`.
+- Every production index or language write must include an explicit positive
+  `--limit`. Production `--force-all` is therefore refused; use bounded
+  resumable `--force` batches. A production reversal also refuses a changelog
+  containing more rows than its explicit limit. Production language sweeps are
+  source-scoped because a per-source limit would not bound an `--all` run.
 - Omit `--apply` for a dry run. A write requires `--apply`; production writes
   additionally require `--production`, exact `JFRAG_ALLOW_PROD_WRITE=1`, and an
   exact `JFRAG_EXPECTED_POSTGRES_HOST` match.
@@ -33,6 +38,24 @@ doppler run --project forge-rag --config prd -- \
 
 The preflight reports names and status only. For read-only inspection use the
 `production-read` target instead.
+
+## DNS-rebinding decision
+
+The direct HTTP adapter checks that a destination resolves only to public
+addresses before each request and repeats that check for every redirect. It
+does not pin the validated address to Node's later connection lookup. The team
+accepts that DNS time-of-check/time-of-use residual risk for the current
+maintenance surface because URLs come only from reviewed, compiled registry
+entries and commands are operator-run; no public or runtime-configured URL can
+reach the fetcher.
+
+This acceptance is narrow. Protocol, URL credentials, source allow patterns,
+redirect destinations, and private/reserved addresses remain fail-closed. Add
+connection-level address pinning or route acquisition through an egress proxy
+before introducing runtime-managed sources, public URL input, or deployment in
+a network where crawler egress can reach sensitive internal services. A
+registered domain transfer, expiry, or DNS compromise is also a reason to stop
+that source until its ownership and resolution are re-verified.
 
 ## Acquire and stage
 
@@ -68,8 +91,11 @@ pnpm --filter @forge/rag index --source <source-key> --limit 10 --apply
 
 The first command connects read-only and reports the actual bounded candidate
 count and staging-row IDs for the requested source/model selection; it does not
-embed, mark staging rows, or write corpus data. The applied run embeds, writes the corpus, and
-records the canonical embedding model on each embedding row. Repeating an
+embed, mark staging rows, or write corpus data. The applied run embeds, writes
+the corpus, and records the canonical embedding model on each embedding row.
+Document/chunk replacement and the staging row's attempted-model state commit
+in the same database transaction, so overlapping model runs cannot leave one
+model's vectors paired with another run's completion marker. Repeating an
 ordinary run drains no already-ingested staging rows, and unchanged content is
 deduplicated by content hash.
 
@@ -93,7 +119,8 @@ retrying it under a different model or with corrected source content.
 for an intentional same-model chunker rebuild. It cannot be combined with
 `--limit`: without persisted run state, bounded force-all runs would repeatedly
 select the same prefix. For production, use
-`index:production` under the same Doppler injection and write preflight shown
+`index:production` with an explicit `--limit` under the same Doppler injection
+and write preflight shown
 above. Record source key, limit, model identifier, summary counts, and pass/fail
 only.
 
@@ -151,6 +178,10 @@ changelog's proposed language. Production uses
 `language:sweep:production` under Doppler injection and the production write
 gate. Archive or destroy the changelog according to the approved evidence
 policy after the rollback window closes.
+
+For production apply, add a positive `--limit` to both sweeps and reversals.
+The reversal refuses the entire operation when the validated changelog exceeds
+that cap; it never silently truncates the requested rollback.
 
 ## Prisma migration and checks
 

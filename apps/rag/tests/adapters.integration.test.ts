@@ -158,6 +158,39 @@ describe("Prisma-backed RAG adapters", () => {
     ).toHaveLength(2)
   })
 
+  it("records the attempted model in the document replacement transaction", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("atomic model state", "atomic-model"))
+    const [pending] = await rawReader.listPending({ sourceKey: key })
+
+    await writes.replaceDocument(
+      {
+        ...document("atomic-model", "en"),
+        canonicalUrl: pending.canonicalUrl,
+      },
+      [chunk(0, "Atomic model state", 0, "fixture/model-atomic")],
+      {
+        rawDocumentId: pending.id,
+        attemptedModel: "fixture/model-atomic",
+      },
+    )
+
+    await expect(
+      db.rawDocument.findUniqueOrThrow({ where: { id: pending.id } }),
+    ).resolves.toMatchObject({
+      ingestedAt: expect.any(Date),
+      indexAttemptedModel: "fixture/model-atomic",
+    })
+    await expect(
+      rawReader.listPending({
+        sourceKey: key,
+        includeIngested: true,
+        targetEmbeddingModel: "fixture/model-atomic",
+      }),
+    ).resolves.toEqual([])
+  })
+
   it("atomically replaces chunks, preserves language, and retrieves the fixture", async () => {
     const sourceId = await writes.upsertSource(source)
     await writes.replaceDocument(document("v1", "en"), [

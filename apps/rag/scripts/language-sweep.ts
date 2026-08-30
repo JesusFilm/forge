@@ -15,6 +15,7 @@ import {
 import { cleanText } from "../src/indexing/normalize.js"
 import { decideLanguageFromDetection } from "../src/indexing/decide-language.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
+import { RagOperationalError } from "../src/contracts/index.js"
 
 async function pool<T>(
   items: readonly T[],
@@ -66,11 +67,18 @@ async function main() {
               JSON.parse(line),
             ) as LanguageChange
           } catch (error) {
-            throw new Error(`invalid language changelog line ${index + 1}`, {
-              cause: error,
-            })
+            throw new RagOperationalError(
+              "argument_invalid",
+              `invalid language changelog line ${index + 1}`,
+              { cause: error },
+            )
           }
         })
+      if (args.limit !== undefined && changes.length > args.limit)
+        throw new RagOperationalError(
+          "argument_invalid",
+          `language changelog has ${changes.length} rows, above --limit ${args.limit}`,
+        )
       const matched = await previewReverts(store, changes)
       if (!args.apply) {
         console.log(
@@ -88,7 +96,10 @@ async function main() {
     }
     const entries = args.all ? allSources() : [getSource(args.source as string)]
     if (entries.some((entry) => !entry))
-      throw new Error(`unknown source '${args.source}'`)
+      throw new RagOperationalError(
+        "argument_invalid",
+        `unknown source '${args.source}'`,
+      )
     const stamp = new Date().toISOString().replaceAll(":", "-")
     const auditRunId = `language-sweep-${stamp}`
     const outDir = args.apply

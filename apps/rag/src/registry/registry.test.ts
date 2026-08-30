@@ -7,6 +7,9 @@
 import { describe, expect, it } from "vitest"
 import {
   SOURCES,
+  acquirableSources,
+  acquisitionDisabledReason,
+  disabledAcquisitionSources,
   allSources,
   getSource,
   resolveFetchStrategy,
@@ -229,6 +232,23 @@ describe("SourceRegistry", () => {
   it("registry keys are unique", () => {
     const keys = SOURCES.map((s) => s.key)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it("excludes explicitly deferred sources from operational acquisition", () => {
+    expect(acquirableSources().map(({ key }) => key)).not.toContain(
+      "everystudent-sr",
+    )
+    expect(acquirableSources().map(({ key }) => key)).not.toContain(
+      "everystudent-he",
+    )
+    expect(acquisitionDisabledReason(getSource("everystudent-he")!)).toMatch(
+      /operator decision/,
+    )
+    expect(
+      disabledAcquisitionSources()
+        .map(({ key }) => key)
+        .sort(),
+    ).toEqual(["everystudent-he", "everystudent-sr"])
   })
 
   it("seedUrls() yields absolute, same-origin, de-duplicated URLs", () => {

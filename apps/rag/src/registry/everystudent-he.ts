@@ -331,6 +331,10 @@ export const everystudentHe: SourceEntry = {
   // mentions Cru at all. See the header's rights section.
   rights:
     "© המכללה למקרא (The Bible College) / igod.co.il — partner ministry content; used for retrieval/attribution.",
+  acquisition: {
+    enabled: false,
+    reason: "Ownership and corpus scope require an explicit operator decision",
+  },
   crawl: {
     // Bare apex: www.igod.co.il 301-redirects here, and all 1,182 sitemap
     // <loc>s use the apex. `co.il` is the registrable suffix.

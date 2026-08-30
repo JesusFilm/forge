@@ -183,6 +183,7 @@ export interface CorpusWriteStore {
   replaceDocument(
     doc: NormalizedDocument,
     chunks: EmbeddedChunk[],
+    staging?: { rawDocumentId: string; attemptedModel: string },
   ): Promise<void>
 }
 

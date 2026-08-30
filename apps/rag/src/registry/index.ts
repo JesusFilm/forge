@@ -280,6 +280,19 @@ export function allSources(): readonly SourceEntry[] {
   return SOURCES
 }
 
+/** Sources that an operator may acquire with the current registry policy. */
+export function acquirableSources(): readonly SourceEntry[] {
+  return SOURCES.filter((source) => source.acquisition?.enabled !== false)
+}
+
+export function disabledAcquisitionSources(): readonly SourceEntry[] {
+  return SOURCES.filter((source) => source.acquisition?.enabled === false)
+}
+
+export function acquisitionDisabledReason(entry: SourceEntry): string | null {
+  return entry.acquisition?.enabled === false ? entry.acquisition.reason : null
+}
+
 /** The source's declared fetch strategy; absent means plain HTTP (the
  *  zero-config norm — Firecrawl is strictly opt-in, per source, at slice time).
  *  The single decision point for strategy selection: main.ts's fetcherFor()

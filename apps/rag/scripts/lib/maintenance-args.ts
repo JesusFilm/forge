@@ -1,3 +1,8 @@
+import { RagOperationalError } from "../../src/contracts/index.js"
+
+const invalidArgument = (message: string): RagOperationalError =>
+  new RagOperationalError("argument_invalid", message)
+
 const valueAfter = (argv: string[], flag: string): string | undefined => {
   const index = argv.indexOf(flag)
   const value = index < 0 ? undefined : argv[index + 1]
@@ -12,16 +17,17 @@ function validateArgs(
   const known = new Set([...values, ...booleans, "--production"])
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index]
-    if (!arg.startsWith("--")) throw new Error(`unexpected argument '${arg}'`)
-    if (!known.has(arg)) throw new Error(`unknown flag '${arg}'`)
+    if (!arg.startsWith("--"))
+      throw invalidArgument(`unexpected argument '${arg}'`)
+    if (!known.has(arg)) throw invalidArgument(`unknown flag '${arg}'`)
     if (booleans.includes(arg) && argv.indexOf(arg) !== index)
-      throw new Error(`${arg} may only be specified once`)
+      throw invalidArgument(`${arg} may only be specified once`)
     if (values.includes(arg)) {
       const value = argv[++index]
       if (!value || value.startsWith("--"))
-        throw new Error(`${arg} requires a value`)
+        throw invalidArgument(`${arg} requires a value`)
       if (argv.indexOf(arg) !== index - 1)
-        throw new Error(`${arg} may only be specified once`)
+        throw invalidArgument(`${arg} may only be specified once`)
     }
   }
 }
@@ -31,7 +37,7 @@ const positive = (argv: string[], flag: string): number | undefined => {
   if (raw === undefined) return undefined
   const value = Number(raw)
   if (!Number.isSafeInteger(value) || value < 1)
-    throw new Error(`${flag} must be a positive integer`)
+    throw invalidArgument(`${flag} must be a positive integer`)
   return value
 }
 
@@ -52,7 +58,7 @@ export function parseAcquireArgs(argv: string[]): AcquireArgs {
   const all = argv.includes("--all")
   const source = valueAfter(argv, "--source")
   if (all === Boolean(source))
-    throw new Error("use exactly one of --source <key> or --all")
+    throw invalidArgument("use exactly one of --source <key> or --all")
   const apply = argv.includes("--apply")
   return {
     all,
@@ -82,14 +88,19 @@ export function parseIndexArgs(argv: string[]): IndexArgs {
   const all = argv.includes("--all")
   const source = valueAfter(argv, "--source")
   if (all === Boolean(source))
-    throw new Error("use exactly one of --source <key> or --all")
+    throw invalidArgument("use exactly one of --source <key> or --all")
   const concurrency = positive(argv, "--concurrency") ?? 4
-  if (concurrency > 4) throw new Error("--concurrency must be in 1..4")
+  if (concurrency > 4) throw invalidArgument("--concurrency must be in 1..4")
   const forceAll = argv.includes("--force-all")
   const limit = positive(argv, "--limit")
   if (forceAll && limit !== undefined)
-    throw new Error(
+    throw invalidArgument(
       "--force-all cannot be combined with --limit; use --force for resumable bounded reindexing",
+    )
+  const apply = argv.includes("--apply")
+  if (argv.includes("--production") && apply && limit === undefined)
+    throw invalidArgument(
+      "production indexing with --apply requires an explicit --limit",
     )
   return {
     all,
@@ -98,7 +109,7 @@ export function parseIndexArgs(argv: string[]): IndexArgs {
     concurrency,
     force: argv.includes("--force") || forceAll,
     forceAll,
-    apply: argv.includes("--apply"),
+    apply,
   }
 }
 
@@ -114,7 +125,7 @@ export type LanguageArgs =
       outDir?: string
       afterId?: string
     }
-  | { kind: "revert"; changelog: string; apply: boolean }
+  | { kind: "revert"; changelog: string; apply: boolean; limit?: number }
 
 export function parseLanguageArgs(argv: string[]): LanguageArgs {
   validateArgs(
@@ -135,36 +146,53 @@ export function parseLanguageArgs(argv: string[]): LanguageArgs {
     const conflicting = [
       "--source",
       "--mode",
-      "--limit",
       "--concurrency",
       "--out-dir",
       "--after-id",
       "--all",
     ].find((flag) => argv.includes(flag))
     if (conflicting)
-      throw new Error(`${conflicting} cannot be combined with --revert`)
+      throw invalidArgument(`${conflicting} cannot be combined with --revert`)
+    const apply = argv.includes("--apply")
+    const limit = positive(argv, "--limit")
+    if (argv.includes("--production") && apply && limit === undefined)
+      throw invalidArgument(
+        "production language revert with --apply requires an explicit --limit",
+      )
     return {
       kind: "revert",
       changelog: revert,
-      apply: argv.includes("--apply"),
+      apply,
+      limit,
     }
   }
   const all = argv.includes("--all")
   const source = valueAfter(argv, "--source")
   if (all === Boolean(source))
-    throw new Error("use exactly one of --source <key> or --all")
+    throw invalidArgument("use exactly one of --source <key> or --all")
   const mode = valueAfter(argv, "--mode") ?? "blanks"
   if (mode !== "blanks" && mode !== "full")
-    throw new Error("--mode must be blanks or full")
+    throw invalidArgument("--mode must be blanks or full")
   const concurrency = positive(argv, "--concurrency") ?? 3
-  if (concurrency > 4) throw new Error("--concurrency must be in 1..4")
+  if (concurrency > 4) throw invalidArgument("--concurrency must be in 1..4")
   const afterId = valueAfter(argv, "--after-id")
   if (all && afterId)
-    throw new Error("--after-id requires --source; cursors are source-scoped")
+    throw invalidArgument(
+      "--after-id requires --source; cursors are source-scoped",
+    )
   const limit = positive(argv, "--limit")
   if (all && mode === "full" && limit !== undefined)
-    throw new Error(
+    throw invalidArgument(
       "--all --mode full cannot be combined with --limit; run each source with --after-id",
+    )
+  const apply = argv.includes("--apply")
+  if (argv.includes("--production") && apply && all)
+    throw invalidArgument(
+      "production language sweep with --apply requires --source",
+    )
+  if (argv.includes("--production") && apply && limit === undefined)
+    throw invalidArgument(
+      "production language sweep with --apply requires an explicit --limit",
     )
   return {
     kind: "sweep",
@@ -173,7 +201,7 @@ export function parseLanguageArgs(argv: string[]): LanguageArgs {
     mode,
     limit,
     concurrency,
-    apply: argv.includes("--apply"),
+    apply,
     outDir: valueAfter(argv, "--out-dir"),
     afterId,
   }
