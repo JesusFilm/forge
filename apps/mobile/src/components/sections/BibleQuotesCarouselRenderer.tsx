@@ -31,6 +31,7 @@ import {
   composeCardLabel,
   fitPassageCardRegions,
   passageCardStackHeight,
+  scrimRampStart,
   scrimSolidStop,
   verseTypography,
 } from "../../lib/bibleCardFit"
@@ -299,9 +300,12 @@ function QuoteCard({
           importantForAccessibility="no"
         />
       )}
+      {/* Three stops, not two: the veil HOLDS at its top value until one band
+          above the text, then turns solid. Ramping from the card's edge would
+          dim the still across the whole region it actually occupies. */}
       <LinearGradient
-        colors={[scrimTop, bgColor]}
-        locations={[0, solidStop]}
+        colors={[scrimTop, scrimTop, bgColor]}
+        locations={[0, scrimRampStart(solidStop), solidStop]}
         style={styles.gradient}
         pointerEvents="none"
       />

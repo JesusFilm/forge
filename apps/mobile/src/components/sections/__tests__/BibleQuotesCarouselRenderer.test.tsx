@@ -51,6 +51,7 @@ import {
   composeCardLabel,
   fitPassageCardRegions,
   passageCardStackHeight,
+  scrimRampStart,
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
@@ -784,7 +785,7 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
 
     // The scrim's SOLID stop is the card colour, and the whole text stack sits
     // below it, so a pure-white still never reaches any text pixel.
-    const solid = parseColor(colors[1] as string)
+    const solid = parseColor(colors[2] as string)
     const regions: Array<[string, Rgba]> = [
       ["verse", regionColor(renderer, "Let’s make man")],
       ["reference", regionColor(renderer, "GENESIS 1:26-27")],
@@ -832,8 +833,25 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
     // Equality, not an upper bound: with the component's own typography the
     // rendered stop IS the stack top, and `<=` would still pass if the geometry
     // silently drifted lower.
-    expect(locations[1]).toBeCloseTo(stackTop, 10)
-    expect(locations[1]).toBeGreaterThan(0)
+    expect(locations[2]).toBeCloseTo(stackTop, 10)
+    expect(locations[2]).toBeGreaterThan(0)
+  })
+
+  it("holds the veil until one band above the text, rather than ramping from the edge", () => {
+    // The still occupies the region ABOVE the text. Ramping across all of it
+    // would leave the artwork already half-buried by mid-card; the transition
+    // belongs in a band immediately above the words it protects.
+    const renderer = render([{ reference: "John 3:16", text: null }])
+    const { colors, locations } = scrim(renderer)
+
+    expect(colors).toHaveLength(3)
+    // The first two stops are the SAME colour — that is what holds the veil.
+    expect(colors[0]).toBe(colors[1])
+    expect(locations).toHaveLength(3)
+    expect(locations[0]).toBe(0)
+    expect(locations[1]).toBeCloseTo(scrimRampStart(locations[2] as number), 10)
+    // A real card leaves a band of still at the light top value.
+    expect(locations[1] as number).toBeGreaterThan(0)
   })
 
   it("never lets the scrim sit lighter than the fixed stop it replaced", () => {
@@ -842,7 +860,7 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
     const renderer = render([
       { reference: "John 3:16", text: null, imageUrl: STILL_A },
     ])
-    expect(scrim(renderer).locations[1]).toBeLessThanOrEqual(
+    expect(scrim(renderer).locations[2]).toBeLessThanOrEqual(
       SCRIM_MAX_SOLID_STOP,
     )
   })

@@ -108,6 +108,17 @@ export const SCRIM_MAX_SOLID_STOP = 0.6
 // Above zero: a gradient's stops must increase.
 const SCRIM_MIN_SOLID_STOP = 0.02
 
+/**
+ * Where the scrim STARTS turning solid: one band above the text, not the card's
+ * top edge. Ramping the whole way up dims the still across the entire region it
+ * occupies; holding the veil until here leaves that region legible as artwork.
+ */
+export const SCRIM_RAMP_HEIGHT = 0.1
+
+export function scrimRampStart(solidStop: number): number {
+  return Math.max(0, solidStop - SCRIM_RAMP_HEIGHT)
+}
+
 export function scrimSolidStop(
   cardHeight: number,
   stackHeight: number,
