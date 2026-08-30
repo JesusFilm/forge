@@ -21,6 +21,12 @@ const compile = (patterns: string[] | undefined): RegExp[] =>
 const matchesAny = (url: string, res: RegExp[]): boolean =>
   res.some((re) => re.test(url))
 
+const locText = (text: string): string =>
+  text
+    .trim()
+    .replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, "$1")
+    .trim()
+
 /**
  * A discovered URL is kept iff it is allowed (or no allow list is set), looks
  * like a content article (or no articleHints are set), and is not blocked.
@@ -63,6 +69,10 @@ export async function discoverUrls(
   const allow = compile(policy.allow)
   const block = compile(policy.block)
   const hints = compile(policy.articleHints)
+  const destinationPolicy = {
+    expectedHost: new URL(policy.baseUrl).hostname,
+    allowPatterns: policy.allow ?? [],
+  }
 
   const queue = (policy.sitemaps ?? []).map(
     (s) => new URL(s, policy.baseUrl).href,
@@ -76,7 +86,7 @@ export async function discoverUrls(
     const sm = queue.shift() as string
     let res
     try {
-      res = await deps.fetcher.fetch(sm)
+      res = await deps.fetcher.fetch(sm, undefined, destinationPolicy)
     } catch (error) {
       sitemapsFetched++
       const message = error instanceof Error ? error.message : String(error)
@@ -92,16 +102,23 @@ export async function discoverUrls(
 
     // <sitemapindex> → enqueue child sitemaps (deduped).
     for (const loc of root.querySelectorAll("sitemap loc")) {
-      const rawChild = loc.text
-        .trim()
-        .replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, "$1")
-        .trim()
+      const rawChild = locText(loc.text)
       if (!rawChild) continue
       let child: string
       try {
         const parsed = new URL(rawChild, sm)
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
           continue
+        if (
+          (allow.length > 0 && !matchesAny(parsed.href, allow)) ||
+          (allow.length === 0 &&
+            parsed.hostname !== destinationPolicy.expectedHost)
+        ) {
+          opts.onProgress?.(
+            `  ⤫ sitemap child from ${sm} — outside source policy`,
+          )
+          continue
+        }
         child = parsed.href
       } catch {
         opts.onProgress?.(`  ⤫ sitemap child from ${sm} — invalid URL`)
@@ -113,7 +130,7 @@ export async function discoverUrls(
     }
     // <urlset> → page candidates.
     for (const loc of root.querySelectorAll("url loc")) {
-      const u = loc.text.trim()
+      const u = locText(loc.text)
       if (!u) continue
       totalSeen++
       if (keepUrl(u, allow, block, hints)) pageUrls.add(u)

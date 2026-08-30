@@ -89,15 +89,22 @@ async function main() {
     const entries = args.all ? allSources() : [getSource(args.source as string)]
     if (entries.some((entry) => !entry))
       throw new Error(`unknown source '${args.source}'`)
-    const outDir = resolve(
-      args.outDir ??
-        process.env.LANGUAGE_SWEEP_OUT_DIR ??
-        "reports/language-sweep",
-    )
-    await mkdir(outDir, { recursive: true })
     const stamp = new Date().toISOString().replaceAll(":", "-")
-    const changelog = resolve(outDir, `changelog-${stamp}.jsonl`)
-    await writeFile(changelog, "")
+    const auditRunId = `language-sweep-${stamp}`
+    const outDir = args.apply
+      ? resolve(
+          args.outDir ??
+            process.env.LANGUAGE_SWEEP_OUT_DIR ??
+            "reports/language-sweep",
+        )
+      : null
+    const changelog = outDir
+      ? resolve(outDir, `changelog-${stamp}.jsonl`)
+      : null
+    if (outDir && changelog) {
+      await mkdir(outDir, { recursive: true })
+      await writeFile(changelog, "")
+    }
     const { wire } = await import("../src/main.js")
     const wiring = wire()
     try {
@@ -145,14 +152,24 @@ async function main() {
             nextCursor: candidates.at(-1)?.id ?? null,
           }),
         )
-        if (args.apply)
-          await applySourceChanges(
+        if (args.apply && changelog) {
+          const applied = await applySourceChanges(
             store,
             entry.key,
             changes,
             (content) => appendFile(changelog, content),
-            wiring.languageDetector.model,
+            { runId: auditRunId, detectorModel: wiring.languageDetector.model },
           )
+          console.log(
+            JSON.stringify({
+              source: entry.key,
+              auditRunId,
+              proposed: changes.length,
+              applied: applied.length,
+              refused: changes.length - applied.length,
+            }),
+          )
+        }
       }
       if (!args.apply) console.log("DRY RUN: no corpus rows changed")
     } finally {

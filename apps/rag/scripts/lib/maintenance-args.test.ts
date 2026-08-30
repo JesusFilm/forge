@@ -78,5 +78,8 @@ describe("maintenance command arguments", () => {
         "00000000-0000-0000-0000-000000000001",
       ]),
     ).toThrow(/source-scoped/)
+    expect(() =>
+      parseLanguageArgs(["--all", "--mode", "full", "--limit", "10"]),
+    ).toThrow(/cannot be combined with --limit/)
   })
 })

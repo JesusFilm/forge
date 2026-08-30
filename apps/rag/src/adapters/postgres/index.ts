@@ -66,6 +66,7 @@ export class PostgresLanguageMaintenanceStore {
   async applyLanguageChanges(
     sourceKey: string,
     changes: ReadonlyArray<Omit<StoredLanguageChange, "sourceKey">>,
+    audit: { runId: string; detectorModel?: string },
   ): Promise<StoredLanguageChange[]> {
     return this.db.$transaction(
       async (tx) => {
@@ -79,7 +80,16 @@ export class PostgresLanguageMaintenanceStore {
             AND d.language IS NOT DISTINCT FROM ${change.oldLanguage}
           RETURNING d.id
         `)
-          if (rows.length) committed.push({ ...change, sourceKey })
+          if (rows.length) {
+            await tx.$executeRaw(Prisma.sql`
+              INSERT INTO language_change_audits
+                (run_id, document_id, source_key, old_language, new_language, detector_model)
+              VALUES
+                (${audit.runId}, ${change.id}::uuid, ${sourceKey}, ${change.oldLanguage},
+                 ${change.newLanguage}, ${audit.detectorModel ?? null})
+            `)
+            committed.push({ ...change, sourceKey })
+          }
         }
         return committed
       },
@@ -272,7 +282,8 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       const ids = await this.db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         WITH latest_raws AS (
           SELECT DISTINCT ON (r.source_key, r.canonical_url)
-            r.id, r.source_key, r.canonical_url, r.fetched_at, r.ingested_at
+            r.id, r.source_key, r.canonical_url, r.fetched_at, r.ingested_at,
+            r.index_attempted_at, r.index_attempted_model
           FROM raw_documents r
           WHERE (${options.sourceKey ?? null}::text IS NULL OR r.source_key = ${options.sourceKey ?? null})
           ORDER BY r.source_key, r.canonical_url, r.fetched_at DESC, r.id DESC
@@ -283,12 +294,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
         LEFT JOIN documents d
           ON d.source_id = s.id AND d.canonical_url = r.canonical_url
         WHERE (
-            (r.ingested_at IS NULL AND (d.id IS NULL OR NOT EXISTS (
-              SELECT 1
-              FROM chunks c
-              JOIN chunk_embeddings e ON e.chunk_id = c.id
-              WHERE c.document_id = d.id
-            ))) OR EXISTS (
+            r.ingested_at IS NULL OR (r.index_attempted_model IS DISTINCT FROM ${options.targetEmbeddingModel} AND EXISTS (
               SELECT 1
               FROM chunks c
               JOIN chunk_embeddings e ON e.chunk_id = c.id
@@ -296,6 +302,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
                 AND e.embedding_model <> ${options.targetEmbeddingModel}
             )
           )
+        )
         ORDER BY r.fetched_at ASC, r.id ASC
         ${options.limit ? Prisma.sql`LIMIT ${options.limit}` : Prisma.empty}
       `)
@@ -329,11 +336,15 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
     }))
   }
 
-  async markIngested(ids: string[]): Promise<void> {
+  async markIngested(ids: string[], attemptedModel?: string): Promise<void> {
     if (ids.length === 0) return
     await this.db.rawDocument.updateMany({
       where: { id: { in: ids } },
-      data: { ingestedAt: new Date() },
+      data: {
+        ingestedAt: new Date(),
+        indexAttemptedAt: new Date(),
+        indexAttemptedModel: attemptedModel,
+      },
     })
   }
 }

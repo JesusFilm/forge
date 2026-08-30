@@ -45,3 +45,10 @@ Port acquisition, staging, normalization, chunking, embedding, indexing, and sou
 ## Resolution
 
 Implemented in [Forge PR #2093](https://github.com/JesusFilm/forge/pull/2093).
+
+Post-review hardening added transactional language-change audit rows, the
+missing document update timestamp, model-specific index-attempt state, safe
+fresh-snapshot force selection, bounded-sweep refusal, source-scoped redirect
+and sitemap destination checks, private-address rejection, and consistent
+CDATA decoding. The migration and adapter behavior were verified against a
+clean disposable PostgreSQL database.

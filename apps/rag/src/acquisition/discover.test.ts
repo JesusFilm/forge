@@ -188,4 +188,32 @@ describe("discoverUrls", () => {
 
     expect(result.urls).toEqual(["https://example.org/learn/x"])
   })
+
+  it("unwraps CDATA page locations", async () => {
+    const fetcher = new FakeFetcher().set(
+      "https://example.org/sitemap_index.xml",
+      ok(urlset("<![CDATA[https://example.org/learn/x]]>")),
+    )
+
+    const result = await discoverUrls({ fetcher }, policy())
+
+    expect(result.urls).toEqual(["https://example.org/learn/x"])
+  })
+
+  it("does not fetch child sitemaps outside the source policy", async () => {
+    const fetcher = new FakeFetcher()
+      .set(
+        "https://example.org/sitemap_index.xml",
+        ok(sitemapIndex("https://internal.test/private.xml")),
+      )
+      .set(
+        "https://internal.test/private.xml",
+        ok(urlset("https://example.org/learn/leaked")),
+      )
+
+    const result = await discoverUrls({ fetcher }, policy())
+
+    expect(result.sitemapsFetched).toBe(1)
+    expect(result.urls).toEqual([])
+  })
 })

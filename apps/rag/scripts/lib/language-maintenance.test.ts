@@ -27,9 +27,15 @@ describe("language maintenance guards", () => {
         { id: "b", oldLanguage: null, newLanguage: "fr" },
       ],
       append,
+      { runId: "run-1" },
     )
 
     expect(store.applyLanguageChanges).toHaveBeenCalledOnce()
+    expect(store.applyLanguageChanges).toHaveBeenCalledWith(
+      "cru",
+      expect.any(Array),
+      { runId: "run-1" },
+    )
     expect(append).toHaveBeenCalledOnce()
     expect(JSON.parse(append.mock.calls[0][0])).toMatchObject({ id: "a" })
   })
@@ -87,6 +93,7 @@ describe("language maintenance guards", () => {
         async () => {
           throw new Error("audit unavailable")
         },
+        { runId: "run-2" },
       ),
     ).rejects.toThrow("audit unavailable")
     expect(store.revertLanguageChanges).toHaveBeenCalledWith([

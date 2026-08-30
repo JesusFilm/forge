@@ -282,6 +282,36 @@ describe("Prisma-backed RAG adapters", () => {
     expect(selected.id).not.toBe(older.id)
   })
 
+  it("selects a fresh snapshot even when the document already uses the target model", async () => {
+    await resetCorpusFixture()
+    const slug = `target-snapshot-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("older snapshot", slug))
+    const [older] = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested([older.id])
+    await writes.replaceDocument(
+      { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, "Target model", 0, "fixture/model-target")],
+    )
+    await rawStore.putRawDocument({
+      ...raw("fresh changed snapshot", slug),
+      fetch: {
+        ...raw("fresh changed snapshot", slug).fetch,
+        fetchedAt: "2026-08-28T02:00:00.000Z",
+      },
+    })
+
+    const selected = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected).toHaveLength(1)
+    expect(selected[0].rawContent).toBe("fresh changed snapshot")
+  })
+
   it("does not let drained non-indexable residue starve forced batches", async () => {
     await resetCorpusFixture()
     const residueSlug = `residue-${crypto.randomUUID()}`
@@ -313,6 +343,42 @@ describe("Prisma-backed RAG adapters", () => {
     ])
   })
 
+  it("does not repeatedly select an attempted stale-model snapshot", async () => {
+    await resetCorpusFixture()
+    const stalledSlug = `stalled-${crypto.randomUUID()}`
+    const nextSlug = `next-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    for (const slug of [stalledSlug, nextSlug]) {
+      await rawStore.putRawDocument(raw(`snapshot ${slug}`, slug))
+      const rows = await rawReader.listPending({ sourceKey: key })
+      await rawReader.markIngested(rows.map(({ id }) => id))
+      await writes.replaceDocument(
+        { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+        [chunk(0, "Old model", 0, "fixture/model-old")],
+      )
+    }
+    await db.rawDocument.updateMany({
+      where: { sourceKey: key },
+      data: { indexAttemptedAt: null },
+    })
+
+    const [first] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    await rawReader.markIngested([first.id], "fixture/model-target")
+    const [second] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(second.id).not.toBe(first.id)
+  })
+
   it("advances bounded full language sweeps with an explicit cursor", async () => {
     await resetCorpusFixture()
     const sourceId = await writes.upsertSource(source)
@@ -339,6 +405,45 @@ describe("Prisma-backed RAG adapters", () => {
     expect(second).toHaveLength(1)
     expect(second[0].id).not.toBe(first[0].id)
     expect(await db.document.count({ where: { sourceId } })).toBeGreaterThan(1)
+  })
+
+  it("updates language and persists its rollback audit atomically", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    const slug = `language-audit-${crypto.randomUUID()}`
+    await rawStore.putRawDocument(raw("audited language content", slug))
+    await writes.replaceDocument(
+      { ...document(slug, null), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, slug, 0)],
+    )
+    const [candidate] = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: true,
+      limit: 1,
+    })
+    const runId = `audit-${crypto.randomUUID()}`
+
+    await languageStore.applyLanguageChanges(
+      key,
+      [{ id: candidate.id, oldLanguage: null, newLanguage: "en" }],
+      { runId, detectorModel: "fixture/language" },
+    )
+
+    await expect(
+      db.document.findUniqueOrThrow({ where: { id: candidate.id } }),
+    ).resolves.toMatchObject({ language: "en", updatedAt: expect.any(Date) })
+    await expect(
+      db.languageChangeAudit.findUniqueOrThrow({
+        where: {
+          runId_documentId: { runId, documentId: candidate.id },
+        },
+      }),
+    ).resolves.toMatchObject({
+      sourceKey: key,
+      oldLanguage: null,
+      newLanguage: "en",
+      detectorModel: "fixture/language",
+    })
   })
 
   it("fails before SQL when the query vector width is wrong", async () => {

@@ -161,12 +161,17 @@ export function parseLanguageArgs(argv: string[]): LanguageArgs {
   const afterId = valueAfter(argv, "--after-id")
   if (all && afterId)
     throw new Error("--after-id requires --source; cursors are source-scoped")
+  const limit = positive(argv, "--limit")
+  if (all && mode === "full" && limit !== undefined)
+    throw new Error(
+      "--all --mode full cannot be combined with --limit; run each source with --after-id",
+    )
   return {
     kind: "sweep",
     source,
     all,
     mode,
-    limit: positive(argv, "--limit"),
+    limit,
     concurrency,
     apply: argv.includes("--apply"),
     outDir: valueAfter(argv, "--out-dir"),

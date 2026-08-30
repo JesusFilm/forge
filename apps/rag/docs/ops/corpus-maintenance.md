@@ -84,7 +84,11 @@ pnpm --filter @forge/rag index --source <source-key> --limit 10 --force --apply
 the target `EMBED_MODEL_ID`, so a model migration can be resumed safely. The
 model filter is applied before `--limit`, which means repeated bounded runs
 advance through old-model documents instead of repeatedly selecting the oldest
-already-migrated rows.
+already-migrated rows. A fresh un-ingested snapshot is always eligible even when
+the existing document already uses the target model. If an old-model snapshot
+cannot produce indexable content, its attempted model is recorded so it cannot
+occupy every later bounded batch; investigate the reported skipped row before
+retrying it under a different model or with corrected source content.
 `--force-all` re-embeds even rows already on that model and should be reserved
 for an intentional same-model chunker rebuild. It cannot be combined with
 `--limit`: without persisted run state, bounded force-all runs would repeatedly
@@ -102,17 +106,35 @@ pnpm --filter @forge/rag language:sweep --source <source-key> --mode blanks --li
 pnpm --filter @forge/rag language:sweep --source <source-key> --mode blanks --limit 10 --apply --out-dir <secure-output-dir>
 ```
 
-An applied sweep writes a JSONL changelog containing row identifiers, old/new
-languages, source keys, and detector-model provenance. Treat it as restricted
-operational data: keep it outside the repository and do not paste it into logs
-or tickets. The source batch commits before its JSONL records are appended. If
-that one batch append fails, the command immediately performs a compare-and-set
-compensating reversal and exits non-zero. `--mode full` revisits already
-labelled rows; use it only for a bounded, approved repair. Continue a bounded
-full sweep with the `nextCursor` from the previous summary:
+An applied sweep writes each language change and its immutable audit row in one
+database transaction, then exports the committed rows to a JSONL changelog.
+Both records contain row identifiers, old/new languages, source keys,
+detector-model provenance, and the printed `auditRunId`. Treat them as
+restricted operational data: keep the JSONL outside the repository and do not
+paste either record set into logs or tickets. If JSONL export fails, the command
+performs a compare-and-set compensating reversal and exits non-zero. If the
+process terminates after the transaction but before export, recover the exact
+committed set by `auditRunId` from `language_change_audits` before attempting a
+reversal.
+
+`--mode full` revisits already labelled rows. Continue a bounded source sweep
+with the `nextCursor` from the previous summary:
 
 ```sh
 pnpm --filter @forge/rag language:sweep --source <source-key> --mode full --limit 10 --after-id <nextCursor>
+```
+
+The command rejects `--all --mode full --limit`: cursors are source-scoped, so
+that combination would rescan the same prefix. Run each source separately when
+a full sweep must be bounded.
+
+Read-only audit recovery query:
+
+```sql
+SELECT document_id, source_key, old_language, new_language, detector_model
+FROM language_change_audits
+WHERE run_id = '<auditRunId>'
+ORDER BY created_at, document_id;
 ```
 
 Reverse exactly a reviewed changelog with an initial dry run:

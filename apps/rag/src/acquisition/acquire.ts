@@ -30,7 +30,10 @@ export async function acquireOne(
   entry: SourceEntry,
   url: string,
 ): Promise<AcquireOutcome> {
-  const result = await fetcher.fetch(url)
+  const result = await fetcher.fetch(url, undefined, {
+    expectedHost: new URL(entry.crawl.baseUrl).hostname,
+    allowPatterns: entry.crawl.allow ?? [],
+  })
 
   if (result.notModified) {
     return { ok: false, reason: "not-modified", status: result.status }

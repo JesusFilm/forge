@@ -27,8 +27,17 @@ export interface FetchResult {
   notModified: boolean
 }
 
+export type FetchDestinationPolicy = {
+  expectedHost: string
+  allowPatterns: readonly string[]
+}
+
 export interface Fetcher {
-  fetch(url: string, conditional?: ConditionalHeaders): Promise<FetchResult>
+  fetch(
+    url: string,
+    conditional?: ConditionalHeaders,
+    destinationPolicy?: FetchDestinationPolicy,
+  ): Promise<FetchResult>
 }
 
 export interface HttpCacheEntry {
@@ -90,7 +99,7 @@ export interface RawDocumentReader {
     targetEmbeddingModel?: string
   }): Promise<PendingRawDocument[]>
   /** Mark these `raw_documents` rows consumed (set `ingested_at`). */
-  markIngested(ids: string[]): Promise<void>
+  markIngested(ids: string[], attemptedModel?: string): Promise<void>
 }
 
 export interface Embedder {

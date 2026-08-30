@@ -258,7 +258,7 @@ export async function ingestPending(
             force,
             forceAll,
           })
-          await deps.reader.markIngested([raw.id])
+          await deps.reader.markIngested([raw.id], deps.embedder.model)
           recordResult(summary, raw, result, opts.onProgress)
         }
       } catch (error) {

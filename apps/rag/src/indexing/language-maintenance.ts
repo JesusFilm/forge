@@ -6,10 +6,11 @@ export type LanguageChange = {
   detectorModel?: string
 }
 
-export interface LanguageMaintenanceStore {
+export type LanguageMaintenanceStore = {
   applyLanguageChanges(
     sourceKey: string,
     changes: ReadonlyArray<Omit<LanguageChange, "sourceKey">>,
+    audit: { runId: string; detectorModel?: string },
   ): Promise<LanguageChange[]>
   revertLanguageChanges(
     changes: ReadonlyArray<{
@@ -41,12 +42,12 @@ export async function applySourceChanges(
   sourceKey: string,
   changes: ReadonlyArray<Omit<LanguageChange, "sourceKey">>,
   append: (content: string) => void | Promise<void>,
-  detectorModel?: string,
+  audit: { runId: string; detectorModel?: string },
 ): Promise<LanguageChange[]> {
-  const committed = await store.applyLanguageChanges(sourceKey, changes)
+  const committed = await store.applyLanguageChanges(sourceKey, changes, audit)
   const recorded = committed.map((change) => ({
     ...change,
-    ...(detectorModel ? { detectorModel } : {}),
+    ...(audit.detectorModel ? { detectorModel: audit.detectorModel } : {}),
   }))
   if (recorded.length === 0) return recorded
 
