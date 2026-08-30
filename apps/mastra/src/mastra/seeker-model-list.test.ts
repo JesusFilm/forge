@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockEnv = vi.hoisted(() => ({
   env: {
     AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,
+    AI_GATEWAY_CHAT_ALLOWED_HOSTS: undefined as string | undefined,
     AI_GATEWAY_CHAT_BASE_URL: undefined as string | undefined,
     AI_GATEWAY_CHAT_MODEL: undefined as string | undefined,
     AI_GATEWAY_SEEKER_ENABLED: undefined as string | undefined,
@@ -36,9 +37,11 @@ const GEMMA_FALLBACK_CHAIN = [
 
 beforeEach(() => {
   mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
+  mockEnv.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS = undefined
   mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
   mockEnv.env.AI_GATEWAY_CHAT_MODEL = undefined
   mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = undefined
+  vi.restoreAllMocks()
 })
 
 describe("buildSeekerModelList (leaf module, feat-405 U1)", () => {
@@ -124,5 +127,61 @@ describe("buildSeekerGatewayModelEntry (feat-405 U1, KTD4 key-presence rule)", (
     const overriddenEntry = buildSeekerGatewayModelEntry()
     const overriddenModel = overriddenEntry?.model as { modelId: string }
     expect(overriddenModel.modelId).toBe("custom")
+  })
+})
+
+describe("buildSeekerGatewayModelEntry (feat-440 host-allowlist defense-in-depth)", () => {
+  // The real `isAllowedAiGatewayChatBaseUrl` runs here (the module mock
+  // spreads importOriginal), fed by the mocked env fields — so these cases
+  // exercise the true rule at the choke point, not a stub of it. The boot
+  // assert in config/env.ts is the primary enforcement; this layer covers
+  // entrypoints that never run assertMastraRuntimeEnv.
+
+  it("returns null (with one enum-only warn) on an unlisted https host", () => {
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    expect(buildSeekerGatewayModelEntry()).toBeNull()
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    const line = warn.mock.calls[0]?.[0] as string
+    expect(line).toBe("[seeker-gateway] event=gateway_base_url_not_allowed")
+    // Leak pin: the config URL/host never reaches the log line.
+    expect(line).not.toContain("other.example")
+  })
+
+  it("returns null on an http base URL even for the default host", () => {
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "http://ai-gateway.jesusfilm.org/v1"
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    expect(buildSeekerGatewayModelEntry()).toBeNull()
+  })
+
+  it("returns the entry for a custom https host listed in the allowlist", () => {
+    // Anti-vacuous companion: the same custom host that nulls above passes
+    // once allowlisted, proving the null came from the list — not the
+    // non-default URL.
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    mockEnv.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS = "other.example"
+
+    const entry = buildSeekerGatewayModelEntry()
+
+    expect(entry).not.toBeNull()
+    expect(entry?.maxRetries).toBe(0)
+  })
+
+  it("degrades buildSeekerModelList to the Gemma-only chain when the gateway URL is disallowed", () => {
+    // The seeker/titling counted degrade: flag on + key set would normally
+    // prepend the gateway entry; a disallowed URL must fall back to exactly
+    // today's chain instead of throwing or silently keeping the gateway.
+    mockEnv.env.AI_GATEWAY_CHAT_API_KEY = "sk-test"
+    mockEnv.env.AI_GATEWAY_SEEKER_ENABLED = "true"
+    mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = "https://other.example/v1"
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    expect(buildSeekerModelList()).toEqual(GEMMA_FALLBACK_CHAIN)
   })
 })

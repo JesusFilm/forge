@@ -5,6 +5,8 @@ import {
   EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
 } from "../services/embedding-provider"
+// Import-free leaf by contract (see its header) — safe here, no cycle.
+import { DEFAULT_AI_GATEWAY_CHAT_BASE_URL } from "../mastra/gateway-constants"
 import { parseServiceApiKeys } from "../server/service-bearer"
 
 const emptyToUndefined = (value: string | undefined) =>
@@ -16,6 +18,7 @@ const DEFAULT_OPENROUTER_EMBEDDINGS_BASE_URL = "https://openrouter.ai/api/v1"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_BASE_URL =
   "https://ai-gateway.jesusfilm.org/v1"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS = "ai-gateway.jesusfilm.org"
+const DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS = "ai-gateway.jesusfilm.org"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT =
   "forge-mastra-content-embeddings/1.0"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL = "embeddings"
@@ -263,6 +266,13 @@ const envSchema = z.object({
   // default provider (openrouter) needs none of these. New cross-service
   // scaffolding env vars stay optional so an unprovisioned Railway env boots.
   AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
+  // CSV host allowlist for the chat-gateway base URL (feat-440), mirroring
+  // AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS. Stays `.optional()` with a RUNTIME
+  // default (DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS covers the default base
+  // URL) so an unprovisioned Railway env boots with zero new vars; the
+  // production boot assert below fires only on a SET-but-disallowed
+  // effective URL while the chat key is present.
+  AI_GATEWAY_CHAT_ALLOWED_HOSTS: z.string().min(1).optional(),
   AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
   AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
   AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
@@ -911,6 +921,9 @@ export const env = envSchema.parse({
   AI_GATEWAY_CHAT_API_KEY: emptyToUndefined(
     process.env.AI_GATEWAY_CHAT_API_KEY,
   ),
+  AI_GATEWAY_CHAT_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+  ),
   AI_GATEWAY_CHAT_BASE_URL: emptyToUndefined(
     process.env.AI_GATEWAY_CHAT_BASE_URL,
   ),
@@ -1336,6 +1349,60 @@ function assertGatewayBaseUrlAllowedForProduction() {
   }
 }
 
+/**
+ * The ONE feat-440 chat-gateway egress rule, pure over its arguments so both
+ * enforcement layers share it verbatim: the production boot assert below
+ * (primary — covers every consumer of the effective base URL:
+ * `createJesusFilmProvider()`/embeddings fallback in `providers.ts`,
+ * `buildSeekerGatewayModelEntry()` in `seeker-model-list.ts`,
+ * `default-chat-agent.ts`, `specialized-agents.ts`, `memory.ts`) and the
+ * runtime defense-in-depth at the seeker choke point + title-repair gate
+ * ladder (which cover entrypoints that never run `assertMastraRuntimeEnv`).
+ * Applies the same runtime defaults every consumer applies, so an
+ * all-defaults configuration passes with zero Railway edits. Fail-closed on
+ * an unparseable URL.
+ */
+export function isAllowedAiGatewayChatBaseUrl(
+  baseUrl: string | undefined,
+  allowedHostsCsv: string | undefined,
+): boolean {
+  let effective: URL
+  try {
+    effective = new URL(baseUrl ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL)
+  } catch {
+    return false
+  }
+  const allowedHosts = csvSet(
+    allowedHostsCsv ?? DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+  )
+  return effective.protocol === "https:" && allowedHosts.has(effective.hostname)
+}
+
+/**
+ * feat-440 primary enforcement: production boot assert on the chat-gateway
+ * base URL, mirroring `assertJesusfilmRagBaseUrlAllowedForProduction`'s
+ * armed-only posture — it fires only when the gateway chat path holds a
+ * credential to egress (`AI_GATEWAY_CHAT_API_KEY` set), so an unarmed deploy
+ * boots with zero new env vars. Validates the EFFECTIVE URL
+ * (`env.AI_GATEWAY_CHAT_BASE_URL ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL`) —
+ * the exact expression every consumer constructs its client from — against
+ * https + the effective allowlist, whose runtime default covers the default
+ * base URL's host.
+ */
+function assertAiGatewayChatBaseUrlAllowedForProduction() {
+  if (!env.AI_GATEWAY_CHAT_API_KEY) return
+  if (
+    !isAllowedAiGatewayChatBaseUrl(
+      env.AI_GATEWAY_CHAT_BASE_URL,
+      env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+    )
+  ) {
+    throw new Error(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
 function assertFirecrawlApiUrlAllowedForProduction() {
   const apiUrl = new URL(env.FIRECRAWL_API_URL)
   const allowedHosts = csvSet(env.FIRECRAWL_ALLOWED_HOSTS)
@@ -1543,6 +1610,9 @@ export function assertMastraRuntimeEnv() {
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
   assertAdminAgentToolsBaseUrlAllowedForProduction()
+  // feat-440: the one chat-gateway egress boot throw (armed-only — see the
+  // assert's doc comment). Unconditional call; the arming check lives inside.
+  assertAiGatewayChatBaseUrlAllowedForProduction()
   // Same posture for Langfuse (U1, R9): the host guard is the only
   // Langfuse-driven boot throw. Missing keys are deliberately NOT in `missing`
   // above — an unconfigured helper degrades to the caller-supplied fallback
