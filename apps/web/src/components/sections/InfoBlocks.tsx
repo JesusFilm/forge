@@ -114,7 +114,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
                     <p
                       className={
                         isDarkTreatment
-                          ? "text-sm leading-relaxed text-white/70"
+                          ? "text-base sm:text-sm leading-relaxed text-white/70"
                           : "text-gray-600"
                       }
                     >

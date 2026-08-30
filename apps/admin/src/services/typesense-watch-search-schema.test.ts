@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   candidateWatchCollectionSchemas,
@@ -185,5 +187,48 @@ describe("Typesense Watch Search schemas", () => {
         },
       ]),
     )
+  })
+})
+
+describe("container language projection contract", () => {
+  const SERVICE = readFileSync(
+    join(process.cwd(), "src/services/typesense-watch-search.service.ts"),
+    "utf8",
+  )
+
+  // A field can be present in the document type, written by the indexer, and
+  // still be invisible at query time: Typesense projects through explicit
+  // include lists, and a name missing from one is silently absent rather than
+  // an error. These pin the three surfaces that must agree.
+  it("is requested by the catalog result projection", () => {
+    expect(SERVICE).toMatch(
+      /const CATALOG_RESULT_FIELDS =\s*\n?\s*"[^"]*containerLanguagesJson[^"]*"/,
+    )
+  })
+
+  it("is requested by the watchability preview projection", () => {
+    expect(SERVICE).toMatch(
+      /const CATALOG_WATCHABILITY_PREVIEW_FIELDS =\s*\n?\s*"[^"]*containerLanguagesJson[^"]*"/,
+    )
+  })
+
+  it("is not suppressed by the catalog preview exclusion list", () => {
+    const excluded = SERVICE.match(
+      /const CATALOG_PREVIEW_EXCLUDED_FIELDS =\s*\n?\s*"([^"]*)"/,
+    )
+    expect(excluded).not.toBeNull()
+    // An EXCLUDE list, unlike the two above -- the field reaches the lexical
+    // lane by default, so the assertion here is the inverse.
+    expect(excluded?.[1]).not.toContain("containerLanguagesJson")
+  })
+
+  it("stays out of the collection schema so the field manifest is unchanged", () => {
+    // Shipping the field undeclared is what keeps registered candidate
+    // generations valid and the application revision stable. Declaring it
+    // would change the exact field manifest and require a fresh generation.
+    const schema = watchCatalogCollectionSchema("build-1")
+    expect(
+      schema.fields.some((field) => field.name === "containerLanguagesJson"),
+    ).toBe(false)
   })
 })

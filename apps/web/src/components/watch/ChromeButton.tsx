@@ -138,7 +138,7 @@ export function ChromeButton({
             opacity: isTooltipOpen ? 1 : 0,
           } as CSSProperties
         }
-        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] rounded-md bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg ${
+        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] rounded-md bg-white px-2.5 py-1.5 text-sm sm:text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg ${
           isTooltipOpen ? "translate-y-0" : "translate-y-1"
         } ${tooltipAlign === "start" ? "left-0" : "right-0"}`}
       >

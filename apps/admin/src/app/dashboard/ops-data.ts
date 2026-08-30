@@ -25,6 +25,7 @@ import {
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
 import { normalizeVideoThumbnailUrl } from "@/app/dashboard/video-library-utils"
+import { availabilityScoreForKind } from "@/services/watch-search-availability-score"
 
 type Metric = {
   label: string
@@ -2534,17 +2535,10 @@ function emptyWatchSearchScoreBreakdown() {
   }
 }
 
-function watchSearchAvailabilityScoreForKind(kind: string | null): number {
-  if (kind === "target_audio") return 0.25
-  if (kind === "target_subtitle") return 0.18
-  if (kind === "related_language") return 0.08
-  return 0
-}
-
 function emptyWatchSearchScoreBreakdownForAvailability(kind: string | null) {
   return {
     ...emptyWatchSearchScoreBreakdown(),
-    availability: watchSearchAvailabilityScoreForKind(kind),
+    availability: availabilityScoreForKind(kind),
   }
 }
 
@@ -2561,8 +2555,7 @@ function watchSearchScoreBreakdown(
   const evidenceBoost = jsonNumber(row.evidenceBoost)
   const relevance = jsonNumber(row.relevance)
   const availability =
-    jsonNumber(row.availability) ||
-    watchSearchAvailabilityScoreForKind(availabilityKind)
+    jsonNumber(row.availability) || availabilityScoreForKind(availabilityKind)
   const match = jsonNumber(row.match)
   const sourceScore = jsonNumber(row.sourceScore)
   if (total == null || availability == null || sourceScore == null) {

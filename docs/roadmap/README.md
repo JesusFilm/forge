@@ -4,11 +4,11 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 27, 2026)
+## Status (August 29, 2026)
 
-- **Total tickets:** 609
+- **Total tickets:** 614
 - **Complete:** 452
-- **In progress:** 41
+- **In progress:** 46
 - **Not started:** 37
 - **Blocked:** 79
 - **Overdue and not complete:** 107
@@ -635,6 +635,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-423](topic-experiences/feat-423-watch-language-globe-experience-block.md)             | Author the Watch language globe in Experience Editor                             | urim       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-436](topic-experiences/feat-436-watch-home-category-rail-experience-block.md)         | Author the Watch category rail in Experience Editor                              | vlad       | P1       | 2026-08-26 | 1    | 2026-08-26 | in-progress |
 | [feat-439](topic-experiences/feat-439-watch-category-rail-custom-tiles.md)                  | Custom tiles in the Watch category rail block                                    | vlad       | P1       | 2026-08-27 | 1    | 2026-08-27 | complete    |
+| [feat-440](topic-experiences/feat-440-watch-video-thumbnail-indexing.md)                    | Restore Watch video thumbnail indexing                                           | vlad       | P1       | 2026-08-28 | 5    | 2026-09-01 | in-progress |
+| [feat-441](topic-experiences/feat-441-watch-video-structured-data-verification.md)          | Verify and clear Watch video structured-data failures                            | vlad       | P1       | 2026-08-28 | 4    | 2026-08-31 | in-progress |
+| [feat-442](topic-experiences/feat-442-watch-organic-traffic-recovery.md)                    | Diagnose and recover Watch organic traffic                                       | vlad       | P1       | 2026-08-28 | 7    | 2026-09-03 | in-progress |
+| [feat-443](topic-experiences/feat-443-watch-mobile-lcp.md)                                  | Improve Watch mobile LCP                                                         | vlad       | P1       | 2026-08-28 | 7    | 2026-09-03 | in-progress |
+| [feat-444](topic-experiences/feat-444-watch-ga4-measurement.md)                             | Normalize Watch GA4 measurement                                                  | vlad       | P1       | 2026-08-28 | 5    | 2026-09-01 | in-progress |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |

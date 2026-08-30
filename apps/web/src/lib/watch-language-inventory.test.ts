@@ -30,6 +30,7 @@ import {
   isNewRelease,
   publishedAtSortTime,
   resolveWatchLanguageInventory,
+  resolveWatchLanguageSwitcherOptions,
 } from "./watch-language-inventory"
 
 function inventoryItem({
@@ -182,6 +183,55 @@ describe("resolveWatchLanguageInventory", () => {
     expect(inventory.subtitleOnlyVideos.map((item) => item.href)).toEqual([
       null,
       null,
+    ])
+  })
+})
+
+describe("resolveWatchLanguageSwitcherOptions", () => {
+  beforeEach(() => {
+    queryMock.mockReset()
+    getWatchRouteManifestMock.mockReset()
+    getWatchRouteManifestMock.mockResolvedValue(null)
+  })
+
+  it("returns the language list without fetching the inventory payload", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        languages: [
+          { slug: "russian", bcp47: "ru", name: { en: "Russian" } },
+          { slug: "english", bcp47: "en", name: { en: "English" } },
+        ],
+      },
+    })
+
+    const options = await resolveWatchLanguageSwitcherOptions("english")
+
+    // Current language first, then alphabetical — same contract the
+    // /{lang}.html/videos switcher renders.
+    expect(options.map((option) => option.slug)).toEqual(["english", "russian"])
+    // Every call is the paginated `languages` query; nothing asked for
+    // watchLanguageInventory, whose payload is every card in a collection.
+    for (const call of queryMock.mock.calls) {
+      expect(JSON.stringify(call[0]?.variables ?? {})).not.toContain(
+        "languageSlug",
+      )
+    }
+  })
+
+  it("degrades to the current language when Admin is unreachable", async () => {
+    // The /whats-new page is otherwise data-free and statically rendered.
+    // A throwing switcher fetch must not take the whole page down with it.
+    queryMock.mockRejectedValue(new Error("ECONNREFUSED"))
+
+    const options = await resolveWatchLanguageSwitcherOptions("english")
+
+    expect(options).toEqual([
+      {
+        slug: "english",
+        languageName: "English",
+        nativeName: null,
+        bcp47: null,
+      },
     ])
   })
 })

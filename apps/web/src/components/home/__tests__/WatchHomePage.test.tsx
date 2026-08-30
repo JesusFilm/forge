@@ -139,7 +139,6 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     sourceId: "1_jf-0-0",
     coreId: "1_jf-0-0",
     title: "Jesus",
-    description: "The story of Jesus",
     label: "Feature film",
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
@@ -191,7 +190,6 @@ function makeCarouselSlide(
     kind: "video",
     id: "queued-1",
     title: "Queued One",
-    description: "Queued from the playlist pool",
     label: "Short film",
     href: "/queued-one.html/english.html",
     posterUrl: "https://cdn.example/queued-one.jpg",
@@ -272,6 +270,20 @@ describe("WatchHomePage", () => {
     expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
     expect(activeTitle?.tagName).toBe("P")
     expect(activeTitle?.textContent).toBe("Jesus")
+    // Structural guard for the removed secondary paragraph. Both levels are
+    // load-bearing: the copy block pins eyebrow + title, and the overlay root
+    // pins that the only other child is the action wrapper — otherwise a
+    // paragraph re-added as a sibling of the action would slip past the inner
+    // check.
+    const copyBlock = activeTitle?.parentElement
+    expect(
+      Array.from(copyBlock?.children ?? []).map((el) => el.tagName),
+    ).toEqual(["P", "P"])
+    expect(copyBlock?.textContent).toBe("FeaturedJesus")
+    const overlayRoot = copyBlock?.parentElement
+    expect(
+      Array.from(overlayRoot?.children ?? []).map((el) => el.tagName),
+    ).toEqual(["DIV", "DIV"])
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
@@ -383,7 +395,6 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
-    expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
     const sectionCta = Array.from(container.querySelectorAll("a")).find(
       (link) => link.textContent?.trim() === "Watch",
@@ -897,6 +908,25 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('button[aria-label="Next video"]'),
     ).not.toBeNull()
+
+    // R2: with the secondary paragraph gone, the copy stagger runs
+    // eyebrow -> title -> action with no dead beat where the paragraph used to
+    // animate. Both the incoming and the outgoing overlay are checked, because
+    // the enter and exit delay tables are indexed separately.
+    // These two classes are applied only to the staggered overlay items, so
+    // querying the carousel pins both the delays and the item count without
+    // depending on how deeply the overlay nests them.
+    const delaysFor = (className: string) =>
+      Array.from(carousel?.querySelectorAll(`.${className}`) ?? []).map((el) =>
+        (el as HTMLElement).style.getPropertyValue("--watch-home-copy-delay"),
+      )
+    // Entering runs offset by 430ms while the outgoing copy clears: 430+0/70/140.
+    expect(delaysFor("watch-home-copy-enter")).toEqual([
+      "430ms",
+      "500ms",
+      "570ms",
+    ])
+    expect(delaysFor("watch-home-copy-exit")).toEqual(["0ms", "35ms", "70ms"])
 
     // The hero reveals the shell chrome on mount; it never hides it now that
     // there is no full-player takeover.

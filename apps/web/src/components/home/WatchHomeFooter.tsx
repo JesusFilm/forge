@@ -47,7 +47,7 @@ export function WatchHomeFooter() {
           <nav
             aria-label={t("navigation")}
             data-testid="watch-footer-navigation"
-            className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 text-sm font-bold md:flex-nowrap md:justify-between md:gap-x-0"
+            className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 text-base sm:text-sm font-bold md:flex-nowrap md:justify-between md:gap-x-0"
           >
             {navLinks.map((link) => (
               <a
@@ -60,7 +60,7 @@ export function WatchHomeFooter() {
             ))}
             <a
               href={giveNowHref}
-              className="inline-flex min-h-9 min-w-0 break-words items-center rounded-full bg-[#d33a43] px-5 py-2 text-center text-sm font-bold leading-tight text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
+              className="inline-flex min-h-9 min-w-0 break-words items-center rounded-full bg-[#d33a43] px-5 py-2 text-center text-base sm:text-sm font-bold leading-tight text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
             >
               {t("giveNow")}
             </a>
@@ -108,7 +108,7 @@ export function WatchHomeFooter() {
         <h2 id="watch-ai-attribution-heading" className="sr-only">
           {t("aiAttributionHeading")}
         </h2>
-        <p className="max-w-5xl text-[11px] leading-5">
+        <p className="max-w-5xl text-xs leading-5 sm:text-[11px]">
           {t.rich("aiAttributionBody", {
             terms: (chunks) => (
               <a

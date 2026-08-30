@@ -23,7 +23,6 @@ const fallbackSlide = {
   sourceId: "fallback-source",
   coreId: "fallback-core",
   title: "Jesus",
-  description: null,
   label: "Feature film",
   metaLabel: null,
   href: null,

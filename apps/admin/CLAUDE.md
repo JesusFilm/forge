@@ -2579,6 +2579,34 @@ fresh DB-backed key**:
     §"Recovery when contracts are structurally broken" — the
     `import-from-env` deletion case.
 
+## Watch "what's new" feature votes
+
+Anonymous sticker voting for web's `/watch/whats-new` page. Three `public: true`
+fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
+`retractWhatsNewFeatureVote` — backed by `WhatsNewFeatureVoteService` and the
+`whats_new_feature_vote` table (migration `0053_whats_new_feature_vote`).
+
+- **`ballotId` is not an identity.** It is a random token web's browser keeps in
+  localStorage. Clearing site data mints a new one; that is the accepted trade
+  for collecting signal on a page with no login.
+- **`(ballotId, placementId)` is unique**, which is what makes a cast idempotent:
+  web resends placements it could not confirm, and without the index every
+  dropped response would inflate a tally.
+- **Refusals are DATA, not errors.** A spent budget or a rejected id returns
+  `{ accepted: false, refusal, tallies }`. Thrown, they would reach the public
+  client as Yoga's masked "Unexpected error." and web would retry them forever.
+  Real faults still throw.
+- **The budget (3 live stickers per ballot) is read-then-write**, so concurrent
+  casts on one ballot can overshoot to ~3–6. That is deliberate: the ballot id is
+  self-issued, so the real abuse bound is the per-IP mutation rate limit.
+- **Sticker kinds are a GraphQL enum, feature ids are bounded strings.** The
+  enum makes web fail to compile if the two sides disagree; feature ids stay
+  free-form so adding a card to web's content file needs no migration.
+- **Retraction is a soft delete.** Only the tally read decides what counts, so
+  "placed then took it back" survives as signal.
+- Real-Postgres coverage lives in `whats-new-feature-votes.db.test.ts`, skipped
+  unless `WHATS_NEW_VOTE_TEST_DATABASE_URL` is set.
+
 ## Scripture Passages
 
 Admin owns YouVersion provider access for Watch Bible passage rendering. Keep

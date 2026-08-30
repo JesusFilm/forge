@@ -258,7 +258,7 @@ export function ShareModal({
               {videoDescription ? (
                 <p
                   data-testid="watch-share-modal-description"
-                  className="line-clamp-4 text-sm leading-relaxed font-medium text-stone-300"
+                  className="line-clamp-4 text-base sm:text-sm leading-relaxed font-medium text-stone-300"
                 >
                   {videoDescription}
                 </p>
@@ -318,7 +318,7 @@ export function ShareModal({
                   tabRefs.current.link = element
                 }}
                 className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  "flex-1 cursor-pointer px-4 py-3 text-sm sm:text-xs font-semibold tracking-[0.18em] uppercase transition",
                   !isEmbed
                     ? "border-b-2 border-brand-red text-brand-red"
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
@@ -340,7 +340,7 @@ export function ShareModal({
                   tabRefs.current.embed = element
                 }}
                 className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  "flex-1 cursor-pointer px-4 py-3 text-sm sm:text-xs font-semibold tracking-[0.18em] uppercase transition",
                   isEmbed
                     ? "border-b-2 border-brand-red text-brand-red"
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
@@ -379,7 +379,7 @@ export function ShareModal({
             {copyStatus === "failed" ? (
               <p
                 data-testid="watch-share-modal-link-fallback"
-                className="mb-2 text-xs font-semibold text-amber-400"
+                className="mb-2 text-sm sm:text-xs font-semibold text-amber-400"
               >
                 {t("copyFailed")}
               </p>
@@ -396,7 +396,7 @@ export function ShareModal({
                 rows={2}
                 value={embedSnippet}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-sm sm:text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
             ) : activeMode === "link" ? (
               <input
@@ -406,7 +406,7 @@ export function ShareModal({
                 aria-label={t("shareLinkTab")}
                 value={currentValue ?? ""}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base sm:text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
             ) : null}
           </div>
@@ -415,7 +415,7 @@ export function ShareModal({
             <Button
               variant="ghost"
               onClick={() => handleOpenChange(false)}
-              className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+              className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
               {t("close")}
             </Button>
@@ -428,7 +428,7 @@ export function ShareModal({
                     : "watch-share-modal-link-copy"
                 }
                 onClick={() => copy(currentValue)}
-                className="gap-2 px-7 py-4 text-sm"
+                className="gap-2 px-7 py-4 text-base sm:text-sm"
               >
                 <Copy size={16} />
                 <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>

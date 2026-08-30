@@ -163,7 +163,7 @@ export function WatchHomeCategoryRail({
             href={languageInventoryPath(locale)}
             prefetch={false}
             data-testid="watch-home-category-see-all"
-            className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-center text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center md:px-6 md:py-3.5"
+            className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-center text-base sm:text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center md:px-6 md:py-3.5"
           >
             <WatchLibraryIcon aria-hidden className="size-5 shrink-0" />
             <span>{t("seeAll")}</span>

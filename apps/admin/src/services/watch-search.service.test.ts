@@ -57,8 +57,11 @@ vi.mock("./search-watchability", () => ({
 import { EmbeddingsBatchError } from "./embeddings.service"
 
 import {
+  availabilityScore,
   defaultWatchSearchEmbedder,
+  fallbackKindForWatchability,
   prewarmWatchSearchQueryEmbeddings,
+  watchabilityRank,
   WATCH_SEARCH_STARTER_QUERIES,
   WatchSearchService,
   WatchSearchValidationError,
@@ -1838,5 +1841,52 @@ describe("WatchSearchService", () => {
         message: "Target-language subtitles are available.",
       },
     })
+  })
+})
+
+describe("container availability kind", () => {
+  const watchability = (kind: string) =>
+    ({ kind }) as unknown as Parameters<typeof watchabilityRank>[0]
+
+  it("ranks container between target subtitle and related language", () => {
+    expect(watchabilityRank(watchability("target_audio"))).toBe(0)
+    expect(watchabilityRank(watchability("target_subtitle"))).toBe(1)
+    expect(watchabilityRank(watchability("container"))).toBe(2)
+    expect(watchabilityRank(watchability("related_language"))).toBe(3)
+    expect(watchabilityRank(watchability("unavailable"))).toBe(4)
+    expect(watchabilityRank(undefined)).toBe(4)
+  })
+
+  it("preserves the relative order of every pre-existing kind", () => {
+    const order = [
+      "target_audio",
+      "target_subtitle",
+      "related_language",
+      "unavailable",
+    ] as const
+    const ranks = order.map((kind) => watchabilityRank(watchability(kind)))
+    expect(ranks).toEqual([...ranks].sort((left, right) => left - right))
+    expect(new Set(ranks).size).toBe(order.length)
+  })
+
+  it("scores a container so it clears the recall floor its zero score failed", () => {
+    expect(availabilityScore(watchability("container"))).toBe(0.18)
+    expect(availabilityScore(watchability("container"))).toBeGreaterThan(
+      availabilityScore(watchability("related_language")),
+    )
+    expect(availabilityScore(watchability("container"))).toBeLessThanOrEqual(
+      availabilityScore(watchability("target_audio")),
+    )
+    expect(availabilityScore(watchability("unavailable"))).toBe(0)
+  })
+
+  it("reports no playback fallback for a container", () => {
+    expect(fallbackKindForWatchability(watchability("container"))).toBe("none")
+    expect(fallbackKindForWatchability(watchability("unavailable"))).toBe(
+      "unavailable",
+    )
+    expect(fallbackKindForWatchability(watchability("related_language"))).toBe(
+      "related_language",
+    )
   })
 })

@@ -30,7 +30,6 @@ function video(id: string): WatchHomeTvCarouselVideoSlide {
     kind: "video",
     id,
     title: id,
-    description: null,
     label: "Short film",
     href: `/${id}.html/english.html`,
     posterUrl: `${id}.jpg`,

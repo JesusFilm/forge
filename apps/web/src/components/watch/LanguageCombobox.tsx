@@ -115,12 +115,20 @@ function LanguageCodeMarker({
       aria-hidden
       data-testid="language-combobox-option-code"
       className={`grid shrink-0 place-items-center rounded-full border border-stone-200/45 bg-stone-950/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] ${
-        extraCompact ? "size-7" : compact ? "size-8" : "size-10"
+        extraCompact
+          ? "size-9 sm:size-7"
+          : compact
+            ? "size-9 sm:size-8"
+            : "size-10"
       }`}
     >
       <span
         className={`font-bold tracking-[0.12em] text-stone-100 ${
-          extraCompact ? "text-[8px]" : compact ? "text-[9px]" : "text-[10px]"
+          extraCompact
+            ? "text-xs sm:text-[8px]"
+            : compact
+              ? "text-xs sm:text-[9px]"
+              : "text-xs sm:text-[10px]"
         }`}
       >
         {languageCode}
@@ -528,7 +536,7 @@ export function LanguageCombobox({
 
   const selectedNativeName = selected ? nativeNameForOption(selected) : null
   const triggerClassName = compact
-    ? "flex h-14 min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    ? "flex h-14 min-h-12 w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-left text-base sm:text-sm font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
     : "flex h-16 min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
   const triggerButton = (
     <button
@@ -572,7 +580,7 @@ export function LanguageCombobox({
                 <span
                   data-testid="language-combobox-trigger-native"
                   className={`mt-0.5 block truncate leading-tight text-stone-400 ${
-                    compact ? "text-[11px]" : "text-xs"
+                    compact ? "text-xs sm:text-[11px]" : "text-sm sm:text-xs"
                   }`}
                 >
                   {selectedNativeName}
@@ -681,7 +689,7 @@ export function LanguageCombobox({
                 {filtered.length === 0 ? (
                   <li
                     data-testid="language-combobox-empty"
-                    className="px-4 py-3 text-sm text-stone-500"
+                    className="px-4 py-3 text-base sm:text-sm text-stone-500"
                   >
                     {t("noMatches")}
                   </li>
@@ -725,6 +733,11 @@ export function LanguageCombobox({
                             data-disabled={optionDisabled ? "true" : "false"}
                             onMouseEnter={() => setActiveIndex(index)}
                             onClick={() => handleSelect(option.slug)}
+                            // The virtualizer's spacers and scroll math assume
+                            // every row is exactly OPTION_ROW_HEIGHT_PX. Pin it
+                            // here rather than letting it emerge from the type
+                            // scale, so a typography change cannot desync them.
+                            style={{ height: OPTION_ROW_HEIGHT_PX }}
                             className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
                               optionDisabled
                                 ? active
@@ -740,13 +753,13 @@ export function LanguageCombobox({
                             <span className="flex min-w-0 items-center gap-4">
                               <LanguageCodeMarker option={option} />
                               <span className="min-w-0">
-                                <span className="block truncate text-sm font-semibold">
+                                <span className="block truncate text-base leading-5 sm:text-sm font-semibold">
                                   {option.name}
                                 </span>
                                 {nativeName ? (
                                   <span
                                     data-testid="language-combobox-option-native"
-                                    className="block truncate text-xs text-stone-400"
+                                    className="block truncate text-sm leading-4 sm:text-xs text-stone-400"
                                   >
                                     {nativeName}
                                   </span>
@@ -756,7 +769,7 @@ export function LanguageCombobox({
                             {option.chipLabel ? (
                               <span
                                 data-testid="language-combobox-option-chip"
-                                className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-semibold ${
+                                className={`shrink-0 rounded-full border px-2 py-1 text-xs font-semibold sm:text-[11px] ${
                                   optionDisabled
                                     ? "border-stone-500/40 text-stone-400"
                                     : "border-stone-400/50 text-stone-300"

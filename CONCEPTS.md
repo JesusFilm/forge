@@ -202,6 +202,21 @@ external collections are a fallback only when that intrinsic rail does not
 qualify; they do not become the standalone Video's canonical or next-item
 identity.
 
+### Containing Work
+
+A parent Video that the child is a constituent part of — a film whose Chapters
+it is one of, or a series whose Episodes it is one of — as distinct from a
+curated collection the child was merely gathered into alongside unrelated
+material. The distinction is carried by the parent's own label, not by the
+parent/child link, which is why a link alone cannot settle it.
+
+Where a Video has several eligible parents and only one may be presented, a
+Containing Work outranks a curated collection: it is the work the viewer is
+already inside. The relationship's playback position does not decide this — it
+orders a child within one parent and says nothing about how two parents compare.
+When several Containing Works are eligible, the relationship carries no signal
+that separates them.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -243,9 +258,17 @@ The physical compatibility identity that binds a Watch Search Candidate
 Generation to the schema, projection, and retrieval-field contract able to use
 its collections.
 
-It remains stable across unrelated application deployments. A change means
-existing generations require rebuilding; ordinary deploy identity and
-application-side ranking behavior are not Candidate collection compatibility.
+It remains stable across unrelated application deployments. Ordinary deploy
+identity and application-side ranking behavior are not Candidate collection
+compatibility.
+
+A change is retroactive, not forward-looking: it reclassifies every generation
+already built under the previous revision as incompatible, including one the
+Serving pointer currently names. Resolution then fails closed by refusing to
+serve rather than falling back to another search implementation, so changing
+this revision while a generation is serving public traffic removes that traffic's
+only backend. Treat a revision change as a change to the Serving pointer and
+sequence it the same way.
 
 ### Watch Search Candidate Ranking Revision
 
@@ -550,6 +573,13 @@ language, duplication, degradation, latency, and capacity evidence must agree
 with pointwise judgment and named operator review before the candidate can
 become a baseline.
 
+Its pointwise measures are computed over successfully judged cases only, so a
+run in which some cases fail reports rates over a subsample rather than over the
+query set. Coverage — cases judged against cases attempted — is therefore part
+of reading the gate's evidence, and two runs' rates are comparable only at equal
+coverage. A failed case lowers coverage without lowering the rate, so a more
+degraded run can report a better score than a clean one.
+
 ### Search Candidate Identity
 
 The immutable identity under which one search release candidate was evaluated:
@@ -648,9 +678,11 @@ language is appropriate for that result's display or target context.
 
 ### Search Watchability
 
-The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, browsable container, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
+
+A container state belongs to a Series-Shaped record that owns no Dub of its own but has a playable descendant. It is derived rather than direct: the language it carries describes the descendant that made the record browsable, and it carries no playback identity, so it must never be treated as a play action. Its route is the record's own series page. The state resolves only after every self-scoped state has been ruled out, so a Series-Shaped record with its own playable Dub keeps that stronger state; a record whose own public route does not resolve stays in the no-option state however playable its descendants are.
 
 The no-option state also governs presentation: catalog evidence may remain
 visible for recognition and recovery, but playback-derived controls, progress,

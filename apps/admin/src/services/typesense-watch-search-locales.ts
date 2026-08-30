@@ -56,7 +56,12 @@ export type TypesenseWatchCatalogPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "titles" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
 > &
-  Partial<Pick<TypesenseWatchCatalogDocument, "localeCodes" | "localesJson">>
+  Partial<
+    Pick<
+      TypesenseWatchCatalogDocument,
+      "localeCodes" | "localesJson" | "containerLanguagesJson"
+    >
+  >
 
 function parsedLocales(value: string): TypesenseWatchLocale[] {
   const parsed: unknown = JSON.parse(value)

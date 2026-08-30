@@ -935,7 +935,7 @@ export function FloatingSearchProvider({
                   aria-hidden
                   className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
                 />
-                <span className="text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
+                <span className="text-base sm:text-sm font-bold tracking-wider whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]">
                   {t("library")}
                 </span>
               </Link>
@@ -967,7 +967,7 @@ export function FloatingSearchProvider({
                 {headerLanguageCode ? (
                   <span
                     data-testid="floating-header-language-code"
-                    className="text-[10px] font-bold tracking-[0.14em]"
+                    className="text-xs font-bold tracking-[0.14em] sm:text-[10px]"
                   >
                     {headerLanguageCode}
                   </span>

@@ -416,7 +416,7 @@ export function CollectionDownloadModal({
             className="grid gap-x-10 gap-y-6 min-[700px]:grid-cols-[minmax(0,1fr)_20rem] min-[700px]:items-center"
           >
             <div className="min-w-0">
-              <p className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
+              <p className="text-sm sm:text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
                 {t("eyebrow")}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
@@ -424,7 +424,7 @@ export function CollectionDownloadModal({
               </h2>
               <p
                 data-testid="watch-collection-download-description"
-                className="mt-3 max-w-[46ch] text-sm leading-6 text-stone-300"
+                className="mt-3 max-w-[46ch] text-base sm:text-sm leading-6 text-stone-300"
               >
                 {t("description")}
               </p>
@@ -485,7 +485,7 @@ export function CollectionDownloadModal({
           {effectiveAuthLoginUrl ? (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <h3 className="font-semibold text-white">{t("signInTitle")}</h3>
-              <p className="mt-2 text-sm leading-6 text-stone-300">
+              <p className="mt-2 text-base sm:text-sm leading-6 text-stone-300">
                 {t("signInBody")}
               </p>
               <Button
@@ -508,7 +508,7 @@ export function CollectionDownloadModal({
                 data-testid="watch-collection-download-fields"
                 className="grid gap-5 sm:grid-cols-2"
               >
-                <div className="flex flex-col gap-2.5 text-sm font-semibold">
+                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span>{t("languageLabel")}</span>
                   <LanguageCombobox
                     options={languages}
@@ -519,7 +519,7 @@ export function CollectionDownloadModal({
                     triggerClassName="border-white/15 bg-stone-900/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 focus-visible:ring-amber-400"
                   />
                 </div>
-                <label className="flex flex-col gap-2.5 text-sm font-semibold">
+                <label className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span>{t("qualityLabel")}</span>
                   <select
                     data-testid="watch-collection-download-quality"
@@ -540,13 +540,13 @@ export function CollectionDownloadModal({
               </div>
 
               {loadState.status === "loading" ? (
-                <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 text-sm text-stone-300">
+                <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 text-base sm:text-sm text-stone-300">
                   <LoaderCircle className="animate-spin" size={18} />
                   {t("loading")}
                 </div>
               ) : null}
               {loadState.status === "error" ? (
-                <div className="rounded-2xl bg-white/5 p-4 text-sm text-stone-300">
+                <div className="rounded-2xl bg-white/5 p-4 text-base sm:text-sm text-stone-300">
                   <p>{t("loadError")}</p>
                   <Button
                     variant="ghost"
@@ -559,12 +559,12 @@ export function CollectionDownloadModal({
                 </div>
               ) : null}
               {options && options.candidates.length === 0 ? (
-                <p className="rounded-2xl bg-white/5 p-4 text-sm text-stone-300">
+                <p className="rounded-2xl bg-white/5 p-4 text-base sm:text-sm text-stone-300">
                   {t("noDownloads")}
                 </p>
               ) : null}
               {options && options.skipped.length > 0 ? (
-                <div className="text-sm text-amber-300">
+                <div className="text-base sm:text-sm text-amber-300">
                   <p>{t("skippedCount", { count: options.skipped.length })}</p>
                   <ul
                     data-testid="watch-collection-download-skipped"
@@ -579,7 +579,7 @@ export function CollectionDownloadModal({
                 </div>
               ) : null}
 
-              <p className="text-xs leading-5 text-stone-400">
+              <p className="text-sm sm:text-xs leading-5 text-stone-400">
                 {t("browserFallback")}
               </p>
 
@@ -589,7 +589,7 @@ export function CollectionDownloadModal({
                   aria-live="polite"
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
                 >
-                  <div className="flex items-center justify-between text-sm font-semibold">
+                  <div className="flex items-center justify-between text-base sm:text-sm font-semibold">
                     <span>
                       {running && progress?.active
                         ? t("downloading", { title: progress.active.title })
@@ -613,7 +613,7 @@ export function CollectionDownloadModal({
                     />
                   </div>
                   {(result?.failed.length ?? 0) > 0 ? (
-                    <p className="mt-3 text-sm text-amber-300">
+                    <p className="mt-3 text-base sm:text-sm text-amber-300">
                       {t("failedCount", { count: result?.failed.length ?? 0 })}
                     </p>
                   ) : null}
@@ -623,7 +623,7 @@ export function CollectionDownloadModal({
               {error ? (
                 <p
                   role="alert"
-                  className="text-sm font-semibold text-brand-red"
+                  className="text-base sm:text-sm font-semibold text-brand-red"
                 >
                   {error}
                 </p>

@@ -87,7 +87,10 @@ type HeroMetadataQuality = {
 }
 
 const HERO_QUALITY_TAG_CLASS =
-  "inline-flex h-4 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
+  // `leading-none` is load-bearing: the badge is a fixed-height box and the
+  // body sets `line-height: 1.75`, so the phone tier's 12px text needs its
+  // line box pinned to the glyph height to stay inside `h-5`.
+  "inline-flex h-5 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-xs leading-none font-medium tracking-wide text-stone-950 sm:h-4 sm:text-[0.6rem]"
 const HERO_LANGUAGE_TAG_CLASS = WATCH_LANGUAGE_TAG_CLASS
 const HERO_INTERACTIVE_LANGUAGE_TAG_CLASS =
   "compact-landscape:min-h-11 compact-landscape:min-w-11"

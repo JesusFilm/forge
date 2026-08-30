@@ -909,3 +909,111 @@ describe("buildWatchSearchResultClickRumContext", () => {
     expect(context).not.toHaveProperty("watch_search.query")
   })
 })
+
+describe("VideoCard container availability", () => {
+  let container: HTMLDivElement | null = null
+  let root: Root | null = null
+
+  afterEach(() => {
+    act(() => {
+      root?.unmount()
+    })
+    container?.remove()
+    root = null
+    container = null
+    window.sessionStorage.clear()
+  })
+
+  function renderContainerCard(overrides: Partial<SearchResult> = {}) {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const result = makeResult({
+      id: "easter-collection",
+      slug: "easter",
+      title: "Easter",
+      label: "COLLECTION",
+      childCount: 29,
+      durationSeconds: null,
+      playbackId: null,
+      imageUrl: "https://example.com/easter.jpg",
+      availabilityKind: "container",
+      languageSlug: "english",
+      ...overrides,
+    })
+    act(() => {
+      root?.render(
+        <VideoCard result={result} requestedLanguageSlug="english" />,
+      )
+    })
+    return result
+  }
+
+  it("shows no unavailable badge and keeps the artwork at full contrast", () => {
+    renderContainerCard()
+
+    expect(
+      container?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+    const image = container?.querySelector("img")
+    expect(image?.getAttribute("src")).toContain("easter.jpg")
+    expect(image?.className ?? "").not.toContain("grayscale")
+  })
+
+  it("shows the episode-count pill instead of a duration", () => {
+    const result = renderContainerCard()
+
+    expect(pickCardPill(result)).toEqual({
+      kind: "count",
+      text: "29 episodes",
+    })
+    expect(container?.textContent).toContain("29 episodes")
+  })
+
+  it("links to the canonical watch route, not the unavailable-language path", () => {
+    const result = renderContainerCard()
+
+    const href = defaultHrefBuilder(result, "english")
+    expect(href).toBe("/easter.html")
+    expect(container?.querySelector("a")?.getAttribute("href")).toBe(
+      "/easter.html",
+    )
+  })
+
+  it("writes no unavailable recovery context when a container card is clicked", () => {
+    renderContainerCard()
+
+    const anchor = container?.querySelector("a")
+    act(() => {
+      anchor?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).toBeNull()
+  })
+
+  it("renders no animated preview, because a container carries no playbackId", () => {
+    const result = renderContainerCard()
+
+    expect(result.playbackId).toBeNull()
+    expect(resolveMuxAnimatedPreviewUrl(result.playbackId)).toBeNull()
+  })
+
+  it("still presents a genuinely unavailable result as unavailable", () => {
+    renderContainerCard({
+      availabilityKind: "unavailable",
+      availabilityLanguageEnglishName: "English",
+    })
+
+    expect(
+      container?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).not.toBeNull()
+  })
+})

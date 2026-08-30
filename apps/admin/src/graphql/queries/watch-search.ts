@@ -124,6 +124,7 @@ const WatchSearchAvailabilityKindEnum = builder.enumType(
       TARGET_AUDIO: { value: "target_audio" },
       TARGET_SUBTITLE: { value: "target_subtitle" },
       RELATED_LANGUAGE: { value: "related_language" },
+      CONTAINER: { value: "container" },
       UNAVAILABLE: { value: "unavailable" },
     } as const,
   },

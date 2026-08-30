@@ -55,6 +55,30 @@ export type TypesenseWatchCatalogDocument = {
   subtitleLanguageSlugs: string[]
   audioOptionsJson: string
   subtitleOptionsJson: string
+  /**
+   * Languages in which this Series-Shaped Video has a visible playable
+   * descendant, as a JSON-encoded `TypesenseWatchContainerLanguage[]`. `"[]"`
+   * for every leaf and for any container the root gate rejects.
+   *
+   * Carried as a JSON string rather than an object array because that is the
+   * shape this collection already proves — `audioOptionsJson` and
+   * `subtitleOptionsJson` round-trip undeclared today, while the collection
+   * sets no `enable_nested_fields` and an undeclared object array is projected
+   * inconsistently through `include_fields`. Keeping it a string also keeps
+   * the collection field manifest unchanged, so candidate generations stay
+   * valid and the application revision does not move.
+   */
+  containerLanguagesJson: string
+}
+
+/**
+ * One language in which a container has a visible playable descendant. Carries
+ * the browse language only — a container has no playback of its own, so no
+ * playback identifier or duration belongs here.
+ */
+export type TypesenseWatchContainerLanguage = {
+  languageSlug: string
+  languageEnglishName: string | null
 }
 
 export type TypesenseWatchAvailabilityDocument = {

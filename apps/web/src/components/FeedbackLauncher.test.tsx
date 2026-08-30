@@ -61,6 +61,7 @@ import {
   FeedbackLauncher,
   FeedbackLoadNotice,
 } from "@/components/FeedbackLauncher"
+import { requestWatchFeedback } from "@/lib/watch-feedback-events"
 
 let container: HTMLDivElement
 let root: Root
@@ -889,6 +890,31 @@ describe("FeedbackLauncher", () => {
     searchState.searchOpen = true
     act(() => root.render(<FeedbackLauncher />))
     expect(launcher()).toBeNull()
+    expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
+  })
+
+  it("opens for a page-level CTA and keeps yielding to global search", async () => {
+    act(() => {
+      requestWatchFeedback()
+    })
+    await flushDynamicModal()
+    expect(
+      document.querySelector('[data-testid="feedback-modal"]'),
+    ).not.toBeNull()
+
+    // Same precedence rule as the launcher button: search wins.
+    const close = document.querySelector(
+      '[data-testid="feedback-modal-close"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      close.click()
+      await new Promise((resolve) => window.setTimeout(resolve, 120))
+    })
+    searchState.searchOpen = true
+    act(() => root.render(<FeedbackLauncher />))
+    act(() => {
+      requestWatchFeedback()
+    })
     expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
   })
 
