@@ -14,6 +14,7 @@ import {
 } from "@forge/admin-graphql/operations"
 import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS } from "@/lib/recommendation-timeouts"
 
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 1_900
 const SELECTION_UPSTREAM_TIMEOUT_MS = 700
@@ -300,7 +301,7 @@ export async function getRecommendationProfileStatus(
     mutation: adminRecommendationProfileStatusOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recommendationProfileStatus) {
     throw new RecommendationRuntimeError("profile_unavailable")
@@ -317,7 +318,7 @@ export async function transitionRecommendationProfile(
     mutation: adminTransitionRecommendationProfileOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.transitionRecommendationProfile) {
     throw new RecommendationRuntimeError("profile_unavailable")
