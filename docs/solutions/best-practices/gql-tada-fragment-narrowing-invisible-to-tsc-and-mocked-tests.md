@@ -48,23 +48,23 @@ Put `snippet` back into `apps/web/src/lib/fragments/watch-home.ts` and admin sta
 
 ### What the pruned bytes were worth
 
-Per `docs/plans/2026-08-29-1256-fix-watch-home-hero-description-removal-plan.md:207`: rendering the hero through `WatchHomePage` with a production-shaped fixture measured **21,667 B → 20,903 B** of server-rendered HTML (**−764 B per rendered slide**) and **1,033 B → 480 B** of serialized hero-slide props (**−553 B per slide**, the payload that crosses the RSC boundary). That plan also flags the exact hazard this doc exists to close (line 209): *"The byte comparison is a point-in-time measurement, not a test. A later change could reintroduce payload weight on this path without any suite failing."*
+Per `docs/plans/2026-08-29-1256-fix-watch-home-hero-description-removal-plan.md:207`: rendering the hero through `WatchHomePage` with a production-shaped fixture measured **21,667 B → 20,903 B** of server-rendered HTML (**−764 B per rendered slide**) and **1,033 B → 480 B** of serialized hero-slide props (**−553 B per slide**, the payload that crosses the RSC boundary). That plan also flags the exact hazard this doc exists to close (line 209): _"The byte comparison is a point-in-time measurement, not a test. A later change could reintroduce payload weight on this path without any suite failing."_
 
 ## Guidance: three gates, three different failure modes
 
 Pruning a gql.tada selection is not one job with one gate. It is three:
 
-| Gate | Command | What it is the gate for | What it is blind to |
-| --- | --- | --- | --- |
-| **Regression** | `tsc --noEmit` | The TS-side prune: type fields, mappers, and *annotated* fixtures | The GraphQL document entirely. Un-annotated fixtures. |
-| **Completeness** | `git grep` / ripgrep for the field name | Fixture and mock sites the compiler structurally cannot check | Anything spelled differently; anything outside the grep's path scope |
-| **Wire** | a `print()`-ed document assertion in a test | The selection set actually sent to admin | Whether anything *reads* the field (that is gate 1's job) |
+| Gate             | Command                                     | What it is the gate for                                           | What it is blind to                                                  |
+| ---------------- | ------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Regression**   | `tsc --noEmit`                              | The TS-side prune: type fields, mappers, and _annotated_ fixtures | The GraphQL document entirely. Un-annotated fixtures.                |
+| **Completeness** | `git grep` / ripgrep for the field name     | Fixture and mock sites the compiler structurally cannot check     | Anything spelled differently; anything outside the grep's path scope |
+| **Wire**         | a `print()`-ed document assertion in a test | The selection set actually sent to admin                          | Whether anything _reads_ the field (that is gate 1's job)            |
 
 Skipping any one of them leaves a live failure mode. The rest of this doc is what each one does and does not do, with the measurements behind the claims.
 
 ### Gate 1 — `tsc --noEmit` never sees the GraphQL document
 
-gql.tada types a document from its *text*. Adding a field widens the result type; it never narrows it. So a re-added field is, to the compiler, a strictly more capable result type that nobody happens to destructure. There is no error to emit.
+gql.tada types a document from its _text_. Adding a field widens the result type; it never narrows it. So a re-added field is, to the compiler, a strictly more capable result type that nobody happens to destructure. There is no error to emit.
 
 Verified: with `snippet` re-added to the nested `children.child` `locales` block only (`apps/web/src/lib/fragments/watch-home.ts:74-79`), `npx tsc --noEmit` in `apps/web` exits 0.
 
@@ -72,16 +72,16 @@ This is not a gql.tada defect. It is the correct behavior of a supertype. It jus
 
 ### Gate 2 — TypeScript's excess-property check is narrower than it feels
 
-The prune's *removal* direction does raise type errors — but only at fixture sites where a **fresh object literal** meets a **known target type**. Six fixture sites in `apps/web` carried `description`. Four errored; two were silent. Measured by re-injecting `description` at each site and running `tsc --noEmit`:
+The prune's _removal_ direction does raise type errors — but only at fixture sites where a **fresh object literal** meets a **known target type**. Six fixture sites in `apps/web` carried `description`. Four errored; two were silent. Measured by re-injecting `description` at each site and running `tsc --noEmit`:
 
-| Site | Declaration | tsc? |
-| --- | --- | --- |
-| `apps/web/src/lib/watch-home-carousel-sequence.test.ts:28` | `function video(id: string): WatchHomeTvCarouselVideoSlide` | **TS2353** |
-| `apps/web/src/components/home/__tests__/useWatchHomeTvCarousel.test.ts:21` | `function slide(...): WatchHomeTvCarouselSlide` | **TS2353** |
-| `apps/web/src/components/home/__tests__/WatchHomeHero.test.tsx:21-41` | `const fallbackSlide = { … } satisfies WatchHomeHeroSlide` | **TS2353** |
-| `apps/web/src/components/home/__tests__/WatchHomePage.test.tsx:186-188` | `function makeCarouselSlide(overrides: Partial<T> = {}): WatchHomeTvCarouselVideoSlide` | **TS2353** |
-| `apps/web/src/components/home/__tests__/WatchHomePage.test.tsx:136` | `function makeCard(overrides: Record<string, unknown> = {}) {` — **no return annotation** | silent |
-| `apps/web/src/app/[locale]/[htmlLang]/page.test.tsx:186-198` | payload handed to `resolveWatchHomeMock.mockResolvedValue({ … })`, where the mock is a bare `vi.fn()` (`:12`) | silent |
+| Site                                                                       | Declaration                                                                                                   | tsc?       |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- |
+| `apps/web/src/lib/watch-home-carousel-sequence.test.ts:28`                 | `function video(id: string): WatchHomeTvCarouselVideoSlide`                                                   | **TS2353** |
+| `apps/web/src/components/home/__tests__/useWatchHomeTvCarousel.test.ts:21` | `function slide(...): WatchHomeTvCarouselSlide`                                                               | **TS2353** |
+| `apps/web/src/components/home/__tests__/WatchHomeHero.test.tsx:21-41`      | `const fallbackSlide = { … } satisfies WatchHomeHeroSlide`                                                    | **TS2353** |
+| `apps/web/src/components/home/__tests__/WatchHomePage.test.tsx:186-188`    | `function makeCarouselSlide(overrides: Partial<T> = {}): WatchHomeTvCarouselVideoSlide`                       | **TS2353** |
+| `apps/web/src/components/home/__tests__/WatchHomePage.test.tsx:136`        | `function makeCard(overrides: Record<string, unknown> = {}) {` — **no return annotation**                     | silent     |
+| `apps/web/src/app/[locale]/[htmlLang]/page.test.tsx:186-198`               | payload handed to `resolveWatchHomeMock.mockResolvedValue({ … })`, where the mock is a bare `vi.fn()` (`:12`) | silent     |
 
 Exact error text for the four that fire:
 
@@ -136,12 +136,12 @@ describe("WatchHomeVideo GraphQL selection", () => {
 Three things are load-bearing and easy to drop:
 
 - **`print()` from `graphql`, not source text.** `adminGraphql()` composes fragments; the printed document is what actually goes on the wire. Reading the template literal instead would miss anything a spread pulls in.
-- **`.not.toBeNull()` + `.toHaveLength(2)` are anti-vacuity guards, not sanity checks.** The assertions live inside `for (const block of localeBlocks ?? [])`. If the regex ever stops matching — a formatting change, a renamed argument, one block collapsed into a fragment spread — the loop body runs zero times and *every negative assertion passes vacuously*. The count assertion is what makes that failure loud.
+- **`.not.toBeNull()` + `.toHaveLength(2)` are anti-vacuity guards, not sanity checks.** The assertions live inside `for (const block of localeBlocks ?? [])`. If the regex ever stops matching — a formatting change, a renamed argument, one block collapsed into a fragment spread — the loop body runs zero times and _every negative assertion passes vacuously_. The count assertion is what makes that failure loud.
 - **Positive assertions (`title`, `imageAlt`) alongside the negative ones.** A test that only asserts absence goes green if the block is emptied entirely.
 
 #### Prior art in this repo
 
-`apps/web/src/lib/fragments/__tests__/watch-video.test.ts` is the only pre-existing example in `apps/web` of asserting a field's **absence** from a printed selection — e.g. `expect(printed).not.toMatch(/\bdubs\s*\{/)` at `:33`, guarding the split shell/copy/dub-detail operations against re-fattening. The one sibling fragment test in the same directory (`watch-experience.test.ts`) walks the AST for *presence* of specific paths; that is a different technique for a different question.
+`apps/web/src/lib/fragments/__tests__/watch-video.test.ts` is the only pre-existing example in `apps/web` of asserting a field's **absence** from a printed selection — e.g. `expect(printed).not.toMatch(/\bdubs\s*\{/)` at `:33`, guarding the split shell/copy/dub-detail operations against re-fattening. The one sibling fragment test in the same directory (`watch-experience.test.ts`) walks the AST for _presence_ of specific paths; that is a different technique for a different question.
 
 `apps/mobile/src/lib/__tests__/watchHomeQueries.test.ts:34-57` is the closest cross-app analogue — a "lean payload guard" over mobile's `GET_WATCH_HOME_VIDEOS` that pins `not.toMatch(/\bdubs\b/)` and counts the two `locales(...)` selections at `:52-57`. It does not pin the field list inside those blocks, so mobile has gate 3 for the 9.5MB `dubs` trap but not for field-level creep.
 
@@ -149,7 +149,7 @@ Three things are load-bearing and easy to drop:
 
 The same field list appears twice in `watch-home.ts` — the parent video's `locales` (`:25-30`) and the nested `children.child`'s `locales` (`:74-79`). Two copies of one list is the exact shape where a partial re-add happens.
 
-**A symmetric injection is not a sufficient falsification.** Re-add `snippet` to *both* blocks and a test written with a non-global regex, or a lazy `[\s\S]*?` that stops at the first block, still goes red — while remaining blind to a re-add in the second block only. Symmetric injection cannot tell a two-block test apart from a one-block test.
+**A symmetric injection is not a sufficient falsification.** Re-add `snippet` to _both_ blocks and a test written with a non-global regex, or a lazy `[\s\S]*?` that stops at the first block, still goes red — while remaining blind to a re-add in the second block only. Symmetric injection cannot tell a two-block test apart from a one-block test.
 
 So falsify asymmetrically. Add the field to the **nested child block only**, then run the fragment test:
 
@@ -185,16 +185,19 @@ vi.mock("@/lib/admin-client", () => ({
 The production call site does pass the document — `query: getWatchHomeVideosOperation` at `apps/web/src/lib/watch-home.ts:872` and `:917` — so `queryMock.mock.calls[0][0].query` is right there. But every assertion in the suite reaches past it to the variables:
 
 ```ts
-expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian")   // :553
+expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian") // :553
 expect(queryMock).toHaveBeenCalledWith(
   expect.objectContaining({
-    variables: expect.objectContaining({ locale: "ru", languageSlug: "russian" }),
+    variables: expect.objectContaining({
+      locale: "ru",
+      languageSlug: "russian",
+    }),
     fetchPolicy: "no-cache",
   }),
-)                                                                          // :518-525
+) // :518-525
 ```
 
-`expect.objectContaining` ignores unlisted keys by design, so the document is never inspected. This is not a bug in the suite — a model test *should* mock at that boundary. It just means "which fields do we request" is a question that suite was never built to answer, and adding a selection assertion there would tangle two concerns. A separate fragment-level test is the right shape.
+`expect.objectContaining` ignores unlisted keys by design, so the document is never inspected. This is not a bug in the suite — a model test _should_ mock at that boundary. It just means "which fields do we request" is a question that suite was never built to answer, and adding a selection assertion there would tangle two concerns. A separate fragment-level test is the right shape.
 
 ### The DOM companion guard
 
@@ -202,10 +205,15 @@ Byte-level pinning is one half; the removed paragraph is the other. `apps/web/sr
 
 ```ts
 const copyBlock = activeTitle?.parentElement
-expect(Array.from(copyBlock?.children ?? []).map((el) => el.tagName)).toEqual(["P", "P"])
+expect(Array.from(copyBlock?.children ?? []).map((el) => el.tagName)).toEqual([
+  "P",
+  "P",
+])
 expect(copyBlock?.textContent).toBe("FeaturedJesus")
 const overlayRoot = copyBlock?.parentElement
-expect(Array.from(overlayRoot?.children ?? []).map((el) => el.tagName)).toEqual(["DIV", "DIV"])
+expect(Array.from(overlayRoot?.children ?? []).map((el) => el.tagName)).toEqual(
+  ["DIV", "DIV"],
+)
 ```
 
 Both levels are needed: the inner one pins eyebrow + title as the copy block's only children, the outer one pins that the copy block's only sibling is the action wrapper — otherwise a paragraph re-added as a sibling of the action slips past. Note what this replaced: the deleted line was `expect(container.textContent).toContain("The story of Jesus")` (`:386` pre-prune), and its naive inverse (`not.toContain(...)`) would pass vacuously against any fixture that no longer supplies the string.
@@ -214,7 +222,7 @@ A third guard pins the animation table the paragraph's removal shortened — `:9
 
 ## When to Apply: do NOT propagate this prune to mobile or TV
 
-`apps/mobile/src/lib/queries.ts:492` declares its own `watchHomeVideoFragment`, whose header comment describes it as *"Web's WatchHomeVideo fragment MINUS `variants: dubs`."* It still selects `description` and `snippet` in both `locales` blocks (`:511-512`, `:534-535`), as does TV's at `apps/tv/src/lib/watchHome/homeQueries.ts:25-32` and its nested child block.
+`apps/mobile/src/lib/queries.ts:492` declares its own `watchHomeVideoFragment`, whose header comment describes it as _"Web's WatchHomeVideo fragment MINUS `variants: dubs`."_ It still selects `description` and `snippet` in both `locales` blocks (`:511-512`, `:534-535`), as does TV's at `apps/tv/src/lib/watchHome/homeQueries.ts:25-32` and its nested child block.
 
 That is correct, not drift. Both apps still render the copy: `apps/mobile/src/lib/watchHome/model.ts:212` and `apps/tv/src/lib/watchHome/model.ts:260` both compute `description: locale?.snippet ?? locale?.description ?? null`, and mobile threads it into the carousel overlay (`apps/mobile/src/lib/watchHome/carouselSequence.ts`, at the insert-to-slide and queue-build sites). Only `apps/web` dropped the paragraph.
 
