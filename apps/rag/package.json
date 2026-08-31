@@ -37,6 +37,7 @@
     "dashboard:snapshot:validate": "tsx scripts/dashboard-validate-snapshot.ts",
     "dashboard:build": "tsx scripts/dashboard-compile.ts",
     "dashboard:verify": "tsx scripts/dashboard-verify.ts",
+    "pages:assemble": "tsx scripts/assemble-pages.ts",
     "status:remove-source": "tsx scripts/source-status.ts remove-source",
     "start": "tsx scripts/serve.ts",
     "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts --exclude tests/adapters.integration.test.ts",

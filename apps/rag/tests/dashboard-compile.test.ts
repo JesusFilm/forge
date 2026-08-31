@@ -250,6 +250,12 @@ describe("renderHtml + assertHtmlContainsData (the merge-gate contract)", () => 
     expect(assertHtmlContainsData(html, data)).toEqual([])
   })
 
+  it("is insensitive to formatter whitespace in keyed row tags", () => {
+    const data = build()
+    const formatted = renderHtml(TEMPLATE, data).replaceAll("<tr ", "<tr\n  ")
+    expect(assertHtmlContainsData(formatted, data)).toEqual([])
+  })
+
   it("assertHtmlContainsData catches a row dropped from the HTML (the gate bites)", () => {
     const data = build()
     // "Jesus Film Project" is a unique source name — corrupting it must be caught.
