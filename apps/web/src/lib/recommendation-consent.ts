@@ -14,10 +14,13 @@ export const RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT =
 
 const RECEIPT_MAX_AGE_SECONDS = 180 * 24 * 60 * 60
 const RECEIPT_VALUE_PATTERN = /^[A-Za-z0-9_-]{43}$/
+const BUNDLED_RECEIPT_VALUE_PATTERN =
+  /^v1\.([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43}|-)$/
 
 export type RecommendationConsentCookie = Readonly<{
   value: string
   digest: string
+  profileValue: string | null
 }>
 
 export type RecommendationConsentCookieRead =
@@ -35,19 +38,35 @@ function cookieValues(request: Request): string[] {
     .map(([, value]) => value!)
 }
 
+function parseReceiptValue(value: string): {
+  receiptValue: string
+  profileValue: string | null
+} | null {
+  if (RECEIPT_VALUE_PATTERN.test(value)) {
+    return { receiptValue: value, profileValue: null }
+  }
+  const bundled = BUNDLED_RECEIPT_VALUE_PATTERN.exec(value)
+  if (!bundled) return null
+  return {
+    receiptValue: bundled[1]!,
+    profileValue: bundled[2] === "-" ? null : bundled[2]!,
+  }
+}
+
 export function readRecommendationConsentCookie(
   request: Request,
 ): RecommendationConsentCookieRead {
   const values = cookieValues(request)
   if (values.length === 0) return { kind: "absent" }
-  if (values.length !== 1 || !RECEIPT_VALUE_PATTERN.test(values[0]!)) {
-    return { kind: "invalid" }
-  }
+  if (values.length !== 1) return { kind: "invalid" }
   const value = values[0]!
+  const parsed = parseReceiptValue(value)
+  if (!parsed) return { kind: "invalid" }
   return {
     kind: "valid",
     value,
-    digest: createHash("sha256").update(value).digest("hex"),
+    digest: createHash("sha256").update(parsed.receiptValue).digest("hex"),
+    profileValue: parsed.profileValue,
   }
 }
 
@@ -56,6 +75,23 @@ export function createRecommendationConsentCookie(): RecommendationConsentCookie
   return {
     value,
     digest: createHash("sha256").update(value).digest("hex"),
+    profileValue: null,
+  }
+}
+
+export function bindRecommendationConsentProfile(
+  receipt: RecommendationConsentCookie,
+  profileValue: string | null,
+): RecommendationConsentCookie {
+  if (profileValue != null && !RECEIPT_VALUE_PATTERN.test(profileValue)) {
+    throw new Error("Invalid recommendation profile receipt")
+  }
+  const parsed = parseReceiptValue(receipt.value)
+  if (!parsed) throw new Error("Invalid recommendation consent receipt")
+  return {
+    value: `v1.${parsed.receiptValue}.${profileValue ?? "-"}`,
+    digest: createHash("sha256").update(parsed.receiptValue).digest("hex"),
+    profileValue,
   }
 }
 

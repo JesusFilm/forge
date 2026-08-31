@@ -60,4 +60,24 @@ describe("durable recommendation profile cookie", () => {
     clearRecommendationProfile(cleared)
     expect(cleared.headers.get("set-cookie")).toContain("Max-Age=0")
   })
+
+  it("prefers the profile bound to the latest consent receipt", () => {
+    const bundledProfile = "b".repeat(43)
+    const staleProfile = "s".repeat(43)
+    const consent = "c".repeat(43)
+
+    expect(
+      readRecommendationProfileCookie(
+        new Request("https://watch.example", {
+          headers: {
+            cookie: `forge_recommendation_profile=${staleProfile}; forge_recommendation_consent=v1.${consent}.${bundledProfile}`,
+          },
+        }),
+      ),
+    ).toEqual({
+      kind: "valid",
+      value: bundledProfile,
+      digest: createHash("sha256").update(bundledProfile).digest("hex"),
+    })
+  })
 })

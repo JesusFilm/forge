@@ -209,6 +209,135 @@ describe("POST /watch/api/recommendations", () => {
     expect(JSON.stringify(variables)).not.toContain(consent)
   })
 
+  it("recovers consent and profile digests from the one cookie production preserves", async () => {
+    const session = "a".repeat(43)
+    const profile = "b".repeat(43)
+    const consent = "c".repeat(43)
+    await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        {
+          cookie: `forge_recommendation_session=${session}; forge_recommendation_consent=v1.${consent}.${profile}`,
+        },
+      ),
+    )
+
+    const variables = query.mock.calls[0]?.[0]?.variables
+    expect(variables.profileTokenDigest).toBe(
+      createHash("sha256").update(profile).digest("hex"),
+    )
+    expect(variables.consentReceiptDigest).toBe(
+      createHash("sha256").update(consent).digest("hex"),
+    )
+  })
+
+  it("serves non-attributed contextual cards when production semantic issuance is disabled", async () => {
+    query
+      .mockResolvedValueOnce({
+        data: {
+          semanticRecommendationDelivery: {
+            ...delivery,
+            requestId: null,
+            result: "unavailable",
+            reason: "environment_disabled",
+            expiresAt: null,
+            items: [],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          sceneRecommendations: [
+            {
+              videoId: "target-1",
+              videoSlug: "target",
+              videoTitle: "Target",
+              imageUrl: null,
+              sceneIndex: 0,
+              description: "Description",
+              startSeconds: 0,
+              endSeconds: null,
+              similarity: 0.9,
+              themes: [],
+              demographics: [],
+              spiritualContext: [],
+              playbackId: "playback-1",
+            },
+          ],
+        },
+      })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: {
+        result: "fallback",
+        reason: "environment_disabled",
+        items: [
+          {
+            targetMediaId: "target-1",
+            canonicalHref: "/watch/target.html",
+            videoTitle: "Target",
+          },
+        ],
+      },
+    })
+    expect(query.mock.calls[1]?.[0]?.variables).toEqual({
+      videoId: "seed-1",
+      locale: "en",
+      limit: 6,
+    })
+  })
+
+  it("preserves the semantic unavailable receipt when contextual recovery also fails", async () => {
+    query
+      .mockResolvedValueOnce({
+        data: {
+          semanticRecommendationDelivery: {
+            ...delivery,
+            requestId: null,
+            result: "unavailable",
+            reason: "environment_disabled",
+            expiresAt: null,
+            items: [],
+          },
+        },
+      })
+      .mockRejectedValueOnce(new Error("contextual retrieval unavailable"))
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "uncached-seed",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: {
+        result: "unavailable",
+        reason: "environment_disabled",
+        items: [],
+      },
+    })
+  })
+
   it("keeps delivery contextual while a client-visible withdrawal is pending", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
