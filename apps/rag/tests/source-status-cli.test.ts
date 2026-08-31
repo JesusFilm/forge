@@ -6,7 +6,14 @@
  * guarantees that stop the /slice agent misusing the file — comment preservation,
  * tool-derived rollup, last_updated bump, and validate-before-write.
  */
-import { mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
@@ -525,6 +532,59 @@ describe("withExclusiveFileLock", () => {
           staleMs: 60_000,
         }),
       ).resolves.toBe("recovered")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("recovers an abandoned transition guard", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "source-status-lock-"))
+    const file = path.join(directory, "status.yaml")
+    const guard = `${file}.lock.guard`
+    await mkdir(guard)
+    const old = new Date(Date.now() - 120_000)
+    await utimes(guard, old, old)
+    try {
+      await expect(
+        withExclusiveFileLock(file, async () => "recovered", {
+          retryMs: 1,
+          timeoutMs: 20,
+          staleMs: 60_000,
+        }),
+      ).resolves.toBe("recovered")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not recover an aged transition guard owned by a live process", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "source-status-lock-"))
+    const file = path.join(directory, "status.yaml")
+    const guard = `${file}.lock.guard`
+    await mkdir(guard)
+    await writeFile(
+      path.join(guard, "owner"),
+      JSON.stringify({
+        token: "live-guard",
+        pid: process.pid,
+        createdAt: "old",
+      }),
+    )
+    const old = new Date(Date.now() - 120_000)
+    await utimes(guard, old, old)
+    try {
+      await expect(
+        withExclusiveFileLock(file, async () => undefined, {
+          retryMs: 1,
+          timeoutMs: 5,
+          staleMs: 60_000,
+        }),
+      ).rejects.toThrow(/timed out waiting for transition guard/)
+      expect(
+        JSON.parse(await readFile(path.join(guard, "owner"), "utf8")),
+      ).toMatchObject({
+        token: "live-guard",
+      })
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

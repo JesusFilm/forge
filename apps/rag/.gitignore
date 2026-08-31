@@ -7,6 +7,12 @@
 /dashboard/site/rag-status/index.html.*.bak
 /dashboard/site/rag-status/..dashboard-commit.json.*.tmp
 /dashboard/site/rag-status/.dashboard-commit.json.*.bak
-/dashboard/site/rag-status/.dashboard-commit.json.lock/
+/dashboard/site/rag-status/.dashboard-commit.json.lock
+/dashboard/site/rag-status/.dashboard-commit.json.lock.guard/
+/dashboard/site/rag-status/.dashboard-commit.json.lock.guard.stale-*
+/dashboard/site/rag-status/.dashboard-commit.json.lock.stale-*
 /docs/source-status.yaml.lock
+/docs/source-status.yaml.lock.guard/
+/docs/source-status.yaml.lock.guard.stale-*
+/docs/source-status.yaml.lock.stale-*
 /docs/source-status.yaml.*.tmp

@@ -25,6 +25,10 @@ const FORBIDDEN_VALUE_PATTERNS: ReadonlyArray<{
     pattern: /\bsk-(?:proj-|svcacct-)?[a-zA-Z0-9_-]{20,}\b/,
   },
   {
+    label: "Firecrawl credential",
+    pattern: /\bfc-[a-zA-Z0-9_-]{20,}\b/,
+  },
+  {
     label: "AWS access key",
     pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/,
   },

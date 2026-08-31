@@ -43,15 +43,47 @@ async function guarded<T>(
   deadline: number,
   now: () => number,
   retryMs: number,
+  staleMs: number,
   action: () => Promise<T>,
 ): Promise<T> {
   const guard = `${lock}.guard`
+  const ownerFile = `${guard}/owner`
+  const owner = JSON.stringify({
+    token: randomUUID(),
+    pid: process.pid,
+    createdAt: new Date(now()).toISOString(),
+  } satisfies Metadata)
   for (;;) {
     try {
       await mkdir(guard)
+      await writeFile(ownerFile, owner, { flag: "wx", mode: 0o600 })
       break
     } catch (error) {
-      if (!coded(error, "EEXIST") || now() >= deadline) throw error
+      if (!coded(error, "EEXIST")) throw error
+      try {
+        const [details, raw] = await Promise.all([
+          stat(guard),
+          readFile(ownerFile, "utf8").catch((readError: unknown) => {
+            if (coded(readError, "ENOENT")) return ""
+            throw readError
+          }),
+        ])
+        const current = parse(raw)
+        if (
+          now() - details.mtimeMs >= staleMs &&
+          (!current || !alive(current.pid))
+        ) {
+          const quarantine = `${guard}.stale-${randomUUID()}`
+          await rename(guard, quarantine)
+          await rm(quarantine, { recursive: true, force: true })
+          continue
+        }
+      } catch (guardError) {
+        if (!coded(guardError, "ENOENT")) throw guardError
+        continue
+      }
+      if (now() >= deadline)
+        throw new Error(`timed out waiting for transition guard ${guard}`)
       await sleep(retryMs)
     }
   }
@@ -100,15 +132,22 @@ export async function withOwnedFileLock<T>(
   } satisfies Metadata)
 
   for (;;) {
-    const acquired = await guarded(lock, deadline, now, retryMs, async () => {
-      try {
-        await writeFile(lock, contents, { flag: "wx", mode: 0o600 })
-        return true
-      } catch (error) {
-        if (!coded(error, "EEXIST")) throw error
-        return false
-      }
-    })
+    const acquired = await guarded(
+      lock,
+      deadline,
+      now,
+      retryMs,
+      staleMs,
+      async () => {
+        try {
+          await writeFile(lock, contents, { flag: "wx", mode: 0o600 })
+          return true
+        } catch (error) {
+          if (!coded(error, "EEXIST")) throw error
+          return false
+        }
+      },
+    )
     if (acquired) break
 
     const observed = await staleOwner(lock, staleMs, now())
@@ -119,6 +158,7 @@ export async function withOwnedFileLock<T>(
         deadline,
         now,
         retryMs,
+        staleMs,
         async () => {
           const current = await staleOwner(lock, staleMs, now())
           if (
@@ -145,7 +185,7 @@ export async function withOwnedFileLock<T>(
   try {
     return await action()
   } finally {
-    await guarded(lock, deadline, now, retryMs, async () => {
+    await guarded(lock, deadline, now, retryMs, staleMs, async () => {
       try {
         if (parse(await readFile(lock, "utf8"))?.token === token)
           await rm(lock, { force: true })

@@ -36,6 +36,7 @@ describe("public dashboard hardening", () => {
       { output: { value: "github_pat_1234567890_abcdefghij" } },
     ],
     ["OpenAI key", { output: { value: "sk-1234567890abcdefghij" } }],
+    ["Firecrawl key", { output: { value: "fc-1234567890abcdefghij" } }],
     ["AWS access key", { output: { value: "AKIA1234567890ABCDEF" } }],
     [
       "PEM private key",
@@ -112,7 +113,14 @@ describe("public dashboard hardening", () => {
       "apps/rag/dashboard/site/rag-status/index.html.uuid.bak",
       "apps/rag/dashboard/site/rag-status/..dashboard-commit.json.uuid.tmp",
       "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.uuid.bak",
-      "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock/owner",
+      "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock",
+      "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.guard/owner",
+      "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.guard.stale-uuid/owner",
+      "apps/rag/dashboard/site/rag-status/.dashboard-commit.json.lock.stale-uuid",
+      "apps/rag/docs/source-status.yaml.lock",
+      "apps/rag/docs/source-status.yaml.lock.guard/owner",
+      "apps/rag/docs/source-status.yaml.lock.guard.stale-uuid/owner",
+      "apps/rag/docs/source-status.yaml.lock.stale-uuid",
     ]
     const ignored = execFileSync(
       "git",
