@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- pure scoring facets share one tested contract */
 /**
  * Pure scoring + reporting logic for the eval harness, extracted from
  * scripts/eval.ts so it can be unit-tested without a DB, network, or env
@@ -8,7 +9,8 @@
  * Model (docs/eval-approach.md): a golden case is a **source-agnostic question**
  * plus a `relevant` map of `{ sourceKey: [doc pathnames] }` — every document,
  * across sources, that legitimately answers it. A hit is correct if it matches
- * ANY relevant path. We report **recall** (any relevant doc in top-k) AND
+ * ANY relevant `(sourceKey, pathname)` document identity. We report **recall**
+ * (any relevant doc in top-k) AND
  * **coverage** (fraction of the relevant set returned), plus **per-source
  * coverage** (when source X has a relevant doc, does an X doc surface?). P@1/MRR
  * are secondary — ranking is the consumer's job (architecture §1). The relevant
@@ -76,6 +78,7 @@ export type GoldenCase = z.infer<typeof GoldenCaseSchema>
 
 export interface Hit {
   chunkId: string
+  sourceKey: string
   docPath: string
   docUrl: string | null
   score: number
@@ -84,9 +87,14 @@ export interface Hit {
 export interface CaseResult {
   case: GoldenCase
   hits: Hit[]
-  matchedRank: number | null // 1-indexed rank of first hit matching ANY relevant path
-  returnedRelevant: string[] // distinct relevant paths present in the returned hits
+  matchedRank: number | null // 1-indexed rank of first hit matching ANY relevant document
+  returnedRelevant: RelevantDocument[] // distinct relevant documents in the returned hits
   language: string | null // resolved retrieval language (caseLanguage), null = unscoped
+}
+
+export interface RelevantDocument {
+  sourceKey: string
+  docPath: string
 }
 
 export interface Metrics {
@@ -158,27 +166,43 @@ export function caseLanguage(
 }
 
 /**
- * Every relevant pathname across sources, **distinct**. Deduped so the coverage
- * denominator matches the (also-deduped) returnedRelevant numerator — a doc
- * listed under two sources counts once, so perfect retrieval still reaches 1.0.
+ * Every relevant `(sourceKey, pathname)` pair, distinct. Source identity is
+ * part of the document identity: two sources may legitimately publish the same
+ * pathname, and a result from one must never certify retrieval from the other.
  */
-export function allRelevantPaths(c: GoldenCase): string[] {
-  return [...new Set(Object.values(c.relevant).flat())]
+export function allRelevantDocuments(c: GoldenCase): RelevantDocument[] {
+  return Object.entries(c.relevant).flatMap(([sourceKey, paths]) =>
+    [...new Set(paths)].map((docPath) => ({ sourceKey, docPath })),
+  )
 }
 
-/** Distinct relevant paths that appear among the hits (the returned set). */
-export function returnedRelevant(hits: Hit[], c: GoldenCase): string[] {
-  const want = new Set(allRelevantPaths(c))
+const documentKey = ({ sourceKey, docPath }: RelevantDocument): string =>
+  `${sourceKey}\u0000${docPath}`
+
+/** Distinct relevant document identities that appear among the hits. */
+export function returnedRelevant(
+  hits: Hit[],
+  c: GoldenCase,
+): RelevantDocument[] {
+  const want = new Set(allRelevantDocuments(c).map(documentKey))
   const found = new Set<string>()
-  for (const h of hits) if (want.has(h.docPath)) found.add(h.docPath)
-  return [...found]
+  const returned: RelevantDocument[] = []
+  for (const hit of hits) {
+    const document = { sourceKey: hit.sourceKey, docPath: hit.docPath }
+    const key = documentKey(document)
+    if (want.has(key) && !found.has(key)) {
+      found.add(key)
+      returned.push(document)
+    }
+  }
+  return returned
 }
 
-/** 1-indexed rank of the first hit matching any relevant path, or null for a miss. */
+/** 1-indexed rank of the first hit matching any relevant document, or null. */
 export function firstMatchingRank(hits: Hit[], c: GoldenCase): number | null {
-  const want = new Set(allRelevantPaths(c))
+  const want = new Set(allRelevantDocuments(c).map(documentKey))
   for (let i = 0; i < hits.length; i++) {
-    if (want.has(hits[i].docPath)) return i + 1
+    if (want.has(documentKey(hits[i]))) return i + 1
   }
   return null
 }
@@ -198,7 +222,7 @@ export function computeMetrics(results: CaseResult[]): Metrics {
       mrr += 1 / r.matchedRank
       if (r.matchedRank === 1) p1 += 1
     }
-    const total = allRelevantPaths(r.case).length
+    const total = allRelevantDocuments(r.case).length
     cov += total ? r.returnedRelevant.length / total : 0
   }
   return {
@@ -230,7 +254,12 @@ export function coverageBySource(results: CaseResult[]): SourceCoverage[] {
       const want = r.case.relevant[source]
       if (!want || want.length === 0) continue
       cases += 1
-      const got = want.filter((p) => r.returnedRelevant.includes(p)).length
+      const returned = new Set(
+        r.returnedRelevant
+          .filter((document) => document.sourceKey === source)
+          .map(({ docPath }) => docPath),
+      )
+      const got = want.filter((path) => returned.has(path)).length
       if (got > 0) recallHits += 1
       covSum += got / want.length
     }
@@ -342,7 +371,7 @@ export function renderMarkdown(input: RenderInput): string {
 
   const caseRows = results.map((r) => {
     const tick = r.matchedRank !== null ? "✓" : "✗"
-    const total = allRelevantPaths(r.case).length
+    const total = allRelevantDocuments(r.case).length
     const top = r.hits[0]
     const topInfo = top ? `\`${top.docPath}\` (${top.score.toFixed(3)})` : "—"
     return `| ${tick} | \`${r.case.id}\` | ${escape(r.case.question)} | ${r.matchedRank ?? "miss"} | ${r.returnedRelevant.length}/${total} | ${topInfo} |`

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { installProductionReadEnvironment } from "../scripts/eval-production.js"
+import {
+  installProductionReadEnvironment,
+  productionEvaluationErrorMessage,
+} from "../scripts/eval-production.js"
 
 const production = {
   JFRAG_POSTGRESQL_DB_URL: "postgresql://reader:secret@prod.example/rag",
@@ -51,5 +54,26 @@ describe("production eval target", () => {
         JFRAG_EXPECTED_POSTGRES_HOST: "other.example",
       }),
     ).toThrow(/host/i)
+  })
+
+  it("reports safe argument errors but redacts runtime validation failures", () => {
+    let argumentError: unknown
+    try {
+      installProductionReadEnvironment(
+        ["--target", "production-read", "--source", "cru"],
+        { ...production },
+      )
+    } catch (error) {
+      argumentError = error
+    }
+    expect(productionEvaluationErrorMessage(argumentError)).toBe(
+      "unknown eval argument: --source",
+    )
+
+    expect(
+      productionEvaluationErrorMessage(
+        new Error(`failed with ${production.JFRAG_OPENROUTER_API_KEY}`),
+      ),
+    ).toBe("production-read evaluation failed (details redacted)")
   })
 })

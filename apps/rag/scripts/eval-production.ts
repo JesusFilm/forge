@@ -1,26 +1,40 @@
 import { fileURLToPath } from "node:url"
 
 import { resolveProductionEnv } from "../src/config/env.js"
-import { runEvaluation } from "./eval.js"
+import {
+  EvaluationInputError,
+  parseEvaluationArgs,
+  runEvaluation,
+} from "./eval.js"
 
 export function installProductionReadEnvironment(
   argv: string[],
   input: NodeJS.ProcessEnv,
 ): string[] {
   if (argv[0] !== "--target" || argv[1] !== "production-read")
-    throw new Error(
+    throw new EvaluationInputError(
       "production evaluation refused: --target production-read is required",
     )
   const expectedHost = input.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
   if (!expectedHost)
-    throw new Error(
+    throw new EvaluationInputError(
       "production evaluation refused: JFRAG_EXPECTED_POSTGRES_HOST is required",
     )
+  const evaluationArgs = argv.slice(2)
+  // Validate operator-controlled arguments before resolving credentials. These
+  // errors are safe to print; runtime/environment failures remain redacted.
+  parseEvaluationArgs(evaluationArgs)
   const resolved = resolveProductionEnv(input, { expectHost: expectedHost })
   input.DATABASE_URL = resolved.DATABASE_URL
   input.OPENROUTER_API_KEY = resolved.OPENROUTER_API_KEY
   input.EMBED_MODEL_ID = resolved.EMBED_MODEL_ID
-  return argv.slice(2)
+  return evaluationArgs
+}
+
+export function productionEvaluationErrorMessage(error: unknown): string {
+  return error instanceof EvaluationInputError
+    ? error.message
+    : "production-read evaluation failed (details redacted)"
 }
 
 const invokedPath = process.argv[1]
@@ -36,8 +50,8 @@ if (invokedPath && fileURLToPath(import.meta.url) === invokedPath) {
       environmentName: "production-read",
     })
     console.log(`production-read evaluation complete: ${destination}`)
-  } catch {
-    console.error("production-read evaluation failed (details redacted)")
+  } catch (error) {
+    console.error(productionEvaluationErrorMessage(error))
     process.exitCode = 1
   }
 }

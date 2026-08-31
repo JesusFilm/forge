@@ -1,8 +1,8 @@
 # Hand-authored QA pairs for the corpus. Each case is a SOURCE-AGNOSTIC question
 # plus a `relevant` map of {sourceKey: [doc pathnames]} — every document, across
 # sources, that legitimately answers it. A top-k hit is judged correct if its
-# doc pathname matches ANY path in the relevant set. Doc-path matching survives
-# re-indexing (it doesn't depend on chunk-id stability).
+# source key and doc pathname match a pair in the relevant set. This identity
+# survives re-indexing without allowing one source's shared path to credit another.
 #
 # Schema (consumed by scripts/eval.ts):
 #

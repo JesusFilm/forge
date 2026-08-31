@@ -160,9 +160,10 @@ did this backwards; backfilling the buried answers moved honest coverage from a 
 1.0 to a real **0.45–1.00** per case. Deep-k probing (`--top-k 40+`) and a keyword sweep
 of the corpus are how you find the buried ones.
 
-**2. Judge the DOCUMENT, not the chunk.** The relevant set credits **document paths**
-(`returnedRelevant` matches on the citation pathname), so relevance must be judged on the
-whole document. Slice #7's first judging pass showed reviewers only **chunk 0** — and cru
+**2. Judge the DOCUMENT, not the chunk.** The relevant set credits **document identities**
+(`returnedRelevant` matches the citation's source key and pathname), so relevance must be
+judged on the whole document. Slice #7's first judging pass showed reviewers only
+**chunk 0** — and cru
 articles routinely open with a long lead-in anecdote, so 75% of the docs it rejected as
 "off-question" had >2 chunks with their actual answer further in. Judging the wrong unit
 manufactured a rejection list that had to be thrown away and re-run.

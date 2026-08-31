@@ -10,7 +10,7 @@ import { wire } from "../src/main.js"
 import { SOURCES } from "../src/registry/index.js"
 import {
   GoldenFileSchema,
-  allRelevantPaths,
+  allRelevantDocuments,
   caseLanguage,
   computeMetrics,
   coverageByLanguage,
@@ -91,12 +91,14 @@ export function resolveAttemptOutputDirectory(
   requested: string,
 ): string {
   if (isAbsolute(requested))
-    throw new Error("evaluation refused: output directory must be relative")
+    throw new EvaluationInputError(
+      "evaluation refused: output directory must be relative",
+    )
   const attemptsRoot = resolve(packageDirectory, "eval", "attempts")
   const destination = resolve(packageDirectory, requested)
   const fromRoot = relative(attemptsRoot, destination)
   if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`))
-    throw new Error(
+    throw new EvaluationInputError(
       "evaluation refused: output directory must stay under eval/attempts",
     )
   return destination
@@ -106,7 +108,9 @@ export function goldenCasesRevision(cases: unknown[]): string {
   return contentRevision(JSON.stringify(cases))
 }
 
-function parseArgs(argv: string[]): {
+export class EvaluationInputError extends Error {}
+
+export function parseEvaluationArgs(argv: string[]): {
   caseSet: string
   outputDirectory: string
 } {
@@ -115,12 +119,16 @@ function parseArgs(argv: string[]): {
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index]
     if (arg !== "--case-set" && arg !== "--output-directory")
-      throw new Error(`unknown eval argument: ${arg}`)
+      throw new EvaluationInputError(`unknown eval argument: ${arg}`)
     const value = argv[++index]
-    if (!value) throw new Error(`${arg} needs a value`)
+    if (!value) throw new EvaluationInputError(`${arg} needs a value`)
     if (arg === "--case-set") caseSet = value
     else outputDirectory = value
   }
+  if (caseSet !== "current" && caseSet !== CONTROL_SET)
+    throw new EvaluationInputError(
+      `unknown case set; use current or ${CONTROL_SET}`,
+    )
   return { caseSet, outputDirectory }
 }
 
@@ -128,7 +136,7 @@ export async function runEvaluation(
   argv: string[],
   options: EvalOptions,
 ): Promise<string> {
-  const args = parseArgs(argv)
+  const args = parseEvaluationArgs(argv)
   const outputDirectory = resolveAttemptOutputDirectory(
     options.packageDirectory,
     args.outputDirectory,
@@ -171,6 +179,7 @@ export async function runEvaluation(
       })
       const safeHits = hits.map((hit) => ({
         chunkId: hit.chunkId,
+        sourceKey: hit.citation.sourceKey,
         docPath: safePathname(hit.citation.url),
         docUrl: null,
         score: hit.score,
@@ -234,7 +243,7 @@ export async function runEvaluation(
       id: result.case.id,
       firstRelevantRank: result.matchedRank,
       relevantReturned: result.returnedRelevant.length,
-      relevantTotal: allRelevantPaths(result.case).length,
+      relevantTotal: allRelevantDocuments(result.case).length,
     })),
   }
   const destination = join(

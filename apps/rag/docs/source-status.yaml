@@ -5,7 +5,7 @@
 #   pnpm acquire:production  --source <key>
 #   pnpm index:production    --source <key>
 #   pnpm retrieve:production --source <key> "<a representative query>"
-#   pnpm eval:production     --source <key>
+#   pnpm eval:production --case-set current
 #
 # See docs/ops/corpus-maintenance.md for the Forge runbook.
 #

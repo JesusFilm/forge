@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest"
 import {
   GoldenCaseSchema,
-  allRelevantPaths,
+  allRelevantDocuments,
   caseLanguage,
   computeMetrics,
   coverageByLanguage,
@@ -36,9 +36,10 @@ function gcase(over: Partial<GoldenCase> = {}): GoldenCase {
   }
 }
 
-function hit(docPath: string, score = 0.5): Hit {
+function hit(docPath: string, score = 0.5, sourceKey = SWG): Hit {
   return {
     chunkId: docPath,
+    sourceKey,
     docPath,
     docUrl: `https://t.test${docPath}`,
     score,
@@ -46,10 +47,18 @@ function hit(docPath: string, score = 0.5): Hit {
 }
 
 /** Hits where the given relevant paths land at the given 1-indexed ranks; fill the rest with misses. */
-function hitsWith(at: Record<number, string>, len = 10): Hit[] {
-  return Array.from({ length: len }, (_, i) =>
-    at[i + 1] ? hit(at[i + 1]) : hit(`/miss-${i}.html`),
-  )
+function hitsWith(
+  at: Record<number, string | [string, string]>,
+  len = 10,
+): Hit[] {
+  return Array.from({ length: len }, (_, i) => {
+    const expected = at[i + 1]
+    return Array.isArray(expected)
+      ? hit(expected[1], 0.5, expected[0])
+      : expected
+        ? hit(expected)
+        : hit(`/miss-${i}.html`)
+  })
 }
 
 function result(
@@ -89,22 +98,29 @@ describe("GoldenCaseSchema", () => {
   })
 })
 
-describe("allRelevantPaths / returnedRelevant / firstMatchingRank", () => {
+describe("allRelevantDocuments / returnedRelevant / firstMatchingRank", () => {
   it("flattens relevant paths across sources", () => {
-    expect(allRelevantPaths(gcase()).sort()).toEqual([
-      "/a.html",
-      "/b.html",
-      "/x.html",
+    expect(allRelevantDocuments(gcase())).toEqual([
+      { sourceKey: SWG, docPath: "/a.html" },
+      { sourceKey: SWG, docPath: "/b.html" },
+      { sourceKey: CRU, docPath: "/x.html" },
     ])
   })
 
   it("matches a hit against any relevant path and finds the first rank", () => {
-    const hits = hitsWith({ 2: "/x.html", 5: "/a.html" })
+    const hits = hitsWith({ 2: [CRU, "/x.html"], 5: "/a.html" })
     expect(firstMatchingRank(hits, gcase())).toBe(2)
-    expect(returnedRelevant(hits, gcase()).sort()).toEqual([
-      "/a.html",
-      "/x.html",
+    expect(returnedRelevant(hits, gcase())).toEqual([
+      { sourceKey: CRU, docPath: "/x.html" },
+      { sourceKey: SWG, docPath: "/a.html" },
     ])
+  })
+
+  it("does not credit the right pathname from the wrong source", () => {
+    const c = gcase({ relevant: { [CRU]: ["/shared.html"] } })
+    const hits = hitsWith({ 1: [SWG, "/shared.html"] })
+    expect(firstMatchingRank(hits, c)).toBeNull()
+    expect(returnedRelevant(hits, c)).toEqual([])
   })
 
   it("returns null rank + empty returned set on a miss", () => {
@@ -118,7 +134,7 @@ describe("computeMetrics", () => {
   it("computes recall@3/@10, coverage, MRR, P@1", () => {
     const c = gcase() // 3 relevant paths
     const results = [
-      result(c, hitsWith({ 1: "/a.html", 4: "/x.html" })), // rank 1; 2/3 covered
+      result(c, hitsWith({ 1: "/a.html", 4: [CRU, "/x.html"] })), // rank 1; 2/3 covered
       result(c, hitsWith({ 9: "/b.html" })), // rank 9 (in @10, not @3); 1/3 covered
       result(c, hitsWith({})), // miss; 0/3
     ]
@@ -139,14 +155,13 @@ describe("computeMetrics", () => {
     })
   })
 
-  it("dedups a path shared across sources so perfect retrieval reaches coverage 1.0", () => {
-    // /shared.html listed under both sources — distinct count is 1, not 2.
+  it("counts a shared pathname once per source identity", () => {
     const c = gcase({
       relevant: { [SWG]: ["/shared.html"], [CRU]: ["/shared.html"] },
     })
-    expect(allRelevantPaths(c)).toEqual(["/shared.html"])
+    expect(allRelevantDocuments(c)).toHaveLength(2)
     const m = computeMetrics([result(c, hitsWith({ 1: "/shared.html" }))])
-    expect(m.coverage).toBeCloseTo(1.0, 5)
+    expect(m.coverage).toBeCloseTo(0.5, 5)
   })
 })
 
@@ -156,8 +171,8 @@ describe("coverageBySource", () => {
     const c1 = gcase({ id: "c1" })
     const c2 = gcase({ id: "c2", relevant: { [CRU]: ["/x.html", "/y.html"] } })
     const results = [
-      result(c1, hitsWith({ 1: "/a.html", 2: "/x.html" })), // SWG 1/2, CRU 1/1
-      result(c2, hitsWith({ 3: "/x.html" })), // CRU 1/2
+      result(c1, hitsWith({ 1: "/a.html", 2: [CRU, "/x.html"] })), // SWG 1/2, CRU 1/1
+      result(c2, hitsWith({ 3: [CRU, "/x.html"] })), // CRU 1/2
     ]
     const bd = coverageBySource(results)
     expect(bd.map((b) => b.source)).toEqual([CRU, SWG]) // sorted
@@ -180,7 +195,7 @@ describe("coverageByLanguage — a multi-language source blends its languages in
     const en = gcase({ id: "en1", relevant: { [CRU]: ["/x.html"] } })
     const es = gcase({ id: "es1", relevant: { [CRU]: ["/y.html"] } })
     const results = [
-      result(en, hitsWith({ 1: "/x.html" }), "en"), // hit
+      result(en, hitsWith({ 1: [CRU, "/x.html"] }), "en"), // hit
       result(es, hitsWith({}), "es"), // miss — the es half is unhealthy
     ]
 
@@ -204,7 +219,7 @@ describe("coverageByLanguage — a multi-language source blends its languages in
   it("surfaces cases with no derivable language under (unscoped) rather than dropping them", () => {
     const c = gcase({ id: "amb", relevant: { [CRU]: ["/x.html"] } })
     const byLang = coverageByLanguage([
-      result(c, hitsWith({ 1: "/x.html" }), null),
+      result(c, hitsWith({ 1: [CRU, "/x.html"] }), null),
     ])
     expect(byLang.map((l) => l.language)).toEqual(["(unscoped)"])
     expect(byLang[0].cases).toBe(1)
@@ -228,9 +243,9 @@ describe("coverageByTier — machine-translated evidence is never averaged into 
     })
     const legacy = gcase({ id: "old1", relevant: { [CRU]: ["/z.html"] } })
     const results = [
-      result(checked, hitsWith({ 1: "/x.html" }), "de"),
+      result(checked, hitsWith({ 1: [CRU, "/x.html"] }), "de"),
       result(translated, hitsWith({}), "ti"),
-      result(legacy, hitsWith({ 1: "/z.html" }), "en"),
+      result(legacy, hitsWith({ 1: [CRU, "/z.html"] }), "en"),
     ]
 
     const byTier = coverageByTier(results)
