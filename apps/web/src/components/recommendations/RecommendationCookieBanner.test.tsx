@@ -10,6 +10,7 @@ import {
   markRecommendationWithdrawalPending,
 } from "@/lib/recommendation-withdrawal-pending"
 import { RecommendationConsentShell } from "./RecommendationConsentShell"
+import { RecommendationCookieSettingsTrigger } from "./RecommendationCookieSettingsTrigger"
 
 let container: HTMLDivElement
 let root: Root
@@ -79,6 +80,9 @@ function renderShell() {
         }}
       >
         <RecommendationConsentShell />
+        <footer>
+          <RecommendationCookieSettingsTrigger label="Cookie settings" />
+        </footer>
       </NextIntlClientProvider>,
     ),
   )
@@ -445,7 +449,7 @@ describe("RecommendationConsentShell", () => {
     expect(button("Cookie settings")).toBeTruthy()
   })
 
-  it("pins Cookie settings clear of the feedback launcher and below its modal", async () => {
+  it("keeps Cookie settings in document flow", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -462,13 +466,8 @@ describe("RecommendationConsentShell", () => {
     await flush()
 
     const settings = button("Cookie settings")
-    expect(settings.className).toContain(
-      "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]",
-    )
-    expect(settings.className).toContain(
-      "left-[calc(1rem+env(safe-area-inset-left,0px))]",
-    )
-    expect(settings.className).toContain("z-[45]")
+    expect(settings.closest("footer")).toBeTruthy()
+    expect(settings.className).not.toContain("fixed")
   })
 
   it("keeps a persisted pending withdrawal contextual until a fresh grant is confirmed", async () => {

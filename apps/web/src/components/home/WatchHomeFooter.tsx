@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { RecommendationCookieSettingsTrigger } from "@/components/recommendations/RecommendationCookieSettingsTrigger"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const navLinks = [
@@ -20,6 +21,7 @@ const giveNowHref =
 
 export function WatchHomeFooter() {
   const t = useTranslations("WatchFooter")
+  const consent = useTranslations("RecommendationConsent")
 
   return [
     <footer
@@ -94,6 +96,7 @@ export function WatchHomeFooter() {
             >
               {t("legalStatement")}
             </a>
+            <RecommendationCookieSettingsTrigger label={consent("settings")} />
           </p>
         </div>
       </div>
