@@ -1,0 +1,2408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JesusFilm RAG — source &amp; language coverage</title>
+    <meta
+      name="description"
+      content="Every source known to the JesusFilm RAG project — what is retrievable in production, what is blocked, and what is documented for future ingestion."
+    />
+    <!--
+      Styling follows the Jesus Film Project design system (colors_and_type.css):
+      Jesus Film Red leads, warm neutrals, Inter + Noto Serif, hairline dividers,
+      no green in the brand — status uses navy / marigold / red instead. Built to
+      the anti-slop checklist: no gradients, functional color, real hierarchy,
+      honest data, a semantic left-aligned table — no hero, no card grid.
+      NOTE: Inter is the JFP brand typeface, used here intentionally; the anti-
+      slop "avoid Inter as a lazy default" rule is satisfied by it being a
+      deliberate brand decision, not a fallback.
+
+      Layout (issue #100): a source LEDGER — one row per source, languages as
+      stage-colored chips (label + count only; stage = color + one glyph, never
+      color alone), grouped In production / Blocked / Proposed / Retired. Chips
+      wrap with the viewport, so a many-language source stays one row. The
+      secondary "Unclassified documents" table (#86) remains below the ledger.
+    -->
+    <style>
+      :root {
+        --red: #ef3340;
+        --maroon: #91214a;
+        --navy: #424a66;
+        --marigold: #ff9e00;
+        --soft-black: #4d4d4d;
+        --white: #ffffff;
+        --warm-white: #f0ede3;
+        --warm-gray-1: #b0afa8;
+        --gray-2: #e7e9e9;
+        --fg: #2e2e2e;
+        --fg-secondary: #6a6a6a;
+        --border: #e7e9e9;
+
+        --font-sans:
+          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-serif: "Noto Serif", Georgia, serif;
+        --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 24px;
+        --space-6: 32px;
+        --space-7: 48px;
+        --radius: 4px;
+        --container: 1180px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--white);
+        color: var(--fg);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+      }
+      .skip-link:focus {
+        left: var(--space-4);
+        top: var(--space-4);
+        z-index: 2;
+        background: var(--white);
+        color: var(--fg);
+        padding: var(--space-3);
+        outline: 3px solid var(--red);
+      }
+      a:focus-visible {
+        outline: 3px solid var(--red);
+        outline-offset: 3px;
+      }
+
+      .wrap {
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: var(--space-7) var(--space-5) var(--space-7);
+      }
+
+      /* ── Header ─────────────────────────────────────────────────────────── */
+      header {
+        border-bottom: 2px solid var(--red);
+        padding-bottom: var(--space-4);
+        margin-bottom: var(--space-6);
+      }
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--red);
+        margin: 0 0 var(--space-2);
+      }
+      h1 {
+        font-family: var(--font-sans);
+        font-weight: 800;
+        font-size: 36px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        margin: 0;
+        color: var(--fg);
+      }
+      h1 .brand {
+        color: var(--red);
+      }
+      .subtitle {
+        font-family: var(--font-serif);
+        font-size: 18px;
+        color: var(--fg-secondary);
+        margin: var(--space-3) 0 0;
+        max-width: 62ch;
+      }
+      .updated {
+        font-size: 13px;
+        color: var(--fg-secondary);
+        margin: var(--space-3) 0 0;
+      }
+
+      /* ── Summary stats ──────────────────────────────────────────────────── */
+      .summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-6);
+        margin: 0 0 var(--space-6);
+        padding: var(--space-4) 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .stat {
+        display: flex;
+        flex-direction: column;
+      }
+      .stat-value {
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 600;
+        color: var(--fg);
+        line-height: 1.1;
+      }
+      .stat-label {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        margin-top: var(--space-1);
+      }
+
+      /* ── Ledger table ───────────────────────────────────────────────────── */
+      .table-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 940px;
+      }
+      thead th {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        text-align: left;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+        background: var(--warm-white);
+        white-space: nowrap;
+      }
+      thead th.col-count {
+        text-align: right;
+      }
+      tbody td {
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: rgba(239, 51, 64, 0.04);
+      }
+
+      .source-name {
+        display: block;
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .source-host {
+        display: block;
+        font-size: 13px;
+        color: var(--fg-secondary);
+        font-family: var(--font-mono);
+      }
+      .col-count {
+        text-align: right;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .col-missing {
+        font-size: 13px;
+        color: var(--fg);
+        max-width: 42ch;
+      }
+      .col-missing em {
+        color: var(--fg-secondary);
+      }
+      .method {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--fg);
+        background: var(--warm-white);
+        border-radius: var(--radius);
+        padding: 1px 7px;
+        white-space: nowrap;
+      }
+
+      /* group separator rows */
+      .group-row td {
+        background: var(--warm-white);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid var(--border);
+      }
+      tr.row-documented.state-retired td {
+        color: var(--fg-secondary);
+      }
+      tr.row-documented.state-retired .source-name {
+        color: var(--fg-secondary);
+      }
+
+      /* ── State pills (progressive lifecycle, brand palette — no green) ──── */
+      .stage {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--fg-secondary);
+        white-space: nowrap;
+      }
+      .stage-evaluated {
+        color: var(--red);
+        border-color: rgba(239, 51, 64, 0.4);
+        background: rgba(239, 51, 64, 0.06);
+      }
+      .stage-ingested {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.4);
+        background: rgba(66, 74, 102, 0.06);
+      }
+      .stage-acquired {
+        color: var(--soft-black);
+        background: var(--warm-white);
+      }
+      .stage-blocked {
+        color: var(--maroon);
+        border-color: rgba(145, 33, 74, 0.4);
+        background: rgba(145, 33, 74, 0.06);
+      }
+      .stage-proposed {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.35);
+        background: var(--white);
+      }
+      .stage-not-started,
+      .stage-retired {
+        color: var(--soft-black);
+        border-color: var(--warm-gray-1);
+        background: var(--gray-2);
+      }
+
+      /* ── Language chips: label + count only; stage = color + one glyph ──── */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1;
+        padding: 4px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .chip .g {
+        font-weight: 700;
+      }
+      .chip .l {
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+      .chip .n {
+        font-variant-numeric: tabular-nums;
+      }
+      .chip-evaluated {
+        color: var(--red);
+        border-color: rgba(239, 51, 64, 0.45);
+        background: rgba(239, 51, 64, 0.06);
+      }
+      .chip-ingested {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.45);
+        background: rgba(66, 74, 102, 0.06);
+      }
+      .chip-acquired {
+        color: var(--soft-black);
+        border-color: var(--warm-gray-1);
+        background: var(--warm-white);
+      }
+      .chip-blocked {
+        color: var(--maroon);
+        border-color: rgba(145, 33, 74, 0.5);
+        background: rgba(145, 33, 74, 0.06);
+      }
+      .chip-proposed {
+        color: var(--fg-secondary);
+        border-style: dashed;
+        background: var(--white);
+      }
+
+      /* ── Unclassified documents (secondary table, #86) ──────────────────── */
+      .unclassified {
+        margin-top: var(--space-7);
+      }
+      .section-title {
+        font-family: var(--font-sans);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+        margin: 0 0 var(--space-2);
+        color: var(--fg);
+      }
+      .section-note {
+        font-family: var(--font-serif);
+        font-size: 15px;
+        color: var(--fg-secondary);
+        margin: 0 0 var(--space-4);
+        max-width: 70ch;
+      }
+      .unclassified-table {
+        min-width: 420px;
+      }
+
+      /* ── Legend (the chip key, between the stats and the ledger) ────────── */
+      .legend {
+        margin: 0 0 var(--space-5);
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          padding: var(--space-6) var(--space-4);
+        }
+        h1 {
+          font-size: 28px;
+        }
+        .summary {
+          gap: var(--space-5);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#corpus-ledger">Skip to corpus inventory</a>
+    <main class="wrap" id="main">
+      <header>
+        <p class="eyebrow">JesusFilm RAG</p>
+        <h1><span class="brand">JesusFilm</span> RAG</h1>
+        <p class="subtitle">
+          Sources in production, blocked, and planned for ingestion.
+        </p>
+        <p class="updated">
+          Production inventory observed 2026-08-28T01:43:58.992Z. Snapshot
+          target: production-read.
+        </p>
+      </header>
+
+      <section class="summary">
+        <div class="stat">
+          <span class="stat-value">57</span
+          ><span class="stat-label">sources in prod</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">47</span
+          ><span class="stat-label">languages live</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">24,556</span
+          ><span class="stat-label">embedded documents</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">0</span
+          ><span class="stat-label">blocked</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">8</span
+          ><span class="stat-label">proposed</span>
+        </div>
+      </section>
+
+      <section class="legend" aria-labelledby="status-key">
+        <h2 id="status-key">How to read this status</h2>
+        <p>
+          <strong>Observed facts</strong> are document counts read from
+          production. <strong>Reviewed assertions</strong> are lifecycle
+          decisions stored in Forge and may describe work not yet present in
+          production. State text and symbols carry meaning; color is
+          supplementary.
+        </p>
+        <div class="chips">
+          <span class="chip chip-evaluated"
+            ><span class="n">evaluated</span></span
+          >
+          <span class="chip chip-ingested"
+            ><span class="g">◐</span
+            ><span class="n">ingested, eval pending</span></span
+          >
+          <span class="chip chip-acquired"
+            ><span class="g">○</span><span class="n">acquired only</span></span
+          >
+          <span class="chip chip-blocked"
+            ><span class="g">✕</span><span class="n">blocked</span></span
+          >
+          <span class="chip chip-proposed"
+            ><span class="g">⋯</span
+            ><span class="n">proposed / documented only</span></span
+          >
+        </div>
+      </section>
+
+      <div class="table-scroll">
+        <table id="corpus-ledger">
+          <caption>
+            Corpus sources: reviewed lifecycle state alongside
+            production-observed document inventory
+          </caption>
+          <thead>
+            <tr>
+              <th class="col-source" scope="col">Source</th>
+              <th class="col-state" scope="col">Reviewed lifecycle</th>
+              <th class="col-langs" scope="col">Declared languages</th>
+              <th class="col-count" scope="col">Production-observed docs</th>
+              <th class="col-missing" scope="col">Reviewed next step</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="group-row">
+              <td colspan="5">In production</td>
+            </tr>
+            <tr data-key="gotquestions" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">GotQuestions</span
+                ><span class="source-host">www.gotquestions.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="gotquestions"
+                    data-language="en"
+                    ><span class="l">en</span
+                    ><span class="n">10,549</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="gotquestions"
+                    data-language="ber"
+                    ><span class="g">◐</span><span class="l">ber</span
+                    ><span class="n">1</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="gotquestions"
+                    data-language="de"
+                    ><span class="g">◐</span><span class="l">de</span
+                    ><span class="n">1</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="gotquestions"
+                    data-language="fr"
+                    ><span class="g">◐</span><span class="l">fr</span
+                    ><span class="n">1</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">10,558</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr data-key="thelife" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">thelife</span
+                ><span class="source-host">thelife.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="thelife"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">4,513</span></span
+                  ><span
+                    class="chip chip-evaluated"
+                    data-key="thelife"
+                    data-language="fr"
+                    ><span class="l">fr</span><span class="n">2</span></span
+                  ><span
+                    class="chip chip-blocked"
+                    data-key="thelife"
+                    data-pending-label="fa"
+                    ><span class="g">✕</span><span class="l">fa</span
+                    ><span class="n">~2.9k</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">4,515</td>
+              <td class="col-missing">
+                fa = shagerdan.com (Persian sibling, ~2,946 sitemap URLs) behind
+                the same Cloudflare wall as EveryStudent — Firecrawl stealth
+                scrape or a Cru IP allowlist would unblock (#8).
+              </td>
+            </tr>
+            <tr data-key="cru" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">Cru</span
+                ><span class="source-host">www.cru.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="cru"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">1,949</span></span
+                  ><span
+                    class="chip chip-evaluated"
+                    data-key="cru"
+                    data-language="es"
+                    ><span class="l">es</span><span class="n">494</span></span
+                  ><span
+                    class="chip chip-evaluated"
+                    data-key="cru"
+                    data-language="fr"
+                    ><span class="l">fr</span><span class="n">1</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">2,444</td>
+              <td class="col-missing">
+                Complete for the crawled scope — whole domain, en+es+fr. The
+                sole fr doc is a marketing piece; eval deliberately not cased at
+                n=1.
+              </td>
+            </tr>
+            <tr data-key="familylife" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">FamilyLife</span
+                ><span class="source-host">www.familylife.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="familylife"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">2,240</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="familylife"
+                    data-language="es"
+                    ><span class="g">◐</span><span class="l">es</span
+                    ><span class="n">1</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">2,241</td>
+              <td class="col-missing">
+                Posts only — jfa's crawl policy allowed 9,994 of 13,869
+                discovered pages; ~7,600 sub-brand pages (Art of Marriage,
+                Blended, …) are unseeded. The Spanish deep sections are
+                JS-rendered and sitemap-invisible (#8).
+              </td>
+            </tr>
+            <tr
+              data-key="sightline-ministry"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name">Sightline Ministry</span
+                ><span class="source-host">sightlineministry.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="sightline-ministry"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">1,399</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">1,399</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr data-key="jesusfilm-org" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">Jesus Film Project</span
+                ><span class="source-host">www.jesusfilm.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="jesusfilm-org"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">350</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">350</td>
+              <td class="col-missing">
+                Blog only — the /about/ leadership scope (~40 pages, catalogued
+                by jfa) would close the org-identity gap (&quot;who is Jesus
+                Film?&quot; questions).
+              </td>
+            </tr>
+            <tr data-key="thelife-zh" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">thelife — Chinese (UWOTA)</span
+                ><span class="source-host">uwota.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="thelife-zh"
+                    data-language="zh"
+                    ><span class="l">zh</span><span class="n">332</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">332</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr data-key="thelife-fr" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name"
+                  >thelife — French (La Vie J'en Parle)</span
+                ><span class="source-host">laviejenparle.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="thelife-fr"
+                    data-language="fr"
+                    ><span class="l">fr</span><span class="n">156</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">156</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-zh-cn"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Chinese Simplified (XinShengMing /
+                  新生命)</span
+                ><span class="source-host">www.xinshengming.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-zh-cn"
+                    data-language="zh"
+                    ><span class="l">zh</span><span class="n">127</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">127</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr data-key="everystudent" class="row-production state-evaluated">
+              <td class="col-source">
+                <span class="source-name">EveryStudent</span
+                ><span class="source-host">www.everystudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">108</span></span
+                  ><span
+                    class="chip chip-proposed"
+                    data-key="everystudent"
+                    data-pending-label="51 sibling domains"
+                    ><span class="g">⋯</span
+                    ><span class="l">51 sibling domains</span
+                    ><span class="n">≤15k</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">117</td>
+              <td class="col-missing">
+                English flagship behind a Cloudflare JS managed challenge
+                (homepage 200 is a false positive) — unblock via Firecrawl,
+                jfa's reviewed-archive scripts (its proven path; it never beat
+                the wall either), or a Cru IP allowlist. The 51 sibling language
+                domains are largely NOT walled (jfa canary fetched 46/46 with
+                plain HTTP).
+              </td>
+            </tr>
+            <tr
+              data-key="everystudent-ru"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Russian (Мир студентов)</span
+                ><span class="source-host">www.mirstudentov.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ru"
+                    data-language="ru"
+                    ><span class="l">ru</span><span class="n">95</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">95</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-bg"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Bulgarian (everystudent.bg)</span
+                ><span class="source-host">www.everystudent.bg</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-bg"
+                    data-language="bg"
+                    ><span class="l">bg</span><span class="n">84</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">84</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-sk"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Slovak (EveryStudent.sk)</span
+                ><span class="source-host">everystudent.sk</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-sk"
+                    data-language="sk"
+                    ><span class="l">sk</span><span class="n">83</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">83</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-hu"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Hungarian (everystudent.hu)</span
+                ><span class="source-host">www.everystudent.hu</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-hu"
+                    data-language="hu"
+                    ><span class="l">hu</span><span class="n">82</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">82</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-mn"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Mongolian (Tailal.mn)</span
+                ><span class="source-host">www.tailal.mn</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-mn"
+                    data-language="mn"
+                    ><span class="l">mn</span><span class="n">82</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">82</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ja"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Japanese (Student in Japan)</span
+                ><span class="source-host">www.studentinjapan.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ja"
+                    data-language="ja"
+                    ><span class="l">ja</span><span class="n">78</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">78</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-pl"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Polish (KazdyStudent.pl)</span
+                ><span class="source-host">www.kazdystudent.pl</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-pl"
+                    data-language="pl"
+                    ><span class="l">pl</span><span class="n">77</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">77</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-sq"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Albanian (Pyetjet e Jetës)</span
+                ><span class="source-host">www.pyetjetejetes.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-sq"
+                    data-language="sq"
+                    ><span class="l">sq</span><span class="n">39</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="everystudent-sq"
+                    data-language="nl"
+                    ><span class="g">◐</span><span class="l">nl</span
+                    ><span class="n">37</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">76</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-fa"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Persian/Farsi (everypersianstudent.com)</span
+                ><span class="source-host">www.everypersianstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-fa"
+                    data-language="fa"
+                    ><span class="l">fa</span><span class="n">49</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="everystudent-fa"
+                    data-language="ar"
+                    ><span class="g">◐</span><span class="l">ar</span
+                    ><span class="n">26</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">75</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-pt"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Portuguese (suaescolha.com)</span
+                ><span class="source-host">www.suaescolha.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-pt"
+                    data-language="pt"
+                    ><span class="l">pt</span><span class="n">75</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">75</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-es"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Spanish (cadaestudiante.com)</span
+                ><span class="source-host">www.cadaestudiante.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-es"
+                    data-language="es"
+                    ><span class="l">es</span><span class="n">75</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">75</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-cs"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Czech (everystudent.cz)</span
+                ><span class="source-host">www.everystudent.cz</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-cs"
+                    data-language="cs"
+                    ><span class="l">cs</span><span class="n">74</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">74</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-tr"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Turkish (Tanrı'yı Tanımak)</span
+                ><span class="source-host">www.tanriyitanimak.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-tr"
+                    data-language="tr"
+                    ><span class="l">tr</span><span class="n">71</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">71</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ar"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Arabic (everyarabstudent.com)</span
+                ><span class="source-host">www.everyarabstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ar"
+                    data-language="ar"
+                    ><span class="l">ar</span><span class="n">65</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">67</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-fr"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — French (questions2vie.com)</span
+                ><span class="source-host">www.questions2vie.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-fr"
+                    data-language="fr"
+                    ><span class="l">fr</span><span class="n">66</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">67</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-vi"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Vietnamese (EveryVietStudent.com)</span
+                ><span class="source-host">www.everyvietstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-vi"
+                    data-language="vi"
+                    ><span class="l">vi</span><span class="n">67</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">67</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ro"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Romanian (everystudent.ro)</span
+                ><span class="source-host">www.everystudent.ro</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ro"
+                    data-language="ro"
+                    ><span class="l">ro</span><span class="n">63</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">63</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-id"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Indonesian (MahasiswaKeren.com)</span
+                ><span class="source-host">www.mahasiswakeren.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-id"
+                    data-language="id"
+                    ><span class="l">id</span><span class="n">57</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">57</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ms"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Malay (PersoalanHidup.com)</span
+                ><span class="source-host">www.persoalanhidup.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-ingested"
+                    data-key="everystudent-ms"
+                    data-language="id"
+                    ><span class="g">◐</span><span class="l">id</span
+                    ><span class="n">47</span></span
+                  ><span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ms"
+                    data-language="ms"
+                    ><span class="l">ms</span><span class="n">5</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">52</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-lt"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Lithuanian (KiekvienamStudentui.lt)</span
+                ><span class="source-host">www.kiekvienamstudentui.lt</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-lt"
+                    data-language="lt"
+                    ><span class="l">lt</span><span class="n">49</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">49</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-mk"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Macedonian (StudentskiOdgovori.com)</span
+                ><span class="source-host">www.studentskiodgovori.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-mk"
+                    data-language="mk"
+                    ><span class="l">mk</span><span class="n">49</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">49</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-bn"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Bengali (EveryBengaliStudent.com)</span
+                ><span class="source-host">www.everybengalistudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-bn"
+                    data-language="bn"
+                    ><span class="l">bn</span><span class="n">48</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">48</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-uk"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Ukrainian (svitstudentiv.com)</span
+                ><span class="source-host">www.svitstudentiv.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-uk"
+                    data-language="uk"
+                    ><span class="l">uk</span><span class="n">47</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">47</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-zh-tw"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Chinese Traditional
+                  (everystudent.com.tw)</span
+                ><span class="source-host">everystudent.com.tw</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-zh-tw"
+                    data-language="zh"
+                    ><span class="l">zh</span><span class="n">46</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">46</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-et"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Estonian (TudengiElu)</span
+                ><span class="source-host">www.tudengielu.net</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-et"
+                    data-language="et"
+                    ><span class="l">et</span><span class="n">46</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">46</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-de"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — German (Du entscheidest)</span
+                ><span class="source-host">www.duentscheidest.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-de"
+                    data-language="de"
+                    ><span class="l">de</span><span class="n">44</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">44</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-th"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Thai (EveryThaiStudent.com)</span
+                ><span class="source-host">www.everythaistudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-th"
+                    data-language="th"
+                    ><span class="l">th</span><span class="n">44</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">44</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-am"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Amharic (HabeshaStudent.com)</span
+                ><span class="source-host">www.habeshastudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-am"
+                    data-language="am"
+                    ><span class="l">am</span><span class="n">41</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">41</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-hr"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Croatian (vrlovazno.com)</span
+                ><span class="source-host">www.vrlovazno.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-ingested"
+                    data-key="everystudent-hr"
+                    data-language="sr"
+                    ><span class="g">◐</span><span class="l">sr</span
+                    ><span class="n">30</span></span
+                  ><span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-hr"
+                    data-language="hr"
+                    ><span class="l">hr</span><span class="n">11</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">41</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="starting-with-god"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name">Starting With God</span
+                ><span class="source-host">www.startingwithgod.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="starting-with-god"
+                    data-language="en"
+                    ><span class="l">en</span><span class="n">40</span></span
+                  ><span
+                    class="chip chip-proposed"
+                    data-key="starting-with-god"
+                    data-pending-label="31 sibling domains"
+                    ><span class="g">⋯</span
+                    ><span class="l">31 sibling domains</span
+                    ><span class="n">~2–3k</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">40</td>
+              <td class="col-missing">
+                31 sibling language domains (jfa manifest) not started — each is
+                a different CMS, so per-source selector recon is the real cost
+                (#43).
+              </td>
+            </tr>
+            <tr
+              data-key="everystudent-it"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Italian (OgniStudente.com)</span
+                ><span class="source-host">www.ognistudente.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-it"
+                    data-language="it"
+                    ><span class="l">it</span><span class="n">38</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">38</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ko"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Korean (everykoreanstudent.com)</span
+                ><span class="source-host">www.everykoreanstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ko"
+                    data-language="ko"
+                    ><span class="l">ko</span><span class="n">37</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">37</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-hy"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Armenian (1patasxan.com)</span
+                ><span class="source-host">www.1patasxan.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-hy"
+                    data-language="hy"
+                    ><span class="l">hy</span><span class="n">33</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">33</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-hi"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Hindi (EveryStudent.in)</span
+                ><span class="source-host">www.everystudent.in</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-hi"
+                    data-language="hi"
+                    ><span class="l">hi</span><span class="n">33</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">33</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ur"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Urdu (ZindagiKaySawalat.com)</span
+                ><span class="source-host">www.zindagikaysawalat.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ur"
+                    data-language="ur"
+                    ><span class="l">ur</span><span class="n">33</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">33</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-el"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Greek (EveryStudent.gr)</span
+                ><span class="source-host">www.everystudent.gr</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-el"
+                    data-language="el"
+                    ><span class="l">el</span><span class="n">32</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">32</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-my"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Burmese (EveryMyanmarStudent.com)</span
+                ><span class="source-host">www.everymyanmarstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-my"
+                    data-language="my"
+                    ><span class="l">my</span><span class="n">30</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">30</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ta"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Tamil (UngalThervuEnna.com)</span
+                ><span class="source-host">www.ungalthervuenna.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ta"
+                    data-language="ta"
+                    ><span class="l">ta</span><span class="n">30</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">30</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-te"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Telugu (everytelugustudent.com)</span
+                ><span class="source-host">www.everytelugustudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-te"
+                    data-language="te"
+                    ><span class="l">te</span><span class="n">30</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">30</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-sl"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Slovenian (VsakStudent.com)</span
+                ><span class="source-host">www.vsakstudent.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-sl"
+                    data-language="sl"
+                    ><span class="l">sl</span><span class="n">17</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="everystudent-sl"
+                    data-language="sr"
+                    ><span class="g">◐</span><span class="l">sr</span
+                    ><span class="n">6</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">23</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ne"
+              class="row-production state-ingested"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Nepali (NepaliStudent.net)</span
+                ><span class="source-host">www.nepalistudent.net</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-ingested">Ingested</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-ingested"
+                    data-key="everystudent-ne"
+                    data-language="hi"
+                    ><span class="g">◐</span><span class="l">hi</span
+                    ><span class="n">20</span></span
+                  ><span
+                    class="chip chip-acquired"
+                    data-key="everystudent-ne"
+                    data-language="ne"
+                    ><span class="g">○</span><span class="l">ne</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">20</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-om"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Oromo (EveryBarataa.com)</span
+                ><span class="source-host">www.everybarataa.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-om"
+                    data-language="om"
+                    ><span class="l">om</span><span class="n">17</span></span
+                  ><span
+                    class="chip chip-ingested"
+                    data-key="everystudent-om"
+                    data-language="ber"
+                    ><span class="g">◐</span><span class="l">ber</span
+                    ><span class="n">1</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">18</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-kk"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Kazakh (Shakirtter.com)</span
+                ><span class="source-host">www.shakirtter.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-kk"
+                    data-language="kk"
+                    ><span class="l">kk</span><span class="n">17</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">17</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ka"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Georgian (KoveliStudenti.com)</span
+                ><span class="source-host">www.kovelistudenti.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-ka"
+                    data-language="ka"
+                    ><span class="l">ka</span><span class="n">16</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">16</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ti"
+              class="row-production state-ingested"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Tigrinya (EveryTemhari.com)</span
+                ><span class="source-host">www.everytemhari.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-ingested">Ingested</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-ingested"
+                    data-key="everystudent-ti"
+                    data-language="am"
+                    ><span class="g">◐</span><span class="l">am</span
+                    ><span class="n">14</span></span
+                  ><span
+                    class="chip chip-acquired"
+                    data-key="everystudent-ti"
+                    data-language="ti"
+                    ><span class="g">○</span><span class="l">ti</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">14</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-sw"
+              class="row-production state-evaluated"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Swahili (LipoTumaini.com)</span
+                ><span class="source-host">www.lipotumaini.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-evaluated">Evaluated</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-evaluated"
+                    data-key="everystudent-sw"
+                    data-language="sw"
+                    ><span class="l">sw</span><span class="n">13</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">13</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-ru-ca"
+              class="row-production state-ingested"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Russian, Central Asia (СтудентСтан)</span
+                ><span class="source-host">www.studentstan.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-ingested">Ingested</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-ingested"
+                    data-key="everystudent-ru-ca"
+                    data-language="ru"
+                    ><span class="g">◐</span><span class="l">ru</span
+                    ><span class="n">5</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">5</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr class="group-row">
+              <td colspan="5">In pipeline — not yet in prod</td>
+            </tr>
+            <tr
+              data-key="everystudent-he"
+              class="row-pipeline state-not-started"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Hebrew (igod.co.il)</span
+                ><span class="source-host">igod.co.il</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-not-started">Not started</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-proposed"
+                    data-key="everystudent-he"
+                    data-language="he"
+                    ><span class="g">⋯</span><span class="l">he</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr
+              data-key="everystudent-sr"
+              class="row-pipeline state-not-started"
+            >
+              <td class="col-source">
+                <span class="source-name"
+                  >EveryStudent — Serbian (Studentski kutak)</span
+                ><span class="source-host">www.studentskikutak.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-not-started">Not started</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span
+                    class="chip chip-proposed"
+                    data-key="everystudent-sr"
+                    data-language="sr"
+                    ><span class="g">⋯</span><span class="l">sr</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing"><em>—</em></td>
+            </tr>
+            <tr class="group-row">
+              <td colspan="5">Proposed — documented, not started</td>
+            </tr>
+            <tr
+              data-documented-key="arclight"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">Arclight video metadata</span
+                ><span class="source-host">api.arclight.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">7 langs</span
+                    ><span class="n">metadata</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">api</span> Video metadata API (jfa ingested
+                46 chunks) — API client work, not scraping.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="curated-references"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">Curated references</span
+                ><span class="source-host">youtube.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en</span
+                    ><span class="n">curated</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">manual</span> jfa had a staged
+                YouTube/article JSON review format; needs a curation owner.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="gotquestions"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">GotQuestions</span
+                ><span class="source-host">www.gotquestions.org</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en</span
+                    ><span class="n">1.5k–100k+</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> No bot wall — jfa
+                ingested 342 chunks at a 1,500-page cap. The open decision is
+                crawl scope: the full site is 100k+ Q&amp;As.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="joshua-project"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">Joshua Project</span
+                ><span class="source-host">joshuaproject.net</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en</span
+                    ><span class="n">data set</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">manual</span> People-group data import, not
+                article scraping.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="knowgod"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">KnowGod / GodTools</span
+                ><span class="source-host">knowgod.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en es fr +</span
+                    ><span class="n">~200</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">api</span> jfa ingested via the GodTools
+                content API — no scraping needed; port the API path instead of
+                crawling the Angular shell.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="nextstep-support"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">NextStep support docs</span
+                ><span class="source-host">support.nextstep.is</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en</span
+                    ><span class="n">small</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> Help Scout docs; jfa
+                marked them &quot;explicitly not for doctrine&quot; — low
+                priority.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="victorybeyondthecup"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">Victory Beyond the Cup</span
+                ><span class="source-host">victorybeyondthecup.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en es fr pt</span
+                    ><span class="n">~120</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">render scrape</span> Framer JS shell —
+                needs browser rendering; jfa had a working scraper (199 chunks
+                across 4 languages).
+              </td>
+            </tr>
+            <tr
+              data-documented-key="victory-host-kit"
+              class="row-documented state-proposed"
+            >
+              <td class="col-source">
+                <span class="source-name">Victory host kit</span
+                ><span class="source-host">drive.google.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-proposed">Proposed</span>
+              </td>
+              <td class="col-langs">
+                <div class="chips">
+                  <span class="chip chip-proposed"
+                    ><span class="g">⋯</span><span class="l">en</span
+                    ><span class="n">14 files</span></span
+                  >
+                </div>
+              </td>
+              <td class="col-count">0</td>
+              <td class="col-missing">
+                <span class="method">manual</span> Reviewed Google Drive archive
+                — jfa's registry carries the 14 file IDs and an import script.
+              </td>
+            </tr>
+            <tr class="group-row">
+              <td colspan="5">Retired</td>
+            </tr>
+            <tr
+              data-documented-key="issuesiface"
+              class="row-documented state-retired"
+            >
+              <td class="col-source">
+                <span class="source-name">IssuesIFace</span
+                ><span class="source-host">issuesiface.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-retired">Retired</span>
+              </td>
+              <td class="col-langs"><div class="chips"></div></td>
+              <td class="col-count">—</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> Rejected — unstable
+                host (www 404s, 403/challenge); jfa discarded it as a product
+                decision.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="nextstep"
+              class="row-documented state-retired"
+            >
+              <td class="col-source">
+                <span class="source-name">NextStep</span
+                ><span class="source-host">nextstep.is</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-retired">Retired</span>
+              </td>
+              <td class="col-langs"><div class="chips"></div></td>
+              <td class="col-count">—</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> Deferred — thin
+                product-marketing pages, not a seeker-Q&amp;A corpus; possible
+                seasonal-exclusion test fixture later.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="nextstep-football2026"
+              class="row-documented state-retired"
+            >
+              <td class="col-source">
+                <span class="source-name">NextStep Football 2026</span
+                ><span class="source-host">football2026.nextstep.is</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-retired">Retired</span>
+              </td>
+              <td class="col-langs"><div class="chips"></div></td>
+              <td class="col-count">—</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> Deferred — seasonal
+                campaign subdomain; same reasoning as NextStep.
+              </td>
+            </tr>
+            <tr
+              data-documented-key="powertochange"
+              class="row-documented state-retired"
+            >
+              <td class="col-source">
+                <span class="source-name">Power to Change</span
+                ><span class="source-host">powertochange.com</span>
+              </td>
+              <td class="col-state">
+                <span class="stage stage-retired">Retired</span>
+              </td>
+              <td class="col-langs"><div class="chips"></div></td>
+              <td class="col-count">—</td>
+              <td class="col-missing">
+                <span class="method">plain scrape</span> Superseded —
+                decommissioned; every content URL 301s to thelife.com, which we
+                ingested instead.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section class="unclassified">
+        <h2 class="section-title">Unclassified documents</h2>
+        <p class="section-note">
+          Embedded and retrievable, but with no detected language. Included in
+          the index total above and listed here so the gap is visible per source
+          rather than hidden. 18 document(s) across 4 source(s).
+        </p>
+        <div class="table-scroll">
+          <table class="unclassified-table">
+            <thead>
+              <tr>
+                <th class="col-source" scope="col">Source</th>
+                <th class="col-count" scope="col">Documents</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-unclassified-key="everystudent">
+                <td class="col-source">
+                  <span class="source-name">EveryStudent</span
+                  ><span class="source-host">www.everystudent.com</span>
+                </td>
+                <td class="col-count">9</td>
+              </tr>
+              <tr data-unclassified-key="gotquestions">
+                <td class="col-source">
+                  <span class="source-name">GotQuestions</span
+                  ><span class="source-host">www.gotquestions.org</span>
+                </td>
+                <td class="col-count">6</td>
+              </tr>
+              <tr data-unclassified-key="everystudent-ar">
+                <td class="col-source">
+                  <span class="source-name"
+                    >EveryStudent — Arabic (everyarabstudent.com)</span
+                  ><span class="source-host">www.everyarabstudent.com</span>
+                </td>
+                <td class="col-count">2</td>
+              </tr>
+              <tr data-unclassified-key="everystudent-fr">
+                <td class="col-source">
+                  <span class="source-name"
+                    >EveryStudent — French (questions2vie.com)</span
+                  ><span class="source-host">www.questions2vie.com</span>
+                </td>
+                <td class="col-count">1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
