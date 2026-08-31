@@ -802,6 +802,142 @@ A reviewed, profile-scoped, data-only export of production Admin video data for 
 
 A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
+## Recommendations
+
+### Recommendation Request
+
+The immutable root of one versioned, admitted recommendation delivery attempt
+for an ephemeral session, seed media item, locale, surface, strategy manifest,
+and classifier. It records whether a complete slate or safe reason-coded
+unavailable result was prepared and issued, retrieval timing, and one fixed
+expiry; failures before safe attribution or during persistence have no root,
+and the root is not a viewer profile or a legacy Watch event.
+
+All request-owned evidence inherits the root's retention and is erased with it.
+
+### Recommendation Admission
+
+The pre-delivery capacity gate that decides whether a recommendation attempt
+may start for a session and seed while enforcing single-flight, cooldown, and
+rate budgets before a Recommendation Request can exist.
+
+A rejected admission is a reason-coded availability result, not an empty or
+failed Recommendation Request. Callers may recover from explicitly transient
+reasons with a bounded retry while leaving capacity and infrastructure
+rejections terminal.
+
+### Recommendation Served Item
+
+One canonical, ordered member of a committed Recommendation Request slate. Its
+target, position, presentation, generator, and bounded provenance are server
+facts fixed before attribution is issued; browser-supplied values cannot
+rewrite them.
+
+### Recommendation Capability
+
+A short-lived, purpose-specific signed authority bound to stored request,
+item, session, surface, manifest, and—after handoff—episode/media identity. It
+is transported only in same-origin request bodies and browser memory. The
+server stores its identifier, digest, and signing key version where needed,
+never the raw token.
+
+A tab nonce is non-authoritative correlation. A claim nonce is a one-use
+session/media handoff credential; neither is a Recommendation Capability or can
+claim a different episode.
+
+### Eligible Recommendation Impression
+
+A recommendation exposure that satisfied the versioned surface visibility
+policy, not merely an item that was served or rendered. For
+`watch-below-player-v1`, at least half of the card must remain intersecting for
+one continuous second while the document is visible.
+
+### Recommendation Evidence
+
+A durable observation that a Recommendation Served Item was rendered, became
+an Eligible Recommendation Impression, was selected, or produced an ordered
+playback fact. Evidence is attributed through its Recommendation Request and
+served-item lineage rather than inferred later from unrelated analytics.
+
+### Recommendation Playback Episode
+
+The minimal append-only playback lineage opened atomically with a selection and
+claimed once on the selected target media. It carries server-sequenced attempt,
+start, progress, seek, active-visible-playing, terminal, and error facts within
+bounded active/hard horizons without replacing the legacy Watch recorder.
+
+### Recommendation Outcome Revision
+
+An immutable, recomputable classifier result over one episode's ordered fact
+watermark and digest. A later fact watermark may append a monotonic superseding
+revision; an old retry cannot become latest. `legacy-position-v0` is a named
+position/progress comparator with no continuous weight or satisfaction claim,
+and every U1 revision is learning-ineligible.
+
+### Recommendation Strategy Manifest
+
+Immutable operator/configuration truth that pins the generator, delivery
+contract, surface contract, and slate bound used by a Recommendation Request.
+The bootstrap manifest is `semantic-transcript-pgvector-v1`; a separate shared
+serving-control row points to it and can stop new issuance without deleting
+history.
+
+### Recommendation Profile
+
+A consent-gated, pseudonymous continuity record for anonymous recommendation
+personalization. The browser holds the opaque first-party identifier while the
+recommendation system retains only its one-way identity and server-owned
+interests; withdrawing consent severs relinkable continuity and begins erasure.
+
+### Recommendation Profile Projection
+
+An immutable, bounded interpretation of eligible recommendation behavior into
+multiple durable interests and current-session intent. Readers use only a
+fully published generation, so an incomplete rebuild cannot become serving
+truth and a privacy-generation change fences stale work.
+
+### Recommendation Personalization Decision
+
+The request-owned record that keeps immutable experiment-assignment truth
+separate from actual serving truth. `lane` retains the historic assignment
+label (`semantic_control`, `profile_challenger`, or `semantic_fallback`) so old
+experiment evidence never changes meaning; `executionMode` records whether the
+request actually executed semantic contextual retrieval or the versioned
+semantic-plus-profile hybrid pipeline. When personalized, the record references
+the published Recommendation Profile Projection that authorized profile input,
+without exposing profile identifiers, histories, or vectors to Watch or Admin.
+
+### Hybrid Recommendation Manifest
+
+An immutable Recommendation Strategy Manifest whose semantic and
+consent-permitted profile generators nominate into one canonical union,
+eligibility, deterministic ranker, repetition-aware composer, and exact-six
+slate. Semantic-only remains the control, fallback, kill-switch target, and
+last-known-good strategy. Historic `profile_challenger` assignment evidence is
+not reinterpreted as hybrid; a request proves hybrid execution through its
+exact manifest identity and `hybrid_personalized` execution mode.
+
+### Bounded Personalization Experiment
+
+A live anonymous-personalization experiment whose exact Recommendation
+Strategy Manifest and cohort limit define its authority. An assignment arm is
+authorization and attribution truth, not a candidate-generator selector: an
+authorized challenger can execute the exact hybrid manifest while its legacy
+`profile_challenger` lane label remains unchanged. Rollback remains an allowed
+transition, but wider exposure or permanent-default status creates a new
+versioned experiment rather than changing accumulated assignments and evidence
+in place.
+
+### Recommendation Evidence-Gate State
+
+The Admin interpretation of durable recommendation-owned evidence. It
+distinguishes `healthy` and verified `zero_activity` from
+`unavailable_unknown`, `loss_suspected`, `replay`, `conflict`, `late`,
+`classifier_lag`, and `retention_overdue`. Absence becomes zero only after a
+current database probe, healthy retention, and a durable success watermark;
+selection without impression and valid out-of-order evidence remain visible
+facts rather than invented loss.
+
 ## Known-caller auth
 
 ### Known-Caller Check

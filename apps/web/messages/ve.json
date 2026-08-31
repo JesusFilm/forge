@@ -722,5 +722,28 @@
     "languageVersionLabel": "Luambo lwa mubvumo",
     "selectLanguageVersion": "Nangani vesheni ya luambo",
     "watchSelectedVersion": "Ṱalelani vesheni yo nangiwaho"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dzikhhetho dza cookie",
+    "bannerTitle": "Dzikhhetho zwanu zwa tshidzumbe",
+    "bannerDescription": "Cookie dza ndeme dzi ita uri Watch i dzule yo tsireledzea nahone i shume zwavhuḓi. Nga thendelo yanu, cookie ya u tou bva kha saiti iyi i nga humbula zwine na takalela zwone kha maetele o fhambanaho u itela u ita themendelo dzo teaho. Themendelo dzi yelanaho na zwi re hone dzi a wanala naho zwo ralo.",
+    "acceptAll": "Ṱanganedzani zwoṱhe",
+    "essentialOnly": "Dza ndeme fhedzi",
+    "manageChoices": "Langulani dzikhhetho",
+    "savingChoice": "Khouthu ya cookie i khou vhulungiwa",
+    "settings": "Mavhekanyele a cookie",
+    "settingsDescription": "Nangani arali Watch i tshi tea u humbula zwine na takalela zwa themendelo kha maetele o fhambanaho. Ni nga shandukisa hezwi tshifhinga tshiṅwe na tshiṅwe.",
+    "essentialCookies": "Cookie dza ndeme",
+    "essentialDescription": "Tsireledzo, u tamba vidio, dzikhhetho zwa tshidzumbe, na u sumbedza hune khumbelo ya themendelo ya bva hone.",
+    "alwaysActive": "Dzi dzula dzo shumiswa",
+    "personalization": "U ita zwa muthu nga eṱhe",
+    "personalizationDescription": "Humbulani zwine na takalela zwine zwa vhalelwa kha maetele o fhambanaho. U tima hezwi zwi ita uri themendelo dzi yelanaho na zwi re hone dzi dzule dzi hone.",
+    "erasurePending": "U phumulwa ha phurofaili hu kha di lindelwa. Themendelo dzi yelanaho na zwi re hone dzo no thoma u shuma.",
+    "cancel": "Fhelisani",
+    "saveChoices": "Vhulungani dzikhhetho",
+    "saving": "Zwi khou vhulungiwa…",
+    "loadError": "Khetho yanu a yo ngo kona u laisiwa. Ni kha ḓi nga nanga afho fhasi.",
+    "grantError": "U ita zwa muthu nga eṱhe a zwo ngo kona u shumiswa. Dza ndeme fhedzi dzi kha ḓi wanala.",
+    "saveError": "Khetho yanu a yo ngo kona u vhulungiwa. Ri humbela ni lingedze hafhu."
   }
 }

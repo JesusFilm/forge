@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio dili",
     "selectLanguageVersion": "Dil versiyasını seçin",
     "watchSelectedVersion": "Seçilmiş versiyaya baxın"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie seçimləri",
+    "bannerTitle": "Məxfilik seçimləriniz",
+    "bannerDescription": "Vacib cookie-lər Watch-ın təhlükəsiz və işlək qalmasını təmin edir. İcazənizlə, isteğe bağlı birinci tərəf cookie-si tövsiyələri fərdiləşdirmək üçün maraqlarınızı ziyarətlər arasında yadda saxlaya bilər. Kontekstual tövsiyələr isə hər iki halda əlçatan qalır.",
+    "acceptAll": "Hamısını qəbul et",
+    "essentialOnly": "Yalnız vacib olanlar",
+    "manageChoices": "Seçimləri idarə et",
+    "savingChoice": "Cookie seçimi yadda saxlanılır",
+    "settings": "Cookie ayarları",
+    "settingsDescription": "Watch-ın tövsiyə maraqlarını ziyarətlər arasında yadda saxlayıb-saxlamayacağını seçin. Bunu istənilən vaxt dəyişə bilərsiniz.",
+    "essentialCookies": "Vacib cookie-lər",
+    "essentialDescription": "Təhlükəsizlik, oxutma, məxfilik seçimləri və tövsiyə sorğularının aidiyyəti.",
+    "alwaysActive": "Həmişə aktivdir",
+    "personalization": "Fərdiləşdirmə",
+    "personalizationDescription": "Məhdud maraqları ziyarətlər arasında yadda saxla. Bunu söndürsəniz də, kontekstual tövsiyələr əlçatan qalacaq.",
+    "erasurePending": "Profilin silinməsi gözlənilir. Kontekstual tövsiyələr artıq aktivdir.",
+    "cancel": "Ləğv et",
+    "saveChoices": "Seçimləri yadda saxla",
+    "saving": "Yadda saxlanılır…",
+    "loadError": "Seçiminiz yüklənə bilmədi. Yenə də aşağıdan seçim edə bilərsiniz.",
+    "grantError": "Fərdiləşdirmə aktiv edilə bilmədi. Yalnız vacib seçim mövcud olaraq qalır.",
+    "saveError": "Seçiminiz yadda saxlanıla bilmədi. Zəhmət olmasa yenidən cəhd edin."
   }
 }

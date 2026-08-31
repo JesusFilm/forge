@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jezik zvuka",
     "selectLanguageVersion": "Izaberite jezičku verziju",
     "watchSelectedVersion": "Gledajte izabranu verziju"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Izbor kolačića",
+    "bannerTitle": "Vaši izbori privatnosti",
+    "bannerDescription": "Neophodni kolačići održavaju Watch bezbednim i ispravnim. Uz vašu dozvolu, opcioni kolačić prve strane može da pamti interesovanja između poseta kako bi preporuke bile prilagođene. Kontekstualne preporuke su dostupne u oba slučaja.",
+    "acceptAll": "Prihvati sve",
+    "essentialOnly": "Samo neophodno",
+    "manageChoices": "Upravljaj izborima",
+    "savingChoice": "Čuvanje izbora kolačića",
+    "settings": "Podešavanja kolačića",
+    "settingsDescription": "Izaberite da li Watch sme da pamti interesovanja za preporuke između poseta. Ovo možete promeniti u bilo kom trenutku.",
+    "essentialCookies": "Neophodni kolačići",
+    "essentialDescription": "Bezbednost, reprodukcija, izbori privatnosti i pripisivanje zahteva za preporuke.",
+    "alwaysActive": "Uvek aktivno",
+    "personalization": "Personalizacija",
+    "personalizationDescription": "Pamti ograničena interesovanja između poseta. Ako ovo isključite, kontekstualne preporuke će i dalje biti dostupne.",
+    "erasurePending": "Brisanje profila je u toku. Kontekstualne preporuke su već aktivne.",
+    "cancel": "Otkaži",
+    "saveChoices": "Sačuvaj izbore",
+    "saving": "Čuvanje…",
+    "loadError": "Vaš izbor nije mogao da se učita. I dalje možete izabrati ispod.",
+    "grantError": "Personalizacija nije mogla da se uključi. Opcija samo neophodno i dalje je dostupna.",
+    "saveError": "Vaš izbor nije mogao da se sačuva. Pokušajte ponovo."
   }
 }

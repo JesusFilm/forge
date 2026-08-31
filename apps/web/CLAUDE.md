@@ -64,6 +64,41 @@ the `watch-dynamic-collections` cache tag. `STRAPI_PREVIEW_SECRET` remains
 required for the `/api/preview` Next draft-mode entry token (Strapi-era surface
 that hasn't migrated yet; out of data-layer scope).
 
+## Watch semantic recommendations
+
+Eligible Watch routes include exactly one route-owned semantic recommendation
+slot immediately after `WatchBody`. The lazy client boundary calls the
+same-origin, dynamic, private/no-store `/watch/api/recommendations*` routes only
+after the player shell is available. Do not turn recommendation delivery or
+telemetry into an RSC/static-page dependency, authored-block override, player
+startup dependency, or precedent for direct browser-to-Admin GraphQL.
+
+The pinned browser contracts are `semantic-recommendation-v1`,
+`recommendation-evidence-v1`, and `watch-below-player-v1`. The Web Route
+Handlers alone hold `WEB_ADMIN_API_KEYS` and the 24-hour host-only HttpOnly
+recommendation session cookie. Delivery and episode capabilities remain in
+memory and request bodies only; no capability may enter a URL, referrer, SSR
+HTML, DOM field, JavaScript-readable persistent storage, log, analytics event,
+or retained browser artifact. The one sessionStorage value is a non-secret tab
+correlation/claim nonce and is never authorization.
+
+An eligible impression means at least 50% of a card was continuously visible
+for one second while the document was visible. Selection is single-flight,
+body-POSTed, and navigates to Admin's stored-item-derived target; its short
+deadline fails open to the already-rendered token-free href. The target player
+claims the one-use handoff asynchronously and records best-effort bounded facts
+without changing the legacy `WatchEventRecorder`. Delivery, evidence, claim,
+or Admin failure must preserve source and target player availability.
+
+For a local proof, Admin `WATCH_CANONICAL_ORIGIN` and Web
+`NEXT_PUBLIC_CANONICAL_ORIGIN` must use the same scheme and host, and Web's
+first consumer bearer must be accepted by Admin. Non-production recommendation
+routes accept a same-host loopback origin when a local preview proxy changes
+only the port; production still requires the exact canonical origin. Follow
+`docs/operations/semantic-recommendation-tracer.md`; retain only redacted URL
+path, status, timing, and request ID evidence, and delete raw Playwright traces
+before a PR.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.

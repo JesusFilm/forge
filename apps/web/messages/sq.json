@@ -722,5 +722,28 @@
     "languageVersionLabel": "Gjuha e audios",
     "selectLanguageVersion": "Zgjidh një version gjuhësor",
     "watchSelectedVersion": "Shiko versionin e zgjedhur"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Zgjedhjet e cookie-ve",
+    "bannerTitle": "Zgjedhjet tuaja për privatësinë",
+    "bannerDescription": "Cookie-t thelbësore e mbajnë Watch të sigurt dhe funksional. Me lejen tuaj, një cookie opsionale e palës së parë mund të mbajë mend interesat në vizita të ndryshme për të personalizuar rekomandimet. Rekomandimet kontekstuale mbeten të disponueshme në çdo rast.",
+    "acceptAll": "Pranoji të gjitha",
+    "essentialOnly": "Vetëm thelbësoret",
+    "manageChoices": "Menaxho zgjedhjet",
+    "savingChoice": "Po ruhen zgjedhjet për cookie-t",
+    "settings": "Cilësimet e cookie-ve",
+    "settingsDescription": "Zgjidhni nëse Watch mund të mbajë mend interesat për rekomandime në vizita të ndryshme. Këtë mund ta ndryshoni në çdo kohë.",
+    "essentialCookies": "Cookie thelbësore",
+    "essentialDescription": "Siguria, riprodhimi, zgjedhjet për privatësinë dhe atribuimi i kërkesave për rekomandime.",
+    "alwaysActive": "Gjithmonë aktive",
+    "personalization": "Personalizimi",
+    "personalizationDescription": "Mban mend interesa të kufizuara në vizita të ndryshme. Nëse e çaktivizoni këtë, rekomandimet kontekstuale mbeten të disponueshme.",
+    "erasurePending": "Fshirja e profilit është në pritje. Rekomandimet kontekstuale janë tashmë aktive.",
+    "cancel": "Anulo",
+    "saveChoices": "Ruaj zgjedhjet",
+    "saving": "Po ruhet…",
+    "loadError": "Zgjedhja juaj nuk mund të ngarkohej. Mund të zgjidhni gjithsesi më poshtë.",
+    "grantError": "Personalizimi nuk mund të aktivizohej. Opsioni vetëm thelbësoret mbetet i disponueshëm.",
+    "saveError": "Zgjedhja juaj nuk mund të ruhej. Ju lutemi, provoni përsëri."
   }
 }

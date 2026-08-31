@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio bhasha",
     "selectLanguageVersion": "Ek bhasha version chuniye",
     "watchSelectedVersion": "Chuna hua version dekhiye"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी चुनाव",
+    "bannerTitle": "राउर गोपनीयता के चुनाव",
+    "bannerDescription": "जरूरी कुकी Watch के सुरक्षित आ ठीक से चले में मदद करे ला। राउर अनुमति से, एगो वैकल्पिक first-party कुकी अलग-अलग भेंट पर राउर रुचि याद राख सकेला ताकि सुझाउ निजी बनावल जा सके। संदर्भ के हिसाब से सुझाउ दूनों हालत में उपलब्ध रही।",
+    "acceptAll": "सब स्वीकार करीं",
+    "essentialOnly": "खाली जरूरी",
+    "manageChoices": "चुनाव प्रबंधित करीं",
+    "savingChoice": "कुकी चुनाव सेव होत बा",
+    "settings": "कुकी सेटिंग",
+    "settingsDescription": "चुनीं कि Watch अलग-अलग भेंट पर सुझाउ खातिर रुचि याद रख सके कि ना। एह के रउआ कबो भी बदल सकत बानी।",
+    "essentialCookies": "जरूरी कुकी",
+    "essentialDescription": "सुरक्षा, प्लेबैक, गोपनीयता के चुनाव, आ सुझाउ अनुरोध के श्रेय।",
+    "alwaysActive": "हमेशा चालू",
+    "personalization": "निजीकरण",
+    "personalizationDescription": "अलग-अलग भेंट पर सीमित रुचि याद राखीं। एह के बंद करे से संदर्भ के हिसाब से सुझाउ उपलब्ध रही।",
+    "erasurePending": "प्रोफाइल मिटावल बाकी बा। संदर्भ के हिसाब से सुझाउ पहिले से चालू बा।",
+    "cancel": "रद्द करीं",
+    "saveChoices": "चुनाव सेव करीं",
+    "saving": "सेव होत बा…",
+    "loadError": "राउर चुनाव लोड ना हो सकल। तबो रउआ नीचे चुन सकत बानी।",
+    "grantError": "निजीकरण चालू ना हो सकल। खाली जरूरी विकल्प अबहियों उपलब्ध बा।",
+    "saveError": "राउर चुनाव सेव ना हो सकल। फेर से कोशिश करीं।"
   }
 }

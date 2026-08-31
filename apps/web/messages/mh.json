@@ -722,5 +722,28 @@
     "languageVersionLabel": "Kajin ainikien",
     "selectLanguageVersion": "Kālet juon ukok in kajin",
     "watchSelectedVersion": "Lale ukok eo emōj kālet"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kelet ko am ikijien cookie",
+    "bannerTitle": "Kelet ko am ikijien privacy",
+    "bannerDescription": "Cookie ko rekkar nane rej lelok an Watch emman, kejbarok, im jerbal. Ñe kwōj lelok melim, juon cookie eo ekkar ñan eok emaron kejbarok men ko kwōj yokwe ilo ien bojak ko jet ñan an karōk kilep ko rellemñlok ñan eok. Kilep ko rellemñlok jen wāween am kōjerbal rej bed wot, ak ñan ta.",
+    "acceptAll": "Bōk aolep",
+    "essentialOnly": "Men ko aikuij wot",
+    "manageChoices": "Jolok kelet ko",
+    "savingChoice": "Ej kōjparok kelet in cookie",
+    "settings": "Kōttōbar in cookie",
+    "settingsDescription": "Kelet ñe Watch enaj maroñ kejbarok men ko kwōj yokwe ikijien recommendation ilo bojak ko jet. Kwōmaroñ ukot enaaj jabdewōt ien.",
+    "essentialCookies": "Cookie ko aikuij",
+    "essentialDescription": "Kejbarok, an video etal, kelet ko ikijien privacy, im melele in kajjitōk recommendation.",
+    "alwaysActive": "Ejelok jemlokin an jerbal",
+    "personalization": "Kōmaroñ an personal",
+    "personalizationDescription": "Kejbarok men ko kwōj yokwe ilo bojak ko jet. Ñe kwōj kinejbarok men in, recommendation ko rellemñlok jen wāween am kōjerbal renaj bed wot.",
+    "erasurePending": "Jolok in profile ej bojak wot. Recommendation ko rellemñlok jen wāween am kōjerbal rej jerbal eo anaan.",
+    "cancel": "Bōk jenolok",
+    "saveChoices": "Kōjparok kelet ko",
+    "saving": "Ej kōjparok…",
+    "loadError": "Ejjab maroñ loe kelet eo am. Kwōmaroñ wot kelet ijin ilal.",
+    "grantError": "Personalization ejjab maroñ jerbal. Men ko aikuij wot rej bed.",
+    "saveError": "Ejjab maroñ kōjparok kelet eo am. Jouj im bar etale."
   }
 }

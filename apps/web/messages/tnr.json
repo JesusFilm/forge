@@ -722,5 +722,28 @@
     "languageVersionLabel": "Mankan ka kan",
     "selectLanguageVersion": "Kan sugu waara kɛ",
     "watchSelectedVersion": "Sugu waara kɛ yé"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn cookie yi",
+    "bannerTitle": "Sa tànn yi ci suturaal sa bopp",
+    "bannerDescription": "Cookie yu am solo yi di denc Watch bu wóor te mu liggéey bu baax. Boo ko mayee ndigal, benn cookie tànneef bu jóg ci sunu bopp man naa fàttali la li nga bëgg ci njëw yu wuute ngir jagleel la kàttan yu méngoo. Kàttan yu aju ci li ngay xool dañuy am sax ci bépp anam.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yu am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Di denc sa tànn cookie",
+    "settings": "Parameetar cookie yi",
+    "settingsDescription": "Tànnal ndax Watch man naa fàttali li nga bëgg ci kàttan yi ci diggante sa njëw yu wuute. Mën nga ko soppi saa su ne.",
+    "essentialCookies": "Cookie yu am solo yi",
+    "essentialDescription": "Kaaraange, doxalin video, tànn suturaal sa bopp, ak xamale kan moo laaj kàttan yi.",
+    "alwaysActive": "Muy dox saa su ne",
+    "personalization": "Jagleel sa bopp",
+    "personalizationDescription": "Fàttali li nga bëgg te am ay kemtali ci sa njëw yu wuute. Boo ko féeñee, kàttan yu aju ci li ngay xool dañuy am sax.",
+    "erasurePending": "Far sa profil mungi ci yoonu amal. Kàttan yu aju ci li ngay xool dañoo doon dox ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Di denc…",
+    "loadError": "Maneesul a yeb sa tànn. Waaye mën nga tànn fii ci suuf.",
+    "grantError": "Maneesul a def personalization. Yu am solo rekk lañuy des.",
+    "saveError": "Maneesul a denc sa tànn. Jéemaatal."
   }
 }

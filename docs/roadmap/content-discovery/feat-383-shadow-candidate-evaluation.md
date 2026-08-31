@@ -3,7 +3,7 @@ id: "feat-383"
 title: "Shadow candidate evaluation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 5
 depends_on:

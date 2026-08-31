@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jãzëk aùdio",
     "selectLanguageVersion": "Wëbierzë jãzëkòwą wersëjã",
     "watchSelectedVersion": "Òbzérôj wëbróną wersëjã"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Wëbiérk cuksów",
+    "bannerTitle": "Twòje wëbiérczi prëwatnoscë",
+    "bannerDescription": "Niezbãdné cuksë trzëmają Watch bezpiecznym ë sprawnym. Za twòjim przëzwòlënim dodôtny cuks pierszi starnë mòże spamiãtac zainteresowania midzë wëzëtama, bë spersonalizowac pòdskôzczi. Kòntekstowé pòdskôzczi są przistãpné w kòżdim przëtrôfkù.",
+    "acceptAll": "Akceptëjë wszëtczé",
+    "essentialOnly": "Blós niezbãdné",
+    "manageChoices": "Sprôwiôj wëbiérkama",
+    "savingChoice": "Zapisëwanié wëbiérkù cuksów",
+    "settings": "Ùstôwë cuksów",
+    "settingsDescription": "Wëbierzë, czë Watch mòże spamiãtac zainteresowania pòdskôzkama midzë wëzëtama. To mòżesz zmienic w kòżdim czasu.",
+    "essentialCookies": "Niezbãdné cuksë",
+    "essentialDescription": "Bezpiecziństwò, òdtwôrzanié, wëbiérczi prëwatnoscë ë przëpisanié żądaniô pòdskôzków.",
+    "alwaysActive": "Wiedno aktiwné",
+    "personalization": "Personalizacjô",
+    "personalizationDescription": "Spamiãtiwùj ògraniczoné zainteresowania midzë wëzëtama. Wëłączenié tegò dali dôwô przistãp do kòntekstowëch pòdskôzków.",
+    "erasurePending": "Rëmòwanié profilu je w bëcé. Kòntekstowé pòdskôzczi są ju aktiwné.",
+    "cancel": "Òstawi",
+    "saveChoices": "Zapiszë wëbiérczi",
+    "saving": "Zapisëwanié…",
+    "loadError": "Nie dało sã wczëtac twòjégò wëbiérkù. Niżéj jesz mòżesz wëbrac.",
+    "grantError": "Nie dało sã włączëc personalizacjë. Blós niezbãdné òstôwają przistãpné.",
+    "saveError": "Nie dało sã zapisac twòjégò wëbiérkù. Spróbùjë jesz rôz."
   }
 }

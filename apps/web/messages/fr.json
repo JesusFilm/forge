@@ -722,5 +722,28 @@
     "languageVersionLabel": "Langue audio",
     "selectLanguageVersion": "Sélectionner une version linguistique",
     "watchSelectedVersion": "Regarder la version sélectionnée"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Choix des cookies",
+    "bannerTitle": "Vos choix de confidentialité",
+    "bannerDescription": "Les cookies essentiels permettent à Watch de rester sécurisé et de fonctionner correctement. Avec votre autorisation, un cookie propriétaire facultatif peut mémoriser vos centres d’intérêt d’une visite à l’autre afin de personnaliser les recommandations. Les recommandations contextuelles restent disponibles dans tous les cas.",
+    "acceptAll": "Tout accepter",
+    "essentialOnly": "Essentiels uniquement",
+    "manageChoices": "Gérer les choix",
+    "savingChoice": "Enregistrement du choix des cookies",
+    "settings": "Paramètres des cookies",
+    "settingsDescription": "Choisissez si Watch peut mémoriser vos préférences de recommandation d’une visite à l’autre. Vous pouvez modifier ce choix à tout moment.",
+    "essentialCookies": "Cookies essentiels",
+    "essentialDescription": "Sécurité, lecture, choix de confidentialité et attribution des demandes de recommandation.",
+    "alwaysActive": "Toujours actifs",
+    "personalization": "Personnalisation",
+    "personalizationDescription": "Mémoriser des centres d’intérêt limités d’une visite à l’autre. Si vous désactivez cette option, les recommandations contextuelles resteront disponibles.",
+    "erasurePending": "La suppression du profil est en attente. Les recommandations contextuelles sont déjà actives.",
+    "cancel": "Annuler",
+    "saveChoices": "Enregistrer les choix",
+    "saving": "Enregistrement…",
+    "loadError": "Impossible de charger votre choix. Vous pouvez quand même choisir ci-dessous.",
+    "grantError": "Impossible d’activer la personnalisation. L’option essentiels uniquement reste disponible.",
+    "saveError": "Impossible d’enregistrer votre choix. Veuillez réessayer."
   }
 }

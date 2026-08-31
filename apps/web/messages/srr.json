@@ -722,5 +722,28 @@
     "languageVersionLabel": "O ƭat o baat",
     "selectLanguageVersion": "Tànnal sumbum o ƭat",
     "watchSelectedVersion": "Xool sumb bi nga tànn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Sa tànn yi ci sutura",
+    "bannerDescription": "Cookie yu am solo yi di jàppale Watch ngir mu wóor te di dox. Boo ko mayee ndigal, benn cookie bu tànneef bu Watch moom mëna fàttali sa bëgg-bëgg yi ci seeti yu wuute ngir joxe laytal yu méngook yaw. Laytal yu aju ci mbir mi dañuy am sax ci ñaar ñépp.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yu am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn cookie bi",
+    "settings": "Parameetar yi ci cookie",
+    "settingsDescription": "Tànnal ndax Watch mëna fàttali sa bëgg-bëgg yu laytal ci seeti yu wuute. Mën nga soppi li saa su ne.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaarange, xëtal vidéo, tànn yi ci sutura, ak melokaanu laaj yu laytal.",
+    "alwaysActive": "Dafa doon dox saa su ne",
+    "personalization": "Wone li méngook yaw",
+    "personalizationDescription": "Fàttali bëgg-bëgg yu diggante ci seeti yu wuute. Boo ko tëjée, laytal yu aju ci mbir mi dañuy des di am.",
+    "erasurePending": "Fàrampal sa profil mi ngi xaar. Laytal yu aju ci mbir mi dañoo ba noppi tàmbali.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënunu jël sa tànn. Waaye man nga tànn ci suuf.",
+    "grantError": "Mënunu tàmbali wone li méngook yaw. Yu am solo rekk la fi des.",
+    "saveError": "Mënunu denc sa tànn. Jéemaatal."
   }
 }

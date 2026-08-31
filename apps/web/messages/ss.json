@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lulwimi lwemsindvo",
     "selectLanguageVersion": "Khetsa luhumusho lwelulwimi",
     "watchSelectedVersion": "Bukela luhumusho lolukhetsiwe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kutikhetsela ema-cookie",
+    "bannerTitle": "Kukhetsa kwakho ngemfihlo yakho",
+    "bannerDescription": "Ema-cookie labalulekile agcina i-Watch iphephile futsi isebenta kahle. Nangabe usivumela, i-cookie yekutinikela lengakakhetfwa ingakhumbula lokukutsandzako emkhatsini wekuvakasha kwakho kuze kunikwe tincomo letihambelana nawe. Tincomo letisuselwa esimeni tihlala titfolakala nobe kunjalo.",
+    "acceptAll": "Yemukela konkhe",
+    "essentialOnly": "Labalulekile kuphela",
+    "manageChoices": "Phatsa lokukhetsako",
+    "savingChoice": "Kugcinwa kukhetsa kwe-cookie",
+    "settings": "Tilungiselelo tema-cookie",
+    "settingsDescription": "Khetsa kutsi i-Watch ingakhumbula yini lokukutsandzako etincomweni emkhatsini wekuvakasha kwakho. Ungakugucula loku nanganoma ngusiphi sikhatsi.",
+    "essentialCookies": "Ema-cookie labalulekile",
+    "essentialDescription": "Kuphepha, kudlala, kukhetsa ngemfihlo, nekubalwa kwemtfombo wesicelo setincomo.",
+    "alwaysActive": "Kuhlale kusebenza",
+    "personalization": "Kwenta kube kwakho",
+    "personalizationDescription": "Khumbula lokukutsandzako lokulinganiselwe emkhatsini wekuvakasha. Nakucinywa loku, tincomo letisuselwa esimeni tichubeka titfolakala.",
+    "erasurePending": "Kususwa kwephrofayela kusalindziwe. Tincomo letisuselwa esimeni setivele tisebenta.",
+    "cancel": "Khansela",
+    "saveChoices": "Gcina lokukhetsako",
+    "saving": "Kuyagcinwa…",
+    "loadError": "Asikakhoni kulayisha lokukhetsile. Usengakhetsa ngezansi.",
+    "grantError": "Kwenta kube kwakho akukakavunyelwa. Labalulekile kuphela basolo batfolakala.",
+    "saveError": "Asikakhoni kugcina lokukhetsile. Uyacelwa uphindze wetame."
   }
 }

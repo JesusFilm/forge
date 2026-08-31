@@ -722,5 +722,28 @@
     "languageVersionLabel": "Mutauro wezwi",
     "selectLanguageVersion": "Sarudza shanduro yemutauro",
     "watchSelectedVersion": "Ona shanduro yakasarudzwa"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Sarudzo dzecookie",
+    "bannerTitle": "Sarudzo dzako dzezvakavanzika",
+    "bannerDescription": "Makuki anokosha anochengetedza Watch yakachengeteka uye ichishanda. Nemvumo yenyu, cookie rekutanga risingamanikidzwi rinogona kurangarira zvaunofarira pakushanya kwakasiyana kuti rikurudzire zvemukati zvinokodzera iwe. Kurudziro dzinoenderana nezviri kutariswa dzinoramba dziripo chero zvodii.",
+    "acceptAll": "Gamuchira zvese",
+    "essentialOnly": "Zvinokosha chete",
+    "manageChoices": "Gadzirisa sarudzo",
+    "savingChoice": "Kuchengetedza sarudzo yecookie",
+    "settings": "Masetingi ecookie",
+    "settingsDescription": "Sarudza kuti Watch ingarangarira here zvaunofarira pakurudziro pakushanya kwakasiyana. Unogona kuchinja izvi chero nguva.",
+    "essentialCookies": "Makuki anokosha",
+    "essentialDescription": "Kuchengetedzeka, kutamba vhidhiyo, sarudzo dzezvakavanzika, uye kutsanangura kwakabva chikumbiro chekurudziro.",
+    "alwaysActive": "Zvinogara zvichishanda",
+    "personalization": "Kugadzirirwa iwe",
+    "personalizationDescription": "Rangarira zvaunofarira zvakatarwa pakushanya kwakasiyana. Kana ukadzima izvi, kurudziro dzinoenderana nezviri kutariswa dzicharamba dziripo.",
+    "erasurePending": "Kudzimwa kweprofile kuchiri kumirira. Kurudziro dzinoenderana nezviri kutariswa dzatova kushanda.",
+    "cancel": "Kanzura",
+    "saveChoices": "Chengetedza sarudzo",
+    "saving": "Kuchengetedza…",
+    "loadError": "Sarudzo yako haina kukwanisa kurodhwa. Uchiri kukwanisa kusarudza pazasi.",
+    "grantError": "Kugadzirirwa iwe hakuna kukwanisa kuvhurwa. Zvinokosha chete ndizvo zvicharamba zviripo.",
+    "saveError": "Sarudzo yako haina kukwanisa kuchengetedzwa. Ndapota edzazve."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Idioma do audio",
     "selectLanguageVersion": "Seleccionar unha versión de idioma",
     "watchSelectedVersion": "Ver a versión seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Preferencias de cookies",
+    "bannerTitle": "As túas preferencias de privacidade",
+    "bannerDescription": "As cookies esenciais manteñen Watch seguro e en funcionamento. Co teu permiso, unha cookie opcional propia pode lembrar os teus intereses entre visitas para personalizar as recomendacións. As recomendacións contextuais seguirán estando dispoñibles en calquera caso.",
+    "acceptAll": "Aceptar todas",
+    "essentialOnly": "Só esenciais",
+    "manageChoices": "Xestionar preferencias",
+    "savingChoice": "Gardando a preferencia de cookies",
+    "settings": "Configuración de cookies",
+    "settingsDescription": "Escolle se Watch pode lembrar os intereses de recomendación entre visitas. Podes cambialo en calquera momento.",
+    "essentialCookies": "Cookies esenciais",
+    "essentialDescription": "Seguridade, reprodución, preferencias de privacidade e atribución das solicitudes de recomendación.",
+    "alwaysActive": "Sempre activas",
+    "personalization": "Personalización",
+    "personalizationDescription": "Lembra intereses limitados entre visitas. Se desactivas isto, as recomendacións contextuais seguirán dispoñibles.",
+    "erasurePending": "A eliminación do perfil está pendente. As recomendacións contextuais xa están activas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Gardar preferencias",
+    "saving": "Gardando…",
+    "loadError": "Non foi posible cargar a túa elección. Aínda así, podes escoller abaixo.",
+    "grantError": "Non foi posible activar a personalización. Segue dispoñible a opción de só esenciais.",
+    "saveError": "Non foi posible gardar a túa elección. Téntao de novo."
   }
 }

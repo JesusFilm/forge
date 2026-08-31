@@ -693,6 +693,61 @@ describe("translate UI catalogs", () => {
     ).toBe("Mensaje diecinueve")
   })
 
+  it("uses OpenRouter credentials only with an explicit non-default base URL", async () => {
+    const source = sourceCatalog()
+    const currentCatalog = translatedCatalog(source)
+    currentCatalog.common.message19 = source.common.message19
+    const fixture = createFixture({
+      currentCatalog,
+      progressCatalog: currentCatalog,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENROUTER_API_KEY: "test-openrouter-key" },
+      }),
+    ).rejects.toThrow("only with an explicit non-default OPENAI_BASE_URL")
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: {
+          OPENAI_BASE_URL: "https://api.openai.com/v1/",
+          OPENROUTER_API_KEY: "test-openrouter-key",
+        },
+      }),
+    ).rejects.toThrow("only with an explicit non-default OPENAI_BASE_URL")
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await main({
+      args: fixture.args,
+      environment: {
+        OPENAI_BASE_URL: "https://openrouter.ai/api/v1/",
+        OPENROUTER_API_KEY: "test-openrouter-key",
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://openrouter.ai/api/v1/chat/completions",
+    )
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer test-openrouter-key",
+    )
+  })
+
   it("limits a stale-provenance refresh to explicitly requested keys", async () => {
     const source = sourceCatalog()
     source.other = { unrelated: "Unrelated message" }
@@ -1126,6 +1181,32 @@ describe("translate UI catalogs", () => {
         total_tokens: 19,
       },
     })
+  })
+
+  it("uses an explicitly configured OpenAI-compatible base URL", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([{ key: "common.greeting", value: "Hola" }]),
+      )
+
+    await requestTranslations({
+      apiKey: "test-api-key",
+      baseUrl: "https://openrouter.ai/api/v1/",
+      locale: "es",
+      inventoryEntry: { countries: [{ name: "Spain" }] },
+      messages: { "common.greeting": "Hello" },
+      references: {},
+      model: "openai/gpt-5.4-mini",
+      maxAttempts: 1,
+      minimumChangeRatio: 1,
+      fetchImpl,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://openrouter.ai/api/v1/chat/completions",
+    )
   })
 
   it("surfaces a Responses API refusal after retries are exhausted", async () => {

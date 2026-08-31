@@ -722,5 +722,28 @@
     "languageVersionLabel": "Tok bilong odi",
     "selectLanguageVersion": "Makim wanpela tok",
     "watchSelectedVersion": "Lukim dispela vesin yu makim"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ol mak bilong cookie",
+    "bannerTitle": "Ol mak bilong praivasi bilong yu",
+    "bannerDescription": "Ol cookie em i mas stap i helpim Watch long stap seif na wok gut. Sapos yu orait long en, wanpela opsenel nambawan-party cookie inap tingim ol laik bilong yu long ol visit bihain bilong mekim ol rekomendesen i stret moa long yu. Ol rekomendesen bilong dispela konteks bai stap yet maski wanem mak yu mekim.",
+    "acceptAll": "Larim olgeta",
+    "essentialOnly": "Ol em i mas stap tasol",
+    "manageChoices": "Mekim ol mak",
+    "savingChoice": "Seivim mak bilong cookie",
+    "settings": "Ol seting bilong cookie",
+    "settingsDescription": "Makim sapos Watch inap tingim ol laik bilong rekomendesen bilong yu long ol visit bihain. Yu inap senisim dispela long wanem taim yu laikim.",
+    "essentialCookies": "Ol cookie em i mas stap",
+    "essentialDescription": "Sekyuriti, plebek, ol mak bilong praivasi, na mak bilong husat i askim long rekomendesen.",
+    "alwaysActive": "Oltaim i stap wok",
+    "personalization": "Mekim i stret long yu",
+    "personalizationDescription": "Tingim ol liklik grup bilong laik bilong yu long ol visit bihain. Sapos yu pasim dispela, ol rekomendesen bilong dispela konteks bai stap yet.",
+    "erasurePending": "Wok bilong rausim profail i no pinis yet. Ol rekomendesen bilong dispela konteks i stap pinis.",
+    "cancel": "Kansel",
+    "saveChoices": "Seivim ol mak",
+    "saving": "Seivim...",
+    "loadError": "No inap opim mak bilong yu. Tasol yu inap yet long makim aninit.",
+    "grantError": "No inap kirapim dispela pasin bilong mekim i stret long yu. Opsen bilong ol em i mas stap tasol i stap yet.",
+    "saveError": "No inap seivim mak bilong yu. Plis traim gen."
   }
 }

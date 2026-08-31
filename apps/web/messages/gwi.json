@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio ginjik",
     "selectLanguageVersion": "Ginjik version akʼàa",
     "watchSelectedVersion": "Version akʼàa nąįį"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie gwitchii zhìh",
+    "bannerTitle": "Nakhwanjit ts’ii tr’igwatsal zhìh",
+    "bannerDescription": "Essential cookie Watch gogwandak nagwàhch’ìi, k’iinzhat ts’àh ginlii. Nihkhan tr’ihłìi nàhts’įį, optional first-party cookie nihkhwanh tr’igwatsal gwiidandii łuk gwats’an tr’iinjik, recommendations personalize ginjih. Contextual recommendations łi’ gwintsal gohkwìi.",
+    "acceptAll": "Łak’at gòonlii tr’ahłìi",
+    "essentialOnly": "Essential gòonlii han",
+    "manageChoices": "Zhìh k’iigwiindài",
+    "savingChoice": "Cookie zhìh k’iigwiindài dagwahłìi",
+    "settings": "Cookie settings gòonlii",
+    "settingsDescription": "Watch recommendations tr’igwatsal gwintsal gwiidandii łuk gwats’an tr’iinjik ginjih, shìh choo. Diihkwìi nìi tr’ahłìi k’eh.",
+    "essentialCookies": "Essential cookie gòonlii",
+    "essentialDescription": "Security, playback, privacy zhìh, k’iinzhat recommendation request attribution.",
+    "alwaysActive": "Łak’at jìi gwintsal",
+    "personalization": "Nihkhwanh tr’igwatsal k’iigwiindài",
+    "personalizationDescription": "Bounded interests gwintsal gwiidandii łuk gwats’an tr’iinjik. Diihkwìi tr’igiilhtsii, contextual recommendations łi’ gwintsal.",
+    "erasurePending": "Profile nanahch’uu dagwahłìi. Contextual recommendations akhànjii gwintsal.",
+    "cancel": "Anhàa",
+    "saveChoices": "Zhìh k’iigwiindài nagwahłìi",
+    "saving": "Nagwahłìi…",
+    "loadError": "Nakhwanjit zhìh dagoo’ìi łeek’it. Nihkhwanh deetth’ak choo.",
+    "grantError": "Personalization k’eh tr’igiinlih łeek’it. Essential only łi’ gwintsal.",
+    "saveError": "Nakhwanjit zhìh nagwahłìi łeek’it. Gwintsii, zheh gwahandaii."
   }
 }

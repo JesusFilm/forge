@@ -1225,6 +1225,7 @@ type Mutation {
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
+  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
@@ -1253,7 +1254,11 @@ type Mutation {
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  recommendationProfileStatus(consentContractVersion: String, consentReceiptDigest: String, contractVersion: String!, profileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
+  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String!): RecommendationContentActionReceipt!
+  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String!): [RecommendationEvidenceReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
@@ -1270,6 +1275,8 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  selectSemanticRecommendation(capability: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -1480,6 +1487,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
+  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
@@ -1565,6 +1573,71 @@ type QuizButtonBlock {
   t: String
 }
 
+type RecommendationCandidateContributor {
+  generator: String!
+  generatorVersion: String!
+  rank: Int!
+}
+
+type RecommendationContentActionReceipt {
+  actionId: ID!
+  eventId: String!
+  late: Boolean!
+  matched: Boolean!
+  status: String!
+}
+
+input RecommendationEvidenceEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationEvidenceReceipt {
+  eventId: String!
+  status: String!
+}
+
+type RecommendationPersonalizationDelivery {
+  contractVersion: String!
+  effectiveManifestId: String!
+  executionMode: String
+  interestCount: Int!
+  lane: String!
+  profileState: String
+  projectionGeneration: Int
+  projectionVersion: String
+  reason: String
+  sessionIntentPresent: Boolean!
+}
+
+input RecommendationPlaybackEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationPlaybackReceipt {
+  eventId: String!
+  sequence: Int!
+  status: String!
+}
+
+type RecommendationProfileReceipt {
+  choice: String!
+  consentChoice: String!
+  consentContractVersion: String!
+  consentCookieDisposition: String!
+  consentExpiresAt: String
+  cookieDisposition: String!
+  erasureState: String
+  expiresAt: String
+  privacyGeneration: Int
+  state: String!
+}
+
 """Single entry in RelatedQuestionsBlock.questions."""
 type RelatedQuestionItem {
   answer: String
@@ -1622,6 +1695,59 @@ type SectionBlock {
 
 """Discriminated union of block kinds allowed inside section.content."""
 union SectionContentBlock = BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | QuizButtonBlock | RelatedQuestionsBlock | TextBlock | VideoBlock | VideoCarouselBlock
+
+type SemanticRecommendationDelivery {
+  classifierVersion: String!
+  composedCount: Int
+  contractVersion: String!
+  expiresAt: String
+  items: [SemanticRecommendationDeliveryItem!]!
+  personalization: RecommendationPersonalizationDelivery
+  reason: String
+  requestId: ID
+  requestedCount: Int
+  result: String!
+  shortfallReason: String
+  strategyVersion: String!
+  surfaceVersion: String!
+}
+
+type SemanticRecommendationDeliveryItem {
+  candidateGenerator: String!
+  canonicalHref: String!
+  capability: String!
+  contributors: [RecommendationCandidateContributor!]!
+  demographics: [String!]!
+  description: String!
+  durationSeconds: Float
+  endSeconds: Float
+  id: ID!
+  imageUrl: String
+  playbackId: String!
+  position: Int!
+  sceneIndex: Int!
+  similarity: Float!
+  spiritualContext: [String!]!
+  startSeconds: Float!
+  targetMediaId: ID!
+  themes: [String!]!
+  videoSlug: String!
+  videoTitle: String!
+}
+
+type SemanticRecommendationEpisodeClaim {
+  activeUntil: String!
+  capability: String!
+  episodeId: ID!
+  hardUntil: String!
+}
+
+type SemanticRecommendationSelectionReceipt {
+  canonicalHref: String!
+  claimNonce: String
+  status: String!
+  targetMediaId: ID!
+}
 
 """Rich text block with heading, subtitle, and paragraphs."""
 type TextBlock {

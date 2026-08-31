@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ururimi rw'amajwi",
     "selectLanguageVersion": "Hitamwo uburyo bw'ururimi",
     "watchSelectedVersion": "Raba uburyo wahisemwo"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Amahitamwo ya cookie",
+    "bannerTitle": "Amahitamwo yawe y'ubuzima bwite",
+    "bannerDescription": "Ama cookie y'ingenzi atuma Watch itekana kandi ikora neza. Ubitanzeko uruhusha, cookie y'inyongera yo kuri uru rubuga ishobora kwibuka ivyo ukunda mu ngendo zitandukanye kugira ngo impanuro zigushikirizwa zijane n'ivyo ukunda. Impanuro zijanye n'ivyo uriko urabona ziraboneka uko biri kwose.",
+    "acceptAll": "Emeza vyose",
+    "essentialOnly": "Ivy'ingenzi gusa",
+    "manageChoices": "Tegekanya amahitamwo",
+    "savingChoice": "Kubika ihitamwo rya cookie",
+    "settings": "Igenamiterere rya cookie",
+    "settingsDescription": "Hitamwo nimba Watch ishobora kwibuka ivyo ukunda ku mpanuro mu ngendo zitandukanye. Ushobora kubihindura igihe cose.",
+    "essentialCookies": "Ama cookie y'ingenzi",
+    "essentialDescription": "Umutekano, gukina amashusho, amahitamwo y'ubuzima bwite, no kumenya inkomoko y'ugusaba impanuro.",
+    "alwaysActive": "Bikora nantaryo",
+    "personalization": "Guhindura bikujane",
+    "personalizationDescription": "Kwibuka ivyo ukunda mu rugero rwagenwe mu ngendo zitandukanye. Kubizimya bituma impanuro zijanye n'ivyo uriko urabona ziguma ziboneka.",
+    "erasurePending": "Gusiba umwirondoro wawe kuracarindiriye. Impanuro zijanye n'ivyo uriko urabona zisanzwe zikora.",
+    "cancel": "Kureka",
+    "saveChoices": "Bika amahitamwo",
+    "saving": "Biriko birabikwa…",
+    "loadError": "Ihitamwo ryawe ntiryashoboye kwinjizwa. Uracashobora guhitamwo munsi.",
+    "grantError": "Ntivyashobotse gukoresha uguhindura kukujana. Ivy'ingenzi gusa biracaboneka.",
+    "saveError": "Ihitamwo ryawe ntiryashoboye kubikwa. Gerageza kandi."
   }
 }

@@ -404,6 +404,51 @@ export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
 import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
 export { WATCH_BASE_PATH }
 
+/**
+ * Validate the stored Admin target against the same canonical builder used by
+ * every authored Watch video link. Recommendation selection never accepts an
+ * arbitrary URL, query string, fragment, or non-canonical English form.
+ */
+export function isCanonicalWatchRecommendationHref(
+  value: unknown,
+): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length > 512 ||
+    !value.startsWith(`${WATCH_BASE_PATH}/`) ||
+    value.startsWith("//")
+  ) {
+    return false
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(value, WATCH_CANONICAL_ORIGIN)
+  } catch {
+    return false
+  }
+  if (
+    parsed.origin !== new URL(WATCH_CANONICAL_ORIGIN).origin ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== value
+  ) {
+    return false
+  }
+
+  const relative = value.slice(WATCH_BASE_PATH.length)
+  const match = relative.match(
+    /^\/([a-z0-9_-]+)\.html(?:\/([a-z0-9-]+)\.html)?$/,
+  )
+  if (!match) return false
+  const content = tryAsContentSlug(match[1]!)
+  const language = tryAsLocaleSlug(match[2] ?? DEFAULT_WATCH_LANGUAGE_SLUG)
+  return (
+    content != null &&
+    language != null &&
+    `${WATCH_BASE_PATH}${watchVideoPath(content, language)}` === value
+  )
+}
+
 /** Build an environment-specific absolute URL for a canonical watch video. */
 export function watchVideoAbsolute(
   slug: ContentSlug,

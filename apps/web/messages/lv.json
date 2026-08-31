@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio valoda",
     "selectLanguageVersion": "Izvēlieties valodas versiju",
     "watchSelectedVersion": "Skatīties izvēlēto versiju"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Sīkfailu izvēles",
+    "bannerTitle": "Jūsu privātuma izvēles",
+    "bannerDescription": "Nepieciešamās sīkdatnes nodrošina Watch drošību un darbību. Ar jūsu atļauju izvēles pirmās puses sīkdatne var atcerēties intereses starp apmeklējumiem, lai personalizētu ieteikumus. Kontekstuāli ieteikumi ir pieejami jebkurā gadījumā.",
+    "acceptAll": "Pieņemt visu",
+    "essentialOnly": "Tikai nepieciešamās",
+    "manageChoices": "Pārvaldīt izvēles",
+    "savingChoice": "Saglabā sīkfailu izvēli",
+    "settings": "Sīkfailu iestatījumi",
+    "settingsDescription": "Izvēlieties, vai Watch drīkst atcerēties ieteikumu intereses starp apmeklējumiem. To varat mainīt jebkurā laikā.",
+    "essentialCookies": "Nepieciešamās sīkdatnes",
+    "essentialDescription": "Drošība, atskaņošana, privātuma izvēles un ieteikumu pieprasījumu attiecināšana.",
+    "alwaysActive": "Vienmēr aktīvas",
+    "personalization": "Personalizācija",
+    "personalizationDescription": "Atcerēties noteiktas intereses starp apmeklējumiem. Izslēdzot šo opciju, kontekstuāli ieteikumi joprojām būs pieejami.",
+    "erasurePending": "Profila dzēšana tiek apstrādāta. Kontekstuāli ieteikumi jau ir aktīvi.",
+    "cancel": "Atcelt",
+    "saveChoices": "Saglabāt izvēles",
+    "saving": "Saglabā...",
+    "loadError": "Jūsu izvēli nevarēja ielādēt. Jūs joprojām varat izvēlēties zemāk.",
+    "grantError": "Personalizāciju nevarēja ieslēgt. Joprojām ir pieejama tikai nepieciešamo sīkdatņu opcija.",
+    "saveError": "Jūsu izvēli nevarēja saglabāt. Lūdzu, mēģiniet vēlreiz."
   }
 }

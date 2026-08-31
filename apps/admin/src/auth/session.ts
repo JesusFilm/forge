@@ -2,6 +2,7 @@ import { headers as nextHeaders } from "next/headers"
 import { redirect } from "next/navigation"
 import {
   ADMIN_OAUTH_SESSION_COOKIE,
+  readAdminOAuthSessionDetails,
   readAdminOAuthSessionCookie,
 } from "@/auth/auth-session"
 import { hasPermission } from "@/auth/permissions"
@@ -25,6 +26,12 @@ export async function resolvePrincipalFromRequest(
   request: Request,
 ): Promise<Principal | null> {
   return resolveFromHeaders(request.headers)
+}
+
+export async function resolveAdminSessionFromRequest(request: Request) {
+  return readAdminOAuthSessionDetails(
+    readCookie(request.headers.get("cookie"), ADMIN_OAUTH_SESSION_COOKIE),
+  )
 }
 
 export async function requireSession(): Promise<Principal> {

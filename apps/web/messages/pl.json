@@ -722,5 +722,28 @@
     "languageVersionLabel": "Język dźwięku",
     "selectLanguageVersion": "Wybierz wersję językową",
     "watchSelectedVersion": "Obejrzyj wybraną wersję"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ustawienia plików cookie",
+    "bannerTitle": "Twoje ustawienia prywatności",
+    "bannerDescription": "Niezbędne pliki cookie zapewniają bezpieczeństwo i prawidłowe działanie Watch. Za Twoją zgodą opcjonalny własny plik cookie może zapamiętywać zainteresowania między wizytami, aby personalizować rekomendacje. Rekomendacje kontekstowe są dostępne niezależnie od wyboru.",
+    "acceptAll": "Zaakceptuj wszystko",
+    "essentialOnly": "Tylko niezbędne",
+    "manageChoices": "Zarządzaj ustawieniami",
+    "savingChoice": "Zapisywanie ustawień plików cookie",
+    "settings": "Ustawienia plików cookie",
+    "settingsDescription": "Wybierz, czy Watch może zapamiętywać zainteresowania rekomendacji między wizytami. To ustawienie możesz zmienić w dowolnym momencie.",
+    "essentialCookies": "Niezbędne pliki cookie",
+    "essentialDescription": "Bezpieczeństwo, odtwarzanie, ustawienia prywatności i przypisanie żądania rekomendacji.",
+    "alwaysActive": "Zawsze aktywne",
+    "personalization": "Personalizacja",
+    "personalizationDescription": "Zapamiętywanie określonych zainteresowań między wizytami. Wyłączenie tej opcji nie wpływa na dostępność rekomendacji kontekstowych.",
+    "erasurePending": "Usunięcie profilu jest w toku. Rekomendacje kontekstowe są już aktywne.",
+    "cancel": "Anuluj",
+    "saveChoices": "Zapisz ustawienia",
+    "saving": "Zapisywanie…",
+    "loadError": "Nie udało się wczytać Twojego wyboru. Nadal możesz wybrać opcję poniżej.",
+    "grantError": "Nie udało się włączyć personalizacji. Nadal dostępna jest opcja tylko niezbędnych plików cookie.",
+    "saveError": "Nie udało się zapisać Twojego wyboru. Spróbuj ponownie."
   }
 }

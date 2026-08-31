@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiosprååk",
     "selectLanguageVersion": "Wääl en språåwersjoon üt",
     "watchSelectedVersion": "Luke det ütjwoole wersjoon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-köör",
+    "bannerTitle": "Din privatfäär-köör",
+    "bannerDescription": "Noodwändig cookies hoold Watch sekäär an funktioneere. Mä din toostemming könj en friewillig eetjin cookie din intressen ööwer meerdere besäken hünje, üüb dat oanbefelingen persöönliker wurd. Kontekstueel oanbefelingen bliiwe ounjers aw eiwen so beskikboor.",
+    "acceptAll": "Aal aksepteere",
+    "essentialOnly": "Bloot noodwändig",
+    "manageChoices": "Köör beheer",
+    "savingChoice": "Cookie-köör wurd seekert",
+    "settings": "Cookie-instellengen",
+    "settingsDescription": "Käär, of Watch oanbefelings-intressen ööwer meerdere besäken hünje mut. Dü könst det aaltiid feranere.",
+    "essentialCookies": "Noodwändig cookies",
+    "essentialDescription": "Sekäärhaid, ofspäälen, privatfäär-köör an toaskriiweng faan oanbefelings-oanfraagen.",
+    "alwaysActive": "Aaltiid aktiv",
+    "personalization": "Persöönlike oanpasning",
+    "personalizationDescription": "Begränset intressen ööwer meerdere besäken hünje. Wan dü det uutskaakelst, bliiwe kontekstueel oanbefelingen beskikboor.",
+    "erasurePending": "Profiel-lesking stäänt noch uut. Kontekstueel oanbefelingen san al aktiv.",
+    "cancel": "Afbreke",
+    "saveChoices": "Köören seekere",
+    "saving": "Wurd seekert…",
+    "loadError": "Din köör koon nit laaden wurd. Dü könst ünjer aunj noch jüüs kaare.",
+    "grantError": "Persöönlike oanpasning koon nit aktiweerd wurd. Bloot noodwändig bliiwt beskikboor.",
+    "saveError": "Din köör koon nit seekert wurd. Fersäik et noch ans."
   }
 }

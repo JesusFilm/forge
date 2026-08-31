@@ -722,5 +722,28 @@
     "languageVersionLabel": "Vah singhyinh",
     "selectLanguageVersion": "Gyaeuq banjbonj vah",
     "watchSelectedVersion": "Raeuz banjbonj gyaeuq gvaq"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Lwnh roxgoek cookie",
+    "bannerTitle": "Lwnh swnghseiz ndaw yinzswhj neix",
+    "bannerDescription": "Cookie gietdingh cawx swnghseiz Watch daengz caeuq hawj aen it ganx ndei gwnz ndaej yiengh. Dangh mwnz doenghyi, aen cookie ciepswngq gojnaek boux daih vunz ndaej geiq mbouj haenhdaej gvaq song gveih laeng roengz daeuj, bae cinjdingh hozdawz gouqgeiz. Gouqgeiz daj gwnz cingzgvang ciuqseiz lij ndaej yongq.",
+    "acceptAll": "Daengzbouj doenghyi",
+    "essentialOnly": "Cij yongq gietdingh cawx",
+    "manageChoices": "Gvanhli roxgoek",
+    "savingChoice": "Dangx cim roxgoek cookie",
+    "settings": "Caidingh cookie",
+    "settingsDescription": "Swngh rox Watch ndaej mbouj ndaej geiq mbouj haenhdaej gouqgeiz ndaw song gveih laeng roengz daeuj. Mwnz ndaej canhseiz gaij neix.",
+    "essentialCookies": "Cookie gietdingh cawx",
+    "essentialDescription": "Ancoan, fangh ok, roxgoek yinzswhj, caeuq guiqsug aen yeuqgoeng gouqgeiz.",
+    "alwaysActive": "Doengzseiz hoatdungz",
+    "personalization": "Ginzdingh cinjdingh",
+    "personalizationDescription": "Geiq mbouj haenhdaej youq song gveih laeng roengz daeuj. Dangh tat de, gouqgeiz daj gwnz cingzgvang lij ndaej yongq.",
+    "erasurePending": "Duzsiengq aen canjcez dangj youq dwg. Gouqgeiz daj gwnz cingzgvang yawj ndaej hoatdungz.",
+    "cancel": "Hoz",
+    "saveChoices": "Dangx cim roxgoek",
+    "saving": "Dangx cim…",
+    "loadError": "Roxgoek mwnz loih mbouj ndaej. Mwnz lij ndaej youq gizneix swngh.",
+    "grantError": "Mbouj ndaej kaiqyungq cinjdingh. Cij yongq gietdingh cawx lij ndaej.",
+    "saveError": "Roxgoek mwnz dangx cim mbouj ndaej. Cingq dajlaeng daengz mbouj."
   }
 }

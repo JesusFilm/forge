@@ -129,7 +129,66 @@ function asArgs(args: {
 }
 
 describe("mergeWatchExperience — auto-template fallback (Experience absent)", () => {
-  it("emits all 6 synthetic slots when video has populated study questions and bible citations and >=2 siblings", () => {
+  it("inserts exactly one route-owned semantic recommendation slot immediately after WatchBody", () => {
+    const merged = mergeWatchExperience(
+      asArgs({
+        video: makeVideo(),
+        variant: makeVariant(),
+        canonicalParent: null,
+      }),
+    )
+
+    const kinds = merged
+      .filter(isWatchBlock)
+      .map((block) => (block as { kind: string }).kind)
+    expect(kinds.filter((kind) => kind === "SemanticRecommendations")).toEqual([
+      "SemanticRecommendations",
+    ])
+    expect(kinds.indexOf("SemanticRecommendations")).toBe(
+      kinds.indexOf("WatchBody") + 1,
+    )
+  })
+
+  it("does not let an authored recommendation block replace or duplicate the live semantic slot", () => {
+    const authoredRecommendations = {
+      __typename: "VideoRecommendationsBlock",
+      sectionKey: "authored-recommendations",
+      title: "More videos",
+      description: null,
+      subtitle: null,
+      backgroundColor: null,
+      imageAssetId: null,
+      imageAsset: null,
+      sourceVideoId: "video-1",
+      sourceSceneIndex: null,
+      limit: 6,
+    }
+    const merged = mergeWatchExperience(
+      asArgs({
+        video: makeVideo(),
+        variant: makeVariant(),
+        canonicalParent: null,
+        experience: { blocks: [authoredRecommendations] },
+      }),
+    )
+
+    const automatic = merged.filter(
+      (block) =>
+        isWatchBlock(block) &&
+        (block as { kind: string }).kind === "SemanticRecommendations",
+    )
+    expect(automatic).toHaveLength(1)
+    expect(
+      merged.filter(
+        (block) =>
+          !isWatchBlock(block) &&
+          (block as { __typename?: string }).__typename ===
+            "VideoRecommendationsBlock",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("emits all 7 synthetic slots when video has populated study questions and bible citations and >=2 siblings", () => {
     const video = makeVideo({
       studyQuestions: [
         { documentId: "sq-1", value: "Q1?", order: 1 },
@@ -164,6 +223,7 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
       "HeroPlayer",
       "SiblingCarousel",
       "WatchBody",
+      "SemanticRecommendations",
       "StudyQuestions",
       "BibleQuotes",
       "Share",
@@ -223,13 +283,20 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
     expect(
       merged.some((b) => isWatchBlock(b) && b.kind === "SiblingCarousel"),
     ).toBe(false)
-    // HeroPlayer + WatchBody + BibleQuotes (always-on promo) + Share are
+    // HeroPlayer + WatchBody + SemanticRecommendations + BibleQuotes
+    // (always-on promo) + Share are
     // present even with empty data — only SiblingCarousel + StudyQuestions
     // are omitted when their source data is missing.
     const kinds = merged
       .filter(isWatchBlock)
       .map((b) => (b as { kind: string }).kind)
-    expect(kinds).toEqual(["HeroPlayer", "WatchBody", "BibleQuotes", "Share"])
+    expect(kinds).toEqual([
+      "HeroPlayer",
+      "WatchBody",
+      "SemanticRecommendations",
+      "BibleQuotes",
+      "Share",
+    ])
   })
 
   it("omits the StudyQuestions block when video has empty studyQuestions[]", () => {
@@ -318,8 +385,8 @@ describe("mergeWatchExperience — Experience overrides", () => {
     )
     expect(heroBlock).toBeDefined()
     expect(heroBlock?.video.title).toBe("Custom Hero")
-    // All 6 slots still present.
-    expect(merged).toHaveLength(6)
+    // All 7 route-owned slots still present.
+    expect(merged).toHaveLength(7)
   })
 
   it("fills the BibleQuotes slot via delegation when Experience supplies ComponentSectionsBibleQuotesCarousel", () => {
@@ -420,13 +487,13 @@ describe("mergeWatchExperience — Experience overrides", () => {
       merged.some((b) => isWatchBlock(b) && b.kind === "StudyQuestions"),
     ).toBe(false)
     // RelatedQuestions occupies the StudyQuestions slot, in slot-order
-    // position 4 (HeroPlayer, SiblingCarousel, WatchBody, StudyQuestions=RQ,
-    // BibleQuotes, Share).
-    expect((merged[3] as { __typename?: string }).__typename).toBe(
+    // position 5 (HeroPlayer, SiblingCarousel, WatchBody,
+    // SemanticRecommendations, StudyQuestions=RQ, BibleQuotes, Share).
+    expect((merged[4] as { __typename?: string }).__typename).toBe(
       "ComponentSectionsRelatedQuestions",
     )
-    // All 6 slots still represented.
-    expect(merged).toHaveLength(6)
+    // All 7 slots still represented.
+    expect(merged).toHaveLength(7)
   })
 
   it("appends non-slot Strapi blocks (e.g. PromoBanner) after the 6 watch slots", () => {
@@ -447,9 +514,9 @@ describe("mergeWatchExperience — Experience overrides", () => {
       }),
     )
 
-    // 4 always-present synthetic blocks (HeroPlayer + WatchBody + BibleQuotes
-    // + Share) + 1 passthrough Strapi block.
-    expect(merged).toHaveLength(5)
+    // 5 always-present synthetic blocks (HeroPlayer + WatchBody + semantic
+    // recommendations + BibleQuotes + Share) + 1 passthrough Strapi block.
+    expect(merged).toHaveLength(6)
     expect(
       (merged[merged.length - 1] as { __typename?: string }).__typename,
     ).toBe("ComponentSectionsPromoBanner")

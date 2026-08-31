@@ -722,5 +722,28 @@
     "languageVersionLabel": "Bahasa sin suwara",
     "selectLanguageVersion": "Pili' kaw sin wayru sin bahasa",
     "watchSelectedVersion": "Kitaa in wayru napili'"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pinili sa cookie",
+    "bannerTitle": "Mga pinili mo sa privacy",
+    "bannerDescription": "In mga importante na cookie nagbabantay supaya ligtas iban gumagana in Watch. Bang may idin mo, may optional na first-party cookie na makakatanda sin mga interes mo sa iba-ibang pagbisita para ma-personalize in mga rekomendasyon. Magkakaada gihapon contextual na mga rekomendasyon maskin unu pa in mapili mo.",
+    "acceptAll": "Tanggapon tanan",
+    "essentialOnly": "Importante laeng",
+    "manageChoices": "Ayusa in mga pinili",
+    "savingChoice": "Ginsisimpan in pinili sa cookie",
+    "settings": "Mga setting sa cookie",
+    "settingsDescription": "Pilia kun Watch pwede makatanda sin mga interes mo sa rekomendasyon sa kada pagbisita. Makakabag-o ka pa sini bisan san-u.",
+    "essentialCookies": "Mga importante na cookie",
+    "essentialDescription": "Seguridad, playback, mga pinili sa privacy, iban pag-ila sin kahangyo sa rekomendasyon.",
+    "alwaysActive": "Pirme aktibo",
+    "personalization": "Personalisasyon",
+    "personalizationDescription": "Tandaan in limitadong mga interes mo sa kada pagbisita. Bang patayun ini, may contextual na mga rekomendasyon gihapon.",
+    "erasurePending": "Nagahulat pa in pagtangtang sin profile. Aktibo na daan in contextual na mga rekomendasyon.",
+    "cancel": "Batalon",
+    "saveChoices": "Igsimpan in mga pinili",
+    "saving": "Nagsisimpan…",
+    "loadError": "Di makarga in pinili mo. Pero makakapili ka gihapon sa baba.",
+    "grantError": "Di ma-andar in personalisasyon. In importante laeng in available.",
+    "saveError": "Di maisimpan in pinili mo. Pakisubuk liwat."
   }
 }

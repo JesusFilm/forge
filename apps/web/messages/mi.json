@@ -722,5 +722,28 @@
     "languageVersionLabel": "Reo ororongo",
     "selectLanguageVersion": "Kōwhiria he putanga reo",
     "watchSelectedVersion": "Mātakitakihia te putanga kua kōwhiria"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ngā kōwhiringa pihikete",
+    "bannerTitle": "Ō kōwhiringa tūmataiti",
+    "bannerDescription": "Mā ngā pihikete matua e noho haumaru ai a Watch, e pai ai hoki tana mahi. Ki tō whakaae, ka taea e tētahi pihikete kōwhiringa nā te pae tonu te maumahara ki ō hiahia puta noa i ngā toronga kia whakawhaiaro ai ngā tūtohutanga. Ahakoa tērā, ka wātea tonu ngā tūtohutanga horopaki.",
+    "acceptAll": "Whakaae katoa",
+    "essentialOnly": "Ngā mea matua anake",
+    "manageChoices": "Whakahaere kōwhiringa",
+    "savingChoice": "E tiaki ana i te kōwhiringa pihikete",
+    "settings": "Ngā tautuhinga pihikete",
+    "settingsDescription": "Kōwhiria mēnā ka āhei a Watch ki te maumahara ki ō hiahia tūtohutanga puta noa i ngā toronga. Ka taea te whakarerekē tēnei i ngā wā katoa.",
+    "essentialCookies": "Ngā pihikete matua",
+    "essentialDescription": "Te haumaru, te purei anō, ngā kōwhiringa tūmataiti, me te tautohenga tono tūtohutanga.",
+    "alwaysActive": "Ka noho hohe tonu",
+    "personalization": "Whakawhaiaro",
+    "personalizationDescription": "Maumaharatia ngā hiahia whāiti puta noa i ngā toronga. Ki te whakaweto i tēnei, ka wātea tonu ngā tūtohutanga horopaki.",
+    "erasurePending": "Kei te tatari tonu te mukunga kōtaha. Kua hohe kē ngā tūtohutanga horopaki.",
+    "cancel": "Whakakore",
+    "saveChoices": "Tiaki kōwhiringa",
+    "saving": "E tiaki ana…",
+    "loadError": "Kāore i taea te uta i tō kōwhiringa. Ka taea tonu e koe te kōwhiri i raro iho nei.",
+    "grantError": "Kāore i taea te whakakā te whakawhaiaro. E wātea tonu ana ngā mea matua anake.",
+    "saveError": "Kāore i taea te tiaki tō kōwhiringa. Tēnā, whakamātauria anō."
   }
 }

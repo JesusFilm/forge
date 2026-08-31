@@ -125,6 +125,21 @@ export async function markWorkflowRunStarted(
   })
 }
 
+export async function markWorkflowRunRuntimeStarted(
+  workflowRunId: string,
+  runtimeRunId: string,
+  client: WorkflowRunClient = prisma,
+) {
+  return client.workflowRun.update({
+    where: { id: workflowRunId },
+    data: {
+      runtimeRunId,
+      status: WorkflowRunStatus.RUNNING,
+      startedAt: new Date(),
+    },
+  })
+}
+
 export async function markWorkflowRunFailed(
   workflowRunId: string,
   error: unknown,

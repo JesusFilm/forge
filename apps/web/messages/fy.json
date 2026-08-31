@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiotaal",
     "selectLanguageVersion": "Selektearje in taalferzje",
     "watchSelectedVersion": "Selektearre ferzje besjen"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookiekarren",
+    "bannerTitle": "Dyn privacykar",
+    "bannerDescription": "Essinsjele cookies hâlde Watch feilich en wurkjend. Mei dyn tastimming kin in opsjonele first-party-cookie ynteresses tusken besiken ûnthâlde om oanbefellings te personalisearjen. Kontekstuele oanbefellings bliuwe yn beide gefallen beskikber.",
+    "acceptAll": "Alles akseptearje",
+    "essentialOnly": "Allinnich essinsjeel",
+    "manageChoices": "Karren beheare",
+    "savingChoice": "Cookiekar wurdt bewarre",
+    "settings": "Cookie-ynstellings",
+    "settingsDescription": "Kies oft Watch oanbefellingsynteresses tusken besiken ûnthâlde mei. Do kinst dit altyd feroarje.",
+    "essentialCookies": "Essinsjele cookies",
+    "essentialDescription": "Feiligens, ôfspyljen, privacykarren en taskriuwing fan oanbefellingsfersiken.",
+    "alwaysActive": "Altyd aktyf",
+    "personalization": "Personalisaasje",
+    "personalizationDescription": "Beheinde ynteresses tusken besiken ûnthâlde. As dit útstiet, bliuwe kontekstuele oanbefellings beskikber.",
+    "erasurePending": "It wiskjen fan it profyl stiet noch út. Kontekstuele oanbefellings binne al aktyf.",
+    "cancel": "Ofbrekke",
+    "saveChoices": "Karren bewarje",
+    "saving": "Bewarret…",
+    "loadError": "Dyn kar koe net laden wurde. Do kinst hjirûnder noch altyd in kar meitsje.",
+    "grantError": "Personalisaasje koe net ynskeakele wurde. Allinnich essinsjeel bliuwt beskikber.",
+    "saveError": "Dyn kar koe net bewarre wurde. Probearje it opnij."
   }
 }

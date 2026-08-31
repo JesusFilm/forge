@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lingua audio",
     "selectLanguageVersion": "Seleziona una versione linguistica",
     "watchSelectedVersion": "Guarda la versione selezionata"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Scelte sui cookie",
+    "bannerTitle": "Le tue scelte sulla privacy",
+    "bannerDescription": "I cookie essenziali mantengono Watch sicuro e funzionante. Con il tuo consenso, un cookie proprietario facoltativo può ricordare i tuoi interessi tra una visita e l’altra per personalizzare i consigli. I consigli contestuali restano disponibili in ogni caso.",
+    "acceptAll": "Accetta tutti",
+    "essentialOnly": "Solo essenziali",
+    "manageChoices": "Gestisci le scelte",
+    "savingChoice": "Salvataggio della scelta sui cookie",
+    "settings": "Impostazioni dei cookie",
+    "settingsDescription": "Scegli se Watch può ricordare i tuoi interessi per i consigli tra una visita e l’altra. Puoi modificare questa scelta in qualsiasi momento.",
+    "essentialCookies": "Cookie essenziali",
+    "essentialDescription": "Sicurezza, riproduzione, scelte sulla privacy e attribuzione delle richieste di consigli.",
+    "alwaysActive": "Sempre attivi",
+    "personalization": "Personalizzazione",
+    "personalizationDescription": "Ricorda interessi limitati tra una visita e l’altra. Se la disattivi, i consigli contestuali restano disponibili.",
+    "erasurePending": "L’eliminazione del profilo è in attesa. I consigli contestuali sono già attivi.",
+    "cancel": "Annulla",
+    "saveChoices": "Salva le scelte",
+    "saving": "Salvataggio in corso…",
+    "loadError": "Impossibile caricare la tua scelta. Puoi comunque scegliere qui sotto.",
+    "grantError": "Impossibile attivare la personalizzazione. Resta disponibile solo l’opzione essenziale.",
+    "saveError": "Impossibile salvare la tua scelta. Riprova."
   }
 }

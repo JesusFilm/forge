@@ -84,6 +84,7 @@ describe("ShareModal — Copy Link", () => {
       Promise.resolve(),
     )
     setClipboard(writeText)
+    const onShareAction = vi.fn()
 
     act(() => {
       root.render(
@@ -91,6 +92,7 @@ describe("ShareModal — Copy Link", () => {
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
+          onShareAction={onShareAction}
           onClose={vi.fn()}
         />,
       )
@@ -107,6 +109,7 @@ describe("ShareModal — Copy Link", () => {
       "https://share.example/watch/the-call.html",
     )
     expect(copyBtn.textContent).toBe("Copied")
+    expect(onShareAction).toHaveBeenCalledWith("link_copy")
   })
 
   it("URL never contains a leading // or empty segment", () => {

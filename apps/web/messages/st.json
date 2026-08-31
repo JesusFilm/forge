@@ -722,5 +722,28 @@
     "languageVersionLabel": "Puo ya modumo",
     "selectLanguageVersion": "Kgetha phetolelo ya puo",
     "watchSelectedVersion": "Shebella phetolelo e kgethilweng"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Likhetho tsa li-cookie",
+    "bannerTitle": "Likhetho tsa hau tsa lekunutu",
+    "bannerDescription": "Li-cookie tsa bohlokoa li boloka Watch e sireletsehile ebile e sebetsa. Ka tumello ea hao, cookie ea boikhethelo ea pele e ka hopola lithahasello maetong a fapaneng ho etsa likhothaletso tse etselitsoeng uena. Likhothaletso tsa maemo li ntse li fumaneha ka tsela efe kapa efe.",
+    "acceptAll": "Amohela kaofela",
+    "essentialOnly": "Tsa bohlokoa feela",
+    "manageChoices": "Laola likhetho",
+    "savingChoice": "Ho bolokoa khetho ea cookie",
+    "settings": "Litlhophiso tsa li-cookie",
+    "settingsDescription": "Khetha hore na Watch e ka hopola lithahasello tsa likhothaletso maetong a fapaneng. U ka fetola sena neng kapa neng.",
+    "essentialCookies": "Li-cookie tsa bohlokoa",
+    "essentialDescription": "Tšireletso, ho bapala, likhetho tsa lekunutu le ho amahanya likopo tsa likhothaletso.",
+    "alwaysActive": "Kamehla e sebetsa",
+    "personalization": "Ho etsetsoa motho ka mong",
+    "personalizationDescription": "Hopola lithahasello tse lekanyelitsoeng maetong a fapaneng. Ho tima sena ho boloka likhothaletso tsa maemo li ntse li fumaneha.",
+    "erasurePending": "Ho hlakoloa ha profaele ho sa ntse ho emetsoe. Likhothaletso tsa maemo li se li ntse li sebetsa.",
+    "cancel": "Hlakola",
+    "saveChoices": "Boloka likhetho",
+    "saving": "Ea bolokoa…",
+    "loadError": "Khetho ea hao ha ea khona ho laeloa. U ntse u ka khetha ka tlase.",
+    "grantError": "Ho etsetsoa motho ka mong ha hoa khona ho buleloa. Tsa bohlokoa feela li ntse li fumaneha.",
+    "saveError": "Khetho ea hao ha ea khona ho bolokoa. Ka kopo leka hape."
   }
 }

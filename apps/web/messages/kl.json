@@ -722,5 +722,28 @@
     "languageVersionLabel": "Nipip oqaasii",
     "selectLanguageVersion": "Oqaatsit saqqummersitaat toqqaruk",
     "watchSelectedVersion": "Saqqummersitaq toqqagaq isiginnaarlugu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-nik toqqagassat",
+    "bannerTitle": "Namminerisamik illersuinermut toqqagassatit",
+    "bannerDescription": "Cookie-t pingaaruteqartut Watch-ip isumannaatsuunissaa sulinissaalu qulakkeertarpaat. Akuersiguit, cookie ataasiinnaq nammineq atorneqartoq soqutigisatit tikeraarnerni eqqaamassinnaavai, innersuussutinik nammineq naleqqussakkanik tunniussisinnaaqqullugu. Innersuussutit aalajangersimasumik tunngavigineqartut qanoq ikkaluartorluunniit suli atorneqarsinnaapput.",
+    "acceptAll": "Tamarmik akuersissutigikkit",
+    "essentialOnly": "Pingaaruteqartut kisimik",
+    "manageChoices": "Toqqagassat aqukkit",
+    "savingChoice": "Cookie pillugu toqqagaq toqqorneqarpoq",
+    "settings": "Cookie-nut ilikkakkat",
+    "settingsDescription": "Toqqaruk Watch-ip innersuussutinut soqutigisatit tikeraarnerit akornanni eqqaamassanerai. Tamanna qaqugukkulluunniit allanngortissinnaavat.",
+    "essentialCookies": "Cookie-t pingaaruteqartut",
+    "essentialDescription": "Isumannaallisaaneq, takusinnaaneq, namminerisamik illersuinermut toqqagassat, kiisalu innersuussutisiornermut qinnuteqaatit atassusiinerat.",
+    "alwaysActive": "Tamanna atorluarpoq",
+    "personalization": "Nammineq naleqqussaaneq",
+    "personalizationDescription": "Soqutigisat killilikkat tikeraarnerni eqqaamakkit. Tamanna qamissagukku, innersuussutit aalajangersimasumik tunngavigineqartut suli atorneqarsinnaapput.",
+    "erasurePending": "Profili piiarneqarnissaa utaqqineqarpoq. Innersuussutit aalajangersimasumik tunngavigineqartut ulloq manna atorneqareerput.",
+    "cancel": "Taarsiuk",
+    "saveChoices": "Toqqagassat toqqoruk",
+    "saving": "Toqqorpoq…",
+    "loadError": "Toqqagassatit aaneqarsinnaanngillat. Taamaattorli ataani toqqaasinnaavutit.",
+    "grantError": "Nammineq naleqqussaaneq atorneqalersinnaanngilaq. Pingaaruteqartut kisimik suli atorneqarsinnaapput.",
+    "saveError": "Toqqagassatit toqqorneqarsinnaanngillat. Qinnuigineqarlutik misileqqiguk."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "የድምፅ ቋንቋ",
     "selectLanguageVersion": "የቋንቋ ስሪት ይምረጡ",
     "watchSelectedVersion": "የተመረጠውን ስሪት ይመልከቱ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "የኩኪ ምርጫዎች",
+    "bannerTitle": "የእርስዎ የግላዊነት ምርጫዎች",
+    "bannerDescription": "አስፈላጊ ኩኪዎች Watch እንዲጠበቅ እና በትክክል እንዲሰራ ያግዛሉ። በእርስዎ ፈቃድ፣ አማራጭ የመጀመሪያ ወገን ኩኪ ለግል የተበጀ ምክረ ሃሳብ ለማቅረብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል ሊያስታውስ ይችላል። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች በማንኛውም ሁኔታ ይቀራሉ።",
+    "acceptAll": "ሁሉንም ተቀበል",
+    "essentialOnly": "አስፈላጊዎቹ ብቻ",
+    "manageChoices": "ምርጫዎችን አስተዳድር",
+    "savingChoice": "የኩኪ ምርጫ በማስቀመጥ ላይ",
+    "settings": "የኩኪ ቅንብሮች",
+    "settingsDescription": "Watch ለምክረ ሃሳብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል እንዲያስታውስ ይፈቅዱ ወይም አይፈቅዱ። ይህን በማንኛውም ጊዜ መቀየር ይችላሉ።",
+    "essentialCookies": "አስፈላጊ ኩኪዎች",
+    "essentialDescription": "ደህንነት፣ መልሶ ማጫወት፣ የግላዊነት ምርጫዎች እና የምክረ ሃሳብ ጥያቄ ተያያዥነት።",
+    "alwaysActive": "ሁልጊዜ ንቁ",
+    "personalization": "ግላዊ ማበጀት",
+    "personalizationDescription": "የተገደቡ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል አስታውስ። ይህን ካጠፉት በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች እንደሚገኙ ይቀጥላሉ።",
+    "erasurePending": "የመገለጫ ስረዛ በመጠባበቅ ላይ ነው። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች አስቀድመው ንቁ ናቸው።",
+    "cancel": "ሰርዝ",
+    "saveChoices": "ምርጫዎችን አስቀምጥ",
+    "saving": "በማስቀመጥ ላይ…",
+    "loadError": "ምርጫዎ መጫን አልተቻለም። ከታች አሁንም መምረጥ ይችላሉ።",
+    "grantError": "ግላዊ ማበጀትን ማስነሳት አልተቻለም። አስፈላጊዎቹ ብቻ አሁንም ይገኛሉ።",
+    "saveError": "ምርጫዎ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
   }
 }

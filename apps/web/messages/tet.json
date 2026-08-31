@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lian áudiu",
     "selectLanguageVersion": "Hili versaun lian ida",
     "watchSelectedVersion": "Haree versaun ne'ebé hili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opsaun cookie sira",
+    "bannerTitle": "Ita boot nia opsaun privasidade",
+    "bannerDescription": "Cookie esensiál sira halo Watch seguro no funsiona diak. Ho ita boot nia autorizasaun, cookie opsionál ida hosi parte dahuluk bele rai kaer interese sira entre vizita atu personaliza rekomendasaun sira. Rekomendasaun kontektuál sei nafatin disponível maski oinsá deit.",
+    "acceptAll": "Simu hotu",
+    "essentialOnly": "Esensiál deit",
+    "manageChoices": "Jere opsaun sira",
+    "savingChoice": "Hein atu guarda opsaun cookie",
+    "settings": "Konfigurasaun cookie",
+    "settingsDescription": "Hili karik Watch bele ka lae rai kaer interese rekomendasaun entre vizita sira. Ita boot bele muda ida-ne'e bainhira deit.",
+    "essentialCookies": "Cookie esensiál sira",
+    "essentialDescription": "Seguransa, reproduksaun, opsaun privasidade no atribuisaun ba pedidu rekomendasaun.",
+    "alwaysActive": "Sempre ativu",
+    "personalization": "Personalizasaun",
+    "personalizationDescription": "Rai kaer interese limitadu sira entre vizita sira. Karik desliga ida-ne'e, rekomendasaun kontektuál sei nafatin disponível.",
+    "erasurePending": "Apagamentu perfíl sei hela prosesu. Rekomendasaun kontektuál sira ona ativu.",
+    "cancel": "Kansela",
+    "saveChoices": "Guarda opsaun sira",
+    "saving": "Hein atu guarda…",
+    "loadError": "Labele karrega ita boot nia opsaun. Ita boot sei bele hili iha kraik.",
+    "grantError": "Labele ativa personalizasaun. Esensiál deit sei disponível.",
+    "saveError": "Labele guarda ita boot nia opsaun. Favór koko fali."
   }
 }

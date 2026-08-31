@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ruch'ab'äl k'oxom",
     "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
     "watchSelectedVersion": "Tatz'eta' ri ruwäch xacha'"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cha'oj taq kaxlanwey",
+    "bannerTitle": "Acha'oj richin awichinajil",
+    "bannerDescription": "Ri kaxlanwey k'atzinel e k'o chi ruto'ik ri Watch richin jikïl nusamajij. We k'o aq'ij, jun cha'ojel kaxlanwey richin re ruwach'ulew re' nitikïr nuya' retamaxik taq rayib'al pa kikojlem taq b'ey richin ye'anäx ichinan taq ch'ob'oj. Ri taq ch'ob'oj pa ruk'amonem xa xe k'o wi chuwäch xa b'ey chik.",
+    "acceptAll": "Tik'ul ronojel",
+    "essentialOnly": "Xa xe ri k'atzinel",
+    "manageChoices": "Tinuk'saj taq cha'oj",
+    "savingChoice": "Tajin niyak ri acha'oj chi kij taq kaxlanwey",
+    "settings": "Taq runuk'ulem kaxlanwey",
+    "settingsDescription": "Tacha'o we Watch nuya' retamaxik taq rayib'al richin ch'ob'oj pa kikojlem taq b'ey. Yatikïr najäl re' xab'achike q'ij.",
+    "essentialCookies": "Kaxlanwey k'atzinel",
+    "essentialDescription": "Jikomal, tzijonïk, taq acha'oj richin awichinajil, xuquje' reta'maxik ruk'utuxik ch'ob'oj.",
+    "alwaysActive": "Junelïk tzijonel",
+    "personalization": "Ichinan nuk'ulem",
+    "personalizationDescription": "Tiyak taq rayib'al xa pa ruk'atzinel kikojlem taq b'ey. We katz'apij re', ri taq ch'ob'oj pa ruk'amonem k'a e k'o na.",
+    "erasurePending": "Ri ruyujik ri aprofil k'a tajin. Ri taq ch'ob'oj pa ruk'amonem xe'och chik pa samaj.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Tiyak taq cha'oj",
+    "saving": "Tajin niyak…",
+    "loadError": "Man xkwinik ta xqasik'ij ri acha'oj. K'a yatikïr na katcha'on chuxe'.",
+    "grantError": "Man xkwinik ta xya' q'ij che ri ichinan nuk'ulem. Xa xe ri k'atzinel k'a k'o na.",
+    "saveError": "Man xkwinik ta xyak ri acha'oj. Tatojtob'ej chik."
   }
 }

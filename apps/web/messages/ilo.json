@@ -722,5 +722,28 @@
     "languageVersionLabel": "Pagsasao ti audio",
     "selectLanguageVersion": "Pilien ti bersion ti pagsasao",
     "watchSelectedVersion": "Buyaen ti napili a bersion"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilien ti cookie",
+    "bannerTitle": "Dagiti pilim maipapan iti kinapribadom",
+    "bannerDescription": "Dagiti nasken a cookie ket pagtalinaedenda a natalged ken agtrabaho ti Watch. No itedmo ti pammalubosmo, mabalin a lagipen ti opsional a first-party cookie dagiti kayatmo iti nadumaduma a panagsubli tapno maipersonalisar dagiti rekomendasion. Adda latta dagiti rekomendasion a maibatay iti konteksto uray aniaman ti pilim.",
+    "acceptAll": "Awaten amin",
+    "essentialOnly": "Dagiti nasken laeng",
+    "manageChoices": "Asikasuen dagiti pilien",
+    "savingChoice": "Maisalsalakan ti pinilim a cookie",
+    "settings": "Dagiti setting ti cookie",
+    "settingsDescription": "Pilien no mabalin a lagipen ti Watch dagiti kayatmo para iti rekomendasion iti nadumaduma a panagsubli. Mabalinmo daytoy a baliwan iti aniaman a tiempo.",
+    "essentialCookies": "Dagiti nasken a cookie",
+    "essentialDescription": "Seguridad, panagplay, dagiti pilim maipapan iti kinapribado, ken pannakaikabil dagiti kiddaw iti rekomendasion.",
+    "alwaysActive": "Kankanayon nga aktibo",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Lagipen dagiti naikkeddeng a kayatmo iti nadumaduma a panagsubli. No iddepmo daytoy, adda latta dagiti rekomendasion a maibatay iti konteksto.",
+    "erasurePending": "Uray pay adda pay iti proseso ti pannakaikkat ti profile. Aktibo dan dagiti rekomendasion a maibatay iti konteksto.",
+    "cancel": "Ukasen",
+    "saveChoices": "Isalakan dagiti pilien",
+    "saving": "Maisalsalakan…",
+    "loadError": "Saan a naikarga ti pinilim. Mabalinmo latta nga agpili iti baba.",
+    "grantError": "Saan a napalubosan ti personalisasion. Dagiti nasken laeng ti magun-od.",
+    "saveError": "Saan a naisalakan ti pinilim. Padasem manen."
   }
 }

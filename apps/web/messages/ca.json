@@ -722,5 +722,28 @@
     "languageVersionLabel": "Idioma de l'àudio",
     "selectLanguageVersion": "Tria una versió d'idioma",
     "watchSelectedVersion": "Mira la versió seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opcions de galetes",
+    "bannerTitle": "Les vostres opcions de privadesa",
+    "bannerDescription": "Les galetes essencials mantenen Watch segur i en funcionament. Amb el vostre permís, una galeta pròpia opcional pot recordar els interessos entre visites per personalitzar les recomanacions. Les recomanacions contextuals continuen disponibles en qualsevol cas.",
+    "acceptAll": "Accepta-ho tot",
+    "essentialOnly": "Només essencials",
+    "manageChoices": "Gestiona les opcions",
+    "savingChoice": "S'està desant l'opció de galetes",
+    "settings": "Configuració de galetes",
+    "settingsDescription": "Trieu si Watch pot recordar els interessos de recomanació entre visites. Podeu canviar-ho en qualsevol moment.",
+    "essentialCookies": "Galetes essencials",
+    "essentialDescription": "Seguretat, reproducció, opcions de privadesa i atribució de sol·licituds de recomanació.",
+    "alwaysActive": "Sempre actives",
+    "personalization": "Personalització",
+    "personalizationDescription": "Recorda interessos limitats entre visites. Si ho desactiveu, les recomanacions contextuals continuaran disponibles.",
+    "erasurePending": "L'eliminació del perfil està pendent. Les recomanacions contextuals ja estan actives.",
+    "cancel": "Cancel·la",
+    "saveChoices": "Desa les opcions",
+    "saving": "S'està desant…",
+    "loadError": "No s'han pogut carregar les vostres opcions. Encara podeu triar a continuació.",
+    "grantError": "No s'ha pogut activar la personalització. Només les opcions essencials continuen disponibles.",
+    "saveError": "No s'han pogut desar les vostres opcions. Torneu-ho a provar."
   }
 }

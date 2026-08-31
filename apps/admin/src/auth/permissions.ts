@@ -50,6 +50,11 @@ export type PermissionKey =
   | "read:manager-read-models"
   | "read:manager-seo"
   | "read:manager-seo-audit-detail"
+  | "read:recommendation-aggregates"
+  | "read:recommendation-traces"
+  | "operate:recommendation-experiments"
+  | "rollback:recommendations"
+  | "approve:recommendation-permanent"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -113,6 +118,13 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:manager-read-models": "PUBLIC",
   "read:manager-seo": "PUBLIC",
   "read:manager-seo-audit-detail": "PUBLIC",
+  // Recommendation operations are deliberately split: EDITOR may inspect
+  // windowed aggregate health, while only ADMIN may inspect request roots.
+  "read:recommendation-aggregates": "EDITOR",
+  "read:recommendation-traces": "ADMIN",
+  "operate:recommendation-experiments": "ADMIN",
+  "rollback:recommendations": "ADMIN",
+  "approve:recommendation-permanent": "ADMIN",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').

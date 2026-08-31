@@ -2696,6 +2696,16 @@ export type WatchBodyBlock = {
   variant: WatchVariant
 }
 
+/**
+ * Route-owned production recommendation slot. It carries only the seed media
+ * identity; locale and audio language stay on the existing Watch client
+ * boundary so the static page never reads request cookies.
+ */
+export type WatchSemanticRecommendationsBlock = {
+  kind: "SemanticRecommendations"
+  seedMediaId: string
+}
+
 export type WatchStudyQuestionsBlock = {
   kind: "StudyQuestions"
   studyQuestions: WatchStudyQuestion[]
@@ -2716,6 +2726,7 @@ export type WatchBlock =
   | WatchHeroPlayerBlock
   | WatchSiblingCarouselBlock
   | WatchBodyBlock
+  | WatchSemanticRecommendationsBlock
   | WatchStudyQuestionsBlock
   | WatchBibleQuotesBlock
   | WatchShareBlock
@@ -2950,6 +2961,13 @@ export function buildWatchBodyBlock(
   return { kind: "WatchBody", video, variant }
 }
 
+/** Always returns the one non-authored production semantic slot. */
+export function buildSemanticRecommendationsBlock(
+  video: WatchVideoRecord,
+): WatchSemanticRecommendationsBlock {
+  return { kind: "SemanticRecommendations", seedMediaId: video.documentId }
+}
+
 /** Returns null when the video has no study questions. */
 export function buildStudyQuestionsBlock(
   studyQuestions: WatchVideoRecord["studyQuestions"] | null | undefined,
@@ -3024,6 +3042,9 @@ type WatchSlotKey =
  */
 function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   if ("kind" in block) {
+    // The semantic slot is inserted directly by the route merge below. It is
+    // intentionally outside the Experience override map.
+    if (block.kind === "SemanticRecommendations") return null
     return block.kind
   }
   const tn = (block as { __typename?: string | null }).__typename
@@ -3103,6 +3124,13 @@ export function mergeWatchExperience({
   )
 
   for (const block of experienceBlocks) {
+    // Defensive compatibility guard: even a legacy/untyped Experience payload
+    // cannot author a second live semantic tracer.
+    if (
+      (block as unknown as { kind?: string }).kind === "SemanticRecommendations"
+    ) {
+      continue
+    }
     const slot = blockSlot(block)
     if (slot === "HeroPlayer" && !isWatchBlock(block)) {
       // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
@@ -3141,6 +3169,7 @@ export function mergeWatchExperience({
     ),
   )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
+  result.push(buildSemanticRecommendationsBlock(video))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
   pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))

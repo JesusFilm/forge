@@ -40,6 +40,7 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
@@ -72,6 +73,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
+import { recordWatchShareAction } from "@/lib/recommendation-content-actions"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
@@ -266,6 +268,7 @@ export function WatchPageClient({
   languageSlug,
   subtitleLanguageSlug = null,
   collectionSlug = null,
+  locale,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -274,8 +277,10 @@ export function WatchPageClient({
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
   const playerRef = useRef<MuxPlayerRef | null>(null)
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const handlePlayerReady = useCallback((player: MuxPlayerRef | null) => {
     playerRef.current = player
+    setPlayer((current) => (current === player ? current : player))
   }, [])
 
   // LOCALE_RESOLVED_PARAM is the server's URL-resolved sentinel — see
@@ -302,6 +307,10 @@ export function WatchPageClient({
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
   const pendingChapterHrefRef = useRef<string | null>(null)
   const [chapterAutoplayEnabled, setChapterAutoplayEnabled] = useState(false)
+  const [playerActivation, setPlayerActivation] = useState<{
+    mediaId: string
+    initiation: "manual" | "automatic"
+  } | null>(null)
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
   const validPendingChapter =
@@ -325,9 +334,13 @@ export function WatchPageClient({
     return promise
   }, [])
 
-  const handlePlayerActivated = useCallback(() => {
-    setChapterAutoplayEnabled(true)
-  }, [])
+  const handlePlayerActivated = useCallback(
+    (initiation: "manual" | "automatic") => {
+      setChapterAutoplayEnabled(true)
+      setPlayerActivation({ mediaId: video.documentId, initiation })
+    },
+    [video.documentId],
+  )
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
@@ -788,6 +801,7 @@ export function WatchPageClient({
         onPlayerReady={handlePlayerReady}
         onPlayerActivated={handlePlayerActivated}
         languageSlug={currentLanguageSlug}
+        locale={locale}
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
@@ -803,6 +817,18 @@ export function WatchPageClient({
         playerRef={playerRef}
         videoId={video.documentId}
         videoDubId={variant.documentId}
+        durationSeconds={variant.duration ?? null}
+      />
+
+      <RecommendationPlaybackRecorder
+        key={video.documentId}
+        player={player}
+        initiation={
+          playerActivation?.mediaId === video.documentId
+            ? playerActivation.initiation
+            : null
+        }
+        mediaId={video.documentId}
         durationSeconds={variant.duration ?? null}
       />
 
@@ -859,6 +885,9 @@ export function WatchPageClient({
           videoDescription={video.snippet ?? video.description ?? null}
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
+          onShareAction={(detail) =>
+            recordWatchShareAction(video.documentId, detail)
+          }
           onClose={closeModal}
         />
       ) : null}

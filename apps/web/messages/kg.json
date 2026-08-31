@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ndinga ya audio",
     "selectLanguageVersion": "Pona mutindu ya ndinga",
     "watchSelectedVersion": "Tala mutindu yina me ponama"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Maponi ya cookie",
+    "bannerTitle": "Maponi na nge ya kimfumu",
+    "bannerDescription": "Cookie ya mfunu kebumbaka Watch mbote mpi kesadisaka yo kusala. Kana nge pesa nzila, cookie ya kimuntu mosi ya kusobama lenda kubambuka bansatu na nge na bantangu ya kuvutuka sambu na kupesa masonuku ya kulandakana ya me landa nge. Masonuku ya kulandakana ya ntangu yai kele kaka ntangu yonso.",
+    "acceptAll": "Ndima yonso",
+    "essentialOnly": "Ya mfunu kaka",
+    "manageChoices": "Yala maponi",
+    "savingChoice": "Kebumba diponi ya cookie",
+    "settings": "Bisika ya kutula cookie",
+    "settingsDescription": "Sola kana Watch lenda kubambuka bansatu ya masonuku ya kulandakana na bantangu ya kuvutuka. Nge lenda soba yai ntangu yonso.",
+    "essentialCookies": "Cookie ya mfunu",
+    "essentialDescription": "Lukengolo, kutala video, maponi ya kimfumu, mpi nsamunu ya kusosa masonuku ya kulandakana.",
+    "alwaysActive": "Kezingaka ntangu yonso",
+    "personalization": "Kupesa na mutindu ya nge",
+    "personalizationDescription": "Bambuka bansatu ya me tulama ndilu na bantangu ya kuvutuka. Kana nge katula yai, masonuku ya kulandakana ya ntangu yai ta zinga kaka.",
+    "erasurePending": "Kufuta profil kele kaka na nzila. Masonuku ya kulandakana ya ntangu yai kele dezia ya kusadila.",
+    "cancel": "Katula",
+    "saveChoices": "Bumba maponi",
+    "saving": "Kebumba…",
+    "loadError": "Diponi na nge malembe ko kuloadama. Nge lenda kaka kusola na nsi awa.",
+    "grantError": "Personalisation malembe ko kupesama nzila. Ya mfunu kaka kele kaka ya kusadila.",
+    "saveError": "Diponi na nge malembe ko kubumbama. Meka diaka."
   }
 }

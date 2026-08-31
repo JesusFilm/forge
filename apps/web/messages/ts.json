@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ririmi ra mpfumawulo",
     "selectLanguageVersion": "Hlawula nhlobo ya ririmi",
     "watchSelectedVersion": "Hlalela nhlobo leyi hlawuriweke"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Swihlawulekisi swa cookie",
+    "bannerTitle": "Swihlawulekisi swa wena swa vuhlayiseki bya xihundla",
+    "bannerDescription": "Ti-cookie ta nkoka ti hlayisa Watch yi sirhelelekile naswona yi tirha. Loko u pfumela, cookie yin'wana yo hlawula ya le ka sayiti yi nga tsundzuka leswi u swi tsakelaka eka ku endzela ko hambana-hambana leswaku ku endleriwa swibumabumelo swa wena hi ku ya hi wena. Swibumabumelo swa xiyimo swi tshama swi ri kona hi ndlela yihi na yihi.",
+    "acceptAll": "Amukela hinkwaswo",
+    "essentialOnly": "Ta nkoka ntsena",
+    "manageChoices": "Lawula swihlawulekisi",
+    "savingChoice": "Ku hlayisiwa ku hlawula ka cookie",
+    "settings": "Malulamiselelo ya cookie",
+    "settingsDescription": "Hlawula loko Watch yi nga tsundzuka leswi u swi tsakelaka eka swibumabumelo eka ku endzela ko hambana-hambana. U nga swi cinca nkarhi wun'wana ni wun'wana.",
+    "essentialCookies": "Ti-cookie ta nkoka",
+    "essentialDescription": "Vuhlayiseki, ku tlanga, swihlawulekisi swa vuhlayiseki bya xihundla, na ku landzelerisa xikombelo xa swibumabumelo.",
+    "alwaysActive": "Nkarhi hinkwawo swa tirha",
+    "personalization": "Ku endleriwa wena",
+    "personalizationDescription": "Tsundzuka leswi u swi tsakelaka leswi pimiweke eka ku endzela ko hambana-hambana. Loko u tima leswi, swibumabumelo swa xiyimo swi ta tshama swi ri kona.",
+    "erasurePending": "Ku susiwa ka phurofayili ka ha rindzeriwe. Swibumabumelo swa xiyimo se swa tirha.",
+    "cancel": "Tshika",
+    "saveChoices": "Hlayisa swihlawulekisi",
+    "saving": "Ku hlayisiwa…",
+    "loadError": "Ku hlawula ka wena a ku kotekanga ku layicha. Wa ha kota ku hlawula laha hansi.",
+    "grantError": "Ku endleriwa wena a ku kotekanga ku pfumeleriwa. Ta nkoka ntsena ta ha kumeka.",
+    "saveError": "Ku hlawula ka wena a ku kotekanga ku hlayisiwa. Hi kombela u ringeta nakambe."
   }
 }

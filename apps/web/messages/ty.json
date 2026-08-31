@@ -722,5 +722,28 @@
     "languageVersionLabel": "Reo",
     "selectLanguageVersion": "Ma'iti i te hoê huriraa reo",
     "watchSelectedVersion": "Mata'ita'i i te huriraa i ma'itihia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mā‘itira‘a cookie",
+    "bannerTitle": "Tō ‘oe mau mā‘itira‘a nō te parurura‘a i te oraraa tūmataiti",
+    "bannerDescription": "E vaiiho te cookie faufa‘a roa ia Watch ia vai paruru e ia tere maitai. Ia fāriihia mai e ‘oe, e nehenehe te tahi cookie mā‘iti e ha‘amana‘o i tō ‘oe mau au i te mau terera‘a ato‘a nō te fa‘atano i te mau mana‘o tauturu. E vai noa mai te mau mana‘o tauturu ia au i te tumu parau, noa’tu te mā‘itira‘a.",
+    "acceptAll": "Fāri‘i i te mau mea ato‘a",
+    "essentialOnly": "Te mau mea faufa‘a roa ana‘e",
+    "manageChoices": "Fa‘anaho i te mau mā‘itira‘a",
+    "savingChoice": "Te tāpura-hia ra te mā‘itira‘a cookie",
+    "settings": "Tautuhinga cookie",
+    "settingsDescription": "A mā‘iti mai e nehenehe anei ia Watch ia ha‘amana‘o i te mau au nō te mana‘o tauturu i roto i te mau terera‘a ato‘a. E nehenehe tā ‘oe e taui i te reira i te mau taime ato‘a.",
+    "essentialCookies": "Cookie faufa‘a roa",
+    "essentialDescription": "Parurura‘a, ha‘iraira‘a video, mā‘itira‘a parurura‘a oraraa tūmataiti, e te tāpura nō te aniraa mana‘o tauturu.",
+    "alwaysActive": "Mahi noa",
+    "personalization": "Fa‘atano taata hō‘e",
+    "personalizationDescription": "Ha‘amana‘o i te mau au i fa‘ataotiahia i roto i te mau terera‘a ato‘a. Ia tāmia teie, e vai noa mai te mau mana‘o tauturu ia au i te tumu parau.",
+    "erasurePending": "Te tīa‘i noa ra te ha‘aore-ra‘a o te profile. Ua fa‘ahohehia a‘ena te mau mana‘o tauturu ia au i te tumu parau.",
+    "cancel": "Fa‘aea",
+    "saveChoices": "Tāpura i te mau mā‘itira‘a",
+    "saving": "Te tāpura-hia ra…",
+    "loadError": "‘Aita i taea te fa‘auta i tā ‘oe mā‘itira‘a. E nehenehe noa â rā ‘oe e mā‘iti i raro nei.",
+    "grantError": "‘Aita i taea te fa‘ahohe i te fa‘atanora‘a taata hō‘e. Te vai noa ra te mā‘itira‘a faufa‘a roa ana‘e.",
+    "saveError": "‘Aita i taea te tāpura i tā ‘oe mā‘itira‘a. A tāmata fa‘ahou."
   }
 }

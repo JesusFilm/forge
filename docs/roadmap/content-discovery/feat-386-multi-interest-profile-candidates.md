@@ -3,7 +3,7 @@ id: "feat-386"
 title: "Multi-interest profile candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -58,14 +58,14 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Constraints
 
 - Do not average unrelated interests into one taste vector.
-- No-consent viewers use session-only context; reset/delete removes future influence.
+- Essential-only viewers receive contextual semantic recommendations without profile resolution or learning; reset/delete removes future consented profile influence.
 - Profile candidates remain shadow-only in this ticket.
 - Every new recommendation record declares purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback or fallback.
 - Watch serves viewers; Admin observes, verifies, and controls. Admin is not the viewer recommendation surface.
 
 ## Verification
 
-- Test unrelated interests, session dominance without durable rewrite, no-consent fallback, sparse profile, explicit/negative evidence, reset, withdrawal, and deletion.
+- Test unrelated interests, consented short-lived intent without durable rewrite, Essential-only semantic delivery, sparse profile, explicit/negative evidence, reset, withdrawal, and deletion.
 - Test projection reproducibility and generator latency/coverage.
 - Reconcile interest-level candidates and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.

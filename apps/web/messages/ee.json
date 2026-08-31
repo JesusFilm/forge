@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio ƒe gbe",
     "selectLanguageVersion": "Tia gbegbɔgblɔ ƒe tɔtrɔ",
     "watchSelectedVersion": "Kpɔ tɔtrɔ si nètia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie tiatiawo",
+    "bannerTitle": "Wò sutᴐ nyawoƒe tiaƒoɖoɖowo",
+    "bannerDescription": "Cookie vevitɔwo na Watch nɔ anyi dedie eye wòle edzi yim nyuie. Ne nèɖe mɔ, optional first-party cookie aɖe ate ŋu aɖo ŋku dzesi le nusiwo dzro wò la ŋu le ziaɖeɖewo dome be yeawɔ nyanyuiƒe numekukuwo na wò. Nyatakakadzraɖoɖo si le nɔnɔme dzi la anɔ anyi alekee hã.",
+    "acceptAll": "Xɔ wo katã se",
+    "essentialOnly": "Vevitɔwo ko",
+    "manageChoices": "Dzra tiawo ɖo",
+    "savingChoice": "Ele cookie tiaɖoɖo la dzim",
+    "settings": "Cookie ɖoɖowo",
+    "settingsDescription": "Tia ne Watch ate ŋu aɖo ŋku recommendation interests dzi le ziaɖeɖewo dome. Àte ŋu atrɔe ɣe sia ɣi.",
+    "essentialCookies": "Cookie vevitɔwo",
+    "essentialDescription": "Dedienɔnɔ, video yiyi, sutɔ nyawoƒe tiaƒoɖoɖo, kple recommendation request attribution.",
+    "alwaysActive": "Ele edzi ɣesiaɣi",
+    "personalization": "Wòŋutɔwɔwɔ",
+    "personalizationDescription": "Dzi ŋku le interests siwo wowɔ se na la ŋu le ziaɖeɖewo dome. Ne ètsi esia ɖi la, contextual recommendations anɔ anyi kokoko.",
+    "erasurePending": "Ele profile tutu lala. Contextual recommendations le edzi yim xoxo.",
+    "cancel": "Tᴐ te",
+    "saveChoices": "Dzra tiawo ɖo",
+    "saving": "Ele dzim…",
+    "loadError": "Míate ŋu tsɔ wò tiaɖoɖo la ava o. Ke hã àte ŋu atia le ete.",
+    "grantError": "Míate ŋu wɔnɔ personalization dzi o. Essential only gale nɔ anyi.",
+    "saveError": "Míate ŋu dzi wò tiaɖoɖo la ɖo o. Taflatse te kpɔ ake."
   }
 }

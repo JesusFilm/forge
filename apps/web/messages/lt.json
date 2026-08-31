@@ -722,5 +722,28 @@
     "languageVersionLabel": "Garso kalba",
     "selectLanguageVersion": "Pasirinkite kalbos versiją",
     "watchSelectedVersion": "Žiūrėti pasirinktą versiją"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Slapukų pasirinkimai",
+    "bannerTitle": "Jūsų privatumo pasirinkimai",
+    "bannerDescription": "Būtini slapukai užtikrina „Watch“ saugumą ir veikimą. Jums sutikus, pasirenkamas pirmosios šalies slapukas gali įsiminti jūsų pomėgius tarp apsilankymų, kad rekomendacijos būtų suasmenintos. Kontekstinės rekomendacijos pasiekiamos bet kuriuo atveju.",
+    "acceptAll": "Priimti visus",
+    "essentialOnly": "Tik būtinus",
+    "manageChoices": "Tvarkyti pasirinkimus",
+    "savingChoice": "Įrašomas slapukų pasirinkimas",
+    "settings": "Slapukų nustatymai",
+    "settingsDescription": "Pasirinkite, ar „Watch“ gali įsiminti rekomendacijų pomėgius tarp apsilankymų. Tai galite bet kada pakeisti.",
+    "essentialCookies": "Būtini slapukai",
+    "essentialDescription": "Saugumas, atkūrimas, privatumo pasirinkimai ir rekomendacijų užklausų priskyrimas.",
+    "alwaysActive": "Visada aktyvuota",
+    "personalization": "Suasmeninimas",
+    "personalizationDescription": "Įsiminti ribotus pomėgius tarp apsilankymų. Išjungus šią parinktį, kontekstinės rekomendacijos vis tiek bus pasiekiamos.",
+    "erasurePending": "Profilio ištrynimas laukia patvirtinimo. Kontekstinės rekomendacijos jau aktyvios.",
+    "cancel": "Atšaukti",
+    "saveChoices": "Išsaugoti pasirinkimus",
+    "saving": "Išsaugoma…",
+    "loadError": "Nepavyko įkelti jūsų pasirinkimo. Vis tiek galite pasirinkti toliau.",
+    "grantError": "Nepavyko įjungti suasmeninimo. Galima naudoti tik būtinus nustatymus.",
+    "saveError": "Nepavyko išsaugoti jūsų pasirinkimo. Bandykite dar kartą."
   }
 }

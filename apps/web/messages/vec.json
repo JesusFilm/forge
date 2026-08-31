@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lengua audio",
     "selectLanguageVersion": "Scegli una version de lengua",
     "watchSelectedVersion": "Varda la version scelta"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Scelte sui cookie",
+    "bannerTitle": "Le to scelte de privacy",
+    "bannerDescription": "I cookie esensiali i mantien Watch sicuro e funzionante. Co'l to consenso, un cookie opzionale de prima parte el pol ricordarse dei to interessi tra una visita e l'altra par personalizar i conseji. I conseji contestuali i resta disponibili in ogni caso.",
+    "acceptAll": "Aceta tuto",
+    "essentialOnly": "Solo esensiali",
+    "manageChoices": "Gestissi le scelte",
+    "savingChoice": "Salvatagio de la scelta sui cookie",
+    "settings": "Impostasion dei cookie",
+    "settingsDescription": "Sceji se Watch el pol ricordarse dei interessi par i conseji tra una visita e l'altra. Te pol cambiar sta impostasion in cualsiasi momento.",
+    "essentialCookies": "Cookie esensiali",
+    "essentialDescription": "Sicuresa, riproduzion, scelte de privacy e atribusion de le richieste de conseji.",
+    "alwaysActive": "Senpre ativo",
+    "personalization": "Personalizasion",
+    "personalizationDescription": "Ricordar interessi delimitai tra una visita e l'altra. Se te disativi sta opzion, i conseji contestuali i resta disponibili.",
+    "erasurePending": "La cancełasion del profilo la xe in corso. I conseji contestuali i xe za ativi.",
+    "cancel": "Anula",
+    "saveChoices": "Salva le scelte",
+    "saving": "Salvatagio…",
+    "loadError": "No xe stà posìbiłe cargar la to scelta. Te pol ancora scejer qua soto.",
+    "grantError": "No xe stà posìbiłe ativar la personalizasion. Resta disponibile solo i cookie esensiali.",
+    "saveError": "No xe stà posìbiłe salvar la to scelta. Par piaser, prova da novo."
   }
 }

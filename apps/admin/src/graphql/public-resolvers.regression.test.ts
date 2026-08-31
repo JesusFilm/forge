@@ -35,6 +35,15 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "watchSearchSuggestions",
   "recordWatchSearchEvent",
   "sceneRecommendations",
+  // feat-368 U2/U4. Public-shaped; resolver-body authenticated for Web only.
+  "semanticRecommendationDelivery",
+  "recordSemanticRecommendationEvidence",
+  "selectSemanticRecommendation",
+  "claimSemanticRecommendationEpisode",
+  "recordSemanticRecommendationPlayback",
+  "recordRecommendationContentAction",
+  "recommendationProfileStatus",
+  "transitionRecommendationProfile",
   // consumer-migration U2 (2026-05-11) — see
   // docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md
   "video",

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ɔdio kasa",
     "selectLanguageVersion": "Yi kasa nkyerɛase",
     "watchSelectedVersion": "Hwɛ nkyerɛase a woapaw"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie paw",
+    "bannerTitle": "Wo kokoam ahintasɛm ho paw",
+    "bannerDescription": "Cookie a ɛho hia no ma Watch tena asew mu na ɛyɛ adwuma yiye. Sɛ woma kwan a, optional first-party cookie bi betumi akae anigye ahorow wɔ nsrahwɛ ahorow mu de ayɛ recommendation no sɛnea ɛfata wo. Contextual recommendation no da so wɔ hɔ wɔ kwan biara so.",
+    "acceptAll": "Gye nyinaa to mu",
+    "essentialOnly": "Deɛ ɛho hia nkutoo",
+    "manageChoices": "Hwɛ paw no so",
+    "savingChoice": "Rekora cookie paw no so",
+    "settings": "Cookie nhyehyɛe",
+    "settingsDescription": "Paw sɛ Watch betumi akae recommendation anigye ahorow wɔ nsrahwɛ ahorow mu anaa. Wubetumi asesa eyi bere biara.",
+    "essentialCookies": "Cookie a ɛho hia",
+    "essentialDescription": "Ahobammɔ, video a wɔbɔ, kokoam ahintasɛm ho paw, ne recommendation abisadeɛ ho nkyerɛkyerɛmu.",
+    "alwaysActive": "Ɛyɛ adwuma bere nyinaa",
+    "personalization": "Sɛnea ɛfata wo",
+    "personalizationDescription": "Kae anigye ahorow a wɔahyɛ ano wɔ nsrahwɛ ahorow mu. Sɛ wodum eyi a, contextual recommendation no da so bɛtena hɔ.",
+    "erasurePending": "Profile no pepa no gu so. Contextual recommendation no ayɛ adwuma dedaw.",
+    "cancel": "Twa mu",
+    "saveChoices": "Kora paw no so",
+    "saving": "Rekora so…",
+    "loadError": "Yɛantumi ansoa wo paw no. Nanso wokura kwan so sɛ wobɛpaw deɛ ɛwɔ ase ha.",
+    "grantError": "Yɛantumi amma personalization no anyɛ adwuma. Deɛ ɛho hia nkutoo da so wɔ hɔ.",
+    "saveError": "Yɛantumi ankora wo paw no so. Yɛsrɛ wo, san sɔ hwɛ bio."
   }
 }

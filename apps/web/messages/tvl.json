@@ -722,5 +722,28 @@
     "languageVersionLabel": "Gana leo",
     "selectLanguageVersion": "Filifili se vaega i te gana",
     "watchSelectedVersion": "Kilo ki te vaega ne filifili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Filifiliga kuki",
+    "bannerTitle": "Au filifiliga puipuiga totino",
+    "bannerDescription": "Kuki tāua e tausi ei a Watch ke saogalemu kae galue tonu. Kafai koe e talia, e mafai ne se kuki filifiliga a te saite o masaua a mea e fiafia koe ki ei i asiga keseese ko te mea ke fakaŋofogofie a fakatakitakiga. Fautuaga e fetaui mo te tulaga e avanoa faeloa i auala e lua.",
+    "acceptAll": "Talia katoa",
+    "essentialOnly": "Mea tāua fua",
+    "manageChoices": "Pule ki filifiliga",
+    "savingChoice": "Faasao te filifiliga kuki",
+    "settings": "Tulaga kuki",
+    "settingsDescription": "Filifili me mafai o masaua ne Watch a mea e fiafia koe ki ei mō fautuaga i asiga keseese. E mafai o sui ne koe i so se taimi.",
+    "essentialCookies": "Kuki tāua",
+    "essentialDescription": "Saogalemu, tā fakasolo o vitio, filifiliga puipuiga totino, mo te māfuaaga o talosaga fautuaga.",
+    "alwaysActive": "Galue faeloa",
+    "personalization": "Fakatino ki a koe",
+    "personalizationDescription": "Masaua a mea e fiafia koe ki ei i asiga keseese. Kafai e tamate ne koe te mea tenei, e avanoa faeloa a fautuaga e fetaui mo te tulaga.",
+    "erasurePending": "Te soloiga o te talaaga koi fakaatali. Fautuaga e fetaui mo te tulaga ko oti ne fakaola.",
+    "cancel": "Fakaseai",
+    "saveChoices": "Faasao filifiliga",
+    "saving": "Faasao…",
+    "loadError": "Ne seki mafai o uta mai tau filifiliga. E mafai faeloa o filifili koe i lalo.",
+    "grantError": "Ne seki mafai o fakaola te fakatino ki a koe. Mea tāua fua e avanoa faeloa.",
+    "saveError": "Ne seki mafai o faasao tau filifiliga. Fakamolemole toe taumafai."
   }
 }
