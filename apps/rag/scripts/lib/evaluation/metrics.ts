@@ -310,7 +310,7 @@ export function coverageByTier(results: CaseResult[]): TierCoverage[] {
 }
 
 function escape(s: string): string {
-  return s.replace(/\|/g, "\\|")
+  return s.replace(/[\\|]/g, "\\$&")
 }
 
 export interface RenderInput {

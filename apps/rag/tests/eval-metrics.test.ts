@@ -287,6 +287,23 @@ describe("renderMarkdown", () => {
     expect(md).toContain("## Per-evidence-tier coverage")
     expect(md).toContain("first rank")
   })
+
+  it("escapes backslashes and table separators in case questions", () => {
+    const c = gcase({ question: String.raw`path\name | question` })
+    const results = [result(c, hitsWith({ 1: "/a.html" }))]
+    const md = renderMarkdown({
+      modelId: "model",
+      topK: 10,
+      scope: null,
+      results,
+      metrics: computeMetrics(results),
+      perSource: coverageBySource(results),
+      perLanguage: coverageByLanguage(results),
+      perTier: coverageByTier(results),
+    })
+
+    expect(md).toContain(String.raw`path\\name \| question`)
+  })
 })
 
 describe("safePathname", () => {
