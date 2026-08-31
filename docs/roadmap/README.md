@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 29, 2026)
+## Status (August 31, 2026)
 
-- **Total tickets:** 614
-- **Complete:** 452
+- **Total tickets:** 618
+- **Complete:** 453
 - **In progress:** 46
 - **Not started:** 37
-- **Blocked:** 79
+- **Blocked:** 82
 - **Overdue and not complete:** 107
 
 ## Feature Index
@@ -30,6 +30,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-383](content-discovery/feat-383-shadow-candidate-evaluation.md)                                          | Shadow candidate evaluation                                                                     | nisal      | P0       | —          | 5    | —          | blocked     |
 | [feat-384](content-discovery/feat-384-recommendation-experiment-spine.md)                                      | Recommendation experiment spine                                                                 | nisal      | P0       | —          | 7    | —          | blocked     |
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | blocked     |
+| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live consent-aware hybrid personalization rollout                                               | nisal      | P0       | —          | 8    | —          | blocked     |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
@@ -79,6 +80,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-391](content-discovery/feat-391-qualified-popular-trending-candidates.md)                                | Qualified popular and trending candidates                                                       | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-392](content-discovery/feat-392-high-satisfaction-cohort-candidates.md)                                  | High-satisfaction cohort candidates                                                             | nisal      | P1       | —          | 7    | —          | blocked     |
 | [feat-393](content-discovery/feat-393-recommendation-slate-composer.md)                                        | Recommendation slate composer                                                                   | nisal      | P1       | —          | 5    | —          | blocked     |
+| [feat-449](content-discovery/feat-449-personalized-watch-row-page-orchestration.md)                            | Personalized Watch row and page orchestration                                                   | nisal      | P1       | —          | 8    | —          | blocked     |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal      | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal      | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -151,9 +153,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-426](content-discovery/feat-426-watch-home-category-rail.md)                                             | Watch homepage browse-by-category rail                                                          | vlad       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-437](content-discovery/feat-437-watch-home-category-rail-mobile-layout.md)                               | Watch category rail mobile header layout                                                        | vlad       | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-440](content-discovery/feat-440-watch-home-random-hero-video.md)                                         | Watch home hero opens on a random library video                                                 | vlad       | P1       | 2026-08-27 | 1    | 2026-08-27 | complete    |
+| [feat-441](content-discovery/feat-441-watch-vertical-inventory-thumbnails.md)                                  | Watch Vertical Inventory Thumbnails                                                             | vlad       | P1       | 2026-08-28 | 1    | 2026-08-28 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
+| [feat-448](content-discovery/feat-448-learned-sequential-profile-item-representations.md)                      | Learned sequential profile and item representations                                             | nisal      | P2       | —          | 12   | —          | blocked     |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
