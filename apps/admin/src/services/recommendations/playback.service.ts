@@ -251,28 +251,35 @@ export class RecommendationPlaybackService {
             }> = []
             const receipts = new Map<string, RecommendationPlaybackReceipt>()
             let hasTerminal = false
+            const existingFacts = await tx.recommendationPlaybackFact.findMany({
+              where: {
+                episodeId: locked.id,
+              },
+              select: {
+                eventId: true,
+                kind: true,
+                payloadDigest: true,
+                sequence: true,
+              },
+            })
+            const existingByEventId = new Map(
+              existingFacts.map((fact) => [fact.eventId, fact]),
+            )
+            const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
+              []
             for (const event of parsed.events) {
               const digest = this.digest(event)
-              const existing = await tx.recommendationPlaybackFact.findUnique({
-                where: {
-                  episodeId_eventId: {
-                    episodeId: locked.id,
-                    eventId: event.eventId,
-                  },
-                },
-              })
+              const existing = existingByEventId.get(event.eventId)
               if (!existing) {
                 pending.push({ event, digest })
                 continue
               }
               if (existing.payloadDigest === digest) {
-                await tx.recommendationEvidenceAudit.create({
-                  data: {
-                    requestId: locked.requestId,
-                    kind: RecommendationAuditKind.REPLAY,
-                    reasonCode: "playback_fact_replay",
-                    expiresAt: locked.request.expiresAt,
-                  },
+                replayAudits.push({
+                  requestId: locked.requestId,
+                  kind: RecommendationAuditKind.REPLAY,
+                  reasonCode: "playback_fact_replay",
+                  expiresAt: locked.request.expiresAt,
                 })
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
@@ -295,25 +302,24 @@ export class RecommendationPlaybackService {
                 })
               }
             }
+            if (replayAudits.length > 0) {
+              await tx.recommendationEvidenceAudit.createMany({
+                data: replayAudits,
+              })
+            }
 
             if (pending.length > 0) {
-              const existingCount = await tx.recommendationPlaybackFact.count({
-                where: { episodeId: locked.id },
-              })
+              const existingCount = existingFacts.length
               if (existingCount + pending.length > MAX_EPISODE_FACTS) {
                 throw new PlaybackCommittedRejectionError(
                   "playback_fact_budget_exceeded",
                   "Recommendation playback fact budget exceeded",
                 )
               }
-              const kindCounts = await tx.recommendationPlaybackFact.groupBy({
-                by: ["kind"],
-                where: { episodeId: locked.id },
-                _count: { _all: true },
-              })
-              const counts = new Map(
-                kindCounts.map((row) => [row.kind, row._count._all]),
-              )
+              const counts = new Map<string, number>()
+              for (const fact of existingFacts) {
+                counts.set(fact.kind, (counts.get(fact.kind) ?? 0) + 1)
+              }
               for (const { event } of pending) {
                 counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1)
                 if ((counts.get(event.kind) ?? 0) > FACT_LIMITS[event.kind]) {
@@ -352,36 +358,36 @@ export class RecommendationPlaybackService {
                   "Recommendation playback sequence conflicted",
                 )
               }
+              const factRows: Prisma.RecommendationPlaybackFactCreateManyInput[] =
+                []
+              const evidenceAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
+                []
               for (const [index, { event, digest }] of pending.entries()) {
                 const sequence = locked.nextFactSequence + index
                 const late = now > locked.activeUntil
-                await tx.recommendationPlaybackFact.create({
-                  data: {
-                    id: newId(),
-                    requestId: locked.requestId,
-                    itemId: locked.itemId,
-                    episodeId: locked.id,
-                    capabilityJti: locked.capabilityJti!,
-                    eventId: event.eventId,
-                    payloadDigest: digest,
-                    sequence,
-                    kind: event.kind,
-                    payload: event.payload as Prisma.InputJsonValue,
-                    occurredAt: new Date(event.occurredAt),
-                    receivedAt: now,
-                    late,
-                    expiresAt: locked.request.expiresAt,
-                  },
+                factRows.push({
+                  id: newId(),
+                  requestId: locked.requestId,
+                  itemId: locked.itemId,
+                  episodeId: locked.id,
+                  capabilityJti: locked.capabilityJti!,
+                  eventId: event.eventId,
+                  payloadDigest: digest,
+                  sequence,
+                  kind: event.kind,
+                  payload: event.payload as Prisma.InputJsonValue,
+                  occurredAt: new Date(event.occurredAt),
+                  receivedAt: now,
+                  late,
+                  expiresAt: locked.request.expiresAt,
                 })
-                await tx.recommendationEvidenceAudit.create({
-                  data: {
-                    requestId: locked.requestId,
-                    kind: late
-                      ? RecommendationAuditKind.LATE
-                      : RecommendationAuditKind.EVIDENCE_SUCCESS,
-                    reasonCode: event.kind,
-                    expiresAt: locked.request.expiresAt,
-                  },
+                evidenceAudits.push({
+                  requestId: locked.requestId,
+                  kind: late
+                    ? RecommendationAuditKind.LATE
+                    : RecommendationAuditKind.EVIDENCE_SUCCESS,
+                  reasonCode: event.kind,
+                  expiresAt: locked.request.expiresAt,
                 })
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
@@ -389,6 +395,12 @@ export class RecommendationPlaybackService {
                   sequence,
                 })
               }
+              await tx.recommendationPlaybackFact.createMany({
+                data: factRows,
+              })
+              await tx.recommendationEvidenceAudit.createMany({
+                data: evidenceAudits,
+              })
             }
             return {
               receipts: parsed.events.map(

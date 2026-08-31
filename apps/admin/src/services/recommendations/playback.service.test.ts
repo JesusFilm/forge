@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationPlaybackService } from "./playback.service"
 import { RecommendationBindingError } from "./errors"
+import { MAX_EPISODE_FACTS } from "./contracts"
 
 const caller = {
   id: null,
@@ -45,6 +46,9 @@ function harness(options: { current?: ReturnType<typeof episode> } = {}) {
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
     recommendationPlaybackFact: {
+      findMany: vi.fn(async () =>
+        facts.filter((fact) => typeof fact.eventId === "string"),
+      ),
       findUnique: vi.fn(
         async ({
           where,
@@ -61,8 +65,21 @@ function harness(options: { current?: ReturnType<typeof episode> } = {}) {
         facts.push(data)
         return data
       }),
+      createMany: vi.fn(
+        async ({ data }: { data: Array<Record<string, unknown>> }) => {
+          facts.push(...data)
+          return { count: data.length }
+        },
+      ),
     },
-    recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+    recommendationEvidenceAudit: {
+      create: vi.fn(async () => ({})),
+      createMany: vi.fn(
+        async ({ data }: { data: Array<Record<string, unknown>> }) => ({
+          count: data.length,
+        }),
+      ),
+    },
   }
   const prisma = {
     recommendationPlaybackEpisode: {
@@ -216,6 +233,132 @@ describe("RecommendationPlaybackService", () => {
     })
   })
 
+  it("persists a playback batch with bounded database round-trips", async () => {
+    const { service, tx } = harness()
+    const events = [
+      {
+        eventId: "attempt-batch",
+        kind: "playback_attempt" as const,
+        occurredAt: now.toISOString(),
+        payload: { initiation: "manual" as const },
+      },
+      {
+        eventId: "start-batch",
+        kind: "playback_start" as const,
+        occurredAt: now.toISOString(),
+        payload: { positionSeconds: 0 },
+      },
+      {
+        eventId: "progress-batch",
+        kind: "playback_progress" as const,
+        occurredAt: now.toISOString(),
+        payload: {
+          positionSeconds: 35,
+          durationSeconds: 60,
+          progress: 35 / 60,
+          wallElapsedMilliseconds: 35_000,
+        },
+      },
+      {
+        eventId: "end-batch",
+        kind: "playback_end" as const,
+        occurredAt: now.toISOString(),
+        payload: {
+          reason: "route_exit" as const,
+          positionSeconds: 35,
+          durationSeconds: 60,
+          progress: 35 / 60,
+          completed: false,
+        },
+      },
+    ]
+
+    await service.record({ ...baseInput, events })
+
+    expect(tx.recommendationPlaybackFact.findMany).toHaveBeenCalledOnce()
+    expect(tx.recommendationPlaybackFact.findUnique).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackFact.createMany).toHaveBeenCalledOnce()
+    expect(tx.recommendationPlaybackFact.create).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackFact.count).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackFact.groupBy).not.toHaveBeenCalled()
+    expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenCalledOnce()
+  })
+
+  it("preserves receipt order for mixed replay and accepted facts", async () => {
+    const { service, tx, facts } = harness()
+    const replay = {
+      eventId: "start-mixed",
+      kind: "playback_start" as const,
+      occurredAt: now.toISOString(),
+      payload: { positionSeconds: 0 },
+    }
+    facts.push({
+      eventId: replay.eventId,
+      kind: replay.kind,
+      payloadDigest: await service.digest(replay),
+      sequence: 8,
+    })
+    const accepted = {
+      eventId: "progress-mixed",
+      kind: "playback_progress" as const,
+      occurredAt: now.toISOString(),
+      payload: {
+        positionSeconds: 12,
+        durationSeconds: 60,
+        progress: 0.2,
+        wallElapsedMilliseconds: 12_000,
+      },
+    }
+
+    await expect(
+      service.record({ ...baseInput, events: [replay, accepted] }),
+    ).resolves.toEqual([
+      { eventId: replay.eventId, status: "replay", sequence: 8 },
+      { eventId: accepted.eventId, status: "accepted", sequence: 1 },
+    ])
+    expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        data: [expect.objectContaining({ kind: "REPLAY" })],
+      },
+    )
+    expect(tx.recommendationPlaybackFact.createMany).toHaveBeenCalledOnce()
+    expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenNthCalledWith(
+      2,
+      {
+        data: [expect.objectContaining({ kind: "EVIDENCE_SUCCESS" })],
+      },
+    )
+  })
+
+  it("does not dispatch finalization when a batched audit write fails", async () => {
+    const { service, tx, dispatchFinalization } = harness()
+    tx.recommendationEvidenceAudit.createMany.mockRejectedValueOnce(
+      new Error("audit insert failed"),
+    )
+
+    await expect(
+      service.record({
+        ...baseInput,
+        events: [
+          {
+            eventId: "end-audit-failure",
+            kind: "playback_end",
+            occurredAt: now.toISOString(),
+            payload: {
+              reason: "ended",
+              positionSeconds: 60,
+              durationSeconds: 60,
+              progress: 1,
+              completed: true,
+            },
+          },
+        ],
+      }),
+    ).rejects.toThrow("audit insert failed")
+    expect(dispatchFinalization).not.toHaveBeenCalled()
+  })
+
   it("retries a serializable conflict without consuming capability budget twice", async () => {
     const { service, prisma } = harness()
     prisma.$transaction.mockRejectedValueOnce(
@@ -238,10 +381,13 @@ describe("RecommendationPlaybackService", () => {
   })
 
   it("wakes reconciliation when a later non-terminal fact advances a terminal episode watermark", async () => {
-    const { service, tx, dispatchFinalization } = harness()
-    tx.recommendationPlaybackFact.groupBy.mockResolvedValueOnce([
-      { kind: "playback_end", _count: { _all: 1 } },
-    ] as never)
+    const { service, tx, facts, dispatchFinalization } = harness()
+    facts.push({
+      eventId: "existing-end",
+      kind: "playback_end",
+      payloadDigest: "f".repeat(64),
+      sequence: 8,
+    })
     await expect(
       service.record({
         ...baseInput,
@@ -317,28 +463,34 @@ describe("RecommendationPlaybackService", () => {
       payloadDigest: digest,
       sequence: 8,
     })
-    tx.recommendationPlaybackFact.findUnique.mockResolvedValueOnce({
-      eventId: "start-1",
-      payloadDigest: digest,
-      sequence: 8,
-    })
+    tx.recommendationPlaybackFact.findMany.mockResolvedValueOnce([
+      {
+        eventId: "start-1",
+        payloadDigest: digest,
+        sequence: 8,
+      },
+    ])
 
     await expect(
       service.record({ ...baseInput, events: [event] }),
     ).resolves.toEqual([{ eventId: "start-1", status: "replay", sequence: 8 }])
     expect(tx.recommendationPlaybackEpisode.updateMany).not.toHaveBeenCalled()
-    expect(tx.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        kind: "REPLAY",
-        reasonCode: "playback_fact_replay",
-      }),
+    expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          kind: "REPLAY",
+          reasonCode: "playback_fact_replay",
+        }),
+      ],
     })
 
-    tx.recommendationPlaybackFact.findUnique.mockResolvedValueOnce({
-      eventId: "start-1",
-      payloadDigest: "f".repeat(64),
-      sequence: 8,
-    })
+    tx.recommendationPlaybackFact.findMany.mockResolvedValueOnce([
+      {
+        eventId: "start-1",
+        payloadDigest: "f".repeat(64),
+        sequence: 8,
+      },
+    ])
     await expect(
       service.record({ ...baseInput, events: [event] }),
     ).resolves.toEqual([
@@ -349,10 +501,13 @@ describe("RecommendationPlaybackService", () => {
   })
 
   it("commits a sanitized rejection audit when per-kind cardinality is exhausted", async () => {
-    const { service, prisma, tx } = harness()
-    tx.recommendationPlaybackFact.groupBy.mockResolvedValue([
-      { kind: "playback_attempt", _count: { _all: 1 } },
-    ] as never)
+    const { service, prisma, facts } = harness()
+    facts.push({
+      eventId: "existing-attempt",
+      kind: "playback_attempt",
+      payloadDigest: "f".repeat(64),
+      sequence: 8,
+    })
     await expect(
       service.record({
         ...baseInput,
@@ -374,6 +529,72 @@ describe("RecommendationPlaybackService", () => {
         detail: { episodeId: "episode-1", generation: 3 },
         expiresAt: new Date("2026-09-17T03:00:00.000Z"),
       },
+    })
+  })
+
+  it("rejects a fact after the aggregate episode budget is exhausted", async () => {
+    const { service, prisma, tx, facts } = harness()
+    facts.push(
+      ...Array.from({ length: MAX_EPISODE_FACTS }, (_, index) => ({
+        eventId: `existing-${index}`,
+        kind: "playback_progress",
+        payloadDigest: "f".repeat(64),
+        sequence: index + 1,
+      })),
+    )
+
+    await expect(
+      service.record({
+        ...baseInput,
+        events: [
+          {
+            eventId: "seek-over-budget",
+            kind: "playback_seek",
+            occurredAt: now.toISOString(),
+            payload: { fromSeconds: 10, toSeconds: 20 },
+          },
+        ],
+      }),
+    ).rejects.toThrow("fact budget exceeded")
+    expect(tx.recommendationPlaybackEpisode.updateMany).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackFact.createMany).not.toHaveBeenCalled()
+    expect(prisma.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: "COMMITTED_REJECTION",
+        reasonCode: "playback_fact_budget_exceeded",
+      }),
+    })
+  })
+
+  it("rejects a second terminal kind without persisting the batch", async () => {
+    const { service, prisma, tx, facts } = harness()
+    facts.push({
+      eventId: "existing-end",
+      kind: "playback_end",
+      payloadDigest: "f".repeat(64),
+      sequence: 8,
+    })
+
+    await expect(
+      service.record({
+        ...baseInput,
+        events: [
+          {
+            eventId: "error-after-end",
+            kind: "playback_error",
+            occurredAt: now.toISOString(),
+            payload: { code: "media_error", positionSeconds: 4 },
+          },
+        ],
+      }),
+    ).rejects.toThrow("terminal cardinality exceeded")
+    expect(tx.recommendationPlaybackEpisode.updateMany).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackFact.createMany).not.toHaveBeenCalled()
+    expect(prisma.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: "COMMITTED_REJECTION",
+        reasonCode: "playback_terminal_cardinality_exceeded",
+      }),
     })
   })
 
@@ -455,8 +676,8 @@ describe("RecommendationPlaybackService", () => {
     ).resolves.toEqual([
       { eventId: "end-late", status: "accepted", sequence: 1 },
     ])
-    expect(tx.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ kind: "LATE" }),
+    expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ kind: "LATE" })],
     })
   })
 })
