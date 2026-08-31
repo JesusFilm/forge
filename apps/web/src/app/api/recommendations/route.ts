@@ -61,12 +61,7 @@ async function recoverContextualDelivery(
   delivery: Awaited<ReturnType<typeof getSemanticRecommendationDelivery>>,
   input: z.infer<typeof DeliveryInput>,
 ) {
-  if (
-    delivery.result !== "unavailable" ||
-    delivery.reason !== "environment_disabled"
-  ) {
-    return delivery
-  }
+  if (delivery.result !== "unavailable") return delivery
   let recommendations
   try {
     recommendations = await getContextualSceneRecommendations(
@@ -127,7 +122,7 @@ async function recoverContextualDelivery(
       projectionGeneration: null,
       interestCount: 0,
       sessionIntentPresent: false,
-      reason: "environment_disabled",
+      reason: delivery.reason,
     },
   }
 }

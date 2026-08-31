@@ -673,7 +673,7 @@ describe("WatchSemanticRecommendations", () => {
     const contextualFallback = {
       ...fallbackDelivery,
       requestId: null,
-      reason: "environment_disabled",
+      reason: "delivery_timeout",
       items: fallbackDelivery.items.map((item) => ({
         ...item,
         capability: "contextual-fallback-unattributed-v1",
