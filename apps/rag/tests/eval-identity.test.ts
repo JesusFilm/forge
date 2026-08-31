@@ -1,12 +1,27 @@
-import { describe, expect, it } from "vitest"
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+import { afterEach, describe, expect, it } from "vitest"
 
 import {
   METRIC_IMPLEMENTATION_ID,
   caseSetRevision,
   compareReceipts,
   contentRevision,
+  writeReceiptAtomic,
   type EvaluationReceipt,
 } from "../scripts/lib/evaluation/identity.js"
+
+const temporaryDirectories: string[] = []
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  )
+})
 
 const identity = {
   goldenRevision: contentRevision("golden"),
@@ -107,5 +122,33 @@ describe("identity-bound comparison", () => {
       state: "refused",
       reasons: ["incomplete-or-corrupt-report"],
     })
+  })
+})
+
+describe("writeReceiptAtomic", () => {
+  it("publishes a complete receipt without leaving its temporary file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "rag-receipt-"))
+    temporaryDirectories.push(directory)
+    const destination = join(directory, "receipt.json")
+    const value = receipt()
+
+    await writeReceiptAtomic(destination, value)
+
+    expect(JSON.parse(await readFile(destination, "utf8"))).toEqual(value)
+    expect(await readdir(directory)).toEqual(["receipt.json"])
+  })
+
+  it("refuses a collision, preserves the winner, and cleans its temporary file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "rag-receipt-"))
+    temporaryDirectories.push(directory)
+    const destination = join(directory, "receipt.json")
+    await writeFile(destination, "winner\n", { flag: "wx" })
+
+    await expect(
+      writeReceiptAtomic(destination, receipt()),
+    ).rejects.toMatchObject({ code: "EEXIST" })
+
+    expect(await readFile(destination, "utf8")).toBe("winner\n")
+    expect(await readdir(directory)).toEqual(["receipt.json"])
   })
 })

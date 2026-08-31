@@ -147,7 +147,6 @@ export function build() {
     yaml,
     registry,
     sourceMap,
-    generatedAt: "2026-07-16",
   })
 }
 

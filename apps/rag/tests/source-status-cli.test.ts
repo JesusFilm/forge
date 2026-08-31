@@ -14,6 +14,7 @@ import {
   parseArgv,
   isoDate,
   writeStatusFileAtomically,
+  withExclusiveFileLock,
 } from "../scripts/source-status.js"
 import type { Mutation } from "../scripts/source-status.js"
 
@@ -417,5 +418,49 @@ describe("writeStatusFileAtomically", () => {
     ).rejects.toThrow("disk full")
     expect(renamed).toBe(false)
     expect(cleaned).toBe(true)
+  })
+})
+
+describe("withExclusiveFileLock", () => {
+  it("serializes concurrent mutations before either caller reads", async () => {
+    const events: string[] = []
+    let releaseFirst!: () => void
+    const firstMayFinish = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+
+    const first = withExclusiveFileLock("status.yaml", async () => {
+      events.push("first:read")
+      await firstMayFinish
+      events.push("first:write")
+    })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    const second = withExclusiveFileLock("status.yaml", async () => {
+      events.push("second:read")
+      events.push("second:write")
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(events).toEqual(["first:read"])
+    releaseFirst()
+    await Promise.all([first, second])
+    expect(events).toEqual([
+      "first:read",
+      "first:write",
+      "second:read",
+      "second:write",
+    ])
+  })
+
+  it("removes the sibling lock when the mutation fails", async () => {
+    await expect(
+      withExclusiveFileLock("status-cleanup.yaml", async () => {
+        throw new Error("validation failed")
+      }),
+    ).rejects.toThrow("validation failed")
+
+    await expect(
+      withExclusiveFileLock("status-cleanup.yaml", async () => "recovered"),
+    ).resolves.toBe("recovered")
   })
 })

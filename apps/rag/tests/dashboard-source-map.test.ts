@@ -103,7 +103,6 @@ describe("source_rows — one row per source with language chips", () => {
       yaml,
       registry,
       sourceMap,
-      generatedAt: "2026-07-16",
     })
     const cru = data.source_rows.find((row) => row.key === "cru")
 
@@ -129,7 +128,6 @@ describe("source_rows — one row per source with language chips", () => {
       yaml,
       registry,
       sourceMap,
-      generatedAt: "2026-07-16",
     })
     const unclassifiedOnly = data.source_rows.find(
       (row) => row.key === "everystudent",

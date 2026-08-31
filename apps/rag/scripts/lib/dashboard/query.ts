@@ -57,11 +57,15 @@ export async function fetchProdStatus(
       await tx.$executeRaw`SET LOCAL statement_timeout = '15s'`
       const ingestedRows = await tx.$queryRaw<RawIngestedRow[]>`
       SELECT s.key, s.name, s.domain AS host, d.language,
-             count(DISTINCT d.id) AS embedded_doc_count
+             count(*) AS embedded_doc_count
       FROM sources s
       JOIN documents d ON d.source_id = s.id
-      JOIN chunks c ON c.document_id = d.id
-      JOIN chunk_embeddings ce ON ce.chunk_id = c.id
+      WHERE EXISTS (
+        SELECT 1
+        FROM chunks c
+        JOIN chunk_embeddings ce ON ce.chunk_id = c.id
+        WHERE c.document_id = d.id
+      )
       GROUP BY s.key, s.name, s.domain, d.language
       ORDER BY s.key, d.language
       LIMIT ${DASHBOARD_ROW_LIMIT}

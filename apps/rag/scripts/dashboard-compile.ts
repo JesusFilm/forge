@@ -92,7 +92,6 @@ async function main(): Promise<void> {
     yaml,
     registry,
     sourceMap,
-    generatedAt: prod.fetched_at,
   })
   const html = renderHtml(template, compiled)
 

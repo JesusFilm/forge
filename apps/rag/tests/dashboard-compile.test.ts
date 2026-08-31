@@ -131,7 +131,7 @@ const prod: ProdStatusData = {
 }
 
 function build() {
-  return buildCompiledData({ prod, yaml, registry, generatedAt: "2026-06-29" })
+  return buildCompiledData({ prod, yaml, registry })
 }
 
 function rowFor(key: string, language: string) {
@@ -167,7 +167,6 @@ describe("buildCompiledData — evaluate rule", () => {
         },
       },
       registry,
-      generatedAt: "2026-06-29",
     })
     const fl = compiled.sources.find(
       (r) => r.key === "familylife" && r.language === "en",
@@ -288,7 +287,6 @@ describe("unclassified documents — the secondary table (#86)", () => {
       prod: prodWithUnclassified,
       yaml,
       registry,
-      generatedAt: "2026-06-29",
     })
   }
 

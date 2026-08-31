@@ -30,7 +30,7 @@
  * Pure core (loadDoc/applyMutation/validateDoc/parseArgv) is exported and unit-
  * tested from tests/source-status-cli.test.ts; main() holds the fs + argv I/O.
  */
-import { readFile, rename, rm, writeFile } from "node:fs/promises"
+import { open, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseDocument, isMap } from "yaml"
@@ -389,6 +389,51 @@ export interface AtomicFileOps {
 
 const nodeAtomicFileOps: AtomicFileOps = { writeFile, rename, rm }
 
+const LOCK_RETRY_MS = 10
+const LOCK_TIMEOUT_MS = 10_000
+
+function isAlreadyExists(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "EEXIST"
+  )
+}
+
+/**
+ * Serialize read/validate/write transactions with an exclusive sibling lock.
+ * The lock is held for the complete callback, so every mutator reads the result
+ * of the preceding mutation instead of overwriting a concurrently-read copy.
+ */
+export async function withExclusiveFileLock<T>(
+  file: string,
+  action: () => Promise<T>,
+): Promise<T> {
+  const lockFile = `${file}.lock`
+  const deadline = Date.now() + LOCK_TIMEOUT_MS
+  let handle
+  for (;;) {
+    try {
+      handle = await open(lockFile, "wx", 0o600)
+      break
+    } catch (error) {
+      if (!isAlreadyExists(error) || Date.now() >= deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS))
+    }
+  }
+
+  try {
+    return await action()
+  } finally {
+    try {
+      await handle.close()
+    } finally {
+      await rm(lockFile, { force: true })
+    }
+  }
+}
+
 /** Write beside the destination, then atomically replace it with rename. */
 export async function writeStatusFileAtomically(
   file: string,
@@ -426,37 +471,24 @@ function todayISO(): string {
 }
 
 async function main(argv: string[]): Promise<void> {
-  let cmd: Command
-  try {
-    cmd = parseArgv(argv)
-  } catch (e) {
-    fail(e)
-  }
-
-  const raw = await readFile(FILE, "utf8")
+  const cmd = parseArgv(argv)
 
   if (cmd.kind === "check") {
-    try {
-      validateDoc(loadDoc(raw))
-    } catch (e) {
-      fail(e)
-    }
+    validateDoc(loadDoc(await readFile(FILE, "utf8")))
     console.log("✔ docs/source-status.yaml is valid")
     return
   }
 
-  const doc = loadDoc(raw)
-  try {
+  await withExclusiveFileLock(FILE, async () => {
+    const doc = loadDoc(await readFile(FILE, "utf8"))
     applyMutation(doc, cmd, todayISO())
     validateDoc(doc) // gate — must pass before we touch the file
-  } catch (e) {
-    fail(e)
-  }
-  await writeStatusFileAtomically(
-    FILE,
-    doc.toString(),
-    `${process.pid}-${Date.now()}`,
-  )
+    await writeStatusFileAtomically(
+      FILE,
+      doc.toString(),
+      `${process.pid}-${Date.now()}`,
+    )
+  })
   const target =
     cmd.kind === "add-source" || cmd.kind === "remove-source"
       ? cmd.key
@@ -466,5 +498,5 @@ async function main(argv: string[]): Promise<void> {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  void main(process.argv.slice(2))
+  void main(process.argv.slice(2)).catch(fail)
 }

@@ -30,7 +30,6 @@ describe("public dashboard hardening", () => {
         },
       ],
       yaml: {},
-      generatedAt: "ignored",
     })
     const html = renderHtml(
       "<p><!-- DASHBOARD_GENERATED_AT --></p><!-- DASHBOARD_SUMMARY --><table><tbody><!-- DASHBOARD_ROWS --></tbody></table><!-- DASHBOARD_UNCLASSIFIED -->",
@@ -46,7 +45,6 @@ describe("public dashboard hardening", () => {
         prod: { ...prod, acquired_keys: ["unknown"] },
         registry: [],
         yaml: {},
-        generatedAt: "ignored",
       }),
     ).toThrow(/unknown canonical source/)
   })

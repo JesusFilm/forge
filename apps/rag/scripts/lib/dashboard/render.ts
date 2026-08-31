@@ -13,7 +13,7 @@ const DATE_PLACEHOLDER = "<!-- DASHBOARD_GENERATED_AT -->"
 const SUMMARY_PLACEHOLDER = "<!-- DASHBOARD_SUMMARY -->"
 const UNCLASSIFIED_PLACEHOLDER = "<!-- DASHBOARD_UNCLASSIFIED -->"
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -176,10 +176,9 @@ function renderSummary(data: CompiledData): string {
  *  count of embedded docs with no detected language. Keyed by
  *  `data-unclassified-key` so the merge gate can pin it. */
 function renderUnclassifiedRow(u: CompiledUnclassifiedRow): string {
-  const hostText = u.host ? escapeHtml(u.host) : "—"
   return [
     `<tr data-unclassified-key="${escapeHtml(u.key)}">`,
-    `<td class="col-source"><span class="source-name">${escapeHtml(u.source)}</span><span class="source-host">${hostText}</span></td>`,
+    sourceCell(u.source, u.host),
     `<td class="col-count">${u.embedded_doc_count.toLocaleString("en-US")}</td>`,
     `</tr>`,
   ].join("")

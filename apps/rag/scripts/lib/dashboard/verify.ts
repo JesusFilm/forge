@@ -1,15 +1,8 @@
 import { parse as parseHtml } from "node-html-parser"
+import { escapeHtml } from "./render.js"
 import type { CompiledData } from "./types.js"
 
 // ── merge-gate contract ──────────────────────────────────────────────────────
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")

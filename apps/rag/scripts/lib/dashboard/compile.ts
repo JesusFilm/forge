@@ -29,7 +29,6 @@ export interface BuildInput {
   registry: RegistrySource[]
   /** Curated gaps + documented-only sources (docs/source-map.yaml, #100). */
   sourceMap?: SourceMap
-  generatedAt: string // YYYY-MM-DD (injected so the build is deterministic/testable)
 }
 
 const SEP = "\u0000"

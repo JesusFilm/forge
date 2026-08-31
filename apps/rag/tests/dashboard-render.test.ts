@@ -101,7 +101,6 @@ describe("renderHtml — the ledger page", () => {
       yaml,
       registry,
       sourceMap,
-      generatedAt: "2026-07-16",
     })
     const html = renderHtml(TEMPLATE, data)
     expect(html).toContain('data-unclassified-key="cru"')

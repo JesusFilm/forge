@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
-import { mkdir, rename, writeFile } from "node:fs/promises"
+import { link, mkdir, rm, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
 import { z } from "zod"
@@ -187,9 +187,15 @@ export async function writeReceiptAtomic(
   evaluationReceiptSchema.parse(receipt)
   await mkdir(dirname(destination), { recursive: true })
   const temporary = `${destination}.${receipt.runId}.tmp`
-  await writeFile(temporary, `${JSON.stringify(receipt, null, 2)}\n`, {
-    flag: "wx",
-    mode: 0o600,
-  })
-  await rename(temporary, destination)
+  try {
+    await writeFile(temporary, `${JSON.stringify(receipt, null, 2)}\n`, {
+      flag: "wx",
+      mode: 0o600,
+    })
+    // A same-directory hard link publishes atomically and, unlike rename,
+    // refuses to replace a receipt won by another concurrent attempt.
+    await link(temporary, destination)
+  } finally {
+    await rm(temporary, { force: true })
+  }
 }
