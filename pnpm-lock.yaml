@@ -937,7 +937,7 @@ importers:
         specifier: ^1.3.4
         version: 1.3.4
       yaml:
-        specifier: ^2.8.1
+        specifier: 2.8.3
         version: 2.8.3
       zod:
         specifier: ^4.3.6
