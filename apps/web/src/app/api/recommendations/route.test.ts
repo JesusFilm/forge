@@ -63,6 +63,25 @@ const delivery = {
   ],
 }
 
+const contextualRecommendation = {
+  videoId: "target-1",
+  videoSlug: "target",
+  videoTitle: "Target",
+  imageUrl: null,
+  sceneIndex: 0,
+  description: "Description",
+  startSeconds: 0,
+  endSeconds: null,
+  similarity: 0.9,
+  themes: [],
+  demographics: [],
+  spiritualContext: [],
+  playbackId: "playback-1",
+}
+
+const muxThumbnail =
+  "https://image.mux.com/playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2"
+
 describe("POST /watch/api/recommendations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -96,7 +115,12 @@ describe("POST /watch/api/recommendations", () => {
     expect(setCookie).toContain("Max-Age=86400")
     expect(setCookie).toContain("Path=/")
     expect(setCookie).not.toContain("Domain=")
-    await expect(response.json()).resolves.toEqual({ delivery })
+    await expect(response.json()).resolves.toEqual({
+      delivery: {
+        ...delivery,
+        items: [{ ...delivery.items[0], imageUrl: muxThumbnail }],
+      },
+    })
 
     const variables = query.mock.calls[0]?.[0]?.variables as Record<
       string,
@@ -115,6 +139,33 @@ describe("POST /watch/api/recommendations", () => {
       eligibleHuman: true,
     })
     expect(variables.sessionDigest).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it("preserves an editorial thumbnail on a served delivery", async () => {
+    const imageUrl = "https://images.example/editorial.jpg"
+    query.mockResolvedValueOnce({
+      data: {
+        semanticRecommendationDelivery: {
+          ...delivery,
+          items: [{ ...delivery.items[0], imageUrl }],
+        },
+      },
+    })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-editorial",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: { items: [{ imageUrl }] },
+    })
   })
 
   it.each([
@@ -251,23 +302,7 @@ describe("POST /watch/api/recommendations", () => {
       })
       .mockResolvedValueOnce({
         data: {
-          sceneRecommendations: [
-            {
-              videoId: "target-1",
-              videoSlug: "target",
-              videoTitle: "Target",
-              imageUrl: null,
-              sceneIndex: 0,
-              description: "Description",
-              startSeconds: 0,
-              endSeconds: null,
-              similarity: 0.9,
-              themes: [],
-              demographics: [],
-              spiritualContext: [],
-              playbackId: "playback-1",
-            },
-          ],
+          sceneRecommendations: [contextualRecommendation],
         },
       })
 
@@ -291,6 +326,7 @@ describe("POST /watch/api/recommendations", () => {
             targetMediaId: "target-1",
             canonicalHref: "/watch/target.html",
             videoTitle: "Target",
+            imageUrl: muxThumbnail,
           },
         ],
       },
@@ -335,6 +371,105 @@ describe("POST /watch/api/recommendations", () => {
         reason: "environment_disabled",
         items: [],
       },
+    })
+  })
+
+  it("falls back to playable collection siblings when LUMO has no scene candidates", async () => {
+    query
+      .mockResolvedValueOnce({
+        data: {
+          semanticRecommendationDelivery: {
+            ...delivery,
+            requestId: null,
+            result: "unavailable",
+            reason: "environment_disabled",
+            expiresAt: null,
+            items: [],
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { sceneRecommendations: [] } })
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: {
+            documentId: "lumo-current",
+            slug: "lumo-matthew-5-1-48",
+            children: [],
+            parents: [
+              {
+                parent: {
+                  slug: "lumo-the-gospel-of-matthew",
+                  children: [
+                    {
+                      order: 3,
+                      child: {
+                        documentId: "lumo-current",
+                        slug: "lumo-matthew-5-1-48",
+                        muxPlaybackId: "current-playback",
+                        durationSeconds: 2_400,
+                        images: [],
+                        exactLocales: [{ title: "Current" }],
+                        broadLocales: [],
+                        englishLocales: [],
+                      },
+                    },
+                    {
+                      order: 4,
+                      child: {
+                        documentId: "lumo-next",
+                        slug: "lumo-matthew-6-1-7-23",
+                        muxPlaybackId: "lumo-next-playback",
+                        durationSeconds: 2_500,
+                        images: [{ url: "https://images.example/raw.jpg" }],
+                        exactLocales: [{ title: "LUMO - Matthew 6:1-7:23" }],
+                        broadLocales: [],
+                        englishLocales: [],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "lumo-current",
+          seedMediaSlug: "lumo-matthew-5-1-48",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: {
+        result: "fallback",
+        reason: "environment_disabled",
+        strategyVersion: "collection-siblings-contextual-v1",
+        items: [
+          {
+            targetMediaId: "lumo-next",
+            canonicalHref:
+              "/watch/lumo-the-gospel-of-matthew.html/lumo-matthew-6-1-7-23.html",
+            videoTitle: "LUMO - Matthew 6:1-7:23",
+            imageUrl:
+              "https://image.mux.com/lumo-next-playback/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+          },
+        ],
+      },
+    })
+    expect(query.mock.calls[0]?.[0]?.variables).not.toHaveProperty(
+      "seedMediaSlug",
+    )
+    expect(query.mock.calls[2]?.[0]?.variables).toEqual({
+      videoSlug: "lumo-matthew-5-1-48",
+      locale: "en",
+      languageSlug: "english",
     })
   })
 
@@ -415,23 +550,67 @@ describe("POST /watch/api/recommendations", () => {
     expect(query).toHaveBeenCalledTimes(RECOMMENDATION_MUTATION_CLIENT_LIMIT)
   })
 
-  it("sanitizes Admin failures without exposing credentials or capabilities", async () => {
-    query.mockRejectedValueOnce(
-      new Error("Bearer server-secret delivery-capability-secret"),
-    )
+  it("recovers Admin delivery failures without exposing credentials or capabilities", async () => {
+    query
+      .mockRejectedValueOnce(
+        new Error("Bearer server-secret delivery-capability-secret"),
+      )
+      .mockResolvedValueOnce({
+        data: {
+          sceneRecommendations: [contextualRecommendation],
+        },
+      })
 
     const response = await POST(
       request(
         JSON.stringify({
-          seedMediaId: "seed-1",
+          seedMediaId: "admin-failure-seed",
           locale: "en",
           audioLanguageSlug: "english",
         }),
       ),
     )
-    expect(response.status).toBe(503)
+    expect(response.status).toBe(200)
     const text = await response.text()
     expect(text).not.toMatch(/Bearer|server-secret|delivery-capability-secret/)
+    expect(JSON.parse(text)).toMatchObject({
+      delivery: {
+        result: "fallback",
+        reason: "delivery_unavailable",
+        items: [{ targetMediaId: "target-1" }],
+      },
+    })
+  })
+
+  it("returns an unavailable envelope when semantic and contextual delivery both fail", async () => {
+    query
+      .mockRejectedValueOnce(new Error("semantic server-secret"))
+      .mockRejectedValueOnce(new Error("contextual server-secret"))
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "all-delivery-failure-seed",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    const text = await response.text()
+    expect(text).not.toContain("server-secret")
+    expect(JSON.parse(text)).toMatchObject({
+      delivery: {
+        result: "unavailable",
+        reason: "delivery_unavailable",
+        requestedCount: null,
+        composedCount: null,
+        shortfallReason: null,
+        items: [],
+        personalization: null,
+      },
+    })
   })
 
   it("rejects a serialized delivery response over 64 KiB", async () => {

@@ -12,7 +12,12 @@ import {
   recommendationEventId,
   recommendationFetchWithRetry,
   recommendationJsonWithDeadline,
+  withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
+import {
+  waitForRecommendationConsentBootstrap,
+  withRecommendationConsentLock,
+} from "@/lib/recommendation-consent-bootstrap"
 import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
@@ -25,17 +30,43 @@ import {
   isCanonicalWatchRecommendationHref,
   WATCH_BASE_PATH,
 } from "@/lib/routes"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { watchPath } from "@/lib/watch-paths"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
 const SELECTION_ENDPOINT = watchPath("/api/recommendations/select")
 const DELIVERY_DEADLINE_MS = 12_000
+const DELIVERY_RETRY_MS = 500
+const DELIVERY_MAX_ATTEMPTS = 3
 // Recommendation delivery admission v1 uses this exact same-session/seed
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
 const SELECTION_DEADLINE_MS = 800
 const EVIDENCE_DEADLINE_MS = 1_000
+
+async function recommendationDeliveryJsonWithDeadline(
+  init: RequestInit,
+  deadlineMs: number,
+): Promise<unknown> {
+  return withinRecommendationDeadline(
+    init.signal,
+    deadlineMs,
+    async (signal) => {
+      const response = await fetch(DELIVERY_ENDPOINT, { ...init, signal })
+      if (!response.ok) {
+        throw new RecommendationRuntimeError(
+          response.status >= 500 ? "delivery_unavailable" : "request_failed",
+        )
+      }
+      try {
+        return await response.json()
+      } catch {
+        throw new RecommendationRuntimeError("request_failed")
+      }
+    },
+  )
+}
 
 type SemanticRecommendationItem = SceneRecommendation & {
   id: string
@@ -424,18 +455,20 @@ function recommendationKey(item: SemanticRecommendationItem): string {
 
 export function WatchSemanticRecommendations({
   seedMediaId,
+  seedMediaSlug,
   locale,
   audioLanguageSlug,
   navigate = defaultNavigate,
 }: {
   seedMediaId: string
+  seedMediaSlug?: string
   locale: string
   audioLanguageSlug: string
   navigate?: (href: string) => void
 }) {
   const t = useTranslations("VideoRecommendations")
   const [profileRevision, setProfileRevision] = useState(0)
-  const requestKey = `${seedMediaId}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
+  const requestKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
   const [state, setState] = useState<RecommendationState>({
     requestKey,
     status: "loading",
@@ -484,7 +517,8 @@ export function WatchSemanticRecommendations({
   useEffect(() => {
     let active = true
     let controller: AbortController | null = null
-    let cooldownRetryTimer: number | null = null
+    let deliveryRetryTimer: number | null = null
+    let deliveryDeadlineAt: number | null = null
     selectionGenerationRef.current += 1
     selectionAttemptRef.current?.controller.abort()
     selectionAttemptRef.current = null
@@ -497,21 +531,61 @@ export function WatchSemanticRecommendations({
     queueMicrotask(() => {
       if (!active) return
       setState({ requestKey, status: "loading" })
-      const load = (canRetryCooldown: boolean) => {
+      const scheduleRetry = (attempt: number, delayMs: number) => {
+        if (
+          !active ||
+          attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
+          (deliveryDeadlineAt != null &&
+            Date.now() + delayMs >= deliveryDeadlineAt)
+        ) {
+          return false
+        }
+        deliveryRetryTimer = window.setTimeout(() => {
+          deliveryRetryTimer = null
+          load(attempt + 1)
+        }, delayMs)
+        return true
+      }
+      const load = (attempt: number) => {
         if (!active) return
-        controller = new AbortController()
-        void recommendationJsonWithDeadline(
-          DELIVERY_ENDPOINT,
-          {
-            method: "POST",
-            cache: "no-store",
-            credentials: "same-origin",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ seedMediaId, locale, audioLanguageSlug }),
-            signal: controller.signal,
-          },
-          DELIVERY_DEADLINE_MS,
-        )
+        if (
+          deliveryDeadlineAt != null &&
+          deliveryDeadlineAt - Date.now() <= 0
+        ) {
+          setState({ requestKey, status: "unavailable" })
+          return
+        }
+        const attemptController = new AbortController()
+        controller = attemptController
+        void waitForRecommendationConsentBootstrap()
+          .then(() =>
+            withRecommendationConsentLock(async () => {
+              if (!active || attemptController.signal.aborted) {
+                throw new RecommendationRuntimeError("deadline")
+              }
+              deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
+              const attemptRemainingMs = deliveryDeadlineAt - Date.now()
+              if (attemptRemainingMs <= 0) {
+                throw new RecommendationRuntimeError("deadline")
+              }
+              return recommendationDeliveryJsonWithDeadline(
+                {
+                  method: "POST",
+                  cache: "no-store",
+                  credentials: "same-origin",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    seedMediaId,
+                    ...(seedMediaSlug ? { seedMediaSlug } : {}),
+                    locale,
+                    audioLanguageSlug,
+                  }),
+                  signal: attemptController.signal,
+                },
+                attemptRemainingMs,
+              )
+            }),
+          )
           .then((value) => {
             if (!active || !value || typeof value !== "object") return
             const envelope = parseEnvelope(
@@ -530,33 +604,46 @@ export function WatchSemanticRecommendations({
             } else if (envelope.result === "empty") {
               setState({ requestKey, status: "empty" })
             } else if (
-              canRetryCooldown &&
               envelope.result === "unavailable" &&
+              attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
               (envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight")
+                envelope.reason === "in_flight" ||
+                envelope.reason === "delivery_unavailable" ||
+                envelope.reason === "delivery_timeout")
             ) {
-              cooldownRetryTimer = window.setTimeout(() => {
-                cooldownRetryTimer = null
-                load(false)
-              }, DELIVERY_COOLDOWN_MS)
+              const retryMs =
+                envelope.reason === "cooldown" ||
+                envelope.reason === "in_flight"
+                  ? DELIVERY_COOLDOWN_MS
+                  : DELIVERY_RETRY_MS
+              if (!scheduleRetry(attempt, retryMs)) {
+                setState({ requestKey, status: "unavailable" })
+              }
             } else {
               setState({ requestKey, status: "unavailable" })
             }
           })
-          .catch(() => {
-            if (active) setState({ requestKey, status: "unavailable" })
+          .catch((error) => {
+            if (!active) return
+            const transientFailure =
+              !(error instanceof RecommendationRuntimeError) ||
+              error.code === "delivery_unavailable"
+            if (transientFailure && scheduleRetry(attempt, DELIVERY_RETRY_MS)) {
+              return
+            }
+            setState({ requestKey, status: "unavailable" })
           })
       }
-      load(true)
+      load(0)
     })
     return () => {
       active = false
-      if (cooldownRetryTimer != null) {
-        window.clearTimeout(cooldownRetryTimer)
+      if (deliveryRetryTimer != null) {
+        window.clearTimeout(deliveryRetryTimer)
       }
       controller?.abort()
     }
-  }, [audioLanguageSlug, locale, requestKey, seedMediaId])
+  }, [audioLanguageSlug, locale, requestKey, seedMediaId, seedMediaSlug])
 
   const currentState = useMemo<RecommendationState>(
     () =>

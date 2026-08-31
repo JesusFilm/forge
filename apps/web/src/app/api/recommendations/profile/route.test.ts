@@ -158,6 +158,57 @@ describe("POST /watch/api/recommendations/profile", () => {
     expect(setCookie).not.toContain(variables.proposedProfileDigest)
   })
 
+  it("rotates an active session profile when a concurrent grant lacks its cookie", async () => {
+    const active = {
+      ...sessionOnly,
+      state: "active" as const,
+      choice: "durable_allowed" as const,
+      privacyGeneration: 1,
+      expiresAt: "2027-02-21T00:00:00.000Z",
+      erasureState: "not_required" as const,
+      consentChoice: "personalization" as const,
+      consentExpiresAt: "2027-02-21T00:00:00.000Z",
+      consentCookieDisposition: "set" as const,
+    }
+    mutate
+      .mockResolvedValueOnce({
+        data: {
+          transitionRecommendationProfile: {
+            ...active,
+            cookieDisposition: "keep",
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          transitionRecommendationProfile: {
+            ...active,
+            privacyGeneration: 2,
+            cookieDisposition: "set",
+          },
+        },
+      })
+
+    const response = await POST(request("grant"))
+
+    expect(response.status).toBe(200)
+    const setCookie = response.headers.get("set-cookie") ?? ""
+    expect(setCookie).toContain("forge_recommendation_profile=")
+    expect(setCookie).toContain("forge_recommendation_consent=")
+    expect(mutate).toHaveBeenCalledTimes(2)
+    const firstVariables = mutate.mock.calls[0]?.[0]?.variables
+    const recoveryVariables = mutate.mock.calls[1]?.[0]?.variables
+    expect(recoveryVariables).toMatchObject({
+      action: "reset",
+      consentChoice: "personalization",
+      existingConsentReceiptDigest: firstVariables.proposedConsentReceiptDigest,
+      existingProfileDigest: null,
+    })
+    expect(recoveryVariables.proposedProfileDigest).not.toBe(
+      firstVariables.proposedProfileDigest,
+    )
+  })
+
   it("restores the durable profile when production forwards only the consent cookie", async () => {
     const active = {
       ...sessionOnly,

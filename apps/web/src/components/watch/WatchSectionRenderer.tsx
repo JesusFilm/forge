@@ -355,6 +355,7 @@ function SyntheticBlock({
       return (
         <WatchSemanticRecommendations
           seedMediaId={block.seedMediaId}
+          seedMediaSlug={block.seedMediaSlug}
           locale={locale ?? DEFAULT_LOCALE}
           audioLanguageSlug={languageSlug ?? DEFAULT_WATCH_LANGUAGE_SLUG}
         />

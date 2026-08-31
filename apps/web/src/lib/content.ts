@@ -2704,6 +2704,7 @@ export type WatchBodyBlock = {
 export type WatchSemanticRecommendationsBlock = {
   kind: "SemanticRecommendations"
   seedMediaId: string
+  seedMediaSlug?: string
 }
 
 export type WatchStudyQuestionsBlock = {
@@ -2965,7 +2966,11 @@ export function buildWatchBodyBlock(
 export function buildSemanticRecommendationsBlock(
   video: WatchVideoRecord,
 ): WatchSemanticRecommendationsBlock {
-  return { kind: "SemanticRecommendations", seedMediaId: video.documentId }
+  return {
+    kind: "SemanticRecommendations",
+    seedMediaId: video.documentId,
+    ...(video.slug ? { seedMediaSlug: video.slug } : {}),
+  }
 }
 
 /** Returns null when the video has no study questions. */

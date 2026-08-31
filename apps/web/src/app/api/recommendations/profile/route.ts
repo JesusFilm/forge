@@ -117,11 +117,11 @@ export async function POST(request: Request) {
     const currentConsent = readRecommendationConsentCookie(request)
     const existingProfileDigest =
       current.kind === "valid" ? current.digest : null
-    const proposed =
+    let proposed =
       parsed.data.action === "grant" || parsed.data.action === "reset"
         ? createRecommendationProfileCookie()
         : null
-    const proposedConsent =
+    let proposedConsent =
       parsed.data.action === "status"
         ? null
         : createRecommendationConsentCookie()
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
         : parsed.data.action === "status"
           ? undefined
           : "essential_only"
-    const upstreamProfile =
+    let upstreamProfile =
       parsed.data.action === "status"
         ? await getRecommendationProfileStatus({
             contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
@@ -153,11 +153,43 @@ export async function POST(request: Request) {
             existingProfileDigest,
             proposedProfileDigest: proposed?.digest ?? null,
           })
-    const parsedReceipt = Receipt.safeParse(upstreamProfile)
+    let parsedReceipt = Receipt.safeParse(upstreamProfile)
     if (!parsedReceipt.success) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
-    const profile = parsedReceipt.data
+    let profile = parsedReceipt.data
+
+    if (
+      parsed.data.action === "grant" &&
+      profile.state === "active" &&
+      profile.cookieDisposition === "keep" &&
+      current.kind !== "valid"
+    ) {
+      // A concurrent first-visit grant can create the profile before this
+      // request acquires Admin's session lock. The active identity is then
+      // known only by digest, so Web cannot safely attach it. Rotate through
+      // reset in the same response and return one self-consistent cookie set.
+      const replacementProfile = createRecommendationProfileCookie()
+      const replacementConsent = createRecommendationConsentCookie()
+      upstreamProfile = await transitionRecommendationProfile({
+        contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
+        consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
+        action: "reset",
+        consentChoice: "personalization",
+        sessionDigest: session.digest,
+        existingConsentReceiptDigest: proposedConsent?.digest ?? null,
+        proposedConsentReceiptDigest: replacementConsent.digest,
+        existingProfileDigest: null,
+        proposedProfileDigest: replacementProfile.digest,
+      })
+      parsedReceipt = Receipt.safeParse(upstreamProfile)
+      if (!parsedReceipt.success) {
+        throw new RecommendationRouteError(502, "invalid_admin_response")
+      }
+      proposed = replacementProfile
+      proposedConsent = replacementConsent
+      profile = parsedReceipt.data
+    }
 
     const response = recommendationJson({ profile })
     attachRecommendationSession(response, session)
