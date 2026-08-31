@@ -325,7 +325,7 @@ export function RecommendationConsentShell() {
       <button
         type="button"
         onClick={(event) => openSettings(event.currentTarget)}
-        className="fixed bottom-3 left-3 z-[90] rounded-full border border-stone-600 bg-stone-950/90 px-4 py-2 text-xs font-semibold text-stone-200 shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[45] rounded-full border border-stone-600 bg-stone-950/90 px-4 py-2 text-xs font-semibold text-stone-200 shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         {copy.settings}
       </button>

@@ -32,12 +32,13 @@ shared-edge gate below.
 
 These are always-on production requirements:
 
-| Variable              | Purpose                                              | Launch check                                                                                                    |
-| --------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_GRAPHQL_URL`   | Admin GraphQL endpoint for Web SSR/RSC data reads    | Present, points at admin GraphQL, not `auth.jesusfilm.org`; production should prefer Railway private networking |
-| `WEB_ADMIN_API_KEYS`  | Consumer bearer used by Web when calling Admin       | Present; first CSV entry is accepted by Admin's `WEB_ADMIN_API_KEYS`                                            |
-| `REVALIDATION_SECRET` | Token for `/watch/api/revalidate`                    | Present; matches Admin's `WEB_REVALIDATE_TOKEN`                                                                 |
-| `WEB_AUTH_BASE_URL`   | Auth service for server-side download account checks | Present or default intentionally accepted                                                                       |
+| Variable                       | Purpose                                              | Launch check                                                                                                    |
+| ------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_GRAPHQL_URL`            | Admin GraphQL endpoint for Web SSR/RSC data reads    | Present, points at admin GraphQL, not `auth.jesusfilm.org`; production should prefer Railway private networking |
+| `WEB_ADMIN_API_KEYS`           | Consumer bearer used by Web when calling Admin       | Present; first CSV entry is accepted by Admin's `WEB_ADMIN_API_KEYS`                                            |
+| `REVALIDATION_SECRET`          | Token for `/watch/api/revalidate`                    | Present; matches Admin's `WEB_REVALIDATE_TOKEN`                                                                 |
+| `WEB_AUTH_BASE_URL`            | Auth service for server-side download account checks | Present or default intentionally accepted                                                                       |
+| `NEXT_PUBLIC_CANONICAL_ORIGIN` | Public Watch origin and browser-write origin policy  | Set to the browser-visible production origin; `/watch/api/recommendations/profile` accepts that exact origin    |
 
 Optional integrations must be either configured and smoked or intentionally
 disabled/defaulted:
