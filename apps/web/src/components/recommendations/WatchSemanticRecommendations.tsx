@@ -15,6 +15,7 @@ import {
 } from "@/lib/recommendation-browser"
 import type { SceneRecommendation } from "@/lib/recommendations"
 import {
+  CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -29,7 +30,7 @@ import { watchPath } from "@/lib/watch-paths"
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
 const SELECTION_ENDPOINT = watchPath("/api/recommendations/select")
-const DELIVERY_DEADLINE_MS = 2_000
+const DELIVERY_DEADLINE_MS = 10_000
 // Recommendation delivery admission v1 uses this exact same-session/seed
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
@@ -274,7 +275,21 @@ function parseEnvelope(value: unknown): SemanticEnvelope | null {
   ) {
     return null
   }
-  if ((result === "served" || result === "fallback") && !envelope.requestId) {
+  const isUnattributedContextualFallback =
+    result === "fallback" &&
+    envelope.requestId == null &&
+    envelope.reason === "environment_disabled" &&
+    parsedItems.length > 0 &&
+    parsedItems.every(
+      (item) =>
+        item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+    )
+  if (
+    (result === "served" && !envelope.requestId) ||
+    (result === "fallback" &&
+      !envelope.requestId &&
+      !isUnattributedContextualFallback)
+  ) {
     return null
   }
   const personalization = parsePersonalization(envelope.personalization)
@@ -584,7 +599,12 @@ export function WatchSemanticRecommendations({
 
   const sendEvidence = useCallback(
     async (item: SemanticRecommendationItem, kind: "render" | "impression") => {
-      if (!requestId) return
+      if (
+        !requestId ||
+        item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
+      ) {
+        return
+      }
       await recommendationFetchWithRetry(
         EVIDENCE_ENDPOINT,
         {
@@ -677,6 +697,10 @@ export function WatchSemanticRecommendations({
       }
       event.preventDefault()
       if (selectionAttemptRef.current || navigationStartedRef.current) return
+      if (item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY) {
+        navigateOnce(item.canonicalHref)
+        return
+      }
       const controller = new AbortController()
       const attemptId = selectionGenerationRef.current + 1
       selectionGenerationRef.current = attemptId
@@ -784,7 +808,10 @@ export function WatchSemanticRecommendations({
     announcement =
       "Recommendation activity could not be recorded. Links still work."
   } else if (currentState.envelope.result === "fallback") {
-    announcement = "Showing saved recommendations."
+    announcement =
+      currentState.envelope.reason === "environment_disabled"
+        ? "Showing contextual recommendations."
+        : "Showing saved recommendations."
   }
 
   return (

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 import type { NextResponse } from "next/server"
+import { readRecommendationConsentCookie } from "./recommendation-consent"
 
 export const RECOMMENDATION_SESSION_COOKIE =
   "forge_recommendation_session" as const
@@ -56,6 +57,14 @@ export type RecommendationProfileCookieRead =
 export function readRecommendationProfileCookie(
   request: Request,
 ): RecommendationProfileCookieRead {
+  const consent = readRecommendationConsentCookie(request)
+  if (consent.kind === "valid" && consent.profileValue != null) {
+    return {
+      kind: "valid",
+      value: consent.profileValue,
+      digest: digestRecommendationValue(consent.profileValue),
+    }
+  }
   const values = cookieValues(request, RECOMMENDATION_PROFILE_COOKIE)
   if (values.length === 0) return { kind: "absent" }
   if (values.length !== 1 || !SESSION_VALUE_PATTERN.test(values[0]!)) {

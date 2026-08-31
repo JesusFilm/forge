@@ -7,6 +7,8 @@ export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
 export const RECOMMENDATION_PROFILE_CONTRACT =
   "recommendation-profile-v1" as const
 export const WATCH_RECOMMENDATION_SURFACE = "watch-below-player-v1" as const
+export const CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY =
+  "contextual-fallback-unattributed-v1" as const
 export const RECOMMENDATION_TAB_CORRELATION_KEY =
   "forge.recommendation.tab-correlation-v1" as const
 

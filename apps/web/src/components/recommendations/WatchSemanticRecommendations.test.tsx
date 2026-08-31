@@ -669,6 +669,50 @@ describe("WatchSemanticRecommendations", () => {
     )
   })
 
+  it("renders the environment fallback without attribution calls or navigation delay", async () => {
+    const contextualFallback = {
+      ...fallbackDelivery,
+      requestId: null,
+      reason: "environment_disabled",
+      items: fallbackDelivery.items.map((item) => ({
+        ...item,
+        capability: "contextual-fallback-unattributed-v1",
+      })),
+    }
+    const navigate = vi.fn()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/recommendations")) {
+        return jsonResponse({ delivery: contextualFallback })
+      }
+      return jsonResponse({ error: "unexpected attribution" }, 500)
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      )
+    })
+    await flush()
+
+    expect(container.textContent).toContain("Target video")
+    expect(fetchMock).toHaveBeenCalledOnce()
+    act(() => {
+      container
+        .querySelector("a[data-recommendation-key]")
+        ?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+    })
+    expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it("keeps trusted links usable when lifecycle instrumentation is degraded", async () => {
     let evidenceAttempts = 0
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

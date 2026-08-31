@@ -158,6 +158,55 @@ describe("POST /watch/api/recommendations/profile", () => {
     expect(setCookie).not.toContain(variables.proposedProfileDigest)
   })
 
+  it("restores the durable profile when production forwards only the consent cookie", async () => {
+    const active = {
+      ...sessionOnly,
+      state: "active" as const,
+      choice: "durable_allowed" as const,
+      privacyGeneration: 1,
+      expiresAt: "2027-02-21T00:00:00.000Z",
+      erasureState: "not_required" as const,
+      cookieDisposition: "set" as const,
+      consentChoice: "personalization" as const,
+      consentExpiresAt: "2027-02-21T00:00:00.000Z",
+      consentCookieDisposition: "set" as const,
+    }
+    mutate.mockResolvedValueOnce({
+      data: { transitionRecommendationProfile: active },
+    })
+
+    const grantResponse = await POST(request("grant"))
+    const grantVariables = mutate.mock.calls[0]?.[0]?.variables
+    const survivingConsent = grantResponse.cookies.get(
+      "forge_recommendation_consent",
+    )?.value
+    expect(survivingConsent).toBeTruthy()
+
+    mutate.mockResolvedValueOnce({
+      data: {
+        recommendationProfileStatus: {
+          ...active,
+          cookieDisposition: "keep",
+          consentCookieDisposition: "keep",
+        },
+      },
+    })
+    await POST(
+      request(
+        "status",
+        `forge_recommendation_session=${session}; forge_recommendation_consent=${survivingConsent}`,
+      ),
+    )
+
+    const statusVariables = mutate.mock.calls[1]?.[0]?.variables
+    expect(statusVariables.consentReceiptDigest).toBe(
+      grantVariables.proposedConsentReceiptDigest,
+    )
+    expect(statusVariables.profileDigest).toBe(
+      grantVariables.proposedProfileDigest,
+    )
+  })
+
   it("persists Essential only in a separate protected receipt without creating a profile", async () => {
     mutate.mockResolvedValueOnce({
       data: {

@@ -4,6 +4,7 @@ import {
   RECOMMENDATION_CONSENT_CONTRACT,
   RECOMMENDATION_CONSENT_COOKIE,
   attachRecommendationConsent,
+  bindRecommendationConsentProfile,
   createRecommendationConsentCookie,
   readRecommendationConsentCookie,
 } from "./recommendation-consent"
@@ -43,5 +44,23 @@ describe("recommendation consent receipt", () => {
     expect(setCookie.toLowerCase()).toContain("samesite=lax")
     expect(setCookie).toContain("Max-Age=15552000")
     expect(setCookie).not.toContain("Domain=")
+  })
+
+  it("binds a profile to one production-safe receipt without changing consent authority", () => {
+    const receipt = createRecommendationConsentCookie()
+    const profileValue = "p".repeat(43)
+    const bundled = bindRecommendationConsentProfile(receipt, profileValue)
+
+    expect(bundled.value).toBe(`v1.${receipt.value}.${profileValue}`)
+    expect(bundled.digest).toBe(receipt.digest)
+    expect(
+      readRecommendationConsentCookie(
+        new Request("https://watch.example", {
+          headers: {
+            cookie: `${RECOMMENDATION_CONSENT_COOKIE}=${bundled.value}`,
+          },
+        }),
+      ),
+    ).toEqual({ kind: "valid", ...bundled })
   })
 })

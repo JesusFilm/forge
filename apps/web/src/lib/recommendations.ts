@@ -48,6 +48,30 @@ const SCENE_RECOMMENDATIONS = adminGraphql(`
   }
 `)
 
+const CONTEXTUAL_SCENE_RECOMMENDATIONS = adminGraphql(`
+  query ContextualSceneRecommendations(
+    $videoId: ID!
+    $locale: String!
+    $limit: Int
+  ) {
+    sceneRecommendations(videoId: $videoId, locale: $locale, limit: $limit) {
+      videoId
+      videoSlug
+      videoTitle
+      imageUrl
+      sceneIndex
+      description
+      startSeconds
+      endSeconds
+      similarity
+      themes
+      demographics
+      spiritualContext
+      playbackId
+    }
+  }
+`)
+
 export type SceneRecommendation = {
   videoId: string
   videoSlug: string
@@ -207,6 +231,60 @@ export async function getSemanticRecommendationDelivery(
     throw new RecommendationRuntimeError("delivery_unavailable")
   }
   return result.data.semanticRecommendationDelivery
+}
+
+const CONTEXTUAL_RECOMMENDATION_CACHE_MS = 5 * 60 * 1000
+const CONTEXTUAL_RECOMMENDATION_CACHE_MAX = 200
+const contextualRecommendationCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<SceneRecommendation[]> }
+>()
+
+function fetchContextualSceneRecommendations(
+  videoId: string,
+  locale: string,
+  limit: number,
+): Promise<SceneRecommendation[]> {
+  const key = `${videoId}\0${locale}\0${limit}`
+  const now = Date.now()
+  const cached = contextualRecommendationCache.get(key)
+  if (cached && cached.expiresAt > now) return cached.value
+  contextualRecommendationCache.delete(key)
+  const value = (async () => {
+    const result = await client.query({
+      query: CONTEXTUAL_SCENE_RECOMMENDATIONS,
+      variables: { videoId, locale, limit },
+      fetchPolicy: "no-cache",
+      context: upstreamContext(8_000),
+    })
+    if (result.error || !result.data?.sceneRecommendations) {
+      throw new RecommendationRuntimeError("delivery_unavailable")
+    }
+    return result.data.sceneRecommendations
+  })().catch((error) => {
+    contextualRecommendationCache.delete(key)
+    throw error
+  })
+  contextualRecommendationCache.set(key, {
+    expiresAt: now + CONTEXTUAL_RECOMMENDATION_CACHE_MS,
+    value,
+  })
+  while (
+    contextualRecommendationCache.size > CONTEXTUAL_RECOMMENDATION_CACHE_MAX
+  ) {
+    const oldestKey = contextualRecommendationCache.keys().next().value
+    if (oldestKey == null) break
+    contextualRecommendationCache.delete(oldestKey)
+  }
+  return value
+}
+
+export async function getContextualSceneRecommendations(
+  videoId: string,
+  locale: string,
+  limit: number,
+): Promise<SceneRecommendation[]> {
+  return fetchContextualSceneRecommendations(videoId, locale, limit)
 }
 
 export async function recordSemanticRecommendationEvidence(

@@ -28,6 +28,7 @@ import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 import {
   RECOMMENDATION_CONSENT_CONTRACT,
   attachRecommendationConsent,
+  bindRecommendationConsentProfile,
   clearRecommendationConsent,
   createRecommendationConsentCookie,
   readRecommendationConsentCookie,
@@ -175,7 +176,24 @@ export async function POST(request: Request) {
       if (!proposedConsent) {
         throw new RecommendationRouteError(502, "invalid_admin_response")
       }
-      attachRecommendationConsent(response, proposedConsent)
+      const consentProfileValue =
+        profile.state === "active"
+          ? profile.cookieDisposition === "set"
+            ? proposed?.value
+            : current.kind === "valid"
+              ? current.value
+              : null
+          : null
+      if (profile.state === "active" && consentProfileValue == null) {
+        throw new RecommendationRouteError(502, "invalid_admin_response")
+      }
+      attachRecommendationConsent(
+        response,
+        bindRecommendationConsentProfile(
+          proposedConsent,
+          consentProfileValue ?? null,
+        ),
+      )
     } else if (
       profile.consentCookieDisposition === "clear" ||
       currentConsent.kind === "invalid"

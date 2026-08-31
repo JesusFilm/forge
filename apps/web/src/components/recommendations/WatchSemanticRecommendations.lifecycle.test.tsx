@@ -130,7 +130,7 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     await flush()
     expect(container.querySelector('[data-state="loading"]')).not.toBeNull()
 
-    await act(async () => vi.advanceTimersByTime(2_000))
+    await act(async () => vi.advanceTimersByTime(10_000))
     expect(container.querySelector('[data-state="loading"]')).toBeNull()
     expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
   })
