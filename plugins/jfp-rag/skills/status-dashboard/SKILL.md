@@ -30,6 +30,7 @@ changes require a separate approval naming the exact schema file and change.
 
    This is the only credentialed step. Never accept a pasted URL or map the
    production credential into a generic local variable.
+
 3. Immediately run `pnpm --filter @forge/rag dashboard:snapshot:validate`. If
    Doppler or validation fails, stop without compiling and preserve the prior
    committed artifacts.

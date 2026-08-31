@@ -27,7 +27,7 @@ approval. Refusal or missing approval leaves canonical state unchanged.
 2. Establish a local baseline with `pnpm --filter @forge/rag status:check`,
    `pnpm --filter @forge/rag depcruise`, and focused tests for the stage.
 3. Preview only the required local primitive: `pnpm --filter @forge/rag acquire
-   -- --source <key>` or `pnpm --filter @forge/rag index -- --source <key>`.
+-- --source <key>` or `pnpm --filter @forge/rag index -- --source <key>`.
    A mutating run needs fresh approval naming `acquire source` or `index source`
    and local target `<key>`; then rerun that exact command with `--apply`. Verify
    retrieval with `pnpm --filter @forge/rag query -- --source <key> <query>`.
@@ -35,7 +35,7 @@ approval. Refusal or missing approval leaves canonical state unchanged.
 4. Record redacted evidence in the slice record. With fresh approval for the
    exact mutation and `<key>/<language>` target, use only
    `pnpm --filter @forge/rag status:set -- --source <key> --lang <language>
-   --stage <stage>=<state> ...`. Use `status:add-source` or `status:add-lang`
+--stage <stage>=<state> ...`. Use `status:add-source` or `status:add-lang`
    similarly when the approved operation names that exact addition. Never edit
    `apps/rag/docs/source-status.yaml` by hand.
 5. Re-run `status:check`. On failure, stop with the unchecked step and a blocker
