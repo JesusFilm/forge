@@ -21,6 +21,7 @@ blocks:
   - "feat-390"
   - "feat-391"
   - "feat-392"
+  - "feat-448"
 tags:
   - "admin"
   - "web"
@@ -53,6 +54,7 @@ Playback must be represented as recomputable episodes so elapsed time, player po
 - Issue a source-neutral server playback context for every eligible Watch arrival, optionally linked to recommendation, search, share, or acquisition provenance, then exchange it for an episode-scoped token.
 - Record immutable playback facts, union foreground-playing intervals, and finalize episodes through a fenced idempotent workflow.
 - Publish revisioned outcomes with exact input watermarks and compare the legacy rule with active-watch-proxy-v1 by duration cohort.
+- Publish consent- and integrity-eligible finalized outcomes as source-neutral preference evidence regardless of whether the viewer arrived through recommendations, search, direct navigation, a shared link, or editorial discovery; retain discovery source as provenance, never as the gate for profile eligibility.
 - Record a per-proxy Admin readiness decision without making the proxy live ranking input.
 
 ## Admin Evidence Gate
@@ -66,6 +68,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 
 - The measure is an observable active-playback proxy, not attention, satisfaction, or universal meaningful-watch truth.
 - Late evidence supersedes prior outcome revisions; it never mutates history or double-counts intervals.
+- Discovery source may affect analysis and rank features, but equivalent finalized outcomes must use the same profile-eligibility policy across sources.
 - The readiness decision is eligible-for-shadow-evaluation, revise, retire, or inconclusive—not live promotion.
 - Declare purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback/fallback for every new recommendation record.
 - Preserve player startup and Watch availability when recommendation telemetry or Admin is degraded.
