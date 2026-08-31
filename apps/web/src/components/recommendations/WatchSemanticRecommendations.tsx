@@ -30,7 +30,7 @@ import { watchPath } from "@/lib/watch-paths"
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
 const SELECTION_ENDPOINT = watchPath("/api/recommendations/select")
-const DELIVERY_DEADLINE_MS = 10_000
+const DELIVERY_DEADLINE_MS = 12_000
 // Recommendation delivery admission v1 uses this exact same-session/seed
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
@@ -278,7 +278,6 @@ function parseEnvelope(value: unknown): SemanticEnvelope | null {
   const isUnattributedContextualFallback =
     result === "fallback" &&
     envelope.requestId == null &&
-    envelope.reason === "environment_disabled" &&
     parsedItems.length > 0 &&
     parsedItems.every(
       (item) =>
@@ -808,10 +807,12 @@ export function WatchSemanticRecommendations({
     announcement =
       "Recommendation activity could not be recorded. Links still work."
   } else if (currentState.envelope.result === "fallback") {
-    announcement =
-      currentState.envelope.reason === "environment_disabled"
-        ? "Showing contextual recommendations."
-        : "Showing saved recommendations."
+    announcement = currentState.envelope.items.every(
+      (item) =>
+        item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+    )
+      ? "Showing contextual recommendations."
+      : "Showing saved recommendations."
   }
 
   return (

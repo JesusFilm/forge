@@ -235,7 +235,7 @@ describe("POST /watch/api/recommendations", () => {
     )
   })
 
-  it("serves non-attributed contextual cards when production semantic issuance is disabled", async () => {
+  it("serves non-attributed contextual cards when semantic delivery is unavailable", async () => {
     query
       .mockResolvedValueOnce({
         data: {
@@ -243,7 +243,7 @@ describe("POST /watch/api/recommendations", () => {
             ...delivery,
             requestId: null,
             result: "unavailable",
-            reason: "environment_disabled",
+            reason: "delivery_timeout",
             expiresAt: null,
             items: [],
           },
@@ -285,7 +285,7 @@ describe("POST /watch/api/recommendations", () => {
     await expect(response.json()).resolves.toMatchObject({
       delivery: {
         result: "fallback",
-        reason: "environment_disabled",
+        reason: "delivery_timeout",
         items: [
           {
             targetMediaId: "target-1",
