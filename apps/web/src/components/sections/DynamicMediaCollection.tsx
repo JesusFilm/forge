@@ -46,6 +46,13 @@ type DynamicMediaCollectionProps = {
   cacheSignatures?: DynamicCollectionFeedCacheSignatures
 }
 
+/**
+ * Announced to screen readers when the feed runs out of pages. Never rendered
+ * visibly — the sentinel's exhausted branch carries it as `sr-only` text.
+ */
+export const FEED_EXHAUSTED_MESSAGE =
+  "You’ve reached the end of the collection library."
+
 const MAX_DUPLICATE_ONLY_PAGES_PER_ATTEMPT = 3
 const DUPLICATE_ONLY_REARM_DELAY_MS = 250
 const WINDOWING_THRESHOLD = 9
@@ -608,7 +615,7 @@ export function DynamicMediaCollection({
             }.`,
           )
         } else if (!hasNextPageRef.current) {
-          setLiveMessage("You’ve reached the end of the collection library.")
+          setLiveMessage(FEED_EXHAUSTED_MESSAGE)
         }
         shouldRearm =
           appendedCount === 0 &&
@@ -684,6 +691,11 @@ export function DynamicMediaCollection({
     }
   }, [feedIdentity, hasNextPage])
 
+  // Once the feed is exhausted the sentinel renders nothing visible, so it
+  // stops reserving a band under the last rail. The retry button still needs
+  // the space, and so does every state where paging can still resume.
+  const feedExhausted = status !== "error" && !hasNextPage
+
   return (
     <section
       id={data.sectionKey ?? data.id ?? undefined}
@@ -751,7 +763,10 @@ export function DynamicMediaCollection({
 
       <div
         ref={sentinelRef}
-        className={`${WATCH_PAGE_CONTENT_CLASSES} flex min-h-28 items-center justify-center py-8`}
+        data-testid="dynamic-collection-feed-sentinel"
+        className={`${WATCH_PAGE_CONTENT_CLASSES} flex items-center justify-center${
+          feedExhausted ? "" : " min-h-28 py-8"
+        }`}
         aria-live="polite"
       >
         {status === "error" ? (
@@ -766,9 +781,7 @@ export function DynamicMediaCollection({
               : "Try loading more collections again"}
           </button>
         ) : !hasNextPage ? (
-          <p className="text-base sm:text-sm text-stone-400">
-            You’ve reached the end of the collection library.
-          </p>
+          <p className="sr-only">{FEED_EXHAUSTED_MESSAGE}</p>
         ) : (
           <p
             className={
