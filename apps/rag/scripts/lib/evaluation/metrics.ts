@@ -57,9 +57,20 @@ export const GoldenCaseSchema = z
       "golden case needs at least one source in `relevant` — a question with no relevant doc always scores as a miss",
   })
 
-export const GoldenFileSchema = z.object({
-  cases: z.array(GoldenCaseSchema),
-})
+export const GoldenFileSchema = z
+  .object({ cases: z.array(GoldenCaseSchema) })
+  .superRefine(({ cases }, ctx) => {
+    const seen = new Set<string>()
+    for (const [index, goldenCase] of cases.entries()) {
+      if (seen.has(goldenCase.id))
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cases", index, "id"],
+          message: `duplicate golden case id '${goldenCase.id}'`,
+        })
+      seen.add(goldenCase.id)
+    }
+  })
 
 export type GoldenCase = z.infer<typeof GoldenCaseSchema>
 

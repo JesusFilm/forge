@@ -206,9 +206,10 @@ function renderUnclassified(data: CompiledData): string {
 }
 
 export function renderHtml(template: string, data: CompiledData): string {
+  const provenance = `<span class="dashboard-provenance" hidden data-target="${escapeHtml(data.provenance.target)}" data-source-commit="${escapeHtml(data.provenance.source_commit)}" data-schema-digest="${escapeHtml(data.provenance.schema_digest)}">${escapeHtml(data.provenance.target)} ${escapeHtml(data.provenance.source_commit)} ${escapeHtml(data.provenance.schema_digest)}</span>`
   return template
     .split(DATE_PLACEHOLDER)
-    .join(data.provenance.fetched_at)
+    .join(`${escapeHtml(data.provenance.fetched_at)}${provenance}`)
     .split(SUMMARY_PLACEHOLDER)
     .join(renderSummary(data))
     .split(UNCLASSIFIED_PLACEHOLDER)

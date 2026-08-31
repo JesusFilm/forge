@@ -278,4 +278,4 @@ function buildDocumented(sourceMap: ParsedSourceMap): CompiledDocumentedRow[] {
 }
 
 export { renderHtml } from "./render.js"
-export { assertHtmlContainsData } from "./verify.js"
+export { assertHtmlContainsData, assertHtmlMatchesTemplate } from "./verify.js"

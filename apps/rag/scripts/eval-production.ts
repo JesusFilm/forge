@@ -11,7 +11,12 @@ export function installProductionReadEnvironment(
     throw new Error(
       "production evaluation refused: --target production-read is required",
     )
-  const resolved = resolveProductionEnv(input)
+  const expectedHost = input.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
+  if (!expectedHost)
+    throw new Error(
+      "production evaluation refused: JFRAG_EXPECTED_POSTGRES_HOST is required",
+    )
+  const resolved = resolveProductionEnv(input, { expectHost: expectedHost })
   input.DATABASE_URL = resolved.DATABASE_URL
   input.OPENROUTER_API_KEY = resolved.OPENROUTER_API_KEY
   input.EMBED_MODEL_ID = resolved.EMBED_MODEL_ID

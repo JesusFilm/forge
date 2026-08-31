@@ -10,17 +10,19 @@ decided vs. still open._
 
 Forge retains the standalone metric formulas under the explicit implementation
 identity `jesusfilm-rag/eval-metrics@2026-08-06+forge-identity-v1`. A comparison
-is refused unless the golden bytes, selected case IDs, registry, corpus revision,
-embedding model, query instruction, top-k, score floor, and metric implementation
-all match. The two-percent gate is relative: an exact two-percent regression
-passes; anything beyond it fails.
+is refused unless the canonical selected golden cases, selected case IDs,
+registry, corpus revision, embedding model, query instruction, top-k, score
+floor, and metric implementation all match. The two-percent gate is relative:
+an exact two-percent regression passes; anything beyond it fails.
 
 The retained 2026-08-06 control ran 416 cases. The source golden file now has 425:
 the nine final `gq-*` cases were appended after that run. Therefore the historical
 control is comparable only with `--case-set control-2026-08-06`, which selects the
-first 416 IDs while hashing both the whole golden file and the selected ordered ID
-set. A 425-case `current` run needs its own identity-matched control and must never
-be compared to the 416-case receipt.
+first 416 cases while hashing their canonical content and selected ordered ID
+set. Later append-only additions therefore do not invalidate the retained
+control, while edits to any selected case do. A 425-case-or-later `current` run
+needs its own identity-matched control and must never be compared to the 416-case
+receipt.
 
 Receipts contain identities, aggregate diagnostics, case IDs, ranks, and counts;
 they exclude questions, URLs, hit text, scores, embeddings, and credentials. Case

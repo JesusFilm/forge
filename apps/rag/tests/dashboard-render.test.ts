@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { assertHtmlContainsData } from "../scripts/lib/dashboard/verify.js"
+import {
+  assertHtmlContainsData,
+  assertHtmlMatchesTemplate,
+} from "../scripts/lib/dashboard/verify.js"
 import {
   buildCompiledData,
   renderHtml,
@@ -121,6 +124,15 @@ describe("assertHtmlContainsData — the merge gate on the new shape", () => {
     expect(assertHtmlContainsData(renderHtml(TEMPLATE, data), data)).toEqual([])
   })
 
+  it("rejects an addition even when every required datum remains present", () => {
+    const data = build()
+    const html = `${renderHtml(TEMPLATE, data)}<!-- unreviewed addition -->`
+    const misses = assertHtmlMatchesTemplate(TEMPLATE, html, data)
+    expect(misses).toEqual([
+      expect.stringContaining("differs from canonical template rendering"),
+    ])
+  })
+
   it("catches a language chip dropped from a source row", () => {
     const data = build()
     const html = renderHtml(TEMPLATE, data).replace(
@@ -159,6 +171,23 @@ describe("assertHtmlContainsData — the merge gate on the new shape", () => {
     const misses = assertHtmlContainsData(html, data)
     expect(misses.join(" ")).toContain("thelife/fa")
     expect(misses.join(" ")).toContain("detail")
+  })
+
+  it.each([
+    ["group", "row-production", "row-pipeline"],
+    ["lifecycle", "state-evaluated", "state-acquired"],
+    ["host", "www.cru.org", "different.example"],
+    [
+      "missing text",
+      "fa = shagerdan.com, Cloudflare-walled — Firecrawl or Cru allowlist (#8).",
+      "unknown gap",
+    ],
+    ["chip state", "chip-blocked", "chip-proposed"],
+    ["provenance", prod.source_commit, "f".repeat(40)],
+  ])("catches mutated %s", (_label, original, replacement) => {
+    const data = build()
+    const html = renderHtml(TEMPLATE, data).replaceAll(original, replacement)
+    expect(assertHtmlContainsData(html, data).length).toBeGreaterThan(0)
   })
 
   it("catches a documented row whose est_size / note drifted from the HTML", () => {

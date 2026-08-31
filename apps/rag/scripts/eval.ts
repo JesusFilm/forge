@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
-import { join } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 
 import YAML from "yaml"
 
@@ -61,18 +61,21 @@ type EvalOptions = {
   runId?: () => string
 }
 
-function selectedCases<T extends { id: string }>(
+export function selectedCases<T extends { id: string }>(
   cases: T[],
   caseSet: string,
 ): T[] {
   if (caseSet === "current") return cases
   if (caseSet === CONTROL_SET) {
-    if (cases.length !== 425)
+    if (cases.length < CONTROL_CASE_COUNT + POST_CONTROL_CASE_IDS.length)
       throw new Error(
-        "control case reconciliation refused: expected 425 golden entries",
+        "control case reconciliation refused: retained golden prefix is incomplete",
       )
     const appendedIds = cases
-      .slice(CONTROL_CASE_COUNT)
+      .slice(
+        CONTROL_CASE_COUNT,
+        CONTROL_CASE_COUNT + POST_CONTROL_CASE_IDS.length,
+      )
       .map((goldenCase) => goldenCase.id)
     if (appendedIds.join("\n") !== POST_CONTROL_CASE_IDS.join("\n"))
       throw new Error(
@@ -81,6 +84,26 @@ function selectedCases<T extends { id: string }>(
     return cases.slice(0, CONTROL_CASE_COUNT)
   }
   throw new Error(`unknown case set; use current or ${CONTROL_SET}`)
+}
+
+export function resolveAttemptOutputDirectory(
+  packageDirectory: string,
+  requested: string,
+): string {
+  if (isAbsolute(requested))
+    throw new Error("evaluation refused: output directory must be relative")
+  const attemptsRoot = resolve(packageDirectory, "eval", "attempts")
+  const destination = resolve(packageDirectory, requested)
+  const fromRoot = relative(attemptsRoot, destination)
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`))
+    throw new Error(
+      "evaluation refused: output directory must stay under eval/attempts",
+    )
+  return destination
+}
+
+export function goldenCasesRevision(cases: unknown[]): string {
+  return contentRevision(JSON.stringify(cases))
 }
 
 function parseArgs(argv: string[]): {
@@ -106,6 +129,10 @@ export async function runEvaluation(
   options: EvalOptions,
 ): Promise<string> {
   const args = parseArgs(argv)
+  const outputDirectory = resolveAttemptOutputDirectory(
+    options.packageDirectory,
+    args.outputDirectory,
+  )
   const goldenText = await readFile(
     join(options.packageDirectory, "eval/qa-golden.yaml"),
     "utf8",
@@ -190,7 +217,7 @@ export async function runEvaluation(
     environment: options.environmentName,
     completedAt: (options.now ?? (() => new Date()))().toISOString(),
     identity: {
-      goldenRevision: contentRevision(goldenText),
+      goldenRevision: goldenCasesRevision(cases),
       caseSetRevision: caseSetRevision(cases.map(({ id }) => id)),
       caseCount: cases.length,
       registryRevision: registryRevision(SOURCES),
@@ -211,8 +238,7 @@ export async function runEvaluation(
     })),
   }
   const destination = join(
-    options.packageDirectory,
-    args.outputDirectory,
+    outputDirectory,
     `${options.environmentName}-${runId}.json`,
   )
   await writeReceiptAtomic(destination, receipt)

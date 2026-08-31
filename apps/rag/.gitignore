@@ -1,2 +1,4 @@
 /src/generated/
 /dashboard/prod-status-data.json
+/docs/source-status.yaml.lock
+/docs/source-status.yaml.*.tmp

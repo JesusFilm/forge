@@ -211,3 +211,31 @@ export const sourceStatusFileSchema = z
   })
   .strict()
 export type SourceStatusFile = z.infer<typeof sourceStatusFileSchema>
+
+export type CanonicalSourceIdentity = {
+  key: string
+  languages: readonly string[]
+}
+
+/** Enforce that the lifecycle ledger is an exact projection of the registry. */
+export function validateSourceStatusRegistry(
+  file: SourceStatusFile,
+  registry: readonly CanonicalSourceIdentity[],
+): void {
+  const ledgerKeys = Object.keys(file.sources).sort()
+  const registryKeys = registry.map(({ key }) => key).sort()
+  if (JSON.stringify(ledgerKeys) !== JSON.stringify(registryKeys))
+    throw new Error(
+      "source-status registry keys do not match canonical registry",
+    )
+  for (const source of registry) {
+    const ledgerLanguages = Object.keys(
+      file.sources[source.key].languages,
+    ).sort()
+    const registryLanguages = [...source.languages].sort()
+    if (JSON.stringify(ledgerLanguages) !== JSON.stringify(registryLanguages))
+      throw new Error(
+        `source-status languages for '${source.key}' do not match canonical registry`,
+      )
+  }
+}

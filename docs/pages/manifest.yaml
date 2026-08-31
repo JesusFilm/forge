@@ -7,4 +7,4 @@ producers:
   - name: rag-status
     source: apps/rag/dashboard/site/rag-status
     target: /rag-status
-    files: [index.html]
+    files: [.dashboard-commit.json, index.html]

@@ -30,7 +30,8 @@
  * Pure core (loadDoc/applyMutation/validateDoc/parseArgv) is exported and unit-
  * tested from tests/source-status-cli.test.ts; main() holds the fs + argv I/O.
  */
-import { open, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { randomUUID } from "node:crypto"
+import { open, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseDocument, isMap } from "yaml"
@@ -41,7 +42,9 @@ import {
   rowStatusSchema,
   sourceStatusFileSchema,
   deriveRowStatus,
+  validateSourceStatusRegistry,
 } from "../src/contracts/source-status.js"
+import { allSources } from "../src/registry/index.js"
 import type {
   Stage,
   StageState,
@@ -95,6 +98,12 @@ export function loadDoc(raw: string): Document {
 /** Validate a Document against the contract; throws (ZodError) on any violation. */
 export function validateDoc(doc: Document): SourceStatusFile {
   return sourceStatusFileSchema.parse(doc.toJS())
+}
+
+export function validateCanonicalDoc(doc: Document): SourceStatusFile {
+  const file = validateDoc(doc)
+  validateSourceStatusRegistry(file, allSources())
+  return file
 }
 
 /** Mutate the Document in place: apply the change, re-derive `status`, bump `last_updated`. */
@@ -391,6 +400,14 @@ const nodeAtomicFileOps: AtomicFileOps = { writeFile, rename, rm }
 
 const LOCK_RETRY_MS = 10
 const LOCK_TIMEOUT_MS = 10_000
+const LOCK_STALE_MS = 60_000
+
+type LockOptions = {
+  retryMs?: number
+  timeoutMs?: number
+  staleMs?: number
+  now?: () => number
+}
 
 function isAlreadyExists(error: unknown): boolean {
   return (
@@ -401,6 +418,77 @@ function isAlreadyExists(error: unknown): boolean {
   )
 }
 
+function isMissing(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "ENOENT"
+  )
+}
+
+type LockMetadata = { token: string; pid: number; createdAt: string }
+
+function parseLockMetadata(raw: string): LockMetadata | null {
+  try {
+    const value = JSON.parse(raw) as Partial<LockMetadata>
+    return typeof value.token === "string" &&
+      Number.isSafeInteger(value.pid) &&
+      typeof value.createdAt === "string"
+      ? (value as LockMetadata)
+      : null
+  } catch {
+    return null
+  }
+}
+
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM"
+  }
+}
+
+async function recoverStaleLock(
+  lockFile: string,
+  staleMs: number,
+  now: number,
+): Promise<boolean> {
+  try {
+    const [details, raw] = await Promise.all([
+      stat(lockFile),
+      readFile(lockFile, "utf8"),
+    ])
+    if (now - details.mtimeMs < staleMs) return false
+    const metadata = parseLockMetadata(raw)
+    if (metadata && processIsAlive(metadata.pid)) return false
+
+    // Rename first instead of unlinking. This makes recovery atomic with respect
+    // to contenders and preserves the stale file for ownership-safe cleanup.
+    const quarantine = `${lockFile}.stale-${randomUUID()}`
+    await rename(lockFile, quarantine)
+    await rm(quarantine, { force: true })
+    return true
+  } catch (error) {
+    if (isMissing(error)) return false
+    throw error
+  }
+}
+
+async function releaseOwnedLock(
+  lockFile: string,
+  token: string,
+): Promise<void> {
+  try {
+    const current = parseLockMetadata(await readFile(lockFile, "utf8"))
+    if (current?.token === token) await rm(lockFile, { force: true })
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+}
+
 /**
  * Serialize read/validate/write transactions with an exclusive sibling lock.
  * The lock is held for the complete callback, so every mutator reads the result
@@ -409,17 +497,44 @@ function isAlreadyExists(error: unknown): boolean {
 export async function withExclusiveFileLock<T>(
   file: string,
   action: () => Promise<T>,
+  options: LockOptions = {},
 ): Promise<T> {
   const lockFile = `${file}.lock`
-  const deadline = Date.now() + LOCK_TIMEOUT_MS
+  const retryMs = options.retryMs ?? LOCK_RETRY_MS
+  const timeoutMs = options.timeoutMs ?? LOCK_TIMEOUT_MS
+  const staleMs = options.staleMs ?? LOCK_STALE_MS
+  const now = options.now ?? Date.now
+  const deadline = now() + timeoutMs
+  const token = randomUUID()
   let handle
   for (;;) {
     try {
       handle = await open(lockFile, "wx", 0o600)
+      await handle.writeFile(
+        JSON.stringify({
+          token,
+          pid: process.pid,
+          createdAt: new Date(now()).toISOString(),
+        }),
+      )
       break
     } catch (error) {
-      if (!isAlreadyExists(error) || Date.now() >= deadline) throw error
-      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS))
+      if (!isAlreadyExists(error)) {
+        if (handle) {
+          await handle.close().catch(() => undefined)
+          await rm(lockFile, { force: true })
+          handle = undefined
+        }
+        throw error
+      }
+      if (await recoverStaleLock(lockFile, staleMs, now())) continue
+      if (now() >= deadline) {
+        throw new Error(
+          `timed out after ${timeoutMs}ms waiting for lifecycle lock ${lockFile}; if no status command is running, remove the stale lock and retry`,
+          { cause: error },
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryMs))
     }
   }
 
@@ -429,7 +544,9 @@ export async function withExclusiveFileLock<T>(
     try {
       await handle.close()
     } finally {
-      await rm(lockFile, { force: true })
+      // A stale owner must never remove a successor's lock after its own lock
+      // was quarantined. Delete only when the path still carries our token.
+      await releaseOwnedLock(lockFile, token)
     }
   }
 }
@@ -474,7 +591,7 @@ async function main(argv: string[]): Promise<void> {
   const cmd = parseArgv(argv)
 
   if (cmd.kind === "check") {
-    validateDoc(loadDoc(await readFile(FILE, "utf8")))
+    validateCanonicalDoc(loadDoc(await readFile(FILE, "utf8")))
     console.log("✔ docs/source-status.yaml is valid")
     return
   }
@@ -482,7 +599,7 @@ async function main(argv: string[]): Promise<void> {
   await withExclusiveFileLock(FILE, async () => {
     const doc = loadDoc(await readFile(FILE, "utf8"))
     applyMutation(doc, cmd, todayISO())
-    validateDoc(doc) // gate — must pass before we touch the file
+    validateCanonicalDoc(doc) // gate — must pass before we touch the file
     await writeStatusFileAtomically(
       FILE,
       doc.toString(),

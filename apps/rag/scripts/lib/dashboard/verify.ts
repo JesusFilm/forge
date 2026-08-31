@@ -1,5 +1,6 @@
 import { parse as parseHtml } from "node-html-parser"
 import { escapeHtml } from "./render.js"
+import { renderHtml } from "./render.js"
 import type { CompiledData } from "./types.js"
 
 // ── merge-gate contract ──────────────────────────────────────────────────────
@@ -69,6 +70,22 @@ export function assertHtmlContainsData(
     if (!trText.includes(docs)) {
       misses.push(`${row.key}: docs-in-prod "${docs}" missing from its row`)
     }
+    if (!tr.includes(`row-${row.group}`))
+      misses.push(`${row.key}: group "${row.group}" missing from its row`)
+    const stateLabel =
+      row.state === "not-started"
+        ? "Not started"
+        : `${row.state[0]!.toUpperCase()}${row.state.slice(1)}`
+    if (!tr.includes(`state-${row.state}`) || !trText.includes(stateLabel))
+      misses.push(
+        `${row.key}: lifecycle state "${row.state}" missing from its row`,
+      )
+    const host = row.host ?? "—"
+    if (!trText.includes(host))
+      misses.push(`${row.key}: host "${host}" missing from its row`)
+    const missing = row.missing ?? "—"
+    if (!trText.includes(missing))
+      misses.push(`${row.key}: missing text "${missing}" missing from its row`)
     for (const chip of row.languages) {
       const id = `${row.key}/${chip.language ?? chip.label}`
       const attribute =
@@ -82,6 +99,8 @@ export function assertHtmlContainsData(
         continue
       }
       const chipText = renderedText(chipNode.toString())
+      if (!chipNode.classNames.includes(`chip-${chip.state}`))
+        misses.push(`${id}: chip state "${chip.state}" missing from its chip`)
       if (chip.embedded_doc_count !== null) {
         const count = chip.embedded_doc_count.toLocaleString("en-US")
         if (!chipText.includes(count)) {
@@ -93,6 +112,9 @@ export function assertHtmlContainsData(
       }
     }
   }
+  for (const [field, value] of Object.entries(data.provenance))
+    if (!html.includes(String(value)))
+      misses.push(`provenance ${field} missing from HTML`)
   for (const d of data.documented) {
     const tr = extractTr(html, "data-documented-key", escapeHtml(d.key))
     if (tr === null) {
@@ -152,6 +174,33 @@ export function assertHtmlContainsData(
         `unclassified/${u.key}: doc count "${count}" missing from its row`,
       )
     }
+  }
+  return misses
+}
+
+/**
+ * Enforce the canonical committed artifact, not merely semantic containment.
+ * Semantic misses remain first for actionable row-level diagnostics; a byte
+ * mismatch also catches additions, reordered markup, or hand edits.
+ */
+export function assertHtmlMatchesTemplate(
+  template: string,
+  html: string,
+  data: CompiledData,
+): string[] {
+  const misses = assertHtmlContainsData(html, data)
+  const expected = renderHtml(template, data)
+  if (html !== expected) {
+    let offset = 0
+    while (
+      offset < html.length &&
+      offset < expected.length &&
+      html[offset] === expected[offset]
+    )
+      offset += 1
+    misses.push(
+      `committed HTML differs from canonical template rendering at byte ${offset} (expected ${expected.length} bytes, received ${html.length})`,
+    )
   }
   return misses
 }

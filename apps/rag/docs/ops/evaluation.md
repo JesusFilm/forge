@@ -14,8 +14,9 @@ newer cases in the 425-case golden file are deliberately excluded from that
 identity. A `current` run needs a new identity-matched control.
 
 Before applying the two-percent relative tolerance, `eval:compare` requires
-identical golden bytes, ordered case set, registry, corpus revision, embedding
-model, query instruction, top-k, score floor, and metric implementation. An
+identical canonical selected golden cases, ordered case set, registry, corpus
+revision, embedding model, query instruction, top-k, score floor, and metric
+implementation. An
 identity mismatch is `refused`, not a failed metric run. At matching identity,
 the provisional primary floors are recall@10 `0.980` and coverage `0.86926`.
 An exact two-percent regression passes; anything beyond it fails. Every per-case

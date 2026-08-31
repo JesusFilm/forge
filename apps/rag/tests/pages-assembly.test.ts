@@ -148,7 +148,11 @@ describe("Pages assembly", () => {
       manifestPath: path.join(repoRoot, "docs/pages/manifest.yaml"),
       outputPath,
     })
-    expect(result.files).toEqual(["index.html", "rag-status/index.html"])
+    expect(result.files).toEqual([
+      "index.html",
+      "rag-status/.dashboard-commit.json",
+      "rag-status/index.html",
+    ])
     expect(await readFile(path.join(outputPath, "index.html"))).toEqual(
       await readFile(path.join(repoRoot, "docs/pages/site/index.html")),
     )
@@ -173,6 +177,14 @@ describe("Pages assembly", () => {
     expect(workflow).toContain("id-token: write")
     expect(workflow).not.toMatch(/uses:\s+[^\s]+@v\d/)
     expect(workflow).not.toContain("secrets.")
+    for (const requiredPath of [
+      "apps/rag/dashboard/compiled-data.json",
+      "apps/rag/dashboard/template.html",
+      "apps/rag/scripts/dashboard-verify.ts",
+      "apps/rag/scripts/lib/dashboard/**",
+    ]) {
+      expect(workflow.split(requiredPath)).toHaveLength(3)
+    }
     const deployJob = workflow.slice(workflow.indexOf("  deploy:"))
     expect(deployJob).not.toContain("pnpm install")
     expect(deployJob).not.toContain("dashboard:data")

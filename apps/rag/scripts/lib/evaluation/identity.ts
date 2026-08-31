@@ -81,12 +81,26 @@ export const evaluationReceiptSchema = z.object({
     evidenceTiers: z.array(diagnosticSchema),
   }),
   cases: z.array(
-    z.object({
-      id: z.string().min(1),
-      firstRelevantRank: z.number().int().positive().max(10).nullable(),
-      relevantReturned: z.number().int().nonnegative(),
-      relevantTotal: z.number().int().positive(),
-    }),
+    z
+      .object({
+        id: z.string().min(1),
+        firstRelevantRank: z.number().int().positive().max(10).nullable(),
+        relevantReturned: z.number().int().nonnegative(),
+        relevantTotal: z.number().int().positive(),
+      })
+      .refine((item) => item.relevantReturned <= item.relevantTotal, {
+        message: "relevantReturned cannot exceed relevantTotal",
+        path: ["relevantReturned"],
+      })
+      .refine(
+        (item) =>
+          (item.firstRelevantRank === null) === (item.relevantReturned === 0),
+        {
+          message:
+            "firstRelevantRank and relevantReturned disagree about whether the case matched",
+          path: ["firstRelevantRank"],
+        },
+      ),
   ),
 })
 
@@ -115,6 +129,40 @@ const IDENTITY_KEYS = Object.keys(evaluationIdentitySchema.shape) as Array<
   keyof EvaluationIdentity
 >
 
+function metricsMatchCases(receipt: EvaluationReceipt): boolean {
+  const rows = receipt.cases
+  const cases = rows.length
+  const expected = {
+    cases,
+    recall_at_3:
+      rows.filter(
+        ({ firstRelevantRank }) =>
+          firstRelevantRank !== null && firstRelevantRank <= 3,
+      ).length / cases,
+    recall_at_10:
+      rows.filter(({ firstRelevantRank }) => firstRelevantRank !== null)
+        .length / cases,
+    coverage:
+      rows.reduce(
+        (sum, row) => sum + row.relevantReturned / row.relevantTotal,
+        0,
+      ) / cases,
+    mrr:
+      rows.reduce(
+        (sum, row) =>
+          sum +
+          (row.firstRelevantRank === null ? 0 : 1 / row.firstRelevantRank),
+        0,
+      ) / cases,
+    precision_at_1:
+      rows.filter(({ firstRelevantRank }) => firstRelevantRank === 1).length /
+      cases,
+  }
+  return (Object.keys(expected) as Array<keyof typeof expected>).every(
+    (key) => Math.abs(receipt.metrics[key] - expected[key]) <= 1e-12,
+  )
+}
+
 export function compareReceipts(
   controlInput: unknown,
   candidateInput: unknown,
@@ -132,10 +180,24 @@ export function compareReceipts(
       ids.length !== receipt.identity.caseCount ||
       receipt.metrics.cases !== receipt.identity.caseCount ||
       new Set(ids).size !== ids.length ||
-      caseSetRevision(ids) !== receipt.identity.caseSetRevision
+      caseSetRevision(ids) !== receipt.identity.caseSetRevision ||
+      !metricsMatchCases(receipt)
     )
       return { state: "refused", reasons: ["incomplete-or-corrupt-report"] }
   }
+
+  if (control.data.runId === candidate.data.runId)
+    return { state: "refused", reasons: ["same-run"] }
+  if (
+    control.data.environment !== "control" ||
+    control.data.identity.caseCount !== CONTROL_CASE_COUNT
+  )
+    return { state: "refused", reasons: ["non-retained-control"] }
+  if (
+    control.data.metrics.recall_at_10 < CONTROL_RECALL_AT_10 ||
+    control.data.metrics.coverage < CONTROL_COVERAGE
+  )
+    return { state: "refused", reasons: ["weak-control"] }
 
   const mismatches = IDENTITY_KEYS.filter(
     (key) => control.data.identity[key] !== candidate.data.identity[key],
@@ -147,9 +209,14 @@ export function compareReceipts(
     }
 
   const floors = {
-    recall_at_10:
+    recall_at_10: Math.max(
+      CONTROL_RECALL_AT_10 * (1 - RELATIVE_REGRESSION_LIMIT),
       control.data.metrics.recall_at_10 * (1 - RELATIVE_REGRESSION_LIMIT),
-    coverage: control.data.metrics.coverage * (1 - RELATIVE_REGRESSION_LIMIT),
+    ),
+    coverage: Math.max(
+      CONTROL_COVERAGE * (1 - RELATIVE_REGRESSION_LIMIT),
+      control.data.metrics.coverage * (1 - RELATIVE_REGRESSION_LIMIT),
+    ),
   }
   const before = new Map(control.data.cases.map((item) => [item.id, item]))
   const losses = candidate.data.cases

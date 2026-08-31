@@ -4,6 +4,7 @@ import {
   renderHtml,
 } from "../scripts/lib/dashboard/compile.js"
 import type { ProdStatusData } from "../scripts/lib/dashboard/types.js"
+import { assertPublicDashboardSafe } from "../scripts/lib/dashboard/public-safety.js"
 
 const prod: ProdStatusData = {
   schema_version: 1,
@@ -18,6 +19,18 @@ const prod: ProdStatusData = {
 }
 
 describe("public dashboard hardening", () => {
+  it.each([
+    ["dsn", { lifecycle: { missing: "postgresql://user:pass@db/rag" } }],
+    ["token", { sourceMap: { note: "token=super-secret" } }],
+    ["path", { registry: { name: "/Users/operator/private.txt" } }],
+    ["internal host", { output: { host: "rag.railway.internal" } }],
+    ["corpus", { output: { note: "x".repeat(5_001) } }],
+    ["bidi", { output: { name: "safe\u202eevil" } }],
+    ["script terminator", { output: { name: "</script>" } }],
+  ])("rejects %s in any public projection branch", (_label, value) => {
+    expect(() => assertPublicDashboardSafe(value)).toThrow()
+  })
+
   it("contextually encodes executable and directional markup", () => {
     const data = buildCompiledData({
       prod,

@@ -7,12 +7,14 @@
  * No DB and no secrets: it reads three committed/local inputs and writes two
  * outputs. Safe to run in CI or by anyone after a `dashboard:data` refresh.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { parse } from "yaml"
 import { allSources } from "../src/registry/index.js"
 import { buildCompiledData, renderHtml } from "./lib/dashboard/compile.js"
 import { validateDashboardSnapshot } from "./dashboard-validate-snapshot.js"
+import { assertPublicDashboardSafe } from "./lib/dashboard/public-safety.js"
+import { publishDashboardPair } from "./lib/dashboard/publish.js"
 import {
   prodStatusDataSchema,
   sourceMapSchema,
@@ -32,6 +34,10 @@ const INDEX_HTML = path.join(
   "site",
   "rag-status",
   "index.html",
+)
+const COMMIT_MARKER = path.join(
+  path.dirname(INDEX_HTML),
+  ".dashboard-commit.json",
 )
 
 /** Project the rich source-status.yaml into the minimal shape compile needs. */
@@ -78,12 +84,19 @@ async function main(): Promise<void> {
   const snapshotRaw = await readFile(PROD_JSON, "utf8")
   validateDashboardSnapshot(snapshotRaw)
   const prod = prodStatusDataSchema.parse(JSON.parse(snapshotRaw))
-  const yaml = projectYaml(await readFile(YAML_FILE, "utf8"))
+  const yamlRaw = await readFile(YAML_FILE, "utf8")
+  const yamlDocument = parse(yamlRaw)
+  assertPublicDashboardSafe(yamlDocument, "source-status")
+  const yaml = projectYaml(yamlRaw)
   const sourceMap = sourceMapSchema.parse(
     parse(await readFile(SOURCE_MAP_FILE, "utf8")),
   )
   const registry = projectRegistry()
   const template = await readFile(TEMPLATE, "utf8")
+  assertPublicDashboardSafe(
+    { prod, yaml, sourceMap, registry },
+    "public-inputs",
+  )
 
   // generated_at comes from the prod read (prod.fetched_at), NOT the build clock,
   // so rebuilding the same export reproduces identical output (CodeRabbit #1).
@@ -95,13 +108,11 @@ async function main(): Promise<void> {
   })
   const html = renderHtml(template, compiled)
 
-  await mkdir(path.dirname(INDEX_HTML), { recursive: true })
-  await writeFile(
-    COMPILED_JSON,
+  await publishDashboardPair(
+    { json: COMPILED_JSON, html: INDEX_HTML, marker: COMMIT_MARKER },
     JSON.stringify(compiled, null, 2) + "\n",
-    "utf8",
+    html,
   )
-  await writeFile(INDEX_HTML, html, "utf8")
   console.log(
     `✔ compiled ${compiled.source_rows.length} source row(s) (${compiled.sources.length} source×language cell(s), ${compiled.documented.length} documented) → ${path.relative(process.cwd(), COMPILED_JSON)} + ${path.relative(process.cwd(), INDEX_HTML)}`,
   )
