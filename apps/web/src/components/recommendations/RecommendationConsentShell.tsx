@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { recommendationJsonWithDeadline } from "@/lib/recommendation-browser"
 import {
+  completeRecommendationConsentBootstrap,
+  startRecommendationConsentBootstrap,
+  withRecommendationConsentLock,
+} from "@/lib/recommendation-consent-bootstrap"
+import {
   RECOMMENDATION_CONSENT_CHANGED_EVENT,
   RECOMMENDATION_CONSENT_CHANNEL,
   RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT,
@@ -17,7 +22,6 @@ import {
   markRecommendationWithdrawalPending,
 } from "@/lib/recommendation-withdrawal-pending"
 import { watchPath } from "@/lib/watch-paths"
-import { RecommendationCookieBanner } from "./RecommendationCookieBanner"
 import { RecommendationCookieSettings } from "./RecommendationCookieSettings"
 
 const PROFILE_ENDPOINT = watchPath("/api/recommendations/profile")
@@ -26,6 +30,11 @@ type ConsentState = Readonly<{
   choice: ConsentChoice
   erasurePending: boolean
 }>
+
+function dispatchRecommendationChanged() {
+  window.dispatchEvent(new Event(RECOMMENDATION_CONSENT_CHANGED_EVENT))
+  window.dispatchEvent(new Event("forge:recommendation-profile-changed"))
+}
 
 function parseConsent(value: unknown): ConsentState | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
@@ -50,6 +59,7 @@ function parseConsent(value: unknown): ConsentState | null {
 }
 
 export function RecommendationConsentShell() {
+  startRecommendationConsentBootstrap()
   const t = useTranslations("RecommendationConsent")
   const copy = {
     settings: t("settings"),
@@ -64,14 +74,17 @@ export function RecommendationConsentShell() {
   const [settingsPersonalization, setSettingsPersonalization] = useState(true)
   const busyRef = useRef(false)
   const operationGenerationRef = useRef(0)
+  const operationControllerRef = useRef<AbortController | null>(null)
   const deferredRefreshRef = useRef(false)
+  const refreshRetryCountRef = useRef(0)
+  const refreshRetryTimerRef = useRef<number | null>(null)
   const withdrawalPendingRef = useRef(false)
   const returnFocusRef = useRef<HTMLButtonElement | null>(null)
   const settingsWasOpenRef = useRef(false)
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   const request = useCallback(
-    async (action: "status" | "grant" | "withdraw") => {
+    async (action: "status" | "grant" | "withdraw", signal?: AbortSignal) => {
       const value = await recommendationJsonWithDeadline(
         PROFILE_ENDPOINT,
         {
@@ -83,6 +96,7 @@ export function RecommendationConsentShell() {
             contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
             action,
           }),
+          signal,
         },
         RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS,
       )
@@ -98,37 +112,77 @@ export function RecommendationConsentShell() {
       deferredRefreshRef.current = true
       return null
     }
+    if (refreshRetryTimerRef.current != null) {
+      window.clearTimeout(refreshRetryTimerRef.current)
+      refreshRetryTimerRef.current = null
+    }
+    operationControllerRef.current?.abort()
+    const controller = new AbortController()
+    operationControllerRef.current = controller
     const generation = ++operationGenerationRef.current
+    let grantAttempted = false
     try {
-      const observed = await request("status")
-      if (generation !== operationGenerationRef.current || busyRef.current) {
-        return null
-      }
-      withdrawalPendingRef.current =
-        withdrawalPendingRef.current || isRecommendationWithdrawalPending()
-      if (
-        withdrawalPendingRef.current &&
-        (observed.choice !== "essential_only" || observed.erasurePending)
-      ) {
-        // A failed or ambiguous withdrawal never re-enables personalized
-        // serving merely because the last committed server receipt is still
-        // visible. Keep the viewer locally closed while Save choices remains
-        // available to retry the durable transition.
-        setState({
-          choice: "essential_only",
-          erasurePending: true,
-        })
-        setSettingsPersonalization(false)
-        return null
-      }
-      if (withdrawalPendingRef.current) {
-        clearRecommendationWithdrawalPending()
-      }
-      withdrawalPendingRef.current = false
-      setState(observed)
-      setSettingsPersonalization(observed.choice !== "essential_only")
-      setError(null)
-      return observed
+      return await withRecommendationConsentLock(async () => {
+        let observed = await request("status", controller.signal)
+        if (generation !== operationGenerationRef.current || busyRef.current) {
+          return null
+        }
+        withdrawalPendingRef.current =
+          withdrawalPendingRef.current || isRecommendationWithdrawalPending()
+        if (
+          withdrawalPendingRef.current &&
+          (observed.choice !== "essential_only" || observed.erasurePending)
+        ) {
+          // A failed or ambiguous withdrawal never re-enables personalized
+          // serving merely because the last committed server receipt is still
+          // visible. Keep the viewer locally closed while Save choices remains
+          // available to retry the durable transition.
+          setState({
+            choice: "essential_only",
+            erasurePending: true,
+          })
+          setSettingsPersonalization(false)
+          return null
+        }
+        if (withdrawalPendingRef.current) {
+          clearRecommendationWithdrawalPending()
+        }
+        withdrawalPendingRef.current = false
+        const defaultedToPersonalization = observed.choice === "undecided"
+        if (defaultedToPersonalization) {
+          grantAttempted = true
+          busyRef.current = true
+          setBusy(true)
+          try {
+            observed = await request("grant", controller.signal)
+          } finally {
+            if (generation === operationGenerationRef.current) {
+              busyRef.current = false
+              setBusy(false)
+            }
+          }
+          if (generation !== operationGenerationRef.current) {
+            return null
+          }
+          if (
+            observed.choice !== "personalization" ||
+            observed.erasurePending
+          ) {
+            throw new RecommendationRuntimeError("profile_unavailable")
+          }
+        }
+        setState(observed)
+        setSettingsPersonalization(observed.choice !== "essential_only")
+        setError(null)
+        refreshRetryCountRef.current = 0
+        if (defaultedToPersonalization) {
+          channelRef.current?.postMessage({
+            type: "choice_changed",
+            choice: "personalization",
+          })
+        }
+        return observed
+      })
     } catch {
       if (generation === operationGenerationRef.current && !busyRef.current) {
         if (!withdrawalPendingRef.current) {
@@ -136,21 +190,56 @@ export function RecommendationConsentShell() {
             choice: "undecided",
             erasurePending: false,
           })
-          setSettingsPersonalization(true)
+          setSettingsPersonalization(false)
+          if (refreshRetryCountRef.current < 2) {
+            const retryMs = 500 * 2 ** refreshRetryCountRef.current
+            refreshRetryCountRef.current += 1
+            refreshRetryTimerRef.current = window.setTimeout(() => {
+              refreshRetryTimerRef.current = null
+              void refresh()
+            }, retryMs)
+          }
         }
-        setError(copy.loadError)
+        setError(grantAttempted ? copy.grantError : copy.loadError)
       }
       return null
+    } finally {
+      if (operationControllerRef.current === controller) {
+        operationControllerRef.current = null
+      }
+      if (
+        generation === operationGenerationRef.current &&
+        !busyRef.current &&
+        deferredRefreshRef.current
+      ) {
+        deferredRefreshRef.current = false
+        queueMicrotask(() => void refresh())
+      }
     }
-  }, [copy.loadError, request])
+  }, [copy.grantError, copy.loadError, request])
 
   useEffect(() => {
+    let active = true
     withdrawalPendingRef.current = isRecommendationWithdrawalPending()
     if (withdrawalPendingRef.current) {
       setState({ choice: "essential_only", erasurePending: true })
       setSettingsPersonalization(false)
     }
-    void refresh()
+    void refresh().finally(() => {
+      if (active) completeRecommendationConsentBootstrap()
+    })
+    return () => {
+      active = false
+      operationGenerationRef.current += 1
+      operationControllerRef.current?.abort()
+      operationControllerRef.current = null
+      deferredRefreshRef.current = false
+      if (refreshRetryTimerRef.current != null) {
+        window.clearTimeout(refreshRetryTimerRef.current)
+        refreshRetryTimerRef.current = null
+      }
+      busyRef.current = false
+    }
   }, [refresh])
 
   useEffect(() => {
@@ -164,11 +253,19 @@ export function RecommendationConsentShell() {
       if (message?.type === "withdrawal_pending") {
         markRecommendationWithdrawalPending()
         withdrawalPendingRef.current = true
+        operationControllerRef.current?.abort()
+        operationControllerRef.current = null
         operationGenerationRef.current += 1
+        busyRef.current = false
+        setBusy(false)
+        deferredRefreshRef.current = false
+        if (refreshRetryTimerRef.current != null) {
+          window.clearTimeout(refreshRetryTimerRef.current)
+          refreshRetryTimerRef.current = null
+        }
         setState({ choice: "essential_only", erasurePending: true })
         setSettingsPersonalization(false)
-        window.dispatchEvent(new Event(RECOMMENDATION_CONSENT_CHANGED_EVENT))
-        window.dispatchEvent(new Event("forge:recommendation-profile-changed"))
+        dispatchRecommendationChanged()
       } else if (
         message?.type === "choice_changed" &&
         !isRecommendationWithdrawalPending()
@@ -176,7 +273,14 @@ export function RecommendationConsentShell() {
         // Another tab clears the shared marker only after a completed erasure
         // or confirmed fresh grant. Let the authoritative status refresh apply
         // that reduced-or-newly-granted state in this tab as well.
+        operationControllerRef.current?.abort()
+        operationControllerRef.current = null
+        operationGenerationRef.current += 1
+        busyRef.current = false
+        setBusy(false)
+        deferredRefreshRef.current = false
         withdrawalPendingRef.current = false
+        setSettingsPersonalization(true)
       }
       if (busyRef.current) {
         deferredRefreshRef.current = true
@@ -184,8 +288,7 @@ export function RecommendationConsentShell() {
       }
       void refresh().then((observed) => {
         if (!observed) return
-        window.dispatchEvent(new Event(RECOMMENDATION_CONSENT_CHANGED_EVENT))
-        window.dispatchEvent(new Event("forge:recommendation-profile-changed"))
+        dispatchRecommendationChanged()
       })
     }
     return () => {
@@ -197,8 +300,11 @@ export function RecommendationConsentShell() {
   const openSettings = useCallback(
     (trigger: HTMLButtonElement | null) => {
       returnFocusRef.current = trigger
-      setSettingsPersonalization(state?.choice !== "essential_only")
-      setError(null)
+      setSettingsPersonalization((current) =>
+        state?.choice === "undecided"
+          ? current
+          : state?.choice !== "essential_only",
+      )
       setSettingsOpen(true)
     },
     [state?.choice],
@@ -241,20 +347,25 @@ export function RecommendationConsentShell() {
         withdrawalPendingRef.current = true
         setState({ choice: "essential_only", erasurePending: true })
         setSettingsPersonalization(false)
-        window.dispatchEvent(new Event(RECOMMENDATION_CONSENT_CHANGED_EVENT))
-        window.dispatchEvent(new Event("forge:recommendation-profile-changed"))
+        dispatchRecommendationChanged()
         channelRef.current?.postMessage({
           type: "withdrawal_pending",
           choice: "essential_only",
         })
       }
       busyRef.current = true
+      operationControllerRef.current?.abort()
+      const controller = new AbortController()
+      operationControllerRef.current = controller
       const generation = ++operationGenerationRef.current
       setBusy(true)
       setError(null)
       try {
-        const next = await request(
-          choice === "personalization" ? "grant" : "withdraw",
+        const next = await withRecommendationConsentLock(() =>
+          request(
+            choice === "personalization" ? "grant" : "withdraw",
+            controller.signal,
+          ),
         )
         if (generation !== operationGenerationRef.current) return null
         if (
@@ -276,9 +387,9 @@ export function RecommendationConsentShell() {
           setState(next)
           setSettingsPersonalization(next.choice !== "essential_only")
         }
+        refreshRetryCountRef.current = 0
         setSettingsOpen(false)
-        window.dispatchEvent(new Event(RECOMMENDATION_CONSENT_CHANGED_EVENT))
-        window.dispatchEvent(new Event("forge:recommendation-profile-changed"))
+        dispatchRecommendationChanged()
         channelRef.current?.postMessage(
           withdrawalStillPending
             ? { type: "withdrawal_pending", choice: "essential_only" }
@@ -298,29 +409,24 @@ export function RecommendationConsentShell() {
         }
         return null
       } finally {
-        busyRef.current = false
-        setBusy(false)
-        if (deferredRefreshRef.current) {
-          deferredRefreshRef.current = false
-          void refresh()
+        if (operationControllerRef.current === controller) {
+          operationControllerRef.current = null
+        }
+        if (generation === operationGenerationRef.current) {
+          busyRef.current = false
+          setBusy(false)
+          if (deferredRefreshRef.current) {
+            deferredRefreshRef.current = false
+            void refresh()
+          }
         }
       }
     },
     [copy.grantError, copy.saveError, refresh, request],
   )
 
-  const choice = state?.choice ?? "undecided"
   return (
     <>
-      {state && choice === "undecided" && (
-        <RecommendationCookieBanner
-          busy={busy}
-          error={error}
-          onAcceptAll={() => void commit("personalization")}
-          onEssentialOnly={() => void commit("essential_only")}
-          onManage={openSettings}
-        />
-      )}
       <button
         type="button"
         onClick={(event) => openSettings(event.currentTarget)}

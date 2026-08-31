@@ -72,6 +72,72 @@ const CONTEXTUAL_SCENE_RECOMMENDATIONS = adminGraphql(`
   }
 `)
 
+const CONTEXTUAL_COLLECTION_RECOMMENDATIONS = adminGraphql(`
+  query ContextualCollectionRecommendations(
+    $videoSlug: String!
+    $locale: String!
+    $languageSlug: String
+  ) {
+    watchVideoRouteSnapshotBySlug(
+      slug: $videoSlug
+      locale: $locale
+      languageSlug: $languageSlug
+    ) {
+      documentId
+      slug
+      parents {
+        parent {
+          slug
+          children {
+            order
+            child {
+              documentId
+              slug
+              muxPlaybackId
+              durationSeconds
+              images {
+                thumbnail
+                mobileCinematicHigh
+              }
+              exactLocales {
+                title
+              }
+              broadLocales {
+                title
+              }
+              englishLocales {
+                title
+              }
+            }
+          }
+        }
+      }
+      children {
+        order
+        child {
+          documentId
+          slug
+          muxPlaybackId
+          durationSeconds
+          images {
+            thumbnail
+            mobileCinematicHigh
+          }
+          exactLocales {
+            title
+          }
+          broadLocales {
+            title
+          }
+          englishLocales {
+            title
+          }
+        }
+      }
+    }
+  }
+`)
+
 export type SceneRecommendation = {
   videoId: string
   videoSlug: string
@@ -87,6 +153,7 @@ export type SceneRecommendation = {
   demographics: string[]
   spiritualContext: string[]
   playbackId: string
+  collectionSlug?: string | null
 }
 
 // Demo-recommendations page video lookup. Admin's `videoBySlug` keeps
@@ -285,6 +352,150 @@ export async function getContextualSceneRecommendations(
   limit: number,
 ): Promise<SceneRecommendation[]> {
   return fetchContextualSceneRecommendations(videoId, locale, limit)
+}
+
+async function loadContextualCollectionRecommendations(
+  videoSlug: string,
+  locale: string,
+  languageSlug: string,
+  limit: number,
+): Promise<SceneRecommendation[]> {
+  const result = await client.query({
+    query: CONTEXTUAL_COLLECTION_RECOMMENDATIONS,
+    variables: { videoSlug, locale, languageSlug },
+    fetchPolicy: "no-cache",
+    context: upstreamContext(8_000),
+  })
+  const snapshot = result.data?.watchVideoRouteSnapshotBySlug
+  if (result.error || !snapshot) {
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+
+  type Relation = NonNullable<(typeof snapshot.parents)[number]>
+  type ChildRelation = NonNullable<
+    NonNullable<Relation["parent"]>["children"][number]
+  >
+  type Child = NonNullable<ChildRelation["child"]>
+  const orderedChildren = (
+    children: readonly (ChildRelation | null)[],
+  ): ChildRelation[] =>
+    children
+      .filter((relation): relation is ChildRelation => relation?.child != null)
+      .sort(
+        (left, right) =>
+          (left.order ?? Number.MAX_SAFE_INTEGER) -
+          (right.order ?? Number.MAX_SAFE_INTEGER),
+      )
+
+  const candidateGroups = (snapshot.parents ?? []).flatMap((relation) => {
+    const parent = relation?.parent
+    if (!parent?.slug) return []
+    return [{ collectionSlug: parent.slug, children: parent.children ?? [] }]
+  })
+  if (snapshot.slug && (snapshot.children?.length ?? 0) > 0) {
+    candidateGroups.push({
+      collectionSlug: snapshot.slug,
+      children: snapshot.children ?? [],
+    })
+  }
+
+  const seen = new Set<string>([snapshot.documentId])
+  const candidates: Array<{ child: Child; collectionSlug: string }> = []
+  for (const group of candidateGroups) {
+    const children = orderedChildren(group.children)
+    const currentIndex = children.findIndex(
+      (relation) => relation.child?.documentId === snapshot.documentId,
+    )
+    const rotated =
+      currentIndex >= 0
+        ? [
+            ...children.slice(currentIndex + 1),
+            ...children.slice(0, currentIndex),
+          ]
+        : children
+    for (const relation of rotated) {
+      const child = relation.child
+      if (
+        !child?.documentId ||
+        !child.slug ||
+        !child.muxPlaybackId ||
+        seen.has(child.documentId)
+      ) {
+        continue
+      }
+      seen.add(child.documentId)
+      candidates.push({ child, collectionSlug: group.collectionSlug })
+      if (candidates.length >= limit) break
+    }
+    if (candidates.length >= limit) break
+  }
+
+  return candidates.map(({ child, collectionSlug }, index) => ({
+    videoId: child.documentId,
+    videoSlug: child.slug!,
+    videoTitle:
+      child.exactLocales?.[0]?.title ??
+      child.broadLocales?.[0]?.title ??
+      child.englishLocales?.[0]?.title ??
+      child.slug!,
+    imageUrl:
+      child.images
+        ?.map((image) => image?.thumbnail ?? image?.mobileCinematicHigh)
+        .find((image): image is string => Boolean(image)) ?? null,
+    sceneIndex: index,
+    description: "",
+    startSeconds: 0,
+    endSeconds: child.durationSeconds ?? null,
+    durationSeconds: child.durationSeconds ?? null,
+    similarity: 0,
+    themes: [],
+    demographics: [],
+    spiritualContext: [],
+    playbackId: child.muxPlaybackId!,
+    collectionSlug,
+  }))
+}
+
+const contextualCollectionRecommendationCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<SceneRecommendation[]> }
+>()
+
+export function getContextualCollectionRecommendations(
+  videoSlug: string,
+  locale: string,
+  languageSlug: string,
+  limit: number,
+): Promise<SceneRecommendation[]> {
+  const key = `${videoSlug}\0${locale}\0${languageSlug}\0${limit}`
+  const now = Date.now()
+  const cached = contextualCollectionRecommendationCache.get(key)
+  if (cached && cached.expiresAt > now) return cached.value
+  contextualCollectionRecommendationCache.delete(key)
+  const value = loadContextualCollectionRecommendations(
+    videoSlug,
+    locale,
+    languageSlug,
+    limit,
+  ).catch((error) => {
+    contextualCollectionRecommendationCache.delete(key)
+    throw error
+  })
+  contextualCollectionRecommendationCache.set(key, {
+    expiresAt: now + CONTEXTUAL_RECOMMENDATION_CACHE_MS,
+    value,
+  })
+  while (
+    contextualCollectionRecommendationCache.size >
+    CONTEXTUAL_RECOMMENDATION_CACHE_MAX
+  ) {
+    const oldestKey = contextualCollectionRecommendationCache
+      .keys()
+      .next().value
+    if (oldestKey == null) break
+    contextualCollectionRecommendationCache.delete(oldestKey)
+  }
+  return value
 }
 
 export async function recordSemanticRecommendationEvidence(
