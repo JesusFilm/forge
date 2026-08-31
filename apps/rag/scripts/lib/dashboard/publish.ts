@@ -11,6 +11,10 @@ import path from "node:path"
 import { assertPublicDashboardSafe } from "./public-safety.js"
 import { compiledDataSchema } from "./types.js"
 import { assertHtmlContainsData } from "./verify.js"
+import {
+  withOwnedFileLock,
+  type OwnedFileLockOptions,
+} from "../owned-file-lock.js"
 
 export interface DashboardPairPaths {
   json: string
@@ -19,6 +23,7 @@ export interface DashboardPairPaths {
 }
 interface PublishOptions {
   afterFirstPublish?: () => void | Promise<void>
+  lock?: OwnedFileLockOptions
 }
 const digest = (value: string): string =>
   createHash("sha256").update(value).digest("hex")
@@ -63,41 +68,43 @@ export async function publishDashboardPair(
   await Promise.all(
     targets.map((target) => mkdir(path.dirname(target), { recursive: true })),
   )
-  await mkdir(lock)
-  try {
-    await Promise.all(
-      temps.map((temp, index) =>
-        writeFile(temp, values[index]!, { encoding: "utf8", flag: "wx" }),
-      ),
-    )
-    const staged = await Promise.all(
-      temps.map((temp) => readFile(temp, "utf8")),
-    )
-    assertDashboardPair(staged[0]!, staged[1]!, staged[2]!)
-    for (let index = 0; index < targets.length; index += 1) {
-      try {
-        await copyFile(targets[index]!, backups[index]!)
-        existed[index] = true
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
-        existed[index] = false
+  await withOwnedFileLock(
+    lock,
+    async () => {
+      await Promise.all(
+        temps.map((temp, index) =>
+          writeFile(temp, values[index]!, { encoding: "utf8", flag: "wx" }),
+        ),
+      )
+      const staged = await Promise.all(
+        temps.map((temp) => readFile(temp, "utf8")),
+      )
+      assertDashboardPair(staged[0]!, staged[1]!, staged[2]!)
+      for (let index = 0; index < targets.length; index += 1) {
+        try {
+          await copyFile(targets[index]!, backups[index]!)
+          existed[index] = true
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+          existed[index] = false
+        }
       }
-    }
-    try {
-      await rename(temps[0]!, targets[0]!)
-      await options.afterFirstPublish?.()
-      await rename(temps[1]!, targets[1]!)
-      await rename(temps[2]!, targets[2]!)
-    } catch (error) {
-      for (let index = 0; index < targets.length; index += 1)
-        if (existed[index]) await copyFile(backups[index]!, targets[index]!)
-        else await rm(targets[index]!, { force: true })
-      throw error
-    }
-  } finally {
+      try {
+        await rename(temps[0]!, targets[0]!)
+        await options.afterFirstPublish?.()
+        await rename(temps[1]!, targets[1]!)
+        await rename(temps[2]!, targets[2]!)
+      } catch (error) {
+        for (let index = 0; index < targets.length; index += 1)
+          if (existed[index]) await copyFile(backups[index]!, targets[index]!)
+          else await rm(targets[index]!, { force: true })
+        throw error
+      }
+    },
+    options.lock,
+  ).finally(async () => {
     await Promise.all(
       [...temps, ...backups].map((file) => rm(file, { force: true })),
     )
-    await rm(lock, { recursive: true, force: true })
-  }
+  })
 }

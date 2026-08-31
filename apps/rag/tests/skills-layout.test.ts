@@ -52,6 +52,10 @@ describe("jfp-rag plugin packaging", () => {
     const body = read("plugins/jfp-rag/skills/slice/SKILL.md")
     expect(body).toContain("apps/rag/docs/slices/<key>.md")
     expect(body).toContain("status:set")
+    expect(body).toContain("status:remove-source -- --key <key>")
+    expect(body).toMatch(
+      /fresh approval naming operation `status:remove-source` and exact\s+target `<key>`/,
+    )
     expect(body).toContain("Never edit")
   })
 

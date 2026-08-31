@@ -30,8 +30,7 @@
  * Pure core (loadDoc/applyMutation/validateDoc/parseArgv) is exported and unit-
  * tested from tests/source-status-cli.test.ts; main() holds the fs + argv I/O.
  */
-import { randomUUID } from "node:crypto"
-import { open, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
+import { readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseDocument, isMap } from "yaml"
@@ -51,6 +50,10 @@ import type {
   RowStatus,
   SourceStatusFile,
 } from "../src/contracts/source-status.js"
+import {
+  withOwnedFileLock,
+  type OwnedFileLockOptions,
+} from "./lib/owned-file-lock.js"
 
 // ── command model ──────────────────────────────────────────────────────────
 
@@ -398,97 +401,6 @@ export interface AtomicFileOps {
 
 const nodeAtomicFileOps: AtomicFileOps = { writeFile, rename, rm }
 
-const LOCK_RETRY_MS = 10
-const LOCK_TIMEOUT_MS = 10_000
-const LOCK_STALE_MS = 60_000
-
-type LockOptions = {
-  retryMs?: number
-  timeoutMs?: number
-  staleMs?: number
-  now?: () => number
-}
-
-function isAlreadyExists(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "EEXIST"
-  )
-}
-
-function isMissing(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  )
-}
-
-type LockMetadata = { token: string; pid: number; createdAt: string }
-
-function parseLockMetadata(raw: string): LockMetadata | null {
-  try {
-    const value = JSON.parse(raw) as Partial<LockMetadata>
-    return typeof value.token === "string" &&
-      Number.isSafeInteger(value.pid) &&
-      typeof value.createdAt === "string"
-      ? (value as LockMetadata)
-      : null
-  } catch {
-    return null
-  }
-}
-
-function processIsAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM"
-  }
-}
-
-async function recoverStaleLock(
-  lockFile: string,
-  staleMs: number,
-  now: number,
-): Promise<boolean> {
-  try {
-    const [details, raw] = await Promise.all([
-      stat(lockFile),
-      readFile(lockFile, "utf8"),
-    ])
-    if (now - details.mtimeMs < staleMs) return false
-    const metadata = parseLockMetadata(raw)
-    if (metadata && processIsAlive(metadata.pid)) return false
-
-    // Rename first instead of unlinking. This makes recovery atomic with respect
-    // to contenders and preserves the stale file for ownership-safe cleanup.
-    const quarantine = `${lockFile}.stale-${randomUUID()}`
-    await rename(lockFile, quarantine)
-    await rm(quarantine, { force: true })
-    return true
-  } catch (error) {
-    if (isMissing(error)) return false
-    throw error
-  }
-}
-
-async function releaseOwnedLock(
-  lockFile: string,
-  token: string,
-): Promise<void> {
-  try {
-    const current = parseLockMetadata(await readFile(lockFile, "utf8"))
-    if (current?.token === token) await rm(lockFile, { force: true })
-  } catch (error) {
-    if (!isMissing(error)) throw error
-  }
-}
-
 /**
  * Serialize read/validate/write transactions with an exclusive sibling lock.
  * The lock is held for the complete callback, so every mutator reads the result
@@ -497,58 +409,9 @@ async function releaseOwnedLock(
 export async function withExclusiveFileLock<T>(
   file: string,
   action: () => Promise<T>,
-  options: LockOptions = {},
+  options: OwnedFileLockOptions = {},
 ): Promise<T> {
-  const lockFile = `${file}.lock`
-  const retryMs = options.retryMs ?? LOCK_RETRY_MS
-  const timeoutMs = options.timeoutMs ?? LOCK_TIMEOUT_MS
-  const staleMs = options.staleMs ?? LOCK_STALE_MS
-  const now = options.now ?? Date.now
-  const deadline = now() + timeoutMs
-  const token = randomUUID()
-  let handle
-  for (;;) {
-    try {
-      handle = await open(lockFile, "wx", 0o600)
-      await handle.writeFile(
-        JSON.stringify({
-          token,
-          pid: process.pid,
-          createdAt: new Date(now()).toISOString(),
-        }),
-      )
-      break
-    } catch (error) {
-      if (!isAlreadyExists(error)) {
-        if (handle) {
-          await handle.close().catch(() => undefined)
-          await rm(lockFile, { force: true })
-          handle = undefined
-        }
-        throw error
-      }
-      if (await recoverStaleLock(lockFile, staleMs, now())) continue
-      if (now() >= deadline) {
-        throw new Error(
-          `timed out after ${timeoutMs}ms waiting for lifecycle lock ${lockFile}; if no status command is running, remove the stale lock and retry`,
-          { cause: error },
-        )
-      }
-      await new Promise((resolve) => setTimeout(resolve, retryMs))
-    }
-  }
-
-  try {
-    return await action()
-  } finally {
-    try {
-      await handle.close()
-    } finally {
-      // A stale owner must never remove a successor's lock after its own lock
-      // was quarantined. Delete only when the path still carries our token.
-      await releaseOwnedLock(lockFile, token)
-    }
-  }
+  return withOwnedFileLock(`${file}.lock`, action, options)
 }
 
 /** Write beside the destination, then atomically replace it with rename. */

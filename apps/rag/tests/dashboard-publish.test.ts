@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile } from "node:fs/promises"
+import { mkdtemp, mkdir, readFile, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
@@ -69,10 +69,39 @@ describe("dashboard pair publication", () => {
   it("refuses a concurrent publisher while the lock exists", async () => {
     const paths = await fixture()
     const next = content()
-    await mkdir(`${paths.marker}.lock`)
+    await writeFile(
+      `${paths.marker}.lock`,
+      JSON.stringify({
+        token: "live",
+        pid: process.pid,
+        createdAt: new Date().toISOString(),
+      }),
+    )
     await expect(
-      publishDashboardPair(paths, next.json, next.html),
-    ).rejects.toMatchObject({ code: "EEXIST" })
+      publishDashboardPair(paths, next.json, next.html, {
+        lock: { retryMs: 1, timeoutMs: 5 },
+      }),
+    ).rejects.toThrow(/timed out/)
+  })
+
+  it("recovers an aged orphaned publisher lock", async () => {
+    const paths = await fixture()
+    const next = content()
+    const lock = `${paths.marker}.lock`
+    await writeFile(
+      lock,
+      JSON.stringify({ token: "orphan", pid: 2_147_483_647, createdAt: "old" }),
+    )
+    const old = new Date(Date.now() - 120_000)
+    await utimes(lock, old, old)
+
+    await publishDashboardPair(paths, next.json, next.html, {
+      lock: { retryMs: 1, timeoutMs: 20, staleMs: 60_000 },
+    })
+
+    expect(await readFile(paths.marker, "utf8")).toBe(
+      dashboardCommitMarker(next.json, next.html),
+    )
   })
 
   it("rejects a mismatched marker", () => {

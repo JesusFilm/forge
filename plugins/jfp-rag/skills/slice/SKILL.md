@@ -36,7 +36,10 @@ approval. Refusal or missing approval leaves canonical state unchanged.
    exact mutation and `<key>/<language>` target, use only
    `pnpm --filter @forge/rag status:set -- --source <key> --lang <language>
 --stage <stage>=<state> ...`. Use `status:add-source` or `status:add-lang`
-   similarly when the approved operation names that exact addition. Never edit
+   similarly when the approved operation names that exact addition. Retire a
+   source only with fresh approval naming operation `status:remove-source` and exact
+   target `<key>`, then run only
+   `pnpm --filter @forge/rag status:remove-source -- --key <key>`. Never edit
    `apps/rag/docs/source-status.yaml` by hand.
 5. Re-run `status:check`. On failure, stop with the unchecked step and a blocker
    or resume hint preserved. On success, report changed artifacts and the next

@@ -6,7 +6,7 @@
  * guarantees that stop the /slice agent misusing the file — comment preservation,
  * tool-derived rollup, last_updated bump, and validate-before-write.
  */
-import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
@@ -525,6 +525,54 @@ describe("withExclusiveFileLock", () => {
           staleMs: 60_000,
         }),
       ).resolves.toBe("recovered")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not quarantine a successor acquired after the stale read", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "source-status-lock-"))
+    const file = path.join(directory, "status.yaml")
+    const lock = `${file}.lock`
+    await writeFile(
+      lock,
+      JSON.stringify({ token: "orphan", pid: 2_147_483_647, createdAt: "old" }),
+    )
+    const old = new Date(Date.now() - 120_000)
+    await utimes(lock, old, old)
+    let replaced = false
+    let ran = false
+    try {
+      await expect(
+        withExclusiveFileLock(
+          file,
+          async () => {
+            ran = true
+          },
+          {
+            retryMs: 1,
+            timeoutMs: 10,
+            staleMs: 60_000,
+            afterStaleRead: async () => {
+              if (replaced) return
+              replaced = true
+              await rm(lock)
+              await writeFile(
+                lock,
+                JSON.stringify({
+                  token: "successor",
+                  pid: process.pid,
+                  createdAt: new Date().toISOString(),
+                }),
+              )
+            },
+          },
+        ),
+      ).rejects.toThrow(/timed out/)
+      expect(ran).toBe(false)
+      expect(JSON.parse(await readFile(lock, "utf8"))).toMatchObject({
+        token: "successor",
+      })
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
