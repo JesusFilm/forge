@@ -17,6 +17,22 @@ const FORBIDDEN_VALUE_PATTERNS: ReadonlyArray<{
     pattern: /\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/,
   },
   {
+    label: "GitHub credential",
+    pattern: /\b(?:gh[pousr]_[a-zA-Z0-9]{20,}|github_pat_[a-zA-Z0-9_]{20,})\b/,
+  },
+  {
+    label: "OpenAI credential",
+    pattern: /\bsk-(?:proj-|svcacct-)?[a-zA-Z0-9_-]{20,}\b/,
+  },
+  {
+    label: "AWS access key",
+    pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/,
+  },
+  {
+    label: "private key",
+    pattern: /-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----/,
+  },
+  {
     label: "private filesystem path",
     pattern: /(?:\/(?:Users|home|var\/lib|private|tmp)\/|[A-Z]:\\Users\\)/i,
   },

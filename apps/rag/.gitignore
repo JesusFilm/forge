@@ -1,4 +1,12 @@
 /src/generated/
 /dashboard/prod-status-data.json
+/dashboard/prod-status-data.json.tmp-*
+/dashboard/.compiled-data.json.*.tmp
+/dashboard/compiled-data.json.*.bak
+/dashboard/site/rag-status/.index.html.*.tmp
+/dashboard/site/rag-status/index.html.*.bak
+/dashboard/site/rag-status/..dashboard-commit.json.*.tmp
+/dashboard/site/rag-status/.dashboard-commit.json.*.bak
+/dashboard/site/rag-status/.dashboard-commit.json.lock/
 /docs/source-status.yaml.lock
 /docs/source-status.yaml.*.tmp

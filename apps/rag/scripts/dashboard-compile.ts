@@ -11,6 +11,12 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { parse } from "yaml"
 import { allSources } from "../src/registry/index.js"
+import {
+  sourceStatusFileSchema,
+  validateSourceStatusRegistry,
+  type CanonicalSourceIdentity,
+  type SourceStatusFile,
+} from "../src/contracts/source-status.js"
 import { buildCompiledData, renderHtml } from "./lib/dashboard/compile.js"
 import { validateDashboardSnapshot } from "./dashboard-validate-snapshot.js"
 import { assertPublicDashboardSafe } from "./lib/dashboard/public-safety.js"
@@ -41,22 +47,9 @@ const COMMIT_MARKER = path.join(
 )
 
 /** Project the rich source-status.yaml into the minimal shape compile needs. */
-function projectYaml(raw: string): YamlSources {
-  const doc = parse(raw) as {
-    sources?: Record<
-      string,
-      {
-        name: string
-        status: string
-        languages: Record<
-          string,
-          { status: string; stages: { evaluate: string } }
-        >
-      }
-    >
-  }
+function projectYaml(doc: SourceStatusFile): YamlSources {
   const out: YamlSources = {}
-  for (const [key, src] of Object.entries(doc.sources ?? {})) {
+  for (const [key, src] of Object.entries(doc.sources)) {
     const languages: YamlSources[string]["languages"] = {}
     for (const [lang, entry] of Object.entries(src.languages)) {
       languages[lang] = {
@@ -80,14 +73,25 @@ function projectRegistry(): RegistrySource[] {
   }))
 }
 
+/** Validate the lifecycle contract and its canonical registry projection. */
+export function parseCanonicalLifecycle(
+  raw: string,
+  registry: readonly CanonicalSourceIdentity[],
+): SourceStatusFile {
+  const document = parse(raw)
+  assertPublicDashboardSafe(document, "source-status")
+  const lifecycle = sourceStatusFileSchema.parse(document)
+  validateSourceStatusRegistry(lifecycle, registry)
+  return lifecycle
+}
+
 async function main(): Promise<void> {
   const snapshotRaw = await readFile(PROD_JSON, "utf8")
   validateDashboardSnapshot(snapshotRaw)
   const prod = prodStatusDataSchema.parse(JSON.parse(snapshotRaw))
   const yamlRaw = await readFile(YAML_FILE, "utf8")
-  const yamlDocument = parse(yamlRaw)
-  assertPublicDashboardSafe(yamlDocument, "source-status")
-  const yaml = projectYaml(yamlRaw)
+  const lifecycle = parseCanonicalLifecycle(yamlRaw, allSources())
+  const yaml = projectYaml(lifecycle)
   const sourceMap = sourceMapSchema.parse(
     parse(await readFile(SOURCE_MAP_FILE, "utf8")),
   )
@@ -118,9 +122,10 @@ async function main(): Promise<void> {
   )
 }
 
-main().catch((error: unknown) => {
-  console.error(
-    `✖ dashboard compilation refused: ${error instanceof Error ? error.message : "validation failed"}`,
-  )
-  process.exit(1)
-})
+if (process.argv[1]?.endsWith("dashboard-compile.ts"))
+  main().catch((error: unknown) => {
+    console.error(
+      `✖ dashboard compilation refused: ${error instanceof Error ? error.message : "validation failed"}`,
+    )
+    process.exit(1)
+  })

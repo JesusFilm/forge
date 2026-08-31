@@ -31,11 +31,12 @@ candidate_dir="$(mktemp -d)/site"
 pnpm --filter @forge/rag pages:assemble -- "$candidate_dir"
 ```
 
-On 2026-08-31, those checks passed at repository HEAD
-`be7b87355e9f4cb8f4464acf363a1976d651fb07`. The verifier reconciled 59 canonical
+On 2026-09-01, those checks passed on the reviewed working tree based on
+`c7ec5f56ba7fb8144810315447849a11d5ab0fdc`. The verifier reconciled 59 canonical
 source rows, 12 documented rows, and 4 unclassified rows. The assembler emitted
-exactly `index.html` and `rag-status/index.html`, with candidate tree digest
-`sha256:ba16d8d375deb214167efeb95dfddebe7cd947ecd5e64d6111a0ac156fc0fcb4`.
+exactly `index.html`, `rag-status/.dashboard-commit.json`, and
+`rag-status/index.html`, with candidate tree digest
+`sha256:b8587773a26de60fa918322bd6f9fe42368056d130ef94bb04ad951a73f31e27`.
 This digest is local preparation evidence; a later release must record and match
 the digest produced from its exact reviewed commit.
 
