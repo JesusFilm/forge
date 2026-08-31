@@ -1,0 +1,725 @@
+# Source status — the at-a-glance lookup for the *:production scripts.
+#
+# Open this file, find a language whose four `stages` are green, copy the row
+# key, run:
+#   pnpm acquire:production  --source <key>
+#   pnpm index:production    --source <key>
+#   pnpm retrieve:production --source <key> "<a representative query>"
+#   pnpm eval:production     --source <key>
+#
+# See docs/ops/corpus-maintenance.md for the Forge runbook.
+#
+# This file is **auto-maintained by /slice** at stage boundaries (it mirrors
+# what /slice tracks in `docs/slices/<key>.md`). Do NOT hand-edit it — mutate it
+# only through the deterministic writer (the sole sanctioned mutator), which
+# validates every write against src/contracts/source-status.ts and
+# derives the top-level `status` so it can't disagree with the per-language
+# state. Supporting operational context lives in `docs/source-map.yaml` and the
+# canonical Forge registry.
+#
+# NOT a production mirror: the `*:production` scripts neither read nor write this
+# file — they stage into the prod database and print counts to the terminal. It
+# records the *asserted* per-language stage state (a slice/operator claim), not a
+# verified snapshot of prod. Live inventory/counts live in the prod DB (SQL) and
+# redacted dashboard snapshot; `status:check` validates this file's
+# shape + invariants, never that production actually matches it.
+#
+# Field reference (the contract: src/contracts/source-status.ts):
+#   status:       in-progress | blocked | done | deferred
+#                 DERIVED from the languages below — never hand-set.
+#                 Rollup precedence: blocked > in-progress > deferred > done;
+#                 a row is `done` only when EVERY language is `done`.
+#   languages:    one entry per language code (en, es, fr, zh, …). Single-
+#                 language sources carry a lone entry. Each entry has:
+#     status:     in-progress | blocked | done | deferred  (this language)
+#     stages:     acquire/ingest/retrieve/evaluate, each pending | green | red
+#     scope:      optional — e.g. "us-latinos (1 page)"
+#     blocker:    required only when this language's status is blocked
+#     note:       optional — e.g. "pending embedder-model swap"
+#   slice_file:   path to the slice file (the durable per-source record)
+#   last_updated: YYYY-MM-DD  (bumped by the tool on every write)
+
+sources:
+  starting-with-god:
+    name: Starting With God
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/starting-with-god.md
+    last_updated: 2026-05-25
+
+  jesusfilm-org:
+    name: Jesus Film Project
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/jesusfilm-org.md
+    last_updated: 2026-05-26
+
+  sightline-ministry:
+    name: Sightline Ministry
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/sightline-ministry.md
+    last_updated: 2026-05-27
+
+  thelife:
+    name: thelife (Cru Canada)
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+      fr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+        scope: French articles hosted on thelife.com
+        note: Forge registry reconciliation; this is distinct from thelife-fr's sibling domain.
+    slice_file: docs/slices/thelife.md
+    last_updated: 2026-08-31
+
+  # Language variants of thelife (sibling domains). Acquired in the multilingual
+  # pass 2026-06-24; ingested + evaluated 2026-07-03 on the qwen embedder swap
+  # (PR #57). Record: docs/sources.md "Multilingual acquisition" + "Embedding
+  # model swap".
+  thelife-fr:
+    name: thelife — French (La Vie J'en Parle, laviejenparle.com)
+    status: done
+    languages:
+      fr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/sources.md
+    last_updated: 2026-07-02
+
+  thelife-zh:
+    name: thelife — Chinese (UWOTA, uwota.com)
+    status: done
+    languages:
+      zh:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/sources.md
+    last_updated: 2026-07-02
+
+  familylife:
+    name: FamilyLife
+    status: in-progress
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+      es:
+        status: in-progress
+        stages:
+          {
+            acquire: green,
+            ingest: green,
+            retrieve: pending,
+            evaluate: pending,
+          }
+        scope: us-latinos (1 page)
+        note:
+          "ingested locally on the qwen embedder (PR #57); not yet embedded in the
+          prod index, so it shows 0 documents here — retrieve/evaluate pending;
+          1 sitemap-discoverable es page"
+    slice_file: docs/slices/familylife.md
+    last_updated: 2026-07-02
+
+  everystudent:
+    name: EveryStudent
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent.md
+    last_updated: 2026-07-24
+  cru:
+    name: Cru
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+      es:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+      fr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+        scope: language-resources (1 article)
+        note:
+          "no golden case authored: the sole fr doc is a marketing piece about
+          Google search behaviour, and at n=1 recall@10 is 1.000 by construction
+          — a case would measure nothing. fr retrieval verified in Stage 3
+          (--language fr returns it rank 1 @ 0.763); thelife-fr carries the real
+          French eval (10 cases)."
+    slice_file: docs/slices/cru.md
+    last_updated: 2026-07-14
+  everystudent-ar:
+    name: EveryStudent — Arabic (everyarabstudent.com)
+    status: done
+    languages:
+      ar:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-ar.md
+    last_updated: 2026-07-25
+  everystudent-fr:
+    name: EveryStudent — French (questions2vie.com)
+    status: done
+    languages:
+      fr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-fr.md
+    last_updated: 2026-07-27
+  everystudent-es:
+    name: EveryStudent — Spanish (cadaestudiante.com)
+    status: done
+    languages:
+      es:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-zh-cn:
+    name: EveryStudent — Chinese Simplified (XinShengMing / 新生命)
+    status: done
+    languages:
+      zh:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ru:
+    name: EveryStudent — Russian (Мир студентов)
+    status: done
+    languages:
+      ru:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ro:
+    name: EveryStudent — Romanian (everystudent.ro)
+    status: done
+    languages:
+      ro:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ja:
+    name: EveryStudent — Japanese (Student in Japan)
+    status: done
+    languages:
+      ja:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-pt:
+    name: EveryStudent — Portuguese (suaescolha.com)
+    status: done
+    languages:
+      pt:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-de:
+    name: EveryStudent — German (Du entscheidest)
+    status: done
+    languages:
+      de:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ko:
+    name: EveryStudent — Korean (everykoreanstudent.com)
+    status: done
+    languages:
+      ko:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-sq:
+    name: EveryStudent — Albanian (Pyetjet e Jetës)
+    status: done
+    languages:
+      sq:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-fa:
+    name: EveryStudent — Persian/Farsi (everypersianstudent.com)
+    status: done
+    languages:
+      fa:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-mn:
+    name: EveryStudent — Mongolian (Tailal.mn)
+    status: done
+    languages:
+      mn:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-tr:
+    name: EveryStudent — Turkish (Tanrı'yı Tanımak)
+    status: done
+    languages:
+      tr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-cs:
+    name: EveryStudent — Czech (everystudent.cz)
+    status: done
+    languages:
+      cs:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-hu:
+    name: EveryStudent — Hungarian (everystudent.hu)
+    status: done
+    languages:
+      hu:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-pl:
+    name: EveryStudent — Polish (KazdyStudent.pl)
+    status: done
+    languages:
+      pl:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-et:
+    name: EveryStudent — Estonian (TudengiElu)
+    status: done
+    languages:
+      et:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-vi:
+    name: EveryStudent — Vietnamese (EveryVietStudent.com)
+    status: done
+    languages:
+      vi:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-zh-tw:
+    name: EveryStudent — Chinese Traditional (everystudent.com.tw)
+    status: done
+    languages:
+      zh:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-bg:
+    name: EveryStudent — Bulgarian (everystudent.bg)
+    status: done
+    languages:
+      bg:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-sr:
+    name: EveryStudent — Serbian (Studentski Kutak)
+    status: deferred
+    languages:
+      sr:
+        status: deferred
+        stages:
+          {
+            acquire: pending,
+            ingest: pending,
+            retrieve: pending,
+            evaluate: pending,
+          }
+        note:
+          "Deferred pending a reachability decision. The registry entry is correct
+          and ready; decide whether to list this retrieval source after the
+          reachability review. Tracked in #129."
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-07
+  everystudent-sk:
+    name: EveryStudent — Slovak (EveryStudent.sk)
+    status: done
+    languages:
+      sk:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-id:
+    name: EveryStudent — Indonesian (MahasiswaKeren.com)
+    status: done
+    languages:
+      id:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ms:
+    name: EveryStudent — Malay (PersoalanHidup.com)
+    status: done
+    languages:
+      ms:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-mk:
+    name: EveryStudent — Macedonian (StudentskiOdgovori.com)
+    status: done
+    languages:
+      mk:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-lt:
+    name: EveryStudent — Lithuanian (KiekvienamStudentui.lt)
+    status: done
+    languages:
+      lt:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-bn:
+    name: EveryStudent — Bengali (EveryBengaliStudent.com)
+    status: done
+    languages:
+      bn:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-th:
+    name: EveryStudent — Thai (EveryThaiStudent.com)
+    status: done
+    languages:
+      th:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-hr:
+    name: EveryStudent — Croatian (VrloVazno.com)
+    status: done
+    languages:
+      hr:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-am:
+    name: EveryStudent — Amharic (HabeshaStudent.com)
+    status: done
+    languages:
+      am:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-it:
+    name: EveryStudent — Italian (OgniStudente.com)
+    status: done
+    languages:
+      it:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ur:
+    name: EveryStudent — Urdu (ZindagiKaySawalat.com)
+    status: done
+    languages:
+      ur:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-el:
+    name: EveryStudent — Greek (EveryStudent.gr)
+    status: done
+    languages:
+      el:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-hi:
+    name: EveryStudent — Hindi (EveryStudent.in)
+    status: done
+    languages:
+      hi:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ta:
+    name: EveryStudent — Tamil (UngalThervuEnna.com)
+    status: done
+    languages:
+      ta:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-my:
+    name: EveryStudent — Burmese (EveryMyanmarStudent.com)
+    status: done
+    languages:
+      my:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-te:
+    name: EveryStudent — Telugu (EveryTeluguStudent.com)
+    status: done
+    languages:
+      te:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-sl:
+    name: EveryStudent — Slovenian (VsakStudent.com)
+    status: done
+    languages:
+      sl:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ne:
+    name: EveryStudent — Nepali (NepaliStudent.net)
+    status: done
+    languages:
+      ne:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-om:
+    name: EveryStudent — Oromo (EveryBarataa.com)
+    status: done
+    languages:
+      om:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-kk:
+    name: EveryStudent — Kazakh (Shakirtter.com)
+    status: done
+    languages:
+      kk:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ka:
+    name: EveryStudent — Georgian (KoveliStudenti.com)
+    status: done
+    languages:
+      ka:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-sw:
+    name: EveryStudent — Swahili (LipoTumaini.com)
+    status: done
+    languages:
+      sw:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-he:
+    name: EveryStudent — Hebrew (iGod.co.il)
+    status: deferred
+    languages:
+      he:
+        status: deferred
+        stages:
+          {
+            acquire: pending,
+            ingest: pending,
+            retrieve: pending,
+            evaluate: pending,
+          }
+        note:
+          "Entry written and gate-passed, NOT acquired. Three open points, none a
+          defect in the entry. (1) Its sitemap wraps every <loc> in CDATA and
+          discover.ts does not unwrap it, so acquire dies ERR_INVALID_URL — a
+          repo defect, deliberately not fixed on the campaign branch. (2)
+          igod.co.il is not a Cru property: the footer reads '© המכללה למקרא'
+          (HaMichlala LaMikra) and no Cru or EveryStudent marker appears
+          anywhere on the site, so the standard rights line and the 'cru' tag
+          may misattribute it. (3) It holds 1,020 articles, not the ~5 the
+          2026-07-24 recon recorded — the recon counted a <sitemapindex>'s five
+          children as if they were pages. Acquiring it would more than double
+          this campaign's corpus. Awaiting the operator on all three."
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-07-29
+  everystudent-uk:
+    name: EveryStudent — Ukrainian (SvitStudentiv.com)
+    status: done
+    languages:
+      uk:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-hy:
+    name: EveryStudent — Armenian (1patasxan.com)
+    status: done
+    languages:
+      hy:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ti:
+    name: EveryStudent — Tigrinya (EveryTemhari.com)
+    status: done
+    languages:
+      ti:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+        note:
+          "tinyld has NO Tigrinya model (no 'tir' entry, 61 languages). Its only
+          Ge'ez-script model is Amharic, so these 14 documents will store
+          language = null or be MISLABELLED 'am' with an out-of-set warning.
+          Declared ['ti'] because the entry records what the source is, not what
+          the detector recognises. Same class of gap as everystudent-om (Oromo),
+          but worse: om has no competing model, ti does. Campaign file 13 #11."
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  everystudent-ru-ca:
+    name: EveryStudent — Russian, Central Asia (СтудентСтан)
+    status: in-progress
+    languages:
+      ru:
+        status: in-progress
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: pending }
+        note:
+          "MIRROR of everystudent-ru: 42 of studentstan.com's 87 articles overlap at
+          >=95%, mean 84.1%, and the lowest same-slug pair (52.7%) is
+          word-for-word identical on inspection. This key deliberately seeds
+          ONLY the 5 measured-unique articles, not the 86 its site map lists. Do
+          NOT complete the seed list — the ingest dedup gate keys on (sourceKey,
+          canonicalUrl), so ~81 near-duplicates would be chunked and embedded
+          with nothing downstream to catch them. /a/jfil.html was the 6th unique
+          page and is excluded as JESUS-film promo copy (~400 ch of prose before
+          nav), same class as everystudent-ro's skipped /v/filmuliisus.html.
+          Campaign file 16. EVALUATE STAYS PENDING (2026-08-06): no golden
+          suite, by decision — at 5 documents the 4-case floor would enumerate
+          the corpus rather than measure retrieval over it. Revisit only if it
+          grows past ~20 documents."
+    slice_file: docs/slices/everystudent-siblings.md
+    last_updated: 2026-08-06
+  gotquestions:
+    name: GotQuestions
+    status: done
+    languages:
+      en:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+    slice_file: docs/slices/gotquestions.md
+    last_updated: 2026-08-23

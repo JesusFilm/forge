@@ -3,7 +3,7 @@ id: "feat-432"
 title: "Port RAG sources, skills, dashboard, and evaluation"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-23"
 duration: 5
 depends_on: ["feat-431"]
