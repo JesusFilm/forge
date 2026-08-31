@@ -722,5 +722,28 @@
     "languageVersionLabel": "Nipip uqausia",
     "selectLanguageVersion": "Uqausiup aaqqitaa niruarlugu",
     "watchSelectedVersion": "Niruarneqartoq tautuk"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-nik niruaqtatit",
+    "bannerTitle": "Privacy-mun niruaqtatit",
+    "bannerDescription": "Pingahutauyut cookie-t Watch-mi quvianaqtuq amma havaktittiyut. Akuurutikpat, atausirmi optional cookie takunnaqpaa piqujait pulaaqattaqtillutit atuqtauyuq recommendation-nik ilitturipkaivlunilu. Contextual recommendation-t suli piyariaqaqtut tamarmik.",
+    "acceptAll": "Tamaita akuersaruk",
+    "essentialOnly": "Pingahutauyut kisiani",
+    "manageChoices": "Niruaqtatit aqutsukkit",
+    "savingChoice": "Cookie-nik niruaqtarnik save-yuk",
+    "settings": "Cookie-nik settings",
+    "settingsDescription": "Niruaruk Watch remembering-mik recommendation interest-nik pulaaqattaqtillutit. Una allanngurtaaqtait qakugulluunniit.",
+    "essentialCookies": "Pingahutauyut cookie-t",
+    "essentialDescription": "Aanniarniqannginniq, takunnaqtuq, privacy-mun niruarutit, amma recommendation request attribution.",
+    "alwaysActive": "Taimainnaq aktiivuq",
+    "personalization": "Inuup-nalaanut aaqqiineq",
+    "personalizationDescription": "Interest-it killiligaqaqtut pulaaqattaqtillutit iqqaumajuk. Una qaminngikkuk contextual recommendation-t suli piyariaqaqtut.",
+    "erasurePending": "Profile piiqtauyukhaugaluaq suli utaqqiyuq. Contextual recommendation-t juuna aktiivuq.",
+    "cancel": "Taimaaqtillugu",
+    "saveChoices": "Niruaqtatit save-ruk",
+    "saving": "Save-yuq…",
+    "loadError": "Niruarutait load-junngittuq. Ataani suli niruarunnaqtutit.",
+    "grantError": "Personalization ikumatitaunngittuq. Pingahutauyut kisiani suli atuqtaaqtut.",
+    "saveError": "Niruarutait save-junngittuq. Uqautigilugu kingulliqpaamik misigiaruk."
   }
 }

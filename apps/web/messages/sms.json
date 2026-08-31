@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jiõnnǩiõll",
     "selectLanguageVersion": "Vaʹlljed ǩiõllversio",
     "watchSelectedVersion": "Ǩiõčč vaʹlljum versio"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-váljjumh",
+    "bannerTitle": "Tuʹst privattvuõtt-váljjumh",
+    "bannerDescription": "Vuâđđ-cookieh vieʹǩǩe Watch:a ââʹnned siõrǥǥsen da toiʹmmjen. Jieʹllem loʹbbin ohtta vääʹld šeäiʹǩǩe optional first-party cookie vuäit mušteed miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest, što suåvtâs vuâsttažeh leäʹzzed persoonlažžen. Kontekstlaž suåvtâsh lie pääiʹǩest kuõʹbben-ne.",
+    "acceptAll": "Dohkket pukid",
+    "essentialOnly": "Tuʹmm vuâđđ",
+    "manageChoices": "Gâstt váljjumid",
+    "savingChoice": "Cookie-váljjum vuäǯǯad vuâlttem",
+    "settings": "Cookie-asetõõzz",
+    "settingsDescription": "Vaal, vuäit-a Watch mušteed suåvtâs-miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Tääʹzz vuäit mutted mâʹte-ne pääiʹǩ.",
+    "essentialCookies": "Vuâđđ-cookieh",
+    "essentialDescription": "Siõrǥǥvuõtt, čuäjtummuš, privattvuõtt-váljjumh da suåvtâs-ǩiõttʼtõs pieʹllõs.",
+    "alwaysActive": "Âlnn peʹll aktiivlaž",
+    "personalization": "Persoonlažšem",
+    "personalizationDescription": "Mušte bounded miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Jõs tääʹzz pueʹttak pois, kontekstlaž suåvtâsh âânnma še pääiʹǩest.",
+    "erasurePending": "Profiil siõttâm lij vuäǯǯmõššest. Kontekstlaž suåvtâsh lie juʹn aktiivlaž.",
+    "cancel": "Peruiʹtt",
+    "saveChoices": "Vuäǯǯad váljjumid",
+    "saving": "Vuäǯǯad…",
+    "loadError": "Tuʹst váljjum ij puʹhtti luõdded. Vuäit še vaalid vuâlla.",
+    "grantError": "Persoonlažšem ij puʹhtti aktiviirâd. Tuʹmm vuâđđ lij še âânnmõššest.",
+    "saveError": "Tuʹst váljjum ij puʹhtti vuäǯǯad. Vueiʹtǩǩed ođđest."
   }
 }

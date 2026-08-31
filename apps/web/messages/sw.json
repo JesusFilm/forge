@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lugha ya sauti",
     "selectLanguageVersion": "Chagua toleo la lugha",
     "watchSelectedVersion": "Tazama toleo ulilochagua"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Chaguo za vidakuzi",
+    "bannerTitle": "Chaguo zako za faragha",
+    "bannerDescription": "Vidakuzi muhimu huifanya Watch iwe salama na ifanye kazi vizuri. Kwa ruhusa yako, kidakuzi cha hiari cha kwanza kinaweza kukumbuka mambo unayopenda katika ziara mbalimbali ili kubinafsisha mapendekezo. Mapendekezo ya kimuktadha yataendelea kupatikana kwa vyovyote vile.",
+    "acceptAll": "Kubali zote",
+    "essentialOnly": "Muhimu pekee",
+    "manageChoices": "Dhibiti chaguo",
+    "savingChoice": "Inahifadhi chaguo la vidakuzi",
+    "settings": "Mipangilio ya vidakuzi",
+    "settingsDescription": "Chagua ikiwa Watch inaweza kukumbuka mambo unayopenda ya mapendekezo katika ziara mbalimbali. Unaweza kubadilisha hili wakati wowote.",
+    "essentialCookies": "Vidakuzi muhimu",
+    "essentialDescription": "Usalama, uchezaji wa video, chaguo za faragha, na uhusishaji wa maombi ya mapendekezo.",
+    "alwaysActive": "Huwashwa daima",
+    "personalization": "Ubinafsishaji",
+    "personalizationDescription": "Kumbuka mambo maalum unayopenda katika ziara mbalimbali. Ukizima hili, mapendekezo ya kimuktadha yataendelea kupatikana.",
+    "erasurePending": "Ufutaji wa wasifu unasubiri kukamilika. Mapendekezo ya kimuktadha tayari yanatumika.",
+    "cancel": "Ghairi",
+    "saveChoices": "Hifadhi chaguo",
+    "saving": "Inahifadhi…",
+    "loadError": "Chaguo lako halikuweza kupakiwa. Bado unaweza kuchagua hapa chini.",
+    "grantError": "Ubinafsishaji haukuweza kuwashwa. Chaguo la muhimu pekee bado linapatikana.",
+    "saveError": "Chaguo lako halikuweza kuhifadhiwa. Tafadhali jaribu tena."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio yatıì",
     "selectLanguageVersion": "Yatıì nàowo łaà wı̨̀ı̨̀",
     "watchSelectedVersion": "Nàowo wı̨̀ı̨̀ nàhtsʼı̨"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie t'a goghàı̀ı̀",
+    "bannerTitle": "Nàxǫǫ̀ǫ̀ k’e eghàlats’ı̨ı̨ goghàı̀ı̀",
+    "bannerDescription": "Cookie ts’ı̨ı̨ deghá gogha Watch goghàı̀ı̀ nàt’ı̨ı̨ k’ǫ̀ǫ̀ asìi k’ehshì. Ełèè há nı̨de, cookie goɂǫ̀ı̀ nàowo ts’ı̨ı̨ eyits’ǫ̀ goghàı̀ı̀ k’e t’a nàxǫǫ̀ǫ̀ k’ehshì t’á seghàgoht’e nàowo xà xàgot’ı̨ı̨. Dèèzha k’e goghà nàxǫǫ̀ǫ̀ k’ehshì kò goɂǫ̀ı̀ k’ehshì.",
+    "acceptAll": "Łeghàı̨ı̨ nı̨de",
+    "essentialOnly": "Ts’ı̨ı̨ deghá t’á łeeyìı",
+    "manageChoices": "Goghàı̀ı̀ nàt’ı̨ı̨",
+    "savingChoice": "Cookie goghàı̀ı̀ eghàlats’ı̨ı̨",
+    "settings": "Cookie k’eghálats’ı̨ı̨",
+    "settingsDescription": "Watch eyits’ǫ̀ nàowo xà nàxǫǫ̀ǫ̀ t’a seghàgoht’e goghàı̀ı̀. Dı̨ı̨ k’e eghàlats’ı̨ı̨ dìı nàowo xà eghàlats’ı̨ı̨ hále.",
+    "essentialCookies": "Cookie ts’ı̨ı̨ deghá",
+    "essentialDescription": "Nàt’ı̨ı̨ k’ǫ̀ǫ̀, play k’ehshì, nàxǫǫ̀ǫ̀ goghàı̀ı̀, k’eyìıɂà recommendation request.",
+    "alwaysActive": "T’á k’ehshì nàt’ı̨ı̨",
+    "personalization": "K’e t’a seghàgoht’e",
+    "personalizationDescription": "Nàowo eyits’ǫ̀ t’á seghàgoht’e xà xàgot’ı̨ı̨. Dı̨ı̨ xà eghàłìı de, dèèzha k’e goghà recommendation t’á k’ehshì.",
+    "erasurePending": "Profile łets’eedi gha gohłı̨ı̨ ha. Dèèzha k’e goghà recommendation k’ǫ̀ǫ̀ t’á k’ehshì.",
+    "cancel": "Gots’ę̀",
+    "saveChoices": "Goghàı̀ı̀ eghàlats’ı̨ı̨",
+    "saving": "Eghàlats’ı̨ı̨…",
+    "loadError": "Nı̨ goghàı̀ı̀ k’ehshì ats’eedlàı̨ı̨ shı̨ı̨le. Kò goghàı̀ı̀ siı ts’ı̨ı̨ nàt’ı̨ı̨ hále.",
+    "grantError": "Personalization k’ehshì ats’ı̨ı̨t’e shı̨ı̨le. Ts’ı̨ı̨ deghá t’á łeeyìı nàt’ı̨ı̨.",
+    "saveError": "Nı̨ goghàı̀ı̀ eghàlats’ı̨ı̨ shı̨ı̨le. Nàowo gòòhshı̀ ı̨lı̨."
   }
 }

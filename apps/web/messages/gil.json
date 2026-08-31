@@ -722,5 +722,28 @@
     "languageVersionLabel": "Taetae n te bwana",
     "selectLanguageVersion": "Rinea te rairai n te taetae",
     "watchSelectedVersion": "Nora te rairai are ko rinea"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tabeua aika boou mairou ibukin cookie",
+    "bannerTitle": "Am babaire ibukin karinerineam",
+    "bannerDescription": "Cookie aika kakawaki a kaitaua Watch bwa e na te tiaki ao e na mwaiti naba. N aki kona n reirei, e kona n iai te cookie teuana ae optional bwa e na ataia am nano i nanon bibitii aika bati bwa aonga n aronaki raom. Raom aika i aon te reirei a mena naba, bon iai ke aki.",
+    "acceptAll": "Kakaae ngke a katoa",
+    "essentialOnly": "Aika kakawaki du",
+    "manageChoices": "Kabongana babaire",
+    "savingChoice": "E kabooaki am babaire ibukin cookie",
+    "settings": "Tautiaeka ibukin cookie",
+    "settingsDescription": "Babairea bwa Watch e na kona n ataia am nano ibukin raom i nanon bibitii aika bati ke aki. Ko kona n bibitakinia n te tai aika ko tangiria.",
+    "essentialCookies": "Cookie aika kakawaki",
+    "essentialDescription": "Tiaki, kabanea n tamnei, babaire ibukin karinerine, ao kaotara ni wareware ibukin titiraki raom.",
+    "alwaysActive": "E kakaonimaki ngkai nako",
+    "personalization": "Kabongana ni aron am nano",
+    "personalizationDescription": "Ataia am nano ae mwaiti i nanon bibitii aika bati. N aki kabanea, a na mena naba raom aika i aon te reirei.",
+    "erasurePending": "Te kabane n iaiangam e mena n tautaeka. Raom aika i aon te reirei a kakaonimaki ngkai.",
+    "cancel": "Kabanea",
+    "saveChoices": "Kabooa babaire",
+    "saving": "E kabooaki…",
+    "loadError": "Am babaire e aki kona n riai. Iangoi, ko kona n babaire i aanne.",
+    "grantError": "Kabongana ni aron am nano e aki kona n kabonganaaki. Aika kakawaki du a mena naba.",
+    "saveError": "Am babaire e aki kona n kabooaki. Kam na katoabong manena."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio language i",
     "selectLanguageVersion": "Language version dɔɔ",
     "watchSelectedVersion": "Version dɔɔ watch kɛ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilixis yi cookie",
+    "bannerTitle": "Pilixis yi sutura maa",
+    "bannerDescription": "Cookie yi fanang Watch ka to a salama ni ka ligi. Si i yabi, cookie buy maŋa ka faa i baŋiriyu foti fu i toŋe yiremaŋ sene-sene. Nibandiyu yi xaalis maŋa na to tɛ fo.",
+    "acceptAll": "Yabi bee",
+    "essentialOnly": "Fanang yi to ligi domaa",
+    "manageChoices": "Tiya pilixis",
+    "savingChoice": "Ka sigi pilixis yi cookie",
+    "settings": "Nadɔŋ yi cookie",
+    "settingsDescription": "Suŋo ndi Watch nataa ka toŋe i baŋiriyu fu yiremaŋ sene-sene. I nataa ka bɛti yo waati bee.",
+    "essentialCookies": "Cookie yi to ligi",
+    "essentialDescription": "Salama, ka tala video, pilixis yi sutura, ni ka dɔŋ ndixandaaru yi yiremaŋ.",
+    "alwaysActive": "A to ligi waati bee",
+    "personalization": "Ka toŋe fu i domaa",
+    "personalizationDescription": "Toŋe baŋiriyu yi dafa fu i yiremaŋ sene-sene. Si i dafi yo, yiremaŋ yi xaalis na to tɛ.",
+    "erasurePending": "Faraŋ i profile ka kɛs maŋ. Yiremaŋ yi xaalis a ligi tia.",
+    "cancel": "Tina",
+    "saveChoices": "Sigi pilixis",
+    "saving": "Ka sigi…",
+    "loadError": "A manaa ka loodi i pilixis. I nataa ka suŋo yi ganna le.",
+    "grantError": "A manaa ka da personalization. Fanang yi to ligi domaa na to tɛ.",
+    "saveError": "A manaa ka sigi i pilixis. I yandi ka fuŋta fan."
   }
 }

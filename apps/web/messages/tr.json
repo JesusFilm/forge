@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ses dili",
     "selectLanguageVersion": "Bir dil sürümü seçin",
     "watchSelectedVersion": "Seçilen sürümü izle"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Çerez seçenekleri",
+    "bannerTitle": "Gizlilik tercihleriniz",
+    "bannerDescription": "Zorunlu çerezler Watch’ı güvenli tutar ve çalışmasını sağlar. İzninizle, isteğe bağlı bir birinci taraf çerezi önerileri kişiselleştirmek için ziyaretler arasında ilgi alanlarını hatırlayabilir. Bağlamsal öneriler her iki durumda da kullanılabilir.",
+    "acceptAll": "Tümünü kabul et",
+    "essentialOnly": "Yalnızca zorunlu olanlar",
+    "manageChoices": "Seçimleri yönet",
+    "savingChoice": "Çerez tercihi kaydediliyor",
+    "settings": "Çerez ayarları",
+    "settingsDescription": "Watch’ın öneri ilgi alanlarını ziyaretler arasında hatırlamasına izin verip vermeyeceğinizi seçin. Bunu istediğiniz zaman değiştirebilirsiniz.",
+    "essentialCookies": "Zorunlu çerezler",
+    "essentialDescription": "Güvenlik, oynatma, gizlilik tercihleri ve öneri isteği ilişkilendirmesi.",
+    "alwaysActive": "Her zaman etkin",
+    "personalization": "Kişiselleştirme",
+    "personalizationDescription": "Sınırlı ilgi alanlarını ziyaretler arasında hatırla. Bunu kapatmak, bağlamsal önerilerin kullanılabilir kalmasını sağlar.",
+    "erasurePending": "Profil silme işlemi beklemede. Bağlamsal öneriler zaten etkin.",
+    "cancel": "İptal",
+    "saveChoices": "Seçimleri kaydet",
+    "saving": "Kaydediliyor…",
+    "loadError": "Tercihiniz yüklenemedi. Yine de aşağıdan seçim yapabilirsiniz.",
+    "grantError": "Kişiselleştirme etkinleştirilemedi. Yalnızca zorunlu seçenek kullanılabilir olmaya devam ediyor.",
+    "saveError": "Tercihiniz kaydedilemedi. Lütfen tekrar deneyin."
   }
 }

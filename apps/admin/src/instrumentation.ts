@@ -10,6 +10,13 @@ type WatchSearchPrewarmState = {
   started: boolean
 }
 
+type RecommendationRecoveryState = {
+  retryTimer?: ReturnType<typeof setTimeout>
+  started: boolean
+  starting: boolean
+  attempt: number
+}
+
 const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
   /too many clients already/i,
   /remaining connection slots are reserved/i,
@@ -20,7 +27,21 @@ function workflowStartupGlobal() {
   return globalThis as typeof globalThis & {
     __forgeAdminWorkflowStartup?: WorkflowStartupState
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
+    __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
   }
+}
+
+function recommendationRecoveryState() {
+  const global = workflowStartupGlobal()
+  const current = global.__forgeAdminRecommendationRecovery
+  if (current) return current
+  const state: RecommendationRecoveryState = {
+    started: false,
+    starting: false,
+    attempt: 0,
+  }
+  global.__forgeAdminRecommendationRecovery = state
+  return state
 }
 
 function workflowStartupState() {
@@ -44,8 +65,27 @@ function maxTransientWorkflowStartupAttempts() {
   return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS, 12)
 }
 
+function maxRecommendationRecoveryAttempts() {
+  return positiveIntegerValue(env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS, 12)
+}
+
 function transientWorkflowStartupDelayMs() {
   return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS, 10_000)
+}
+
+export function recommendationRecoveryBackoffMs(
+  attempt: number,
+  random: () => number = Math.random,
+): number {
+  const cappedExponentialMs = Math.min(
+    60_000,
+    transientWorkflowStartupDelayMs() *
+      2 ** Math.min(Math.max(0, attempt - 1), 6),
+  )
+  // Equal jitter prevents every Admin replica from retrying the recovery scan
+  // against Postgres at the same instant after a shared outage.
+  const boundedRandom = Math.min(1, Math.max(0, random()))
+  return Math.ceil(cappedExponentialMs * (0.5 + boundedRandom * 0.5))
 }
 
 function errorText(error: unknown) {
@@ -104,12 +144,55 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/video-db-backup/job")
   const { ensureSearchTraceRetentionSchedulerStarted } =
     await import("@/services/search-trace-retention/job")
+  const { ensureRecommendationRetentionSchedulerStarted } =
+    await import("@/services/recommendations/retention/job")
+  const { ensureRecommendationControlReadinessSchedulerStarted } =
+    await import("@/services/recommendations/control-readiness/job")
+  const { ensureRecommendationEpisodeFinalizationRecovery } =
+    await import("@/services/recommendations/finalization/job")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
   await ensureCoreSyncSchedulerStarted()
   await ensureVideoDbBackupSchedulerStarted()
   await ensureSearchTraceRetentionSchedulerStarted()
+  await ensureRecommendationRetentionSchedulerStarted()
+  await ensureRecommendationControlReadinessSchedulerStarted()
+  void ensureRecommendationRecovery(
+    ensureRecommendationEpisodeFinalizationRecovery,
+  )
+}
+
+async function ensureRecommendationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): Promise<void> {
+  const state = recommendationRecoveryState()
+  if (state.started || state.starting) return
+  state.starting = true
+  try {
+    await ensure()
+    state.started = true
+    state.attempt = 0
+  } catch (error) {
+    state.attempt += 1
+    console.warn(
+      `[recommendation-finalization] event=recovery_start_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+    )
+    if (state.attempt >= maxRecommendationRecoveryAttempts()) {
+      console.error(
+        `[recommendation-finalization] event=recovery_start_exhausted attempts=${state.attempt}`,
+      )
+      return
+    }
+    const delayMs = recommendationRecoveryBackoffMs(state.attempt)
+    state.retryTimer = setTimeout(() => {
+      state.retryTimer = undefined
+      void ensureRecommendationRecovery(ensure)
+    }, delayMs)
+    state.retryTimer.unref?.()
+  } finally {
+    state.starting = false
+  }
 }
 
 function scheduleWorkflowStartupRetry(attempt: number) {

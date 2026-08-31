@@ -722,5 +722,28 @@
     "languageVersionLabel": "ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵉⵎⵙⵍⵉ",
     "selectLanguageVersion": "ⵙⵜⵉ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
     "watchSelectedVersion": "ⵙⴽⵏ ⵜⴰⵍⵖⴰ ⵉⵜⵜⵓⵙⵜⴰⵢⵏ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tifranin n ikukiyen",
+    "bannerTitle": "Tifranin n tudert-ik tusligt",
+    "bannerDescription": "Ikukiyen izwaren ttaǧǧan Watch d aɣelsan u iteddu akken iwata. S tsriḥt-ik, yiwen n ukuki anefrayan seg usmel ad yekkes ccfawa n yineɣmisen-ik gar tirzaf i usagen n isumeren yettwasagen. Isumeren s umnadi n usatal qqimen llan di sin yisekkilen.",
+    "acceptAll": "Qbel akk",
+    "essentialOnly": "Izwaren kan",
+    "manageChoices": "Sefrek tifranin",
+    "savingChoice": "Asekles n tefrant n ikukiyen",
+    "settings": "Iɣewwaren n ikukiyen",
+    "settingsDescription": "Fren ma yella Watch yezmer ad yekkes ccfawa n yineɣmisen n isumeren gar tirzaf. Tzemreḍ ad tbeddleḍ aya yal tikelt.",
+    "essentialCookies": "Ikukiyen izwaren",
+    "essentialDescription": "Taɣellist, taɣuri n uvidyu, tifranin n tudert tusligt, akked asdukkel n usuter n isumeren.",
+    "alwaysActive": "Yermed yal tikkelt",
+    "personalization": "Asagen udmawan",
+    "personalizationDescription": "Sektes ineɣmisen yettusbdaden gar tirzaf. Ma tessenseḍ aya, isumeren s umnadi n usatal ad qqimen llan.",
+    "erasurePending": "Asemsi n umaɣnu yella deg uraǧu. Isumeren s umnadi n usatal remden yakan.",
+    "cancel": "Sefsex",
+    "saveChoices": "Sekles tifranin",
+    "saving": "Asekles…",
+    "loadError": "Ur nezmir ara ad d-nawi tafrant-ik. Mazal tzemreḍ ad tferneḍ ddaw-a.",
+    "grantError": "Ur yezmir ara ad yermed usagen udmawan. Izwaren kan qqimen llan.",
+    "saveError": "Ur nezmir ara ad nsekles tafrant-ik. Ma ulac aɣilif, ɛreḍ tikelt-nniḍen."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Dobe gado",
     "selectLanguageVersion": "Gado vesin ta abia",
     "watchSelectedVersion": "Abia vesin itaia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kuki pilakwana",
+    "bannerTitle": "Oi emu pilakwana na ginigunana",
+    "bannerDescription": "Kuki bada ta Watch lalonai e hamaoroa bona e halaoa. Oi emu anina bainegore, kuki ta idoinai hereva ta nainega emu ura bainehaguardia ena mai mai taudia, bona ena dainai hahetoho sisivana bainehamomokani. Hahetoho be hereva gauna hegeregere ai be noho helaoreana namonamo.",
+    "acceptAll": "Abia idoinai",
+    "essentialOnly": "Bada taudia sibona",
+    "manageChoices": "Pilakwana hadibaia",
+    "savingChoice": "Kuki pilakwana ihamuria helaoreana",
+    "settings": "Kuki settin",
+    "settingsDescription": "Pilakwana lau ba Watch emu hahetoho ura bainehaguardia ena mai mai taudia eiava lasi. Oi nainega idoinai oi bainehamaorolaia.",
+    "essentialCookies": "Kuki bada taudia",
+    "essentialDescription": "Hamaoromaoro, pilai, oi emu pilakwana na ginigunana, bona hahetoho noinoi kahana.",
+    "alwaysActive": "Noho gaudia hanaihanai",
+    "personalization": "Hahegeregere oi emu ura hegeregerena",
+    "personalizationDescription": "Ura pauka taudia bainehaguardia ena mai mai taudia. Oi ina ba kokwaia, hahetoho hereva gauna hegeregere ai be do noho helaoreana.",
+    "erasurePending": "Profile dokona isiri noho. Hahetoho hereva gauna hegeregere ai be vara ona noho.",
+    "cancel": "Hadoko",
+    "saveChoices": "Pilakwana hamuria",
+    "saving": "Ihamuria noho…",
+    "loadError": "Oi emu pilakwana na diba lasi itaia. A lalo be oi emu pilakwana ihaoho diba noho.",
+    "grantError": "Personalization bainevara diba lasi. Bada taudia sibona be noho helaoreana.",
+    "saveError": "Oi emu pilakwana hamuria diba lasi. Mani ba tovo lou."
   }
 }

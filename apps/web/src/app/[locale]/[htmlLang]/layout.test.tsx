@@ -13,6 +13,7 @@ vi.mock("@/lib/watch-font", () => ({
 import RootLayout from "./layout"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
+import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 
 function findElement(
   node: ReactNode,
@@ -37,6 +38,7 @@ describe("Watch root layout", () => {
     })
 
     expect(findElement(layout, BetaTesterModalProvider)).toBeNull()
+    expect(findElement(layout, RecommendationConsentShell)).not.toBeNull()
 
     const routeShell = WatchChromeShell({
       children: <main>Watch page</main>,

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ñe’ẽpu ñe’ẽ",
     "selectLanguageVersion": "Eiporavo peteĩ ñe’ẽ versión",
     "watchSelectedVersion": "Ehecha versión reiporavóva"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Jeporavorã cookie rehegua",
+    "bannerTitle": "Nde poravokuéra ñemigua rehegua",
+    "bannerDescription": "Umi cookie tekotevẽva omantene Watch hag̃ua seguro ha oiko porã hag̃uáicha. Nde permiso rupive, peteĩ cookie jeporavopyre ko sitiopegua ikatu nemandu'a umi mba'e nde rehecharamóva nde jevy jave hag̃ua ome'ẽ hag̃ua ndéve ñeñemoñe'ẽ oĩporãva ndéve g̃uarã. Umi ñeñemoñe'ẽ contexto rehegua katu oĩnte mokõive hendáicha.",
+    "acceptAll": "Emoneĩ opaite",
+    "essentialOnly": "Tekotevẽva añoite",
+    "manageChoices": "Eñangareko nde poravokuéra rehe",
+    "savingChoice": "Oñeñongatu hína cookie jeporavo",
+    "settings": "Cookie ñemboheko",
+    "settingsDescription": "Eiporavo ikatúpa Watch nemandu'a umi mba'e ñeñemoñe'ẽ rehegua nde jevy hag̃ua jave. Ikatu emoambue ko mba'e araka'eve.",
+    "essentialCookies": "Cookie tekotevẽva",
+    "essentialDescription": "Tekorosã, reproducción, poravokuéra ñemigua rehegua ha ñeñemoñe'ẽ jerure ñemombe'upy.",
+    "alwaysActive": "Tapiaite oñemyendy",
+    "personalization": "Ñemomba'ete hag̃ua ndéve g̃uarã",
+    "personalizationDescription": "Tomandu'a umi mba'e nde rehecharamóva nde jevy jave. Embogue ramo kóva, umi ñeñemoñe'ẽ contexto rehegua oĩta gueteri.",
+    "erasurePending": "Nde perfil ñemboguete oha'arõ hína. Umi ñeñemoñe'ẽ contexto rehegua oñemyendyma.",
+    "cancel": "Heja rei",
+    "saveChoices": "Eñongatu nde poravokuéra",
+    "saving": "Oñeñongatu hína…",
+    "loadError": "Nde jeporavo ndaikatúi oñemyenyhẽ. Ikatu gueteri eiporavo iguýpe.",
+    "grantError": "Ndaikatúi oñemyendy ñemomba'ete ndéve g̃uarã. Tekotevẽva añoite opyta disponible.",
+    "saveError": "Nde jeporavo ndaikatúi oñeñongatu. Eha'ãjey."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Yanga ti mbïrïmbïrï",
     "selectLanguageVersion": "Soro version ti yanga",
     "watchSelectedVersion": "Tala version so mo soro"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mbeti ti cookie",
+    "bannerTitle": "Mbeti ti siriri mo",
+    "bannerDescription": "Cookie so ayeke na mfingo ayeke kobatango Watch na siriri mpe ayeke sala nzoni. Na maboko mo, cookie ti kusala mo yeke ti kobosongo mokuse a yeke tene mabeti ti mo na kati ti mabanga ti hinga ti kopesa mabongisi ti recommandation na lege ti mo. Recommandation ti kôzo-kôzo ayeke duti ape, nyonso lege.",
+    "acceptAll": "Mû na nyonso",
+    "essentialOnly": "Mbeni ti mfingo kaka",
+    "manageChoices": "Tî mbi na mbeti so",
+    "savingChoice": "A yeke kobika mbeti ti cookie",
+    "settings": "Réglage ti cookie",
+    "settingsDescription": "Hinga so mo yeke sala tene Watch a lingbi ti kobosongo mabeti ti recommandation ti mo na kati ti mabanga ti hinga. Mo lingbi ti kobongola ni na ngonga nyonso.",
+    "essentialCookies": "Cookie ti mfingo",
+    "essentialDescription": "Siriri, playback, mbeti ti siriri, na attribution ti demande ti recommandation.",
+    "alwaysActive": "Ayeke sala ngbii nyonso",
+    "personalization": "Kusala na lege ti mo",
+    "personalizationDescription": "Bosongo mabeti ti mo a yeke na ndurü na kati ti mabanga ti hinga. So mo mû ni pepe, recommandation ti kôzo-kôzo ayeke duti ape.",
+    "erasurePending": "Kpi ti profil a de na ndo ti kusû. Recommandation ti kôzo-kôzo ayeke sala fini.",
+    "cancel": "Mû na pekô",
+    "saveChoices": "Bika mbeti so",
+    "saving": "A yeke kobika…",
+    "loadError": "A lingbi ape ti laa mbeti ti mo. Walâ mo lingbi ti hinga na bêbe so na nze.",
+    "grantError": "A lingbi ape ti mû nzönî na kusala na lege ti mo. Mbeni ti mfingo kaka ayeke duti ape.",
+    "saveError": "A lingbi ape ti bika mbeti ti mo. Biani, zia âla na ndâ ti kusala ndo ake."
   }
 }

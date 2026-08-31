@@ -722,5 +722,28 @@
     "languageVersionLabel": "Uyariypa simin",
     "selectLanguageVersion": "Simip ruwasqanta akllay",
     "watchSelectedVersion": "Akllasqa ruwasqata qhaway"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie akllanakuna",
+    "bannerTitle": "Pakayniyki akllanakuna",
+    "bannerDescription": "Wakin cookiekunaqa Watch nisqata allinta waqaychan, hinallataq llamk'achin. Qonqaykiwanqa, huk akllasqa first-party cookie nisqa watukuykunapura munasqaykikunata yuyarinman, chaywan yachachisqa yuyaykuna qollonapaq. Contextopi qollosqa yuyaykunaqa imayna kaptinpas kanqaraqmi.",
+    "acceptAll": "Llapan chaskiy",
+    "essentialOnly": "Pisi mana faltakuqllataq",
+    "manageChoices": "Akllanakunata kamachiy",
+    "savingChoice": "Cookie akllayta waqaychaspa",
+    "settings": "Cookie churaykuna",
+    "settingsDescription": "Akllay Watch nisqa watukuykunapura yuyarinanchu mana yuyarinanchu qollonapaq munasqaykikunata. Kaytaqa ima pachas tikrayta atinki.",
+    "essentialCookies": "Pisi mana faltakuq cookiekuna",
+    "essentialDescription": "Amañakuy, purichiy, pakay akllanakuna, hinallataq qollona mañakuy sutinchay.",
+    "alwaysActive": "Wiñay llamk'asqa",
+    "personalization": "Sapaqchasqa qollona",
+    "personalizationDescription": "Watukuykunapura tukunasqa munasqaykikunata yuyariy. Kayta wisq'aspaqa contextual recomendaciones kanqaraqmi.",
+    "erasurePending": "Perfil pichayqa manaraq tukusqachu. Contextual recomendacionesqa ñanmi llamk'ashan.",
+    "cancel": "Qichuy",
+    "saveChoices": "Akllanakunata waqaychay",
+    "saving": "Waqaychaspa…",
+    "loadError": "Akllayniykiqa mana apamuyta atikurqanchu. Uraypiqa akllayta atinkiraqmi.",
+    "grantError": "Personalización nisqataqa mana ruwachiyta atikurqanchu. Pisi mana faltakuqllaqa kanqaraqmi.",
+    "saveError": "Akllayniykiqa mana waqaychayta atikurqanchu. Yapamanta kallpachakuy."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Basa nu suwara",
     "selectLanguageVersion": "Pili ka bersiyon nu basa",
     "watchSelectedVersion": "Gilay ka su napili a bersiyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pilian sa cookie",
+    "bannerTitle": "Mga pilian mo sa privacy",
+    "bannerDescription": "I mga importante a cookie na pagpanatilihen so Watch a ligtas ago gumagana. Sabap sa idin a kapahintulutan, may isa a opsyonal a first-party cookie a makapakatanda sa mga interes mo sa magkabagi-bagi a pagbisita para maipersonalisa so mga rekomendasyon. I mga rekomendasyon aayon sa konteksto na magagamit piyan, apiya ngkaano.",
+    "acceptAll": "Tanggapin tanan",
+    "essentialOnly": "Importante lang",
+    "manageChoices": "Ayusin so mga pilian",
+    "savingChoice": "Sisimpan so pinili a cookie",
+    "settings": "Mga setting sa cookie",
+    "settingsDescription": "Pilion niyo o ba mapakatandaan o Watch so mga interes sa rekomendasyon sa magkabagi-bagi a pagbisita. Mababago niyo ini sa apiya antona.",
+    "essentialCookies": "Mga importante a cookie",
+    "essentialDescription": "Seguridad, playback, mga pilian sa privacy, ago attribution sa kahilingan sa rekomendasyon.",
+    "alwaysActive": "Pirmaninti a aktibo",
+    "personalization": "Personalisasyon",
+    "personalizationDescription": "Tandaan so limitadu a mga interes sa magkabagi-bagi a pagbisita. O patayen niyo ini, magagamit piyan so mga rekomendasyon aayon sa konteksto.",
+    "erasurePending": "Nakaantabay pan so pagbura sa profile. Aktibo den so mga rekomendasyon aayon sa konteksto.",
+    "cancel": "Kanselahin",
+    "saveChoices": "Isimpan so mga pilian",
+    "saving": "Sisimpan…",
+    "loadError": "Di naikarga so pinili mo. Makapili ka piyan sa baba.",
+    "grantError": "Di napagana so personalisasyon. Magagamit piyan so importante lang.",
+    "saveError": "Di naisimpan so pinili mo. Pakisubuk tano."
   }
 }

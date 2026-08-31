@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ljóðmál",
     "selectLanguageVersion": "Vel eina málsliga útgávu",
     "watchSelectedVersion": "Hygg at valdu útgávuni"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Farsporval",
+    "bannerTitle": "Tíni privatlívsval",
+    "bannerDescription": "Neyðugar cookies halda Watch trygt og virkið. Við tínum loyvi kann ein valfrí first-party cookie minnast áhugamál tvørtur um vitjanir fyri at laga tilmælini til tín. Samanhangandi tilmæli eru tøkar kortini.",
+    "acceptAll": "Góðkenn øll",
+    "essentialOnly": "Bara neyðugar",
+    "manageChoices": "Broyt val",
+    "savingChoice": "Goymir farsporval",
+    "settings": "Cookie-stillingar",
+    "settingsDescription": "Vel, um Watch skal minnast tilmælisáhugamál tvørtur um vitjanir. Tú kanst broyta hetta nær sum helst.",
+    "essentialCookies": "Neyðugar cookies",
+    "essentialDescription": "Trygd, avspæling, privatlívsval og tillutan av tilmælisumbønum.",
+    "alwaysActive": "Altíð virkið",
+    "personalization": "Persónstýring",
+    "personalizationDescription": "Minnist avmarkað áhugamál tvørtur um vitjanir. Um hetta verður sligið frá, eru samanhangandi tilmæli framvegis tøk.",
+    "erasurePending": "Striking av vangamynd bíðar. Samanhangandi tilmæli eru longu virkin.",
+    "cancel": "Angra",
+    "saveChoices": "Goym val",
+    "saving": "Goymir…",
+    "loadError": "Títt val kundi ikki lesast inn. Tú kanst kortini velja niðanfyri.",
+    "grantError": "Persónstýring kundi ikki kveikjast. Bara neyðugar eru framvegis tøkar.",
+    "saveError": "Títt val kundi ikki goymast. Royn aftur."
   }
 }

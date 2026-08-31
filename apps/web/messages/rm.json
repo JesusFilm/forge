@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lingua audio",
     "selectLanguageVersion": "Tscherner ina versiun linguistica",
     "watchSelectedVersion": "Guardar la versiun tschernida"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tscherchas da cookies",
+    "bannerTitle": "Tas tscherchas da privacy",
+    "bannerDescription": "Cookies essenzials mantegnan Watch segir e funcziunal. Cun tia permissiun po in cookie opziunal da l'emprima partida memorisar tes interess tranter visitas per persunalisar recumandaziuns. Recumandaziuns contextualas restan disponiblas en mintga cas.",
+    "acceptAll": "Acceptar tut",
+    "essentialOnly": "Mo ils essenzials",
+    "manageChoices": "Administrar las tscherchas",
+    "savingChoice": "Memorisar la tschercha da cookies",
+    "settings": "Parameters da cookies",
+    "settingsDescription": "Tscherna sche Watch po memorisar interess da recumandaziuns tranter visitas. Ti pos midar quai da tut temp.",
+    "essentialCookies": "Cookies essenzials",
+    "essentialDescription": "Segirezza, reproducziun, tscherchas da privacy e attribuziun da dumondas da recumandaziun.",
+    "alwaysActive": "Adina activ",
+    "personalization": "Persunalisaziun",
+    "personalizationDescription": "Memorisar interess limitads tranter visitas. Sche ti deactiveschas quai, recumandaziuns contextualas restan disponiblas.",
+    "erasurePending": "L'eliminaziun dal profil è pendent. Recumandaziuns contextualas èn gia activas.",
+    "cancel": "Annullar",
+    "saveChoices": "Memorisar las tscherchas",
+    "saving": "Memorisar…",
+    "loadError": "Tia tschercha n'ha betg pudì vegnir chargiada. Ti pos tuttina tscherner sutvart.",
+    "grantError": "La persunalisaziun n'ha betg pudì vegnir activada. Mo l'opziun essenziala resta disponibla.",
+    "saveError": "Tia tschercha n'ha betg pudì vegnir memorisada. Emprova anc ina giada."
   }
 }

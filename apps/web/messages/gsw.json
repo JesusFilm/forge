@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiosprach",
     "selectLanguageVersion": "Sprachversion uswähle",
     "watchSelectedVersion": "Usgwählti Version aaluege"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Uuswahl",
+    "bannerTitle": "Dini Date-Schutz-Uuswahl",
+    "bannerDescription": "Notwändigi Cookies halte Watch sicher und am Loufe. Mit dinere Erlaubnis cha es optionals Cookie vo de Website dini Interesse über mehri Bsuech hinweg speichere, zum Empfehlige persönlicher z mache. Kontextbezogeni Empfehlige git’s so oder so.",
+    "acceptAll": "Alli akzeptiere",
+    "essentialOnly": "Nur notwändigi",
+    "manageChoices": "Uuswahl verwalte",
+    "savingChoice": "Cookie-Uuswahl wird gspeicheret",
+    "settings": "Cookie-Iistellige",
+    "settingsDescription": "Wähl us, öb Watch dini Empfehligs-Interesse über mehri Bsuech hinweg dörf speichere. Du chasch das jederzeit ändere.",
+    "essentialCookies": "Notwändigi Cookies",
+    "essentialDescription": "Sicherheit, Wiedergab, Date-Schutz-Uuswahl und Zueornig vo Empfehligs-Aafragene.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierig",
+    "personalizationDescription": "Begrenzti Interesse über mehri Bsuech hinweg speichere. Wenn das usgschaltet isch, blibe kontextbezogeni Empfehlige wiiter verfüegbar.",
+    "erasurePending": "D Löschig vom Profil isch no uusstehend. Kontextbezogeni Empfehlige si scho aktiv.",
+    "cancel": "Abbräche",
+    "saveChoices": "Uuswahl speichere",
+    "saving": "Wird gspeicheret…",
+    "loadError": "Dini Uuswahl het nöd chöne glade werde. Du chasch wiiter unde trotzdem uswürde.",
+    "grantError": "Personalisierig het nöd chöne aktiviert werde. Nur notwändigi bliibt verfüegbar.",
+    "saveError": "Dini Uuswahl het nöd chöne gspeicheret werde. Bitte probier's nomal."
   }
 }

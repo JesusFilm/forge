@@ -722,5 +722,28 @@
     "languageVersionLabel": "Làkku baat",
     "selectLanguageVersion": "Tànnal xeetu làkk",
     "watchSelectedVersion": "Seetaan xeet wi nga tànn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànni cookië yi",
+    "bannerTitle": "Sa tànni yu jëm ci sutura sa bopp",
+    "bannerDescription": "Cookie yu am solo yi dañuy dencal Watch ngir mu wóor te dox. Soo ko mayee ndigal, benn cookie buy tànneeku te bawoo ci sunu dal mooy fàttaliku say mbëggel ci biir seeti yu bari ngir méngale laytukaay yi ñuy lay won. Ndigtal yu aju ci li nga nekk di xëcc sax mën naa nekk, mbaa nga nangu mbaa déedet.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yu am solo rekk",
+    "manageChoices": "Saytu tànni yi",
+    "savingChoice": "Mi ngi denc tànn sa cookie",
+    "settings": "Parameetar yu cookie",
+    "settingsDescription": "Tànnal ndax Watch mën na fàttaliku say mbëggel ci ndigtal yi ci diggante seeti yi. Mën nga ko soppi saa su ne.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaaraange, xët wi di dox, tànni yu sutura sa bopp, ak seedeelu ñaanu ndigtal yi.",
+    "alwaysActive": "Dafa nekk ci yoon saa su ne",
+    "personalization": "Méngaleel",
+    "personalizationDescription": "Fàttaliku mbëggel yu ñu tëral ci diggante seeti yi. Boo ko feyee, ndigtal yu aju ci li nga nekk di xëcc dinañu sax a nekk.",
+    "erasurePending": "Far sa profil mi ngi ci yoon. Ndigtal yu aju ci li nga nekk di xëcc tàmbali nañu ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànni yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Manul a yebbi sa tànn. Waaye mën ngaa tànn fii suuf.",
+    "grantError": "Manul a taal méngaleel bi. Yu am solo rekk la fi des.",
+    "saveError": "Manul a denc sa tànn. Jéemaatal."
   }
 }

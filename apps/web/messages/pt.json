@@ -722,5 +722,28 @@
     "languageVersionLabel": "Idioma do áudio",
     "selectLanguageVersion": "Selecionar uma versão de idioma",
     "watchSelectedVersion": "Assistir à versão selecionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opções de cookies",
+    "bannerTitle": "As suas opções de privacidade",
+    "bannerDescription": "Os cookies essenciais mantêm o Watch seguro e em funcionamento. Com a sua permissão, um cookie primário opcional pode lembrar os seus interesses entre visitas para personalizar as recomendações. As recomendações contextuais continuam disponíveis em qualquer caso.",
+    "acceptAll": "Aceitar tudo",
+    "essentialOnly": "Apenas essenciais",
+    "manageChoices": "Gerir opções",
+    "savingChoice": "A guardar a opção de cookies",
+    "settings": "Definições de cookies",
+    "settingsDescription": "Escolha se o Watch pode lembrar os seus interesses de recomendação entre visitas. Pode alterar isto a qualquer momento.",
+    "essentialCookies": "Cookies essenciais",
+    "essentialDescription": "Segurança, reprodução, opções de privacidade e atribuição de pedidos de recomendação.",
+    "alwaysActive": "Sempre ativos",
+    "personalization": "Personalização",
+    "personalizationDescription": "Lembrar interesses definidos entre visitas. Desativar esta opção mantém disponíveis as recomendações contextuais.",
+    "erasurePending": "A eliminação do perfil está pendente. As recomendações contextuais já estão ativas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Guardar opções",
+    "saving": "A guardar…",
+    "loadError": "Não foi possível carregar a sua opção. Ainda pode escolher abaixo.",
+    "grantError": "Não foi possível ativar a personalização. A opção apenas essenciais continua disponível.",
+    "saveError": "Não foi possível guardar a sua opção. Tente novamente."
   }
 }

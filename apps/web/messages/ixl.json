@@ -722,5 +722,28 @@
     "languageVersionLabel": "B'anob' tzij re audio",
     "selectLanguageVersion": "Ticha'j jun re b'anob' tzij",
     "watchSelectedVersion": "Tz'utuj ri re cha'on"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cha'onel cookie",
+    "bannerTitle": "Acha'onel tiich q'ijolil",
+    "bannerDescription": "Ye cookie k'atzil chi Watch tzet ti'ichonil q'ijil u tzet watx'. Ta k'ul tii, jun optional cookie ti' q'aq' ti' on qasat chi q'anal tzet ay awetz ti' q'ab'an visita tzet chi b'anon recomendación ta awajil. Ye recomendación contextual atil k'ul teq q'inal chi b'eyal.",
+    "acceptAll": "Ch'ak'ul kabul",
+    "essentialOnly": "Asan ye k'atzil",
+    "manageChoices": "B'anon cuenta ye cha'onel",
+    "savingChoice": "Yak yakon cha'onel cookie",
+    "settings": "Configuración cookie",
+    "settingsDescription": "Cha'o ta Watch chi na'tzal recomendación ti' awetz ti' q'ab'an visita. Oq chi aq'exle'j b'eyat ta junel.",
+    "essentialCookies": "Cookie k'atzil",
+    "essentialDescription": "Seguridad, reproducción, cha'onel q'ijolil, xu' rekomendación solicitud.",
+    "alwaysActive": "Nojel b'ey active",
+    "personalization": "Personalización",
+    "personalizationDescription": "Na'tzal tzet ay awetz ti' q'ab'an visita. Ta chi atz'on, recomendación contextual katil ayon.",
+    "erasurePending": "Yak toq'ob'al q'os profile. Recomendación contextual katil active.",
+    "cancel": "Tx'ix",
+    "saveChoices": "Yakon cha'onel",
+    "saving": "Yak yakon…",
+    "loadError": "Ma ulon taq q'os acha'onel. Pero otnaj chi acha'o b'elow.",
+    "grantError": "Ma uchaj personalización. Asan ye k'atzil katil ayon.",
+    "saveError": "Ma uchaj yakon acha'onel. B'anon tok junel."
   }
 }

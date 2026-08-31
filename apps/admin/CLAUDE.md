@@ -13,6 +13,8 @@ See the origin docs for full context:
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - V1 operational surfaces: `apps/admin/docs/v1-operational-surfaces.md`
 - Worktree preview setup: `apps/admin/docs/worktree-preview-setup.md`
+- Semantic recommendation tracer operations:
+  `docs/operations/semantic-recommendation-tracer.md`
 
 ## Stack
 
@@ -1770,6 +1772,41 @@ video_locale_lexical_weighted_idx`. Trigram probe (post-0010, both
 
 The primary learnings doc is
 `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
+
+## Production semantic recommendation tracer
+
+Admin owns the recommendation ledger, additive delivery/evidence GraphQL,
+capability verification, finalization/retention workflows, and the authorized
+Recommendations dashboard. Watch owns presentation and player availability.
+Keep this path separate from `sceneRecommendations`, `WatchEvent`,
+`WatchSearchEvent`, and `SearchTrace`; those are compatibility or separately
+owned ledgers.
+
+The pinned U1 versions are `semantic-recommendation-v1` (delivery),
+`recommendation-evidence-v1` (facts), `watch-below-player-v1` (surface),
+`semantic-transcript-pgvector-v1` (manifest), and `legacy-position-v0`
+(provisional, learning-ineligible outcome). The migration registers the exact
+manifest and a disabled shared control. New issuance requires the environment
+ceiling, shared control, valid active keyring, healthy retention, authenticated
+Web consumer caller, and production Redis admission to agree. Disabling or
+degrading this plane must never make either Watch player unavailable.
+
+Treat request `expiresAt` as the immutable 29-day lifecycle root. Descendants
+cannot extend it; the daily bounded purge has a 24-hour propagation SLA and a
+30-day ceiling. Sanitized retention and trace-access audits last 90 days, with
+the request link cleared when the raw root is purged. Never persist or project
+raw capabilities, cookie/claim values, IPs, user IDs, bearers, embeddings, or
+vectors. Aggregate and trace permissions remain separate, and every detail
+read is audited.
+
+Key rotation is old+new verify, switch the single active signer, wait the
+six-hour hard episode horizon plus five minutes of skew, then remove the old
+key. Use the database `emergency_revoked_kids` control for compromise response;
+it is reread on issuance and verification. Successful migration rollback is
+forward-only: disable serving first, keep the additive schema, and use a later
+migration for any contraction. The complete activation, health, rotation,
+purge, recovery, rollback, redaction, and isolated-preview procedure is in
+`docs/operations/semantic-recommendation-tracer.md`.
 
 ## Scene recommendations (R5 of admin migration playbook)
 

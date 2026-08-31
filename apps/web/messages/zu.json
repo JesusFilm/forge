@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ulimi lomsindo",
     "selectLanguageVersion": "Khetha inguqulo yolimi",
     "watchSelectedVersion": "Buka inguqulo ekhethiwe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Izinketho zama-cookie",
+    "bannerTitle": "Izinketho zakho zobumfihlo",
+    "bannerDescription": "Ama-cookie abalulekile agcina i-Watch ivikelekile futhi isebenza. Ngemvume yakho, i-cookie yokuzikhethela yohlangothi lokuqala ingakhumbula okuthandayo phakathi nokuvakasha ukuze yenze izincomo zibe ngezakho. Izincomo ezihambisana nomongo zisatholakala noma kunjalo.",
+    "acceptAll": "Yamukela konke",
+    "essentialOnly": "Okubalulekile kuphela",
+    "manageChoices": "Phatha izinketho",
+    "savingChoice": "Kulondolozwa ukukhetha kwama-cookie",
+    "settings": "Izilungiselelo zama-cookie",
+    "settingsDescription": "Khetha ukuthi i-Watch ingakukhumbula yini okuthandayo ngezincomo phakathi nokuvakasha. Ungakushintsha lokhu noma nini.",
+    "essentialCookies": "Ama-cookie abalulekile",
+    "essentialDescription": "Ukuphepha, ukudlala, izinketho zobumfihlo, nokulandelela umthombo wesicelo sezincomo.",
+    "alwaysActive": "Kuhlala kusebenza",
+    "personalization": "Ukwenza kube ngezomuntu",
+    "personalizationDescription": "Khumbula okuthandwayo okulinganiselwe phakathi nokuvakasha. Uma ukuvala lokhu, izincomo ezihambisana nomongo zisatholakala.",
+    "erasurePending": "Ukusulwa kwephrofayela kusalindile. Izincomo ezihambisana nomongo sezivele ziyasebenza.",
+    "cancel": "Khansela",
+    "saveChoices": "Londoloza izinketho",
+    "saving": "Kuyalondolozwa…",
+    "loadError": "Ukukhetha kwakho akukwazanga ukulayishwa. Usengakhetha ngezansi.",
+    "grantError": "Ukwenza kube ngezomuntu akukwazanga ukuvulwa. Okubalulekile kuphela kusatholakala.",
+    "saveError": "Ukukhetha kwakho akukwazanga ukulondolozwa. Sicela uzame futhi."
   }
 }

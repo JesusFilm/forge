@@ -193,9 +193,9 @@ export function DynamicMediaCollection({
   )
   const [retrySeconds, setRetrySeconds] = useState(0)
   const windowingActive = sections.length > WINDOWING_THRESHOLD
-  const feedIdentity = `${locale}\0${languageSlug}\0${cacheScope}\0${excludedIds.join(
-    "\0",
-  )}\0${featuredCollections.slugs.join("\0")}\0${cacheSignatures?.mobile ?? ""}\0${cacheSignatures?.desktop ?? ""}`
+  const excludedIdsIdentity = excludedIds.join("\0")
+  const featuredSlugsIdentity = featuredCollections.slugs.join("\0")
+  const feedIdentity = `${locale}\0${languageSlug}\0${cacheScope}\0${excludedIdsIdentity}\0${featuredSlugsIdentity}\0${cacheSignatures?.mobile ?? ""}\0${cacheSignatures?.desktop ?? ""}`
 
   const setFeedStatus = useCallback((next: "idle" | "loading" | "error") => {
     statusRef.current = next
@@ -311,8 +311,12 @@ export function DynamicMediaCollection({
     requestInFlightRef.current = false
     cursorRef.current = null
     hasNextPageRef.current = true
-    seenIdsRef.current = new Set(excludedIds)
-    seenSlugsRef.current = new Set(featuredCollections.slugs)
+    seenIdsRef.current = new Set(
+      excludedIdsIdentity ? excludedIdsIdentity.split("\0") : [],
+    )
+    seenSlugsRef.current = new Set(
+      featuredSlugsIdentity ? featuredSlugsIdentity.split("\0") : [],
+    )
     profileRef.current = feedProfile()
     cacheSignatureRef.current =
       profileRef.current.first === WATCH_COLLECTION_FEED_PROFILES.mobile.first
@@ -339,9 +343,14 @@ export function DynamicMediaCollection({
       requestAbortRef.current = null
       requestInFlightRef.current = false
     }
-    // The serialized identity deliberately restarts only when feed inputs change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedIdentity, setFeedStatus])
+  }, [
+    cacheSignatures?.desktop,
+    cacheSignatures?.mobile,
+    excludedIdsIdentity,
+    featuredSlugsIdentity,
+    feedIdentity,
+    setFeedStatus,
+  ])
 
   useEffect(() => {
     if (retrySeconds <= 0) return

@@ -1,7 +1,27 @@
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql } from "@forge/admin-graphql"
+import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
+import {
+  adminClaimSemanticRecommendationEpisodeOperation,
+  adminRecommendationProfileStatusOperation,
+  adminRecordSemanticRecommendationEvidenceOperation,
+  adminRecordSemanticRecommendationPlaybackOperation,
+  adminRecordRecommendationContentActionOperation,
+  adminSelectSemanticRecommendationOperation,
+  adminSemanticRecommendationDeliveryOperation,
+  adminTransitionRecommendationProfileOperation,
+} from "@forge/admin-graphql/operations"
 import client from "@/lib/admin-client"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+
+const DELIVERY_UPSTREAM_TIMEOUT_MS = 1_900
+const SELECTION_UPSTREAM_TIMEOUT_MS = 700
+const EVIDENCE_UPSTREAM_TIMEOUT_MS = 900
+
+function upstreamContext(timeoutMs: number) {
+  return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
+}
 
 // Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
 // `videoId` is admin's cuid string (ID); web's previous Strapi-backed shape
@@ -36,6 +56,7 @@ export type SceneRecommendation = {
   description: string
   startSeconds: number
   endSeconds: number | null
+  durationSeconds?: number | null
   similarity: number
   themes: string[]
   demographics: string[]
@@ -151,3 +172,155 @@ export const getVideoBySlug = cache(
     return fetchVideoBySlug(slug, locale)
   },
 )
+
+export type SemanticRecommendationDelivery = NonNullable<
+  AdminResultOf<
+    typeof adminSemanticRecommendationDeliveryOperation
+  >["semanticRecommendationDelivery"]
+>
+
+export type SemanticRecommendationSelection = NonNullable<
+  AdminResultOf<
+    typeof adminSelectSemanticRecommendationOperation
+  >["selectSemanticRecommendation"]
+>
+
+export type SemanticRecommendationEpisodeClaim = NonNullable<
+  AdminResultOf<
+    typeof adminClaimSemanticRecommendationEpisodeOperation
+  >["claimSemanticRecommendationEpisode"]
+>
+
+export async function getSemanticRecommendationDelivery(
+  variables: AdminVariablesOf<
+    typeof adminSemanticRecommendationDeliveryOperation
+  >,
+): Promise<SemanticRecommendationDelivery> {
+  const result = await client.query({
+    query: adminSemanticRecommendationDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(DELIVERY_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.semanticRecommendationDelivery) {
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  return result.data.semanticRecommendationDelivery
+}
+
+export async function recordSemanticRecommendationEvidence(
+  variables: AdminVariablesOf<
+    typeof adminRecordSemanticRecommendationEvidenceOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminRecordSemanticRecommendationEvidenceOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordSemanticRecommendationEvidence) {
+    throw new RecommendationRuntimeError("evidence_unavailable")
+  }
+  return result.data.recordSemanticRecommendationEvidence
+}
+
+export async function selectSemanticRecommendation(
+  variables: AdminVariablesOf<
+    typeof adminSelectSemanticRecommendationOperation
+  >,
+): Promise<SemanticRecommendationSelection> {
+  const result = await client.mutate({
+    mutation: adminSelectSemanticRecommendationOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.selectSemanticRecommendation) {
+    throw new RecommendationRuntimeError("selection_unavailable")
+  }
+  return result.data.selectSemanticRecommendation
+}
+
+export async function claimSemanticRecommendationEpisode(
+  variables: AdminVariablesOf<
+    typeof adminClaimSemanticRecommendationEpisodeOperation
+  >,
+): Promise<SemanticRecommendationEpisodeClaim> {
+  const result = await client.mutate({
+    mutation: adminClaimSemanticRecommendationEpisodeOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.claimSemanticRecommendationEpisode) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.claimSemanticRecommendationEpisode
+}
+
+export async function recordSemanticRecommendationPlayback(
+  variables: AdminVariablesOf<
+    typeof adminRecordSemanticRecommendationPlaybackOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminRecordSemanticRecommendationPlaybackOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
+    throw new RecommendationRuntimeError("playback_unavailable")
+  }
+  return result.data.recordSemanticRecommendationPlayback
+}
+
+export async function recordRecommendationContentAction(
+  variables: AdminVariablesOf<
+    typeof adminRecordRecommendationContentActionOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminRecordRecommendationContentActionOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordRecommendationContentAction) {
+    throw new RecommendationRuntimeError("content_action_unavailable")
+  }
+  return result.data.recordRecommendationContentAction
+}
+
+export async function getRecommendationProfileStatus(
+  variables: AdminVariablesOf<typeof adminRecommendationProfileStatusOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminRecommendationProfileStatusOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recommendationProfileStatus) {
+    throw new RecommendationRuntimeError("profile_unavailable")
+  }
+  return result.data.recommendationProfileStatus
+}
+
+export async function transitionRecommendationProfile(
+  variables: AdminVariablesOf<
+    typeof adminTransitionRecommendationProfileOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminTransitionRecommendationProfileOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.transitionRecommendationProfile) {
+    throw new RecommendationRuntimeError("profile_unavailable")
+  }
+  return result.data.transitionRecommendationProfile
+}

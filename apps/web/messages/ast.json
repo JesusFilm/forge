@@ -722,5 +722,28 @@
     "languageVersionLabel": "Llingua d'audiu",
     "selectLanguageVersion": "Escueyi una versión llingüística",
     "watchSelectedVersion": "Ver la versión escoyida"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opciones de cookies",
+    "bannerTitle": "Les tos opciones de privacidá",
+    "bannerDescription": "Les cookies esenciales caltienen Watch seguru y funcionando. Col to permisu, una cookie opcional de primeres partes pue recordar intereses ente visites pa personalizar les recomendaciones. Les recomendaciones contextuales van siguir disponibles en cualquier casu.",
+    "acceptAll": "Aceptar too",
+    "essentialOnly": "Namái les esenciales",
+    "manageChoices": "Xestionar opciones",
+    "savingChoice": "Guardando la opción de cookies",
+    "settings": "Configuración de cookies",
+    "settingsDescription": "Escueyi si Watch pue recordar intereses de recomendación ente visites. Pues camudar esto en cualquier momentu.",
+    "essentialCookies": "Cookies esenciales",
+    "essentialDescription": "Seguridá, reproducción, opciones de privacidá y atribución de solicitúes de recomendación.",
+    "alwaysActive": "Siempre actives",
+    "personalization": "Personalización",
+    "personalizationDescription": "Recordar intereses llindaos ente visites. Si desactives esto, les recomendaciones contextuales van siguir disponibles.",
+    "erasurePending": "La desaniciación del perfil ta pendiente. Les recomendaciones contextuales yá tan actives.",
+    "cancel": "Encaboxar",
+    "saveChoices": "Guardar opciones",
+    "saving": "Guardando…",
+    "loadError": "Nun se pudo cargar la to opción. Aun así, pues escoyer embaxo.",
+    "grantError": "Nun se pudo activar la personalización. Namái siguen disponibles les opciones esenciales.",
+    "saveError": "Nun se pudo guardar la to opción. Téntalo otra vez."
   }
 }

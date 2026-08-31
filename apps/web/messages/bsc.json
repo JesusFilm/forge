@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio language a",
     "selectLanguageVersion": "Language version yɛ",
     "watchSelectedVersion": "Version yɛ watch kɛ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Fañii cookie",
+    "bannerTitle": "Fañii i siram maa",
+    "bannerDescription": "Cookie yaa n pɔɔri ka Watch kɛ́rɛ nì ka a leŋ. N kɛ́ yiyaŋ, cookie kelen n pɛrɛ n kúu yaa yiŋ nɔ̀ɔ̀rɔ nùŋɔɔrɔ ka a kɛ tɛmɛraŋ ndaani mɛ̀. Tɛmɛraŋ i saŋi n paari nɔɔ kɛ́ kɔɔ.",
+    "acceptAll": "Sɔŋi fɔ̀",
+    "essentialOnly": "Yaa n pɔɔri bare",
+    "manageChoices": "Tɔni fañii",
+    "savingChoice": "N tegi fañii cookie",
+    "settings": "Tɔni cookie",
+    "settingsDescription": "Caa n Watch n kúu yaa yiŋ nɔ̀ɔ̀rɔ tɛmɛraŋ i saŋi ka suku nàa i yiŋ. A n fiti n pɔri kɛ́ i nɔɔrɔ bɛɛ.",
+    "essentialCookies": "Cookie yaa n pɔɔri",
+    "essentialDescription": "Kisɛŋ, video leŋ, fañii i siram, nì tɛmɛraŋ sɛbɛri i tóorɔ.",
+    "alwaysActive": "A tegi bɛɛ bɛɛ",
+    "personalization": "Tɛmɛraŋ ndaani",
+    "personalizationDescription": "Kúu yaa yiŋ nɔ̀ɔ̀rɔ i kɔri nàa i yiŋ. N i pɛrɛ a nà, tɛmɛraŋ i saŋi n paari.",
+    "erasurePending": "Fiti i profile n dɔɔri ka n tegi. Tɛmɛraŋ i saŋi n tegi kɔɔ.",
+    "cancel": "Lɔɔri",
+    "saveChoices": "Tegi fañii",
+    "saving": "N tegi…",
+    "loadError": "I fañii ma seŋ n loodi. A n paari n caa yaa nàa kɔɔ.",
+    "grantError": "Ma seŋ n yiti tɛmɛraŋ ndaani. Yaa n pɔɔri bare n paari.",
+    "saveError": "I fañii ma seŋ n tegi. Bɛri n naŋ kɔɔ."
   }
 }

@@ -343,7 +343,7 @@ export function HeroPlayer({
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  onPlayerActivated?: () => void
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
   onLanguageClick?: () => void
   onShareClick?: () => void
   languageSlug?: string | null
@@ -470,6 +470,9 @@ export function HeroPlayer({
   const [playerActivated, setPlayerActivated] = useState(
     () => autoplayParam === "1" || heroPosterUrl == null,
   )
+  const activationInitiationRef = useRef<"manual" | "automatic">(
+    autoplayParam === "1" ? "automatic" : "manual",
+  )
   const pendingSoundIntentRef = useRef<PillState | null>(null)
   const pointerDownHandledSoundIntentRef = useRef(false)
 
@@ -505,7 +508,7 @@ export function HeroPlayer({
 
   useEffect(() => {
     if (!chromeRevealed) return
-    onPlayerActivated?.()
+    onPlayerActivated?.(activationInitiationRef.current)
   }, [chromeRevealed, onPlayerActivated])
 
   useEffect(() => {
@@ -1089,6 +1092,7 @@ export function HeroPlayer({
       if (cancelled) return
       if (!authenticated || tParam != null || autoplayParam === "1") return
       if (!isResumableProgress(video.documentId)) return
+      activationInitiationRef.current = "automatic"
       setResumeFromSavedProgress(true)
       setPlayerActivated(true)
       setChromeRevealed(true)
@@ -1173,6 +1177,7 @@ export function HeroPlayer({
         // that returns a resolved promise without actually playing.
         const settledPlayer = playerRef.current
         if (settledPlayer) settledPlayer.muted = false
+        activationInitiationRef.current = "automatic"
         setChromeRevealed(true)
         setAutoplayBlocked(false)
       })
@@ -1194,6 +1199,7 @@ export function HeroPlayer({
 
   const runSoundIntent = useCallback(
     (player: MuxPlayerRef, intent: PillState) => {
+      activationInitiationRef.current = "manual"
       if (intent === "tap-to-unmute") {
         // Autoplay was blocked — this gesture both unmutes AND starts playback
         // since the user is now committed. Without play() the user just
@@ -1359,7 +1365,9 @@ export function HeroPlayer({
   // Compiler rejects render-phase ref writes (refs aren't reactive).
   useEffect(() => {
     autoplayAttemptedRef.current = false
-  }, [variant.documentId])
+    activationInitiationRef.current =
+      autoplayParam === "1" ? "automatic" : "manual"
+  }, [autoplayParam, variant.documentId])
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed

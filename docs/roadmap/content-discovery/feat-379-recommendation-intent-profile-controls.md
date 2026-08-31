@@ -68,7 +68,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 
 - Test find-to-share, course-building, ordinary watching, reset, inferred/declared conflict, decline, never-ask, negative feedback, anonymous session-only use, and expiry.
 - Test each title action, undo, repeated submission, conflicting actions, source-request attribution, profile-generation fencing, and separation from completion and short-playback evidence.
-- Test accessible viewer flows, context-builder separation, retention, and erasure.
+- Test accessible viewer flows, Essential-only contextual semantic delivery without profile use, consented profile controls, context-builder separation, retention, and erasure.
 - Reconcile sampled control changes in Admin.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.

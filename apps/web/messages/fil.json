@@ -722,5 +722,28 @@
     "languageVersionLabel": "Wika ng audio",
     "selectLanguageVersion": "Pumili ng bersyon ng wika",
     "watchSelectedVersion": "Panoorin ang napiling bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pagpipilian sa cookie",
+    "bannerTitle": "Mga pagpipilian mo sa privacy",
+    "bannerDescription": "Pinananatiling ligtas at maayos na gumagana ng mahahalagang cookie ang Watch. Kung pahihintulutan mo, may opsyonal na first-party cookie na makakaalala sa mga interes mo sa iba’t ibang pagbisita para makapagbigay ng mga rekomendasyong iniangkop para sa iyo. Mananatiling available ang mga kontekstuwal na rekomendasyon alinman ang piliin mo.",
+    "acceptAll": "Tanggapin lahat",
+    "essentialOnly": "Mahahalaga lang",
+    "manageChoices": "Pamahalaan ang mga pagpipilian",
+    "savingChoice": "Sine-save ang pinili mong cookie",
+    "settings": "Mga setting ng cookie",
+    "settingsDescription": "Piliin kung maaaring tandaan ng Watch ang mga interes mo sa rekomendasyon sa iba’t ibang pagbisita. Maaari mo itong baguhin anumang oras.",
+    "essentialCookies": "Mahahalagang cookie",
+    "essentialDescription": "Seguridad, pag-playback, mga pagpipilian sa privacy, at pagtukoy sa pinagmulan ng kahilingan para sa rekomendasyon.",
+    "alwaysActive": "Laging aktibo",
+    "personalization": "Pag-personalize",
+    "personalizationDescription": "Tandaan ang mga limitadong interes sa iba’t ibang pagbisita. Kapag naka-off ito, mananatiling available ang mga kontekstuwal na rekomendasyon.",
+    "erasurePending": "Nakabinbin ang pagbura ng profile. Aktibo na ang mga kontekstuwal na rekomendasyon.",
+    "cancel": "Kanselahin",
+    "saveChoices": "I-save ang mga pagpipilian",
+    "saving": "Sine-save…",
+    "loadError": "Hindi ma-load ang pinili mo. Maaari ka pa ring pumili sa ibaba.",
+    "grantError": "Hindi ma-enable ang pag-personalize. Mahahalaga lang ang mananatiling available.",
+    "saveError": "Hindi ma-save ang pinili mo. Pakisubukan muli."
   }
 }

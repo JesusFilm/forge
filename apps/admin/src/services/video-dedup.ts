@@ -34,6 +34,74 @@ export type VideoDedupKeys = {
   embeddingText?: string | null
 }
 
+export type VideoIdentityDuplicateReason =
+  | "core_prefix"
+  | "exact_title"
+  | "embedding_similarity"
+
+/**
+ * Returns the first shared canonical-video identity rule that makes two rows
+ * duplicates. Candidate orchestration uses the reason while legacy callers
+ * continue consuming the boolean behavior through `dedupeByVideoIdentity`.
+ */
+export function videoIdentityDuplicateReason(
+  candidate: VideoDedupKeys,
+  kept: VideoDedupKeys,
+): VideoIdentityDuplicateReason | null {
+  return videoIdentityDuplicateReasonWithCache(candidate, kept)
+}
+
+export function createVideoIdentityDuplicateReasonResolver() {
+  const embeddingCache = new Map<string, number[]>()
+  return (candidate: VideoDedupKeys, kept: VideoDedupKeys) =>
+    videoIdentityDuplicateReasonWithCache(candidate, kept, embeddingCache)
+}
+
+function videoIdentityDuplicateReasonWithCache(
+  candidate: VideoDedupKeys,
+  kept: VideoDedupKeys,
+  embeddingCache?: Map<string, number[]>,
+): VideoIdentityDuplicateReason | null {
+  const candidateIsVideo =
+    candidate.resultType === undefined || candidate.resultType === "video"
+  const keptIsVideo =
+    kept.resultType === undefined || kept.resultType === "video"
+  if (!candidateIsVideo || !keptIsVideo) return null
+
+  if (candidate.videoCoreId && kept.videoCoreId) {
+    const candidateCoreId = candidate.videoCoreId
+    const keptCoreId = kept.videoCoreId
+    if (
+      candidateCoreId.startsWith(keptCoreId) ||
+      keptCoreId.startsWith(candidateCoreId)
+    ) {
+      return "core_prefix"
+    }
+  }
+
+  if (
+    candidate.videoTitle &&
+    kept.videoTitle &&
+    candidate.videoTitle === kept.videoTitle
+  ) {
+    return "exact_title"
+  }
+
+  if (candidate.embeddingText && kept.embeddingText) {
+    if (
+      cosineSimilarityFromTextWithCache(
+        candidate.embeddingText,
+        kept.embeddingText,
+        embeddingCache,
+      ) > 0.95
+    ) {
+      return "embedding_similarity"
+    }
+  }
+
+  return null
+}
+
 /**
  * Generic 3-layer dedup over a structural shape. Returns up to `limit`
  * rows in the order they were supplied (first-kept wins).
@@ -43,52 +111,17 @@ export function dedupeByVideoIdentity<T extends VideoDedupKeys>(
   limit: number,
 ): T[] {
   const deduped: T[] = []
+  const duplicateReason = createVideoIdentityDuplicateReasonResolver()
 
   for (const candidate of rows) {
     if (deduped.length >= limit) break
 
-    const candidateIsVideo =
-      candidate.resultType === undefined || candidate.resultType === "video"
-
     let isDuplicate = false
 
-    if (candidateIsVideo) {
-      for (const kept of deduped) {
-        const keptIsVideo =
-          kept.resultType === undefined || kept.resultType === "video"
-        if (!keptIsVideo) continue
-
-        // Check 1: coreId prefix match
-        if (candidate.videoCoreId && kept.videoCoreId) {
-          const a = candidate.videoCoreId
-          const b = kept.videoCoreId
-          if (a.startsWith(b) || b.startsWith(a)) {
-            isDuplicate = true
-            break
-          }
-        }
-
-        // Check 2: exact title match
-        if (
-          candidate.videoTitle &&
-          kept.videoTitle &&
-          candidate.videoTitle === kept.videoTitle
-        ) {
-          isDuplicate = true
-          break
-        }
-
-        // Check 3: embedding similarity
-        if (candidate.embeddingText && kept.embeddingText) {
-          const sim = cosineSimilarityFromText(
-            candidate.embeddingText,
-            kept.embeddingText,
-          )
-          if (sim > 0.95) {
-            isDuplicate = true
-            break
-          }
-        }
+    for (const kept of deduped) {
+      if (duplicateReason(candidate, kept)) {
+        isDuplicate = true
+        break
       }
     }
 
@@ -102,12 +135,26 @@ export function dedupeByVideoIdentity<T extends VideoDedupKeys>(
 
 /**
  * Cosine similarity between two embedding vectors stored as pgvector text
- * format: "[0.1,0.2,...]". Used only for inter-result dedup (typically
- * <=60 candidates), so the parse-on-every-call overhead is negligible.
+ * format: "[0.1,0.2,...]".
  */
 export function cosineSimilarityFromText(a: string, b: string): number {
-  const va = a.slice(1, -1).split(",").map(Number)
-  const vb = b.slice(1, -1).split(",").map(Number)
+  return cosineSimilarityFromTextWithCache(a, b)
+}
+
+function cosineSimilarityFromTextWithCache(
+  a: string,
+  b: string,
+  embeddingCache?: Map<string, number[]>,
+): number {
+  const parse = (value: string) => {
+    const cached = embeddingCache?.get(value)
+    if (cached) return cached
+    const parsed = value.slice(1, -1).split(",").map(Number)
+    embeddingCache?.set(value, parsed)
+    return parsed
+  }
+  const va = parse(a)
+  const vb = parse(b)
   if (va.length !== vb.length || va.length === 0) return 0
 
   let dot = 0

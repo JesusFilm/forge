@@ -722,5 +722,28 @@
     "languageVersionLabel": "Limba audio",
     "selectLanguageVersion": "Selectați o versiune lingvistică",
     "watchSelectedVersion": "Vizionați versiunea selectată"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opțiuni privind cookie-urile",
+    "bannerTitle": "Opțiunile tale de confidențialitate",
+    "bannerDescription": "Cookie-urile esențiale mențin Watch sigur și funcțional. Cu permisiunea ta, un cookie opțional de primă parte poate reține interesele tale între vizite pentru a personaliza recomandările. Recomandările contextuale rămân disponibile în orice caz.",
+    "acceptAll": "Acceptă tot",
+    "essentialOnly": "Doar esențiale",
+    "manageChoices": "Gestionează opțiunile",
+    "savingChoice": "Se salvează alegerea privind cookie-urile",
+    "settings": "Setări cookie-uri",
+    "settingsDescription": "Alege dacă Watch poate reține interesele pentru recomandări între vizite. Poți schimba aceasta oricând.",
+    "essentialCookies": "Cookie-uri esențiale",
+    "essentialDescription": "Securitate, redare, opțiuni de confidențialitate și atribuirea solicitărilor de recomandări.",
+    "alwaysActive": "Întotdeauna activ",
+    "personalization": "Personalizare",
+    "personalizationDescription": "Reține interese limitate între vizite. Dacă dezactivezi această opțiune, recomandările contextuale rămân disponibile.",
+    "erasurePending": "Ștergerea profilului este în curs. Recomandările contextuale sunt deja active.",
+    "cancel": "Anulează",
+    "saveChoices": "Salvează opțiunile",
+    "saving": "Se salvează…",
+    "loadError": "Opțiunea ta nu a putut fi încărcată. Poți totuși alege mai jos.",
+    "grantError": "Personalizarea nu a putut fi activată. Opțiunea doar esențiale rămâne disponibilă.",
+    "saveError": "Opțiunea ta nu a putut fi salvată. Încearcă din nou."
   }
 }

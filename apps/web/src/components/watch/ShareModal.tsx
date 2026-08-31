@@ -57,6 +57,9 @@ export type ShareModalProps = {
   posterUrl?: string | null
   /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
   playbackId?: string | null
+  onShareAction?: (
+    detail: "link_copy" | "embed_copy" | "facebook_intent" | "x_intent",
+  ) => void
   onClose: () => void
 }
 
@@ -71,6 +74,7 @@ export function ShareModal({
   videoDescription,
   posterUrl,
   playbackId,
+  onShareAction,
   onClose,
 }: ShareModalProps) {
   const t = useTranslations("ShareModal")
@@ -168,10 +172,11 @@ export function ShareModal({
     tabRefs.current[nextTab]?.focus()
   }
 
-  async function copy(text: string) {
+  async function copy(text: string, detail: "link_copy" | "embed_copy") {
     try {
       await navigator.clipboard.writeText(text)
       setCopyStatus("copied")
+      onShareAction?.(detail)
     } catch {
       setCopyStatus("failed")
     }
@@ -274,6 +279,7 @@ export function ShareModal({
                 rel="noopener noreferrer"
                 aria-label={`${t("shareOnFacebook")} (opens in a new tab)`}
                 data-testid="watch-share-modal-facebook"
+                onClick={() => onShareAction?.("facebook_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <Facebook size={18} fill="currentColor" stroke="none" />
@@ -284,6 +290,7 @@ export function ShareModal({
                 rel="noopener noreferrer"
                 aria-label={`${t("shareOnX")} (opens in a new tab)`}
                 data-testid="watch-share-modal-x"
+                onClick={() => onShareAction?.("x_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <XBrandIcon size={16} />
@@ -427,7 +434,9 @@ export function ShareModal({
                     ? "watch-share-modal-embed-copy"
                     : "watch-share-modal-link-copy"
                 }
-                onClick={() => copy(currentValue)}
+                onClick={() =>
+                  copy(currentValue, isEmbed ? "embed_copy" : "link_copy")
+                }
                 className="gap-2 px-7 py-4 text-base sm:text-sm"
               >
                 <Copy size={16} />

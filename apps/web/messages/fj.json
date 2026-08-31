@@ -722,5 +722,28 @@
     "languageVersionLabel": "Vosa ni vakarorogo",
     "selectLanguageVersion": "Digitaka e dua na mataqali vosa",
     "watchSelectedVersion": "Sarava na mataqali sa digitaki"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Digidigi ni cookie",
+    "bannerTitle": "Nomu digidigi ni taqomaki vakaitaukei",
+    "bannerDescription": "Na cookie bibi e maroroya me taqomaki qai cakacaka tiko na Watch. Kevaka o vakadonuya, e dua na cookie digitaki ni matai ni tabana ena rawa ni nanuma na ka o taleitaka ena veisiko eso me vakataki kina na vakatutu vei iko. Na vakatutu vakaivakarau era se tiko ga se cava ga nomu digidigi.",
+    "acceptAll": "Ciqoma kece",
+    "essentialOnly": "Na ka bibi walega",
+    "manageChoices": "Lewena na digidigi",
+    "savingChoice": "Sa maroroi tiko na digidigi ni cookie",
+    "settings": "iVakarautaki ni cookie",
+    "settingsDescription": "Digitaka kevaka ena rawa vei Watch me nanuma na ka o taleitaka ena vakatutu ena veisiko eso. O rawa ni veisautaka qo ena dua ga na gauna.",
+    "essentialCookies": "Cookie bibi",
+    "essentialDescription": "Taqomaki, sarasara ni vidio, digidigi ni taqomaki vakaitaukei, kei na kena kilai na kerekere ni vakatutu.",
+    "alwaysActive": "Cakacaka tiko ga",
+    "personalization": "Vakataki vakatamata",
+    "personalizationDescription": "Nanuma na ka o dau taleitaka ena veisiko eso. Kevaka o bokoca oqo, ena se tiko ga na vakatutu vakaivakarau.",
+    "erasurePending": "Sa waraki tiko na bokoci ni porofaili. Sa cakacaka tiko qo na vakatutu vakaivakarau.",
+    "cancel": "Bokoca",
+    "saveChoices": "Maroroya na digidigi",
+    "saving": "Sa maroroi tiko…",
+    "loadError": "A sega ni rawa ni lavaki nomu digidigi. Ia o rawa tiko ga ni digitaka e ra.",
+    "grantError": "A sega ni rawa ni vakavuna na vakataki vakatamata. Na ka bibi walega e se rawa tiko ga.",
+    "saveError": "A sega ni rawa ni maroroi nomu digidigi. Yalovinaka tovolea tale."
   }
 }

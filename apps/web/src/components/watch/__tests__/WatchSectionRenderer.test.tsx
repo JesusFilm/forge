@@ -26,6 +26,7 @@ const {
   heroPlayerMock,
   siblingCarouselMock,
   watchBodyMock,
+  watchSemanticRecommendationsMock,
   watchStudyQuestionsMock,
   bibleQuotesSectionMock,
 } = vi.hoisted(() => ({
@@ -151,6 +152,16 @@ const {
       )
     },
   ),
+  watchSemanticRecommendationsMock: vi.fn(
+    ({ seedMediaId }: { seedMediaId: string }) => (
+      <div
+        data-block-type="SemanticRecommendations"
+        data-seed-media-id={seedMediaId}
+      >
+        Semantic recommendations mock
+      </div>
+    ),
+  ),
   // U7 — WatchStudyQuestions has its own test file. Mocked here so the
   // dispatch test doesn't depend on its internal markup.
   watchStudyQuestionsMock: vi.fn(() => (
@@ -200,6 +211,10 @@ vi.mock("@/components/watch/WatchBody", () => ({
   WatchBody: watchBodyMock,
 }))
 
+vi.mock("@/components/recommendations/WatchSemanticRecommendations", () => ({
+  WatchSemanticRecommendations: watchSemanticRecommendationsMock,
+}))
+
 vi.mock("@/components/watch/WatchStudyQuestions", () => ({
   WatchStudyQuestions: watchStudyQuestionsMock,
 }))
@@ -211,6 +226,7 @@ vi.mock("@/components/watch/BibleQuotesSection", () => ({
 import {
   buildBibleQuotesBlock,
   buildHeroBlock,
+  buildSemanticRecommendationsBlock,
   buildShareBlock,
   buildSiblingCarouselBlock,
   buildStudyQuestionsBlock,
@@ -228,6 +244,7 @@ beforeEach(() => {
   heroPlayerMock.mockClear()
   siblingCarouselMock.mockClear()
   watchBodyMock.mockClear()
+  watchSemanticRecommendationsMock.mockClear()
   watchStudyQuestionsMock.mockClear()
   bibleQuotesSectionMock.mockClear()
   container = document.createElement("div")
@@ -294,6 +311,34 @@ function makeParent(childrenCount = 2) {
 }
 
 describe("WatchSectionRenderer — synthetic block dispatch", () => {
+  it("dispatches the route-owned semantic recommendation slot", () => {
+    const block = buildSemanticRecommendationsBlock(makeVideo())
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          languageSlug="english"
+          locale="en"
+        />,
+      )
+    })
+
+    expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        seedMediaId: "video-1",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }),
+      undefined,
+    )
+    expect(
+      container
+        .querySelector('[data-block-type="SemanticRecommendations"]')
+        ?.getAttribute("data-seed-media-id"),
+    ).toBe("video-1")
+  })
+
   it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {
     const video = makeVideo({
       studyQuestions: [{ documentId: "sq-1", value: "Q?", order: 1 }],

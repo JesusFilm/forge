@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ruchʼabʼäl kʼoxom",
     "selectLanguageVersion": "Tachaʼ jun ruwäch chʼabʼäl",
     "watchSelectedVersion": "Tatzʼetaʼ ri ruwäch xachaʼ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cha'oj pa taq cookie",
+    "bannerTitle": "Acha'oj richin awichinil",
+    "bannerDescription": "Ri k'atzinel taq cookie yekechajij ri Watch chuqa' yekib'än chi ütz nisamäj. We niya' q'ij, jun cha'ojel first-party cookie nitikïr nunataj taq rayib'äl chi kijolom taq b'ey richin yeb'an ichinan taq chilab'enïk. Ri taq chilab'enïk pa ruk'ojlem k'o wi chupam xab'achike.",
+    "acceptAll": "Tak'ulu' ronojel",
+    "essentialOnly": "Xa xe k'atzinel",
+    "manageChoices": "Tanuk'saj taq cha'oj",
+    "savingChoice": "Niyak ri cha'oj pa cookie",
+    "settings": "Taq runuk'ulem cookie",
+    "settingsDescription": "Tacha'oj we Watch nitikïr nunataj taq rayib'äl richin chilab'enïk chi kijolom taq b'ey. Yatikïr najäl ri re' xab'achike q'ij.",
+    "essentialCookies": "K'atzinel taq cookie",
+    "essentialDescription": "Jikomal, tzijob'äl, taq acha'oj richin awichinil, chuqa' retal k'utunïk richin chilab'enïk.",
+    "alwaysActive": "Junelïk tzijon",
+    "personalization": "Ichinan rub'anik",
+    "personalizationDescription": "Kenataj taq rayib'äl pa taq kijolom b'ey. We natzäp re', ri taq chilab'enïk pa ruk'ojlem k'a e k'o na.",
+    "erasurePending": "Ri ruyujik ri ruwäch b'i'aj k'a oyob'en na. Ri taq chilab'enïk pa ruk'ojlem xecha'öx yan.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Keyak taq cha'oj",
+    "saving": "Niyak…",
+    "loadError": "Man xitikïr ta xusamajib'ëx ri acha'oj. K'a yatikïr na yacha'oj pan ichin.",
+    "grantError": "Man xitikïr ta xetzijöx ri ichinan rub'anik. Xa xe ri k'atzinel k'o wi.",
+    "saveError": "Man xitikïr ta xeyak ri acha'oj. Tatojtob'ej chik."
   }
 }

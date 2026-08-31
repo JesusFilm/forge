@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio language sɛn",
     "selectLanguageVersion": "Language version dɔ sɔrɔ",
     "watchSelectedVersion": "Version sɔrɔlen watch kɛ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Suma cookie",
+    "bannerTitle": "Suma ku privasidadi bo",
+    "bannerDescription": "Cookie i misti ta mantin Watch siguru i na funsiona diritu. Ku lisensa bo, un cookie opsional di primera parti pudi lenbra interes di bo na bista ku bista pa fazi rekomendason mas di acordo ku bo. Rekomendason di kontestu ta fika disponivel di kualker manera.",
+    "acceptAll": "Aseta tur",
+    "essentialOnly": "Suma i misti sonku",
+    "manageChoices": "Jeri suma",
+    "savingChoice": "Na grava suma di cookie",
+    "settings": "Konfigurason di cookie",
+    "settingsDescription": "Skoji si Watch pudi lenbra interes di rekomendason di bo na bista ku bista. Bo pudi muda es li na kualker ora.",
+    "essentialCookies": "Cookie i misti",
+    "essentialDescription": "Seguransa, reproduson, suma di privasidadi, i atribuison di pididu di rekomendason.",
+    "alwaysActive": "Sempri ativu",
+    "personalization": "Personalizason",
+    "personalizationDescription": "Lenbra interes limitadu di bo na bista ku bista. Si bo disliga es, rekomendason di kontestu ta kontinua disponivel.",
+    "erasurePending": "Apagason di perfil sta pendiente. Rekomendason di kontestu ja sta ativu.",
+    "cancel": "Kansela",
+    "saveChoices": "Grava suma",
+    "saving": "Na grava…",
+    "loadError": "N ka pude karga suma bo. Ma bo inda pudi skoji li dibaxu.",
+    "grantError": "N ka pude ativa personalizason. Suma i misti sonku inda sta disponivel.",
+    "saveError": "N ka pude grava suma bo. Prua outra bes."
   }
 }

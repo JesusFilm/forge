@@ -722,5 +722,28 @@
     "languageVersionLabel": "音声言語",
     "selectLanguageVersion": "言語版を選択",
     "watchSelectedVersion": "選択した版を視聴"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookieの選択",
+    "bannerTitle": "プライバシーの選択",
+    "bannerDescription": "必須Cookieは、Watchを安全に正常動作させるために使用されます。ご同意いただくと、任意のファーストパーティCookieにより、訪問をまたいで関心事項を記憶し、おすすめをパーソナライズできます。どちらを選んでも、状況に応じたおすすめは引き続き利用できます。",
+    "acceptAll": "すべて許可",
+    "essentialOnly": "必須のみ",
+    "manageChoices": "選択を管理",
+    "savingChoice": "Cookieの選択を保存しています",
+    "settings": "Cookie設定",
+    "settingsDescription": "Watchが訪問をまたいでおすすめの関心を記憶してよいかどうかを選択してください。この設定はいつでも変更できます。",
+    "essentialCookies": "必須Cookie",
+    "essentialDescription": "セキュリティ、再生、プライバシーの選択、およびおすすめリクエストの属性情報。",
+    "alwaysActive": "常に有効",
+    "personalization": "パーソナライズ",
+    "personalizationDescription": "訪問をまたいで限定された関心を記憶します。これをオフにしても、状況に応じたおすすめは引き続き利用できます。",
+    "erasurePending": "プロフィールの削除を処理中です。状況に応じたおすすめはすでに有効です。",
+    "cancel": "キャンセル",
+    "saveChoices": "選択を保存",
+    "saving": "保存中…",
+    "loadError": "選択内容を読み込めませんでした。下で引き続き選択できます。",
+    "grantError": "パーソナライズを有効にできませんでした。必須のみは引き続き利用できます。",
+    "saveError": "選択内容を保存できませんでした。もう一度お試しください。"
   }
 }

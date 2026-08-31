@@ -722,5 +722,28 @@
     "languageVersionLabel": "Muakulu wa diyi",
     "selectLanguageVersion": "Sungula mushindu wa muakulu",
     "watchSelectedVersion": "Mona mushindu muwasungula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Nsoolo ya ba cookie",
+    "bannerTitle": "Nsoolo yebe ya bumfihla",
+    "bannerDescription": "Ba cookie ba mushinga badi balame Watch mu dikuba ne mu mudimu wau. Bu udi witabuuja, cookie wa diboso wa kusungula udi mwa kuvuluka bidi bisankisha pakwiza cyabu cyonse bua kupanga bimanyinu bia kujikija. Bimanyinu bia pa mbandu bidi bikala bipeteka mu nzila yonse.",
+    "acceptAll": "Tambula byonso",
+    "essentialOnly": "Bya mushinga nkaayi",
+    "manageChoices": "Longolola nsoolo",
+    "savingChoice": "Kulama nsoolo ya ba cookie",
+    "settings": "Mikandu ya ba cookie",
+    "settingsDescription": "Sungula ne Watch mmumvu wa kuvuluka bidi bisankisha bimanyinu pakwiza cyabu cyonse anyi to. Udi mwa kubialuja pa diba dyonsodi.",
+    "essentialCookies": "Ba cookie ba mushinga",
+    "essentialDescription": "Dikuba, kutangila video, nsoolo ya bumfihla, ne ditumba dia malomba a bimanyinu.",
+    "alwaysActive": "Bidi bikala bienda misangu yonso",
+    "personalization": "Kupanga bua muntu yeka yeka",
+    "personalizationDescription": "Vuluka bidi bisankisha bia pa ndilu pakwiza cyabu cyonse. Bu udi uciimuna, bimanyinu bia pa mbandu bidi bikala bipeteka.",
+    "erasurePending": "Kujimija profil kucidi kulindila. Bimanyinu bia pa mbandu bidi kale bienda.",
+    "cancel": "Cancela",
+    "saveChoices": "Lama nsoolo",
+    "saving": "Kulama…",
+    "loadError": "Nsoolo yebe kayi muvuluibue to. Udi ucidi mwa kusungula panshi apa.",
+    "grantError": "Kupanga bua muntu yeka yeka kakuenaku kujingulula to. Bya mushinga nkaayi bidi bicidi bipeteka.",
+    "saveError": "Nsoolo yebe kayi mulamibue to. Swaku, tente kabidi."
   }
 }

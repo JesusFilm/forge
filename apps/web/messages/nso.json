@@ -722,5 +722,28 @@
     "languageVersionLabel": "Polelo ya modumo",
     "selectLanguageVersion": "Kgetha phetolelo ya polelo",
     "watchSelectedVersion": "Bogela phetolelo ye e kgethilwego"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dikgetho tša cookie",
+    "bannerTitle": "Dikgetho tša gago tša sephiri",
+    "bannerDescription": "Di-cookie tša bohlokwa di boloka Watch e šireletšegile e bile e šoma. Ka tumelelo ya gago, cookie ya boikgethelo ya first-party e ka gopola dikgahlego ge o etela gape gore ditšhišinyo di be tša gago. Ditšhišinyo tša maemo di dula di le gona ka tsela efe goba efe.",
+    "acceptAll": "Amogela tšohle",
+    "essentialOnly": "Tša bohlokwa feela",
+    "manageChoices": "Laola dikgetho",
+    "savingChoice": "Go bolokwa kgetho ya cookie",
+    "settings": "Dipeakanyo tša cookie",
+    "settingsDescription": "Kgetha ge e ba Watch e ka gopola dikgahlego tša ditšhišinyo ge o etela gape. O ka fetola se nako efe goba efe.",
+    "essentialCookies": "Di-cookie tša bohlokwa",
+    "essentialDescription": "Tšhireletšo, go bapala, dikgetho tša sephiri le go abelwa kgopelo ya ditšhišinyo.",
+    "alwaysActive": "Di šoma ka mehla",
+    "personalization": "Go dira gore e be ya gago",
+    "personalizationDescription": "Gopola dikgahlego tše lekanyeditšwego ge o etela gape. Ge o tima se, ditšhišinyo tša maemo di tla dula di le gona.",
+    "erasurePending": "Go phumolwa ga profaele go sa letetšwe. Ditšhišinyo tša maemo di šetše di šoma.",
+    "cancel": "Khansela",
+    "saveChoices": "Boloka dikgetho",
+    "saving": "Go a bolokwa…",
+    "loadError": "Kgetho ya gago ga se ya kgona go laetšwa. O sa ka kgetha ka mo tlase.",
+    "grantError": "Go dira gore e be ya gago ga se gwa kgona go kgontšhwa. Tša bohlokwa feela di sa le gona.",
+    "saveError": "Kgetho ya gago ga se ya kgona go bolokwa. Hle leka gape."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiosprache",
     "selectLanguageVersion": "Sprachversion auswählen",
     "watchSelectedVersion": "Ausgewählte Version ansehen"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Einstellungen",
+    "bannerTitle": "Ihre Datenschutzoptionen",
+    "bannerDescription": "Erforderliche Cookies sorgen dafür, dass Watch sicher ist und funktioniert. Mit Ihrer Zustimmung kann ein optionales First-Party-Cookie Interessen über mehrere Besuche hinweg speichern, um Empfehlungen zu personalisieren. Kontextbezogene Empfehlungen bleiben in jedem Fall verfügbar.",
+    "acceptAll": "Alle akzeptieren",
+    "essentialOnly": "Nur erforderliche",
+    "manageChoices": "Einstellungen verwalten",
+    "savingChoice": "Cookie-Auswahl wird gespeichert",
+    "settings": "Cookie-Einstellungen",
+    "settingsDescription": "Wählen Sie, ob Watch Empfehlungsinteressen über mehrere Besuche hinweg speichern darf. Sie können dies jederzeit ändern.",
+    "essentialCookies": "Erforderliche Cookies",
+    "essentialDescription": "Sicherheit, Wiedergabe, Datenschutzeinstellungen und Zuordnung von Empfehlungsanfragen.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierung",
+    "personalizationDescription": "Begrenzte Interessen über mehrere Besuche hinweg speichern. Wenn dies deaktiviert ist, bleiben kontextbezogene Empfehlungen verfügbar.",
+    "erasurePending": "Die Löschung des Profils steht noch aus. Kontextbezogene Empfehlungen sind bereits aktiv.",
+    "cancel": "Abbrechen",
+    "saveChoices": "Auswahl speichern",
+    "saving": "Wird gespeichert…",
+    "loadError": "Ihre Auswahl konnte nicht geladen werden. Sie können unten trotzdem eine Auswahl treffen.",
+    "grantError": "Personalisierung konnte nicht aktiviert werden. Nur erforderliche Cookies bleiben verfügbar.",
+    "saveError": "Ihre Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
   }
 }

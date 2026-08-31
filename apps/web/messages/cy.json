@@ -722,5 +722,28 @@
     "languageVersionLabel": "Iaith sain",
     "selectLanguageVersion": "Dewiswch fersiwn iaith",
     "watchSelectedVersion": "Gwylio'r fersiwn a ddewiswyd"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dewisiadau cwcis",
+    "bannerTitle": "Eich dewisiadau preifatrwydd",
+    "bannerDescription": "Mae cwcis hanfodol yn cadw Watch yn ddiogel ac yn gweithio. Gyda’ch caniatâd, gall cwci dewisol parti cyntaf gofio diddordebau ar draws ymweliadau er mwyn personoli argymhellion. Mae argymhellion cyd-destunol ar gael y naill ffordd neu’r llall.",
+    "acceptAll": "Derbyn y cyfan",
+    "essentialOnly": "Hanfodol yn unig",
+    "manageChoices": "Rheoli dewisiadau",
+    "savingChoice": "Yn cadw dewis cwcis",
+    "settings": "Gosodiadau cwcis",
+    "settingsDescription": "Dewiswch a gaiff Watch gofio diddordebau argymhellion ar draws ymweliadau. Gallwch newid hyn unrhyw bryd.",
+    "essentialCookies": "Cwcis hanfodol",
+    "essentialDescription": "Diogelwch, chwarae fideos, dewisiadau preifatrwydd, a phriodoli ceisiadau am argymhellion.",
+    "alwaysActive": "Bob amser yn weithredol",
+    "personalization": "Personoli",
+    "personalizationDescription": "Cofio diddordebau cyfyngedig ar draws ymweliadau. Os caiff hwn ei ddiffodd, bydd argymhellion cyd-destunol ar gael o hyd.",
+    "erasurePending": "Mae dileu’r proffil ar y gweill. Mae argymhellion cyd-destunol eisoes yn weithredol.",
+    "cancel": "Canslo",
+    "saveChoices": "Cadw dewisiadau",
+    "saving": "Yn cadw…",
+    "loadError": "Methwyd llwytho eich dewis. Gallwch ddewis isod o hyd.",
+    "grantError": "Nid oedd modd galluogi personoli. Mae’r opsiwn hanfodol yn unig ar gael o hyd.",
+    "saveError": "Methwyd cadw eich dewis. Rhowch gynnig arall arni."
   }
 }

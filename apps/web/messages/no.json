@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lydspråk",
     "selectLanguageVersion": "Velg en språkversjon",
     "watchSelectedVersion": "Se valgt versjon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Informasjonskapselvalg",
+    "bannerTitle": "Dine personvernvalg",
+    "bannerDescription": "Nødvendige informasjonskapsler holder Watch sikker og i gang. Med din tillatelse kan en valgfri førsteparts-informasjonskapsel huske interesser mellom besøk for å tilpasse anbefalinger. Kontekstuelle anbefalinger er tilgjengelige uansett.",
+    "acceptAll": "Godta alle",
+    "essentialOnly": "Kun nødvendige",
+    "manageChoices": "Administrer valg",
+    "savingChoice": "Lagrer valg for informasjonskapsler",
+    "settings": "Innstillinger for informasjonskapsler",
+    "settingsDescription": "Velg om Watch kan huske anbefalingsinteresser mellom besøk. Du kan endre dette når som helst.",
+    "essentialCookies": "Nødvendige informasjonskapsler",
+    "essentialDescription": "Sikkerhet, avspilling, personvernvalg og tilordning av anbefalingsforespørsler.",
+    "alwaysActive": "Alltid aktiv",
+    "personalization": "Personalisering",
+    "personalizationDescription": "Husk avgrensede interesser mellom besøk. Hvis du slår dette av, er kontekstuelle anbefalinger fortsatt tilgjengelige.",
+    "erasurePending": "Sletting av profilen er under behandling. Kontekstuelle anbefalinger er allerede aktive.",
+    "cancel": "Avbryt",
+    "saveChoices": "Lagre valg",
+    "saving": "Lagrer …",
+    "loadError": "Valget ditt kunne ikke lastes inn. Du kan fortsatt velge nedenfor.",
+    "grantError": "Personalisering kunne ikke aktiveres. Kun nødvendige er fortsatt tilgjengelig.",
+    "saveError": "Valget ditt kunne ikke lagres. Prøv igjen."
   }
 }

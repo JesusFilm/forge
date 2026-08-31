@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lang odyo",
     "selectLanguageVersion": "Chwazi yon vèsyon lang",
     "watchSelectedVersion": "Gade vèsyon ou chwazi a"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Chwa cookie yo",
+    "bannerTitle": "Chwa vi prive ou",
+    "bannerDescription": "Cookie esansyèl yo kenbe Watch an sekirite epi fè li mache byen. Avèk pèmisyon ou, yon cookie opsyonèl ki soti dirèkteman nan sit la ka sonje enterè ou ant vizit yo pou pèsonalize rekòmandasyon yo. Rekòmandasyon selon kontèks yo ap toujou disponib nan toude ka yo.",
+    "acceptAll": "Aksepte tout",
+    "essentialOnly": "Esansyèl sèlman",
+    "manageChoices": "Jere chwa yo",
+    "savingChoice": "Ap anrejistre chwa cookie yo",
+    "settings": "Paramèt cookie yo",
+    "settingsDescription": "Chwazi si Watch ka sonje enterè rekòmandasyon ou yo ant vizit yo. Ou ka chanje sa nenpòt ki lè.",
+    "essentialCookies": "Cookie esansyèl yo",
+    "essentialDescription": "Sekirite, lekti videyo, chwa vi prive, ak atribisyon demann rekòmandasyon yo.",
+    "alwaysActive": "Toujou aktif",
+    "personalization": "Pèsonalizasyon",
+    "personalizationDescription": "Sonje enterè limite yo ant vizit yo. Si ou dezaktive sa, rekòmandasyon selon kontèks yo ap toujou disponib.",
+    "erasurePending": "Efasman pwofil la annatant. Rekòmandasyon selon kontèks yo deja aktif.",
+    "cancel": "Anile",
+    "saveChoices": "Anrejistre chwa yo",
+    "saving": "Ap anrejistre...",
+    "loadError": "Nou pa t kapab chaje chwa ou a. Ou ka toujou chwazi anba a.",
+    "grantError": "Nou pa t kapab aktive pèsonalizasyon an. Esansyèl sèlman rete disponib.",
+    "saveError": "Nou pa t kapab anrejistre chwa ou a. Tanpri eseye ankò."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Língua di áudiu",
     "selectLanguageVersion": "Skolhi un versaun di língua",
     "watchSelectedVersion": "Odja versaun skolhidu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Njagui yi cookie",
+    "bannerTitle": "Njagui sa sutura",
+    "bannerDescription": "Cookie yi a bega a yir Watch a ka suru te a ka liga. Bu nuyit, cookie ya m’bulu m’bulu ya baax maŋ a tigi fisaŋ visita yi ngir a personálisa recomendation yi. Recomendation yi contextual a ka mana de iwa, masi bulo.",
+    "acceptAll": "Nangu yépp",
+    "essentialOnly": "Yi mu soxla doŋ",
+    "manageChoices": "Saytu njagui yi",
+    "savingChoice": "Denc njagui cookie",
+    "settings": "Parameetar yi cookie",
+    "settingsDescription": "Tann bu Watch man a faatliku interes yi recomendation ci visita yi. Man nga ko soppi saa su nekk.",
+    "essentialCookies": "Cookie yi mu soxla",
+    "essentialDescription": "Suru, playback, njagui sa sutura, ak attribution bu laaj recomendation.",
+    "alwaysActive": "Dafa dox bepp saa",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Faatliku interes yi ñu digle ci visita yi. Su nga ko fey, recomendation yi contextual dinañu des disponibles.",
+    "erasurePending": "Far sa profil mungi ci yoon. Recomendation yi contextual dañu ba noppi di dox.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc njagui yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënuñu a yebbi sa njagui. Waaye man nga a tann ci suuf.",
+    "grantError": "Mënuñu a dogal personalisasion. Yi mu soxla rekk la fi des.",
+    "saveError": "Mënuñu a denc sa njagui. Jéemaatal."
   }
 }

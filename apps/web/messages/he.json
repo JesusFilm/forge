@@ -722,5 +722,28 @@
     "languageVersionLabel": "שפת שמע",
     "selectLanguageVersion": "בחירת גרסת שפה",
     "watchSelectedVersion": "צפייה בגרסה שנבחרה"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "העדפות קובצי Cookie",
+    "bannerTitle": "העדפות הפרטיות שלך",
+    "bannerDescription": "קובצי Cookie חיוניים שומרים על Watch מאובטח ופועל כראוי. באישורך, קובץ Cookie אופציונלי של האתר יכול לזכור תחומי עניין בין ביקורים כדי להתאים אישית המלצות. המלצות לפי הקשר יישארו זמינות בכל מקרה.",
+    "acceptAll": "אישור הכול",
+    "essentialOnly": "חיוניים בלבד",
+    "manageChoices": "ניהול העדפות",
+    "savingChoice": "שומר את בחירת קובצי ה-Cookie",
+    "settings": "הגדרות קובצי Cookie",
+    "settingsDescription": "בחר אם Watch יוכל לזכור תחומי עניין להמלצות בין ביקורים. אפשר לשנות זאת בכל עת.",
+    "essentialCookies": "קובצי Cookie חיוניים",
+    "essentialDescription": "אבטחה, ניגון, העדפות פרטיות וייחוס בקשות להמלצות.",
+    "alwaysActive": "פעיל תמיד",
+    "personalization": "התאמה אישית",
+    "personalizationDescription": "זכירת תחומי עניין מוגבלים בין ביקורים. כיבוי אפשרות זו ישאיר המלצות לפי הקשר זמינות.",
+    "erasurePending": "מחיקת הפרופיל ממתינה. המלצות לפי הקשר כבר פעילות.",
+    "cancel": "ביטול",
+    "saveChoices": "שמירת העדפות",
+    "saving": "שומר…",
+    "loadError": "לא ניתן היה לטעון את הבחירה שלך. עדיין אפשר לבחור למטה.",
+    "grantError": "לא ניתן היה להפעיל התאמה אישית. האפשרות של חיוניים בלבד עדיין זמינה.",
+    "saveError": "לא ניתן היה לשמור את הבחירה שלך. נא לנסות שוב."
   }
 }

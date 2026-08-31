@@ -10,22 +10,36 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }))
 
-const { routerPushMock, routerPrefetchMock, shareModalProps, watchPlayer } =
-  vi.hoisted(() => ({
-    routerPrefetchMock: vi.fn(),
-    routerPushMock: vi.fn(),
-    shareModalProps: [] as Array<{
-      currentLanguageSlug: string
-      onClose: () => void
-      open: boolean
-      videoSlug: string
-    }>,
-    watchPlayer: {
-      paused: false,
-      pause: vi.fn(),
-      play: vi.fn(() => Promise.resolve()),
-    },
-  }))
+const {
+  recommendationRecorderProps,
+  routerPushMock,
+  routerPrefetchMock,
+  shareModalProps,
+  watchPlayer,
+} = vi.hoisted(() => ({
+  recommendationRecorderProps: [] as Array<{
+    mediaId: string
+    player: unknown
+    initiation: "manual" | "automatic" | null
+  }>,
+  routerPrefetchMock: vi.fn(),
+  routerPushMock: vi.fn(),
+  shareModalProps: [] as Array<{
+    currentLanguageSlug: string
+    onClose: () => void
+    open: boolean
+    videoSlug: string
+  }>,
+  watchPlayer: {
+    paused: false,
+    currentTime: 0,
+    duration: 60,
+    pause: vi.fn(),
+    play: vi.fn(() => Promise.resolve()),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  },
+}))
 
 vi.mock("next/dynamic", () => {
   let modalIndex = 0
@@ -63,6 +77,15 @@ vi.mock("@/components/watch/SubtitleTranscript", () => ({
   SubtitleTranscript: () => null,
 }))
 
+vi.mock("@/components/recommendations/RecommendationPlaybackRecorder", () => ({
+  RecommendationPlaybackRecorder: (
+    props: (typeof recommendationRecorderProps)[number],
+  ) => {
+    recommendationRecorderProps.push(props)
+    return null
+  },
+}))
+
 vi.mock("@/components/watch/WatchQuestionPanel", () => ({
   WatchQuestionPanel: () => null,
 }))
@@ -83,7 +106,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       posterUrl: string | null
     } | null
     coverBlackoutKey?: string | null
-    onPlayerActivated?: () => void
+    onPlayerActivated?: (initiation: "manual" | "automatic") => void
     onPlayerReady?: (player: typeof watchPlayer) => void
     onChapterNavigateIntent?: (intent: {
       href: string
@@ -145,7 +168,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       <button
         type="button"
         data-testid="activate-player"
-        onClick={() => onPlayerActivated?.()}
+        onClick={() => onPlayerActivated?.("manual")}
       >
         Activate player
       </button>
@@ -189,6 +212,7 @@ let root: Root
 beforeEach(() => {
   routerPushMock.mockClear()
   routerPrefetchMock.mockClear()
+  recommendationRecorderProps.length = 0
   shareModalProps.length = 0
   watchPlayer.pause.mockClear()
   watchPlayer.play.mockClear()
@@ -505,6 +529,41 @@ describe("WatchPageClient chapter navigation", () => {
         scroll: false,
       },
     )
+  })
+
+  it("publishes player arrival and activation state to the recommendation recorder", () => {
+    renderWatchPage()
+
+    expect(recommendationRecorderProps.at(-1)).toMatchObject({
+      mediaId: "video-1",
+      player: null,
+      initiation: null,
+    })
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="set-watch-player"]',
+        ) as HTMLButtonElement
+      ).click()
+      ;(
+        container.querySelector(
+          '[data-testid="activate-player"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(recommendationRecorderProps.at(-1)).toMatchObject({
+      mediaId: "video-1",
+      player: watchPlayer,
+      initiation: "manual",
+    })
+
+    renderWatchPage(makeVideo("video-2", "Target Video"))
+    expect(recommendationRecorderProps.at(-1)).toMatchObject({
+      mediaId: "video-2",
+      initiation: null,
+    })
   })
 
   it("opens Share through the page modal and restores active playback", () => {

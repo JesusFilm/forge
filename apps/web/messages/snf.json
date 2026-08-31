@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lak ɗaah",
     "selectLanguageVersion": "Kitën kisúpít lak",
     "watchSelectedVersion": "Kihot kisúpít kitënka"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Say tànn yu ñeel sa sutura",
+    "bannerDescription": "Cookie yu am solo di dencal Watch mu wóor te muy liggéey. Bu nga ko maye, benn cookie bu tànneef bu site bi mën na fàttaliku say mbëggel ci njee yi ngir solal ndigal yi. Ndigal yu aju ci yeneen xaalis am nañu ba tey.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Li am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn bi ci cookie",
+    "settings": "Parameetar yi ci cookie",
+    "settingsDescription": "Tànnal ndax Watch man na fàttaliku say mbëggel yu ndigal ci njee yi. Mën nga soppi lii saa su nekk.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaarange, xëynaale, tànn yu sutura ak seetal kàddug laaj yi ci ndigal.",
+    "alwaysActive": "Dafa dox saa su nekk",
+    "personalization": "Solal ndigal",
+    "personalizationDescription": "Fàttaliku mbëggel yu tollu ci njee yi. Su ñu ko tëdde, ndigal yu aju ci xaalis dinañu sax.",
+    "erasurePending": "Far sa profil mi ngi xaar. Ndigal yu aju ci xaalis tàmbali nañu ba noppi.",
+    "cancel": "Bàyyi",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Manul a yebbi sa tànn. Waaye mën nga tànn ci suuf.",
+    "grantError": "Manul a taamu solal ndigal. Li am solo rekk mooy des.",
+    "saveError": "Manul a denc sa tànn. Jéemaatal."
   }
 }

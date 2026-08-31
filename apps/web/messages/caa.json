@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ch'ab'äl ta audio",
     "selectLanguageVersion": "Chak'uxpa' jun ruwach ch'ab'äl",
     "watchSelectedVersion": "Tawila' ruwach chak'uxum"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ajch'ubir cookie",
+    "bannerTitle": "Awejchojresir privacidad",
+    "bannerDescription": "Majaxir cookie ayanob t'ut'u Watch watar e secure y watar e lok'eswar. War a k'ajpesyaj, jun optional first-party cookie uyub'i uk'ajpes inte'res yaja' tor e sutpa' e k'otoyob cha'res ukojresic e recomendacionob. E recomendacionob contextual ayanob ajni ub'an ch'ujb'ir.",
+    "acceptAll": "Ch'a'ni tuno'r",
+    "essentialOnly": "Majaxir iraj ixto",
+    "manageChoices": "Kojres ajch'ubir",
+    "savingChoice": "War uk'ajpesyaj ajch'ubir cookie",
+    "settings": "Ajustes cookie",
+    "settingsDescription": "Cha'resb'a ma Watch uyub'i uk'ajpes inte'res recomendacion cha'xtak e k'otoyob. Uyub'it a sutpa' ya'ni uyajr.",
+    "essentialCookies": "Majaxir cookie",
+    "essentialDescription": "Seguridad, reproducción, ajch'ubir privacidad, y atribución e solicitud recomendacion.",
+    "alwaysActive": "Aktivo tuno'r tiempo",
+    "personalization": "Personalización",
+    "personalizationDescription": "K'ajpes inte'resob limitados cha'xtak e k'otoyob. Jay a tares uyokse' ch'i, e recomendacionob contextual ayanob ajni.",
+    "erasurePending": "Ajsupres profile war uyub'i. E recomendacionob contextual aktivo takarix.",
+    "cancel": "Cancelar",
+    "saveChoices": "K'ajpes ajch'ubir",
+    "saving": "War uk'ajpesyaj…",
+    "loadError": "Ma ani uyub'i ak'ochres ajch'ubir. Pero uyub'it ajcha'res tara' ixin.",
+    "grantError": "Ma ani uyub'i uk'ani personalización. Majaxir ixto ayan ajni.",
+    "saveError": "Ma ani uyub'i ak'ajpes ajch'ubir. Tz'akpes ch'i otronyajr."
   }
 }

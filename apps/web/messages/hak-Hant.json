@@ -722,5 +722,28 @@
     "languageVersionLabel": "音訊語言",
     "selectLanguageVersion": "選擇語言版本",
     "watchSelectedVersion": "觀看選定版本"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 選擇",
+    "bannerTitle": "你个隱私選擇",
+    "bannerDescription": "必要个 Cookie 會保障 Watch 安全正常運作。得著你个允准後，一个選用个第一方 Cookie 做得記得你跨次造訪个興趣，來個人化推薦。無論你仰般選，情境推薦都還係做得用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "單淨必要",
+    "manageChoices": "管理選擇",
+    "savingChoice": "保存 Cookie 選擇當中",
+    "settings": "Cookie 設定",
+    "settingsDescription": "選擇 Watch 係毋係做得記得你跨次造訪个推薦興趣。你隨時都做得更改。",
+    "essentialCookies": "必要个 Cookie",
+    "essentialDescription": "安全、播放、隱私選擇，還有推薦請求歸屬。",
+    "alwaysActive": "定著啟用",
+    "personalization": "個人化",
+    "personalizationDescription": "記得你跨次造訪个有限興趣。關掉這个，情境推薦還係做得用。",
+    "erasurePending": "個人資料刪除申請正在處理中。情境推薦已經啟用。",
+    "cancel": "取消",
+    "saveChoices": "保存選擇",
+    "saving": "保存當中…",
+    "loadError": "無法載入你个選擇。你還係做得在下背選擇。",
+    "grantError": "無法啟用個人化。還係做得使用單淨必要。",
+    "saveError": "無法保存你个選擇。請再試一次。"
   }
 }

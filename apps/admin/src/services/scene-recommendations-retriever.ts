@@ -15,6 +15,8 @@
 
 import type { PrismaClient } from "@prisma/client"
 
+type SceneRecommendationQueryClient = Pick<PrismaClient, "$queryRaw">
+
 const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
 const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
 const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
@@ -80,11 +82,49 @@ export type InputSceneEmbedding = {
 }
 
 /**
+ * Re-check the mutable consumer-visibility and playable-dub boundary before a
+ * short-lived cached candidate pool is attributed to a fresh request.
+ */
+export async function getEligibleRecommendationVideoIds(
+  prisma: SceneRecommendationQueryClient,
+  videoIds: string[],
+  locale: string,
+  audioLanguageSlug: string = locale,
+): Promise<Set<string>> {
+  if (videoIds.length === 0) return new Set()
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT DISTINCT v.id
+    FROM video v
+    JOIN video_locale vl
+      ON vl.video_id = v.id
+      AND vl.locale = ${locale}
+      AND vl.status = 'published'
+      AND vl.deleted_at IS NULL
+    JOIN video_transcript vt
+      ON vt.video_id = v.id
+      AND vt.language = ${locale}
+    JOIN video_dub vd
+      ON vd.video_edition_id = vt.video_edition_id
+      AND vd.deleted_at IS NULL
+    JOIN language lg
+      ON lg.id = vd.language_id
+      AND lg.slug = ${audioLanguageSlug}
+    JOIN mux_video mv
+      ON mv.id = vd.mux_video_id
+      AND mv.playback_id IS NOT NULL
+    WHERE v.id = ANY(${videoIds}::text[])
+      AND v.deleted_at IS NULL
+      AND NOT ('watch' = ANY(v.restrict_view_platforms))
+  `
+  return new Set(rows.map((row) => row.id))
+}
+
+/**
  * Resolve a `Video.slug` to its cuid id, respecting the soft-delete
  * filter. Returns null when no published, non-deleted video matches.
  */
 export async function resolveSlugToVideoId(
-  prisma: PrismaClient,
+  prisma: SceneRecommendationQueryClient,
   slug: string,
 ): Promise<string | null> {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
@@ -107,7 +147,7 @@ export async function resolveSlugToVideoId(
  * transcript vector space.
  */
 export async function fetchInputEmbeddings(
-  prisma: PrismaClient,
+  prisma: SceneRecommendationQueryClient,
   videoId: string,
   locale: string,
   sceneIndex?: number,
@@ -174,7 +214,7 @@ export async function fetchInputEmbeddings(
  * cuts of the same content (e.g. the JESUS film and its clip segments).
  */
 export async function getRelatedVideoIds(
-  prisma: PrismaClient,
+  prisma: SceneRecommendationQueryClient,
   videoId: string,
 ): Promise<string[]> {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
@@ -196,7 +236,7 @@ export async function getRelatedVideoIds(
  * (preserves cms's non-null `playbackId` contract).
  */
 export async function queryScenesSimilar(
-  prisma: PrismaClient,
+  prisma: SceneRecommendationQueryClient,
   queryEmbedding: string,
   locale: string,
   excludeIds: string[],

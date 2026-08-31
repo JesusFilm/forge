@@ -103,11 +103,22 @@ describe("GoogleAnalytics", () => {
     expect(getGoogleAnalyticsMeasurementId()).toBeNull()
   })
 
-  it("renders the GA4 bootstrap scripts when configured", async () => {
+  it("does not render GA4 without a separate analytics consent signal", async () => {
     mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
 
     act(() => {
       root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    expect(container.querySelectorAll("[data-next-script]")).toHaveLength(0)
+  })
+
+  it("renders the GA4 bootstrap scripts after a separate analytics consent signal", async () => {
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
+
+    act(() => {
+      root.render(<GoogleAnalytics analyticsConsent />)
     })
     await flushEffects()
 
@@ -128,7 +139,7 @@ describe("GoogleAnalytics", () => {
     mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
 
     act(() => {
-      root.render(<GoogleAnalytics />)
+      root.render(<GoogleAnalytics analyticsConsent />)
     })
     await flushEffects()
 
@@ -137,7 +148,7 @@ describe("GoogleAnalytics", () => {
     navigationState.pathname = "/watch/languages.html"
     navigationState.queryString = "source=header"
     act(() => {
-      root.render(<GoogleAnalytics />)
+      root.render(<GoogleAnalytics analyticsConsent />)
     })
     await flushEffects()
 
