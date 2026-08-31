@@ -10,6 +10,7 @@ import {
 } from "@/lib/recommendation-consent"
 import { RECOMMENDATION_PROFILE_CONTRACT } from "@/lib/recommendation-contracts"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import {
   clearRecommendationWithdrawalPending,
   isRecommendationWithdrawalPending,
@@ -20,8 +21,6 @@ import { RecommendationCookieBanner } from "./RecommendationCookieBanner"
 import { RecommendationCookieSettings } from "./RecommendationCookieSettings"
 
 const PROFILE_ENDPOINT = watchPath("/api/recommendations/profile")
-const CONTROL_DEADLINE_MS = 1_200
-
 type ConsentChoice = "undecided" | "essential_only" | "personalization"
 type ConsentState = Readonly<{
   choice: ConsentChoice
@@ -85,7 +84,7 @@ export function RecommendationConsentShell() {
             action,
           }),
         },
-        CONTROL_DEADLINE_MS,
+        RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS,
       )
       const parsed = parseConsent(value)
       if (!parsed) throw new RecommendationRuntimeError("profile_unavailable")

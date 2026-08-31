@@ -76,6 +76,16 @@ afterEach(() => {
 })
 
 describe("RecommendationConsentShell", () => {
+  it("keeps the browser control deadline above the upstream profile budget", async () => {
+    const timeoutSpy = vi.spyOn(window, "setTimeout")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(undecided)))
+
+    renderShell()
+    await flush()
+
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5_000)
+  })
+
   it("shows the three-action first-visit banner and Essential only dismisses it while settings remain", async () => {
     const fetchMock = vi
       .fn()
