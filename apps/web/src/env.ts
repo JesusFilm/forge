@@ -304,11 +304,11 @@ export const env = createEnv({
       ),
     // U10 — Environment-specific absolute origin used by the watch-page Share
     // modal to build sharable Copy Link / Copy Embed Code values that DO
-    // include `/watch/` (the Next.js basePath). Defaults to
-    // `http://localhost:3000` for safer dev / CI experience — `z.url()` would
-    // otherwise hard-fail boot on environments where the value isn't set
-    // explicitly. Public SEO/social metadata intentionally does not read this
-    // value; it emits the indexed www host from routes.ts.
+    // include `/watch/` (the Next.js basePath). Production defaults to the
+    // indexed public Watch host so same-origin browser writes remain valid when
+    // the deployment variable is missing. Dev / CI keep the loopback default.
+    // Public SEO/social metadata intentionally does not read this value; it
+    // emits the indexed www host from routes.ts.
     //
     // F21: refine with a soft allowlist of known-good host shapes. When a
     // value falls outside the allowlist we WARN at module-import time
@@ -320,7 +320,9 @@ export const env = createEnv({
     // still letting unrelated deployments stand up cleanly.
     NEXT_PUBLIC_CANONICAL_ORIGIN: z
       .url()
-      .default("http://localhost:3000")
+      .default(
+        productionDefault("https://www.jesusfilm.org", "http://localhost:3000"),
+      )
       .refine(
         softHostAllowlistRefine(
           "NEXT_PUBLIC_CANONICAL_ORIGIN",

@@ -76,6 +76,16 @@ afterEach(() => {
 })
 
 describe("RecommendationConsentShell", () => {
+  it("keeps the browser control deadline above the upstream profile budget", async () => {
+    const timeoutSpy = vi.spyOn(window, "setTimeout")
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(undecided)))
+
+    renderShell()
+    await flush()
+
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5_000)
+  })
+
   it("shows the three-action first-visit banner and Essential only dismisses it while settings remain", async () => {
     const fetchMock = vi
       .fn()
@@ -312,6 +322,32 @@ describe("RecommendationConsentShell", () => {
 
     expect(container.textContent).not.toContain("Your privacy choices")
     expect(button("Cookie settings")).toBeTruthy()
+  })
+
+  it("pins Cookie settings clear of the feedback launcher and below its modal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response({
+          ...undecided,
+          consentChoice: "essential_only",
+          consentExpiresAt: "2027-02-23T00:00:00.000Z",
+          consentCookieDisposition: "keep",
+        }),
+      ),
+    )
+
+    renderShell()
+    await flush()
+
+    const settings = button("Cookie settings")
+    expect(settings.className).toContain(
+      "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]",
+    )
+    expect(settings.className).toContain(
+      "left-[calc(1rem+env(safe-area-inset-left,0px))]",
+    )
+    expect(settings.className).toContain("z-[45]")
   })
 
   it("keeps a persisted pending withdrawal contextual until a fresh grant is confirmed", async () => {
