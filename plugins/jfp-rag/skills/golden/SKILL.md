@@ -33,18 +33,18 @@ approval naming the exact command and `Doppler forge-rag/prd production-read`.
    candidate set.
 3. Exercise local candidates with
    `QUERY_EMBED_MAX_ATTEMPTS=8 QUERY_EMBED_TIMEOUT_MS=25000 pnpm --filter
-@forge/rag eval -- --case-set current`. Keep questions, hits, URLs, scores,
+@forge/rag eval --case-set current`. Keep questions, hits, URLs, scores,
    embeddings, and corpus text out of durable receipts.
 4. Present the candidate diff and wait for the canonical-write approval. Apply
    only the approved candidate set, then run the eval again and compare
-   identity-matched receipts with `pnpm --filter @forge/rag eval:compare --
+   identity-matched receipts with `pnpm --filter @forge/rag eval:compare
 <control.json> <candidate.json> [dispositions.yaml]`. A mismatched identity or
    failed gate is a terminal stop, not an invitation to weaken the baseline.
 5. Report mode, source, case/config identity, fan-out, aggregate metrics,
    comparison state, and changed paths only.
 
 For an approved production read, use only `doppler run --project forge-rag
---config prd -- pnpm --filter @forge/rag eval:production -- --case-set
+--config prd -- pnpm --filter @forge/rag eval:production --case-set
 <case-set>`. Doppler injects values into that subprocess; never materialize,
 inspect, or echo them. This skill does not create issues or branches, commit,
 merge, deploy, or change lifecycle YAML directly.
