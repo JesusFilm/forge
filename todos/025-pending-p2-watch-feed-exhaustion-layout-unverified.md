@@ -83,7 +83,8 @@ change.
 
 # Source
 
-Branch `t3code/hide-infinite-end-section`, commits `de6f7e404` and `af36610fe`.
+[PR #2126](https://github.com/JesusFilm/forge/pull/2126) on branch
+`t3code/hide-infinite-end-section`.
 Plan: `docs/plans/2026-08-31-2042-fix-watch-feed-end-notice-removal-plan.md`.
 
 Severity: P2. Reviewers: correctness/frontend-races (in-process), corroborated by
