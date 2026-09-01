@@ -6,7 +6,7 @@ import React, {
   type AnchorHTMLAttributes,
   type ReactNode,
 } from "react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({
   default: ({ src, alt }: { src: string; alt: string }) => (
@@ -33,6 +33,10 @@ vi.mock("@/components/watch/MuxHoverPreview", () => ({
 }))
 
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import {
+  completeRecommendationConsentBootstrap,
+  startRecommendationConsentBootstrap,
+} from "@/lib/recommendation-consent-bootstrap"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import {
   container,
@@ -49,6 +53,11 @@ import {
 setupWatchRecommendationsTestHarness()
 
 describe("WatchSemanticRecommendations lifecycle", () => {
+  beforeEach(() => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+  })
+
   it("hides a stale slate while a changed Watch seed loads", async () => {
     let resolveReplacement!: (response: Response) => void
     const replacement = new Promise<Response>((resolve) => {

@@ -14,6 +14,10 @@ export function completeRecommendationConsentBootstrap() {
 }
 
 export async function waitForRecommendationConsentBootstrap() {
+  // Recommendations can render before the consent shell sibling. Establish
+  // the barrier here as well so an early waiter cannot interpret a null
+  // promise as an already-completed profile bootstrap.
+  startRecommendationConsentBootstrap()
   await bootstrapPromise
 }
 
