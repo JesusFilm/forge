@@ -3,18 +3,21 @@
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 
+import { WatchFaqList } from "@/components/watch/WatchFaqList"
 import { WHATS_NEW_FAQ } from "@/components/whats-new/whats-new-content"
 
 const ALL_IDS = WHATS_NEW_FAQ.items.map((item) => item.id)
+const ITEMS = WHATS_NEW_FAQ.items.map((item) => ({
+  id: item.id,
+  question: item.question,
+  answer: item.answer,
+}))
 
 /**
- * FAQ built on native `<details>` rather than a custom disclosure.
- *
- * The browser supplies the keyboard behaviour, the expanded/collapsed
- * announcement, and find-in-page expansion for free — and because the
- * markup is native, every question still opens if this component never
- * hydrates. React only controls `open` so that one button can toggle all
- * of them at once.
+ * The FAQ presentation lives in `WatchFaqList`, shared with the authored
+ * Experience FAQ block. This owns the band it sits on, the bulk control, and
+ * the multi-open state — every row can be open at once so one button can
+ * expand all of them.
  */
 export function WhatsNewFaq({ contentClass }: { contentClass: string }) {
   const [open, setOpen] = useState<readonly string[]>([])
@@ -23,6 +26,8 @@ export function WhatsNewFaq({ contentClass }: { contentClass: string }) {
   function setRow(id: string, isOpen: boolean) {
     setOpen((current) => {
       const has = current.includes(id)
+      // Ignore a toggle that matches what we already believe — `<details>`
+      // fires one for React's own writes too, not just the user's.
       if (isOpen === has) return current
       return isOpen ? [...current, id] : current.filter((it) => it !== id)
     })
@@ -37,64 +42,40 @@ export function WhatsNewFaq({ contentClass }: { contentClass: string }) {
          rather than ending on another dark section. A warm off-white rather
          than pure white, so the answers read as a separate shelf from the
          white vote band above it and the white footer below; the hairline
-         alone was carrying that separation. */
+         alone was carrying that separation.
+
+         The `text-[#131111]` here is what every `currentColor`-derived value
+         inside `WatchFaqList` resolves against. */
       className="relative border-t border-black/[0.08] bg-[#f8f7f5] text-[#131111] scroll-mt-24 md:scroll-mt-32"
     >
       <div className={`${contentClass} py-16 sm:py-20 lg:py-24`}>
-        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold tracking-[0.3em] text-[#131111]/55 uppercase sm:text-sm">
-              {WHATS_NEW_FAQ.eyebrow}
-            </p>
-            <h2
-              id="whats-new-faq-heading"
-              className="mt-4 text-3xl leading-[1.1] font-semibold tracking-[-0.025em] text-balance text-[#131111] sm:text-4xl lg:text-5xl"
+        <WatchFaqList
+          items={ITEMS}
+          openIds={open}
+          onToggle={setRow}
+          eyebrow={WHATS_NEW_FAQ.eyebrow}
+          heading={WHATS_NEW_FAQ.heading}
+          headingId="whats-new-faq-heading"
+          itemTestId="whats-new-faq-item"
+          questionHoverClass="group-hover/question:text-[#cb333b]"
+          headerAction={
+            <button
+              type="button"
+              data-testid="whats-new-faq-toggle-all"
+              aria-expanded={allOpen}
+              onClick={() => setOpen(allOpen ? [] : ALL_IDS)}
+              className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#cb333b] transition-colors hover:text-[#131111] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111]"
             >
-              {WHATS_NEW_FAQ.heading}
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            data-testid="whats-new-faq-toggle-all"
-            aria-expanded={allOpen}
-            onClick={() => setOpen(allOpen ? [] : ALL_IDS)}
-            className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#cb333b] transition-colors hover:text-[#131111] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111]"
-          >
-            {allOpen ? WHATS_NEW_FAQ.collapseAll : WHATS_NEW_FAQ.expandAll}
-            <ChevronDown
-              aria-hidden
-              className={`size-4 transition-transform duration-200 ${
-                allOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="mt-10 lg:mt-14">
-          {WHATS_NEW_FAQ.items.map((item) => (
-            <details
-              key={item.id}
-              open={open.includes(item.id)}
-              onToggle={(event) => setRow(item.id, event.currentTarget.open)}
-              data-testid="whats-new-faq-item"
-              className="group border-t border-black/10 last:border-b"
-            >
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-8 py-6 text-left transition-colors hover:text-[#cb333b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#131111] [&::-webkit-details-marker]:hidden">
-                <h3 className="text-lg leading-snug font-semibold text-balance sm:text-xl">
-                  {item.question}
-                </h3>
-                <ChevronDown
-                  aria-hidden
-                  className="mt-1 size-5 shrink-0 text-[#131111] opacity-45 transition-transform duration-200 group-open:rotate-180"
-                />
-              </summary>
-              <p className="max-w-3xl pr-8 pb-7 text-base leading-8 text-[#131111]/72">
-                {item.answer}
-              </p>
-            </details>
-          ))}
-        </div>
+              {allOpen ? WHATS_NEW_FAQ.collapseAll : WHATS_NEW_FAQ.expandAll}
+              <ChevronDown
+                aria-hidden
+                className={`size-4 transition-transform duration-200 ${
+                  allOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          }
+        />
       </div>
     </section>
   )

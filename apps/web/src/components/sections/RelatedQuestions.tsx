@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
@@ -9,6 +9,7 @@ import type {
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
+import { WatchFaqList } from "@/components/watch/WatchFaqList"
 
 export { relatedQuestionsFragment }
 
@@ -35,74 +36,15 @@ export function MessageCircleIcon() {
   )
 }
 
-function QuestionItem({
-  question,
-  answer,
-  isOpen,
-  onToggle,
-}: {
-  question: string
-  answer: string
-  isOpen: boolean
-  onToggle: () => void
-}) {
-  const panelId = `${useId()}-panel`
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        className="group w-full cursor-pointer rounded-lg p-4 text-left transition-colors hover:bg-white/5"
-      >
-        <div className="w-full">
-          <div className="flex items-center justify-between gap-4">
-            <p className="min-w-0 text-base leading-[1.6] font-normal text-stone-100 md:text-lg md:text-balance">
-              {question}
-            </p>
-            <div className="hidden shrink-0 p-2 text-stone-400 transition-colors group-hover:text-white sm:block">
-              <svg
-                className={`size-6 transform transition-transform ${isOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path
-                  fill="currentColor"
-                  d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </button>
-
-      <div
-        id={panelId}
-        hidden={!isOpen}
-        className="border-b border-stone-500/20 py-6 pb-12 text-stone-200/80"
-      >
-        {isOpen && (
-          <Markdown
-            components={{
-              ul: ({ children }) => (
-                <ul className="mt-2 list-disc space-y-2 pl-6">{children}</ul>
-              ),
-              li: ({ children }) => <li>{children}</li>,
-              p: ({ children }) => (
-                <p className="leading-relaxed">{children}</p>
-              ),
-            }}
-          >
-            {answer}
-          </Markdown>
-        )}
-      </div>
-    </>
-  )
-}
-
+/**
+ * The FAQ presentation lives in `WatchFaqList`, shared with the Watch
+ * "what's new" page's FAQ. This owns the block's own wrapper, the "Ask yours"
+ * CTA, and the single-open accordion state.
+ *
+ * No ink is set here: the enclosing `Section` supplies it (`text-white` or
+ * `text-stone-900` depending on the editor's background choice) and every
+ * value in the shared list derives from it.
+ */
 export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   const t = useTranslations("WatchStudyQuestions")
   const { id, sectionKey, heading, questions } = data
@@ -112,19 +54,45 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   // `RelatedQuestionItemSchema` (apps/admin/src/domain/blocks.ts) does
   // NOT carry an `id` field on individual items — only `question` +
   // `answer` — so `q.id` is `undefined` for every item. Without an
-  // index-based identifier, `openQuestion === q.id` (both undefined)
-  // matches every row and clicking one expands all of them.
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  // index-based identifier, every row shares one identity and opening one
+  // expands all of them.
+  const [openId, setOpenId] = useState<string | null>(null)
 
-  const validQuestions =
-    questions?.filter(
-      (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
-    ) ?? []
+  const items = useMemo(() => {
+    const valid =
+      questions?.filter(
+        (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
+      ) ?? []
 
-  if (!validQuestions.length) return null
+    return valid.map((q: LegacyFragmentValue, idx: number) => ({
+      id: `q-${idx}`,
+      question: q.question ?? "",
+      answer: (
+        <Markdown
+          components={{
+            ul: ({ children }) => (
+              <ul className="mt-2 list-disc space-y-2 pl-6">{children}</ul>
+            ),
+            li: ({ children }) => <li>{children}</li>,
+            p: ({ children }) => <p>{children}</p>,
+          }}
+        >
+          {q.answer ?? ""}
+        </Markdown>
+      ),
+    }))
+  }, [questions])
 
-  const handleToggle = (idx: number) => {
-    setOpenIndex(openIndex === idx ? null : idx)
+  if (!items.length) return null
+
+  // One row at a time. `<details>` reports React's own writes back through
+  // `onToggle`, so closing a row must match on identity — otherwise the echo
+  // from the row React just closed would clear the row the user opened.
+  const handleToggle = (toggledId: string, isOpen: boolean) => {
+    setOpenId((current) => {
+      if (isOpen) return toggledId
+      return current === toggledId ? null : current
+    })
   }
 
   return (
@@ -134,39 +102,28 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       data-testid="RelatedQuestionsSection"
       className="w-full pt-6 xl:pt-4"
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between">
-        {heading && (
-          <h4 className="flex shrink-0 items-center gap-4 py-4 text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:text-base 2xl:text-lg">
-            {heading}
-          </h4>
-        )}
-
-        {ctaLink && (
-          <Button
-            variant="pill"
-            nativeButton={false}
-            aria-label={ctaLabel || t("askYours")}
-            render={
-              <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
-            }
-          >
-            <MessageCircleIcon />
-            <span>{ctaLabel || t("askYours")}</span>
-          </Button>
-        )}
-      </div>
-
-      <div className="relative">
-        {validQuestions.map((q: LegacyFragmentValue, idx: number) => (
-          <QuestionItem
-            key={q.id ?? `q-${idx}`}
-            question={q.question ?? ""}
-            answer={q.answer ?? ""}
-            isOpen={openIndex === idx}
-            onToggle={() => handleToggle(idx)}
-          />
-        ))}
-      </div>
+      <WatchFaqList
+        items={items}
+        openIds={openId == null ? [] : [openId]}
+        onToggle={handleToggle}
+        heading={heading ?? undefined}
+        itemTestId="RelatedQuestionsItem"
+        headerAction={
+          ctaLink ? (
+            <Button
+              variant="pill"
+              nativeButton={false}
+              aria-label={ctaLabel || t("askYours")}
+              render={
+                <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
+              }
+            >
+              <MessageCircleIcon />
+              <span>{ctaLabel || t("askYours")}</span>
+            </Button>
+          ) : null
+        }
+      />
     </section>
   )
 }
