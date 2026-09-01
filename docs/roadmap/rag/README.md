@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (August 31, 2026)
+## Status (September 1, 2026)
 
 - **Total tickets:** 16
-- **Complete:** 10
+- **Complete:** 11
 - **In progress:** 0
-- **Not started:** 6
+- **Not started:** 5
 - **Blocked:** 0
 
 ## Feature Index
@@ -29,7 +29,7 @@ database into Admin.
 | [feat-429](feat-429-rag-local-corpus-copy.md)                  | [#162](https://github.com/JesusFilm/jesusfilm-rag/issues/162) | Rehearse corpus copy locally                                | complete    | [#2086](https://github.com/JesusFilm/forge/pull/2086) |
 | [feat-430](feat-430-rag-production-corpus-copy.md)             | [#163](https://github.com/JesusFilm/jesusfilm-rag/issues/163) | Copy production corpus into Forge Railway                   | complete    | [#2090](https://github.com/JesusFilm/forge/pull/2090) |
 | [feat-431](feat-431-rag-corpus-maintenance.md)                 | [#164](https://github.com/JesusFilm/jesusfilm-rag/issues/164) | Port acquisition, ingestion, and maintenance                | complete    | [#2093](https://github.com/JesusFilm/forge/pull/2093) |
-| [feat-432](feat-432-rag-ops-eval-dashboard.md)                 | [#165](https://github.com/JesusFilm/jesusfilm-rag/issues/165) | Port sources, skills, dashboard, and eval                   | not-started | —                                                     |
+| [feat-432](feat-432-rag-ops-eval-dashboard.md)                 | [#165](https://github.com/JesusFilm/jesusfilm-rag/issues/165) | Port sources, skills, dashboard, and eval                   | complete    | [#2117](https://github.com/JesusFilm/forge/pull/2117) |
 | [feat-433](feat-433-rag-dual-operations.md)                    | [#166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) | Add dual VM and NanoClaw tasks                              | not-started | —                                                     |
 | [feat-434](feat-434-rag-seeker-cutover.md)                     | [#167](https://github.com/JesusFilm/jesusfilm-rag/issues/167) | Cut Seeker over with rollback                               | not-started | —                                                     |
 | [feat-435](feat-435-rag-proof-soak-archive.md)                 | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                  | not-started | —                                                     |

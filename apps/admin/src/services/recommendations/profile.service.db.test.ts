@@ -278,14 +278,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           id, contract_version, surface_version, manifest_id,
           strategy_version, classifier_version, session_digest,
           seed_media_id, locale, expected_item_count, state, result,
-          delivery_jti, signing_kid, issued_at, expires_at,
+          delivery_jti, signing_kid, created_at, issued_at, expires_at,
           experiment_assignment_id
         ) VALUES (
           'profile-fence-request', 'semantic-recommendation-v1',
           'watch-below-player-v1', 'multi-interest-profile-shadow-v1',
           'multi-interest-profile-shadow-v1', 'active-watch-proxy-v1',
           $1, 'profile-fence-seed', 'en', 1, 'prepared', 'served',
-          'profile-fence-delivery-jti', 'test-kid', $2, $3,
+          'profile-fence-delivery-jti', 'test-kid', $2, $2, $3,
           'profile-fence-assignment'
         )`,
         [evidenceSessionDigest, now, expiresAt],

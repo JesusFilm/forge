@@ -1,0 +1,10 @@
+version: 1
+producers:
+  - name: forge-root
+    source: docs/pages/site
+    target: /
+    files: [index.html]
+  - name: rag-status
+    source: apps/rag/dashboard/site/rag-status
+    target: /rag-status
+    files: [.dashboard-commit.json, index.html]
