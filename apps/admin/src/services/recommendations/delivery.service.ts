@@ -163,6 +163,7 @@ export class RecommendationDeliveryService {
           return (await withinDeadline(
             () =>
               this.deps.authorizeProfile!({
+                sessionDigest: input.sessionDigest,
                 consentReceiptDigest: input.consentReceiptDigest!,
                 profileTokenDigest: input.profileTokenDigest!,
                 now,

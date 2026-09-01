@@ -45,6 +45,12 @@ describe("RecommendationDeliveryService", () => {
         manifestId: "semantic-transcript-pgvector-v1",
       }),
     )
+    expect(harness.authorizeProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionDigest: "a".repeat(64),
+        profileTokenDigest: "d".repeat(64),
+      }),
+    )
     expect(delivery).toMatchObject({
       result: "served",
       reason: null,

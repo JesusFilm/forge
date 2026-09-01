@@ -14,6 +14,7 @@ export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
   "recommendation-content-action-v1" as const
 export const RECOMMENDATION_PROFILE_CONTRACT =
   "recommendation-profile-v1" as const
+export const RECOMMENDATION_PROFILE_SESSION_LINK_HOURS = 24
 
 export const MAX_DELIVERY_ITEMS = 6
 export const MAX_DELIVERY_RESPONSE_BYTES = 64 * 1024

@@ -14,7 +14,10 @@ import { z } from "zod"
 import type { Principal } from "@/auth/principal"
 import { prisma as defaultPrisma } from "@/db/client"
 import { assertWebRecommendationCaller } from "./caller"
-import { RECOMMENDATION_PROFILE_CONTRACT } from "./contracts"
+import {
+  RECOMMENDATION_PROFILE_CONTRACT,
+  RECOMMENDATION_PROFILE_SESSION_LINK_HOURS,
+} from "./contracts"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { redactShadowRunsForProfileGeneration } from "./shadow-evaluation/service"
 import { eraseProfileProjectionInfluence } from "./profiles/privacy"
@@ -23,7 +26,6 @@ export const RECOMMENDATION_PROFILE_DAYS = 180
 export const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
 export const RECOMMENDATION_CONSENT_CONTRACT =
   "recommendation-consent-v1" as const
-const SESSION_LINK_HOURS = 24
 
 const Digest = z.string().regex(/^[a-f0-9]{64}$/)
 const TransitionInput = z
@@ -917,7 +919,7 @@ export class RecommendationProfileService {
     const expiresAt = new Date(
       Math.min(
         profile.expiresAt.getTime(),
-        hoursAfter(now, SESSION_LINK_HOURS).getTime(),
+        hoursAfter(now, RECOMMENDATION_PROFILE_SESSION_LINK_HOURS).getTime(),
       ),
     )
     await client.recommendationProfileSessionLink.upsert({
