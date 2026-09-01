@@ -237,4 +237,17 @@ describe("WatchFaqList", () => {
       }
     })
   })
+
+  it("defaults the hover affordance to an underline, never a colour", () => {
+    // A fixed hover colour cannot clear WCAG AA on both a light and a dark
+    // SECTION_BG_CLASSES band — measured 2.58:1 to 4.35:1 for the brand red
+    // against 20px/600 text. An underline inherits the question's own colour,
+    // so it passes wherever the question already does.
+    render([])
+
+    const className = rows()[0].querySelector("h3")?.getAttribute("class") ?? ""
+
+    expect(className, className).toContain("group-hover/question:underline")
+    expect(className, className).not.toMatch(/group-hover\/question:text-/)
+  })
 })

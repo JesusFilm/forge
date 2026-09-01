@@ -82,9 +82,16 @@ type WatchFaqListProps = {
   /** Stamped on each `<details>`, so each surface keeps its own selector. */
   itemTestId?: string
   /**
-   * The question's hover colour — the one value that cannot be derived from
-   * the surrounding ink, because it is a brand choice rather than a tint of
-   * it.
+   * The question's hover affordance.
+   *
+   * Defaults to an underline, not a colour. A colour here cannot be derived
+   * from the surrounding ink, and no single fixed red clears WCAG AA on both
+   * a light and a dark band — measured across all six `SECTION_BG_CLASSES`
+   * grounds, the repo's `--color-brand-red` lands between 2.58:1 and 4.35:1
+   * against 20px/600 text, which is normal text at that weight. An underline
+   * inherits the question's own colour, so it passes wherever the question
+   * does. A caller that owns a fixed band may opt into a colour it has
+   * measured, as `WhatsNewFaq` does (`#cb333b`, 4.81:1 on its own paper).
    *
    * Must be written as a `group-hover/question:` variant. Hovering anywhere on
    * the row should redden the question, but the chevron beside it has to stay
@@ -104,7 +111,7 @@ export function WatchFaqList({
   headingId,
   headerAction,
   itemTestId,
-  questionHoverClass = "group-hover/question:text-brand-red",
+  questionHoverClass = "group-hover/question:underline",
 }: WatchFaqListProps) {
   // `<details>` supplies expanded state natively but has no `aria-controls`
   // equivalent, so the trigger-to-panel relationship feat-317 shipped for
