@@ -11,7 +11,6 @@ import {
   runRecommendationRetrievalQuery,
 } from "./delivery-runtime"
 import { RecommendationDeliveryService } from "./delivery.service"
-import { resolveExperimentAssignment } from "./experiment/assignment"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
 import { readRecommendationRetentionHealth } from "./retention.service"
@@ -60,14 +59,6 @@ export function createRecommendationDeliveryService(
           new SceneRecommendationsService({
             prisma: scopedPrisma,
           }).recheckEligibility(items, input.locale, input.audioLanguageSlug),
-      ),
-    assignExperiment: (input) =>
-      runRecommendationDeliveryTransaction(
-        prisma,
-        input.deadlineAt,
-        (tx) =>
-          resolveExperimentAssignment(tx as unknown as PrismaClient, input),
-        Date.now,
       ),
     authorizeProfile: (input) =>
       runRecommendationDeliveryTransaction(

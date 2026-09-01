@@ -220,9 +220,7 @@ export class RecommendationDeliveryService {
               : null
             return {
               profile,
-              failureReason: profile
-                ? null
-                : ("profile_projection_unavailable" as const),
+              failureReason: profile ? null : ("profile_cold_start" as const),
               latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
             }
           } catch (error) {
@@ -433,9 +431,21 @@ export class RecommendationDeliveryService {
       }
       let profileProjectionId: string | null = null
       let profileRetrievalLatencyMs: number | null = null
+      const profileColdStart =
+        profileTokenDigest != null &&
+        !profileResolution.profile &&
+        profileResolution.failureReason === "profile_cold_start"
       if (profileTokenDigest != null) {
+        profileRetrievalLatencyMs = profileResolution.latencyMs
+      }
+      if (profileColdStart) {
+        personalization = {
+          ...personalization,
+          reason: "profile_cold_start",
+        }
+      }
+      if (profileTokenDigest != null && !profileColdStart) {
         try {
-          profileRetrievalLatencyMs = profileResolution.latencyMs
           if (!profileResolution.profile) {
             throw new RecommendationInternalStateError(
               profileResolution.failureReason ??

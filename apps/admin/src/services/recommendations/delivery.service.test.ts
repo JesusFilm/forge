@@ -466,7 +466,7 @@ describe("RecommendationDeliveryService", () => {
     expect(harness.retrieve).toHaveBeenCalledOnce()
   })
 
-  it("falls back to semantic when the profile projection is unavailable", async () => {
+  it("serves semantic context normally while an authorized profile is cold", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
       assignment: {
@@ -486,17 +486,39 @@ describe("RecommendationDeliveryService", () => {
       personalizedInput("profile-fallback"),
     )
 
-    expect(delivery.result).toBe("fallback")
+    expect(delivery.result).toBe("served")
+    expect(delivery.reason).toBeNull()
     expect(delivery.items[0]).toMatchObject({
       targetMediaId: "target-video",
       candidateGenerator: "semantic",
     })
     expect(delivery.personalization).toMatchObject({
-      lane: "semantic_fallback",
-      executionMode: "semantic_fallback",
-      reason: "profile_projection_unavailable",
+      lane: "semantic_control",
+      executionMode: "semantic_contextual",
+      reason: "profile_cold_start",
     })
     expect(harness.orchestrateHybrid).not.toHaveBeenCalled()
+    expect(
+      harness.tx.recommendationCandidateRun.create.mock.calls[0]?.[0].data,
+    ).toMatchObject({ evidenceComplete: true, fallbackReason: null })
+  })
+
+  it("falls back explicitly when profile retrieval fails", async () => {
+    const harness = makeHarness()
+    harness.retrieveProfile.mockRejectedValueOnce(
+      new Error("profile store unavailable"),
+    )
+
+    await expect(
+      harness.service.deliver(personalizedInput("profile-store-failure")),
+    ).resolves.toMatchObject({
+      result: "fallback",
+      personalization: {
+        lane: "semantic_fallback",
+        executionMode: "semantic_fallback",
+        reason: "profile_projection_unavailable",
+      },
+    })
   })
 
   it("treats an empty profile nomination set as source-local sparsity", async () => {
@@ -741,8 +763,9 @@ describe("RecommendationDeliveryService", () => {
       result: "fallback",
       reason: "candidate_pool_fallback",
       personalization: {
-        lane: "semantic_fallback",
-        reason: "profile_projection_unavailable",
+        lane: "semantic_control",
+        executionMode: "semantic_contextual",
+        reason: "profile_cold_start",
       },
     })
     expect(
@@ -751,7 +774,7 @@ describe("RecommendationDeliveryService", () => {
     expect(
       harness.tx.recommendationPersonalizationDecision.create.mock.calls[1]?.[0]
         .data,
-    ).toMatchObject({ reasonCode: "profile_projection_unavailable" })
+    ).toMatchObject({ reasonCode: "profile_cold_start" })
   })
   it("signs A/A attribution without changing semantic item order and bypasses assignment failure", async () => {
     const firstHarness = makeHarness()
