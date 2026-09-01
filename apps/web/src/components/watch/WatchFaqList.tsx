@@ -1,6 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useId } from "react"
+import type { MouseEvent, ReactNode } from "react"
 import { ChevronDown } from "lucide-react"
 
 /**
@@ -40,6 +41,19 @@ import { ChevronDown } from "lucide-react"
  * single-open accordion. Both ignore a toggle that matches what they already
  * believe, which is what stops the echo from a row React just closed.
  */
+
+/**
+ * Chrome fires a click when a drag-select ends inside a `<summary>`, and
+ * summary activation is that click's default action — so a visitor copying a
+ * question would collapse the row under their cursor. Cancelling the default
+ * is the whole fix: no state, no `stopPropagation`, and a plain click still
+ * toggles. Trap 2 in
+ * `docs/solutions/design-patterns/native-details-summary-disclosure-implementation-traps.md`.
+ */
+function cancelToggleWhileSelecting(event: MouseEvent<HTMLElement>) {
+  const selection = window.getSelection()
+  if (selection && !selection.isCollapsed) event.preventDefault()
+}
 
 export type WatchFaqItem = {
   /** Stable identity for the open-set. Index-derived is fine. */
@@ -92,6 +106,12 @@ export function WatchFaqList({
   itemTestId,
   questionHoverClass = "group-hover/question:text-brand-red",
 }: WatchFaqListProps) {
+  // `<details>` supplies expanded state natively but has no `aria-controls`
+  // equivalent, so the trigger-to-panel relationship feat-317 shipped for
+  // FGE-40 is restored explicitly. One base per component instance keeps two
+  // lists on the same page from colliding.
+  const panelIdBase = useId()
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
@@ -119,40 +139,51 @@ export function WatchFaqList({
       </div>
 
       <div className="mt-10 lg:mt-14">
-        {items.map((item) => (
-          <details
-            key={item.id}
-            open={openIds.includes(item.id)}
-            onToggle={(event) => onToggle(item.id, event.currentTarget.open)}
-            data-testid={itemTestId}
-            className="group border-t border-current/10 last:border-b"
-          >
-            {/* Two groups, deliberately. The unnamed one is the `<details>`,
+        {items.map((item, index) => {
+          const panelId = `${panelIdBase}-${index}`
+
+          return (
+            <details
+              key={item.id}
+              open={openIds.includes(item.id)}
+              onToggle={(event) => onToggle(item.id, event.currentTarget.open)}
+              data-testid={itemTestId}
+              className="group border-t border-current/10 last:border-b"
+            >
+              {/* Two groups, deliberately. The unnamed one is the `<details>`,
                 which is what `group-open:` reads to spin the chevron; the
                 named one is the row's hover target, scoped so the colour can
                 land on the heading alone. */}
-            <summary className="group/question flex cursor-pointer list-none items-start justify-between gap-8 py-6 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current [&::-webkit-details-marker]:hidden">
-              <h3
-                className={`text-lg leading-snug font-semibold text-balance transition-colors sm:text-xl ${questionHoverClass}`}
+              <summary
+                aria-controls={panelId}
+                onClick={cancelToggleWhileSelecting}
+                className="group/question flex cursor-pointer list-none items-start justify-between gap-8 py-6 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current [&::-webkit-details-marker]:hidden"
               >
-                {item.question}
-              </h3>
-              {/* `text-current` is a deliberate no-op that keeps the chevron on
+                <h3
+                  className={`text-lg leading-snug font-semibold text-balance transition-colors sm:text-xl ${questionHoverClass}`}
+                >
+                  {item.question}
+                </h3>
+                {/* `text-current` is a deliberate no-op that keeps the chevron on
                   the row's own ink while the question reddens, and satisfies the
                   page-wide icon rule: a lucide glyph carrying `opacity-*` must
                   pair it with a SOLID colour, never a fractional one, or every
                   stroke crossing composites twice. See "never gives a decorative
                   icon a per-stroke alpha" in the what's-new page suite. */}
-              <ChevronDown
-                aria-hidden
-                className="mt-1 size-5 shrink-0 text-current opacity-45 transition-transform duration-200 group-open:rotate-180"
-              />
-            </summary>
-            <div className="max-w-3xl pr-8 pb-7 text-base leading-8 opacity-72">
-              {item.answer}
-            </div>
-          </details>
-        ))}
+                <ChevronDown
+                  aria-hidden
+                  className="mt-1 size-5 shrink-0 text-current opacity-45 transition-transform duration-200 group-open:rotate-180"
+                />
+              </summary>
+              <div
+                id={panelId}
+                className="max-w-3xl pr-8 pb-7 text-base leading-8 opacity-72"
+              >
+                {item.answer}
+              </div>
+            </details>
+          )
+        })}
       </div>
     </>
   )

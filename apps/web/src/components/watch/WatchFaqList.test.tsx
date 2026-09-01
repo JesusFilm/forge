@@ -124,4 +124,117 @@ describe("WatchFaqList", () => {
     expect(className, className).toContain("border-current/")
     expect(className, className).not.toMatch(/\bborder-(?:black|white|stone)-?/)
   })
+
+  describe("select-to-copy guard", () => {
+    // Chrome fires a click when a drag-select ends inside a <summary>, and
+    // summary activation is that click's default action — so copying a
+    // question would collapse the row under the cursor. Trap 2 in
+    // `docs/solutions/design-patterns/native-details-summary-disclosure-implementation-traps.md`.
+    function stubSelection(value: { isCollapsed: boolean } | null) {
+      const original = window.getSelection
+      window.getSelection = (() => value) as typeof window.getSelection
+      return () => {
+        window.getSelection = original
+      }
+    }
+
+    it("does not toggle when the click ends a text selection", () => {
+      render([])
+      const restore = stubSelection({ isCollapsed: false })
+
+      const row = rows()[0]
+      act(() => {
+        row.querySelector("summary")!.click()
+      })
+
+      expect(row.open).toBe(false)
+      restore()
+    })
+
+    it("still toggles on a plain click with nothing selected", () => {
+      render([])
+      const restore = stubSelection({ isCollapsed: true })
+
+      const row = rows()[0]
+      act(() => {
+        row.querySelector("summary")!.click()
+      })
+
+      expect(row.open).toBe(true)
+      restore()
+    })
+
+    it("still toggles when getSelection returns nothing at all", () => {
+      // The guard must not be able to wedge the control shut on a platform
+      // that reports no selection object.
+      render([])
+      const restore = stubSelection(null)
+
+      const row = rows()[0]
+      act(() => {
+        row.querySelector("summary")!.click()
+      })
+
+      expect(row.open).toBe(true)
+      restore()
+    })
+  })
+
+  describe("aria-controls relationship", () => {
+    // feat-317 gave the previous hand-rolled disclosure `aria-controls`
+    // for external accessibility issue FGE-40. <details> supplies expanded
+    // state natively but has no controls equivalent, so it is restored
+    // explicitly rather than surrendered with the primitive.
+    it("points every summary at the answer panel in its own row", () => {
+      render([])
+
+      for (const row of rows()) {
+        const controls = row
+          .querySelector("summary")!
+          .getAttribute("aria-controls")
+        expect(controls).toBeTruthy()
+        // Resolved with getElementById rather than a `#id` selector: React's
+        // useId emits guillemets, and `apps/web`'s jsdom has no `CSS.escape`
+        // (that polyfill reaches apps/chat only via @testing-library, which
+        // this app does not depend on).
+        const panel = document.getElementById(controls!)
+        expect(panel).not.toBeNull()
+        expect(row.contains(panel)).toBe(true)
+      }
+    })
+
+    it("keeps panel ids unique within and across rendered lists", () => {
+      const second = document.createElement("div")
+      document.body.appendChild(second)
+      const secondRoot = createRoot(second)
+      render([])
+      act(() => {
+        secondRoot.render(
+          <WatchFaqList items={ITEMS} openIds={[]} onToggle={() => {}} />,
+        )
+      })
+
+      const ids = [
+        ...document.querySelectorAll<HTMLElement>("summary[aria-controls]"),
+      ].map((el) => el.getAttribute("aria-controls"))
+
+      expect(ids).toHaveLength(4)
+      expect(new Set(ids).size).toBe(4)
+
+      act(() => secondRoot.unmount())
+      second.remove()
+    })
+
+    it("leaves expanded state to the native element", () => {
+      // A hand-written aria-expanded fights the implicit mapping <details>
+      // already provides on its summary.
+      render(["a"])
+
+      for (const row of rows()) {
+        expect(
+          row.querySelector("summary")!.hasAttribute("aria-expanded"),
+        ).toBe(false)
+      }
+    })
+  })
 })
