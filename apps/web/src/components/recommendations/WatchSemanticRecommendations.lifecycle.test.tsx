@@ -132,7 +132,8 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
     await act(async () => vi.advanceTimersByTime(12_000))
     expect(container.querySelector('[data-state="loading"]')).toBeNull()
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
+    expect(container.innerHTML).toBe("")
   })
 
   it("makes pointer/keyboard activation single-flight, stores only the fresh claim nonce, and navigates once", async () => {
