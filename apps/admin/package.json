@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --port 3003",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build && node scripts/verify-recommendation-workflow-build.mjs",
     "start": "next start",
     "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-admin --minified-path-prefix /_next/static/",
     "postinstall": "prisma generate",
