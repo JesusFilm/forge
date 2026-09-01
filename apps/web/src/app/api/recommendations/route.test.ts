@@ -338,6 +338,44 @@ describe("POST /watch/api/recommendations", () => {
     })
   })
 
+  it("serves contextual cards when the semantic seed has no embedding", async () => {
+    query
+      .mockResolvedValueOnce({
+        data: {
+          semanticRecommendationDelivery: {
+            ...delivery,
+            result: "empty",
+            reason: "seed_embedding_unavailable",
+            items: [],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          sceneRecommendations: [contextualRecommendation],
+        },
+      })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-without-embedding",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      delivery: {
+        result: "fallback",
+        reason: "seed_embedding_unavailable",
+        items: [{ targetMediaId: "target-1" }],
+      },
+    })
+  })
+
   it("preserves the semantic unavailable receipt when contextual recovery also fails", async () => {
     query
       .mockResolvedValueOnce({
