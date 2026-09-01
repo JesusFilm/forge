@@ -16,21 +16,56 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService", () => {
-  it("combines an assigned profile nomination with semantic refill and persists hybrid execution", async () => {
+  it("uses an authorized profile directly without shadow or promotion assignment", async () => {
     const harness = makeHarness()
     harness.assignExperiment.mockResolvedValue({
-      assignment: {
-        assignmentId: "assignment-profile",
-        experimentId: "anonymous-profile-pilot-v1",
-        experimentVersion: "anonymous-profile-pilot-v1",
-        experimentGeneration: 1,
-        arm: "challenger",
-        effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-        assignmentProbability: 0.1,
-        configurationDigest: "f".repeat(64),
-      },
-      bypassReason: null,
+      assignment: null,
+      bypassReason: "promotion_not_active",
     })
+    harness.retrieveProfile.mockResolvedValue(profileCandidateResult)
+    harness.retrieve.mockResolvedValue(semanticCandidates(6))
+
+    const delivery = await harness.service.deliver(
+      personalizedInput("direct-profile-seed"),
+    )
+
+    expect(harness.assignExperiment).not.toHaveBeenCalled()
+    expect(harness.signDeliveryCapability).toHaveBeenCalledWith(
+      expect.not.objectContaining({ assignmentId: expect.anything() }),
+    )
+    expect(
+      harness.tx.recommendationRequest.create.mock.calls[0]?.[0].data,
+    ).toMatchObject({
+      experimentAssignmentId: null,
+      experimentBypassReason: null,
+    })
+    expect(harness.retrieveProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profileTokenDigest: "d".repeat(64),
+        manifestId: "semantic-transcript-pgvector-v1",
+      }),
+    )
+    expect(delivery).toMatchObject({
+      result: "served",
+      reason: null,
+      personalization: {
+        lane: "profile_challenger",
+        executionMode: "hybrid_personalized",
+        effectiveManifestId: "semantic-transcript-pgvector-v1",
+        interestCount: 1,
+        reason: null,
+      },
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          targetMediaId: "personalized-video",
+          candidateGenerator: "multi-interest-profile",
+        }),
+      ]),
+    })
+  })
+
+  it("combines an authorized profile nomination with semantic refill and persists hybrid execution", async () => {
+    const harness = makeHarness()
     harness.retrieveProfile.mockResolvedValue(profileCandidateResult)
     harness.retrieve.mockResolvedValue(semanticCandidates(6))
 
@@ -72,7 +107,7 @@ describe("RecommendationDeliveryService", () => {
       contractVersion: "anonymous-profile-personalization-v1",
       lane: "profile_challenger",
       executionMode: "hybrid_personalized",
-      effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
+      effectiveManifestId: "semantic-transcript-pgvector-v1",
       profileState: "session",
       projectionVersion: "multi-interest-profile-projection-v1",
       projectionGeneration: 2,
