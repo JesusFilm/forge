@@ -170,6 +170,7 @@ describe("recommendation profile projection service", () => {
     const queryRaw = vi
       .fn()
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ generation: 1 }])
     const transaction = vi.fn(async (work) =>
       work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
@@ -223,6 +224,7 @@ describe("recommendation profile projection service", () => {
     const queryRaw = vi
       .fn()
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ generation: 1 }])
     const conflict = Object.assign(new Error("serialization conflict"), {
       code: "P2034",
@@ -255,6 +257,52 @@ describe("recommendation profile projection service", () => {
       }),
     ).resolves.toMatchObject({ status: "published", generation: 1 })
     expect(transaction).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not let a stale empty build replace a newer interest projection", async () => {
+    const executeRaw = vi.fn().mockResolvedValue(1)
+    const newerWatermark = new Date("2026-08-26T01:59:30.000Z")
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "interest-generation",
+          generation: 8,
+          inputWatermark: newerWatermark,
+          contributionCount: 1,
+        },
+      ])
+    const transaction = vi.fn(async (work) =>
+      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
+    )
+
+    await expect(
+      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+        scope: "session",
+        sessionDigest: "a".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: NOW,
+        inputDigest: "stale-empty-input",
+        projection: {
+          durableInterests: [],
+          sessionIntent: null,
+          explicitPreferences: [],
+          negativeEvidence: [],
+          contributionCount: 0,
+          cohortQuality: 0,
+        },
+        durableEvidence: [],
+        sessionEvidence: [],
+      }),
+    ).resolves.toEqual({
+      status: "published",
+      generationId: "interest-generation",
+      generation: 8,
+      replay: true,
+    })
+    expect(executeRaw).toHaveBeenCalledOnce()
   })
 
   it("keeps source expiry in the deterministic rebuild input", async () => {
