@@ -63,12 +63,18 @@ function sentinelMessage() {
  * sentence has to read the class list instead.
  */
 function sentinelMessageIsScreenReaderOnly() {
-  return (sentinelMessage()?.className ?? "").split(/\s+/).includes("sr-only")
+  return sentinelMessage()?.classList.contains("sr-only") ?? false
 }
 
-function sentinelReservesSpace() {
-  const classes = feedSentinel().className.split(/\s+/)
-  return classes.includes("min-h-28") && classes.includes("py-8")
+/**
+ * Returns each spacing utility still on the sentinel, so an assertion can name
+ * both independently. A single `hasSpacing` boolean would let one leftover
+ * utility — the 112px minimum height on its own is still a dead band — read as
+ * "collapsed".
+ */
+function sentinelSpacingClasses() {
+  const { classList } = feedSentinel()
+  return ["min-h-28", "py-8"].filter((utility) => classList.contains(utility))
 }
 
 let container: HTMLDivElement
@@ -120,7 +126,13 @@ beforeEach(() => {
     }
     observe = (element: Element) => this.harness.observed.add(element)
     unobserve = (element: Element) => this.harness.observed.delete(element)
-    disconnect = () => this.harness.disconnect()
+    disconnect = () => {
+      // A real disconnect stops observing everything. Without this, a
+      // torn-down observer keeps its element forever and any "is the sentinel
+      // observed?" assertion matches the stale one.
+      this.harness.observed.clear()
+      this.harness.disconnect()
+    }
     takeRecords() {
       return []
     }
@@ -196,6 +208,30 @@ function section(id: string, title: string) {
 function intersect(isIntersecting = true) {
   return act(async () => {
     intersectionObservers[0]?.callback(
+      [{ isIntersecting } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+  })
+}
+
+/**
+ * The most recently created sentinel observer. `intersect()` always drives the
+ * first one, which is the disconnected observer once the feed has been
+ * exhausted and re-armed.
+ */
+function latestSentinelObserver() {
+  const sentinelObservers = intersectionObservers.filter(
+    (observer) => observer.rootMargin === "900px 0px",
+  )
+  const latest = sentinelObservers.at(-1)
+  if (!latest) throw new Error("no sentinel observer was created")
+  return latest
+}
+
+function intersectLatestSentinel(isIntersecting = true) {
+  const latest = latestSentinelObserver()
+  return act(async () => {
+    latest.callback(
       [{ isIntersecting } as IntersectionObserverEntry],
       {} as IntersectionObserver,
     )
@@ -892,10 +928,17 @@ describe("DynamicMediaCollection", () => {
     // branch wins over its end-of-library branch whenever the final page
     // appended something, so an implementation that reused the live-message
     // state would announce the wrong sentence here and pass everywhere else.
-    expect(sentinelMessage()?.textContent).toBe(FEED_EXHAUSTED_MESSAGE)
+    //
+    // The sentence is spelled out rather than compared against
+    // FEED_EXHAUSTED_MESSAGE on purpose: production and the oracle would
+    // otherwise be the same value, and editing the constant to any other
+    // string — "Loading more collections…" included — would keep this green.
+    expect(sentinelMessage()?.textContent).toBe(
+      "You’ve reached the end of the collection library.",
+    )
     expect(sentinelMessageIsScreenReaderOnly()).toBe(true)
     expect(feedSentinel().getAttribute("aria-live")).toBe("polite")
-    expect(sentinelReservesSpace()).toBe(false)
+    expect(sentinelSpacingClasses()).toEqual([])
   })
 
   it("keeps the loading line visible and the sentinel spaced while pages remain", async () => {
@@ -915,7 +958,7 @@ describe("DynamicMediaCollection", () => {
 
     expect(sentinelMessage()?.textContent).toBe("Loading more collections…")
     expect(sentinelMessageIsScreenReaderOnly()).toBe(false)
-    expect(sentinelReservesSpace()).toBe(true)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
 
     await act(async () => {
       pending.resolve({
@@ -924,7 +967,7 @@ describe("DynamicMediaCollection", () => {
         hasNextPage: true,
       })
     })
-    expect(sentinelReservesSpace()).toBe(true)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
   })
 
   it("keeps the sentinel spaced for the retry button and shows no end notice on failure", async () => {
@@ -944,7 +987,7 @@ describe("DynamicMediaCollection", () => {
     expect(feedSentinel().querySelector("button")).toBeTruthy()
     expect(sentinelMessage()).toBeNull()
     expect(container.textContent).not.toContain(FEED_EXHAUSTED_MESSAGE)
-    expect(sentinelReservesSpace()).toBe(true)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
   })
 
   it("re-arms the sentinel when the feed identity changes after exhaustion", async () => {
@@ -966,7 +1009,8 @@ describe("DynamicMediaCollection", () => {
     await intersect()
 
     const exhausted = feedSentinel()
-    expect(sentinelReservesSpace()).toBe(false)
+    expect(sentinelSpacingClasses()).toEqual([])
+    loadPage.mockClear()
 
     await act(async () => {
       root.render(
@@ -982,11 +1026,18 @@ describe("DynamicMediaCollection", () => {
     // effect re-observes `sentinelRef.current`, so losing the node would
     // silently stop paging on the new locale.
     expect(feedSentinel()).toBe(exhausted)
-    expect(sentinelReservesSpace()).toBe(true)
-    expect(
-      intersectionObservers.some((observer) =>
-        observer.observed.has(exhausted),
-      ),
-    ).toBe(true)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
+
+    // Both halves matter, and neither implies the other: the live observer
+    // must actually hold the sentinel, and driving it must resume paging on
+    // the new locale. Asserting that *some* observer holds the sentinel would
+    // pass on the disconnected one from before exhaustion.
+    expect(latestSentinelObserver().observed.has(exhausted)).toBe(true)
+
+    await intersectLatestSentinel()
+    expect(loadPage).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "fr", languageSlug: "french" }),
+      expect.anything(),
+    )
   })
 })
