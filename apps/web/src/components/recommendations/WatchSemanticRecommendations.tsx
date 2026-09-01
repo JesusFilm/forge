@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
-import { useTranslations } from "next-intl"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
@@ -466,7 +465,6 @@ export function WatchSemanticRecommendations({
   audioLanguageSlug: string
   navigate?: (href: string) => void
 }) {
-  const t = useTranslations("VideoRecommendations")
   const [profileRevision, setProfileRevision] = useState(0)
   const requestKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
   const [state, setState] = useState<RecommendationState>({
@@ -864,27 +862,11 @@ export function WatchSemanticRecommendations({
       />
     )
   }
-  if (currentState.status === "empty") {
-    return (
-      <section
-        data-block-type="SemanticRecommendations"
-        data-state="empty"
-        className="min-h-48 py-12 text-center text-stone-400"
-      >
-        <p>{t("none")}</p>
-      </section>
-    )
-  }
-  if (currentState.status === "unavailable") {
-    return (
-      <section
-        data-block-type="SemanticRecommendations"
-        data-state="unavailable"
-        className="min-h-48 py-12 text-center text-stone-400"
-      >
-        <p>Recommended videos are temporarily unavailable.</p>
-      </section>
-    )
+  if (
+    currentState.status === "empty" ||
+    currentState.status === "unavailable"
+  ) {
+    return null
   }
 
   let announcement = ""
