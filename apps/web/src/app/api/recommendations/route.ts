@@ -93,7 +93,9 @@ async function recoverContextualDelivery(
     | ReturnType<typeof unavailableSemanticDelivery>,
   input: z.infer<typeof DeliveryInput>,
 ) {
-  if (delivery.result !== "unavailable") return delivery
+  if (delivery.result !== "unavailable" && delivery.result !== "empty") {
+    return delivery
+  }
   const scenePromise = getContextualSceneRecommendations(
     input.seedMediaId,
     input.locale,
