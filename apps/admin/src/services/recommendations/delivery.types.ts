@@ -84,6 +84,7 @@ export type DeliveryDependencies = {
   orchestrate?: typeof import("./orchestration").runSemanticCandidatePlatform
   orchestrateHybrid?: typeof import("./orchestration").runCandidatePlatform
   authorizeProfile?: (input: {
+    sessionDigest: string
     consentReceiptDigest: string
     profileTokenDigest: string
     now: Date
