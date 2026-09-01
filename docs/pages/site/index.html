@@ -4,14 +4,204 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Forge status</title>
+    <meta
+      name="description"
+      content="Repository-owned operational status surfaces for Forge."
+    />
+    <style>
+      :root {
+        --red: #ef3340;
+        --navy: #424a66;
+        --ink: #2e2e2e;
+        --muted: #686966;
+        --border: #e3e2dc;
+        --warm-white: #f7f5ef;
+        --white: #ffffff;
+        --font-sans:
+          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-serif: "Noto Serif", Georgia, serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background: var(--warm-white);
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(var(--border), var(--border)) 0 0 / 100% 1px no-repeat,
+          var(--warm-white);
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .shell {
+        width: min(100% - 40px, 920px);
+        margin: 0 auto;
+        padding: clamp(64px, 11vw, 112px) 0 56px;
+      }
+
+      header {
+        max-width: 680px;
+        padding-bottom: 32px;
+        border-bottom: 2px solid var(--red);
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--red);
+        font-size: 12px;
+        font-weight: 750;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--ink);
+        font-size: clamp(42px, 8vw, 72px);
+        font-weight: 800;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+      }
+
+      .intro {
+        max-width: 54ch;
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-family: var(--font-serif);
+        font-size: clamp(18px, 2.5vw, 21px);
+      }
+
+      .surfaces {
+        margin-top: 48px;
+      }
+
+      .section-label {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .surface-link {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: center;
+        max-width: 680px;
+        padding: 22px 24px;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--navy);
+        border-radius: 4px;
+        color: inherit;
+        background: var(--white);
+        text-decoration: none;
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+
+      .surface-link:hover {
+        border-color: var(--navy);
+        box-shadow: 0 10px 28px rgb(66 74 102 / 10%);
+        transform: translateY(-2px);
+      }
+
+      .surface-link:focus-visible {
+        outline: 3px solid var(--red);
+        outline-offset: 4px;
+      }
+
+      .surface-title {
+        display: block;
+        font-size: 19px;
+        font-weight: 750;
+        letter-spacing: -0.01em;
+      }
+
+      .surface-description {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .arrow {
+        color: var(--red);
+        font-size: 24px;
+        line-height: 1;
+        transition: transform 160ms ease;
+      }
+
+      .surface-link:hover .arrow {
+        transform: translateX(3px);
+      }
+
+      footer {
+        margin-top: 72px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 520px) {
+        .shell {
+          width: min(100% - 32px, 920px);
+          padding-top: 48px;
+        }
+
+        .surface-link {
+          padding: 19px 18px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .surface-link,
+        .arrow {
+          transition: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main>
-      <h1>Forge status</h1>
-      <p>Repository-owned static operational surfaces.</p>
-      <ul>
-        <li><a href="./rag-status/">RAG corpus status</a></li>
-      </ul>
-    </main>
+    <div class="shell">
+      <main>
+        <header>
+          <p class="eyebrow">Jesus Film Project</p>
+          <h1>Forge status</h1>
+          <p class="intro">
+            Repository-owned operational surfaces for the systems that power
+            Forge.
+          </p>
+        </header>
+
+        <section class="surfaces" aria-labelledby="surfaces-title">
+          <h2 class="section-label" id="surfaces-title">Status surfaces</h2>
+          <a class="surface-link" href="./rag-status/">
+            <span>
+              <span class="surface-title">RAG corpus status</span>
+              <span class="surface-description">
+                Source lifecycle, retrieval coverage, and language inventory
+              </span>
+            </span>
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+        </section>
+      </main>
+
+      <footer>Forge · Operational status</footer>
+    </div>
   </body>
 </html>
