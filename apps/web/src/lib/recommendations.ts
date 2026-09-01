@@ -16,7 +16,11 @@ import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS } from "@/lib/recommendation-timeouts"
 
-const DELIVERY_UPSTREAM_TIMEOUT_MS = 1_900
+// Keep semantic plus contextual recovery under the browser's 12-second
+// delivery deadline. Admission, serialization, and network transit retain
+// about 1.75 seconds of margin at the worst-case upstream budgets.
+const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
+const CONTEXTUAL_RECOMMENDATION_UPSTREAM_TIMEOUT_MS = 6_500
 const SELECTION_UPSTREAM_TIMEOUT_MS = 700
 const EVIDENCE_UPSTREAM_TIMEOUT_MS = 900
 
@@ -322,7 +326,7 @@ function fetchContextualSceneRecommendations(
       query: CONTEXTUAL_SCENE_RECOMMENDATIONS,
       variables: { videoId, locale, limit },
       fetchPolicy: "no-cache",
-      context: upstreamContext(8_000),
+      context: upstreamContext(CONTEXTUAL_RECOMMENDATION_UPSTREAM_TIMEOUT_MS),
     })
     if (result.error || !result.data?.sceneRecommendations) {
       throw new RecommendationRuntimeError("delivery_unavailable")
@@ -364,7 +368,7 @@ async function loadContextualCollectionRecommendations(
     query: CONTEXTUAL_COLLECTION_RECOMMENDATIONS,
     variables: { videoSlug, locale, languageSlug },
     fetchPolicy: "no-cache",
-    context: upstreamContext(8_000),
+    context: upstreamContext(CONTEXTUAL_RECOMMENDATION_UPSTREAM_TIMEOUT_MS),
   })
   const snapshot = result.data?.watchVideoRouteSnapshotBySlug
   if (result.error || !snapshot) {
