@@ -507,6 +507,44 @@ export async function publishDatabaseProfileProjection(
             replay: true,
           }
         }
+        const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
+        const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
+        const current = await tx.$queryRaw<
+          Array<{
+            id: string
+            generation: number
+            inputWatermark: Date | null
+            contributionCount: number
+          }>
+        >(Prisma.sql`
+          SELECT
+            generation.id,
+            generation.generation,
+            generation.input_watermark AS "inputWatermark",
+            generation.contribution_count AS "contributionCount"
+          FROM recommendation_profile_projection_pointer pointer
+          JOIN recommendation_profile_projection_generation generation
+            ON generation.id = pointer.generation_id
+          WHERE pointer.scope_digest = ${scopeDigest}
+            AND generation.state = 'published'
+            AND generation.expires_at > ${input.now}
+          FOR UPDATE OF pointer
+        `)
+        if (
+          current[0] &&
+          publishedProjectionIsNewer(
+            current[0],
+            watermark,
+            input.projection.contributionCount,
+          )
+        ) {
+          return {
+            status: "published" as const,
+            generationId: current[0].id,
+            generation: current[0].generation,
+            replay: true,
+          }
+        }
         const next = await tx.$queryRaw<Array<{ generation: number }>>(
           Prisma.sql`
           SELECT COALESCE(MAX(generation), 0)::int + 1 AS generation
@@ -534,8 +572,6 @@ export async function publishDatabaseProfileProjection(
           generationExpiresAt,
           hoursAfter(input.now, SESSION_PROFILE_PROJECTION_HOURS),
         )
-        const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
-        const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
         const stability = average(
           input.projection.durableInterests.map(
             (interest) => interest.stability,
@@ -811,6 +847,22 @@ function latestDate(values: readonly Date[]): Date | null {
   return values.length === 0
     ? null
     : new Date(Math.max(...values.map((value) => value.getTime())))
+}
+
+function publishedProjectionIsNewer(
+  current: { inputWatermark: Date | null; contributionCount: number },
+  candidateWatermark: Date | null,
+  candidateContributionCount: number,
+): boolean {
+  if (current.inputWatermark == null) return false
+  if (candidateWatermark == null) return true
+  const watermarkDifference =
+    current.inputWatermark.getTime() - candidateWatermark.getTime()
+  return (
+    watermarkDifference > 0 ||
+    (watermarkDifference === 0 &&
+      current.contributionCount > candidateContributionCount)
+  )
 }
 
 function average(values: readonly number[]): number {
