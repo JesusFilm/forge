@@ -419,7 +419,7 @@ describe("WatchSemanticRecommendations", () => {
     })
     await flush()
 
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
     expect(container.querySelector("a[data-recommendation-key]")).toBeNull()
   })
 
@@ -474,9 +474,7 @@ describe("WatchSemanticRecommendations", () => {
       })
       await flush()
 
-      expect(
-        container.querySelector('[data-state="unavailable"]'),
-      ).not.toBeNull()
+      expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
       expect(container.textContent).not.toContain("Target video")
       expect(container.querySelector("a")).toBeNull()
       expect(
@@ -595,11 +593,11 @@ describe("WatchSemanticRecommendations", () => {
   })
 
   it.each([
-    ["empty", emptyDelivery, false],
-    ["unavailable", unavailableDelivery, true],
+    ["empty", emptyDelivery],
+    ["unavailable", unavailableDelivery],
   ])(
-    "renders the %s sentinel without recommendation links",
-    async (state, sentinelDelivery, showsUnavailableMessage) => {
+    "renders nothing for a terminal %s delivery",
+    async (_state, sentinelDelivery) => {
       vi.stubGlobal(
         "fetch",
         vi.fn(() =>
@@ -618,13 +616,7 @@ describe("WatchSemanticRecommendations", () => {
       })
       await flush()
 
-      expect(container.querySelector(`[data-state="${state}"]`)).not.toBeNull()
-      expect(container.querySelector("a")).toBeNull()
-      expect(container.textContent).toContain(
-        showsUnavailableMessage
-          ? "Recommended videos are temporarily unavailable."
-          : "No recommendations found for this video in this language.",
-      )
+      expect(container.innerHTML).toBe("")
     },
   )
 
@@ -741,7 +733,7 @@ describe("WatchSemanticRecommendations", () => {
     })
     await flush()
 
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
     await act(async () => vi.advanceTimersByTime(1_000))
     expect(
       fetchMock.mock.calls.filter(([input]) =>
@@ -767,7 +759,7 @@ describe("WatchSemanticRecommendations", () => {
     })
     await flush()
 
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
     await act(async () => vi.advanceTimersByTime(500))
     await flush()
     expect(
@@ -795,7 +787,7 @@ describe("WatchSemanticRecommendations", () => {
       )
     })
     await flush()
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
 
     await act(async () => vi.advanceTimersByTime(500))
     await flush()
@@ -825,7 +817,7 @@ describe("WatchSemanticRecommendations", () => {
       )
     })
     await flush()
-    expect(container.querySelector('[data-state="unavailable"]')).not.toBeNull()
+    expect(container.querySelector('[data-state="unavailable"]')).toBeNull()
 
     await act(async () => vi.advanceTimersByTime(500))
     await flush()
