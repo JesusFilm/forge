@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Versi bahasa tidak tersedia",
     "eyebrow": "Versi bahasa tidak tersedia",
-    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam bahasa <languageName>{language}</languageName>",
     "actionsLabel": "Pilihan tontonan yang tersedia",
-    "browseInLanguage": "Jelajahi video dalam {language}",
+    "browseInLanguage": "Jelajahi video dalam bahasa {language}",
     "backToSearch": "Kembali ke pencarian",
     "audioVersionsTitle": "Versi audio lainnya",
     "audioVersionsDescription": "Pilih bahasa audio untuk melanjutkan menonton video ini.",

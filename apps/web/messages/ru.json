@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Языковая версия недоступна",
     "eyebrow": "Языковая версия недоступна",
-    "title": "<contentTitle>{title}</contentTitle> недоступно на языке <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: нет версии на языке <languageName>«{language}»</languageName>",
     "actionsLabel": "Доступные варианты просмотра",
-    "browseInLanguage": "Смотреть видео на языке {language}",
+    "browseInLanguage": "Все видео на языке «{language}»",
     "backToSearch": "Вернуться к поиску",
     "audioVersionsTitle": "Другие аудиоверсии",
     "audioVersionsDescription": "Выберите язык аудио, чтобы продолжить просмотр этого видео.",

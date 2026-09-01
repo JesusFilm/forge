@@ -715,7 +715,7 @@
     "eyebrow": "Dil versiyası mövcud deyil",
     "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> dilində mövcud deyil",
     "actionsLabel": "Mövcud baxış seçimləri",
-    "browseInLanguage": "{language} dilində videolara baxın",
+    "browseInLanguage": "Bütün videolar {language} dilində",
     "backToSearch": "Axtarışa qayıt",
     "audioVersionsTitle": "Digər audio versiyalar",
     "audioVersionsDescription": "Bu videoya baxmağa davam etmək üçün audio dili seçin.",

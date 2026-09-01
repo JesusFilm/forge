@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Versija šia kalba nepasiekiama",
     "eyebrow": "Versija šia kalba nepasiekiama",
-    "title": "<contentTitle>{title}</contentTitle> nepasiekiamas kalba „<languageName>{language}</languageName>“",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>{language}</languageName> kalba versijos nėra",
     "actionsLabel": "Galimi peržiūros būdai",
-    "browseInLanguage": "Naršyti vaizdo įrašus kalba „{language}“",
+    "browseInLanguage": "Visi vaizdo įrašai {language} kalba",
     "backToSearch": "Grįžti į paiešką",
     "audioVersionsTitle": "Kitos garso versijos",
     "audioVersionsDescription": "Pasirinkite garso kalbą, kad galėtumėte toliau žiūrėti šį vaizdo įrašą.",
