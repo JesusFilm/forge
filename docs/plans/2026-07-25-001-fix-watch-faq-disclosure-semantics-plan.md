@@ -76,3 +76,23 @@ FGE-40 reports that the FAQ buttons rendered by `RelatedQuestions` do not expose
   3. Activate the second trigger and verify the first row returns to collapsed and hidden while the second row expands.
   4. Activate the open second trigger again and verify it returns to collapsed with its controlled panel hidden.
 - **Verification:** Focused component tests pass, TypeScript accepts the new attributes and test fixture, and browser DOM inspection confirms each trigger's `aria-controls` resolves to the expected panel as state changes.
+
+## Superseded 2026-08-31
+
+The disclosure this plan built now lives in the shared
+`apps/web/src/components/watch/WatchFaqList.tsx`, rendered by both the authored
+Experience block and `/watch/whats-new`. Additive note; the record above stands.
+
+- R1 (`aria-expanded`) — met natively. `<details>`/`<summary>` exposes expanded
+  state itself, so no attribute is hand-written; adding one would fight the
+  native mapping.
+- R2 (`aria-controls` to a unique panel per row) — still met, set explicitly on
+  each `<summary>` because the native element has no equivalent.
+- R3 (panel hidden from layout and assistive technology while collapsed) — no
+  longer met, deliberately: collapsed content stays in the DOM so find-in-page
+  can reach it and answers appear in the server-rendered markup.
+- R4 (single-open, toggle-closed) — preserved; the shared component is
+  controlled and each caller owns its open-model.
+- The Key Technical Decision "Keep the existing component boundary" was
+  overtaken: the section was consolidated with `/watch/whats-new` rather than
+  kept hand-rolled.

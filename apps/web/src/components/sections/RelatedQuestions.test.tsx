@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -153,5 +154,39 @@ describe("RelatedQuestions", () => {
       expect(className, className).not.toMatch(/\btext-stone-[12]/)
       expect(className, className).not.toMatch(/\bborder-stone-/)
     }
+  })
+
+  describe("server-rendered markup", () => {
+    // The behaviour that actually changed on this surface. Before the shared
+    // component, an answer's <Markdown> subtree mounted only while its row
+    // was open, so no answer text reached the server-rendered HTML. Proving
+    // it on /watch/whats-new would prove nothing: that page already rendered
+    // <details> with unconditional answers beforehand, so the check passes
+    // there whether or not this change works.
+    it("emits every answer while all rows are closed", () => {
+      const html = renderToStaticMarkup(<RelatedQuestions data={makeData()} />)
+
+      expect(html).toContain("You can watch it on this site.")
+      expect(html).toContain("Jesus came to bring hope.")
+      expect(html).not.toContain("<details open")
+      expect(html).not.toMatch(/<details[^>]*\sopen[\s>]/)
+    })
+
+    it("server-renders the markdown subtree, not just the raw text", () => {
+      const data = {
+        ...(makeData() as unknown as Record<string, unknown>),
+        questions: [
+          {
+            question: "Why did Jesus come?",
+            answer: "He came:\n\n- to seek the lost\n- to give his life",
+          },
+        ],
+      } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
+
+      const html = renderToStaticMarkup(<RelatedQuestions data={data} />)
+
+      expect(html).toContain("<ul")
+      expect(html).toContain("to seek the lost")
+    })
   })
 })
