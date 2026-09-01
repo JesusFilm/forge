@@ -695,6 +695,13 @@ export function DynamicMediaCollection({
   // stops reserving a band under the last rail. The retry button still needs
   // the space, and so does every state where paging can still resume.
   const feedExhausted = status !== "error" && !hasNextPage
+  const sentinelClasses = [
+    WATCH_PAGE_CONTENT_CLASSES,
+    "flex items-center justify-center",
+    feedExhausted ? null : "min-h-28 py-8",
+  ]
+    .filter(Boolean)
+    .join(" ")
 
   return (
     <section
@@ -764,9 +771,7 @@ export function DynamicMediaCollection({
       <div
         ref={sentinelRef}
         data-testid="dynamic-collection-feed-sentinel"
-        className={`${WATCH_PAGE_CONTENT_CLASSES} flex items-center justify-center${
-          feedExhausted ? "" : " min-h-28 py-8"
-        }`}
+        className={sentinelClasses}
         aria-live="polite"
       >
         {status === "error" ? (
