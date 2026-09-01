@@ -32,6 +32,7 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
+import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -308,16 +309,19 @@ export class RecommendationEpisodeService {
       reason: "episode-opened",
       notBefore: initialActiveUntil,
     })
-    if (
-      assignment?.profileId &&
-      assignment.privacyGeneration != null &&
-      assignment.profile?.state === "ACTIVE"
-    ) {
+    const activeProfile = await resolveActiveRecommendationProfileLink(
+      this.deps.prisma,
+      {
+        sessionDigest: item.request.sessionDigest,
+        now,
+      },
+    )
+    if (activeProfile) {
       void this.deps
         .dispatchProfileFeedback?.({
           sessionDigest: item.request.sessionDigest,
-          profileId: assignment.profileId,
-          privacyGeneration: assignment.privacyGeneration,
+          profileId: activeProfile.profileId,
+          privacyGeneration: activeProfile.privacyGeneration,
           // Coalescing must advance from immutable committed server evidence,
           // never a browser-controlled timestamp that can be replayed far into
           // the past or future.

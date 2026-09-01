@@ -15,6 +15,7 @@ import {
 import { createRecommendationOutcomeService } from "../outcome.service"
 import { createRecommendationIntegrityService } from "../integrity.service"
 import { dispatchRecommendationProfileFeedback } from "../profiles/job"
+import { resolveActiveRecommendationProfileLink } from "../profiles/active-profile-link"
 import {
   runRecommendationEpisodeFinalization,
   runRecommendationEpisodeFinalizationRecovery,
@@ -287,46 +288,20 @@ async function classifyAndDispatchProfileOutcome(outcomeId: string) {
       episode: {
         select: {
           sessionDigest: true,
-          request: {
-            select: {
-              experimentAssignment: {
-                select: {
-                  profileId: true,
-                  privacyGeneration: true,
-                  state: true,
-                  profile: {
-                    select: {
-                      state: true,
-                      tokenDigest: true,
-                      privacyGeneration: true,
-                      expiresAt: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
         },
       },
     },
   })
-  const assignment = outcome?.episode.request.experimentAssignment
-  if (
-    !outcome ||
-    !assignment?.profileId ||
-    assignment.privacyGeneration == null ||
-    assignment.state !== "ACTIVE" ||
-    assignment.profile?.state !== "ACTIVE" ||
-    assignment.profile.tokenDigest == null ||
-    assignment.profile.privacyGeneration !== assignment.privacyGeneration ||
-    assignment.profile.expiresAt <= new Date()
-  ) {
-    return
-  }
+  if (!outcome) return
+  const activeProfile = await resolveActiveRecommendationProfileLink(prisma, {
+    sessionDigest: outcome.episode.sessionDigest,
+    now: new Date(),
+  })
+  if (!activeProfile) return
   await dispatchRecommendationProfileFeedback({
     sessionDigest: outcome.episode.sessionDigest,
-    profileId: assignment.profileId,
-    privacyGeneration: assignment.privacyGeneration,
+    profileId: activeProfile.profileId,
+    privacyGeneration: activeProfile.privacyGeneration,
     evidenceWatermark: outcome.createdAt,
   })
 }

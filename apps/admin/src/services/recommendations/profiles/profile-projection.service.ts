@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { MULTI_INTEREST_PROFILE_MANIFEST_ID } from "../candidates/profile-candidate.service"
 import { RecommendationInternalStateError } from "../errors"
+import { withRecommendationSerializableRetry } from "../transaction-retry"
 import {
   buildMultiInterestProjection,
   PROFILE_CLUSTERING_VERSION,
@@ -454,17 +455,18 @@ export async function publishDatabaseProfileProjection(
       ? `durable:${input.profileId}:${input.privacyGeneration}`
       : `session:${input.sessionDigest}`,
   )
-  return prisma.$transaction(
-    async (tx) => {
-      await tx.$executeRaw(Prisma.sql`
+  return withRecommendationSerializableRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw(Prisma.sql`
         SELECT pg_advisory_xact_lock(
           hashtextextended(${`profile-projection:${scopeDigest}`}, 386)
         )
       `)
-      let profileExpiresAt: Date | null = null
-      if (input.scope === "durable") {
-        const profiles = await tx.$queryRaw<Array<{ expiresAt: Date }>>(
-          Prisma.sql`
+        let profileExpiresAt: Date | null = null
+        if (input.scope === "durable") {
+          const profiles = await tx.$queryRaw<Array<{ expiresAt: Date }>>(
+            Prisma.sql`
             SELECT expires_at AS "expiresAt"
             FROM recommendation_profile
             WHERE id = ${input.profileId}
@@ -474,17 +476,17 @@ export async function publishDatabaseProfileProjection(
               AND expires_at > ${input.now}
             FOR UPDATE
           `,
-        )
-        profileExpiresAt = profiles[0]?.expiresAt ?? null
-        if (!profileExpiresAt) {
-          throw new RecommendationInternalStateError(
-            "profile_projection_generation_revoked",
           )
+          profileExpiresAt = profiles[0]?.expiresAt ?? null
+          if (!profileExpiresAt) {
+            throw new RecommendationInternalStateError(
+              "profile_projection_generation_revoked",
+            )
+          }
         }
-      }
-      const existing = await tx.$queryRaw<
-        Array<{ id: string; generation: number }>
-      >(Prisma.sql`
+        const existing = await tx.$queryRaw<
+          Array<{ id: string; generation: number }>
+        >(Prisma.sql`
         SELECT id, generation
         FROM recommendation_profile_projection_generation
         WHERE input_digest = ${input.inputDigest}
@@ -497,16 +499,16 @@ export async function publishDatabaseProfileProjection(
           )
         LIMIT 1
       `)
-      if (existing[0]) {
-        return {
-          status: "published" as const,
-          generationId: existing[0].id,
-          generation: existing[0].generation,
-          replay: true,
+        if (existing[0]) {
+          return {
+            status: "published" as const,
+            generationId: existing[0].id,
+            generation: existing[0].generation,
+            replay: true,
+          }
         }
-      }
-      const next = await tx.$queryRaw<Array<{ generation: number }>>(
-        Prisma.sql`
+        const next = await tx.$queryRaw<Array<{ generation: number }>>(
+          Prisma.sql`
           SELECT COALESCE(MAX(generation), 0)::int + 1 AS generation
           FROM recommendation_profile_projection_generation
           WHERE (
@@ -517,35 +519,37 @@ export async function publishDatabaseProfileProjection(
               AND session_digest = ${input.sessionDigest})
           )
         `,
-      )
-      const generation = next[0]?.generation ?? 1
-      const generationId = randomUUID()
-      const generationExpiresAt =
-        input.scope === "durable"
-          ? earliestDate([
-              profileExpiresAt!,
-              daysAfter(input.now, DURABLE_PROFILE_PROJECTION_DAYS),
-              ...input.durableEvidence.map((row) => row.sourceExpiresAt),
-            ])
-          : hoursAfter(input.now, SESSION_PROFILE_PROJECTION_HOURS)
-      const sessionExpiresAt = earliest(
-        generationExpiresAt,
-        hoursAfter(input.now, SESSION_PROFILE_PROJECTION_HOURS),
-      )
-      const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
-      const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
-      const stability = average(
-        input.projection.durableInterests.map((interest) => interest.stability),
-      )
-      const coverage = Math.min(
-        1,
-        input.projection.contributionCount /
-          Math.max(
-            1,
-            input.durableEvidence.length + input.sessionEvidence.length,
+        )
+        const generation = next[0]?.generation ?? 1
+        const generationId = randomUUID()
+        const generationExpiresAt =
+          input.scope === "durable"
+            ? earliestDate([
+                profileExpiresAt!,
+                daysAfter(input.now, DURABLE_PROFILE_PROJECTION_DAYS),
+                ...input.durableEvidence.map((row) => row.sourceExpiresAt),
+              ])
+            : hoursAfter(input.now, SESSION_PROFILE_PROJECTION_HOURS)
+        const sessionExpiresAt = earliest(
+          generationExpiresAt,
+          hoursAfter(input.now, SESSION_PROFILE_PROJECTION_HOURS),
+        )
+        const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
+        const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
+        const stability = average(
+          input.projection.durableInterests.map(
+            (interest) => interest.stability,
           ),
-      )
-      await tx.$executeRaw(Prisma.sql`
+        )
+        const coverage = Math.min(
+          1,
+          input.projection.contributionCount /
+            Math.max(
+              1,
+              input.durableEvidence.length + input.sessionEvidence.length,
+            ),
+        )
+        await tx.$executeRaw(Prisma.sql`
         INSERT INTO recommendation_profile_projection_generation (
           id, manifest_id, scope, profile_id, privacy_generation,
           session_digest, generation, state, projection_version,
@@ -576,72 +580,72 @@ export async function publishDatabaseProfileProjection(
           ${input.scope === "durable" ? 180 : 1}, ${generationExpiresAt}
         )
       `)
-      for (const interest of input.projection.durableInterests) {
-        await insertInterest(tx, {
-          generationId,
-          kind: "durable",
-          ordinal: interest.ordinal,
-          medoidMediaId: interest.medoidMediaId,
-          medoidSourceId: interest.medoidSourceId,
-          vector: interest.vector,
-          weight: interest.weight,
-          supportCount: interest.supportCount,
-          stability: interest.stability,
-          expiresAt: generationExpiresAt,
-        })
-      }
-      if (input.projection.sessionIntent) {
-        const interest = input.projection.sessionIntent
-        await insertInterest(tx, {
-          generationId,
-          kind: "session",
-          ordinal: 0,
-          medoidMediaId: interest.medoidMediaId,
-          medoidSourceId: interest.medoidSourceId,
-          vector: interest.vector,
-          weight: interest.weight,
-          supportCount: interest.supportCount,
-          stability: interest.stability,
-          expiresAt: sessionExpiresAt,
-        })
-      }
-      const interestBySource = new Map(
-        input.projection.durableInterests.flatMap((interest) =>
-          interest.sourceIds.map(
-            (sourceId) => [sourceId, interest.ordinal] as const,
+        for (const interest of input.projection.durableInterests) {
+          await insertInterest(tx, {
+            generationId,
+            kind: "durable",
+            ordinal: interest.ordinal,
+            medoidMediaId: interest.medoidMediaId,
+            medoidSourceId: interest.medoidSourceId,
+            vector: interest.vector,
+            weight: interest.weight,
+            supportCount: interest.supportCount,
+            stability: interest.stability,
+            expiresAt: generationExpiresAt,
+          })
+        }
+        if (input.projection.sessionIntent) {
+          const interest = input.projection.sessionIntent
+          await insertInterest(tx, {
+            generationId,
+            kind: "session",
+            ordinal: 0,
+            medoidMediaId: interest.medoidMediaId,
+            medoidSourceId: interest.medoidSourceId,
+            vector: interest.vector,
+            weight: interest.weight,
+            supportCount: interest.supportCount,
+            stability: interest.stability,
+            expiresAt: sessionExpiresAt,
+          })
+        }
+        const interestBySource = new Map(
+          input.projection.durableInterests.flatMap((interest) =>
+            interest.sourceIds.map(
+              (sourceId) => [sourceId, interest.ordinal] as const,
+            ),
           ),
-        ),
-      )
-      const contributions: ContributionInput[] = input.durableEvidence.map(
-        (row) => ({
-          generationId,
-          kind: "qualified_outcome" as const,
-          row,
-          sourceIdDigest: stableSourceDigest(row),
-          interestOrdinal:
-            interestBySource.get(stableSourceDigest(row)) ?? null,
-          privacyGeneration: input.privacyGeneration,
-          expiresAt: earliest(generationExpiresAt, row.sourceExpiresAt),
-        }),
-      )
-      contributions.push(
-        ...input.sessionEvidence.map((row) => ({
-          generationId,
-          kind: "session_selection" as const,
-          row,
-          sourceIdDigest: stableSourceDigest(row),
-          interestOrdinal: null,
-          privacyGeneration: null,
-          expiresAt: earliest(sessionExpiresAt, row.sourceExpiresAt),
-        })),
-      )
-      await insertContributions(tx, contributions)
-      await tx.$executeRaw(Prisma.sql`
+        )
+        const contributions: ContributionInput[] = input.durableEvidence.map(
+          (row) => ({
+            generationId,
+            kind: "qualified_outcome" as const,
+            row,
+            sourceIdDigest: stableSourceDigest(row),
+            interestOrdinal:
+              interestBySource.get(stableSourceDigest(row)) ?? null,
+            privacyGeneration: input.privacyGeneration,
+            expiresAt: earliest(generationExpiresAt, row.sourceExpiresAt),
+          }),
+        )
+        contributions.push(
+          ...input.sessionEvidence.map((row) => ({
+            generationId,
+            kind: "session_selection" as const,
+            row,
+            sourceIdDigest: stableSourceDigest(row),
+            interestOrdinal: null,
+            privacyGeneration: null,
+            expiresAt: earliest(sessionExpiresAt, row.sourceExpiresAt),
+          })),
+        )
+        await insertContributions(tx, contributions)
+        await tx.$executeRaw(Prisma.sql`
         UPDATE recommendation_profile_projection_generation
         SET state = 'published', published_at = ${input.now}
         WHERE id = ${generationId} AND state = 'building'
       `)
-      await tx.$executeRaw(Prisma.sql`
+        await tx.$executeRaw(Prisma.sql`
         INSERT INTO recommendation_profile_projection_pointer (
           scope_digest, scope, profile_id, privacy_generation, session_digest,
           generation_id, pointer_generation, updated_at
@@ -657,14 +661,15 @@ export async function publishDatabaseProfileProjection(
           pointer_generation = EXCLUDED.pointer_generation,
           updated_at = EXCLUDED.updated_at
       `)
-      return {
-        status: "published" as const,
-        generationId,
-        generation,
-        replay: false,
-      }
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        return {
+          status: "published" as const,
+          generationId,
+          generation,
+          replay: false,
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    ),
   )
 }
 
