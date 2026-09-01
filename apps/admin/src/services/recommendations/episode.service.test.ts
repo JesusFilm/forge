@@ -120,6 +120,13 @@ describe("RecommendationEpisodeService", () => {
     }
     const prisma = {
       recommendationServedItem: { findUnique: vi.fn(async () => item) },
+      recommendationProfileSessionLink: {
+        findFirst: vi.fn(async () => ({
+          profileId: "profile-1",
+          privacyGeneration: 4,
+          profile: { privacyGeneration: 4 },
+        })),
+      },
       recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
       $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
@@ -202,6 +209,87 @@ describe("RecommendationEpisodeService", () => {
       sessionDigest: "a".repeat(64),
       profileId: "profile-1",
       privacyGeneration: 4,
+      evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
+    })
+  })
+
+  it("refreshes the directly linked profile after a selection without an experiment assignment", async () => {
+    const item = {
+      id: "item-direct",
+      requestId: "request-direct",
+      targetMediaId: "target-video",
+      canonicalHref: "/watch/target.html/en.html",
+      capabilityJti: "delivery-jti-direct",
+      request: {
+        id: "request-direct",
+        state: "ISSUED",
+        manifestId: "semantic-transcript-pgvector-v1",
+        sessionDigest: "a".repeat(64),
+        expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+        experimentAssignment: null,
+      },
+    }
+    const tx = {
+      $executeRaw: vi.fn(async () => 1),
+      $queryRaw: vi.fn(async () => [{ id: "current" }]),
+      recommendationSelection: {
+        findUnique: vi.fn(async () => null),
+        create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
+      },
+      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+    }
+    const prisma = {
+      recommendationServedItem: { findUnique: vi.fn(async () => item) },
+      recommendationProfileSessionLink: {
+        findFirst: vi.fn(async () => ({
+          profileId: "profile-direct",
+          privacyGeneration: 7,
+          profile: { privacyGeneration: 7 },
+        })),
+      },
+      recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+      $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+      $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
+        work(tx),
+      ),
+    }
+    const dispatchProfileFeedback = vi.fn(async () => undefined)
+    const service = new RecommendationEpisodeService({
+      prisma: prisma as never,
+      tokenService: {
+        activeKid: "active-kid",
+        verifyDeliveryCapability: vi.fn(async () => ({
+          iat: 1_776_653_000,
+          exp: 1_776_654_600,
+        })),
+        signEpisodeCapability: vi.fn(async () => "episode-token"),
+      },
+      now: () => new Date("2026-04-20T03:00:00.000Z"),
+      newId: (() => {
+        let id = 0
+        return () => `direct-id-${++id}`
+      })(),
+      newClaimNonce: () => "direct-fresh-claim-nonce",
+      dispatchProfileFeedback,
+    })
+
+    await expect(
+      service.select({
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability: "delivery-token",
+        requestId: "request-direct",
+        itemId: "item-direct",
+        sessionDigest: "a".repeat(64),
+        eventId: "selection-direct",
+        occurredAt: "2026-04-20T02:59:00.000Z",
+      }),
+    ).resolves.toMatchObject({ status: "accepted" })
+
+    expect(dispatchProfileFeedback).toHaveBeenCalledWith({
+      sessionDigest: "a".repeat(64),
+      profileId: "profile-direct",
+      privacyGeneration: 7,
       evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
     })
   })

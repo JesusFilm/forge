@@ -33,6 +33,9 @@ const dispatchRecommendationProfileFeedback = vi.hoisted(() => vi.fn())
 const recommendationOutcomeRevision = vi.hoisted(() => ({
   findUnique: vi.fn(),
 }))
+const recommendationProfileSessionLink = vi.hoisted(() => ({
+  findFirst: vi.fn(),
+}))
 
 vi.mock("workflow/api", () => ({ start }))
 vi.mock("@/db/client", () => ({
@@ -41,6 +44,7 @@ vi.mock("@/db/client", () => ({
     recommendationPlaybackEpisode,
     recommendationEvidenceAudit,
     recommendationOutcomeRevision,
+    recommendationProfileSessionLink,
     $queryRaw: queryRaw,
     $transaction: prismaTransaction,
   },
@@ -110,6 +114,11 @@ beforeEach(() => {
         },
       },
     },
+  })
+  recommendationProfileSessionLink.findFirst.mockResolvedValue({
+    profileId: "profile-1",
+    privacyGeneration: 4,
+    profile: { privacyGeneration: 4 },
   })
   recommendationPlaybackEpisode.findUnique.mockResolvedValue({
     id: "episode-1",
@@ -240,6 +249,40 @@ describe("recommendation episode finalization job", () => {
       sessionDigest: "a".repeat(64),
       profileId: "profile-1",
       privacyGeneration: 4,
+      evidenceWatermark: new Date("2026-08-19T03:01:00.000Z"),
+    })
+  })
+
+  it("refreshes the directly linked profile after a qualified outcome without an experiment assignment", async () => {
+    finalize.mockResolvedValue({
+      status: "published",
+      activeOutcomeId: "direct-outcome",
+      revision: 1,
+      factWatermark: 3,
+      inputDigest: "f".repeat(64),
+    })
+    recommendationOutcomeRevision.findUnique.mockResolvedValueOnce({
+      createdAt: new Date("2026-08-19T03:01:00.000Z"),
+      episode: {
+        sessionDigest: "a".repeat(64),
+      },
+    })
+    recommendationProfileSessionLink.findFirst.mockResolvedValueOnce({
+      profileId: "profile-direct",
+      privacyGeneration: 7,
+      profile: { privacyGeneration: 7 },
+    })
+
+    await runRecommendationEpisodeFinalizationJob({
+      episodeId: "episode-1",
+      generation: 2,
+      reason: "terminal-fact",
+    })
+
+    expect(dispatchRecommendationProfileFeedback).toHaveBeenCalledWith({
+      sessionDigest: "a".repeat(64),
+      profileId: "profile-direct",
+      privacyGeneration: 7,
       evidenceWatermark: new Date("2026-08-19T03:01:00.000Z"),
     })
   })

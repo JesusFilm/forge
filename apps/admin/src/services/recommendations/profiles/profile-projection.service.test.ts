@@ -218,6 +218,45 @@ describe("recommendation profile projection service", () => {
     ).toHaveLength(2)
   })
 
+  it("retries a serializable publication conflict before failing the profile run", async () => {
+    const executeRaw = vi.fn().mockResolvedValue(1)
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ generation: 1 }])
+    const conflict = Object.assign(new Error("serialization conflict"), {
+      code: "P2034",
+    })
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(conflict)
+      .mockImplementationOnce(async (work) =>
+        work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
+      )
+
+    await expect(
+      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+        scope: "session",
+        sessionDigest: "a".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: NOW,
+        inputDigest: "b".repeat(64),
+        projection: {
+          durableInterests: [],
+          sessionIntent: null,
+          explicitPreferences: [],
+          negativeEvidence: [],
+          contributionCount: 0,
+          cohortQuality: 0,
+        },
+        durableEvidence: [],
+        sessionEvidence: [],
+      }),
+    ).resolves.toMatchObject({ status: "published", generation: 1 })
+    expect(transaction).toHaveBeenCalledTimes(2)
+  })
+
   it("keeps source expiry in the deterministic rebuild input", async () => {
     const publish = vi.fn().mockResolvedValue({
       status: "published",
