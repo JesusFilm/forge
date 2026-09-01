@@ -3,7 +3,7 @@ id: "feat-432"
 title: "Port RAG sources, skills, dashboard, and evaluation"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-23"
 duration: 5
 depends_on: ["feat-431"]
@@ -42,3 +42,12 @@ Port sources, source status, agent skills, dashboard generation, and retrieval e
 
 - Skill layout, dashboard build/verify, source status, and eval tests pass.
 - Baseline results reconcile with pre-copy controls.
+
+## Resolution
+
+Completed in [Forge PR #2117](https://github.com/JesusFilm/forge/pull/2117).
+The change ports the source registry and lifecycle tooling, provider-neutral
+skills, deterministic dashboard build and verification, and retrieval-only
+evaluation. The production-backed dashboard refresh remains an explicit
+operator-run workflow; CI validates the prepared artifacts without treating
+lifecycle files as deployment evidence.
