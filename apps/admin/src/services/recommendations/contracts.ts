@@ -64,8 +64,9 @@ const boundedIdentifier = z.string().min(1).max(191)
 const isoDate = z.string().datetime({ offset: true })
 
 /**
- * `lane` remains the immutable experiment-assignment label. `executionMode`
- * is additive execution truth and must never be inferred for historic rows.
+ * `lane` is the immutable compatibility label introduced with experiment
+ * delivery. It does not imply a live assignment; `executionMode` is the
+ * additive execution truth and must never be inferred for historic rows.
  */
 export const RecommendationAssignmentLaneSchema = z.enum([
   "semantic_control",
