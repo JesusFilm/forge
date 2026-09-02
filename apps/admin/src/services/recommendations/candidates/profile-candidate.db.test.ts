@@ -5,6 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
   ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
   ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
   ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
@@ -80,11 +83,13 @@ async function installContentEmbeddingContractAuthority(
       storage_model, storage_native_dimensions, storage_dimensions,
       storage_transform_version
     ) VALUES (
-      $1, 'openrouter', 'qwen/qwen3-embedding-8b', 1536, 1536, NULL,
-      $2, $3, $4, $4, NULL
+      $1, $2, $3, $4, $4, NULL, $5, $6, $7, $7, NULL
     )`,
     [
       ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
       ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
       ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
       ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
