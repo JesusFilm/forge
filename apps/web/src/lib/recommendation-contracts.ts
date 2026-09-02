@@ -2,6 +2,8 @@ export const SEMANTIC_RECOMMENDATION_CONTRACT =
   "semantic-recommendation-v1" as const
 export const RECOMMENDATION_EVIDENCE_CONTRACT =
   "recommendation-evidence-v1" as const
+export const RECOMMENDATION_PLAYBACK_CONTEXT_CONTRACT =
+  "recommendation-playback-context-v1" as const
 export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
   "recommendation-content-action-v1" as const
 export const RECOMMENDATION_PROFILE_CONTRACT =
@@ -11,6 +13,19 @@ export const CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY =
   "contextual-fallback-unattributed-v1" as const
 export const RECOMMENDATION_TAB_CORRELATION_KEY =
   "forge.recommendation.tab-correlation-v1" as const
+export const RECOMMENDATION_PLAYBACK_PROVENANCE_KEY =
+  "forge.playback.provenance-v1" as const
+
+export const RECOMMENDATION_PLAYBACK_SOURCES = [
+  "recommendation",
+  "search",
+  "share",
+  "acquisition",
+  "editorial",
+  "direct",
+] as const
+export type RecommendationPlaybackSource =
+  (typeof RECOMMENDATION_PLAYBACK_SOURCES)[number]
 
 export const RECOMMENDATION_EVIDENCE_BODY_BYTES = 8 * 1024
 export const RECOMMENDATION_PLAYBACK_EVENT_LIMIT = 16
@@ -20,6 +35,7 @@ export const RECOMMENDATION_CONTENT_ACTION_BODY_BYTES = 2 * 1024
 export const RECOMMENDATION_PROFILE_BODY_BYTES = 1024
 
 export type RecommendationEpisodeCapability = {
+  contextId?: string
   episodeId: string
   capability: string
   activeUntil: string
@@ -53,6 +69,11 @@ export function parseRecommendationEpisodeCapability(
     return null
   }
   return {
+    ...(typeof episode.contextId === "string" &&
+    episode.contextId.length > 0 &&
+    episode.contextId.length <= 191
+      ? { contextId: episode.contextId }
+      : {}),
     episodeId: episode.episodeId,
     capability: episode.capability,
     activeUntil: episode.activeUntil as string,
@@ -95,9 +116,16 @@ export type RecommendationPlaybackEvent =
       kind: "playback_active_visible_playing"
       occurredAt: string
       payload:
-        | { activeMilliseconds: number; coverage: "complete" }
         | {
-            activeMilliseconds: number
+            activeMilliseconds?: number
+            startedAt?: string
+            endedAt?: string
+            coverage: "complete"
+          }
+        | {
+            activeMilliseconds?: number
+            startedAt?: string
+            endedAt?: string
             coverage: "partial"
             missingReason: "visibility_unavailable" | "player_state_unavailable"
           }

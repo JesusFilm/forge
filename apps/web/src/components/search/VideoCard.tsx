@@ -30,6 +30,7 @@ import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import { writeWatchUnavailableRecoveryContext } from "@/lib/watch-unavailable-recovery-context"
+import { markRecommendationPlaybackProvenance } from "@/lib/recommendation-playback-provenance"
 import { cn } from "@/lib/utils"
 
 type VideoCardProps = {
@@ -238,6 +239,12 @@ export function VideoCard({
       href={hrefBuilder(result, requestedLanguageSlug)}
       prefetch={isUnavailable ? false : undefined}
       onClick={(event) => {
+        if (!isUnavailable && isUnmodifiedPrimaryNavigation(event)) {
+          markRecommendationPlaybackProvenance({
+            source: "search",
+            sourceRef: result.slug,
+          })
+        }
         if (
           isUnavailable &&
           requestedLanguageSlug &&

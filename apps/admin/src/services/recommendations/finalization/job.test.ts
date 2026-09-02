@@ -122,9 +122,11 @@ beforeEach(() => {
   })
   recommendationPlaybackEpisode.findUnique.mockResolvedValue({
     id: "episode-1",
+    contextId: "context-1",
     requestId: "request-1",
     generation: 2,
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+    context: { expiresAt: new Date("2026-09-17T03:00:00.000Z") },
     request: { expiresAt: new Date("2026-09-17T03:00:00.000Z") },
   })
 })
@@ -293,6 +295,7 @@ describe("recommendation episode finalization job", () => {
     recommendationPlaybackEpisode.findUnique.mockResolvedValueOnce({
       generation: 2,
       activeUntil,
+      context: { expiresAt: new Date("2099-09-17T03:00:00.000Z") },
       request: { expiresAt: new Date("2099-09-17T03:00:00.000Z") },
     })
     workflowLog.createWorkflowRunLog.mockResolvedValueOnce({

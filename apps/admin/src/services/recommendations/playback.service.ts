@@ -28,10 +28,10 @@ import {
 import { withRecommendationSerializableRetry } from "./transaction-retry"
 import {
   recommendationEvidenceDigest,
-  recordRecommendationConflict,
+  recordRecommendationContextConflict,
 } from "./evidence.service"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
-import { consumeEpisodeCapabilitySubmissions } from "./submission-budget"
+import { consumePlaybackContextCapabilitySubmissions } from "./submission-budget"
 import {
   dispatchRecommendationEpisodeFinalization,
   scheduleRecommendationEpisodeFinalization,
@@ -80,6 +80,7 @@ type PlaybackInput = {
   caller: Principal | null
   contractVersion: string
   capability: string
+  contextId?: string
   episodeId: string
   sessionDigest: string
   mediaId: string
@@ -113,6 +114,7 @@ export class RecommendationPlaybackService {
     const payload = {
       contractVersion: input.contractVersion,
       capability: input.capability,
+      contextId: input.contextId,
       episodeId: input.episodeId,
       sessionDigest: input.sessionDigest,
       mediaId: input.mediaId,
@@ -131,6 +133,7 @@ export class RecommendationPlaybackService {
       await this.deps.prisma.recommendationPlaybackEpisode.findUnique({
         where: { id: parsed.episodeId },
         include: {
+          context: true,
           request: {
             include: {
               experimentAssignment: { include: { profile: true } },
@@ -143,12 +146,16 @@ export class RecommendationPlaybackService {
       episode.sessionDigest !== parsed.sessionDigest ||
       episode.mediaId !== parsed.mediaId ||
       episode.capabilityJti == null ||
-      episode.request.expiresAt <= now ||
-      episode.request.generation !== episode.generation ||
-      !isRecommendationAssignmentCapabilityCurrent(
-        episode.request.experimentAssignment,
-        now,
-      ) ||
+      episode.context.expiresAt <= now ||
+      episode.context.generation !== episode.generation ||
+      (parsed.contextId != null && parsed.contextId !== episode.contextId) ||
+      (episode.request != null &&
+        (episode.request.expiresAt <= now ||
+          episode.request.generation !== episode.generation ||
+          !isRecommendationAssignmentCapabilityCurrent(
+            episode.request.experimentAssignment,
+            now,
+          ))) ||
       episode.state === RecommendationEpisodeState.PENDING
     ) {
       throw new RecommendationBindingError(
@@ -160,18 +167,46 @@ export class RecommendationPlaybackService {
         "Recommendation playback hard horizon expired",
       )
     }
+    const evidenceControl =
+      await this.deps.prisma.recommendationPlaybackEvidenceControl.findUnique({
+        where: { id: "recommendation-playback-evidence-control" },
+      })
+    if (!evidenceControl?.enabled) {
+      throw new RecommendationCapabilityUnavailableError()
+    }
 
     const capabilityBinding: EpisodeCapabilityBinding = {
       jti: episode.capabilityJti,
       episodeId: episode.id,
-      requestId: episode.requestId,
-      itemId: episode.itemId,
+      contextId: episode.contextId,
+      requestId: episode.requestId ?? undefined,
+      itemId: episode.itemId ?? undefined,
       sessionDigest: episode.sessionDigest,
       mediaId: episode.mediaId,
       generation: episode.generation,
     }
     for (const event of parsed.events) {
       const occurredAt = new Date(event.occurredAt)
+      if (event.kind === "playback_active_visible_playing") {
+        const startedAt = event.payload.startedAt
+          ? new Date(event.payload.startedAt)
+          : null
+        const endedAt = event.payload.endedAt
+          ? new Date(event.payload.endedAt)
+          : null
+        if (
+          (startedAt != null || endedAt != null) &&
+          (startedAt == null ||
+            endedAt == null ||
+            Math.abs(endedAt.getTime() - occurredAt.getTime()) > 1_000 ||
+            startedAt < episode.claimedAt! ||
+            endedAt > episode.activeUntil)
+        ) {
+          throw new RecommendationInputError(
+            "Recommendation active-playing interval is invalid",
+          )
+        }
+      }
       const isTerminal = isTerminalRecommendationFactKind(event.kind)
       const late = now > episode.activeUntil || occurredAt > episode.activeUntil
       if (occurredAt > episode.activeUntil || (late && !isTerminal)) {
@@ -186,12 +221,12 @@ export class RecommendationPlaybackService {
         receivedAt: now,
       })
     }
-    await consumeEpisodeCapabilitySubmissions(this.deps.prisma, {
-      requestId: episode.requestId,
+    await consumePlaybackContextCapabilitySubmissions(this.deps.prisma, {
+      contextId: episode.contextId,
       episodeId: episode.id,
       capabilityJti: episode.capabilityJti,
       attempts: parsed.events.length,
-      expiresAt: episode.request.expiresAt,
+      expiresAt: episode.context.expiresAt,
     })
 
     const newId = this.deps.newId ?? randomUUID
@@ -211,6 +246,7 @@ export class RecommendationPlaybackService {
             const locked = await tx.recommendationPlaybackEpisode.findUnique({
               where: { id: parsed.episodeId },
               include: {
+                context: true,
                 request: {
                   include: {
                     experimentAssignment: { include: { profile: true } },
@@ -221,19 +257,22 @@ export class RecommendationPlaybackService {
             if (
               !locked ||
               locked.generation !== episode.generation ||
-              locked.request.generation !== episode.generation ||
+              locked.context.generation !== episode.generation ||
               locked.capabilityJti !== episode.capabilityJti ||
-              locked.request.expiresAt <= now ||
-              !isRecommendationAssignmentCapabilityCurrent(
-                locked.request.experimentAssignment,
-                now,
-              )
+              locked.context.expiresAt <= now ||
+              (locked.request != null &&
+                (locked.request.generation !== episode.generation ||
+                  !isRecommendationAssignmentCapabilityCurrent(
+                    locked.request.experimentAssignment,
+                    now,
+                  )))
             ) {
               throw new RecommendationConflictError(
                 "Recommendation playback generation conflicted",
               )
             }
             if (
+              locked.request != null &&
               !(await lockRecommendationAssignmentCapabilityFence(
                 tx,
                 locked.request.experimentAssignment,
@@ -276,10 +315,10 @@ export class RecommendationPlaybackService {
               }
               if (existing.payloadDigest === digest) {
                 replayAudits.push({
-                  requestId: locked.requestId,
+                  contextId: locked.contextId,
                   kind: RecommendationAuditKind.REPLAY,
                   reasonCode: "playback_fact_replay",
-                  expiresAt: locked.request.expiresAt,
+                  expiresAt: locked.context.expiresAt,
                 })
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
@@ -287,13 +326,13 @@ export class RecommendationPlaybackService {
                   sequence: existing.sequence,
                 })
               } else {
-                await recordRecommendationConflict(tx, {
-                  requestId: locked.requestId,
+                await recordRecommendationContextConflict(tx, {
+                  contextId: locked.contextId,
                   capabilityJti: locked.capabilityJti!,
                   eventId: event.eventId,
                   acceptedDigest: existing.payloadDigest,
                   rejectedDigest: digest,
-                  expiresAt: locked.request.expiresAt,
+                  expiresAt: locked.context.expiresAt,
                 })
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
@@ -379,15 +418,15 @@ export class RecommendationPlaybackService {
                   occurredAt: new Date(event.occurredAt),
                   receivedAt: now,
                   late,
-                  expiresAt: locked.request.expiresAt,
+                  expiresAt: locked.context.expiresAt,
                 })
                 evidenceAudits.push({
-                  requestId: locked.requestId,
+                  contextId: locked.contextId,
                   kind: late
                     ? RecommendationAuditKind.LATE
                     : RecommendationAuditKind.EVIDENCE_SUCCESS,
                   reasonCode: event.kind,
-                  expiresAt: locked.request.expiresAt,
+                  expiresAt: locked.context.expiresAt,
                 })
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
@@ -420,11 +459,11 @@ export class RecommendationPlaybackService {
       if (error instanceof PlaybackCommittedRejectionError) {
         await this.deps.prisma.recommendationEvidenceAudit.create({
           data: {
-            requestId: episode.requestId,
+            contextId: episode.contextId,
             kind: RecommendationAuditKind.COMMITTED_REJECTION,
             reasonCode: error.reasonCode,
             detail: { episodeId: episode.id, generation: episode.generation },
-            expiresAt: episode.request.expiresAt,
+            expiresAt: episode.context.expiresAt,
           },
         })
       }

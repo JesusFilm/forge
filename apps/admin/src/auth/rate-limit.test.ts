@@ -39,7 +39,9 @@ describe("rateLimitAuthRoute", () => {
 
   it("falls back to local when Redis connect/incr fails", async () => {
     vi.stubEnv("REDIS_HOST", "127.0.0.1")
-    vi.stubEnv("REDIS_PORT", "6379")
+    // Use a deliberately closed port so this fallback proof cannot turn into
+    // a live-Redis assertion on developer machines that run Redis locally.
+    vi.stubEnv("REDIS_PORT", "1")
     vi.stubEnv("REDIS_PASSWORD", "secret")
 
     const { rateLimitAuthRoute } = await import("./rate-limit")

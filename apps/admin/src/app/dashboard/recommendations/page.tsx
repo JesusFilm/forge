@@ -14,9 +14,11 @@ import { prisma } from "@/db/client"
 import {
   RECOMMENDATION_TRACE_PAGE_SIZE,
   loadRecommendationOverview,
+  loadRecommendationPlaybackTracePage,
   loadRecommendationTracePage,
   type RecommendationOverviewData,
   type RecommendationTraceFilters,
+  type RecommendationPlaybackTracePageData,
   type RecommendationTracePageData,
 } from "@/services/recommendations/admin-ops"
 import {
@@ -106,7 +108,7 @@ export default async function RecommendationsPage({
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces] = await Promise.all([
+  const [overview, traces, playbackTraces] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -118,6 +120,9 @@ export default async function RecommendationsPage({
           evidenceState: params.evidence,
           cursor: params.cursor,
         })
+      : null,
+    canReadTraces
+      ? loadRecommendationPlaybackTracePage(prisma, { window: params.window })
       : null,
   ])
 
@@ -131,6 +136,7 @@ export default async function RecommendationsPage({
       />
 
       <HealthSummary overview={overview} />
+      <PlaybackEvidence overview={overview} />
       <PromotionDecision overview={overview} canOperate={canOperatePromotion} />
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />
       <ExperimentEvaluation overview={overview} />
@@ -149,8 +155,277 @@ export default async function RecommendationsPage({
           </p>
         </PageSection>
       )}
+      {playbackTraces ? (
+        <PlaybackTraceSection traces={playbackTraces} />
+      ) : (
+        <PageSection title="Playback traces" meta="ADMIN-ONLY / PRIVACY-SAFE">
+          <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
+            Playback traces require Admin access. Aggregate evidence above
+            contains no context identifiers or viewer-linked fields.
+          </p>
+        </PageSection>
+      )}
     </div>
   )
+}
+
+function PlaybackTraceSection({
+  traces,
+}: {
+  traces: RecommendationPlaybackTracePageData
+}) {
+  return (
+    <PageSection
+      title="Playback traces"
+      meta={`ADMIN / ACTIVE CONTEXTS / LATEST ${RECOMMENDATION_TRACE_PAGE_SIZE}`}
+    >
+      <p className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">
+        Source is diagnostic provenance only. It never changes learning
+        eligibility or contribution weight.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px] border-collapse text-left text-[12px]">
+          <thead>
+            <tr className="border-y border-[var(--color-hairline)] text-[var(--color-text-muted)]">
+              <th scope="col" className="px-4 py-2 font-medium">
+                Context
+              </th>
+              <th scope="col" className="px-4 py-2 font-medium">
+                Provenance
+              </th>
+              <th scope="col" className="px-4 py-2 font-medium">
+                Lifecycle
+              </th>
+              <th scope="col" className="px-4 py-2 font-medium">
+                Evidence
+              </th>
+              <th scope="col" className="px-4 py-2 font-medium">
+                Created
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {traces.rows.map((row) => (
+              <tr
+                key={row.id}
+                className="border-b border-[var(--color-hairline)] align-top"
+              >
+                <td className="px-4 py-3">
+                  <Link
+                    href={
+                      `/dashboard/recommendations/playback/${encodeURIComponent(row.id)}?window=${traces.window.preset}` as Route
+                    }
+                    className="break-all font-mono text-[var(--color-info)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                  >
+                    {row.id}
+                  </Link>
+                  <div className="mt-1 break-all text-[var(--color-text-muted)]">
+                    {row.mediaId}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  {displayRecommendationToken(row.source)}
+                  <div className="mt-1 text-[var(--color-text-muted)]">
+                    {row.recommendationAttributed
+                      ? "Recommendation attributed"
+                      : "No recommendation attribution"}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  {row.episode ? (
+                    <StatusPill
+                      tone={
+                        row.episode.state === "finalized"
+                          ? "success"
+                          : row.episode.state === "timed_out"
+                            ? "warning"
+                            : "muted"
+                      }
+                    >
+                      {displayRecommendationToken(row.episode.state)}
+                    </StatusPill>
+                  ) : (
+                    "No episode"
+                  )}
+                </td>
+                <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-secondary)]">
+                  {row.episode?.facts ?? 0} facts · {row.episode?.outcomes ?? 0}{" "}
+                  outcomes · {row.conflicts} conflicts · {row.writeFailures}{" "}
+                  failures
+                </td>
+                <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-muted)]">
+                  {formatRecommendationDateTime(row.createdAt)}
+                  <div className="mt-1">
+                    Expires {formatRecommendationDateTime(row.expiresAt)}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {traces.rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-[var(--color-text-muted)]"
+                >
+                  No active playback contexts exist in this window.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </PageSection>
+  )
+}
+
+function PlaybackEvidence({
+  overview,
+}: {
+  overview: RecommendationOverviewData
+}) {
+  const playback = overview.playbackEvidence
+  const evaluation = playback?.evaluation
+  const stateCopy = playbackEvidenceCopy(playback)
+  return (
+    <PageSection
+      title="Source-neutral playback evidence"
+      meta="AGGREGATE / NO VIEWER IDENTITY"
+    >
+      <div className="space-y-4 px-4 py-5 text-[13px]">
+        <p>{stateCopy}</p>
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="label-text">Issuance control</dt>
+            <dd>{playback?.enabled ? "Enabled" : "Disabled"}</dd>
+          </div>
+          <div>
+            <dt className="label-text">Readiness</dt>
+            <dd>
+              {evaluation
+                ? displayRecommendationToken(evaluation.state)
+                : "No evaluation"}
+            </dd>
+          </div>
+          <div>
+            <dt className="label-text">Revision</dt>
+            <dd>{evaluation?.revision ?? "—"}</dd>
+          </div>
+        </dl>
+        {evaluation ? (
+          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Definition
+              label="Due episodes"
+              value={formatCount(
+                numberFrom(evaluation.counts, "finalizedTotal") ?? undefined,
+              )}
+            />
+            <Definition
+              label="Missing proxy outcomes"
+              value={formatCount(
+                Math.max(
+                  0,
+                  (numberFrom(evaluation.counts, "finalizedTotal") ?? 0) -
+                    (numberFrom(evaluation.counts, "activeOutcomeTotal") ?? 0),
+                ),
+              )}
+            />
+            <Definition
+              label="Finalization p95"
+              value={formatMs(
+                numberFrom(evaluation.metrics, "p95FinalizationLagMs"),
+              )}
+            />
+            <Definition
+              label="Retention"
+              value={evaluation.retentionHealthy ? "Healthy" : "Unhealthy"}
+            />
+            <Definition
+              label="Legacy qualified"
+              value={formatCount(
+                numberFrom(evaluation.counts, "legacyQualifiedTotal") ??
+                  undefined,
+              )}
+            />
+            <Definition
+              label="Proxy qualified"
+              value={formatCount(
+                numberFrom(evaluation.counts, "proxyQualifiedTotal") ??
+                  undefined,
+              )}
+            />
+            <Definition
+              label="Classifier disagreements"
+              value={formatCount(
+                numberFrom(evaluation.counts, "classificationDisagreements") ??
+                  undefined,
+              )}
+            />
+            <Definition
+              label="Revision / conflict"
+              value={`${formatPercent(numberFrom(evaluation.metrics, "revisionRate"))} / ${formatPercent(numberFrom(evaluation.metrics, "conflictRate"))}`}
+            />
+            <Definition
+              label="Evaluation window"
+              value={`${formatRecommendationDateTime(evaluation.windowStart)} → ${formatRecommendationDateTime(evaluation.windowEnd)}`}
+            />
+            <Definition label="Policy" value={evaluation.policyVersion} />
+            <Definition
+              label="Privacy class"
+              value={`${displayRecommendationToken(evaluation.identityClass)} · ${displayRecommendationToken(evaluation.accessClass)}`}
+            />
+            <Definition
+              label="Lifecycle"
+              value={`${evaluation.retentionDays} days · ${displayRecommendationToken(evaluation.deletionBehavior)} · ${displayRecommendationToken(evaluation.fallbackBehavior)}`}
+            />
+          </dl>
+        ) : null}
+        {evaluation?.cohorts.length ? (
+          <div>
+            <h3 className="label-text">Duration cohorts</h3>
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {evaluation.cohorts.map((cohort) => (
+                <li key={cohort.cohort}>
+                  {cohort.cohort}:{" "}
+                  {cohort.suppressed
+                    ? "Suppressed (<10)"
+                    : `${cohort.count} total · ${cohort.legacyQualified} legacy qualified · ${cohort.proxyQualified} proxy qualified · ${cohort.disagreements} disagreements`}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {evaluation?.reasonCodes.length ? (
+          <p>
+            Reasons:{" "}
+            {evaluation.reasonCodes.map(displayRecommendationToken).join(", ")}
+          </p>
+        ) : null}
+      </div>
+    </PageSection>
+  )
+}
+
+function playbackEvidenceCopy(
+  playback: RecommendationOverviewData["playbackEvidence"],
+): string {
+  if (!playback) {
+    return "Playback evidence is unavailable. Check the database and retention heartbeat."
+  }
+  if (!playback.enabled) {
+    return "Collection is disabled. Playback remains available and historical retention continues."
+  }
+  switch (playback.evaluation?.state) {
+    case undefined:
+      return "Collection is enabled, but the retained sample is still insufficient for a readiness decision."
+    case "eligible_for_shadow_evaluation":
+      return "Collection quality is sufficient for offline shadow evaluation only; this evidence has no serving authority."
+    case "revise":
+      return "Collection quality is degraded. Revise instrumentation before any offline comparison."
+    case "retire":
+      return "A mature, complete window produced no proxy-qualified signal while the legacy comparator remained positive. Retire this proxy; this evidence still has no serving authority."
+    case "inconclusive":
+      return "Evidence is inconclusive. Continue bounded collection before drawing a conclusion."
+  }
 }
 
 function ControlReadiness({

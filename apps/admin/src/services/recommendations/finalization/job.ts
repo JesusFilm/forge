@@ -130,21 +130,21 @@ export async function dispatchRecommendationEpisodeFinalization(
     const episode = await prisma.recommendationPlaybackEpisode
       .findUnique({
         where: { id: input.episodeId },
-        include: { request: true },
+        include: { context: true },
       })
       .catch(() => null)
     if (episode && episode.generation === input.generation) {
       await prisma.recommendationEvidenceAudit
         .create({
           data: {
-            requestId: episode.requestId,
+            contextId: episode.contextId,
             kind: RecommendationAuditKind.WRITE_FAILURE,
             reasonCode: "episode_finalization_dispatch_failed",
             detail: {
               episodeId: episode.id,
               generation: episode.generation,
             },
-            expiresAt: episode.request.expiresAt,
+            expiresAt: episode.context.expiresAt,
           },
         })
         .catch(() => {})
@@ -233,13 +233,13 @@ export async function runRecommendationEpisodeFinalizationJob(
         select: {
           generation: true,
           activeUntil: true,
-          request: { select: { expiresAt: true } },
+          context: { select: { expiresAt: true } },
         },
       })
       const now = new Date()
       if (
         episode?.generation === input.generation &&
-        episode.request.expiresAt > now &&
+        episode.context.expiresAt > now &&
         episode.activeUntil > now
       ) {
         const activeRuns = await findRecentActiveFinalizationRuns({

@@ -50,6 +50,7 @@ describe("RecommendationIntegrityService", () => {
       supersededBy: null,
       episode: {
         id: "episode-1",
+        contextId: "context-1",
         sessionDigest: "a".repeat(64),
         mediaId: "media-1",
         capabilityJti: "episode-jti",
@@ -125,6 +126,7 @@ describe("RecommendationIntegrityService", () => {
       },
       episode: {
         id: "episode-fenced",
+        contextId: "context-fenced",
         sessionDigest: "c".repeat(64),
         mediaId: "media-fenced",
         capabilityJti: "episode-fenced-jti",
@@ -204,6 +206,7 @@ describe("RecommendationIntegrityService", () => {
       supersededBy: null,
       episode: {
         id: "episode-1",
+        contextId: "context-1",
         sessionDigest: "a".repeat(64),
         mediaId: "media-1",
         capabilityJti: "episode-jti",

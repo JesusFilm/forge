@@ -12,6 +12,7 @@ import type { SceneRecommendation } from "@/lib/recommendations"
 import { formatDuration } from "@/lib/format-duration"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
+import { markRecommendationPlaybackProvenance } from "@/lib/recommendation-playback-provenance"
 
 type VideoRecommendationsProps<T extends SceneRecommendation> = {
   recommendations: T[]
@@ -89,7 +90,22 @@ function RecommendationCard<T extends SceneRecommendation>({
     <Link
       ref={cardRef}
       href={hrefBuilder(rec, locale)}
-      onClick={(event) => onSelect?.(rec, event)}
+      onClick={(event) => {
+        if (
+          !onSelect &&
+          event.button === 0 &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey
+        ) {
+          markRecommendationPlaybackProvenance({
+            source: "editorial",
+            sourceRef: itemKey,
+          })
+        }
+        onSelect?.(rec, event)
+      }}
       aria-busy={busy || undefined}
       aria-label={busy ? `Opening ${rec.videoTitle}` : undefined}
       data-recommendation-key={itemKey}

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   adminClaimSemanticRecommendationEpisodeOperation,
+  adminOpenRecommendationPlaybackContextOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
 } from "@forge/admin-graphql/operations"
 
@@ -93,6 +94,56 @@ describe("POST /watch/api/recommendations/playback", () => {
           mediaId: "media-1",
         },
         fetchPolicy: "no-cache",
+      }),
+    )
+  })
+
+  it("opens a source-neutral direct context behind mutation admission", async () => {
+    mutate.mockResolvedValueOnce({
+      data: {
+        openRecommendationPlaybackContext: {
+          contextId: "context-1",
+          episodeId: "episode-1",
+          capability: "episode-capability-secret",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+          source: "direct",
+        },
+      },
+    })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          action: "context",
+          contractVersion: "recommendation-playback-context-v1",
+          idempotencyKey: "player-instance-1234567890",
+          mediaId: "media-1",
+          source: "direct",
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      episode: {
+        contextId: "context-1",
+        episodeId: "episode-1",
+        capability: "episode-capability-secret",
+        activeUntil: "2026-08-19T07:00:00.000Z",
+        hardUntil: "2026-08-19T09:00:00.000Z",
+      },
+    })
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminOpenRecommendationPlaybackContextOperation,
+        variables: expect.objectContaining({
+          contractVersion: "recommendation-playback-context-v1",
+          sessionDigest: createHash("sha256").update(session).digest("hex"),
+          idempotencyKey: "player-instance-1234567890",
+          mediaId: "media-1",
+          source: "direct",
+        }),
       }),
     )
   })

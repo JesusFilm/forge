@@ -2,12 +2,15 @@ import { z } from "zod"
 
 import {
   claimSemanticRecommendationEpisode,
+  openRecommendationPlaybackContext,
   recordSemanticRecommendationPlayback,
 } from "@/lib/recommendations"
 import {
   RECOMMENDATION_EVIDENCE_CONTRACT,
+  RECOMMENDATION_PLAYBACK_CONTEXT_CONTRACT,
   RECOMMENDATION_PLAYBACK_BODY_BYTES,
   RECOMMENDATION_PLAYBACK_EVENT_LIMIT,
+  RECOMMENDATION_PLAYBACK_SOURCES,
   parseRecommendationEpisodeCapability,
 } from "@/lib/recommendation-contracts"
 import {
@@ -20,6 +23,7 @@ import {
 } from "@/lib/recommendation-route-response"
 import { readRecommendationSession } from "@/lib/recommendation-session"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
+import { assertRecommendationMutationAdmission } from "@/lib/recommendation-mutation-admission"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -82,7 +86,9 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
       kind: z.literal("playback_active_visible_playing"),
       payload: z
         .object({
-          activeMilliseconds: z.number().int().min(0).max(60_000),
+          activeMilliseconds: z.number().int().min(0).max(60_000).optional(),
+          startedAt: occurredAt.optional(),
+          endedAt: occurredAt.optional(),
           coverage: z.enum(["complete", "partial"]),
           missingReason: z
             .enum(["visibility_unavailable", "player_state_unavailable"])
@@ -90,6 +96,20 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
         })
         .strict()
         .superRefine((payload, context) => {
+          const exact = payload.startedAt != null && payload.endedAt != null
+          if (
+            (payload.startedAt == null) !== (payload.endedAt == null) ||
+            (!exact && payload.activeMilliseconds == null)
+          ) {
+            context.addIssue({ code: "custom" })
+          }
+          if (exact) {
+            const startedAt = Date.parse(payload.startedAt!)
+            const endedAt = Date.parse(payload.endedAt!)
+            if (endedAt <= startedAt || endedAt - startedAt > 60_000) {
+              context.addIssue({ code: "custom" })
+            }
+          }
           const valid =
             (payload.coverage === "complete" &&
               payload.missingReason == null) ||
@@ -135,11 +155,32 @@ const ClaimInput = z
   })
   .strict()
 
+const ContextInput = z
+  .object({
+    action: z.literal("context"),
+    contractVersion: z.literal(RECOMMENDATION_PLAYBACK_CONTEXT_CONTRACT),
+    mediaId: identifier,
+    idempotencyKey: z.string().min(16).max(191),
+    source: z.enum(RECOMMENDATION_PLAYBACK_SOURCES),
+    sourceRef: identifier.optional(),
+    claimNonce: identifier.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (
+      (input.source === "recommendation" && input.claimNonce == null) ||
+      (input.source !== "recommendation" && input.claimNonce != null)
+    ) {
+      context.addIssue({ code: "custom" })
+    }
+  })
+
 const FactsInput = z
   .object({
     action: z.literal("facts"),
     contractVersion: z.literal(RECOMMENDATION_EVIDENCE_CONTRACT),
     capability: z.string().min(1).max(4096),
+    contextId: identifier.optional(),
     episodeId: identifier,
     mediaId: identifier,
     events: z
@@ -158,7 +199,11 @@ const FactsInput = z
     }
   })
 
-const PlaybackInput = z.discriminatedUnion("action", [ClaimInput, FactsInput])
+const PlaybackInput = z.discriminatedUnion("action", [
+  ClaimInput,
+  ContextInput,
+  FactsInput,
+])
 
 export async function POST(request: Request) {
   try {
@@ -188,9 +233,31 @@ export async function POST(request: Request) {
       return recommendationJson({ episode })
     }
 
+    if (parsed.data.action === "context") {
+      await assertRecommendationMutationAdmission(
+        request.headers,
+        "playback-context",
+      )
+      const result = await openRecommendationPlaybackContext({
+        contractVersion: parsed.data.contractVersion,
+        sessionDigest: session.digest,
+        mediaId: parsed.data.mediaId,
+        idempotencyKey: parsed.data.idempotencyKey,
+        source: parsed.data.source,
+        sourceRef: parsed.data.sourceRef ?? null,
+        claimNonce: parsed.data.claimNonce ?? null,
+      })
+      const episode = parseRecommendationEpisodeCapability(result)
+      if (!episode) {
+        throw new RecommendationRouteError(502, "invalid_admin_response")
+      }
+      return recommendationJson({ episode })
+    }
+
     const receipts = await recordSemanticRecommendationPlayback({
       contractVersion: parsed.data.contractVersion,
       capability: parsed.data.capability,
+      contextId: parsed.data.contextId ?? null,
       episodeId: parsed.data.episodeId,
       mediaId: parsed.data.mediaId,
       events: parsed.data.events,

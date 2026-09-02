@@ -6,6 +6,10 @@ import {
   type RecommendationEvidenceReceipt,
 } from "@/services/recommendations/evidence.service"
 import { createRecommendationEpisodeService } from "@/services/recommendations/episode.service"
+import {
+  createRecommendationPlaybackContextService,
+  type RecommendationPlaybackContextClaim,
+} from "@/services/recommendations/playback-context.service"
 import { RecommendationInputError } from "@/services/recommendations/errors"
 import { resolveRecommendationOperation } from "@/graphql/recommendation-errors"
 import {
@@ -25,6 +29,7 @@ type SelectionReceipt = {
 }
 
 type EpisodeClaim = {
+  contextId: string
   episodeId: string
   capability: string
   activeUntil: string
@@ -107,10 +112,26 @@ const EpisodeClaimRef = builder.objectRef<EpisodeClaim>(
 )
 EpisodeClaimRef.implement({
   fields: (t) => ({
+    contextId: t.exposeID("contextId", { nullable: false }),
     episodeId: t.exposeID("episodeId", { nullable: false }),
     capability: t.exposeString("capability", { nullable: false }),
     activeUntil: t.exposeString("activeUntil", { nullable: false }),
     hardUntil: t.exposeString("hardUntil", { nullable: false }),
+  }),
+})
+
+const PlaybackContextClaimRef =
+  builder.objectRef<RecommendationPlaybackContextClaim>(
+    "RecommendationPlaybackContextClaim",
+  )
+PlaybackContextClaimRef.implement({
+  fields: (t) => ({
+    contextId: t.exposeID("contextId", { nullable: false }),
+    episodeId: t.exposeID("episodeId", { nullable: false }),
+    capability: t.exposeString("capability", { nullable: false }),
+    activeUntil: t.exposeString("activeUntil", { nullable: false }),
+    hardUntil: t.exposeString("hardUntil", { nullable: false }),
+    source: t.exposeString("source", { nullable: false }),
   }),
 })
 
@@ -221,6 +242,34 @@ builder.mutationFields((t) => ({
       ),
   }),
 
+  openRecommendationPlaybackContext: t.field({
+    type: PlaybackContextClaimRef,
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      contractVersion: t.arg.string({ required: true }),
+      sessionDigest: t.arg.string({ required: true }),
+      mediaId: t.arg.id({ required: true }),
+      idempotencyKey: t.arg.string({ required: true }),
+      source: t.arg.string({ required: true }),
+      sourceRef: t.arg.string({ required: false }),
+      claimNonce: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        createRecommendationPlaybackContextService(prisma).open({
+          caller: ctx.user,
+          contractVersion: args.contractVersion,
+          sessionDigest: args.sessionDigest,
+          mediaId: String(args.mediaId),
+          idempotencyKey: args.idempotencyKey,
+          source: args.source,
+          sourceRef: args.sourceRef,
+          claimNonce: args.claimNonce,
+        }),
+      ),
+  }),
+
   recordSemanticRecommendationPlayback: t.field({
     type: [PlaybackReceiptRef],
     nullable: false,
@@ -228,6 +277,7 @@ builder.mutationFields((t) => ({
     args: {
       contractVersion: t.arg.string({ required: true }),
       capability: t.arg.string({ required: true }),
+      contextId: t.arg.id({ required: false }),
       episodeId: t.arg.id({ required: true }),
       sessionDigest: t.arg.string({ required: true }),
       mediaId: t.arg.id({ required: true }),
@@ -242,6 +292,8 @@ builder.mutationFields((t) => ({
           caller: ctx.user,
           contractVersion: args.contractVersion,
           capability: args.capability,
+          contextId:
+            args.contextId == null ? undefined : String(args.contextId),
           episodeId: String(args.episodeId),
           sessionDigest: args.sessionDigest,
           mediaId: String(args.mediaId),

@@ -40,6 +40,10 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "recordSemanticRecommendationEvidence",
   "selectSemanticRecommendation",
   "claimSemanticRecommendationEpisode",
+  // feat-369. Public-shaped so Web can dispatch it through the shared
+  // GraphQL boundary; resolver-body caller checks and evidence admission
+  // remain authoritative.
+  "openRecommendationPlaybackContext",
   "recordSemanticRecommendationPlayback",
   "recordRecommendationContentAction",
   "recommendationProfileStatus",

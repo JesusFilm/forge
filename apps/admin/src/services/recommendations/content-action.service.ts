@@ -147,20 +147,23 @@ export class RecommendationContentActionService {
                 lte: new Date(occurredAt.getTime() + ACTION_CLOCK_SKEW_MS),
               },
               hardUntil: { gte: occurredAt },
-              request: { expiresAt: { gt: now } },
+              context: { expiresAt: { gt: now } },
             },
-            include: { request: true, item: true },
+            include: { context: true, request: true, item: true },
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           })
         : null
     const lineage =
-      episode && episode.generation === episode.request.generation
+      episode &&
+      episode.generation === episode.context.generation &&
+      (episode.request == null ||
+        episode.generation === episode.request.generation)
         ? {
             requestId: episode.requestId,
             itemId: episode.itemId,
             episodeId: episode.id,
-            candidateGenerator: episode.item.candidateGenerator,
-            expiresAt: episode.request.expiresAt,
+            candidateGenerator: episode.item?.candidateGenerator ?? null,
+            expiresAt: episode.context.expiresAt,
             late: occurredAt > episode.activeUntil || now > episode.activeUntil,
           }
         : {
@@ -205,7 +208,7 @@ export class RecommendationContentActionService {
           actionId: existing.id,
           eventId: parsed.eventId,
           status,
-          matched: existing.requestId != null,
+          matched: existing.episodeId != null,
           late: existing.late,
         }
       }
@@ -241,7 +244,7 @@ export class RecommendationContentActionService {
         actionId: created.id,
         eventId: parsed.eventId,
         status: "accepted",
-        matched: created.requestId != null,
+        matched: created.episodeId != null,
         late: created.late,
       }
     })

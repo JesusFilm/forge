@@ -11,13 +11,15 @@ The legacy `sceneRecommendations` and `WatchEvent` contracts remain compatible.
 
 Treat these identifiers as persisted protocol versions, not display labels:
 
-| Concern            | Version                           |
-| ------------------ | --------------------------------- |
-| Delivery envelope  | `semantic-recommendation-v1`      |
-| Browser evidence   | `recommendation-evidence-v1`      |
-| Watch surface      | `watch-below-player-v1`           |
-| Semantic strategy  | `semantic-transcript-pgvector-v1` |
-| Outcome classifier | `legacy-position-v0`              |
+| Concern           | Version                              |
+| ----------------- | ------------------------------------ |
+| Delivery envelope | `semantic-recommendation-v1`         |
+| Browser evidence  | `recommendation-evidence-v1`         |
+| Playback context  | `recommendation-playback-context-v1` |
+| Watch surface     | `watch-below-player-v1`              |
+| Semantic strategy | `semantic-transcript-pgvector-v1`    |
+| Legacy comparator | `legacy-position-v0`                 |
+| Playback proxy    | `active-watch-proxy-v1`              |
 
 The semantic delivery returns at most six items and at most 64 KiB. Evidence
 requests are at most 8 KiB and 16 events; an episode accepts at most 128 facts.
@@ -36,15 +38,17 @@ sets `learningEligible=false`.
 Deploy in expand-then-activate order:
 
 1. Run `prisma migrate deploy` through
-   `0071_recommendation_assignment_generation_key` while serving remains
+   `0072_recommendation_source_neutral_playback` while serving remains
    disabled. Confirm `prisma migrate status` (or `_prisma_migrations`) reports
    every recommendation migration from
-   `0052_production_semantic_recommendation_tracer` through `0071` as applied
+   `0052_production_semantic_recommendation_tracer` through `0072` as applied
    successfully before deploying application code. Migration `0052` registers
    the immutable bootstrap manifest and a disabled singleton
    `recommendation-serving-control` row; later migrations add profile,
-   experiment, hybrid-composition, consent, and assignment-generation state
-   required by this release.
+   experiment, hybrid-composition, consent, assignment-generation, and
+   source-neutral playback state required by this release. Migration `0072`
+   seeds `recommendation-playback-evidence-control` disabled and bridges N-1
+   recommendation episode writers; applying it does not activate collection.
 2. Deploy Admin and Web with generated GraphQL artifacts in parity. Keep
    `sceneRecommendations` and the legacy Watch recorder available.
 3. Configure one active recommendation capability signer, the Web consumer
@@ -60,6 +64,31 @@ Deploy in expand-then-activate order:
    with an environment-only switch or cache it per viewer.
 6. Reconcile an anonymous Watch selection and target playback at
    `/dashboard/recommendations` before broadening traffic.
+
+## Source-Neutral Playback Evidence Control
+
+Playback context issuance is independent of recommendation serving. After all
+Admin and Web instances run the context-aware contract, an authorized operator
+may enable the singleton `recommendation-playback-evidence-control` row with a
+bounded reason code and incremented version. This is a separate production
+activation; a code deployment or migration must not perform it implicitly.
+
+When enabled, every eligible full Watch player can request one bounded context
+after the player is available. Provenance is one of `recommendation`, `search`,
+`share`, `acquisition`, `editorial`, or `direct`. It is diagnostic only and
+never changes integrity eligibility, contribution weight, profile authority,
+or live serving. Non-recommendation contexts have no request, item, or
+selection attribution. Source references are immediately digested; raw URLs,
+referrers, and search text are not retained.
+
+To stop new evidence after an instrumentation incident, disable this singleton
+and increment its version. Watch playback remains available, already accepted
+episodes may finish, existing outcomes and authorized profile generations are
+not retracted, and retention/erasure continue. Re-enable only after the Admin
+playback panel shows healthy retention, bounded missingness and lag, and the
+incident reason has been reconciled. The proxy evaluation is offline evidence
+only: `eligible_for_shadow_evaluation`, `inconclusive`, `revise`, or `retire`
+cannot alter retrieval, ranking, fallback, or ordinary profile delivery.
 
 ## Exact Hybrid Shadow Evaluation
 
@@ -185,21 +214,23 @@ reject outstanding capabilities by design.
 
 ## Retention, Purge, and Privacy
 
-Each request gets one immutable expiry 29 days after creation. Served items,
-render/impression/selection facts, episodes, playback facts, outcomes, and
-request-linked audit/conflict records inherit that root expiry and cannot
-extend it. Reads hide expired roots immediately. The daily advisory-locked
-purge runs at 10:30 UTC in batches of 500 (hard maximum 5,000), deletes request
-roots under database cascades, and fences late finalizers from recreating or
-publishing deleted generations.
+Each request and source-neutral playback context gets one immutable expiry 29
+days after creation. Served items, render/impression/selection facts, episodes,
+playback facts, outcomes, and linked audit/conflict records inherit their root
+expiry and cannot extend it. Reads hide expired roots immediately. The daily
+advisory-locked purge runs at 10:30 UTC in batches of 500 (hard maximum 5,000),
+deletes request roots and expired direct context roots under database cascades,
+and fences late finalizers from recreating or publishing deleted generations.
 
 The purge has a 24-hour propagation SLA and a 30-day hard ceiling. Retention is
 overdue when a root is more than 24 hours past expiry, a bounded run leaves an
 overdue root, or no successful run exists for 36 hours. Strategy manifests do
 not expire automatically. Sanitized retention-run records and privileged
 trace-access audits retain for 90 days; root purge sets the access audit's
-request link to null atomically so the retained row cannot be joined back to a
-request or session.
+request or context link to null atomically so the retained row cannot be joined
+back to a request, context, or session. Aggregate playback-proxy evaluations
+retain for 365 days and contain no viewer, session, context, request, item,
+profile, or capability identity.
 
 Never store or retain raw capability tokens, session cookie values, claim
 nonces, IP addresses, user identifiers, consumer bearers, embeddings, or
@@ -233,15 +264,23 @@ purge, retrieval latency, effective manifest, and fallback reason.
 Aggregate access (`read:recommendation-aggregates`) never includes request IDs,
 cursors, or detail links. Trace access (`read:recommendation-traces`) is
 separate, paginated at 50 rows, and every detail read creates a 90-day sanitized
-access audit.
+access audit. The playback panel distinguishes disabled, insufficient,
+inconclusive, revise, retire, and eligible-for-shadow-evaluation states. It
+shows due/missing outcomes, finalization p95, revision/conflict rates,
+legacy-versus-proxy counts, retention health, and duration cohorts; every
+cohort below ten is suppressed. Playback detail exposes only bounded source,
+media, lifecycle, fact metrics/interval endpoints, outcome revisions,
+eligibility, and sanitized operational counters.
 
 ## Migration and Application Rollback
 
 The schema is additive and forward-only. An application rollback keeps
-migration 0052 and all recommendation rows readable by the newer service while
-N-1 code ignores them. Disable serving before rolling application code back;
-do not edit or delete an applied migration, and do not contract the tables in
-the rollback deploy.
+migration 0052 and all recommendation rows readable by the newer service. The
+0072 N-1 bridge creates recommendation contexts for legacy episode inserts that
+omit `context_id`; non-recommendation issuance must remain disabled until every
+writer is context-aware. Disable playback evidence issuance and serving before
+rolling application code back. Do not edit or delete an applied migration, and
+do not contract the tables in the rollback deploy.
 
 If `prisma migrate deploy` fails before migration 0052 is successfully applied,
 inspect the partial schema and repair it before using `prisma migrate resolve

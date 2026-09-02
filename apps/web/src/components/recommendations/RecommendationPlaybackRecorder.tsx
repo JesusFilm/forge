@@ -5,6 +5,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
   RECOMMENDATION_EVIDENCE_CONTRACT,
+  RECOMMENDATION_PLAYBACK_CONTEXT_CONTRACT,
   RECOMMENDATION_PLAYBACK_BODY_BYTES,
   RECOMMENDATION_PLAYBACK_EVENT_LIMIT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
@@ -12,6 +13,7 @@ import {
   type RecommendationEpisodeCapability,
   type RecommendationPlaybackEvent,
 } from "@/lib/recommendation-contracts"
+import { consumeRecommendationPlaybackProvenance } from "@/lib/recommendation-playback-provenance"
 import {
   recommendationEventId,
   recommendationFetchWithRetry,
@@ -123,6 +125,7 @@ function playbackFactsBody(
     action: "facts",
     contractVersion: RECOMMENDATION_EVIDENCE_CONTRACT,
     capability: episode.capability,
+    ...(episode.contextId ? { contextId: episode.contextId } : {}),
     episodeId: episode.episodeId,
     mediaId,
     events,
@@ -219,6 +222,8 @@ export function RecommendationPlaybackRecorder({
   const playbackStartedAtRef = useRef<number | null>(null)
   const lastProgressAtRef = useRef<number | null>(null)
   const seekFromRef = useRef<number | null>(null)
+  const seekingRef = useRef(false)
+  const contextIdempotencyKeyRef = useRef<string | null>(null)
   useEffect(() => {
     initiationRef.current = initiation
   }, [initiation])
@@ -326,35 +331,52 @@ export function RecommendationPlaybackRecorder({
   )
 
   useEffect(() => {
-    if (claimStartedRef.current) return
+    if (!player || claimStartedRef.current) return
+    let disposed = false
+    let retryTimer: number | null = null
     const claimNonce = readRecommendationClaimNonce()
-    if (!claimNonce) {
-      claimSettledRef.current = true
-      return
-    }
+    const provenance = claimNonce
+      ? null
+      : consumeRecommendationPlaybackProvenance()
+    const source = claimNonce
+      ? ("recommendation" as const)
+      : (provenance?.source ?? "direct")
+    contextIdempotencyKeyRef.current ??=
+      recommendationEventId("playback-context")
     claimStartedRef.current = true
 
-    const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
+    const body = JSON.stringify({
+      action: "context",
+      contractVersion: RECOMMENDATION_PLAYBACK_CONTEXT_CONTRACT,
+      mediaId,
+      idempotencyKey: contextIdempotencyKeyRef.current,
+      source,
+      ...(provenance?.sourceRef ? { sourceRef: provenance.sourceRef } : {}),
+      ...(claimNonce ? { claimNonce } : {}),
+    })
     const attemptClaim = (attempt: number) => {
       void claimRecommendationEpisode(body)
         .then((value) => {
+          if (disposed) return
           const episode = parseRecommendationEpisodeCapability(value.episode)
           if (!episode) throw new RecommendationRuntimeError("claim_invalid")
-          clearRecommendationClaimNonce(claimNonce)
+          if (claimNonce) clearRecommendationClaimNonce(claimNonce)
           episodeRef.current = episode
           claimSettledRef.current = true
           outboundRef.current.push(...pendingRef.current.splice(0))
           sendOutbound()
         })
         .catch((error) => {
+          if (disposed) return
           if (error instanceof DefinitiveClaimError) {
-            clearRecommendationClaimNonce(claimNonce)
+            if (claimNonce) clearRecommendationClaimNonce(claimNonce)
             pendingRef.current = []
             claimSettledRef.current = true
             return
           }
           if (attempt < MAX_CLAIM_ATTEMPTS) {
-            window.setTimeout(() => {
+            retryTimer = window.setTimeout(() => {
+              retryTimer = null
               attemptClaim(attempt + 1)
             }, CLAIM_RETRY_BACKOFF_MS)
           }
@@ -364,7 +386,11 @@ export function RecommendationPlaybackRecorder({
         })
     }
     attemptClaim(1)
-  }, [mediaId, sendOutbound])
+    return () => {
+      disposed = true
+      if (retryTimer != null) window.clearTimeout(retryTimer)
+    }
+  }, [mediaId, player, sendOutbound])
 
   useEffect(() => {
     if (!player) return
@@ -378,6 +404,7 @@ export function RecommendationPlaybackRecorder({
       if (
         terminalRecordedRef.current ||
         activeStartedAtRef.current != null ||
+        seekingRef.current ||
         initiationRef.current == null ||
         !playingRef.current ||
         (canMeasurePlayerState && player.paused) ||
@@ -397,6 +424,8 @@ export function RecommendationPlaybackRecorder({
       let emittedMilliseconds = 0
       while (activeMilliseconds > 0) {
         const chunk = Math.min(MAX_ACTIVE_CHUNK_MS, activeMilliseconds)
+        const chunkStartedAt = startedAt + emittedMilliseconds
+        const chunkEndedAt = chunkStartedAt + chunk
         enqueue(
           event<
             Extract<
@@ -408,16 +437,23 @@ export function RecommendationPlaybackRecorder({
               kind: "playback_active_visible_playing",
               payload:
                 canMeasureVisibility && canMeasurePlayerState
-                  ? { activeMilliseconds: chunk, coverage: "complete" }
+                  ? {
+                      activeMilliseconds: chunk,
+                      startedAt: new Date(chunkStartedAt).toISOString(),
+                      endedAt: new Date(chunkEndedAt).toISOString(),
+                      coverage: "complete",
+                    }
                   : {
                       activeMilliseconds: chunk,
+                      startedAt: new Date(chunkStartedAt).toISOString(),
+                      endedAt: new Date(chunkEndedAt).toISOString(),
                       coverage: "partial",
                       missingReason: canMeasureVisibility
                         ? "player_state_unavailable"
                         : "visibility_unavailable",
                     },
             },
-            new Date(startedAt + emittedMilliseconds + chunk),
+            new Date(chunkEndedAt),
           ),
         )
         emittedMilliseconds += chunk
@@ -425,6 +461,7 @@ export function RecommendationPlaybackRecorder({
       }
       if (
         playingRef.current &&
+        !seekingRef.current &&
         isVisible() &&
         (!canMeasurePlayerState || !player.paused)
       ) {
@@ -508,18 +545,25 @@ export function RecommendationPlaybackRecorder({
       )
     }
     const onSeeking = () => {
+      seekingRef.current = true
+      flushActive()
       seekFromRef.current = boundedPosition(player)
     }
     const onSeeked = () => {
       const fromSeconds = seekFromRef.current
       seekFromRef.current = null
-      if (fromSeconds == null || !startRecordedRef.current) return
-      enqueue(
-        event<Extract<RecommendationPlaybackEvent, { kind: "playback_seek" }>>({
-          kind: "playback_seek",
-          payload: { fromSeconds, toSeconds: boundedPosition(player) },
-        }),
-      )
+      seekingRef.current = false
+      if (fromSeconds != null && startRecordedRef.current) {
+        enqueue(
+          event<
+            Extract<RecommendationPlaybackEvent, { kind: "playback_seek" }>
+          >({
+            kind: "playback_seek",
+            payload: { fromSeconds, toSeconds: boundedPosition(player) },
+          }),
+        )
+      }
+      startActive()
     }
     const recordEnd = (reason: EndReason, completed = false) => {
       if (terminalRecordedRef.current || !startRecordedRef.current) return
@@ -564,7 +608,7 @@ export function RecommendationPlaybackRecorder({
     }
     const onPageHide = () => recordEnd("pagehide")
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") recordEnd("hidden")
+      if (document.visibilityState === "hidden") flushActive()
       else startActive()
     }
 

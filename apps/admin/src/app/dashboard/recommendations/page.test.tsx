@@ -6,6 +6,8 @@ const requireSessionMock = vi.fn()
 const loadOverviewMock = vi.fn()
 const loadTracePageMock = vi.fn()
 const loadDetailMock = vi.fn()
+const loadPlaybackTracePageMock = vi.fn()
+const loadPlaybackDetailMock = vi.fn()
 const redirectMock = vi.fn((destination: string) => {
   throw new Error(`REDIRECT:${destination}`)
 })
@@ -35,6 +37,10 @@ vi.mock("@/services/recommendations/admin-ops", async (importOriginal) => {
       loadTracePageMock(...args),
     loadRecommendationRequestDetail: (...args: unknown[]) =>
       loadDetailMock(...args),
+    loadRecommendationPlaybackTracePage: (...args: unknown[]) =>
+      loadPlaybackTracePageMock(...args),
+    loadRecommendationPlaybackContextDetail: (...args: unknown[]) =>
+      loadPlaybackDetailMock(...args),
   }
 })
 
@@ -47,6 +53,7 @@ vi.mock("next/navigation", () => ({
 
 import RecommendationsPage from "./page"
 import RecommendationRequestPage from "./[requestId]/page"
+import RecommendationPlaybackContextPage from "./playback/[contextId]/page"
 
 const overview = {
   window: {
@@ -279,6 +286,50 @@ const overview = {
       reevaluationCondition: "Re-evaluate after experiment design.",
     },
   },
+  playbackEvidence: {
+    enabled: true,
+    reasonCode: "bounded_collection",
+    evaluation: {
+      revision: 2,
+      state: "eligible_for_shadow_evaluation",
+      evaluatedAt: new Date("2026-08-19T10:00:00.000Z"),
+      inputWatermark: new Date("2026-08-19T09:30:00.000Z"),
+      reasonCodes: ["bounded_collection_quality_sufficient"],
+      counts: {
+        finalizedTotal: 100,
+        activeOutcomeTotal: 99,
+        completeCoverage: 98,
+        writeFailureCount: 0,
+        legacyQualifiedTotal: 55,
+        proxyQualifiedTotal: 51,
+        classificationDisagreements: 8,
+      },
+      metrics: {
+        p95FinalizationLagMs: 70_000,
+        conflictRate: 0.001,
+        revisionRate: 0.02,
+      },
+      retentionHealthy: true,
+      cohorts: [
+        {
+          cohort: "medium",
+          count: 40,
+          legacyQualified: 22,
+          proxyQualified: 20,
+          disagreements: 4,
+          suppressed: false,
+        },
+        {
+          cohort: "sparse",
+          count: null,
+          legacyQualified: null,
+          proxyQualified: null,
+          disagreements: null,
+          suppressed: true,
+        },
+      ],
+    },
+  },
 }
 
 describe("Admin Recommendations pages", () => {
@@ -319,6 +370,34 @@ describe("Admin Recommendations pages", () => {
       ],
       nextCursor: "opaque-private-cursor",
     })
+    loadPlaybackTracePageMock.mockResolvedValue({
+      window: overview.window,
+      rows: [
+        {
+          id: "context-private-1",
+          source: "direct",
+          mediaId: "target-media",
+          recommendationAttributed: false,
+          sourceReferencePresent: false,
+          generation: 1,
+          createdAt: new Date("2026-08-19T11:10:00.000Z"),
+          expiresAt: new Date("2026-09-17T11:10:00.000Z"),
+          episode: {
+            id: "episode-private-1",
+            state: "finalized",
+            generation: 2,
+            claimedAt: new Date("2026-08-19T11:10:01.000Z"),
+            finalizedAt: new Date("2026-08-19T11:11:00.000Z"),
+            activeUntil: new Date("2026-08-19T15:10:00.000Z"),
+            hardUntil: new Date("2026-08-20T11:10:00.000Z"),
+            facts: 3,
+            outcomes: 1,
+          },
+          conflicts: 0,
+          writeFailures: 0,
+        },
+      ],
+    })
   })
 
   it("renders aggregate truth for EDITOR without requesting or leaking trace data", async () => {
@@ -330,6 +409,7 @@ describe("Admin Recommendations pages", () => {
 
     expect(loadOverviewMock).toHaveBeenCalledOnce()
     expect(loadTracePageMock).not.toHaveBeenCalled()
+    expect(loadPlaybackTracePageMock).not.toHaveBeenCalled()
     expect(html).toContain("Zero activity")
     expect(html).toContain("No request roots exist in this healthy window")
     expect(html).toContain("Request traces require Admin access")
@@ -357,10 +437,20 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("MULTI-INTEREST")
     expect(html).toContain("PROMOTE TO EXPERIMENT")
     expect(html).toContain("NO LIVE TRAFFIC")
+    expect(html).toContain("Source-neutral playback evidence")
+    expect(html).toContain(
+      "Collection quality is sufficient for offline shadow evaluation only",
+    )
+    expect(html).toContain("Missing proxy outcomes")
+    expect(html).toContain("Legacy qualified")
+    expect(html).toContain("Proxy qualified")
+    expect(html).toContain("40 total")
+    expect(html).toContain("Suppressed (&lt;10)")
     expect(html).not.toContain("private-profile")
     expect(html).not.toContain("request-private-1")
     expect(html).not.toContain("opaque-private-cursor")
     expect(html).not.toContain("/dashboard/recommendations/request-private-1")
+    expect(html).not.toContain("context-private-1")
   })
 
   it("renders the active-root request list and links only for ADMIN", async () => {
@@ -373,14 +463,77 @@ describe("Admin Recommendations pages", () => {
     )
 
     expect(loadTracePageMock).toHaveBeenCalledOnce()
+    expect(loadPlaybackTracePageMock).toHaveBeenCalledOnce()
     expect(html).toContain("Request traces")
     expect(html).toContain("request-private-1")
     expect(html).toContain("/dashboard/recommendations/request-private-1")
     expect(html).toContain("cursor=opaque-private-cursor")
+    expect(html).toContain("context-private-1")
+    expect(html).toContain(
+      "/dashboard/recommendations/playback/context-private-1",
+    )
+    expect(html).toContain("Source is diagnostic provenance only")
     expect(html).toContain("Confirm permanent default")
     expect(html).toContain("Restore last-known-good")
     expect(html).toContain("Emergency stop")
   })
+
+  it.each([
+    {
+      label: "disabled",
+      playbackEvidence: {
+        enabled: false,
+        reasonCode: "operator_disabled",
+        evaluation: null,
+      },
+      copy: "Collection is disabled. Playback remains available",
+    },
+    {
+      label: "inconclusive",
+      playbackEvidence: {
+        ...overview.playbackEvidence,
+        evaluation: {
+          ...overview.playbackEvidence.evaluation,
+          state: "inconclusive",
+        },
+      },
+      copy: "Evidence is inconclusive",
+    },
+    {
+      label: "revise",
+      playbackEvidence: {
+        ...overview.playbackEvidence,
+        evaluation: {
+          ...overview.playbackEvidence.evaluation,
+          state: "revise",
+        },
+      },
+      copy: "Collection quality is degraded",
+    },
+    {
+      label: "retire",
+      playbackEvidence: {
+        ...overview.playbackEvidence,
+        evaluation: {
+          ...overview.playbackEvidence.evaluation,
+          state: "retire",
+        },
+      },
+      copy: "Retire this proxy",
+    },
+  ])(
+    "renders $label playback evidence state",
+    async ({ playbackEvidence, copy }) => {
+      requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
+      loadOverviewMock.mockResolvedValue({ ...overview, playbackEvidence })
+
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({ searchParams: Promise.resolve({}) }),
+      )
+
+      expect(html).toContain(copy)
+    },
+  )
 
   it("shows rollback only for a historical profile-only promotion pointer", async () => {
     requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
@@ -422,6 +575,7 @@ describe("Admin Recommendations pages", () => {
     ).rejects.toThrow("REDIRECT:/dashboard")
     expect(loadOverviewMock).not.toHaveBeenCalled()
     expect(loadTracePageMock).not.toHaveBeenCalled()
+    expect(loadPlaybackTracePageMock).not.toHaveBeenCalled()
   })
 
   it("denies a crafted detail URL to EDITOR before loading or auditing", async () => {
@@ -434,6 +588,120 @@ describe("Admin Recommendations pages", () => {
       }),
     ).rejects.toThrow("REDIRECT:/dashboard/recommendations")
     expect(loadDetailMock).not.toHaveBeenCalled()
+  })
+
+  it("denies a crafted playback detail URL to EDITOR before loading or auditing", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+
+    await expect(
+      RecommendationPlaybackContextPage({
+        params: Promise.resolve({ contextId: "context-private-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).rejects.toThrow("REDIRECT:/dashboard/recommendations")
+    expect(loadPlaybackDetailMock).not.toHaveBeenCalled()
+  })
+
+  it("renders an audited privacy-safe playback detail for ADMIN", async () => {
+    requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
+    loadPlaybackDetailMock.mockResolvedValue({
+      context: {
+        id: "context-private-1",
+        source: "direct",
+        mediaId: "target-media",
+        recommendationAttributed: false,
+        sourceReferencePresent: false,
+        generation: 1,
+        createdAt: new Date("2026-08-19T11:10:00.000Z"),
+        expiresAt: new Date("2026-09-17T11:10:00.000Z"),
+        episode: {
+          id: "episode-private-1",
+          state: "finalized",
+          generation: 2,
+          claimedAt: new Date("2026-08-19T11:10:01.000Z"),
+          finalizedAt: new Date("2026-08-19T11:11:00.000Z"),
+          activeUntil: new Date("2026-08-19T15:10:00.000Z"),
+          hardUntil: new Date("2026-08-20T11:10:00.000Z"),
+          facts: 2,
+          outcomes: 1,
+        },
+        conflicts: 0,
+        writeFailures: 0,
+      },
+      facts: [
+        {
+          sequence: 1,
+          kind: "playback_active_visible_playing",
+          occurredAt: new Date("2026-08-19T11:10:31.000Z"),
+          receivedAt: new Date("2026-08-19T11:10:31.100Z"),
+          late: false,
+          positionSeconds: null,
+          durationSeconds: null,
+          fromSeconds: null,
+          toSeconds: null,
+          activeMilliseconds: null,
+          startedAt: "2026-08-19T11:10:01.000Z",
+          endedAt: "2026-08-19T11:10:31.000Z",
+        },
+      ],
+      outcomes: [
+        {
+          classifierVersion: "active-watch-proxy-v1",
+          revision: 1,
+          qualifiedView: true,
+          viewQualityWeight: 0.25,
+          viewQualityWeightReason: "active_fraction_of_duration",
+          activePlaybackMilliseconds: 30_000,
+          durationSeconds: 120,
+          durationCohort: "medium",
+          activeCoverage: "complete",
+          reasons: ["active_visible_playing_at_least_30_seconds"],
+          generation: 2,
+          createdAt: new Date("2026-08-19T11:11:00.000Z"),
+          eligibility: {
+            state: "eligible",
+            actorClass: "human_anonymous",
+            eligibleScopes: ["profile"],
+            contributionWeight: 0.25,
+            reasonCodes: [],
+          },
+        },
+      ],
+      audits: [],
+      conflicts: [],
+    })
+
+    const html = renderToStaticMarkup(
+      await RecommendationPlaybackContextPage({
+        params: Promise.resolve({ contextId: "context-private-1" }),
+        searchParams: Promise.resolve({ window: "24h" }),
+      }),
+    )
+
+    expect(loadPlaybackDetailMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        contextId: "context-private-1",
+        actorDigest: createHmac(
+          "sha256",
+          "test-admin-session-secret-at-least-32-chars",
+        )
+          .update("recommendation-trace-actor:v1\0")
+          .update("admin-1")
+          .digest("hex"),
+      }),
+    )
+    expect(html).toContain("Privacy-safe playback trace")
+    expect(html).toContain("SOURCE IS DIAGNOSTIC ONLY")
+    expect(html).toContain("Recommendation attribution")
+    expect(html).toContain("Absent")
+    expect(html).toContain("Playback Active Visible Playing")
+    expect(html).toContain("Qualified")
+    expect(html).toContain("Viewer identity, URLs, digests, tokens")
+    expect(html).not.toContain("admin-1")
+    expect(html).not.toMatch(
+      /sessionDigest|sourceRefDigest|capabilityJti|eventId/,
+    )
   })
 
   it("renders a privacy-safe detail for ADMIN", async () => {
