@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-23"
 duration: 5
 depends_on: ["feat-431"]
-blocks: ["feat-433"]
+blocks: ["feat-433", "feat-434"]
 tags: ["rag", "evaluation", "operations"]
 ---
 
