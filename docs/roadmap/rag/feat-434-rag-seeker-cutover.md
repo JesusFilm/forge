@@ -3,7 +3,7 @@ id: "feat-434"
 title: "Cut Seeker over to Forge RAG with rollback"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-01"
 duration: 3
 depends_on: ["feat-432"]

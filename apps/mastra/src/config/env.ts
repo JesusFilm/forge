@@ -81,6 +81,7 @@ const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
 const DEFAULT_JESUSFILM_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
 const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
+const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
 // 2 MiB ceiling on the buffered RAG response body (feat-202). Sized ~8x above a
 // generous legitimate topK=5 payload (≈ max passage text × 5 + citation
 // overhead) so a valid retrieval is never rejected, while bounding the heap a
@@ -1425,19 +1426,27 @@ function assertYouTubeBaseUrlAllowedForProduction() {
 
 function assertJesusfilmRagBaseUrlAllowedForProduction() {
   // Conditional on the base URL being set: unconfigured RAG is valid by design
-  // (the feature degrades at runtime). When the URL IS set, fail-closed — https
-  // AND a non-empty allowlist containing the hostname, else throw. The allowlist
-  // has no default (the RAG's deployed hostname is not recorded in its repo), so
-  // a base-URL-set-but-allowlist-unset production config throws here. Mirrors
-  // `assertFirecrawlApiUrlAllowedForProduction` but guarded on the URL being set.
+  // (the feature degrades at runtime). When the URL IS set, fail-closed — use
+  // https, or plain HTTP only for Railway's WireGuard-encrypted private network,
+  // AND require a non-empty allowlist containing the hostname. A label-boundary
+  // check keeps lookalike and empty-label hosts out of the HTTP carve-out.
   if (!env.JESUSFILM_RAG_BASE_URL) return
   const baseUrl = new URL(env.JESUSFILM_RAG_BASE_URL)
+  const host = baseUrl.hostname.toLowerCase()
   const allowedHosts = env.JESUSFILM_RAG_ALLOWED_HOSTS
     ? csvSet(env.JESUSFILM_RAG_ALLOWED_HOSTS)
     : new Set<string>()
-  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+  const railwayPrivateHttp =
+    baseUrl.protocol === "http:" &&
+    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
+    !host.startsWith(".") &&
+    !host.includes("..")
+  if (
+    (baseUrl.protocol !== "https:" && !railwayPrivateHttp) ||
+    !allowedHosts.has(host)
+  ) {
     throw new Error(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
