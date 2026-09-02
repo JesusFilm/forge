@@ -1,4 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
 
 import {
   ingestTranscriptEmbeddings,
@@ -133,6 +143,24 @@ function buildContractPrisma() {
 
   const queryRaw = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join(" ")
+    if (sql.includes("FROM content_embedding_contract_pointer")) {
+      return [
+        {
+          pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+          contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+          queryProvider: ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+          queryModel: ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+          queryNativeDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryTransformVersion: null,
+          storageProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          storageModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          storageNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageTransformVersion: null,
+        },
+      ]
+    }
     if (sql.includes("pg_advisory_xact_lock")) {
       return []
     }
@@ -376,11 +404,10 @@ function contractPayload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "embeddings",
-      provider: "jesus-film-ai-gateway",
-      dimensions: 1536,
-      nativeDimensions: 4096,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
     },
     chunking: {
       type: "segment-aware",
@@ -401,7 +428,9 @@ function contractPayload(overrides?: Record<string, unknown>) {
         tokenCount: 7,
         startSeconds: 12.5,
         endSeconds: 16.25,
-        embedding: new Array(1536).fill(0.0123),
+        embedding: new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(
+          0.0123,
+        ),
       },
     ],
     ...overrides,
@@ -450,11 +479,11 @@ describe("Mastra transcript ingest contract", () => {
       videoId: "video-1",
       videoEditionId: "edition-1",
       language: "en",
-      model: "embeddings",
-      dimensions: 1536,
-      embeddingProvider: "jesus-film-ai-gateway",
-      embeddingNativeDimensions: 4096,
-      embeddingTransformVersion: "matryoshka-truncate-1536-v1",
+      model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingTransformVersion: null,
       totalChunks: 1,
     })
     expect(chunks[0]).toMatchObject({
@@ -466,7 +495,7 @@ describe("Mastra transcript ingest contract", () => {
     })
 
     const searchRows = await searchVideoSemantic(prisma as never, {
-      queryEmbedding: `[${new Array(1536).fill(0.0123).join(",")}]`,
+      queryEmbedding: `[${new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(0.0123).join(",")}]`,
       locale: "en",
       limit: 5,
     })
@@ -515,7 +544,7 @@ describe("Mastra transcript ingest contract", () => {
     })
 
     const searchRows = await searchVideoSemantic(prisma as never, {
-      queryEmbedding: `[${new Array(1536).fill(0.0123).join(",")}]`,
+      queryEmbedding: `[${new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(0.0123).join(",")}]`,
       locale: "en",
       limit: 5,
     })

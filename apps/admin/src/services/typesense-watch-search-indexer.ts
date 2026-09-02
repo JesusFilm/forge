@@ -8,6 +8,7 @@ import {
   SERIES_SHAPED_LABELS,
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
+import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -750,16 +751,13 @@ async function loadTranscriptBatch(
     FROM video_transcript_chunk vtc
     JOIN video_transcript vt
       ON vt.id = vtc.transcript_id
-     AND vt.embedding_provider = 'jesus-film-ai-gateway'
-     AND vt.model = 'embeddings'
-     AND vt.dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
-     AND vt.embedding_native_dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
-     AND vt.embedding_transform_version IS NULL
     JOIN video v
       ON v.id = vt.video_id
     WHERE vtc.embedding IS NOT NULL
-      AND vtc.model = 'embeddings'
-      AND vtc.dimensions = ${TYPESENSE_WATCH_EMBEDDING_DIMENSIONS}
+      ${activeTranscriptContentEmbeddingWhere({
+        transcriptAlias: "vt",
+        chunkAlias: "vtc",
+      })}
       AND (${afterId}::text IS NULL OR vtc.id > ${afterId})
     ORDER BY vtc.id ASC
     LIMIT ${limit}

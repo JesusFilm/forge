@@ -4,6 +4,13 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "@/services/content-embedding-contract"
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
@@ -30,7 +37,60 @@ function deterministicVector(first: number, second: number): string {
   return `[${[first, second, ...Array<number>(1534).fill(0)].join(",")}]`
 }
 
+async function installContentEmbeddingContractAuthority(
+  client: Client,
+): Promise<void> {
+  await client.query(`
+    CREATE TABLE content_embedding_contract (
+      id text PRIMARY KEY,
+      query_provider text NOT NULL,
+      query_model text NOT NULL,
+      query_native_dimensions integer NOT NULL,
+      query_dimensions integer NOT NULL,
+      query_transform_version text,
+      storage_provider text NOT NULL,
+      storage_model text NOT NULL,
+      storage_native_dimensions integer NOT NULL,
+      storage_dimensions integer NOT NULL,
+      storage_transform_version text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE content_embedding_contract_pointer (
+      id text PRIMARY KEY,
+      active_contract_id text NOT NULL REFERENCES content_embedding_contract(id),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `)
+  await client.query(
+    `INSERT INTO content_embedding_contract (
+      id, query_provider, query_model, query_native_dimensions,
+      query_dimensions, query_transform_version, storage_provider,
+      storage_model, storage_native_dimensions, storage_dimensions,
+      storage_transform_version
+    ) VALUES (
+      $1, 'openrouter', 'qwen/qwen3-embedding-8b', 1536, 1536, NULL,
+      $2, $3, $4, $4, NULL
+    )`,
+    [
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ],
+  )
+  await client.query(
+    `INSERT INTO content_embedding_contract_pointer (
+      id, active_contract_id
+    ) VALUES ($1, $2)`,
+    [
+      CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    ],
+  )
+}
+
 async function installCatalogFixture(client: Client): Promise<void> {
+  await installContentEmbeddingContractAuthority(client)
   await client.query(`
     CREATE TABLE video (
       id text PRIMARY KEY, core_id text, slug text NOT NULL,
@@ -126,10 +186,16 @@ async function installCatalogFixture(client: Client): Promise<void> {
         id, video_id, video_edition_id, language, embedding_provider, model,
         dimensions, embedding_native_dimensions, embedding_transform_version
       ) VALUES (
-        $1, $2, $3, 'en', 'jesus-film-ai-gateway', 'embeddings',
-        1536, 1536, NULL
+        $1, $2, $3, 'en', $4, $5, $6, $6, NULL
       )`,
-      [transcriptId, video.id, editionId],
+      [
+        transcriptId,
+        video.id,
+        editionId,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      ],
     )
     await client.query(
       `INSERT INTO video_transcript_chunk (
@@ -137,13 +203,15 @@ async function installCatalogFixture(client: Client): Promise<void> {
         content_summary, raw_source_text, text, start_seconds, end_seconds,
         felt_needs, demographics, spiritual_context, embedding
       ) VALUES (
-        $1, $2, 'en', 'embeddings', 1536, 0, $3, $3, $3, 0, 60,
-        ARRAY['hope'], ARRAY['general'], ARRAY['curious'], $4::public.vector
+        $1, $2, 'en', $4, $5, 0, $3, $3, $3, 0, 60,
+        ARRAY['hope'], ARRAY['general'], ARRAY['curious'], $6::public.vector
       )`,
       [
         `profile-learning-chunk-${index}`,
         transcriptId,
         `Profile learning fixture ${index}`,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         video.vector,
       ],
     )

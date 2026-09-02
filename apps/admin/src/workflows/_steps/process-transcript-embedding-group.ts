@@ -14,6 +14,7 @@ import {
   ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS,
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
 } from "@/services/transcript-embedding.service"
+import { ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER } from "@/services/content-embedding-contract"
 import {
   resolveSubtitleTranscriptSource,
   type ResolvedTranscriptEmbeddingSource,
@@ -334,7 +335,7 @@ function isHealthyEnrichedTranscriptForResume(
     row.source_kind.length > 0 &&
     ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS.has(row.model) &&
     row.dimensions === EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS &&
-    row.embedding_provider === "jesus-film-ai-gateway" &&
+    row.embedding_provider === ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER &&
     chunksWithEmbedding === totalChunks &&
     chunksWithEmbeddingInputText === totalChunks
   )

@@ -1,11 +1,12 @@
 import { z } from "zod"
+import { ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID } from "@/services/content-embedding-contract"
 
 /** Stable, intentionally small public and persisted contract identifiers. */
 export const RECOMMENDATION_CONTRACTS = {
   delivery: "semantic-recommendation-v1",
   evidence: "recommendation-evidence-v1",
   surface: "watch-below-player-v1",
-  strategy: "semantic-transcript-pgvector-v1",
+  strategy: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   outcome: "legacy-position-v0",
 } as const
 

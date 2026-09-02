@@ -30,11 +30,14 @@ vi.mock("./embeddings.service", () => ({
   },
   EXPERIENCE_EMBEDDING_DIMENSIONS: 3,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
-  currentEmbeddingProviderIdentity: () => ({
+  currentContentQueryEmbeddingIdentity: vi.fn(async () => ({
+    contractId: "semantic-transcript-pgvector-v1",
     provider: "openrouter",
     model: "qwen/qwen3-embedding-8b",
+    nativeDimensions: 3,
     dimensions: 3,
-  }),
+    transformVersion: null,
+  })),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 

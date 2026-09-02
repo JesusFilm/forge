@@ -11,7 +11,8 @@ import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS } from "@/services/content-embedding-contract"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
@@ -1748,7 +1749,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
       },
       {
         label: "Index Dim",
-        value: "1536",
+        value: String(ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS),
         footer: "PGVECTOR_HNSW",
       },
     ],
@@ -2425,8 +2426,8 @@ export async function runSemanticSearch(params: {
     },
     {
       label: "Vector Dimension",
-      value: "1536",
-      detail: "Experience semantic search expects 1536-dimension vectors.",
+      value: String(ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS),
+      detail: `Experience semantic search expects ${ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS}-dimension vectors.`,
     },
     {
       label: "Input",
@@ -2460,7 +2461,10 @@ export async function runSemanticSearch(params: {
   }
 
   try {
-    const embedding = await generateExperienceEmbedding(queryText)
+    const embedding = await generateCurrentContentQueryEmbedding(
+      prisma,
+      queryText,
+    )
     const services = createServices(prisma)
     const results = await withTableFallback(
       () =>

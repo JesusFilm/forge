@@ -1,4 +1,5 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
+import { ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS } from "./content-embedding-contract"
 import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
 import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 
@@ -7,7 +8,8 @@ export const TYPESENSE_WATCH_AVAILABILITY_ALIAS = "watch_search_availability"
 export const TYPESENSE_WATCH_LEXICAL_ALIAS = "watch_search_lexical"
 export const TYPESENSE_WATCH_TRANSCRIPT_ALIAS = "watch_search_transcripts"
 export const TYPESENSE_WATCH_CANDIDATE_PREFIX = "watch_search_candidate"
-export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS = 1536
+export const TYPESENSE_WATCH_EMBEDDING_DIMENSIONS =
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
 
 export type TypesenseWatchLocale = {
   locale: string

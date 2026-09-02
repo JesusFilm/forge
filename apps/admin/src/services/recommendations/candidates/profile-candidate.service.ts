@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import {
   boundedScore,
   boundedSeconds,
@@ -421,14 +422,11 @@ export async function queryProfileCandidates(
         JOIN video_transcript transcript ON transcript.id = candidate.transcript_id
         WHERE candidate.embedding IS NOT NULL
           AND candidate.language = ${input.context.locale}
-          AND candidate.model = 'embeddings'
-          AND candidate.dimensions = 1536
           AND transcript.language = ${input.context.locale}
-          AND transcript.embedding_provider = 'jesus-film-ai-gateway'
-          AND transcript.model = 'embeddings'
-          AND transcript.dimensions = 1536
-          AND transcript.embedding_native_dimensions = 1536
-          AND transcript.embedding_transform_version IS NULL
+          ${activeTranscriptContentEmbeddingWhere({
+            transcriptAlias: "transcript",
+            chunkAlias: "candidate",
+          })}
           AND NOT EXISTS (
             SELECT 1 FROM excluded_video_ids excluded
             WHERE excluded.id = transcript.video_id

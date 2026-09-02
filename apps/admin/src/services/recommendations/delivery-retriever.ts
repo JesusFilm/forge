@@ -1,12 +1,9 @@
 import type { PrismaClient } from "@prisma/client"
 import type { SceneRecommendation } from "@/services/scene-recommendations.service"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
+import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import type { SemanticCandidatePoolItem } from "./candidate"
-
-const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
-const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 // Delivery has a hard 1.5-second retrieval budget. Sampling evenly across a
 // long transcript bounds the number of ANN probes without reverting to the
@@ -75,13 +72,10 @@ export async function getSemanticDeliveryCandidatePool(
         AND vt.language = ${input.locale}
         AND vtc.language = ${input.locale}
         AND vtc.embedding IS NOT NULL
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
-        AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+          chunkAlias: "vtc",
+        })}
     ),
     bucketed_seed_chunks AS MATERIALIZED (
       SELECT
@@ -132,10 +126,14 @@ export async function getSemanticDeliveryCandidatePool(
             candidate.embedding OPERATOR(public.<=>) seed.seed_embedding
           ) AS similarity
         FROM video_transcript_chunk candidate
+        JOIN video_transcript candidate_transcript
+          ON candidate_transcript.id = candidate.transcript_id
         WHERE candidate.embedding IS NOT NULL
           AND candidate.language = ${input.locale}
-          AND candidate.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND candidate.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          ${activeTranscriptContentEmbeddingWhere({
+            transcriptAlias: "candidate_transcript",
+            chunkAlias: "candidate",
+          })}
           AND NOT EXISTS (
             SELECT 1
             FROM excluded_transcript_ids excluded
@@ -172,11 +170,9 @@ export async function getSemanticDeliveryCandidatePool(
       JOIN video_transcript vt
         ON vt.id = nearest.transcript_id
         AND vt.language = ${input.locale}
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+        })}
       JOIN video v
         ON v.id = vt.video_id
         AND v.deleted_at IS NULL

@@ -14,12 +14,9 @@
  */
 
 import type { PrismaClient } from "@prisma/client"
+import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
 
 type SceneRecommendationQueryClient = Pick<PrismaClient, "$queryRaw">
-
-const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
-const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 /**
  * Raw shape returned by Postgres for the similarity query. `text[]`
@@ -166,13 +163,10 @@ export async function fetchInputEmbeddings(
         AND vtc.language = ${locale}
         AND vtc.chunk_index = ${sceneIndex}
         AND vtc.embedding IS NOT NULL
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
-        AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+          chunkAlias: "vtc",
+        })}
       ORDER BY vtc.chunk_index
     `
     return rows.map((r) => ({
@@ -193,13 +187,10 @@ export async function fetchInputEmbeddings(
       AND vt.language = ${locale}
       AND vtc.language = ${locale}
       AND vtc.embedding IS NOT NULL
-      AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-      AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-      AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-      AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-      AND vt.embedding_transform_version IS NULL
-      AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-      AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+      ${activeTranscriptContentEmbeddingWhere({
+        transcriptAlias: "vt",
+        chunkAlias: "vtc",
+      })}
     ORDER BY vtc.chunk_index
   `
   return rows.map((r) => ({
@@ -289,13 +280,10 @@ export async function queryScenesSimilar(
       WHERE vtc.embedding IS NOT NULL
         AND vtc.language = ${locale}
         AND vt.video_id <> ALL(${excludeIds}::text[])
-        AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND vt.embedding_transform_version IS NULL
-        AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        ${activeTranscriptContentEmbeddingWhere({
+          transcriptAlias: "vt",
+          chunkAlias: "vtc",
+        })}
       ORDER BY vt.video_id, vtc.embedding <=> ${queryEmbedding}::vector
     ) sub
     ORDER BY sub.similarity DESC

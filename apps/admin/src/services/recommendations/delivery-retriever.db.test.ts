@@ -4,6 +4,13 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "@/services/content-embedding-contract"
+import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
   MAX_DELIVERY_RESPONSE_BYTES,
   RECOMMENDATION_CONTRACTS,
@@ -67,6 +74,58 @@ function vectorAt(index: number): string {
 const BENCHMARK_PROFILE_TOKEN_DIGEST = "4".repeat(64)
 const BENCHMARK_CONSENT_RECEIPT_DIGEST = "5".repeat(64)
 const BENCHMARK_SESSION_DIGEST = "6".repeat(64)
+
+async function installContentEmbeddingContractAuthority(
+  client: Client,
+): Promise<void> {
+  await client.query(`
+    CREATE TABLE content_embedding_contract (
+      id text PRIMARY KEY,
+      query_provider text NOT NULL,
+      query_model text NOT NULL,
+      query_native_dimensions integer NOT NULL,
+      query_dimensions integer NOT NULL,
+      query_transform_version text,
+      storage_provider text NOT NULL,
+      storage_model text NOT NULL,
+      storage_native_dimensions integer NOT NULL,
+      storage_dimensions integer NOT NULL,
+      storage_transform_version text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE content_embedding_contract_pointer (
+      id text PRIMARY KEY,
+      active_contract_id text NOT NULL REFERENCES content_embedding_contract(id),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `)
+  await client.query(
+    `INSERT INTO content_embedding_contract (
+      id, query_provider, query_model, query_native_dimensions,
+      query_dimensions, query_transform_version, storage_provider,
+      storage_model, storage_native_dimensions, storage_dimensions,
+      storage_transform_version
+    ) VALUES (
+      $1, 'openrouter', 'qwen/qwen3-embedding-8b', 1536, 1536, NULL,
+      $2, $3, $4, $4, NULL
+    )`,
+    [
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ],
+  )
+  await client.query(
+    `INSERT INTO content_embedding_contract_pointer (
+      id, active_contract_id
+    ) VALUES ($1, $2)`,
+    [
+      CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    ],
+  )
+}
 
 async function installHybridDeliveryAuthority(client: Client): Promise<void> {
   const projectionMedia = await client.query<{ video_id: string }>(`
@@ -255,6 +314,8 @@ async function prepareExplicitDeliveryFixture(
       `)
       if (compatibleSnapshot.rows[0]?.ready) {
         for (const table of [
+          "content_embedding_contract",
+          "content_embedding_contract_pointer",
           "video",
           "video_relation",
           "video_transcript",
@@ -285,6 +346,7 @@ async function prepareExplicitDeliveryFixture(
     }
 
     await client.query("CREATE EXTENSION IF NOT EXISTS vector")
+    await installContentEmbeddingContractAuthority(client)
     await client.query(`
       CREATE TABLE video (
         id text PRIMARY KEY, slug text NOT NULL UNIQUE, core_id text,
@@ -330,7 +392,10 @@ async function prepareExplicitDeliveryFixture(
         dimensions, embedding_native_dimensions
       ) VALUES (
         'seed-transcript', 'seed-video', 'seed-edition', 'en',
-        'jesus-film-ai-gateway', 'embeddings', 1536, 1536
+        '${ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER}',
+        '${ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL}',
+        ${ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS},
+        ${ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS}
       );
     `)
     for (let index = 0; index < 8; index += 1) {
@@ -338,14 +403,16 @@ async function prepareExplicitDeliveryFixture(
         `INSERT INTO video_transcript_chunk (
           id, transcript_id, chunk_index, language, model, dimensions, text,
           start_seconds, end_seconds, felt_needs, embedding
-        ) VALUES ($1, 'seed-transcript', $2, 'en', 'embeddings', 1536, $3,
-          $4, $5, ARRAY['hope'], $6::vector)`,
+        ) VALUES ($1, 'seed-transcript', $2, 'en', $6, $7, $3,
+          $4, $5, ARRAY['hope'], $8::vector)`,
         [
           `seed-chunk-${index}`,
           index,
           `Seed scene ${index}`,
           index * 10,
           index * 10 + 10,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
           vectorAt(index),
         ],
       )
@@ -381,19 +448,28 @@ async function prepareExplicitDeliveryFixture(
         `INSERT INTO video_transcript (
            id, video_id, video_edition_id, language, embedding_provider, model,
            dimensions, embedding_native_dimensions
-         ) VALUES ($1, $2, $3, 'en', 'jesus-film-ai-gateway', 'embeddings', 1536, 1536)`,
-        [transcriptId, videoId, editionId],
+         ) VALUES ($1, $2, $3, 'en', $4, $5, $6, $6)`,
+        [
+          transcriptId,
+          videoId,
+          editionId,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        ],
       )
       await client.query(
         `INSERT INTO video_transcript_chunk (
            id, transcript_id, chunk_index, language, model, dimensions, text,
            start_seconds, end_seconds, felt_needs, embedding
-         ) VALUES ($1, $2, 0, 'en', 'embeddings', 1536, $3, 0, 30,
-           ARRAY['hope'], $4::vector)`,
+         ) VALUES ($1, $2, 0, 'en', $4, $5, $3, 0, 30,
+           ARRAY['hope'], $6::vector)`,
         [
           `target-chunk-${index}`,
           transcriptId,
           `Target scene ${index}`,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
           vectorAt(index + 8),
         ],
       )
