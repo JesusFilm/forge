@@ -3,7 +3,7 @@ id: "feat-433"
 title: "Add dual jfrag and Forge RAG operations"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-28"
 duration: 3
 depends_on: ["feat-432"]
@@ -41,3 +41,21 @@ Add explicitly targeted jfrag and Forge variants for maintenance, status, dashbo
 
 - Dry-run receipts identify route, service, environment, and mutation/read-only mode.
 - Both paths can run read-only checks without leaking credentials.
+
+## Resolution
+
+The operations VM now exposes explicit jfrag and Forge targets for routine RAG
+retrieval, smoke, acquisition, ingest/index, bounded language maintenance, and
+evaluation. Forge retrieval, HTTP smoke, bounded evaluation, and a minimal
+language-sweep dry run passed; live acquisition, indexing, migration, and
+language writes were deliberately not executed. Argument and refusal checks
+cover the unexecuted write-capable tasks.
+
+Source status and dashboard maintenance remain Forge-local reviewed skill and
+repository workflows. Database and corpus migration remain separately
+authorized manual runbooks rather than NanoClaw tasks. The redacted inventory
+and verification record is in
+[`evidence/feat-433/task-inventory.md`](evidence/feat-433/task-inventory.md).
+
+Implementation is tracked by this pull request; its link will be recorded
+before merge.
