@@ -157,6 +157,8 @@ jobs:
           src/services/recommendations/profile.service.db.test.ts
           src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
+          src/services/recommendations/playback-context.migration.db.test.ts
+          src/services/recommendations/profiles/profile-projection.service.db.test.ts
           --no-file-parallelism
       - name: Exercise semantic retrieval budget against pgvector
         env:

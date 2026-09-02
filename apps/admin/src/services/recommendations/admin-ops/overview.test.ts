@@ -22,6 +22,8 @@ function prismaFixture() {
     recommendationContentAction: { findFirst: vi.fn() },
     recommendationEligibilityDecision: { findFirst: vi.fn() },
     recommendationControlEvaluation: { findFirst: vi.fn() },
+    recommendationPlaybackEvidenceControl: { findUnique: vi.fn() },
+    recommendationPlaybackProxyEvaluation: { findFirst: vi.fn() },
     recommendationExperimentEvaluation: { findFirst: vi.fn() },
     recommendationExperimentEvaluationRun: { findFirst: vi.fn() },
     recommendationExperimentAssignment: { findFirst: vi.fn() },
@@ -372,6 +374,54 @@ describe("recommendation admin overview", () => {
         occurredAt: new Date("2026-08-19T10:11:00.000Z"),
       },
     ])
+    prisma.recommendationPlaybackEvidenceControl.findUnique.mockResolvedValue({
+      id: "recommendation-playback-evidence-control",
+      enabled: true,
+      reasonCode: "bounded_collection",
+      version: 2,
+    })
+    prisma.recommendationPlaybackProxyEvaluation.findFirst.mockResolvedValue({
+      id: "playback-proxy-evaluation-2",
+      revision: 2,
+      state: "eligible_for_shadow_evaluation",
+      inputWatermark: new Date("2026-08-19T09:30:00.000Z"),
+      inputDigest: "d".repeat(64),
+      reasonCodes: ["bounded_collection_quality_sufficient"],
+      counts: {
+        finalizedTotal: 100,
+        activeOutcomeTotal: 99,
+        completeCoverage: 98,
+        writeFailureCount: 0,
+        legacyQualifiedTotal: 55,
+        proxyQualifiedTotal: 51,
+        classificationDisagreements: 8,
+      },
+      cohorts: {
+        medium: {
+          total: 40,
+          legacyQualified: 22,
+          proxyQualified: 20,
+          disagreements: 4,
+        },
+        sparse: {
+          total: 3,
+          legacyQualified: 2,
+          proxyQualified: 1,
+          disagreements: 1,
+        },
+      },
+      metrics: {
+        p95FinalizationLagMs: 70_000,
+        conflictRate: 0.001,
+        revisionRate: 0.02,
+        retentionHealthy: true,
+      },
+      purpose: "offline_playback_proxy_readiness",
+      identityClass: "aggregate_no_viewer_identity",
+      accessClass: "recommendation_aggregate_readers",
+      evaluatedAt: new Date("2026-08-19T10:00:00.000Z"),
+      expiresAt: new Date("2027-08-19T10:00:00.000Z"),
+    })
 
     const data = await loadRecommendationOverview(
       prisma as unknown as PrismaClient,
@@ -521,6 +571,47 @@ describe("recommendation admin overview", () => {
           novelty: 0.58,
           diversity: 0.71,
         }),
+      },
+      playbackEvidence: {
+        enabled: true,
+        reasonCode: "bounded_collection",
+        evaluation: {
+          revision: 2,
+          state: "eligible_for_shadow_evaluation",
+          retentionHealthy: true,
+          counts: {
+            finalizedTotal: 100,
+            activeOutcomeTotal: 99,
+            completeCoverage: 98,
+            writeFailureCount: 0,
+            legacyQualifiedTotal: 55,
+            proxyQualifiedTotal: 51,
+            classificationDisagreements: 8,
+          },
+          metrics: {
+            p95FinalizationLagMs: 70_000,
+            conflictRate: 0.001,
+            revisionRate: 0.02,
+          },
+          cohorts: [
+            {
+              cohort: "medium",
+              count: 40,
+              legacyQualified: 22,
+              proxyQualified: 20,
+              disagreements: 4,
+              suppressed: false,
+            },
+            {
+              cohort: "sparse",
+              count: null,
+              legacyQualified: null,
+              proxyQualified: null,
+              disagreements: null,
+              suppressed: true,
+            },
+          ],
+        },
       },
     })
     expect(

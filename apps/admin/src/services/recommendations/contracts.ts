@@ -4,6 +4,7 @@ import { z } from "zod"
 export const RECOMMENDATION_CONTRACTS = {
   delivery: "semantic-recommendation-v1",
   evidence: "recommendation-evidence-v1",
+  playbackContext: "recommendation-playback-context-v1",
   surface: "watch-below-player-v1",
   strategy: "semantic-transcript-pgvector-v1",
   outcome: "legacy-position-v0",
@@ -28,6 +29,41 @@ export const CANDIDATE_POOL_TTL_SECONDS = 60
 export const RECOMMENDATION_RAW_RETENTION_DAYS = 29
 export const RECOMMENDATION_RETENTION_PROPAGATION_HOURS = 24
 export const RECOMMENDATION_RETENTION_HARD_CEILING_DAYS = 30
+
+export const RecommendationPlaybackSourceSchema = z.enum([
+  "recommendation",
+  "search",
+  "share",
+  "acquisition",
+  "editorial",
+  "direct",
+])
+export type RecommendationPlaybackSource = z.infer<
+  typeof RecommendationPlaybackSourceSchema
+>
+
+export const RecommendationPlaybackContextInputSchema = z
+  .object({
+    contractVersion: z.literal(RECOMMENDATION_CONTRACTS.playbackContext),
+    sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    mediaId: z.string().min(1).max(191),
+    idempotencyKey: z.string().min(16).max(191),
+    source: RecommendationPlaybackSourceSchema,
+    sourceRef: z.string().min(1).max(191).optional(),
+    claimNonce: z.string().min(16).max(191).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (
+      (input.source === "recommendation" && input.claimNonce == null) ||
+      (input.source !== "recommendation" && input.claimNonce != null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Recommendation playback provenance is invalid",
+      })
+    }
+  })
 
 export const RecommendationEvidenceKind = z.enum([
   "render",
@@ -360,7 +396,9 @@ export const RecommendationPlaybackEventSchema = z.discriminatedUnion("kind", [
       kind: z.literal("playback_active_visible_playing"),
       payload: z
         .object({
-          activeMilliseconds: z.number().int().min(0).max(60_000),
+          activeMilliseconds: z.number().int().min(0).max(60_000).optional(),
+          startedAt: isoDate.optional(),
+          endedAt: isoDate.optional(),
           coverage: z.enum(["complete", "partial"]),
           missingReason: z
             .enum(["visibility_unavailable", "player_state_unavailable"])
@@ -368,6 +406,27 @@ export const RecommendationPlaybackEventSchema = z.discriminatedUnion("kind", [
         })
         .strict()
         .superRefine((payload, context) => {
+          const exactEndpointsPresent =
+            payload.startedAt != null && payload.endedAt != null
+          if (
+            (payload.startedAt == null) !== (payload.endedAt == null) ||
+            (!exactEndpointsPresent && payload.activeMilliseconds == null)
+          ) {
+            context.addIssue({
+              code: "custom",
+              message: "Active-playing interval evidence is incomplete",
+            })
+          }
+          if (exactEndpointsPresent) {
+            const startedAt = new Date(payload.startedAt!).getTime()
+            const endedAt = new Date(payload.endedAt!).getTime()
+            if (endedAt <= startedAt || endedAt - startedAt > 60_000) {
+              context.addIssue({
+                code: "custom",
+                message: "Active-playing interval is out of bounds",
+              })
+            }
+          }
           if (
             (payload.coverage === "complete" &&
               payload.missingReason != null) ||
@@ -418,6 +477,7 @@ export const RecommendationPlaybackBatchSchema = z
   .object({
     contractVersion: z.literal(RECOMMENDATION_CONTRACTS.evidence),
     capability: z.string().min(1).max(4096),
+    contextId: boundedIdentifier.optional(),
     episodeId: boundedIdentifier,
     sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
     mediaId: boundedIdentifier,

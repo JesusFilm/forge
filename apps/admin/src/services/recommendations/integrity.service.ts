@@ -78,6 +78,7 @@ export class RecommendationIntegrityService {
               episode: {
                 select: {
                   id: true,
+                  contextId: true,
                   sessionDigest: true,
                   mediaId: true,
                   capabilityJti: true,
@@ -104,14 +105,14 @@ export class RecommendationIntegrityService {
             outcome.episode.capabilityJti
               ? tx.recommendationConflict.count({
                   where: {
-                    requestId: outcome.requestId,
+                    contextId: outcome.episode.contextId,
                     capabilityJti: outcome.episode.capabilityJti,
                   },
                 })
               : Promise.resolve(0),
             tx.recommendationEvidenceAudit.aggregate({
               where: {
-                requestId: outcome.requestId,
+                contextId: outcome.episode.contextId,
                 kind: "REPLAY",
                 reasonCode: { startsWith: "playback_" },
               },

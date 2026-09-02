@@ -140,12 +140,29 @@ const DeliveryClaims = CommonClaims.extend({
 const EpisodeClaims = CommonClaims.extend({
   typ: z.literal(EPISODE_TYP),
   episodeId: z.string().min(1).max(191),
-  requestId: z.string().min(1).max(191),
-  itemId: z.string().min(1).max(191),
+  contextId: z.string().min(1).max(191).optional(),
+  requestId: z.string().min(1).max(191).optional(),
+  itemId: z.string().min(1).max(191).optional(),
   sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
   mediaId: z.string().min(1).max(191),
   generation: z.number().int().positive(),
   hardExp: z.number().int(),
+}).superRefine((claims, context) => {
+  if (
+    claims.contextId == null &&
+    (claims.requestId == null || claims.itemId == null)
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Episode capability has no playback root",
+    })
+  }
+  if ((claims.requestId == null) !== (claims.itemId == null)) {
+    context.addIssue({
+      code: "custom",
+      message: "Episode recommendation lineage is incomplete",
+    })
+  }
 })
 
 export type DeliveryCapabilityBinding = Omit<
@@ -170,6 +187,36 @@ function exactBindings(
 ): boolean {
   return Object.entries(expected).every(
     ([key, value]) => payload[key] === value,
+  )
+}
+
+function exactEpisodeBindings(
+  payload: z.infer<typeof EpisodeClaims>,
+  expected: EpisodeCapabilityBinding,
+): boolean {
+  const commonMatches = [
+    "jti",
+    "episodeId",
+    "sessionDigest",
+    "mediaId",
+    "generation",
+    "requestId",
+    "itemId",
+  ].every(
+    (key) =>
+      payload[key as keyof typeof payload] ===
+      expected[key as keyof EpisodeCapabilityBinding],
+  )
+  if (!commonMatches) return false
+  if (payload.contextId === expected.contextId) return true
+
+  // N-1 tokens do not carry contextId. They remain valid only for an episode
+  // whose exact recommendation request/item bindings still match.
+  return (
+    payload.contextId == null &&
+    expected.contextId != null &&
+    expected.requestId != null &&
+    expected.itemId != null
   )
 }
 
@@ -360,7 +407,7 @@ export function createRecommendationTokenService(
           EPISODE_CAPABILITY_ACTIVE_SECONDS ||
         parsed.data.hardExp - parsed.data.iat !==
           EPISODE_CAPABILITY_HARD_SECONDS ||
-        !exactBindings(parsed.data, expected)
+        !exactEpisodeBindings(parsed.data, expected)
       ) {
         throw new RecommendationTokenInvalidError()
       }

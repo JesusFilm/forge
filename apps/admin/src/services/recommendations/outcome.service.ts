@@ -87,6 +87,20 @@ function activeProxyInput(facts: readonly FrozenFact[]) {
     (fact) => fact.kind === "playback_active_visible_playing",
   )
   const intervals = activeFacts.flatMap((fact) => {
+    const startedAt = stringField(fact.payload, "startedAt")
+    const endedAt = stringField(fact.payload, "endedAt")
+    if (startedAt && endedAt) {
+      const startMilliseconds = new Date(startedAt).getTime()
+      const endMilliseconds = new Date(endedAt).getTime()
+      if (
+        Number.isFinite(startMilliseconds) &&
+        Number.isFinite(endMilliseconds) &&
+        endMilliseconds > startMilliseconds &&
+        endMilliseconds - startMilliseconds <= 60_000
+      ) {
+        return [{ startMilliseconds, endMilliseconds }]
+      }
+    }
     const activeMilliseconds = numberField(fact.payload, "activeMilliseconds")
     if (activeMilliseconds == null || activeMilliseconds <= 0) return []
     const endMilliseconds = fact.occurredAt.getTime()
@@ -185,6 +199,7 @@ export class RecommendationOutcomeService {
           const episode = await tx.recommendationPlaybackEpisode.findUnique({
             where: { id: input.episodeId },
             include: {
+              context: true,
               request: true,
               facts: { orderBy: { sequence: "asc" } },
             },
@@ -197,14 +212,16 @@ export class RecommendationOutcomeService {
           }
           if (
             episode.generation !== input.generation ||
-            episode.request.generation !== input.generation
+            (episode.request != null &&
+              episode.request.generation !== input.generation) ||
+            episode.context.generation !== input.generation
           ) {
             return {
               status: "fenced" as const,
               reason: "generation_changed" as const,
             }
           }
-          if (episode.request.expiresAt <= now) {
+          if (episode.context.expiresAt <= now) {
             return {
               status: "fenced" as const,
               reason: "root_expired" as const,
@@ -351,7 +368,7 @@ export class RecommendationOutcomeService {
                 learningEligible: false,
                 generation: episode.generation,
                 createdAt: now,
-                expiresAt: episode.request.expiresAt,
+                expiresAt: episode.context.expiresAt,
               },
             })
             results.push({
@@ -407,7 +424,11 @@ export class RecommendationOutcomeService {
             activeOutcomeId: activeResult?.id ?? null,
           }
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        // The episode advisory lock is the serialization boundary. READ
+        // COMMITTED lets a waiter take a fresh snapshot after it acquires the
+        // lock; SERIALIZABLE would retain its pre-wait snapshot and can attempt
+        // to publish the same frozen input twice.
+        { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
       ),
     )
   }

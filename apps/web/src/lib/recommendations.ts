@@ -4,6 +4,7 @@ import { adminGraphql } from "@forge/admin-graphql"
 import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminClaimSemanticRecommendationEpisodeOperation,
+  adminOpenRecommendationPlaybackContextOperation,
   adminRecommendationProfileStatusOperation,
   adminRecordSemanticRecommendationEvidenceOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
@@ -287,6 +288,12 @@ export type SemanticRecommendationEpisodeClaim = NonNullable<
   >["claimSemanticRecommendationEpisode"]
 >
 
+export type RecommendationPlaybackContextClaim = NonNullable<
+  AdminResultOf<
+    typeof adminOpenRecommendationPlaybackContextOperation
+  >["openRecommendationPlaybackContext"]
+>
+
 export async function getSemanticRecommendationDelivery(
   variables: AdminVariablesOf<
     typeof adminSemanticRecommendationDeliveryOperation
@@ -551,6 +558,23 @@ export async function claimSemanticRecommendationEpisode(
     throw new RecommendationRuntimeError("episode_unavailable")
   }
   return result.data.claimSemanticRecommendationEpisode
+}
+
+export async function openRecommendationPlaybackContext(
+  variables: AdminVariablesOf<
+    typeof adminOpenRecommendationPlaybackContextOperation
+  >,
+): Promise<RecommendationPlaybackContextClaim> {
+  const result = await client.mutate({
+    mutation: adminOpenRecommendationPlaybackContextOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.openRecommendationPlaybackContext) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.openRecommendationPlaybackContext
 }
 
 export async function recordSemanticRecommendationPlayback(

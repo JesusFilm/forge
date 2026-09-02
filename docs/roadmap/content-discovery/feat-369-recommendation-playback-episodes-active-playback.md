@@ -3,7 +3,7 @@ id: "feat-369"
 title: "Recommendation playback episodes and active-playback proxy"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -63,6 +63,18 @@ Playback must be represented as recomputable episodes so elapsed time, player po
 - Direct, Google, shared-link, search, and recommendation arrivals all produce episodes without fabricated recommendation attribution.
 
 The ticket is not complete until this result is visible and reconcilable in the authorized Admin Recommendations area.
+
+## Resolution
+
+Source-neutral playback learning is implemented without changing recommendation serving or enabling the new evidence path in production:
+
+- Every eligible full-player arrival can request one immutable, server-owned playback context with bounded `recommendation`, `search`, `share`, `acquisition`, `editorial`, or `direct` provenance. Recommendation lineage is optional and database-enforced when present; provenance is diagnostic only and never changes eligibility or contribution weight.
+- The context exchanges for a bounded episode capability. Immutable, idempotent facts record exact visible-and-playing intervals, while pause, seek, hidden time, overlap, replay, and reordering are excluded or reconciled before fenced finalization publishes exact-watermark legacy and active-watch revisions.
+- Current integrity decisions and profile projections accept equivalent qualified outcomes from every source under the existing consent and privacy-generation fences. Rebuilds use current eligibility watermarks, remove superseded or excluded influence, and reproduce the incremental projection without double counting.
+- Authorized Admin Recommendations pages now show source-neutral aggregate readiness plus privacy-safe context detail for episode lifecycle, facts, bounded intervals, classifier revisions, eligibility, lag, conflicts, write failures, and expiry. Detail access writes a detached, actor-digested 90-day audit; aggregate evaluations contain no viewer identity and expire after 365 days.
+- Raw contexts and descendants retain the existing bounded evidence lifecycle and 30-day purge posture. Disabling issuance is the rollback for new evidence while finalization, retention, erasure, and historical profile reads remain available. The migration seeds issuance disabled (`bootstrap_disabled`); this work did not activate it.
+
+Verification on 2026-09-02 covered focused and full Admin/Web suites, real PostgreSQL migration, constraint, concurrency, replay, retention, finalization, and projection-rebuild behavior, plus schema generation, lint, type checking, and roadmap checks. A real local browser reconciled a direct context and its two classifier revisions in the authorized Admin view, confirmed the access audit contains only a 64-character actor digest and bounded retention, and proved Watch playback continued while the playback telemetry endpoint was forcibly aborted. No production data, deployment setting, secret, experiment, promotion, or live-ranking input was changed. GitHub issues #2141-#2148 remain separate embedding-projection work.
 
 ## Constraints
 

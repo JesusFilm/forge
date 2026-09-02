@@ -117,6 +117,8 @@ describe("recommendation profile projection service", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ evidenceWatermark: null }])
     await loadDatabaseProfileProjectionEvidence(
       { $queryRaw: queryRaw } as never,
       {
@@ -140,12 +142,12 @@ describe("recommendation profile projection service", () => {
     expect(sql).toContain("outcome.qualified_view = true")
     expect(sql).not.toContain("outcome.learning_eligible = true")
     expect(sql).not.toContain("outcome.created_at >= profile.created_at")
-    expect(sql).toContain("request.created_at >= profile.created_at")
+    expect(sql).toContain("context.created_at >= profile.created_at")
     expect(sql).toContain("link.session_digest")
     expect(sql).toContain("GREATEST(")
     expect(sql).toContain("profile.created_at, link.linked_at")
-    expect(sql).toContain(
-      "selection.occurred_at >= GREATEST(profile.created_at, link.linked_at)",
+    expect(queries[3]).toContain(
+      "context.created_at >= GREATEST(profile.created_at, link.linked_at)",
     )
     expect(sql).toContain(
       "COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)",
@@ -162,6 +164,13 @@ describe("recommendation profile projection service", () => {
     expect(sql).toContain("fence.request_id = outcome.request_id")
     expect(sql).toContain("LEAST(")
     expect(sql).toContain("selection.occurred_at")
+    expect(queries[1]).toContain("JOIN recommendation_playback_context context")
+    expect(queries[1]).toContain("episode.context_id = context.id")
+    expect(queries[3]).toContain("JOIN recommendation_playback_context context")
+    expect(queries[3]).not.toContain("JOIN recommendation_selection")
+    expect(queries[3]).not.toContain("JOIN recommendation_served_item")
+    expect(queries[4]).toContain("MAX(decision.decided_at)")
+    expect(queries[4]).toContain("decision.is_current = true")
     expect(queries[0]).not.toMatch(/qualified_outcome|durable/i)
   })
 

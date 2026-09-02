@@ -147,6 +147,7 @@ export const adminClaimSemanticRecommendationEpisodeMutation = `
       claimNonce: $claimNonce
       mediaId: $mediaId
     ) {
+      contextId
       episodeId
       capability
       activeUntil
@@ -159,10 +160,44 @@ export const adminClaimSemanticRecommendationEpisodeOperation = adminGraphql(
   adminClaimSemanticRecommendationEpisodeMutation,
 )
 
+export const adminOpenRecommendationPlaybackContextMutation = `
+  mutation OpenRecommendationPlaybackContext(
+    $contractVersion: String!
+    $sessionDigest: String!
+    $mediaId: ID!
+    $idempotencyKey: String!
+    $source: String!
+    $sourceRef: String
+    $claimNonce: String
+  ) {
+    openRecommendationPlaybackContext(
+      contractVersion: $contractVersion
+      sessionDigest: $sessionDigest
+      mediaId: $mediaId
+      idempotencyKey: $idempotencyKey
+      source: $source
+      sourceRef: $sourceRef
+      claimNonce: $claimNonce
+    ) {
+      contextId
+      episodeId
+      capability
+      activeUntil
+      hardUntil
+      source
+    }
+  }
+` as const
+
+export const adminOpenRecommendationPlaybackContextOperation = adminGraphql(
+  adminOpenRecommendationPlaybackContextMutation,
+)
+
 export const adminRecordSemanticRecommendationPlaybackMutation = `
   mutation RecordSemanticRecommendationPlayback(
     $contractVersion: String!
     $capability: String!
+    $contextId: ID
     $episodeId: ID!
     $sessionDigest: String!
     $mediaId: ID!
@@ -171,6 +206,7 @@ export const adminRecordSemanticRecommendationPlaybackMutation = `
     recordSemanticRecommendationPlayback(
       contractVersion: $contractVersion
       capability: $capability
+      contextId: $contextId
       episodeId: $episodeId
       sessionDigest: $sessionDigest
       mediaId: $mediaId

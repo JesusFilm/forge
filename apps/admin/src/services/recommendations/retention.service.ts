@@ -108,6 +108,7 @@ async function countRequestChildren(
     rendered,
     impressions,
     selections,
+    playbackContexts,
     episodes,
     playbackFacts,
     outcomes,
@@ -125,6 +126,7 @@ async function countRequestChildren(
     tx.recommendationRenderedFact.count({ where }),
     tx.recommendationImpression.count({ where }),
     tx.recommendationSelection.count({ where }),
+    tx.recommendationPlaybackContext.count({ where }),
     tx.recommendationPlaybackEpisode.count({ where }),
     tx.recommendationPlaybackFact.count({ where }),
     tx.recommendationOutcomeRevision.count({ where }),
@@ -153,6 +155,7 @@ async function countRequestChildren(
     rendered,
     impressions,
     selections,
+    playbackContexts,
     episodes,
     playbackFacts,
     outcomes,
@@ -246,6 +249,68 @@ export async function purgeExpiredRecommendationRequests(
               where: { id: { in: directActionIds } },
             })
       rowCounts.expiredContentActions = expiredContentActions.count
+      const directPlaybackContexts =
+        await tx.recommendationPlaybackContext.findMany({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        })
+      const directContextIds = directPlaybackContexts.map(({ id }) => id)
+      if (directContextIds.length > 0) {
+        const episodeWhere = { contextId: { in: directContextIds } }
+        const [
+          directEpisodes,
+          directFacts,
+          directOutcomes,
+          directAudits,
+          directConflicts,
+          directSubmissionBudgets,
+          playbackTraceAccessLinksCleared,
+        ] = await Promise.all([
+          tx.recommendationPlaybackEpisode.count({ where: episodeWhere }),
+          tx.recommendationPlaybackFact.count({
+            where: { episode: { is: episodeWhere } },
+          }),
+          tx.recommendationOutcomeRevision.count({
+            where: { episode: { is: episodeWhere } },
+          }),
+          tx.recommendationEvidenceAudit.count({
+            where: { contextId: { in: directContextIds } },
+          }),
+          tx.recommendationConflict.count({
+            where: { contextId: { in: directContextIds } },
+          }),
+          tx.recommendationCapabilitySubmissionBudget.count({
+            where: { contextId: { in: directContextIds } },
+          }),
+          tx.recommendationTraceAccessAudit.count({
+            where: { contextId: { in: directContextIds } },
+          }),
+        ])
+        rowCounts.expiredDirectPlaybackEpisodes = directEpisodes
+        rowCounts.expiredDirectPlaybackFacts = directFacts
+        rowCounts.expiredDirectPlaybackOutcomes = directOutcomes
+        rowCounts.expiredDirectPlaybackAudits = directAudits
+        rowCounts.expiredDirectPlaybackConflicts = directConflicts
+        rowCounts.expiredDirectSubmissionBudgets = directSubmissionBudgets
+        rowCounts.playbackTraceAccessLinksCleared =
+          playbackTraceAccessLinksCleared
+        rowCounts.expiredDirectPlaybackContexts = (
+          await tx.recommendationPlaybackContext.deleteMany({
+            where: { id: { in: directContextIds } },
+          })
+        ).count
+      } else {
+        rowCounts.expiredDirectPlaybackEpisodes = 0
+        rowCounts.expiredDirectPlaybackFacts = 0
+        rowCounts.expiredDirectPlaybackOutcomes = 0
+        rowCounts.expiredDirectPlaybackAudits = 0
+        rowCounts.expiredDirectPlaybackConflicts = 0
+        rowCounts.expiredDirectSubmissionBudgets = 0
+        rowCounts.playbackTraceAccessLinksCleared = 0
+        rowCounts.expiredDirectPlaybackContexts = 0
+      }
       if (requestIds.length > 0) {
         // Matched content actions inherit the request root's retention horizon,
         // but their SET NULL lineage foreign keys cannot satisfy the lineage
@@ -459,6 +524,11 @@ export async function purgeExpiredRecommendationRequests(
           where: { expiresAt: { lte: now } },
         })
       ).count
+      rowCounts.expiredPlaybackProxyEvaluations = (
+        await tx.recommendationPlaybackProxyEvaluation.deleteMany({
+          where: { expiresAt: { lte: now } },
+        })
+      ).count
       rowCounts.expiredShadowEvaluations = (
         await tx.recommendationShadowEvaluation.deleteMany({
           where: { expiresAt: { lte: now } },
@@ -535,9 +605,11 @@ export async function purgeExpiredRecommendationRequests(
       })
       const [
         oldestExpiredRoot,
+        oldestExpiredPlaybackContext,
         oldestExpiredAction,
         oldestExpiredDecision,
         oldestExpiredControlEvaluation,
+        oldestExpiredPlaybackProxyEvaluation,
         oldestExpiredShadowEvaluation,
         oldestExpiredPromotionEvent,
         oldestExpiredPromotionRun,
@@ -556,6 +628,11 @@ export async function purgeExpiredRecommendationRequests(
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
+        tx.recommendationPlaybackContext.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
         tx.recommendationContentAction.findFirst({
           where: { expiresAt: { lte: now } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
@@ -567,6 +644,11 @@ export async function purgeExpiredRecommendationRequests(
           select: { expiresAt: true },
         }),
         tx.recommendationControlEvaluation.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPlaybackProxyEvaluation.findFirst({
           where: { expiresAt: { lte: now } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
@@ -634,9 +716,11 @@ export async function purgeExpiredRecommendationRequests(
       ])
       const oldestExpiredAt = earliestDate([
         oldestExpiredRoot?.expiresAt,
+        oldestExpiredPlaybackContext?.expiresAt,
         oldestExpiredAction?.expiresAt,
         oldestExpiredDecision?.expiresAt,
         oldestExpiredControlEvaluation?.expiresAt,
+        oldestExpiredPlaybackProxyEvaluation?.expiresAt,
         oldestExpiredShadowEvaluation?.expiresAt,
         oldestExpiredPromotionEvent?.expiresAt,
         oldestExpiredPromotionRun?.expiresAt,
@@ -658,7 +742,7 @@ export async function purgeExpiredRecommendationRequests(
         where: { id: run.id },
         data: {
           status: RecommendationRetentionRunStatus.SUCCEEDED,
-          rootsDeleted: requestIds.length,
+          rootsDeleted: requestIds.length + directContextIds.length,
           rowCounts: rowCounts satisfies Prisma.InputJsonValue,
           oldestExpiredAtAfter: oldestExpiredAt,
           reasonCode: overdueAfterRun ? "overdue_roots_remain" : null,
@@ -668,7 +752,7 @@ export async function purgeExpiredRecommendationRequests(
       return {
         status: "succeeded",
         runId: run.id,
-        rootsDeleted: requestIds.length,
+        rootsDeleted: requestIds.length + directContextIds.length,
         rowCounts,
         oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
         overdueAfterRun,
@@ -725,9 +809,11 @@ export async function readRecommendationRetentionHealth(
       ) AS "latestSuccessAt",
       LEAST(
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_playback_context WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_control_evaluation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_playback_proxy_evaluation WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_shadow_evaluation WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_promotion_event WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_promotion_run WHERE expires_at <= ${propagationCutoff}),

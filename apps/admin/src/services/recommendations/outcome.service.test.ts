@@ -24,6 +24,7 @@ function fact(
 function episode(facts: ReturnType<typeof fact>[]) {
   return {
     id: "episode-1",
+    contextId: "context-1",
     requestId: "request-1",
     itemId: "item-1",
     generation: 2,
@@ -31,6 +32,7 @@ function episode(facts: ReturnType<typeof fact>[]) {
     activeUntil: new Date("2026-08-19T07:00:00.000Z"),
     hardUntil: new Date("2026-08-19T09:00:00.000Z"),
     expiresAt,
+    context: { id: "context-1", generation: 2, expiresAt },
     request: { id: "request-1", generation: 2, expiresAt },
     facts,
   }
@@ -169,14 +171,16 @@ describe("RecommendationOutcomeService", () => {
   it("unions overlapping active-playing facts before publishing the proxy", async () => {
     const first = {
       ...fact(2, "playback_active_visible_playing", {
-        activeMilliseconds: 10_000,
+        startedAt: "2026-08-19T03:00:00.000Z",
+        endedAt: "2026-08-19T03:00:10.000Z",
         coverage: "complete",
       }),
       occurredAt: new Date("2026-08-19T03:00:10.000Z"),
     }
     const overlapping = {
       ...fact(3, "playback_active_visible_playing", {
-        activeMilliseconds: 10_000,
+        startedAt: "2026-08-19T03:00:05.000Z",
+        endedAt: "2026-08-19T03:00:15.000Z",
         coverage: "complete",
       }),
       occurredAt: new Date("2026-08-19T03:00:15.000Z"),

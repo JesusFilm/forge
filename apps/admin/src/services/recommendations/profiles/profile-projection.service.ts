@@ -34,6 +34,7 @@ export type LoadedProfileProjectionEvidence = Readonly<{
   session: ProfileProjectionEvidence[]
   explicitPreferences: ProfileDeclaredSignal[]
   negativeEvidence: ProfileDeclaredSignal[]
+  evidenceWatermark?: Date | null
 }>
 
 export type ProfileProjectionRequest = Readonly<{
@@ -50,6 +51,7 @@ type PublishInput = Readonly<{
   privacyGeneration: number | null
   now: Date
   inputDigest: string
+  evidenceWatermark?: Date | null
   projection: MultiInterestProjection
   durableEvidence: ProfileProjectionEvidence[]
   sessionEvidence: ProfileProjectionEvidence[]
@@ -126,6 +128,7 @@ export function createRecommendationProfileProjectionService(
         session: sessionEvidence.map(toDigestEvidence),
         explicit: projection.explicitPreferences,
         negative: projection.negativeEvidence,
+        evidenceWatermark: evidence.evidenceWatermark?.toISOString() ?? null,
       })
       return dependencies.publish({
         scope: input.profileId ? "durable" : "session",
@@ -134,6 +137,7 @@ export function createRecommendationProfileProjectionService(
         privacyGeneration: input.privacyGeneration,
         now,
         inputDigest,
+        evidenceWatermark: evidence.evidenceWatermark,
         projection,
         durableEvidence,
         sessionEvidence,
@@ -168,7 +172,7 @@ export async function loadDatabaseProfileProjectionEvidence(
     occurredAt: Date
     sourceExpiresAt: Date
   }
-  const session = input.profileId
+  const selectionSession = input.profileId
     ? await prisma.$queryRaw<SessionEvidenceRow[]>(Prisma.sql`
         SELECT
           selection.id AS "sourceId",
@@ -227,6 +231,138 @@ export async function loadDatabaseProfileProjectionEvidence(
         ORDER BY selection.occurred_at DESC, selection.id
         LIMIT 32
       `)
+  const playbackSession = input.profileId
+    ? await prisma.$queryRaw<
+        Array<
+          SessionEvidenceRow & {
+            eligibilityPolicyVersion: string
+            outcomeClassifierVersion: string
+          }
+        >
+      >(Prisma.sql`
+        SELECT
+          outcome.id AS "sourceId",
+          episode.media_id AS "targetMediaId",
+          LEAST(1, GREATEST(0, decision.contribution_weight))::double precision AS weight,
+          outcome.created_at AS "occurredAt",
+          LEAST(
+            outcome.expires_at,
+            decision.expires_at,
+            context.expires_at,
+            link.expires_at,
+            profile.expires_at
+          ) AS "sourceExpiresAt",
+          decision.policy_version AS "eligibilityPolicyVersion",
+          outcome.classifier_version AS "outcomeClassifierVersion"
+        FROM recommendation_profile profile
+        JOIN recommendation_profile_session_link link
+          ON link.profile_id = profile.id
+          AND link.privacy_generation = profile.privacy_generation
+          AND link.session_digest = ${input.sessionDigest}
+          AND link.expires_at > ${input.now}
+        JOIN recommendation_playback_context context
+          ON context.session_digest = link.session_digest
+          AND context.expires_at > ${input.now}
+        JOIN recommendation_playback_episode episode
+          ON episode.context_id = context.id
+        JOIN recommendation_outcome_revision outcome
+          ON outcome.episode_id = episode.id
+        JOIN recommendation_eligibility_decision decision
+          ON decision.outcome_id = outcome.id
+          AND decision.is_current = true
+          AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
+          AND decision.state = 'eligible'
+          AND 'profile' = ANY(decision.eligible_scopes)
+        WHERE profile.id = ${input.profileId}
+          AND profile.privacy_generation = ${input.privacyGeneration}
+          AND profile.state = 'active'
+          AND profile.token_digest IS NOT NULL
+          AND profile.expires_at > ${input.now}
+          AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
+          AND outcome.qualified_view = true
+          AND context.created_at >= GREATEST(
+            ${sessionStart}, profile.created_at, link.linked_at
+          )
+          AND outcome.created_at <= ${input.now}
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_outcome_revision superseding
+            WHERE superseding.supersedes_id = outcome.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_promotion_slate_fence fence
+            WHERE fence.request_id = outcome.request_id
+          )
+        ORDER BY outcome.created_at DESC, outcome.id
+        LIMIT 32
+      `)
+    : await prisma.$queryRaw<
+        Array<
+          SessionEvidenceRow & {
+            eligibilityPolicyVersion: string
+            outcomeClassifierVersion: string
+          }
+        >
+      >(Prisma.sql`
+        SELECT
+          outcome.id AS "sourceId",
+          episode.media_id AS "targetMediaId",
+          LEAST(1, GREATEST(0, decision.contribution_weight))::double precision AS weight,
+          outcome.created_at AS "occurredAt",
+          LEAST(
+            outcome.expires_at,
+            decision.expires_at,
+            context.expires_at
+          ) AS "sourceExpiresAt",
+          decision.policy_version AS "eligibilityPolicyVersion",
+          outcome.classifier_version AS "outcomeClassifierVersion"
+        FROM recommendation_playback_context context
+        JOIN recommendation_playback_episode episode
+          ON episode.context_id = context.id
+        JOIN recommendation_outcome_revision outcome
+          ON outcome.episode_id = episode.id
+        JOIN recommendation_eligibility_decision decision
+          ON decision.outcome_id = outcome.id
+          AND decision.is_current = true
+          AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
+          AND decision.state = 'eligible'
+          AND 'profile' = ANY(decision.eligible_scopes)
+        WHERE context.session_digest = ${input.sessionDigest}
+          AND context.expires_at > ${input.now}
+          AND context.created_at >= ${sessionStart}
+          AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
+          AND outcome.qualified_view = true
+          AND outcome.created_at <= ${input.now}
+          AND outcome.expires_at > ${input.now}
+          AND decision.expires_at > ${input.now}
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_outcome_revision superseding
+            WHERE superseding.supersedes_id = outcome.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_promotion_slate_fence fence
+            WHERE fence.request_id = outcome.request_id
+          )
+        ORDER BY outcome.created_at DESC, outcome.id
+        LIMIT 32
+      `)
+  const session = [
+    ...selectionSession.map((row) => ({
+      ...row,
+      sourceType: "selection" as const,
+      eligibilityPolicyVersion: null,
+      outcomeClassifierVersion: null,
+    })),
+    ...playbackSession.map((row) => ({
+      ...row,
+      sourceType: "outcome" as const,
+    })),
+  ]
+    .sort(
+      (left, right) =>
+        right.occurredAt.getTime() - left.occurredAt.getTime() ||
+        left.sourceId.localeCompare(right.sourceId),
+    )
+    .slice(0, 32)
   const priorDurable = input.profileId
     ? await prisma.$queryRaw<
         Array<{
@@ -262,15 +398,9 @@ export async function loadDatabaseProfileProjectionEvidence(
         JOIN recommendation_outcome_revision outcome
           ON outcome.id = contribution.source_outcome_id
         JOIN recommendation_playback_episode episode
-          ON episode.request_id = outcome.request_id
-          AND episode.item_id = outcome.item_id
-          AND episode.id = outcome.episode_id
-        JOIN recommendation_selection selection
-          ON selection.request_id = episode.request_id
-          AND selection.item_id = episode.item_id
-          AND selection.id = episode.selection_id
-        JOIN recommendation_request request
-          ON request.id = outcome.request_id
+          ON episode.id = outcome.episode_id
+        JOIN recommendation_playback_context context
+          ON context.id = episode.context_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
@@ -287,9 +417,9 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
-          AND request.created_at >= profile.created_at
-          AND selection.occurred_at >= profile.created_at
+          AND context.created_at >= profile.created_at
           AND COALESCE(episode.claimed_at, episode.created_at) >= profile.created_at
+          AND context.expires_at > ${input.now}
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
           AND contribution.expires_at > ${input.now}
@@ -319,7 +449,7 @@ export async function loadDatabaseProfileProjectionEvidence(
       >(Prisma.sql`
         SELECT
           outcome.id AS "sourceId",
-          item.target_media_id AS "targetMediaId",
+          episode.media_id AS "targetMediaId",
           LEAST(1, GREATEST(0, decision.contribution_weight))::double precision AS weight,
           outcome.created_at AS "occurredAt",
           LEAST(outcome.expires_at, decision.expires_at) AS "sourceExpiresAt",
@@ -330,21 +460,13 @@ export async function loadDatabaseProfileProjectionEvidence(
           ON link.profile_id = profile.id
           AND link.privacy_generation = profile.privacy_generation
           AND link.expires_at > ${input.now}
-        JOIN recommendation_request request
-          ON request.session_digest = link.session_digest
-          AND request.expires_at > ${input.now}
-        JOIN recommendation_outcome_revision outcome
-          ON outcome.request_id = request.id
+        JOIN recommendation_playback_context context
+          ON context.session_digest = link.session_digest
+          AND context.expires_at > ${input.now}
         JOIN recommendation_playback_episode episode
-          ON episode.request_id = outcome.request_id
-          AND episode.item_id = outcome.item_id
-          AND episode.id = outcome.episode_id
-        JOIN recommendation_selection selection
-          ON selection.request_id = episode.request_id
-          AND selection.item_id = episode.item_id
-          AND selection.id = episode.selection_id
-        JOIN recommendation_served_item item
-          ON item.request_id = outcome.request_id AND item.id = outcome.item_id
+          ON episode.context_id = context.id
+        JOIN recommendation_outcome_revision outcome
+          ON outcome.episode_id = episode.id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.is_current = true
@@ -357,8 +479,7 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
-          AND request.created_at >= GREATEST(profile.created_at, link.linked_at)
-          AND selection.occurred_at >= GREATEST(profile.created_at, link.linked_at)
+          AND context.created_at >= GREATEST(profile.created_at, link.linked_at)
           AND COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
@@ -374,6 +495,45 @@ export async function loadDatabaseProfileProjectionEvidence(
         LIMIT 64
       `)
     : []
+
+  const evidenceWatermarks = await prisma.$queryRaw<
+    Array<{ evidenceWatermark: Date | null }>
+  >(Prisma.sql`
+    SELECT MAX(decision.decided_at) AS "evidenceWatermark"
+    FROM recommendation_playback_context context
+    JOIN recommendation_playback_episode episode
+      ON episode.context_id = context.id
+    JOIN recommendation_outcome_revision outcome
+      ON outcome.episode_id = episode.id
+    JOIN recommendation_eligibility_decision decision
+      ON decision.outcome_id = outcome.id
+      AND decision.is_current = true
+      AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
+    WHERE context.session_digest = ${input.sessionDigest}
+      AND context.expires_at > ${input.now}
+      AND context.created_at >= ${sessionStart}
+      AND (
+        ${input.profileId}::text IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM recommendation_profile profile
+          JOIN recommendation_profile_session_link link
+            ON link.profile_id = profile.id
+            AND link.session_digest = context.session_digest
+            AND link.privacy_generation = profile.privacy_generation
+            AND link.expires_at > ${input.now}
+          WHERE profile.id = ${input.profileId}
+            AND profile.privacy_generation = ${input.privacyGeneration}
+            AND profile.state = 'active'
+            AND profile.token_digest IS NOT NULL
+            AND profile.expires_at > ${input.now}
+            AND context.created_at >= GREATEST(profile.created_at, link.linked_at)
+            AND COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(
+              profile.created_at, link.linked_at
+            )
+        )
+      )
+  `)
 
   const durableByDigest = new Map<string, ProfileProjectionEvidence>()
   for (const row of priorDurable) {
@@ -396,16 +556,12 @@ export async function loadDatabaseProfileProjectionEvidence(
           stableSourceDigest(left).localeCompare(stableSourceDigest(right)),
       )
       .slice(0, 64),
-    session: session.map((row) => ({
-      ...row,
-      sourceType: "selection",
-      eligibilityPolicyVersion: null,
-      outcomeClassifierVersion: null,
-    })),
+    session,
     // U11 is intentionally not a dependency. The channels are independent in
     // the projection contract and remain empty until explicit controls land.
     explicitPreferences: [],
     negativeEvidence: [],
+    evidenceWatermark: evidenceWatermarks[0]?.evidenceWatermark ?? null,
   }
 }
 
@@ -508,7 +664,10 @@ export async function publishDatabaseProfileProjection(
           }
         }
         const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
-        const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
+        const watermark = latestDate([
+          ...allEvidence.map((row) => row.occurredAt),
+          ...(input.evidenceWatermark ? [input.evidenceWatermark] : []),
+        ])
         const current = await tx.$queryRaw<
           Array<{
             id: string
@@ -771,8 +930,8 @@ async function insertContributions(
           ${randomUUID()}, ${input.generationId},
           ${input.kind}::"RecommendationProfileContributionKind",
           ${input.sourceIdDigest},
-          ${input.kind === "qualified_outcome" ? input.row.sourceId : null},
-          ${input.kind === "session_selection" ? input.row.sourceId : null},
+          ${input.kind === "qualified_outcome" || (input.kind === "session_selection" && input.row.sourceType === "outcome") ? input.row.sourceId : null},
+          ${input.kind === "session_selection" && input.row.sourceType === "selection" ? input.row.sourceId : null},
           ${input.row.targetMediaId.slice(0, 191)}, ${input.interestOrdinal},
           ${Math.max(-1, Math.min(1, input.row.weight))},
           ${input.row.eligibilityPolicyVersion},

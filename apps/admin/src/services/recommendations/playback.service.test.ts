@@ -15,6 +15,7 @@ const now = new Date("2026-08-19T03:00:00.000Z")
 function episode() {
   return {
     id: "episode-1",
+    contextId: "context-1",
     requestId: "request-1",
     itemId: "item-1",
     mediaId: "media-1",
@@ -27,6 +28,11 @@ function episode() {
     generation: 3,
     claimedAt: new Date("2026-08-19T03:00:00.000Z"),
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+    context: {
+      id: "context-1",
+      generation: 3,
+      expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+    },
     request: {
       id: "request-1",
       generation: 3,
@@ -86,6 +92,9 @@ function harness(options: { current?: ReturnType<typeof episode> } = {}) {
       findUnique: vi.fn(async () => ({ ...current })),
     },
     recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+    recommendationPlaybackEvidenceControl: {
+      findUnique: vi.fn(async () => ({ enabled: true, version: 1 })),
+    },
     $queryRaw: vi.fn(
       async (): Promise<Array<{ attempts: number | null }>> => [
         { attempts: 1 },
@@ -523,7 +532,7 @@ describe("RecommendationPlaybackService", () => {
     ).rejects.toThrow("cardinality exceeded")
     expect(prisma.recommendationEvidenceAudit.create).toHaveBeenCalledWith({
       data: {
-        requestId: "request-1",
+        contextId: "context-1",
         kind: "COMMITTED_REJECTION",
         reasonCode: "playback_fact_cardinality_exceeded",
         detail: { episodeId: "episode-1", generation: 3 },

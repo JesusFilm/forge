@@ -103,6 +103,25 @@ export async function recordRecommendationConflict(
   `
 }
 
+export async function recordRecommendationContextConflict(
+  tx: Prisma.TransactionClient,
+  input: {
+    contextId: string
+    capabilityJti: string
+    eventId: string
+    acceptedDigest: string
+    rejectedDigest: string
+    expiresAt: Date
+  },
+) {
+  await tx.$queryRaw`
+    SELECT upsert_recommendation_context_conflict(
+      ${randomUUID()}, ${input.contextId}, ${input.capabilityJti}, ${input.eventId},
+      ${input.acceptedDigest}, ${input.rejectedDigest}, ${input.expiresAt}
+    )
+  `
+}
+
 export async function lockRecommendationItemEvidence(
   tx: Prisma.TransactionClient,
   itemId: string,

@@ -1250,6 +1250,7 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  openRecommendationPlaybackContext(claimNonce: String, contractVersion: String!, idempotencyKey: String!, mediaId: ID!, sessionDigest: String!, source: String!, sourceRef: String): RecommendationPlaybackContextClaim!
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -1258,7 +1259,7 @@ type Mutation {
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
   recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String!): RecommendationContentActionReceipt!
   recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String!): [RecommendationEvidenceReceipt!]!
-  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contextId: ID, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
@@ -1612,6 +1613,15 @@ type RecommendationPersonalizationDelivery {
   sessionIntentPresent: Boolean!
 }
 
+type RecommendationPlaybackContextClaim {
+  activeUntil: String!
+  capability: String!
+  contextId: ID!
+  episodeId: ID!
+  hardUntil: String!
+  source: String!
+}
+
 input RecommendationPlaybackEventInput {
   eventId: String!
   kind: String!
@@ -1738,6 +1748,7 @@ type SemanticRecommendationDeliveryItem {
 type SemanticRecommendationEpisodeClaim {
   activeUntil: String!
   capability: String!
+  contextId: ID!
   episodeId: ID!
   hardUntil: String!
 }

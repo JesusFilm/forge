@@ -58,3 +58,28 @@ export async function consumeEpisodeCapabilitySubmissions(
     "Recommendation playback submission budget is exhausted",
   )
 }
+
+export async function consumePlaybackContextCapabilitySubmissions(
+  prisma: SubmissionBudgetClient | Prisma.TransactionClient,
+  input: {
+    contextId: string
+    episodeId: string
+    capabilityJti: string
+    attempts: number
+    expiresAt: Date
+  },
+): Promise<void> {
+  const rows = await prisma.$queryRaw<Array<{ attempts: number | null }>>`
+    SELECT consume_recommendation_context_capability_submissions(
+      ${input.contextId}, ${input.episodeId}, ${input.capabilityJti},
+      ${input.attempts}::integer,
+      ${MAX_EPISODE_CAPABILITY_SUBMISSIONS}::integer,
+      ${input.expiresAt}
+    ) AS attempts
+  `
+  if (rows[0]?.attempts != null) return
+
+  throw new RecommendationBindingError(
+    "Recommendation playback submission budget is exhausted",
+  )
+}

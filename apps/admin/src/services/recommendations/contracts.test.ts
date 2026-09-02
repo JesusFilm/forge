@@ -22,6 +22,7 @@ describe("recommendation contracts", () => {
       surface: "watch-below-player-v1",
       strategy: "semantic-transcript-pgvector-v1",
       outcome: "legacy-position-v0",
+      playbackContext: "recommendation-playback-context-v1",
     })
     expect(MAX_DELIVERY_ITEMS).toBe(6)
     expect(MAX_EVIDENCE_EVENTS).toBe(16)

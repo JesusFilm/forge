@@ -74,6 +74,14 @@ type EpisodeDependencies = {
   }) => Promise<unknown>
 }
 
+export type RecommendationEpisodeClaim = {
+  contextId: string
+  episodeId: string
+  capability: string
+  activeUntil: string
+  hardUntil: string
+}
+
 export class RecommendationEpisodeService {
   constructor(private readonly deps: EpisodeDependencies) {}
 
@@ -215,6 +223,7 @@ export class RecommendationEpisodeService {
       .update(claimNonce)
       .digest("hex")
     const episodeId = newId()
+    const contextId = `recommendation-context:${episodeId}`
     const initialActiveUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
     const initialHardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
 
@@ -256,7 +265,7 @@ export class RecommendationEpisodeService {
         })
         return { status: "conflict" as const }
       }
-      await tx.recommendationSelection.create({
+      const selection = await tx.recommendationSelection.create({
         data: {
           id: newId(),
           requestId: item.requestId,
@@ -270,20 +279,38 @@ export class RecommendationEpisodeService {
           occurredAt,
           receivedAt: now,
           expiresAt: item.request.expiresAt,
-          episode: {
-            create: {
-              id: episodeId,
-              mediaId: item.targetMediaId,
-              sessionDigest: item.request.sessionDigest,
-              state: RecommendationEpisodeState.PENDING,
-              activeUntil: initialActiveUntil,
-              hardUntil: initialHardUntil,
-              finalizationDueAt: initialActiveUntil,
-              expiresAt: item.request.expiresAt,
-            },
-          },
         },
-        include: { episode: true },
+      })
+      await tx.recommendationPlaybackContext.create({
+        data: {
+          id: contextId,
+          contractVersion: RECOMMENDATION_CONTRACTS.playbackContext,
+          idempotencyKeyDigest: claimNonceDigest,
+          sessionDigest: item.request.sessionDigest,
+          mediaId: item.targetMediaId,
+          source: "RECOMMENDATION",
+          sourceRefDigest: recommendationEvidenceDigest(selection.id),
+          requestId: item.requestId,
+          itemId: item.id,
+          selectionId: selection.id,
+          expiresAt: item.request.expiresAt,
+        },
+      })
+      await tx.recommendationPlaybackEpisode.create({
+        data: {
+          id: episodeId,
+          contextId,
+          requestId: item.requestId,
+          itemId: item.id,
+          selectionId: selection.id,
+          mediaId: item.targetMediaId,
+          sessionDigest: item.request.sessionDigest,
+          state: RecommendationEpisodeState.PENDING,
+          activeUntil: initialActiveUntil,
+          hardUntil: initialHardUntil,
+          finalizationDueAt: initialActiveUntil,
+          expiresAt: item.request.expiresAt,
+        },
       })
       await tx.recommendationEvidenceAudit.create({
         data: {
@@ -345,7 +372,8 @@ export class RecommendationEpisodeService {
     sessionDigest: string
     claimNonce: string
     mediaId: string
-  }) {
+    playbackEvidenceControlVersion?: number
+  }): Promise<RecommendationEpisodeClaim> {
     assertWebRecommendationCaller(input.caller)
     if (
       !/^[a-f0-9]{64}$/.test(input.sessionDigest) ||
@@ -415,6 +443,7 @@ export class RecommendationEpisodeService {
         {
           jti: episode.capabilityJti,
           episodeId: episode.id,
+          contextId: episode.contextId,
           requestId: selection.request.id,
           itemId: selection.item.id,
           sessionDigest: selection.request.sessionDigest,
@@ -424,6 +453,7 @@ export class RecommendationEpisodeService {
         { issuedAt: episode.claimedAt!, signingKid: episode.signingKid },
       )
       return {
+        contextId: episode.contextId,
         episodeId: episode.id,
         capability,
         activeUntil: episode.activeUntil.toISOString(),
@@ -445,6 +475,7 @@ export class RecommendationEpisodeService {
     const binding: EpisodeCapabilityBinding = {
       jti: capabilityJti,
       episodeId: selection.episode.id,
+      contextId: selection.episode.contextId,
       requestId: selection.request.id,
       itemId: selection.item.id,
       sessionDigest: selection.request.sessionDigest,
@@ -457,6 +488,18 @@ export class RecommendationEpisodeService {
     )
 
     await this.deps.prisma.$transaction(async (tx) => {
+      if (input.playbackEvidenceControlVersion != null) {
+        const control =
+          await tx.recommendationPlaybackEvidenceControl.findUnique({
+            where: { id: "recommendation-playback-evidence-control" },
+          })
+        if (
+          !control?.enabled ||
+          control.version !== input.playbackEvidenceControlVersion
+        ) {
+          throw new RecommendationCapabilityUnavailableError()
+        }
+      }
       if (
         !(await lockRecommendationAssignmentCapabilityFence(
           tx,
@@ -512,6 +555,7 @@ export class RecommendationEpisodeService {
     })
 
     return {
+      contextId: selection.episode.contextId,
       episodeId: selection.episode.id,
       capability,
       activeUntil: activeUntil.toISOString(),

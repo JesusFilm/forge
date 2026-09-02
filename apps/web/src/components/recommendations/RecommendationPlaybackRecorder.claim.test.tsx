@@ -53,9 +53,12 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toMatch(/recommendations\/playback$/)
     expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
-      action: "claim",
+      action: "context",
+      contractVersion: "recommendation-playback-context-v1",
       claimNonce: "claim-nonce-1234567890",
+      idempotencyKey: expect.stringMatching(/^playback-context-/),
       mediaId: "media-1",
+      source: "recommendation",
     })
     expect(player.addEventListener).toHaveBeenCalled()
 
@@ -195,17 +198,22 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
       .slice(0, 2)
       .map(([, init]) => JSON.parse(init.body as string))
     expect(claimBodies).toEqual([
-      {
-        action: "claim",
+      expect.objectContaining({
+        action: "context",
+        contractVersion: "recommendation-playback-context-v1",
         claimNonce: "claim-nonce-1234567890",
         mediaId: "media-1",
-      },
-      {
-        action: "claim",
+        source: "recommendation",
+      }),
+      expect.objectContaining({
+        action: "context",
+        contractVersion: "recommendation-playback-context-v1",
         claimNonce: "claim-nonce-1234567890",
         mediaId: "media-1",
-      },
+        source: "recommendation",
+      }),
     ])
+    expect(claimBodies[0]?.idempotencyKey).toBe(claimBodies[1]?.idempotencyKey)
     expect(
       sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
     ).toBeNull()
@@ -255,6 +263,46 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
+      "claim-nonce-1234567890",
+    )
+  })
+
+  it("cancels claim retries and ignores a late response after unmount", async () => {
+    const claim = deferred<Response>()
+    fetchMock.mockReturnValueOnce(claim.promise)
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+    })
+    await act(async () => root.render(<></>))
+    claim.resolve(
+      response({
+        episode: {
+          episodeId: "episode-after-unmount",
+          capability: "late-capability",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+        },
+      }),
+    )
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
       "claim-nonce-1234567890",
     )

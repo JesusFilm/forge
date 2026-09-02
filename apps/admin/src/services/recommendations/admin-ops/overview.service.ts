@@ -131,6 +131,43 @@ export type RecommendationOverviewData = Readonly<{
   experimentEvaluation: RecommendationExperimentEvaluationData | null
   promotion: RecommendationPromotionOverviewData | null
   profileShadow: RecommendationProfileShadowOverviewData | null
+  playbackEvidence?: Readonly<{
+    enabled: boolean
+    reasonCode: string
+    evaluation: Readonly<{
+      revision: number
+      state:
+        | "inconclusive"
+        | "revise"
+        | "retire"
+        | "eligible_for_shadow_evaluation"
+      evaluatedAt: Date
+      policyVersion: string
+      windowStart: Date
+      windowEnd: Date
+      inputWatermark: Date
+      reasonCodes: string[]
+      counts: Readonly<Record<string, number>>
+      metrics: Readonly<Record<string, number | null>>
+      retentionHealthy: boolean
+      purpose: string
+      identityClass: string
+      accessClass: string
+      deletionBehavior: string
+      fallbackBehavior: string
+      retentionDays: number
+      cohorts: Array<
+        Readonly<{
+          cohort: string
+          count: number | null
+          legacyQualified: number | null
+          proxyQualified: number | null
+          disagreements: number | null
+          suppressed: boolean
+        }>
+      >
+    }> | null
+  }> | null
 }>
 
 export type RecommendationProfileShadowOverviewData = Readonly<{
@@ -330,6 +367,8 @@ export async function loadRecommendationOverview(
       experimentEvaluation,
       promotionState,
       profileShadow,
+      playbackEvidenceControl,
+      playbackProxyEvaluation,
     ] = await Promise.all([
       prisma.$queryRaw<AggregateRow[]>(Prisma.sql`
         WITH active_roots AS (
@@ -653,6 +692,13 @@ export async function loadRecommendationOverview(
       }) ?? Promise.resolve(null),
       loadPromotionState(prisma, now),
       loadProfileShadowOverview(prisma, window, now),
+      prisma.recommendationPlaybackEvidenceControl?.findUnique?.({
+        where: { id: "recommendation-playback-evidence-control" },
+      }) ?? Promise.resolve(null),
+      prisma.recommendationPlaybackProxyEvaluation?.findFirst?.({
+        where: { expiresAt: { gt: now } },
+        orderBy: [{ evaluatedAt: "desc" }, { revision: "desc" }],
+      }) ?? Promise.resolve(null),
     ])
     const row = rows[0]
     if (!row) {
@@ -847,6 +893,43 @@ export async function loadRecommendationOverview(
           })
         : null,
       profileShadow,
+      playbackEvidence: playbackEvidenceControl
+        ? {
+            enabled: playbackEvidenceControl.enabled,
+            reasonCode: playbackEvidenceControl.reasonCode,
+            evaluation: playbackProxyEvaluation
+              ? {
+                  revision: playbackProxyEvaluation.revision,
+                  state: playbackProxyEvaluation.state as
+                    | "inconclusive"
+                    | "revise"
+                    | "retire"
+                    | "eligible_for_shadow_evaluation",
+                  evaluatedAt: playbackProxyEvaluation.evaluatedAt,
+                  policyVersion: playbackProxyEvaluation.policyVersion,
+                  windowStart: playbackProxyEvaluation.windowStart,
+                  windowEnd: playbackProxyEvaluation.windowEnd,
+                  inputWatermark: playbackProxyEvaluation.inputWatermark,
+                  reasonCodes: playbackProxyEvaluation.reasonCodes,
+                  counts: numericJsonObject(playbackProxyEvaluation.counts),
+                  metrics: numericJsonObject(
+                    playbackProxyEvaluation.metrics,
+                    true,
+                  ),
+                  retentionHealthy:
+                    jsonObject(playbackProxyEvaluation.metrics)
+                      .retentionHealthy === true,
+                  purpose: playbackProxyEvaluation.purpose,
+                  identityClass: playbackProxyEvaluation.identityClass,
+                  accessClass: playbackProxyEvaluation.accessClass,
+                  deletionBehavior: playbackProxyEvaluation.deletionBehavior,
+                  fallbackBehavior: playbackProxyEvaluation.fallbackBehavior,
+                  retentionDays: playbackProxyEvaluation.retentionDays,
+                  cohorts: playbackCohorts(playbackProxyEvaluation.cohorts),
+                }
+              : null,
+          }
+        : null,
     }
   } catch {
     console.warn(
@@ -870,6 +953,7 @@ export async function loadRecommendationOverview(
       experimentEvaluation: null,
       promotion: null,
       profileShadow: null,
+      playbackEvidence: null,
     }
   }
 }
@@ -912,6 +996,15 @@ function jsonObject(value: unknown): Readonly<Record<string, unknown>> {
     : {}
 }
 
+function numericJsonObject(value: unknown): Readonly<Record<string, number>>
+function numericJsonObject(
+  value: unknown,
+  nullable: false,
+): Readonly<Record<string, number>>
+function numericJsonObject(
+  value: unknown,
+  nullable: true,
+): Readonly<Record<string, number | null>>
 function numericJsonObject(
   value: unknown,
   nullable = false,
@@ -925,6 +1018,33 @@ function numericJsonObject(
     }
   }
   return Object.fromEntries(entries)
+}
+
+function playbackCohorts(value: unknown) {
+  return Object.entries(jsonObject(value))
+    .flatMap(([cohort, raw]) => {
+      const metrics = jsonObject(raw)
+      const total = finiteNumber(metrics.total)
+      if (total == null || total < 0) return []
+      const suppressed = total < 10
+      return [
+        {
+          cohort,
+          count: suppressed ? null : total,
+          legacyQualified: suppressed
+            ? null
+            : finiteNumber(metrics.legacyQualified),
+          proxyQualified: suppressed
+            ? null
+            : finiteNumber(metrics.proxyQualified),
+          disagreements: suppressed
+            ? null
+            : finiteNumber(metrics.disagreements),
+          suppressed,
+        },
+      ]
+    })
+    .sort((left, right) => left.cohort.localeCompare(right.cohort))
 }
 function latestDate(...values: Array<Date | null>): Date | null {
   return values.reduce<Date | null>((latest, value) => {

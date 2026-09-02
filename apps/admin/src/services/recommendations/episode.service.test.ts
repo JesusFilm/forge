@@ -2,7 +2,10 @@ import { createHash } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationEpisodeService } from "./episode.service"
 import { recommendationEvidenceDigest } from "./evidence.service"
-import { RecommendationBindingError } from "./errors"
+import {
+  RecommendationBindingError,
+  RecommendationCapabilityUnavailableError,
+} from "./errors"
 
 const caller = {
   id: null,
@@ -68,6 +71,7 @@ describe("RecommendationEpisodeService", () => {
 
   it("atomically creates selection plus pending episode with a fresh claim nonce", async () => {
     let created: Record<string, unknown> | undefined
+    let episodeCreated: Record<string, unknown> | undefined
     const item = {
       id: "item-1",
       requestId: "request-1",
@@ -114,6 +118,15 @@ describe("RecommendationEpisodeService", () => {
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
           created = data
           return { ...data, episode: { id: "episode-1" } }
+        }),
+      },
+      recommendationPlaybackContext: {
+        create: vi.fn(async () => ({})),
+      },
+      recommendationPlaybackEpisode: {
+        create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          episodeCreated = data
+          return data
         }),
       },
       recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
@@ -179,13 +192,11 @@ describe("RecommendationEpisodeService", () => {
       claimNonceDigest: createHash("sha256")
         .update("fresh-claim-nonce")
         .digest("hex"),
-      episode: {
-        create: {
-          state: "PENDING",
-          mediaId: "target-video",
-          finalizationDueAt: new Date("2026-04-20T07:00:00.000Z"),
-        },
-      },
+    })
+    expect(episodeCreated).toMatchObject({
+      state: "PENDING",
+      mediaId: "target-video",
+      finalizationDueAt: new Date("2026-04-20T07:00:00.000Z"),
     })
     expect(JSON.stringify(created)).not.toContain("fresh-claim-nonce")
     expect(tx.$executeRaw).toHaveBeenCalledOnce()
@@ -234,8 +245,10 @@ describe("RecommendationEpisodeService", () => {
       $queryRaw: vi.fn(async () => [{ id: "current" }]),
       recommendationSelection: {
         findUnique: vi.fn(async () => null),
-        create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
+        create: vi.fn(async ({ data }) => ({ id: data.id })),
       },
+      recommendationPlaybackContext: { create: vi.fn(async () => ({})) },
+      recommendationPlaybackEpisode: { create: vi.fn(async () => ({})) },
       recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
     }
     const prisma = {
@@ -309,7 +322,12 @@ describe("RecommendationEpisodeService", () => {
         expiresAt: new Date("2026-09-17T03:00:00.000Z"),
       },
       item: { id: "item-1", targetMediaId: "target-video" },
-      episode: { id: "episode-1", state: "PENDING", generation: 1 },
+      episode: {
+        id: "episode-1",
+        contextId: "context-1",
+        state: "PENDING",
+        generation: 1,
+      },
     }
     const tx = {
       recommendationSelection: {
@@ -382,6 +400,62 @@ describe("RecommendationEpisodeService", () => {
     })
   })
 
+  it("rejects a new claim when playback evidence is disabled after context admission", async () => {
+    const now = new Date("2026-04-20T03:00:00.000Z")
+    const selection = {
+      id: "selection-1",
+      claimedAt: null,
+      handoffExpiresAt: new Date("2026-04-20T03:10:00.000Z"),
+      request: {
+        id: "request-1",
+        sessionDigest: "a".repeat(64),
+        expiresAt: new Date("2026-09-17T03:00:00.000Z"),
+        experimentAssignment: null,
+      },
+      item: { id: "item-1", targetMediaId: "target-video" },
+      episode: {
+        id: "episode-1",
+        contextId: "context-1",
+        state: "PENDING",
+        generation: 1,
+      },
+    }
+    const tx = {
+      recommendationPlaybackEvidenceControl: {
+        findUnique: vi.fn(async () => ({ enabled: false, version: 5 })),
+      },
+      recommendationSelection: { updateMany: vi.fn() },
+      recommendationPlaybackEpisode: { updateMany: vi.fn() },
+    }
+    const service = new RecommendationEpisodeService({
+      prisma: {
+        recommendationSelection: { findUnique: vi.fn(async () => selection) },
+        $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
+          work(tx),
+        ),
+      } as never,
+      tokenService: {
+        activeKid: "active-kid",
+        verifyDeliveryCapability: vi.fn(),
+        signEpisodeCapability: vi.fn(async () => "episode-token"),
+      },
+      now: () => now,
+      newId: () => "episode-jti",
+    })
+
+    await expect(
+      service.claim({
+        caller,
+        sessionDigest: "a".repeat(64),
+        claimNonce: "claim-once-1234567890",
+        mediaId: "target-video",
+        playbackEvidenceControlVersion: 4,
+      }),
+    ).rejects.toBeInstanceOf(RecommendationCapabilityUnavailableError)
+    expect(tx.recommendationSelection.updateMany).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackEpisode.updateMany).not.toHaveBeenCalled()
+  })
+
   it("replays a committed same-binding claim after its first response is lost", async () => {
     const claimedAt = new Date("2026-04-20T03:00:00.000Z")
     const activeUntil = new Date("2026-04-20T07:00:00.000Z")
@@ -400,6 +474,7 @@ describe("RecommendationEpisodeService", () => {
       item: { id: "item-1", targetMediaId: "target-video" },
       episode: {
         id: "episode-1",
+        contextId: "context-1",
         state: "CLAIMED",
         generation: 1,
         capabilityJti: "committed-episode-jti",
@@ -435,6 +510,7 @@ describe("RecommendationEpisodeService", () => {
         mediaId: "target-video",
       }),
     ).resolves.toEqual({
+      contextId: "context-1",
       episodeId: "episode-1",
       capability: "replayed-episode-token",
       activeUntil: activeUntil.toISOString(),
@@ -444,6 +520,7 @@ describe("RecommendationEpisodeService", () => {
       {
         jti: "committed-episode-jti",
         episodeId: "episode-1",
+        contextId: "context-1",
         requestId: "request-1",
         itemId: "item-1",
         sessionDigest: "a".repeat(64),

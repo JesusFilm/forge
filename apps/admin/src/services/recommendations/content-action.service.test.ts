@@ -11,10 +11,11 @@ const webCaller = {
 const systemCaller = { id: null, role: "SYSTEM" as const }
 const now = new Date("2026-08-25T12:30:00.000Z")
 
-function harness({ matchedEpisode = false } = {}) {
+function harness({ matchedEpisode = false, directEpisode = false } = {}) {
   const rows = new Map<string, Record<string, unknown>>()
-  const episode = {
+  const recommendationEpisode = {
     id: "episode-1",
+    contextId: "context-1",
     requestId: "request-1",
     itemId: "item-1",
     mediaId: "media-1",
@@ -24,12 +25,25 @@ function harness({ matchedEpisode = false } = {}) {
     activeUntil: new Date("2026-08-25T12:00:00.000Z"),
     hardUntil: new Date("2026-08-25T14:00:00.000Z"),
     createdAt: new Date("2026-08-25T10:00:00.000Z"),
+    context: {
+      generation: 1,
+      expiresAt: new Date("2026-09-23T10:00:00.000Z"),
+    },
     request: {
       expiresAt: new Date("2026-09-23T10:00:00.000Z"),
       generation: 1,
     },
     item: { candidateGenerator: "semantic" },
   }
+  const episode = directEpisode
+    ? {
+        ...recommendationEpisode,
+        requestId: null,
+        itemId: null,
+        request: null,
+        item: null,
+      }
+    : recommendationEpisode
   const tx = {
     $executeRaw: vi.fn(async () => 1),
     recommendationContentAction: {
@@ -154,6 +168,26 @@ describe("RecommendationContentActionService", () => {
         episodeId: "episode-1",
         candidateGenerator: "semantic",
         late: true,
+      }),
+    })
+  })
+
+  it("matches a source-neutral action to its direct playback episode", async () => {
+    const { service, tx } = harness({
+      matchedEpisode: true,
+      directEpisode: true,
+    })
+
+    await expect(service.record(directShare)).resolves.toMatchObject({
+      matched: true,
+      late: true,
+    })
+    expect(tx.recommendationContentAction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        requestId: null,
+        itemId: null,
+        episodeId: "episode-1",
+        candidateGenerator: null,
       }),
     })
   })

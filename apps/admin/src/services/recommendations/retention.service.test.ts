@@ -28,6 +28,12 @@ function buildPrisma() {
     recommendationRenderedFact: { count: count() },
     recommendationImpression: { count: count() },
     recommendationSelection: { count: count() },
+    recommendationPlaybackContext: {
+      count: count(),
+      findMany: vi.fn(async () => [{ id: "direct-context-1" }]),
+      deleteMany: vi.fn(async () => ({ count: 1 })),
+      findFirst: vi.fn(async () => null),
+    },
     recommendationPlaybackEpisode: { count: count() },
     recommendationPlaybackFact: { count: count() },
     recommendationOutcomeRevision: { count: count() },
@@ -43,6 +49,10 @@ function buildPrisma() {
     },
     recommendationControlEvaluation: {
       deleteMany: vi.fn(async () => ({ count: 2 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPlaybackProxyEvaluation: {
+      deleteMany: vi.fn(async () => ({ count: 1 })),
       findFirst: vi.fn(async () => null),
     },
     recommendationShadowEvaluation: {
@@ -160,6 +170,8 @@ function buildPrisma() {
     recommendationContentAction: { findFirst: vi.fn() },
     recommendationEligibilityDecision: { findFirst: vi.fn() },
     recommendationControlEvaluation: { findFirst: vi.fn() },
+    recommendationPlaybackContext: { findFirst: vi.fn() },
+    recommendationPlaybackProxyEvaluation: { findFirst: vi.fn() },
     recommendationShadowEvaluation: { findFirst: vi.fn() },
     recommendationPromotionEvent: { findFirst: vi.fn() },
     recommendationPromotionRun: { findFirst: vi.fn() },
@@ -187,12 +199,15 @@ describe("recommendation retention service", () => {
     ).resolves.toMatchObject({
       status: "succeeded",
       runId: "retention-run-1",
-      rootsDeleted: 2,
+      rootsDeleted: 3,
       rowCounts: {
         submissionBudgets: 0,
         candidateRuns: 0,
         candidateStageEvidence: 0,
         expiredContentActions: 1,
+        expiredDirectPlaybackContexts: 1,
+        expiredDirectPlaybackEpisodes: 0,
+        expiredPlaybackProxyEvaluations: 1,
         expiredEligibilityDecisions: 0,
         expiredProfilesFenced: 1,
         expiredConsentReceipts: 2,
@@ -240,6 +255,19 @@ describe("recommendation retention service", () => {
     expect(
       transaction.recommendationContentAction.deleteMany,
     ).toHaveBeenCalledBefore(transaction.recommendationRequest.deleteMany)
+    expect(
+      transaction.recommendationPlaybackContext.findMany,
+    ).toHaveBeenCalledWith({
+      where: { requestId: null, expiresAt: { lte: now } },
+      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+      take: 2,
+      select: { id: true },
+    })
+    expect(
+      transaction.recommendationPlaybackContext.deleteMany,
+    ).toHaveBeenCalledWith({
+      where: { id: { in: ["direct-context-1"] } },
+    })
     expect(
       transaction.recommendationEligibilityDecision.count,
     ).toHaveBeenCalledWith({
@@ -309,6 +337,9 @@ describe("recommendation retention service", () => {
       transaction.recommendationControlEvaluation.deleteMany,
     ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
     expect(
+      transaction.recommendationPlaybackProxyEvaluation.deleteMany,
+    ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
+    expect(
       transaction.recommendationShadowEvaluation.deleteMany,
     ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
     expect(
@@ -344,7 +375,7 @@ describe("recommendation retention service", () => {
         where: { id: "retention-run-1" },
         data: expect.objectContaining({
           status: "SUCCEEDED",
-          rootsDeleted: 2,
+          rootsDeleted: 3,
           reasonCode: null,
         }),
       }),

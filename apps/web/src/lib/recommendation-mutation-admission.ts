@@ -42,6 +42,7 @@ export type RecommendationAdmissionNamespace =
   | "profile-mutation"
   | "privacy-control"
   | "content-action"
+  | "playback-context"
 
 export type RecommendationMutationAdmissionResult =
   | { allowed: true }

@@ -861,10 +861,25 @@ served-item lineage rather than inferred later from unrelated analytics.
 
 ### Recommendation Playback Episode
 
-The minimal append-only playback lineage opened atomically with a selection and
-claimed once on the selected target media. It carries server-sequenced attempt,
-start, progress, seek, active-visible-playing, terminal, and error facts within
-bounded active/hard horizons without replacing the legacy Watch recorder.
+The minimal append-only playback lineage opened for one source-neutral Playback
+Context and claimed once on its target media. Recommendation selection is
+optional attribution rather than a prerequisite. The episode carries
+server-sequenced attempt, start, progress, seek, active-visible-playing,
+terminal, and error facts within bounded active/hard horizons without replacing
+the legacy Watch recorder.
+
+### Recommendation Playback Context
+
+The immutable, bounded root for one eligible full-player Watch arrival. It binds
+an episode capability to pseudonymous session and media identity while retaining
+only an allowlisted provenance class and optional validated opaque lineage.
+Recommendation, search, share, acquisition, editorial, and direct arrivals share
+this contract; missing provenance becomes direct and never fabricates credit.
+
+The Playback Context is operational evidence, not a viewer profile or serving
+decision. Context issuance and fact delivery are best effort after player
+availability, and the context owns the raw retention lifecycle independently of
+whether an authorized profile may learn from its finalized outcome.
 
 ### Recommendation Outcome Revision
 
@@ -872,7 +887,20 @@ An immutable, recomputable classifier result over one episode's ordered fact
 watermark and digest. A later fact watermark may append a monotonic superseding
 revision; an old retry cannot become latest. `legacy-position-v0` is a named
 position/progress comparator with no continuous weight or satisfaction claim,
-and every U1 revision is learning-ineligible.
+and the immutable compatibility field remains learning-ineligible. A separate
+current Recommendation Eligibility Decision determines whether a revision may
+influence a versioned projection.
+
+### Recommendation Playback Proxy Evaluation
+
+An append-only, aggregate-only readiness record that compares a candidate
+active-playback classifier with its legacy comparator over one exact evidence
+window and input watermark.
+
+It carries no viewer, session, request, item, profile, or capability identity
+and has no serving authority. Its state distinguishes insufficient evidence,
+instrumentation that needs revision, a proxy that should be retired, and a
+proxy eligible to proceed to separately governed shadow evaluation.
 
 ### Recommendation Strategy Manifest
 

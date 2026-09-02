@@ -18,6 +18,7 @@ import { readableScrimRgb } from "@/lib/readable-scrim-color"
 import { cn } from "@/lib/utils"
 import type { WatchHomeCard as WatchHomeCardModel } from "@/lib/watch-home"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { markRecommendationPlaybackProvenance } from "@/lib/recommendation-playback-provenance"
 
 type WatchHomeCardProps = {
   card: WatchHomeCardModel
@@ -79,6 +80,20 @@ function CardFrame({
       href={card.href as Route}
       aria-label={card.title}
       className={className}
+      onClick={(event) => {
+        if (
+          event.button === 0 &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey
+        ) {
+          markRecommendationPlaybackProvenance({
+            source: "editorial",
+            sourceRef: card.id,
+          })
+        }
+      }}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onFocus={onFocus}

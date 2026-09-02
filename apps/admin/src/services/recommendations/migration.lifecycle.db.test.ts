@@ -30,6 +30,7 @@ const migrationSql = [
   "0069_recommendation_hybrid_composition",
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
+  "0072_recommendation_source_neutral_playback",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -92,7 +93,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
     }
 
-    async function insertLifecycleGraph(prefix: string) {
+    async function insertLifecycleGraph(
+      prefix: string,
+      {
+        mediaId = "video-0",
+        sessionDigest = "a".repeat(64),
+      }: { mediaId?: string; sessionDigest?: string } = {},
+    ) {
       const requestId = `${prefix}-request`
       const itemId = `${prefix}-item`
       const selectionId = `${prefix}-selection`
@@ -122,15 +129,16 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           id, request_id, item_id, selection_id, media_id, session_digest,
           state, capability_jti, signing_kid, active_until, hard_until,
           generation, claimed_at, expires_at
-        ) VALUES ($1, $2, $3, $4, 'video-0', $5, 'claimed', $6, 'kid-1',
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'claimed', $7, 'kid-1',
           '2026-08-19T07:00:00.000Z', '2026-08-19T09:00:00.000Z', 1,
-          '2026-08-19T03:00:00.000Z', $7)`,
+          '2026-08-19T03:00:00.000Z', $8)`,
         [
           episodeId,
           requestId,
           itemId,
           selectionId,
-          "a".repeat(64),
+          mediaId,
+          sessionDigest,
           `${prefix}-episode-jti`,
           expiresAt,
         ],
@@ -534,13 +542,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
       const preGrant = await insertLifecycleGraph(
         "eligibility-projection-pre-grant",
-      )
-      await client.query(
-        `UPDATE recommendation_playback_episode
-         SET media_id = 'eligibility-projection-pre-grant-video',
-           session_digest = $1
-         WHERE id = $2`,
-        ["d".repeat(64), preGrant.episodeId],
+        {
+          mediaId: "eligibility-projection-pre-grant-video",
+          sessionDigest: "d".repeat(64),
+        },
       )
       await client.query(
         `INSERT INTO recommendation_outcome_revision (
@@ -581,13 +586,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     it("executes eligibility projection against PostgreSQL without mutating its immutable outcome", async () => {
       await client.query("BEGIN")
-      const graph = await insertLifecycleGraph("eligibility-projection")
-      await client.query(
-        `UPDATE recommendation_playback_episode
-         SET media_id = 'eligibility-projection-video', session_digest = $1
-         WHERE id = $2`,
-        ["f".repeat(64), graph.episodeId],
-      )
+      const graph = await insertLifecycleGraph("eligibility-projection", {
+        mediaId: "eligibility-projection-video",
+      })
       // This source starts after the durable consent watermark used below.
       // The pre-grant fixture above deliberately keeps its August 19
       // selection/episode initiation while finalizing on August 26.

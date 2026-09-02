@@ -25,6 +25,99 @@ describe("RecommendationPlaybackRecorder", () => {
     fetchMock = harness.fetchMock
   })
 
+  it("opens one direct context when no provenance handoff exists", async () => {
+    fetchMock.mockResolvedValue(
+      response({
+        episode: {
+          contextId: "context-direct",
+          episodeId: "episode-direct",
+          capability: "episode-capability-secret",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+        },
+        receipts: [],
+      }),
+    )
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-direct"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+      action: "context",
+      contractVersion: "recommendation-playback-context-v1",
+      idempotencyKey: expect.stringMatching(/^playback-context-/),
+      mediaId: "media-direct",
+      source: "direct",
+    })
+  })
+
+  it("closes active time while hidden and resumes without a terminal fact", async () => {
+    fetchMock.mockResolvedValue(
+      response({
+        episode: {
+          contextId: "context-1",
+          episodeId: "episode-1",
+          capability: "episode-capability-secret",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+        },
+        receipts: [],
+      }),
+    )
+    const player = makePlayer()
+    let visibility = "visible"
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility,
+    })
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+      player.paused = false
+      player.dispatch("playing")
+    })
+    vi.advanceTimersByTime(1_000)
+    visibility = "hidden"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(5_000)
+    visibility = "visible"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(2_000)
+    await act(async () => {
+      player.paused = true
+      player.dispatch("pause")
+      await Promise.resolve()
+    })
+
+    const events = fetchMock.mock.calls
+      .slice(1)
+      .flatMap(([, init]) => JSON.parse(init.body as string).events)
+    expect(events.filter((entry) => entry.kind === "playback_end")).toEqual([])
+    expect(
+      events
+        .filter((entry) => entry.kind === "playback_active_visible_playing")
+        .map((entry) => entry.payload.activeMilliseconds),
+    ).toEqual([1_000, 2_000])
+  })
+
   it("records a media error after an attempt even before playback starts", async () => {
     fetchMock.mockResolvedValue(
       response({
@@ -187,11 +280,10 @@ describe("RecommendationPlaybackRecorder", () => {
     player.currentTime = 13
     await act(async () => player.dispatch("timeupdate"))
     player.currentTime = 50
-    await act(async () => {
-      player.dispatch("seeking")
-      player.currentTime = 70
-      player.dispatch("seeked")
-    })
+    await act(async () => player.dispatch("seeking"))
+    vi.advanceTimersByTime(5_000)
+    player.currentTime = 70
+    await act(async () => player.dispatch("seeked"))
     vi.advanceTimersByTime(4_000)
     player.currentTime = 120
     await act(async () => {
@@ -219,14 +311,25 @@ describe("RecommendationPlaybackRecorder", () => {
         payload: { fromSeconds: 50, toSeconds: 70 },
       }),
     )
-    expect(events).toContainEqual(
-      expect.objectContaining({
-        kind: "playback_active_visible_playing",
-        payload: expect.objectContaining({
-          activeMilliseconds: 16_000,
-          coverage: "complete",
+    expect(
+      events
+        .filter((event) => event.kind === "playback_active_visible_playing")
+        .map((event) => event.payload.activeMilliseconds),
+    ).toEqual([12_000, 4_000])
+    expect(
+      events.filter(
+        (event) => event.kind === "playback_active_visible_playing",
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            startedAt: expect.any(String),
+            endedAt: expect.any(String),
+            coverage: "complete",
+          }),
         }),
-      }),
+      ]),
     )
     expect(events.filter((event) => event.kind === "playback_end")).toEqual([
       expect.objectContaining({
@@ -364,11 +467,13 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         kind: "playback_active_visible_playing",
-        payload: {
+        payload: expect.objectContaining({
           activeMilliseconds: 1_000,
           coverage: "partial",
           missingReason: "player_state_unavailable",
-        },
+          startedAt: expect.any(String),
+          endedAt: expect.any(String),
+        }),
       }),
     )
   })
