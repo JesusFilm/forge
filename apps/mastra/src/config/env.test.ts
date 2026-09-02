@@ -1096,6 +1096,36 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("rejects a Railway-private http RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "JESUSFILM_RAG_BASE_URL",
+      "http://forge-rag.railway.internal:8080",
+    )
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Railway-private http RAG base URL with no allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "JESUSFILM_RAG_BASE_URL",
+      "http://forge-rag.railway.internal:8080",
+    )
+    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
   it.each([
     "http://railway.internal:8080",
     "http://evilrailway.internal:8080",
