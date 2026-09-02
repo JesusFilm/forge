@@ -1,25 +1,26 @@
 ---
 id: "feat-433"
-title: "Add dual jfrag and Forge RAG operations"
+title: "Complete owner-managed dual RAG operations"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-28"
 duration: 3
 depends_on: ["feat-432"]
-blocks: ["feat-434"]
+blocks: []
 tags: ["rag", "operations", "rollback"]
 ---
 
 ## Problem
 
-VM and NanoClaw tasks must support both services during cutover without ambiguous targets. Historical scope: [jfrag #166](https://github.com/JesusFilm/jesusfilm-rag/issues/166).
+The migration programme included owner-managed VM and NanoClaw administration
+outside the Forge repository. Historical scope:
+[jfrag #166](https://github.com/JesusFilm/jesusfilm-rag/issues/166).
 
 ## Entry Points — Read These First
 
-1. `JesusFilm/jesusfilm-rag/scripts/acquire-production.ts`, `JesusFilm/jesusfilm-rag/scripts/index-production.ts`, `JesusFilm/jesusfilm-rag/scripts/retrieve-production.ts`, `JesusFilm/jesusfilm-rag/scripts/eval-production.ts`, and `JesusFilm/jesusfilm-rag/scripts/source-status.ts` — operations that require explicit `:jfrag` and `:forge` task variants.
-2. `docs/roadmap/rag/evidence/feat-433/task-inventory.md` — planned owner-approved VM/NanoClaw task inventory, including the external task-definition repository and exact paths discovered during implementation.
-3. `apps/rag/AGENTS.md` and Forge operator commands delivered by `feat-431`/`feat-432` — target safety and rollback rules.
+1. [jfrag #166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) — historical owner-operations checklist.
+2. `apps/rag/AGENTS.md` and Forge operator commands delivered by `feat-431`/`feat-432` — the shared repository contracts consumed by external operator tooling.
 
 ## Grep These
 
@@ -30,14 +31,30 @@ VM and NanoClaw tasks must support both services during cutover without ambiguou
 
 ## What To Build
 
-Add explicitly targeted jfrag and Forge variants for maintenance, status, dashboard, and eval operations.
+Complete the external owner-operated transition without adding personal VM task
+definitions or host-specific evidence to Forge.
 
 ## Constraints
 
-- No implicit production default or shared writable target.
-- Preserve jfrag tasks until rollback expiry.
+- Do not make a personal VM deployment part of Forge's supported surface.
+- Keep host-specific configuration and evidence in the private operations
+  system.
 
 ## Verification
 
-- Dry-run receipts identify route, service, environment, and mutation/read-only mode.
-- Both paths can run read-only checks without leaking credentials.
+- The owner confirms the external administration is complete.
+- No Forge application change is required.
+
+## Resolution
+
+Completed on September 3, 2026 as owner-managed external administration. The
+owner verified the required read-only and bounded interactions and retained
+detailed configuration and test evidence in the private operations system.
+Live acquisition, indexing, migration, and language writes were not part of
+this closure.
+
+No Forge application or shared operational-contract change was required. This
+personal environment is not a prerequisite for Seeker cutover or another Forge
+contributor workflow.
+
+Completed in [Forge PR #2152](https://github.com/JesusFilm/forge/pull/2152).
