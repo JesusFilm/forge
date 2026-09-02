@@ -11,8 +11,8 @@ database into Admin.
 ## Status (September 3, 2026)
 
 - **Total tickets:** 16
-- **Complete:** 11
-- **In progress:** 1
+- **Complete:** 12
+- **In progress:** 0
 - **Not started:** 4
 - **Blocked:** 0
 
@@ -30,7 +30,7 @@ database into Admin.
 | [feat-430](feat-430-rag-production-corpus-copy.md)             | [#163](https://github.com/JesusFilm/jesusfilm-rag/issues/163) | Copy production corpus into Forge Railway                   | complete    | [#2090](https://github.com/JesusFilm/forge/pull/2090) |
 | [feat-431](feat-431-rag-corpus-maintenance.md)                 | [#164](https://github.com/JesusFilm/jesusfilm-rag/issues/164) | Port acquisition, ingestion, and maintenance                | complete    | [#2093](https://github.com/JesusFilm/forge/pull/2093) |
 | [feat-432](feat-432-rag-ops-eval-dashboard.md)                 | [#165](https://github.com/JesusFilm/jesusfilm-rag/issues/165) | Port sources, skills, dashboard, and eval                   | complete    | [#2117](https://github.com/JesusFilm/forge/pull/2117) |
-| [feat-433](feat-433-rag-dual-operations.md)                    | [#166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) | Add dual VM and NanoClaw tasks                              | in-progress | —                                                     |
+| [feat-433](feat-433-rag-dual-operations.md)                    | [#166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) | Add dual VM and NanoClaw tasks                              | complete    | [#2152](https://github.com/JesusFilm/forge/pull/2152) |
 | [feat-434](feat-434-rag-seeker-cutover.md)                     | [#167](https://github.com/JesusFilm/jesusfilm-rag/issues/167) | Cut Seeker over with rollback                               | not-started | —                                                     |
 | [feat-435](feat-435-rag-proof-soak-archive.md)                 | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                  | not-started | —                                                     |
 | [feat-439](feat-439-rag-railway-infrastructure-as-code.md)     | —                                                             | Migrate RAG Railway configuration to Infrastructure as Code | not-started | —                                                     |

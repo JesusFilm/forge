@@ -3,7 +3,7 @@ id: "feat-433"
 title: "Add dual jfrag and Forge RAG operations"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-28"
 duration: 3
 depends_on: ["feat-432"]
@@ -57,5 +57,4 @@ authorized manual runbooks rather than NanoClaw tasks. The redacted inventory
 and verification record is in
 [`evidence/feat-433/task-inventory.md`](evidence/feat-433/task-inventory.md).
 
-Implementation is tracked by this pull request; its link will be recorded
-before merge.
+Completed in [Forge PR #2152](https://github.com/JesusFilm/forge/pull/2152).
