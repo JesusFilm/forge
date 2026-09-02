@@ -11,10 +11,11 @@ import {
   type MastraTranscriptEmbeddingMode,
 } from "@/services/mastra-transcript-embedding-client"
 import {
-  ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS,
-  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-} from "@/services/transcript-embedding.service"
-import { ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER } from "@/services/content-embedding-contract"
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  activeTranscriptContentEmbeddingWhere,
+  type ContentEmbeddingTuple,
+} from "@/services/content-embedding-contract"
 import {
   resolveSubtitleTranscriptSource,
   type ResolvedTranscriptEmbeddingSource,
@@ -93,6 +94,8 @@ type ExistingTranscriptBackfillHealthRow = {
   model: string
   dimensions: number
   embedding_provider: string | null
+  embedding_native_dimensions: number | null
+  embedding_transform_version: string | null
   generation_mode: string | null
   source_kind: string | null
   chunks_with_embedding: number | bigint
@@ -320,12 +323,20 @@ async function readTranscriptIngestConfirmation(
 
 function isHealthyEnrichedTranscriptForResume(
   row: ExistingTranscriptBackfillHealthRow,
+  expectedEmbedding: ContentEmbeddingTuple,
 ): boolean {
   const totalChunks = Number(row.total_chunks)
   const chunksWithEmbedding = Number(row.chunks_with_embedding)
   const chunksWithEmbeddingInputText = Number(
     row.chunks_with_embedding_input_text,
   )
+  const transcriptEmbedding = {
+    provider: row.embedding_provider ?? "",
+    model: row.model,
+    nativeDimensions: row.embedding_native_dimensions ?? -1,
+    dimensions: row.dimensions,
+    transformVersion: row.embedding_transform_version,
+  }
 
   return (
     Number.isFinite(totalChunks) &&
@@ -333,9 +344,7 @@ function isHealthyEnrichedTranscriptForResume(
     row.generation_mode === "model-upgrade" &&
     row.source_kind != null &&
     row.source_kind.length > 0 &&
-    ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS.has(row.model) &&
-    row.dimensions === EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS &&
-    row.embedding_provider === ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER &&
+    contentEmbeddingTupleMatches(transcriptEmbedding, expectedEmbedding) &&
     chunksWithEmbedding === totalChunks &&
     chunksWithEmbeddingInputText === totalChunks
   )
@@ -346,6 +355,7 @@ async function readHealthyEnrichedTranscriptResumeKeys(
 ): Promise<ReadonlySet<string>> {
   if (targets.length === 0) return new Set()
 
+  const activeContract = await resolveActiveContentEmbeddingContract(prisma)
   const uniqueTargets = Array.from(
     new Map(
       targets.map((target) => [targetResumeKey(target), target]),
@@ -367,6 +377,8 @@ async function readHealthyEnrichedTranscriptResumeKeys(
       vt.model,
       vt.dimensions,
       vt.embedding_provider,
+      vt.embedding_native_dimensions,
+      vt.embedding_transform_version,
       vt.generation_mode,
       vt.source_kind,
       COUNT(vtc.id) FILTER (
@@ -382,12 +394,19 @@ async function readHealthyEnrichedTranscriptResumeKeys(
       AND t.language = vt.language
     LEFT JOIN video_transcript_chunk vtc
       ON vtc.transcript_id = vt.id
+    WHERE 1 = 1
+      ${activeTranscriptContentEmbeddingWhere({
+        transcriptAlias: "vt",
+        chunkAlias: "vtc",
+      })}
     GROUP BY vt.id
   `
 
   return new Set(
     rows
-      .filter(isHealthyEnrichedTranscriptForResume)
+      .filter((row) =>
+        isHealthyEnrichedTranscriptForResume(row, activeContract.storage),
+      )
       .map((row) => resumeTargetKey(row.video_edition_id, row.language)),
   )
 }
