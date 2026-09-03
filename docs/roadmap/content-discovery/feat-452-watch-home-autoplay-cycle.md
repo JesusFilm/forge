@@ -79,6 +79,11 @@ that same item, so the keyed media element does not change and playback stops.
 - Loading-performance review: production code adds no import, dependency,
   request, image, timer, effect, or serialized payload. The only runtime work is
   a bounded in-memory scan over carousel pool data already in the client.
+- Base-versus-head queue benchmark (Node 26, warm run, nine samples of 10,000
+  builds against a conservative 1,000-video/10-pool payload): base median
+  9.94 microseconds/build; head median 46.53 microseconds/build. The added
+  36.59 microseconds is below 0.05 ms for the single initialization build and
+  does not add page-loading I/O or payload bytes.
 - Browser automation was unavailable in this checkout. The rendered jsdom test
   covers the exact ended-to-new-player-to-play chain; LFG's browser-test gate
   retains the environment limitation without claiming visual proof.

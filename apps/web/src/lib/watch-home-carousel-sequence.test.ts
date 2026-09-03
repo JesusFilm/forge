@@ -387,6 +387,18 @@ describe("watch home carousel sequence helpers", () => {
     expect(result.videos.map((item) => item.id)).toEqual(["video-c", "video-a"])
   })
 
+  it("respects explicit played ids without browser-backed progress", () => {
+    const result = buildWatchHomeVideoQueue({
+      playedIds: ["video-a"],
+      pools: [pool("pool-a", ["video-a", "video-b"])],
+      targetVideoCount: 1,
+      useStoredProgress: false,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual(["video-b"])
+  })
+
   it("terminates empty and one-video queues at their eligible catalog size", () => {
     const empty = buildWatchHomeVideoQueue({
       pools: [pool("pool-a", [])],

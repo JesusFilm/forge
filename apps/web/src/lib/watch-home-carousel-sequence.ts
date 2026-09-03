@@ -470,28 +470,30 @@ export function buildWatchHomeVideoQueue({
     playedIds ?? (useStoredProgress ? readWatchHomeTvPlayedIds(now) : []),
   )
   let poolIndex = Math.max(0, startPoolIndex)
-  const hasUnseenEligibleVideo = () =>
-    pools.some((pool) =>
-      pool.videos.some(
-        (video) =>
-          Boolean(video.src) && !excluded.has(video.id) && !seen.has(video.id),
-      ),
-    )
+  const isEligibleUnseen = (video: WatchHomeTvCarouselVideoSlide) =>
+    Boolean(video.src) && !excluded.has(video.id) && !seen.has(video.id)
+  const eligibleUnseenIds = new Set(
+    pools.flatMap((pool) =>
+      pool.videos.filter(isEligibleUnseen).map((video) => video.id),
+    ),
+  )
+  let remainingEligibleCount = eligibleUnseenIds.size
 
   const fillQueue = (ignoreProgress: boolean) => {
+    const respectPlayedProgress = !ignoreProgress
+    const respectStoredProgress = useStoredProgress && !ignoreProgress
     let poolsWithoutSelection = 0
 
     while (
       videos.length < targetVideoCount &&
       poolsWithoutSelection < pools.length &&
-      hasUnseenEligibleVideo()
+      remainingEligibleCount > 0
     ) {
       const pool = pools[poolIndex % pools.length]
 
       if (
         !pool ||
-        (!ignoreProgress &&
-          useStoredProgress &&
+        (respectStoredProgress &&
           isWatchHomePoolExhausted(pool.id, pool.videos.length))
       ) {
         poolIndex += 1
@@ -500,21 +502,17 @@ export function buildWatchHomeVideoQueue({
       }
 
       const poolPlayed = new Set(
-        !ignoreProgress && useStoredProgress
-          ? readWatchHomePoolPlayedIds(pool.id)
-          : [],
+        respectStoredProgress ? readWatchHomePoolPlayedIds(pool.id) : [],
       )
       const candidates = pool.videos.filter(
         (video) =>
-          Boolean(video.src) &&
-          !excluded.has(video.id) &&
-          !seen.has(video.id) &&
-          (ignoreProgress || !persistentPlayed.has(video.id)) &&
+          isEligibleUnseen(video) &&
+          (!respectPlayedProgress || !persistentPlayed.has(video.id)) &&
           !poolPlayed.has(video.id),
       )
 
       if (candidates.length === 0) {
-        if (!ignoreProgress && useStoredProgress) {
+        if (respectStoredProgress) {
           markWatchHomePoolFailure(pool.id, pool.videos.length)
         }
         poolIndex += 1
@@ -538,7 +536,8 @@ export function buildWatchHomeVideoQueue({
         }
         videos.push(video)
         seen.add(video.id)
-        if (!ignoreProgress && useStoredProgress) {
+        remainingEligibleCount -= 1
+        if (respectStoredProgress) {
           resetWatchHomePoolFailures(pool.id)
         }
         poolsWithoutSelection = 0
@@ -551,7 +550,7 @@ export function buildWatchHomeVideoQueue({
   }
 
   fillQueue(false)
-  if (videos.length < targetVideoCount && hasUnseenEligibleVideo()) {
+  if (videos.length < targetVideoCount && remainingEligibleCount > 0) {
     fillQueue(true)
   }
 
