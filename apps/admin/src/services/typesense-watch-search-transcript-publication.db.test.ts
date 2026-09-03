@@ -41,9 +41,10 @@ const DEFAULT_VITEST_DATABASE_URL =
 const hasRealDatabaseUrl =
   !!baseDatabaseUrl && baseDatabaseUrl !== DEFAULT_VITEST_DATABASE_URL
 
-function schemaDatabaseUrl(baseUrl: string, schema: string): string {
+function databaseUrlForDatabase(baseUrl: string, database: string): string {
   const url = new URL(baseUrl)
-  url.searchParams.set("schema", schema)
+  url.pathname = `/${database}`
+  url.searchParams.delete("schema")
   return url.toString()
 }
 
@@ -441,10 +442,10 @@ class ControlledTypesenseServer {
 const suite = !RUN_REAL_DB_TEST || !hasRealDatabaseUrl ? describe.skip : describe
 
 suite("current transcript publication into Watch Search", () => {
-  const schemaName = `watch_search_transcript_publication_${Date.now()}_${Math.random()
+  const databaseName = `watch_search_transcript_publication_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`
-  const databaseUrl = schemaDatabaseUrl(baseDatabaseUrl!, schemaName)
+  const databaseUrl = databaseUrlForDatabase(baseDatabaseUrl!, databaseName)
   const typesenseServer = new ControlledTypesenseServer()
   const embedding = makeEmbedding()
   let prisma: PrismaClient
@@ -458,7 +459,7 @@ suite("current transcript publication into Watch Search", () => {
     if (!hasRealDatabaseUrl) return
     pgClient = new Client({ connectionString: baseDatabaseUrl! })
     await pgClient.connect()
-    await pgClient.query(`CREATE SCHEMA "${schemaName}"`)
+    await pgClient.query(`CREATE DATABASE "${databaseName}"`)
     execFileSync("pnpm", ["db:migrate:deploy"], {
       cwd: adminPackageRoot(),
       env: { ...process.env, DATABASE_URL: databaseUrl },
@@ -660,7 +661,7 @@ suite("current transcript publication into Watch Search", () => {
       await typesenseServer.stop()
     }
     if (databaseReady && pgClient) {
-      await pgClient.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await pgClient.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`)
       await pgClient.end()
     }
   })
