@@ -639,7 +639,9 @@ model WatchSearchCandidateGeneration {
   id                           String                              @id @db.VarChar(128)
   state                        WatchSearchCandidateGenerationState @default(BUILDING)
   version                      Int                                 @default(0)
-  applicationRevision          String                              @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                              @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                              @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                              @map("transcript_chunking_version") @db.VarChar(128)
   sourceEpoch                  String                              @map("source_epoch") @db.VarChar(128)
   sourceDigests                Json                                @map("source_digests")
   catalogCollection            String                              @map("catalog_collection") @db.VarChar(255)
@@ -669,6 +671,7 @@ model WatchSearchCandidateGeneration {
 
   @@index([state, createdAt])
   @@index([transcriptCollection, transcriptProjectionRevision])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion])
   @@map("watch_search_candidate_generation")
 }
 
@@ -691,7 +694,9 @@ model WatchSearchCandidateQualification {
   generationId                 String                                  @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration          @relation(fields: [generationId], references: [id], onDelete: Restrict)
   status                       WatchSearchCandidateQualificationStatus
-  applicationRevision          String                                  @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                                  @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                                  @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                                  @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                                  @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                                  @map("transcript_projection_revision")
   qrelsRevision                String                                  @map("qrels_revision") @db.VarChar(128)
@@ -711,7 +716,9 @@ model WatchSearchCandidateLease {
   holderToken                  String                         @map("holder_token") @db.VarChar(128)
   generationId                 String                         @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
-  applicationRevision          String                         @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                         @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                         @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                         @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                         @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                         @map("transcript_projection_revision")
   currentBindings              Json                           @map("current_bindings")
@@ -721,6 +728,7 @@ model WatchSearchCandidateLease {
 
   @@index([generationId, expiresAt])
   @@index([transcriptCollection, transcriptProjectionRevision, expiresAt])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion, expiresAt])
   @@index([expiresAt])
   @@map("watch_search_candidate_lease")
 }
@@ -1383,18 +1391,18 @@ model LanguageFallback {
 /// The raw query text is not stored; `queryHash` is the SHA-256 hash of the
 /// normalized search text plus provider/model/dimension metadata.
 model QueryEmbeddingCache {
-  id         String   @id @default(cuid())
-  contractId String   @map("contract_id") @db.VarChar(191)
+  id         String                   @id @default(cuid())
+  contractId String                   @map("contract_id") @db.VarChar(191)
   contract   ContentEmbeddingContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
   provider   String
   model      String
   dimensions Int
-  queryHash  String   @map("query_hash")
+  queryHash  String                   @map("query_hash")
   embedding  Json
-  expiresAt  DateTime @map("expires_at")
-  lastUsedAt DateTime @default(now()) @map("last_used_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  expiresAt  DateTime                 @map("expires_at")
+  lastUsedAt DateTime                 @default(now()) @map("last_used_at")
+  createdAt  DateTime                 @default(now()) @map("created_at")
+  updatedAt  DateTime                 @updatedAt @map("updated_at")
 
   @@unique([contractId, provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
   @@index([contractId, expiresAt], map: "query_embedding_cache_contract_expiry_idx")
@@ -1407,18 +1415,18 @@ model QueryEmbeddingCache {
 /// current row declares the exact query-time and stored-vector tuples that are
 /// permitted to interoperate.
 model ContentEmbeddingContract {
-  id                    String   @id @db.VarChar(191)
-  queryProvider         String   @map("query_provider") @db.VarChar(64)
-  queryModel            String   @map("query_model") @db.VarChar(191)
-  queryNativeDimensions Int      @map("query_native_dimensions")
-  queryDimensions       Int      @map("query_dimensions")
-  queryTransformVersion String?  @map("query_transform_version") @db.VarChar(191)
-  storageProvider       String   @map("storage_provider") @db.VarChar(64)
-  storageModel          String   @map("storage_model") @db.VarChar(191)
-  storageNativeDimensions Int    @map("storage_native_dimensions")
-  storageDimensions     Int      @map("storage_dimensions")
-  storageTransformVersion String? @map("storage_transform_version") @db.VarChar(191)
-  createdAt             DateTime @default(now()) @map("created_at")
+  id                      String   @id @db.VarChar(191)
+  queryProvider           String   @map("query_provider") @db.VarChar(64)
+  queryModel              String   @map("query_model") @db.VarChar(191)
+  queryNativeDimensions   Int      @map("query_native_dimensions")
+  queryDimensions         Int      @map("query_dimensions")
+  queryTransformVersion   String?  @map("query_transform_version") @db.VarChar(191)
+  storageProvider         String   @map("storage_provider") @db.VarChar(64)
+  storageModel            String   @map("storage_model") @db.VarChar(191)
+  storageNativeDimensions Int      @map("storage_native_dimensions")
+  storageDimensions       Int      @map("storage_dimensions")
+  storageTransformVersion String?  @map("storage_transform_version") @db.VarChar(191)
+  createdAt               DateTime @default(now()) @map("created_at")
 
   queryEmbeddingCaches QueryEmbeddingCache[]
   pointers             ContentEmbeddingContractPointer[]
@@ -1429,10 +1437,10 @@ model ContentEmbeddingContract {
 /// Singleton mutable pointer for the current contract. The registry rows are
 /// immutable; changing current serving updates only this pointer.
 model ContentEmbeddingContractPointer {
-  id               String                  @id @db.VarChar(64)
-  activeContractId String                  @map("active_contract_id") @db.VarChar(191)
+  id               String                   @id @db.VarChar(64)
+  activeContractId String                   @map("active_contract_id") @db.VarChar(191)
   activeContract   ContentEmbeddingContract @relation(fields: [activeContractId], references: [id], onDelete: Restrict)
-  updatedAt        DateTime                @updatedAt @map("updated_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
 
   @@map("content_embedding_contract_pointer")
 }

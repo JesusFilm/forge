@@ -272,8 +272,11 @@ describe("search comparison page", () => {
               diagnostics: {
                 profile: "CURRENT",
                 generationId: null,
-                applicationRevision: null,
+                indexContractRevision: null,
+                contentEmbeddingContractId: null,
+                transcriptChunkingVersion: null,
                 transcriptProjectionRevision: null,
+                activeTranscriptProjectionRevision: null,
                 binding: {
                   catalog: "current-catalog",
                   availability: "current-availability",

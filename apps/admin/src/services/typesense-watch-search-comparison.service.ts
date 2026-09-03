@@ -16,7 +16,7 @@ import {
 import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
-import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
+import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -286,6 +286,8 @@ type EvaluationCandidateGenerationResolver = {
   getGeneration(generationId: string): Promise<{
     id: string
     transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
     transcriptProjectionRevision: bigint
   }>
   resolveGeneration(
@@ -303,8 +305,10 @@ export async function resolveEvaluationCandidateWatchSearchProfile(
   const generation = await generations.getGeneration(pointer.generationId)
   const resolved = await generations.resolveGeneration({
     generationId: generation.id,
-    applicationRevision: candidateWatchSearchApplicationRevision(),
+    indexContractRevision: candidateWatchSearchIndexContractRevision(),
     transcriptCollection: generation.transcriptCollection,
+    contentEmbeddingContractId: generation.contentEmbeddingContractId,
+    transcriptChunkingVersion: generation.transcriptChunkingVersion,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
@@ -337,7 +341,9 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
     acquireLease: async ({ comparisonId, current, candidate }) => {
       if (
         !candidate.generationId ||
-        !candidate.applicationRevision ||
+        !candidate.indexContractRevision ||
+        !candidate.contentEmbeddingContractId ||
+        !candidate.transcriptChunkingVersion ||
         candidate.transcriptProjectionRevision == null
       ) {
         throw new ComparisonError("profile_unavailable")
@@ -348,8 +354,10 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
         holderToken: comparisonId,
         ttlMs: COMPARISON_LEASE_TTL_MS,
         generationId: candidate.generationId,
-        applicationRevision: candidate.applicationRevision,
+        indexContractRevision: candidate.indexContractRevision,
         transcriptCollection: candidate.binding.transcript,
+        contentEmbeddingContractId: candidate.contentEmbeddingContractId,
+        transcriptChunkingVersion: candidate.transcriptChunkingVersion,
         transcriptProjectionRevision: candidate.transcriptProjectionRevision,
         currentBindings: watchSearchBindingMembers(current),
       })
@@ -357,8 +365,10 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
       return {
         holderToken: lease.holderToken,
         generationId: lease.generationId,
-        applicationRevision: lease.applicationRevision,
+        indexContractRevision: lease.indexContractRevision,
         transcriptCollection: lease.transcriptCollection,
+        contentEmbeddingContractId: lease.contentEmbeddingContractId,
+        transcriptChunkingVersion: lease.transcriptChunkingVersion,
         transcriptProjectionRevision: lease.transcriptProjectionRevision,
         currentBindings: watchSearchBindingMembers(current),
         expiresAt: lease.expiresAt,

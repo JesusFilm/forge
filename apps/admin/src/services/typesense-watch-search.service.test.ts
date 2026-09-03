@@ -202,10 +202,16 @@ const candidateFieldManifests = {
   transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
 } as const
 
+const transcriptCompatibility = {
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+} as const
+
 function candidateProfile() {
   return createCandidateWatchSearchProfile({
     generationId: "generation-1",
-    applicationRevision: "revision-1",
+    indexContractRevision: "revision-1",
+    ...transcriptCompatibility,
     transcriptProjectionRevision: 7n,
     fieldManifests: candidateFieldManifests,
     collections: {
@@ -628,7 +634,8 @@ describe("TypesenseWatchSearchService", () => {
     const profile = createCandidateWatchSearchProfile(
       {
         generationId: "generation-1",
-        applicationRevision: "revision-1",
+        indexContractRevision: "revision-1",
+        ...transcriptCompatibility,
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateFieldManifests,
         collections: {
@@ -702,16 +709,20 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       rankingRevision: "title-and-brand-v2",
       transcriptProjectionRevision: "7",
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: "none:operator-accepted:launch-1",
     })
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
+      activeTranscriptProjectionRevision: null,
       binding: profile.binding,
       retrievalCalls: 2,
       logicalSubsearches: 6,
@@ -1090,7 +1101,8 @@ describe("TypesenseWatchSearchService", () => {
   it("never retries a missing candidate projection through current aliases", async () => {
     const profile = createCandidateWatchSearchProfile({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests: candidateFieldManifests,
       collections: {
@@ -1442,9 +1454,12 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CURRENT",
       generationId: null,
-      applicationRevision: null,
+      indexContractRevision: null,
+      contentEmbeddingContractId: null,
+      transcriptChunkingVersion: null,
       rankingRevision: "legacy-rrf",
       transcriptProjectionRevision: null,
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: null,
     })
     expect(diagnostics).toMatchObject({

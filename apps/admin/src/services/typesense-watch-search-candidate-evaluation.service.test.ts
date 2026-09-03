@@ -20,7 +20,9 @@ const currentProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: null,
-  applicationRevision: null,
+  indexContractRevision: null,
+  contentEmbeddingContractId: null,
+  transcriptChunkingVersion: null,
   transcriptProjectionRevision: null,
   fieldManifests: null,
   allowCompatibilityFallback: false,
@@ -35,7 +37,9 @@ const candidateProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: "generation-1",
-  applicationRevision: "watch-search-candidate/v3",
+  indexContractRevision: "watch-search-candidate/v3",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
   transcriptProjectionRevision: 7n,
   qrelsRevision: "qrels-reviewed-1",
   fieldManifests: {
@@ -98,8 +102,12 @@ function searchResult(): {
     diagnostics: {
       profile: "CANDIDATE" as const,
       generationId: candidateProfile.generationId,
-      applicationRevision: candidateProfile.applicationRevision,
+      indexContractRevision: candidateProfile.indexContractRevision,
+      contentEmbeddingContractId: candidateProfile.contentEmbeddingContractId,
+      transcriptChunkingVersion: candidateProfile.transcriptChunkingVersion,
       transcriptProjectionRevision:
+        candidateProfile.transcriptProjectionRevision,
+      activeTranscriptProjectionRevision:
         candidateProfile.transcriptProjectionRevision,
       binding: candidateProfile.binding,
       retrievalCalls: 2,
@@ -131,8 +139,10 @@ function fixture() {
       resourceKey: `watch-search-candidate-eval:${source.toLowerCase()}:${evaluationId}`,
       holderToken: `holder-${evaluationId}`,
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
       expiresAt: new Date(Date.now() + 60_000),
@@ -185,7 +195,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
   it.each([
     "missing Evaluation pointer",
     "generation is not READY",
-    "application revision is incompatible",
+    "index contract revision is incompatible",
   ])("fails closed when the Candidate profile is unavailable: %s", async () => {
     const { deps } = fixture()
     deps.resolveCandidateProfile.mockRejectedValueOnce(new Error("unavailable"))
@@ -292,8 +302,10 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       resourceKey: "watch-search-candidate-eval:stale",
       holderToken: "holder-stale",
       generationId: "generation-stale",
-      applicationRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v3",
       transcriptCollection: "watch_search_transcripts_physical",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 7n,
       currentBindings: Object.values(currentProfile.binding),
       expiresAt: new Date(Date.now() + 60_000),
@@ -337,10 +349,10 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       candidateSearchEvaluationRevision({
         profile: {
           ...candidateProfile,
-          // Varies ONLY the application revision, so it must differ from the
+          // Varies ONLY the index contract revision, so it must differ from the
           // baseline -- this is the entry proving a projection/retrieval-field
           // change moves the evaluation identity.
-          applicationRevision: "watch-search-candidate/v4",
+          indexContractRevision: "watch-search-candidate/v4",
         },
         currentProfile,
         rankingRevision: "title-and-brand-v2",
@@ -418,8 +430,14 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       })),
       resolveGeneration: vi.fn(async (input) => ({
         generationId: input.generationId,
-        applicationRevision: input.applicationRevision,
-        transcriptProjectionRevision: input.transcriptProjectionRevision,
+        indexContractRevision: input.indexContractRevision,
+        contentEmbeddingContractId:
+          currentProfile.contentEmbeddingContractId ??
+          candidateProfile.contentEmbeddingContractId,
+        transcriptChunkingVersion:
+          currentProfile.transcriptChunkingVersion ??
+          candidateProfile.transcriptChunkingVersion,
+        transcriptProjectionRevision: input.transcriptProjectionRevision ?? 7n,
         collections: {
           catalog: `watch_search_candidate_${input.generationId}_catalog`,
           availability: `watch_search_candidate_${input.generationId}_availability`,
@@ -433,9 +451,12 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const profile = await resolveServingCandidateWatchSearchProfile({
       generations,
       currentProfile,
-      applicationRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v3",
       rankingRevision: "title-and-brand-v2",
-      transcriptProjectionRevision: 7n,
+      transcriptCompatibility: {
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+      },
       qrelsRevision: "qrels-reviewed-1",
     })
 
@@ -445,9 +466,10 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     expect(generations.getPointer).toHaveBeenCalledWith("SERVING")
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-serving",
-      applicationRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v3",
       transcriptCollection: currentProfile.binding.transcript,
-      transcriptProjectionRevision: 7n,
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       requireQualified: true,
       currentBindings: Object.values(currentProfile.binding),
       qrelsRevision: "qrels-reviewed-1",
@@ -481,9 +503,12 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
         resolveServingCandidateWatchSearchProfile({
           generations,
           currentProfile,
-          applicationRevision: "watch-search-candidate/v3",
+          indexContractRevision: "watch-search-candidate/v3",
           rankingRevision: "title-and-brand-v2",
-          transcriptProjectionRevision: 7n,
+          transcriptCompatibility: {
+            contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+            transcriptChunkingVersion: "mastra-v1",
+          },
           qrelsRevision: "qrels-reviewed-1",
         }),
       ).rejects.toBeInstanceOf(CandidateSearchEvaluationError)

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 
 import {
   cachedBoundedTtlValue,
@@ -169,8 +170,11 @@ type TypesenseWatchSearchDeps = {
 export type TypesenseWatchSearchDiagnostics = {
   profile: TypesenseWatchSearchProfile["kind"]
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: bigint | null
+  activeTranscriptProjectionRevision: bigint | null
   binding: TypesenseWatchSearchCollectionBinding
   retrievalCalls: number
   logicalSubsearches: number
@@ -1133,15 +1137,20 @@ export class TypesenseWatchSearchService {
   private readonly logger: Pick<Console, "warn">
   private readonly profile: TypesenseWatchSearchProfile
   private readonly rankingImplementation: WatchSearchRankingImplementation
+  private readonly activeTranscriptProjectionRevision: bigint | null
 
   private retrievalIdentity(): WatchSearchRetrievalIdentity {
     return {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       rankingRevision: this.rankingImplementation,
       transcriptProjectionRevision:
         this.profile.transcriptProjectionRevision?.toString() ?? null,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision?.toString() ?? null,
       evaluationRevision: this.profile.qrelsRevision ?? null,
     }
   }
@@ -1161,6 +1170,8 @@ export class TypesenseWatchSearchService {
       this.profile.kind === "CANDIDATE"
         ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
         : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
+    this.activeTranscriptProjectionRevision =
+      resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? null
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
@@ -1170,8 +1181,12 @@ export class TypesenseWatchSearchService {
     const diagnostics: MutableSearchDiagnostics = {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       transcriptProjectionRevision: this.profile.transcriptProjectionRevision,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision,
       binding: this.profile.binding,
       retrievalCalls: 0,
       logicalSubsearches: 0,

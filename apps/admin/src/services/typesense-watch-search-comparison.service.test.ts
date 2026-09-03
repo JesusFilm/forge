@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
+import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
 import type { TypesenseWatchSearchProfile } from "./typesense-watch-search-profile"
 import {
   resolveEvaluationCandidateWatchSearchProfile,
@@ -17,7 +17,9 @@ const currentProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: null,
-  applicationRevision: null,
+  indexContractRevision: null,
+  contentEmbeddingContractId: null,
+  transcriptChunkingVersion: null,
   transcriptProjectionRevision: null,
   fieldManifests: null,
   allowCompatibilityFallback: false,
@@ -33,7 +35,9 @@ const candidateProfile = {
     transcript: "watch_search_transcripts_physical",
   },
   generationId: "generation-1",
-  applicationRevision: "revision-1",
+  indexContractRevision: "revision-1",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
   transcriptProjectionRevision: 7n,
   fieldManifests: {
     catalog: [{ name: "slug", type: "string" }],
@@ -70,8 +74,12 @@ function searchResult(profile: "CURRENT" | "CANDIDATE") {
     diagnostics: {
       profile,
       generationId: profile === "CANDIDATE" ? "generation-1" : null,
-      applicationRevision: profile === "CANDIDATE" ? "revision-1" : null,
+      indexContractRevision: profile === "CANDIDATE" ? "revision-1" : null,
+      contentEmbeddingContractId:
+        profile === "CANDIDATE" ? "semantic-transcript-pgvector-v1" : null,
+      transcriptChunkingVersion: profile === "CANDIDATE" ? "mastra-v1" : null,
       transcriptProjectionRevision: profile === "CANDIDATE" ? 7n : null,
+      activeTranscriptProjectionRevision: profile === "CANDIDATE" ? 7n : null,
       binding:
         profile === "CANDIDATE"
           ? candidateProfile.binding
@@ -110,8 +118,10 @@ function fixture() {
   const lease = {
     holderToken: "holder-1",
     generationId: "generation-1",
-    applicationRevision: "revision-1",
+    indexContractRevision: "revision-1",
     transcriptCollection: "watch_search_transcripts_physical",
+    contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+    transcriptChunkingVersion: "mastra-v1",
     transcriptProjectionRevision: 7n,
     currentBindings: Object.values(currentProfile.binding),
     expiresAt: new Date(Date.now() + 60_000),
@@ -147,13 +157,17 @@ describe("TypesenseWatchSearchComparisonService", () => {
       })),
       getGeneration: vi.fn(async () => ({
         id: "generation-1",
-        applicationRevision: candidateWatchSearchApplicationRevision(),
+        indexContractRevision: candidateWatchSearchIndexContractRevision(),
         transcriptCollection: "watch_search_transcripts_physical",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 7n,
       })),
       resolveGeneration: vi.fn(async () => ({
         generationId: "generation-1",
-        applicationRevision: candidateWatchSearchApplicationRevision(),
+        indexContractRevision: candidateWatchSearchIndexContractRevision(),
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateProfile.fieldManifests,
         collections: candidateProfile.binding,
@@ -165,12 +179,14 @@ describe("TypesenseWatchSearchComparisonService", () => {
     ).resolves.toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: candidateWatchSearchApplicationRevision(),
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
     })
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-1",
-      applicationRevision: candidateWatchSearchApplicationRevision(),
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
       transcriptCollection: "watch_search_transcripts_physical",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 7n,
       requireQualified: false,
     })
