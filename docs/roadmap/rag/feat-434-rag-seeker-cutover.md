@@ -44,7 +44,8 @@ Prepare and execute an atomic base-URL/allowlist cutover, verify Seeker, and ret
 
 ## Resolution
 
-PR #2153 shipped the production guard while intentionally leaving this feature
-in progress until the live cutover. The follow-up closure PR records the
+[PR #2153](https://github.com/JesusFilm/forge/pull/2153) shipped the production
+guard while intentionally leaving this feature in progress until the live
+cutover. [PR #2158](https://github.com/JesusFilm/forge/pull/2158) records the
 successful Railway-private variable cutover and Seeker retrieval smoke in
-`docs/roadmap/rag/evidence/feat-434/seeker-cutover.md`.
+`docs/roadmap/rag/evidence/feat-434/seeker-cutover.md` and completes the feature.
