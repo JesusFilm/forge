@@ -14,7 +14,7 @@ import {
 import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
 import type { WatchSearchRankingImplementation } from "@/services/typesense-watch-search-ranking"
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "@/services/typesense-watch-search-candidate-identity"
 import {
@@ -53,9 +53,11 @@ const MAX_CANDIDATE_CALLER_P95_MS = 1_000
 const REQUIRED_SLICES = REQUIRED_CANDIDATE_BENCHMARK_SLICES
 export type CandidateBenchmarkIdentity = {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   rankingRevision: WatchSearchRankingImplementation
   transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: string
   qrelsRevision: string
   currentBindings: TypesenseWatchSearchCollectionBinding
@@ -65,8 +67,11 @@ export type CandidateBenchmarkIdentity = {
 type CandidateDiagnostics = {
   profile: "CURRENT" | "CANDIDATE"
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: string | null
+  activeTranscriptProjectionRevision: string | null
   binding: TypesenseWatchSearchCollectionBinding
   retrievalCalls: number
   logicalSubsearches: number
@@ -197,7 +202,11 @@ function sideIdentityMatches(
     side.diagnostics.profile === "CANDIDATE" &&
     side.diagnostics.rankingImplementation === identity.rankingRevision &&
     side.diagnostics.generationId === identity.generationId &&
-    side.diagnostics.applicationRevision === identity.applicationRevision &&
+    side.diagnostics.indexContractRevision === identity.indexContractRevision &&
+    side.diagnostics.contentEmbeddingContractId ===
+      identity.contentEmbeddingContractId &&
+    side.diagnostics.transcriptChunkingVersion ===
+      identity.transcriptChunkingVersion &&
     side.diagnostics.transcriptProjectionRevision ===
       identity.transcriptProjectionRevision &&
     sameBindings(side.diagnostics.binding, identity.candidateBindings)
@@ -665,9 +674,13 @@ export function normalizeCandidateBenchmarkDiagnostics(
   return {
     profile: diagnostics.profile,
     generationId: diagnostics.generationId,
-    applicationRevision: diagnostics.applicationRevision,
+    indexContractRevision: diagnostics.indexContractRevision,
+    contentEmbeddingContractId: diagnostics.contentEmbeddingContractId,
+    transcriptChunkingVersion: diagnostics.transcriptChunkingVersion,
     transcriptProjectionRevision:
       diagnostics.transcriptProjectionRevision?.toString() ?? null,
+    activeTranscriptProjectionRevision:
+      diagnostics.activeTranscriptProjectionRevision?.toString() ?? null,
     binding: diagnostics.binding,
     retrievalCalls: diagnostics.retrievalCalls,
     logicalSubsearches: diagnostics.logicalSubsearches,
@@ -753,7 +766,7 @@ async function main() {
     throw new Error("WATCH_SEARCH_CANDIDATE_PAIRS_PER_CASE must be 1..10000")
   }
 
-  const applicationRevision = candidateWatchSearchApplicationRevision()
+  const indexContractRevision = candidateWatchSearchIndexContractRevision()
   const rankingRevision = candidateWatchSearchRankingRevision()
   const typesense = new TypesenseClient({ host, apiKey, timeoutMs: 2_000 })
   const generations = new TypesenseWatchSearchCandidateGenerationService(
@@ -767,17 +780,21 @@ async function main() {
   const candidate = createCandidateWatchSearchProfile(
     await generations.resolveGeneration({
       generationId: generation.id,
-      applicationRevision,
+      indexContractRevision,
       transcriptCollection: generation.transcriptCollection,
+      contentEmbeddingContractId: generation.contentEmbeddingContractId,
+      transcriptChunkingVersion: generation.transcriptChunkingVersion,
       transcriptProjectionRevision: generation.transcriptProjectionRevision,
       requireQualified: false,
     }),
   )
   const identity: CandidateBenchmarkIdentity = {
     generationId: generation.id,
-    applicationRevision,
+    indexContractRevision,
     rankingRevision,
     transcriptCollection: candidate.binding.transcript,
+    contentEmbeddingContractId: candidate.contentEmbeddingContractId!,
+    transcriptChunkingVersion: candidate.transcriptChunkingVersion!,
     transcriptProjectionRevision:
       candidate.transcriptProjectionRevision!.toString(),
     qrelsRevision,
@@ -808,8 +825,10 @@ async function main() {
           holderToken,
           ttlMs: EVALUATION_LEASE_TTL_MS,
           generationId: identity.generationId,
-          applicationRevision: identity.applicationRevision,
+          indexContractRevision: identity.indexContractRevision,
           transcriptCollection: identity.transcriptCollection,
+          contentEmbeddingContractId: identity.contentEmbeddingContractId,
+          transcriptChunkingVersion: identity.transcriptChunkingVersion,
           transcriptProjectionRevision: BigInt(
             identity.transcriptProjectionRevision,
           ),
@@ -839,8 +858,10 @@ async function main() {
           candidate,
           lease: {
             generationId: identity.generationId,
-            applicationRevision: identity.applicationRevision,
+            indexContractRevision: identity.indexContractRevision,
             transcriptCollection: identity.transcriptCollection,
+            contentEmbeddingContractId: identity.contentEmbeddingContractId,
+            transcriptChunkingVersion: identity.transcriptChunkingVersion,
             transcriptProjectionRevision: BigInt(
               identity.transcriptProjectionRevision,
             ),

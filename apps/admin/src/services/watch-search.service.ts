@@ -201,9 +201,12 @@ export type WatchSearchLaneStatus = {
 export type WatchSearchRetrievalIdentity = {
   profile: "CURRENT" | "CANDIDATE"
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   rankingRevision: string
   transcriptProjectionRevision: string | null
+  activeTranscriptProjectionRevision: string | null
   evaluationRevision: string | null
 }
 

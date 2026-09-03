@@ -26,6 +26,12 @@ function matchesGeneration(row: Row, where: Row): boolean {
         (condition: Row) =>
           (condition.transcriptCollection?.not !== undefined &&
             row.transcriptCollection !== condition.transcriptCollection.not) ||
+          (condition.contentEmbeddingContractId?.not !== undefined &&
+            row.contentEmbeddingContractId !==
+              condition.contentEmbeddingContractId.not) ||
+          (condition.transcriptChunkingVersion?.not !== undefined &&
+            row.transcriptChunkingVersion !==
+              condition.transcriptChunkingVersion.not) ||
           (condition.transcriptProjectionRevision?.not !== undefined &&
             row.transcriptProjectionRevision !==
               condition.transcriptProjectionRevision.not),
@@ -142,10 +148,17 @@ export function memoryPrisma() {
             (typeof where.status === "object"
               ? where.status.in.includes(row.status)
               : row.status === where.status) &&
-            row.applicationRevision === where.applicationRevision &&
+            row.indexContractRevision === where.indexContractRevision &&
             row.transcriptCollection === where.transcriptCollection &&
-            row.transcriptProjectionRevision ===
-              where.transcriptProjectionRevision &&
+            (where.contentEmbeddingContractId === undefined ||
+              row.contentEmbeddingContractId ===
+                where.contentEmbeddingContractId) &&
+            (where.transcriptChunkingVersion === undefined ||
+              row.transcriptChunkingVersion ===
+                where.transcriptChunkingVersion) &&
+            (where.transcriptProjectionRevision === undefined ||
+              row.transcriptProjectionRevision ===
+                where.transcriptProjectionRevision) &&
             (where.qrelsRevision === undefined ||
               row.qrelsRevision === where.qrelsRevision) &&
             (where.currentBindings === undefined ||
@@ -189,6 +202,12 @@ export function memoryPrisma() {
               lease.generationId === where.generationId) &&
             (where.transcriptCollection === undefined ||
               lease.transcriptCollection === where.transcriptCollection) &&
+            (where.contentEmbeddingContractId === undefined ||
+              lease.contentEmbeddingContractId ===
+                where.contentEmbeddingContractId) &&
+            (where.transcriptChunkingVersion === undefined ||
+              lease.transcriptChunkingVersion ===
+                where.transcriptChunkingVersion) &&
             (where.transcriptProjectionRevision === undefined ||
               lease.transcriptProjectionRevision ===
                 where.transcriptProjectionRevision),
@@ -213,9 +232,11 @@ export function memoryPrisma() {
 
 export const generationInput = (id = "candidate-1") => ({
   id,
-  applicationRevision: "admin-app-sha-1",
+  indexContractRevision: "admin-app-sha-1",
   sourceEpoch: "catalog-revision-42",
   sourceDigests: { catalog: "sha256:catalog" },
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
   transcriptProjectionRevision: 17n,
   members: {
     catalog: {
@@ -258,8 +279,13 @@ export const currentBindings = [
   "watch_catalog_current",
   "watch_availability_current",
   "watch_lexical_current",
-  "watch_transcripts_current",
+  "watch_search_transcripts_active",
 ] as const
+
+export const currentTranscriptCompatibility = {
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+} as const
 
 export const currentAliasTargets = new Map<string, string>([
   [TYPESENSE_WATCH_CATALOG_ALIAS, currentBindings[0]],
@@ -324,9 +350,11 @@ export function passingQualificationReport(input: {
     reasons: [],
     identity: {
       generationId: input.generationId ?? "candidate-1",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: "17",
       qrelsRevision: input.qrelsRevision ?? "qrels-reviewed-1",
       currentBindings: input.currentBindings,
@@ -353,9 +381,11 @@ export function operatorAcceptanceReport(input: {
     status: "OPERATOR_ACCEPTED",
     identity: {
       generationId: "candidate-1",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: "17",
       qrelsRevision: `none:operator-accepted:${decisionId}`,
       currentBindings: input.currentBindings,
@@ -407,14 +437,22 @@ export function operatorAcceptanceReport(input: {
   }
 }
 
-export function createCandidateGenerationTestHarness() {
+export function createCandidateGenerationTestHarness(input?: {
+  currentTranscriptCompatibility?: {
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  }
+}) {
   const db = memoryPrisma()
   const typesense = schemaClient()
   let now = new Date("2026-08-10T00:00:00.000Z")
+  const transcriptCompatibility =
+    input?.currentTranscriptCompatibility ?? currentTranscriptCompatibility
   const service = new TypesenseWatchSearchCandidateGenerationService(
     db.prisma as never,
     typesense,
     () => now,
+    async () => transcriptCompatibility,
   )
 
   return {

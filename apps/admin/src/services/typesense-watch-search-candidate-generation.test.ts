@@ -10,6 +10,7 @@ import {
   createCandidateGenerationTestHarness,
   currentAliasTargets,
   currentBindings,
+  currentTranscriptCompatibility,
   generationInput,
   passingQualificationReport,
   qualificationAudit,
@@ -195,8 +196,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await expect(
       service.resolveGeneration({
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
       }),
     ).resolves.toMatchObject({
@@ -213,8 +216,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await expect(
       service.resolveGeneration({
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-2",
+        indexContractRevision: "admin-app-sha-2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
@@ -223,8 +228,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await expect(
       service.resolveGeneration({
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_replaced",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+        transcriptChunkingVersion: "mastra-v2",
         transcriptProjectionRevision: 18n,
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
@@ -243,10 +250,15 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       holderToken: "holder-a",
       ttlMs: 30_000,
       generationId: "candidate-1",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
-      currentBindings: ["watch_catalog_current", "watch_transcripts_current"],
+      currentBindings: [
+        "watch_catalog_current",
+        "watch_search_transcripts_active",
+      ],
     }
 
     await expect(service.acquireLease(identity)).resolves.toMatchObject({
@@ -259,7 +271,11 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.assertGenerationNotLeased("candidate-1"),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
     await expect(
-      service.assertTranscriptNotLeased("watch_search_transcripts_active", 17n),
+      service.assertTranscriptNotLeased(
+        "watch_search_transcripts_active",
+        "semantic-transcript-pgvector-v1",
+        "mastra-v1",
+      ),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
 
     await expect(
@@ -295,8 +311,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         holderToken: "holder-a",
         ttlMs: 30_000,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         currentBindings: ["watch_catalog_current"],
       }),
@@ -312,8 +330,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       holderToken: "holder-a",
       ttlMs: 30_000,
       generationId: "candidate-1",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
       currentBindings: ["watch_catalog_current"],
     }
@@ -337,6 +357,8 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       holderToken: "holder-a",
       generationId: "candidate-1",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
       expiresAt: new Date("2026-08-10T00:00:30.000Z"),
     })
@@ -388,9 +410,11 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       qualificationAudit,
       generationId: "candidate-1",
       status: "PASSED",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
       currentBindings,
@@ -399,8 +423,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await expect(
       service.resolveGeneration({
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         requireQualified: true,
         currentBindings,
@@ -413,7 +439,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -425,7 +451,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings: ["new-current-binding"],
         qrelsRevision: "qrels-reviewed-1",
@@ -436,7 +462,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "stale-qrels",
@@ -446,7 +472,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await service.pinServingGeneration({
       qualificationAudit,
       generationId: "candidate-1",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       expectedPointerVersion: 0,
       currentBindings,
       qrelsRevision: "qrels-reviewed-1",
@@ -465,13 +491,70 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-2",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 1,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
         rankingRevision: "title-and-brand-v2",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+  })
+
+  it("rejects stale qualification and serving promotion after exact transcript compatibility drifts", async () => {
+    const harness = createCandidateGenerationTestHarness({
+      currentTranscriptCompatibility: {
+        ...currentTranscriptCompatibility,
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+        transcriptChunkingVersion: "mastra-v2",
+      },
+    })
+    const staleService = harness.service
+    const staleDb = harness.db
+    await harness.ready()
+
+    await expect(
+      staleService.recordQualification({
+        qualificationAudit,
+        generationId: "candidate-1",
+        status: "PASSED",
+        indexContractRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v2",
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-reviewed-1",
+        currentBindings,
+        evidence: passingQualificationReport({ currentBindings }),
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(staleDb.qualifications).toHaveLength(0)
+
+    staleDb.qualifications.push({
+      id: "qualification-1",
+      generationId: "candidate-1",
+      status: "PASSED",
+      indexContractRevision: "admin-app-sha-1",
+      transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 17n,
+      qrelsRevision: "qrels-reviewed-1",
+      currentBindings,
+      evidence: passingQualificationReport({ currentBindings }),
+    })
+    await expect(
+      staleService.pinServingGeneration({
+        qualificationAudit,
+        generationId: "candidate-1",
+        indexContractRevision: "admin-app-sha-1",
+        expectedPointerVersion: 0,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v2",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(staleDb.pointers.get("SERVING")?.generationId).toBeNull()
   })
 
   it("rejects self-asserted passing evidence", async () => {
@@ -481,12 +564,14 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
-        currentBindings: ["watch_catalog_current"],
+        currentBindings,
         evidence: { p95NonRegression: true },
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
@@ -494,15 +579,16 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("rejects qualification audit fields that do not match the stored report", async () => {
     await ready()
-    const currentBindings = ["watch_catalog_current"]
     await expect(
       service.recordQualification({
         qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
         currentBindings,
@@ -526,14 +612,15 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     "rejects serving when the %s changed after recording",
     async (_name, patch) => {
       await ready()
-      const currentBindings = ["watch_catalog_current"]
       await service.recordQualification({
         qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
         currentBindings,
@@ -544,7 +631,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         service.pinServingGeneration({
           qualificationAudit: { ...qualificationAudit, ...patch },
           generationId: "candidate-1",
-          applicationRevision: "admin-app-sha-1",
+          indexContractRevision: "admin-app-sha-1",
           expectedPointerVersion: 0,
           currentBindings,
           qrelsRevision: "qrels-reviewed-1",
@@ -559,15 +646,16 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     "rejects a passing report when %s did not pass",
     async (gate) => {
       await ready()
-      const currentBindings = ["watch_catalog_current"]
       await expect(
         service.recordQualification({
           qualificationAudit,
           generationId: "candidate-1",
           status: "PASSED",
-          applicationRevision: "admin-app-sha-1",
+          indexContractRevision: "admin-app-sha-1",
           rankingRevision: "title-and-brand-v2",
           transcriptCollection: "watch_search_transcripts_active",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
           transcriptProjectionRevision: 17n,
           qrelsRevision: "qrels-reviewed-1",
           currentBindings,
@@ -584,15 +672,16 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     "rejects a passing report when %s has no artifact",
     async (gate) => {
       await ready()
-      const currentBindings = ["watch_catalog_current"]
       await expect(
         service.recordQualification({
           qualificationAudit,
           generationId: "candidate-1",
           status: "PASSED",
-          applicationRevision: "admin-app-sha-1",
+          indexContractRevision: "admin-app-sha-1",
           rankingRevision: "title-and-brand-v2",
           transcriptCollection: "watch_search_transcripts_active",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
           transcriptProjectionRevision: 17n,
           qrelsRevision: "qrels-reviewed-1",
           currentBindings,
@@ -607,15 +696,16 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("rejects qualification evidence relabeled to another ranking revision", async () => {
     await ready()
-    const currentBindings = ["watch_catalog_current"]
     await expect(
       service.recordQualification({
         qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
         currentBindings,
@@ -629,27 +719,30 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("does not let a qualification for the previous ranker authorize serving", async () => {
     await ready()
-    const currentBindings = ["watch_catalog_current"]
     db.qualifications.push({
       id: "legacy-qualification",
       generationId: "candidate-1",
       status: "PASSED",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
       currentBindings,
       evidence: {
         schemaVersion: "watch-search-candidate-qualification/v1",
-        identity: { applicationRevision: "admin-app-sha-1" },
+        identity: { indexContractRevision: "admin-app-sha-1" },
       },
     })
 
     await expect(
       service.resolveGeneration({
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         requireQualified: true,
         currentBindings,
@@ -662,7 +755,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -678,9 +771,11 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       qualificationAudit,
       generationId: "candidate-1",
       status: "PASSED",
-      applicationRevision: "admin-app-sha-1",
+      indexContractRevision: "admin-app-sha-1",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
       currentBindings,
@@ -691,7 +786,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-stale",
+        indexContractRevision: "admin-app-sha-stale",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -699,6 +794,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
 
+    typesense.getAlias.mockClear()
     typesense.getAlias.mockImplementation(async (alias: string) => ({
       name: alias,
       collection_name:
@@ -710,7 +806,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.pinServingGeneration({
         qualificationAudit,
         generationId: "candidate-1",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -734,14 +830,16 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
-        applicationRevision: "admin-app-sha-1",
+        indexContractRevision: "admin-app-sha-1",
         rankingRevision: "title-and-brand-v2",
         transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-2",
-        currentBindings: ["watch_catalog_current"],
+        currentBindings,
         evidence: passingQualificationReport({
-          currentBindings: ["watch_catalog_current"],
+          currentBindings,
           identityPatch: { qrelsRevision: "qrels-reviewed-1" },
         }),
       }),
