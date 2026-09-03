@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
@@ -627,7 +628,8 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-function cardToCarouselSlide(
+/** Exported for tests: this is the slide shape the live /watch pools serve. */
+export function cardToCarouselSlide(
   card: WatchHomeCard,
 ): WatchHomeTvCarouselVideoSlide | null {
   if (!card.hls) return null
@@ -639,7 +641,18 @@ function cardToCarouselSlide(
     title: card.title,
     label: card.label,
     href: card.href,
-    posterUrl: card.imageUrl,
+    // Frame-first for the hero surface, authored-first for the card. The admin
+    // library holds only mobile derivatives for these videos (measured 640x300
+    // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+    // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+    // watch-page hero requests.
+    // `||`, not `??`: admin passes image columns through raw, so a present-
+    // but-blank string is a real shape, and `??` would keep it and render an
+    // empty tile.
+    posterUrl:
+      resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId) ||
+      card.imageUrl ||
+      null,
     thumbnailUrl: card.imageUrl,
     imageAlt: card.imageAlt,
     src: card.hls,
