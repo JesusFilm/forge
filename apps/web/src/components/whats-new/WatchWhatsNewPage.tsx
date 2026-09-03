@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import {
   Compass,
   Globe2,
@@ -26,7 +27,6 @@ import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQui
 import { WhatsNewNoteBoard } from "@/components/whats-new/WhatsNewNoteBoard"
 import { WhatsNewShot } from "@/components/whats-new/WhatsNewShot"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
-import { WhatsNewSelfId } from "@/components/whats-new/WhatsNewSelfId"
 import {
   WHATS_NEW_ASSISTANTS,
   WHATS_NEW_AUDIENCES,
@@ -43,6 +43,11 @@ import {
 } from "@/components/whats-new/whats-new-content"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import {
+  languageVideosIndexPath,
+  languagesIndexPath,
+  tryAsLocaleSlug,
+} from "@/lib/routes"
 import type { WatchLanguageInventorySwitcherLanguage } from "@/lib/watch-language-inventory"
 
 // Watch's editorial type + surface tokens, mirrored from WatchHomePromo and
@@ -76,13 +81,40 @@ const CARD_LIST_CLASS =
    stays for the places where it sits beside other links. */
 const PRIMARY_CTA_CLASS =
   "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-[#d33a43] px-7 text-sm font-bold tracking-wider text-white uppercase transition-colors duration-200 hover:bg-[#b62d35] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:px-9"
-const SECONDARY_CTA_CLASS =
-  "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 text-sm font-bold tracking-wider text-white uppercase backdrop-blur-sm transition-colors duration-200 hover:border-white/50 hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4 sm:px-9"
 const HERO_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,rgba(69,10,29,0.92),rgba(30,15,60,0.72)_45%,rgba(234,88,12,0.18))]"
 const ACCENT_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,rgba(69,10,29,0.6),rgba(88,28,135,0.2),rgba(234,88,12,0.1))]"
 
+/**
+ * The audience card's box: border, tint gradient, blend mode, padding.
+ *
+ * One string, two callers — the fan's `<li>` in the audiences section and
+ * the estimate stage's card below it. The stage exists so the reader
+ * recognises the card that just slid past, which only works while the two
+ * boxes are identical, and only stays true if there is one of them.
+ */
+const AUDIENCE_CARD_CHROME_CLASS =
+  "relative overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--tint)_62%,transparent)] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--tint)_52%,#0a0910),color-mix(in_oklab,var(--tint)_26%,#08070c))] p-6 mix-blend-screen lg:p-8"
+
+/**
+ * Which audience card travels: ministry partners.
+ *
+ * Resolved by `icon` rather than by index, because the question it slides
+ * over to is specifically about people doing ministry work, and a card
+ * reordering would otherwise silently change the subject of the question
+ * without touching a line of it. Falls back to the first card so a renamed
+ * icon degrades to a card that travels the wrong distance rather than to a
+ * crash.
+ *
+ * Its index is also the travel DISTANCE in columns — card 3 has two
+ * columns to cross to reach the first — which is why the fallback is 0
+ * (travel nowhere) rather than the last card.
+ */
+const TRAVELLING_CARD_INDEX = Math.max(
+  0,
+  WHATS_NEW_AUDIENCES.cards.findIndex((card) => card.icon === "handshake"),
+)
 const ICONS: Record<WhatsNewIconKey, LucideIcon> = {
   compass: Compass,
   share: Share2,
@@ -234,6 +266,15 @@ export function WatchWhatsNewPage({
   languageSlug: string
   languages: WatchLanguageInventorySwitcherLanguage[]
 }) {
+  /**
+   * The reader's own language slug, for the per-language link in the
+   * letter. `tryAsLocaleSlug` rather than `asLocaleSlug`: the throwing
+   * constructor would take down a whole statically-rendered page over one
+   * decorative link, so a slug that fails the shape check drops the link
+   * and leaves the sentence standing.
+   */
+  const linkableLanguageSlug = tryAsLocaleSlug(languageSlug)
+
   const languageSwitcher = (
     <WhatsNewLanguageSwitcher
       currentSlug={languageSlug}
@@ -280,6 +321,21 @@ export function WatchWhatsNewPage({
             <p className="mt-6 max-w-[54ch] text-lg leading-8 text-white/82 sm:text-xl sm:leading-9">
               {WHATS_NEW_HERO.deck}
             </p>
+            {/* Dated, in the hero rather than the footer: a reader deciding
+                whether this page is worth their next five minutes is asking
+                "is this current?", and a leadership reader checks the date
+                before the copy. A `<time>` element so it is machine-readable
+                too — both halves of the date live in content, and a content
+                test holds them to the same day. */}
+            <p
+              data-testid="whats-new-last-updated"
+              className="mt-6 text-sm text-white/45"
+            >
+              {WHATS_NEW_HERO.lastUpdatedLabel}{" "}
+              <time dateTime={WHATS_NEW_HERO.lastUpdatedIso}>
+                {WHATS_NEW_HERO.lastUpdated}
+              </time>
+            </p>
             {/* `items-end`, not `items-center`: the switcher carries a label
                 above its control, so centring the row puts the button
                 halfway up that stack. Aligned to the bottom, and with the
@@ -295,7 +351,19 @@ export function WatchWhatsNewPage({
           </div>
         </section>
 
-        {/* The shift — editorial lede */}
+        {/* The shift — editorial lede. Second section on the page, by
+            decision: straight after the hero and ahead of the audiences.
+
+            It has been on both sides of the letter. It opened the page
+            originally, was moved below the letter on the argument that a
+            partner whose work broke should hear the acknowledgement before
+            a history of film distribution, and is now back at the top —
+            the arc is the strongest opening the page has, and it frames
+            everything after it.
+
+            Nothing in the stage's scroll geometry depends on where it sits
+            in the document — the ranges are `contain`-relative to the
+            stage's own pin, not to the page. */}
         <section
           aria-labelledby="whats-new-lede-heading"
           className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
@@ -592,236 +660,6 @@ export function WatchWhatsNewPage({
               </div>
             </div>
           </section>
-          <p
-            data-testid="whats-new-lede-closing"
-            className={`mt-14 max-w-4xl lg:mt-20 ${BODY_CLASS}`}
-          >
-            {WHATS_NEW_LEDE.closing}
-          </p>
-        </section>
-
-        {/* One story, every format — the whole arc as a single diagram */}
-        <WhatsNewFormatDiagram
-          eyebrowClass={EYEBROW_CLASS}
-          headingClass={SECTION_HEADING_CLASS}
-          bodyClass={BODY_CLASS}
-          contentClass={WATCH_PAGE_CONTENT_CLASSES}
-        />
-
-        {/* The AI shift — the chart, the argument, the research */}
-        <section
-          id="assistants"
-          aria-labelledby="whats-new-assistants-heading"
-          className="relative border-t border-white/10 bg-stone-950 scroll-mt-24 md:scroll-mt-32"
-        >
-          <div
-            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
-          >
-            <header className="max-w-3xl">
-              <p className={EYEBROW_CLASS}>{WHATS_NEW_ASSISTANTS.eyebrow}</p>
-              <h2
-                id="whats-new-assistants-heading"
-                className={`mt-4 ${SECTION_HEADING_CLASS}`}
-              >
-                {WHATS_NEW_ASSISTANTS.heading}
-              </h2>
-              <div className="mt-6 space-y-5">
-                {WHATS_NEW_ASSISTANTS.intro.map((paragraph) => (
-                  <p key={paragraph} className={BODY_CLASS}>
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </header>
-
-            <WhatsNewAiTrafficChart />
-
-            {/* Why the traffic is worth having */}
-            <div className="mt-20 max-w-3xl lg:mt-28">
-              <p className={EYEBROW_CLASS}>
-                {WHATS_NEW_ASSISTANTS.valueEyebrow}
-              </p>
-              <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
-                {WHATS_NEW_ASSISTANTS.valueHeading}
-              </h3>
-            </div>
-
-            {/* Everything the phone illustrates, in one grid with the phone
-                as a sticky right-hand column: the three reasons, the
-                research, and the argument that turns on it. The device
-                stays put beside all of it and only lets go at the end of
-                the section.
-
-                Placement is EXPLICIT rather than by DOM order, because the
-                two breakpoints need different orders and there is only one
-                DOM. Source order is cards, phone, research, closing — which
-                is the reading order on a phone, where each part follows the
-                one it belongs to. Above `lg` the phone is lifted out into
-                column two spanning all three rows, so the text runs down
-                the left in the same order with the device alongside.
-
-                The phone column is `auto` — sized by the device, not a
-                fraction of the row — so the text takes whatever is left and
-                the mockup never stretches. */}
-            <div className="mt-10 grid items-start gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-16 lg:gap-y-0">
-              {/* Above `lg` the cards spread across the full height of the
-                  phone's pin stage instead of stacking at the top and
-                  leaving a void beside it. It also earns the composition:
-                  the phone holds still while one card at a time comes
-                  level with it, which is the reading these three are for. */}
-              <ul className="grid gap-6 lg:col-start-1 lg:row-start-1 lg:gap-8">
-                {WHATS_NEW_ASSISTANTS.reasons.map((reason) => {
-                  const Icon = ICONS[reason.icon]
-
-                  return (
-                    <li
-                      key={reason.title}
-                      data-testid="whats-new-assistant-reason"
-                      style={{ "--tint": reason.tint } as CSSProperties}
-                      className="relative isolate overflow-hidden rounded-3xl border border-[color-mix(in_srgb,var(--tint)_38%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,transparent)] p-7 sm:p-8"
-                    >
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute -top-24 -left-16 -z-10 h-56 w-56 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--tint)_34%,transparent),transparent_72%)] blur-2xl"
-                      />
-                      {/* Full-opacity colour on the icon itself: a
-                          fractional `text-*` alpha would light up every
-                          stroke crossing inside the glyph (see the
-                          icon-alpha rule above). */}
-                      <span className="grid size-12 place-items-center rounded-full border border-[color-mix(in_srgb,var(--tint)_55%,transparent)] bg-stone-950 text-[var(--tint)]">
-                        <Icon
-                          aria-hidden
-                          className="size-5"
-                          strokeWidth={1.75}
-                        />
-                      </span>
-                      <h4 className="mt-6 text-lg font-semibold text-balance text-white sm:text-xl">
-                        {reason.title}
-                      </h4>
-                      <p className="mt-3 text-base leading-7 text-white/76">
-                        {reason.body}
-                      </p>
-                    </li>
-                  )
-                })}
-              </ul>
-
-              {/* Pin stage: the box the phone is held still inside. Its
-                  height IS the dwell, so the phone stays put until the
-                  reader reaches the end of it and then releases into the
-                  next block.
-
-                  `min-h`, NOT padding. A sticky element is constrained to
-                  its parent's CONTENT box, and padding sits outside that —
-                  so `pb-[88svh]` made the stage visibly 88svh taller while
-                  leaving the sticky range at exactly zero, and the phone
-                  scrolled away like any other element. Nothing about the
-                  rendered height reveals the difference; only the pin
-                  failing to pin does.
-
-                  Below `lg` the stage carries its own height, and that
-                  height is a BUDGET, not a look: the sequence inside the
-                  phone is timed in `svh` offsets into this box's contain
-                  phase, which is its height less one screen. So this has
-                  to stay at least `CHAT_SEQUENCE_END_SVH + 100svh` or the
-                  tail of the exchange silently never plays. There is a
-                  test that compares the two.
-
-                  Borrowing the cards' height instead looked tidier and
-                  gave the phone a 146px dwell against its own 704px
-                  height — it pinned for about a fifth of a second of
-                  scrolling and let go. */}
-              <div className="watch-scroll-chat-stage min-h-[225svh] justify-self-center lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:min-h-0 lg:self-stretch">
-                <div className="sticky top-20 lg:top-28">
-                  <WhatsNewAssistantPhone />
-                </div>
-              </div>
-
-              {/* The research */}
-              <div className="mt-20 max-w-3xl lg:col-start-1 lg:row-start-2 lg:mt-28">
-                <p className={EYEBROW_CLASS}>
-                  {WHATS_NEW_ASSISTANTS.researchEyebrow}
-                </p>
-                <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
-                  {WHATS_NEW_ASSISTANTS.researchHeading}
-                </h3>
-                <div className="mt-6 space-y-5">
-                  {WHATS_NEW_ASSISTANTS.researchIntro.map((paragraph) => (
-                    <p key={paragraph} className={BODY_CLASS}>
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </div>
-
-              {/* One column: the studies and the argument that turns on them
-                read as a single piece, with each quote sitting in the prose
-                that uses it rather than in a card alongside it.
-
-                They come BEFORE the copy because the copy's first line is
-                "put those findings next to each other" — it has to have
-                findings above it to point at. Reordering these is a copy
-                change, not just a layout one. */}
-              <div className="mt-16 max-w-3xl lg:col-start-1 lg:row-start-3 lg:mt-20">
-                <p className={EYEBROW_CLASS}>
-                  {WHATS_NEW_ASSISTANTS.closingEyebrow}
-                </p>
-                <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
-                  {WHATS_NEW_ASSISTANTS.closingHeading}
-                </h3>
-
-                {/* Every claim is a link. A statistic on a public page that a
-                  reader cannot check is worth less than no statistic.
-
-                  Hairline rules rather than the card frames these used to
-                  have: in a prose column a bordered box reads as an aside
-                  the eye can skip, which is the opposite of the job here —
-                  these ARE the argument, not a sidebar to it. */}
-                <ol className="mt-10 grid gap-8 border-t border-white/10 pt-8">
-                  {WHATS_NEW_ASSISTANTS.sources.map((source) => (
-                    <li
-                      key={source.id}
-                      data-testid="whats-new-assistant-source"
-                      className="grid gap-3 border-b border-white/10 pb-8 last:border-b-0 last:pb-0"
-                    >
-                      <blockquote className="border-l-2 border-red-100/50 pl-5 text-lg leading-8 font-medium text-balance text-white sm:text-xl sm:leading-9">
-                        <p>&ldquo;{source.quote}&rdquo;</p>
-                        <footer className="mt-2 text-sm leading-6 font-normal text-white/50">
-                          — {source.quoteNote}
-                        </footer>
-                      </blockquote>
-
-                      <p className={BODY_CLASS}>{source.finding}</p>
-
-                      <p className="text-sm leading-6 text-white/50">
-                        <a
-                          href={source.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
-                        >
-                          {source.publication}
-                        </a>
-                        <span className="mx-2 text-white/25">·</span>
-                        {source.attribution}
-                        <span className="mx-2 text-white/25">·</span>
-                        <span className="tabular-nums">{source.date}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-
-                {/* The turn: what the research obliges us to do. */}
-                <div className="mt-10 space-y-5">
-                  {WHATS_NEW_ASSISTANTS.closing.map((paragraph) => (
-                    <p key={paragraph} className={BODY_CLASS}>
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
         </section>
 
         {/* Why these changes matter */}
@@ -833,107 +671,187 @@ export function WatchWhatsNewPage({
           <div
             className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
           >
-            <div className="max-w-3xl">
-              <p className={EYEBROW_CLASS}>{WHATS_NEW_AUDIENCES.eyebrow}</p>
-              <h2
-                id="whats-new-audiences-heading"
-                className={`mt-4 ${SECTION_HEADING_CLASS}`}
-              >
-                {WHATS_NEW_AUDIENCES.heading}
-              </h2>
-            </div>
+            {/* The audiences stage: the fan gathers, then ONE of its cards
+                travels.
 
-            {/* `watch-scroll-fan-hand` grows the gathered hand as one piece.
-                Per-card growth cannot be paid for by the rem gather below:
-                its cost scales with card width, so the headings behind get
-                covered on a wide viewport. */}
-            <ul
-              data-testid="whats-new-audience-fan"
-              className="watch-scroll-fan-hand mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8"
+                Three cards fan in as before. Then, on the stage's own
+                scroll timeline, the first two fade away and the THIRD card
+                — the one this section's question is about — slides from the
+                right-hand column into the left, straightening up as it
+                goes, while the guess question fades in over the space the
+                other two just vacated.
+
+                It is genuinely one card, not a redrawn copy. An earlier
+                attempt drew a second ministry-partners card lower down the
+                page and slid that into place, which put both on screen at
+                once and read exactly like what it was. The travel and the
+                fan transform therefore live on DIFFERENT elements — the
+                `<li>` grid cell carries the travel, the card `<div>` inside
+                it carries the fan's own rotate/translate/scale — because
+                two animations cannot both own `translate` on one element,
+                and the cell is the only box that knows where the columns
+                are.
+
+                Everything here degrades to the plain fanned row plus a
+                question below it, fully visible and un-animated, on
+                narrow viewports and for a reader who asked for less
+                motion. */}
+            <div
+              data-testid="whats-new-audience-stage"
+              className="watch-audience-stage"
             >
-              {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
-                const Icon = ICONS[card.icon]
-                // Outer cards swing out and drop; the middle one stays
-                // upright and highest, which is what reads as a fan.
-                const offset = index - 1
-
-                return (
-                  <li
-                    key={card.title}
-                    data-testid="whats-new-audience-card"
-                    style={
-                      {
-                        "--tint": card.tint,
-                        "--fan-rotate": `${offset * 5}deg`,
-                        "--fan-drop": `${Math.abs(offset) * 0.9}rem`,
-                        // Direction only. The DISTANCE lives in CSS in
-                        // absolute units, because the space the overlap
-                        // must not eat is the card's fixed padding — a
-                        // percentage of card width closes that gap to
-                        // nothing on a wide viewport.
-                        "--fan-dir": offset,
-                        // Left card on top so every card covers only the
-                        // RIGHT edge of the one behind it.
-                        "--fan-layer": WHATS_NEW_AUDIENCES.cards.length - index,
-                      } as CSSProperties
-                    }
-                    className="watch-scroll-fan group relative overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--tint)_62%,transparent)] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--tint)_52%,#0a0910),color-mix(in_oklab,var(--tint)_26%,#08070c))] p-6 mix-blend-screen transition-colors duration-300 hover:border-[color-mix(in_oklab,var(--tint)_85%,transparent)] lg:p-8"
+              <div className="watch-audience-pin">
+                {/* The section's heading is INSIDE the pin, so it holds
+                    still with the cards it introduces instead of scrolling
+                    away and leaving three cards and a question with nothing
+                    naming them. It leaves with those cards too — see
+                    `watch-audience-heading`. */}
+                <div className="watch-audience-heading max-w-3xl">
+                  <p className={EYEBROW_CLASS}>{WHATS_NEW_AUDIENCES.eyebrow}</p>
+                  <h2
+                    id="whats-new-audiences-heading"
+                    className={`mt-4 ${SECTION_HEADING_CLASS}`}
                   >
-                    {/* Tint wash, strongest behind the icon. */}
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_0%_0%,rgba(255,255,255,0.16),transparent_60%)]"
-                    />
+                    {WHATS_NEW_AUDIENCES.heading}
+                  </h2>
+                </div>
+                {/* One grid cell holds BOTH the card row and the question
+                    from `lg` up, so the cell's height is the taller of the
+                    two and the pin can centre the pair as one group. The
+                    question used to be absolutely positioned, which took it
+                    out of the flow — the cell was then only as tall as the
+                    cards and centring left the group sitting low, 318px of
+                    slack above it and 127px below. */}
+                <div className="mt-6 grid lg:mt-8">
+                  {/* `watch-scroll-fan-hand` grows the gathered hand as one
+                      piece. Per-card growth cannot be paid for by the rem
+                      gather below: its cost scales with card width, so the
+                      headings behind get covered on a wide viewport. */}
+                  <ul
+                    data-testid="whats-new-audience-fan"
+                    /* `self-center`, not the grid's default `stretch`: the
+                       cell is as tall as the question beside it, and a
+                       stretched row made each card grow to match — a card
+                       of four lines with 150px of empty space under it.
+                       Natural height, centred against the question. */
+                    className="watch-scroll-fan-hand grid gap-6 isolate md:grid-cols-3 lg:col-start-1 lg:row-start-1 lg:gap-8 lg:self-center"
+                  >
+                    {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
+                      const Icon = ICONS[card.icon]
+                      // Outer cards swing out and drop; the middle one stays
+                      // upright and highest, which is what reads as a fan.
+                      const offset = index - 1
+                      const travels = index === TRAVELLING_CARD_INDEX
 
-                    <div className="relative">
-                      <span
-                        className="grid size-12 place-items-center rounded-xl border border-[color-mix(in_oklab,var(--tint)_50%,transparent)] bg-[color-mix(in_oklab,var(--tint)_22%,transparent)] text-[var(--tint)]"
-                        style={{ color: card.tint }}
-                      >
-                        <Icon aria-hidden className="size-6" />
-                      </span>
+                      return (
+                        <li
+                          key={card.title}
+                          data-testid="whats-new-audience-cell"
+                          data-travels={travels || undefined}
+                          style={
+                            {
+                              "--fan-rotate": `${offset * 5}deg`,
+                              "--fan-drop": `${Math.abs(offset) * 0.9}rem`,
+                              // How far this cell has to go to reach the
+                              // first column, in columns. Only the
+                              // travelling card gets a non-zero value; the
+                              // CSS turns it into `-N x (card width + gap)`
+                              // plus the corrections for the two fan
+                              // transforms already acting on the card.
+                              "--travel-columns": travels ? index : 0,
+                              // A card that is ALREADY in the first column
+                              // has nothing to cross, and the corrections
+                              // that place a crossing card would drag it
+                              // out of the gutter — measured 60px past it.
+                              // So it gets no horizontal travel at all and
+                              // the animation is a pure straighten: the
+                              // rotate and drop the fan gave it come off,
+                              // and it stays exactly where it was laid out.
+                              ...(travels && index === 0
+                                ? { "--travel-x": "0px" }
+                                : {}),
+                              // Which way the card's own gather pushed it,
+                              // so the travel can cancel that push.
+                              "--fan-dir": offset,
+                            } as CSSProperties
+                          }
+                          className={`min-w-0 ${
+                            travels
+                              ? "watch-audience-travel"
+                              : "watch-audience-fade"
+                          }`}
+                        >
+                          <div
+                            data-testid="whats-new-audience-card"
+                            style={
+                              {
+                                "--tint": card.tint,
+                                "--fan-rotate": `${offset * 5}deg`,
+                                "--fan-drop": `${Math.abs(offset) * 0.9}rem`,
+                                // Direction only. The DISTANCE lives in CSS
+                                // in absolute units, because the space the
+                                // overlap must not eat is the card's fixed
+                                // padding — a percentage of card width
+                                // closes that gap to nothing on a wide
+                                // viewport.
+                                "--fan-dir": offset,
+                                // Left card on top so every card covers only
+                                // the RIGHT edge of the one behind it.
+                                "--fan-layer":
+                                  WHATS_NEW_AUDIENCES.cards.length - index,
+                              } as CSSProperties
+                            }
+                            className={`watch-scroll-fan group h-full transition-colors duration-300 hover:border-[color-mix(in_oklab,var(--tint)_85%,transparent)] ${AUDIENCE_CARD_CHROME_CLASS}`}
+                          >
+                            {/* Tint wash, strongest behind the icon. */}
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_0%_0%,rgba(255,255,255,0.16),transparent_60%)]"
+                            />
 
-                      <span className="mt-6 block text-[0.6875rem] font-semibold tracking-[0.28em] tabular-nums text-[var(--tint)]">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <h3 className="mt-3 text-lg font-semibold text-white">
-                        {card.title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-relaxed text-white/88">
-                        {card.body}
-                      </p>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+                            <div className="relative">
+                              <span
+                                className="grid size-12 place-items-center rounded-xl border border-[color-mix(in_oklab,var(--tint)_50%,transparent)] bg-[color-mix(in_oklab,var(--tint)_22%,transparent)] text-[var(--tint)]"
+                                style={{ color: card.tint }}
+                              >
+                                <Icon aria-hidden className="size-6" />
+                              </span>
 
-            {/* Extra room from `md` up, where the fan exists and grows: the
-                gathered hand ends 12% larger than its slot, so its lowest
-                rotated corner reaches ~20px past the list box and would
-                otherwise sit on this paragraph's first line. Measured
-                clearance at `mt-10` after growth: -13px at 820, -21px at
-                1920. */}
-            <p
-              data-testid="whats-new-audience-closing"
-              className={`mt-10 max-w-3xl md:mt-16 ${BODY_CLASS}`}
-            >
-              {WHATS_NEW_AUDIENCES.closing}
-            </p>
+                              <span className="mt-6 block text-[0.6875rem] font-semibold tracking-[0.28em] tabular-nums text-[var(--tint)]">
+                                {String(index + 1).padStart(2, "0")}
+                              </span>
+                              <h3 className="mt-3 text-lg font-semibold text-white">
+                                {card.title}
+                              </h3>
+                              <p className="mt-3 text-sm leading-relaxed text-white/88">
+                                {card.body}
+                              </p>
+                            </div>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
 
-            {/* The two prompts close the section together, in the order
-                they ask things of the reader: first a guess about everyone
-                else, then a question about themselves.
-
-                The guess used to sit above the three cards, as the reason
-                the audiences are weighted the way they are. Down here it
-                does different work — the cards have already made that
-                case, so the guess lands as a check on it rather than a
-                set-up for it, and the section ends on the reader instead
-                of on our numbers. */}
-            <WhatsNewAudienceQuiz />
-
-            <WhatsNewSelfId />
+                  {/* The question, over the ground the first two cards
+                      vacate. Absolutely placed from `lg` up so it can share
+                      the cards' row; below that it is an ordinary block
+                      under them. */}
+                  {/* Right half from `lg` up, in the same cell as the cards
+                      — not columns two and three. The card that stays in
+                      column one is still inside the hand's growth, so it is
+                      12% wider than its column and its right edge crosses
+                      that line; at half, it cannot. Below `lg` this is an
+                      ordinary block under the cards. */}
+                  <div
+                    data-testid="whats-new-estimate-panel"
+                    className="watch-audience-quiz mt-8 lg:col-start-1 lg:row-start-1 lg:mt-0 lg:w-1/2 lg:justify-self-end"
+                  >
+                    <WhatsNewAudienceQuiz className="" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -941,7 +859,11 @@ export function WatchWhatsNewPage({
             Placed straight after the audiences section: the reader has
             just been asked which of the three they are, so the one
             audience with the hardest conditions gets addressed directly
-            before the page moves on to what is next. */}
+            before the page moves on to what is next.
+
+            The history stage now runs AHEAD of it, so a reader reaching
+            this letter has already seen the arc it argues from; the format
+            diagram and the AI-shift case still follow. */}
         <section
           id="partners"
           aria-labelledby="whats-new-partners-heading"
@@ -1003,6 +925,67 @@ export function WatchWhatsNewPage({
                     {paragraph}
                   </p>
                 ))}
+                {/* The turn from explanation to loyalty: what is already in
+                    their hands, then what is being built, then the ask.
+
+                    Two lists rather than one, and labelled, because the
+                    difference between shipped and intended is the whole
+                    credibility of the paragraph. Links resolve through the
+                    route builders — the app has a `/watch` basePath, so a
+                    hand-written href would leave the app, and the
+                    per-language page needs the slug the reader arrived
+                    under. */}
+                <div data-testid="whats-new-letter-future">
+                  <p className={`mt-6 ${BODY_CLASS}`}>
+                    {WHATS_NEW_PARTNER_LETTER.future.loyalty}
+                  </p>
+
+                  <p className="mt-8 text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/70 uppercase">
+                    {WHATS_NEW_PARTNER_LETTER.future.shippedLead}
+                  </p>
+                  <ul className={`mt-4 ${HAIRLINE_LIST_CLASS}`}>
+                    {WHATS_NEW_PARTNER_LETTER.future.shipped.map((item) => (
+                      <li key={item.text}>
+                        {item.text}
+                        {"link" in item &&
+                        item.link &&
+                        (item.link.to === "languages" ||
+                          linkableLanguageSlug !== null) ? (
+                          <>
+                            {" "}
+                            <Link
+                              href={
+                                item.link.to === "languages"
+                                  ? languagesIndexPath()
+                                  : languageVideosIndexPath(
+                                      linkableLanguageSlug!,
+                                    )
+                              }
+                              data-testid="whats-new-letter-future-link"
+                              className="font-semibold whitespace-nowrap text-white underline decoration-white/40 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+                            >
+                              {item.link.label}
+                            </Link>
+                          </>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="mt-8 text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/70 uppercase">
+                    {WHATS_NEW_PARTNER_LETTER.future.comingLead}
+                  </p>
+                  <ul className={`mt-4 ${HAIRLINE_LIST_CLASS}`}>
+                    {WHATS_NEW_PARTNER_LETTER.future.coming.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+
+                  <p className={`mt-8 ${BODY_CLASS}`}>
+                    {WHATS_NEW_PARTNER_LETTER.future.pledge}
+                  </p>
+                </div>
+
                 <p className={`mt-6 ${BODY_CLASS}`}>
                   {WHATS_NEW_PARTNER_LETTER.ask}
                 </p>
@@ -1012,18 +995,256 @@ export function WatchWhatsNewPage({
                     forgery of the one mark that is theirs. */}
                 <div
                   data-testid="whats-new-letter-signature"
-                  className="mt-10 border-t border-white/12 pt-7"
+                  /* Name on the left, the ask on the right of it — the two
+                     read as one line of the letter's foot rather than the
+                     button hanging below the signature. Wraps to stacked
+                     when the column is too narrow to seat both. */
+                  className="mt-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-6 border-t border-white/12 pt-7"
                 >
-                  <p className="text-base font-semibold text-white">
-                    {WHATS_NEW_PARTNER_LETTER.signature.name}
-                  </p>
-                  <p className="mt-1 text-sm text-white/55">
-                    {WHATS_NEW_PARTNER_LETTER.signature.role}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold text-white">
+                      {WHATS_NEW_PARTNER_LETTER.signature.name}
+                    </p>
+                    <p className="mt-1 text-sm text-white/55">
+                      {WHATS_NEW_PARTNER_LETTER.signature.role}
+                    </p>
+                  </div>
+                  {/* Brand fill, the same one the header and the hero use.
+                      It was outlined on the theory that the ask is a
+                      footnote to the letter; it is not — the letter's whole
+                      last paragraph is a request for a reply, so the reply
+                      button carries the same weight as the page's other
+                      asks. */}
                   <WhatsNewFeedbackButton
                     label={WHATS_NEW_PARTNER_LETTER.feedbackCta}
-                    className={`mt-7 ${SECONDARY_CTA_CLASS}`}
+                    className={PRIMARY_CTA_CLASS}
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* One story, every format — the whole arc as a single diagram.
+
+            The era stage's closing paragraph is handed in as the header's
+            second column. It used to trail the stage, two screens up, where
+            it read as an orphan under a pinned section that had already let
+            go; level with this heading it is what it always was — the
+            conclusion of the arc this diagram then draws. */}
+        <WhatsNewFormatDiagram
+          eyebrowClass={EYEBROW_CLASS}
+          headingClass={SECTION_HEADING_CLASS}
+          bodyClass={BODY_CLASS}
+          contentClass={WATCH_PAGE_CONTENT_CLASSES}
+          aside={
+            <p data-testid="whats-new-lede-closing" className={BODY_CLASS}>
+              {WHATS_NEW_LEDE.closing}
+            </p>
+          }
+        />
+
+        {/* The AI shift — the chart, the argument, the research */}
+        <section
+          id="assistants"
+          aria-labelledby="whats-new-assistants-heading"
+          className="relative border-t border-white/10 bg-stone-950 scroll-mt-24 md:scroll-mt-32"
+        >
+          <div
+            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
+          >
+            {/* Two columns from `lg` up: the heading on the left, the intro
+                beside it. Stacked, this heading runs to three lines of
+                display type and the intro starts most of a screen down —
+                the section opened on a wall of large text with its
+                explanation out of sight. `items-end` aligns the two
+                columns on their LAST lines, so they read as one block
+                rather than two ragged ones. Below `lg` it is one column in
+                DOM order: heading, then intro. */}
+            <header className="grid items-end gap-8 lg:grid-cols-2 lg:gap-16">
+              <div className="max-w-3xl">
+                <p className={EYEBROW_CLASS}>{WHATS_NEW_ASSISTANTS.eyebrow}</p>
+                <h2
+                  id="whats-new-assistants-heading"
+                  className={`mt-4 ${SECTION_HEADING_CLASS}`}
+                >
+                  {WHATS_NEW_ASSISTANTS.heading}
+                </h2>
+              </div>
+              <div
+                data-testid="whats-new-assistants-intro"
+                className="space-y-5"
+              >
+                {WHATS_NEW_ASSISTANTS.intro.map((paragraph) => (
+                  <p key={paragraph} className={BODY_CLASS}>
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </header>
+
+            <WhatsNewAiTrafficChart />
+
+            {/* The phone as a sticky right-hand column beside the research
+                and the argument that turns on it. The device stays put
+                beside all of it and only lets go at the end of the section.
+
+                It used to have a third companion: a "why this traffic
+                matters" heading and three reason cards in row one. Both are
+                gone — the phone shows the moment those cards described, and
+                showing it once beat asserting it three times.
+
+                Placement is EXPLICIT rather than by DOM order, because the
+                two breakpoints need different orders and there is only one
+                DOM. Source order is phone, research, closing — the reading
+                order on a phone, where each part follows the one it belongs
+                to. Above `lg` the phone is lifted into column two spanning
+                the rows, so the text runs down the left with the device
+                alongside.
+
+                The phone column is `auto` — sized by the device, not a
+                fraction of the row — so the text takes whatever is left and
+                the mockup never stretches. */}
+            <div className="mt-10 grid items-start gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-16 lg:gap-y-0">
+              {/* Pin stage: the box the phone is held still inside. Its
+                  height IS the dwell, so the phone stays put until the
+                  reader reaches the end of it and then releases into the
+                  next block.
+
+                  `min-h`, NOT padding. A sticky element is constrained to
+                  its parent's CONTENT box, and padding sits outside that —
+                  so `pb-[88svh]` made the stage visibly 88svh taller while
+                  leaving the sticky range at exactly zero, and the phone
+                  scrolled away like any other element. Nothing about the
+                  rendered height reveals the difference; only the pin
+                  failing to pin does.
+
+                  Below `lg` the stage carries its own height, and that
+                  height is a BUDGET, not a look: the sequence inside the
+                  phone is timed in `svh` offsets into this box's contain
+                  phase, which is its height less one screen. So this has
+                  to stay at least `CHAT_SEQUENCE_END_SVH + 100svh` or the
+                  tail of the exchange silently never plays. There is a
+                  test that compares the two.
+
+                  Borrowing the cards' height instead looked tidier and
+                  gave the phone a 146px dwell against its own 704px
+                  height — it pinned for about a fifth of a second of
+                  scrolling and let go. */}
+              <div className="watch-scroll-chat-stage min-h-[225svh] justify-self-center lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:min-h-0 lg:self-stretch">
+                <div className="sticky top-20 lg:top-28">
+                  <WhatsNewAssistantPhone />
+                </div>
+              </div>
+
+              {/* The research. First row now: the reason cards that used
+                  to sit above it are gone, so it needs no clearance from
+                  them — only the grid's own top margin off the chart. */}
+              <div className="mt-20 max-w-3xl lg:col-start-1 lg:row-start-1 lg:mt-0">
+                <p className={EYEBROW_CLASS}>
+                  {WHATS_NEW_ASSISTANTS.researchEyebrow}
+                </p>
+                <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
+                  {WHATS_NEW_ASSISTANTS.researchHeading}
+                </h3>
+                <div className="mt-6 space-y-5">
+                  {WHATS_NEW_ASSISTANTS.researchIntro.map((paragraph) => (
+                    <p key={paragraph} className={BODY_CLASS}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              {/* One column: the studies and the argument that turns on them
+                read as a single piece, with each quote sitting in the prose
+                that uses it rather than in a card alongside it.
+
+                They come BEFORE the copy because the copy's first line is
+                "put those findings next to each other" — it has to have
+                findings above it to point at. Reordering these is a copy
+                change, not just a layout one. */}
+              <div className="mt-16 max-w-3xl lg:col-start-1 lg:row-start-2 lg:mt-20">
+                {/* Deliberately NOT `SECTION_HEADING_CLASS`. At the section
+                    scale this read as a third top-level heading competing
+                    with the two above it, when what it actually does is
+                    turn the research into a conclusion. Secondary weight:
+                    smaller type, a dimmer eyebrow, and no `text-balance`
+                    theatrics. */}
+                <p className="text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/55 uppercase">
+                  {WHATS_NEW_ASSISTANTS.closingEyebrow}
+                </p>
+                <h3 className="mt-3 max-w-2xl text-xl leading-snug font-semibold tracking-[-0.01em] text-white/90 sm:text-2xl">
+                  {WHATS_NEW_ASSISTANTS.closingHeading}
+                </h3>
+
+                {/* Every claim is a link. A statistic on a public page that a
+                  reader cannot check is worth less than no statistic.
+
+                  Hairline rules rather than the card frames these used to
+                  have: in a prose column a bordered box reads as an aside
+                  the eye can skip, which is the opposite of the job here —
+                  these ARE the argument, not a sidebar to it.
+
+                  Behind a `<details>`, closed by default: three studies with
+                  quotes, authors, publications and dates is the right depth
+                  for the reader evaluating whether we know what we are doing
+                  and the wrong depth for the partner who came to find out
+                  why their language picker moved. Plain `<details>` rather
+                  than a client component — it needs no JavaScript, it is
+                  keyboard-operable and announced as a disclosure for free,
+                  and it stays open across a print. The citations remain in
+                  the DOM when closed, so they are still crawled, still
+                  searchable in-page, and still assertable in tests. */}
+                <details
+                  data-testid="whats-new-research"
+                  className="mt-10 border-t border-white/10 pt-8"
+                >
+                  <summary className="cursor-pointer list-none text-sm font-semibold tracking-wider text-white uppercase underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4">
+                    {WHATS_NEW_ASSISTANTS.sourcesToggleLabel}
+                  </summary>
+                  <ol className="mt-8 grid gap-8">
+                    {WHATS_NEW_ASSISTANTS.sources.map((source) => (
+                      <li
+                        key={source.id}
+                        data-testid="whats-new-assistant-source"
+                        className="grid gap-3 border-b border-white/10 pb-8 last:border-b-0 last:pb-0"
+                      >
+                        <blockquote className="border-l-2 border-red-100/50 pl-5 text-lg leading-8 font-medium text-balance text-white sm:text-xl sm:leading-9">
+                          <p>&ldquo;{source.quote}&rdquo;</p>
+                          <footer className="mt-2 text-sm leading-6 font-normal text-white/50">
+                            — {source.quoteNote}
+                          </footer>
+                        </blockquote>
+
+                        <p className={BODY_CLASS}>{source.finding}</p>
+
+                        <p className="text-sm leading-6 text-white/50">
+                          <a
+                            href={source.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+                          >
+                            {source.publication}
+                          </a>
+                          <span className="mx-2 text-white/25">·</span>
+                          {source.attribution}
+                          <span className="mx-2 text-white/25">·</span>
+                          <span className="tabular-nums">{source.date}</span>
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+
+                {/* The turn: what the research obliges us to do. */}
+                <div className="mt-10 space-y-5">
+                  {WHATS_NEW_ASSISTANTS.closing.map((paragraph) => (
+                    <p key={paragraph} className={BODY_CLASS}>
+                      {paragraph}
+                    </p>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1044,7 +1265,7 @@ export function WatchWhatsNewPage({
               id="whats-new-improving-heading"
               className={`mt-4 max-w-3xl ${SECTION_HEADING_CLASS}`}
             >
-              Five changes people will notice — and the work underneath them
+              What changed recently
             </h2>
 
             {/* Quadrant grid: screenshot on top, copy at the foot, thin
@@ -1179,132 +1400,88 @@ export function WatchWhatsNewPage({
                 the piece of that work partners feel most, so it closes the
                 section as one band rather than a sixth screenshot card —
                 there is nothing to screenshot about a platform move. */}
+            {/* One paragraph, single column. It used to be a two-column
+                band carrying three bullets, a downloads sub-block and a
+                hand-counted support-ticket KPI pair; all of that came out
+                on request. What a partner needs from it — downloads and
+                playback got better — is now a `fixed` row in the reported
+                problems list at the top of the page and a line in the
+                letter. */}
             <div
               data-testid="whats-new-delivery"
               className={`mt-14 overflow-hidden rounded-3xl border border-white/12 ${ACCENT_GRADIENT_CLASS} p-6 sm:p-9 lg:mt-20 lg:p-12`}
             >
-              <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
-                <div>
-                  <div className="flex items-center gap-4">
-                    <DeliveryIcon
-                      aria-hidden
-                      className="size-5 shrink-0 text-white opacity-45"
-                    />
-                    <p className={EYEBROW_CLASS}>
-                      {WHATS_NEW_DELIVERY.eyebrow}
-                    </p>
-                  </div>
-                  <h3 className="mt-5 text-2xl leading-snug font-semibold tracking-[-0.015em] text-balance text-white sm:text-3xl">
-                    {WHATS_NEW_DELIVERY.heading}
-                  </h3>
-                  {WHATS_NEW_DELIVERY.paragraphs.map((paragraph) => (
-                    <p key={paragraph} className={`mt-5 ${BODY_CLASS}`}>
-                      {paragraph}
-                    </p>
-                  ))}
-                  <ul className={`mt-7 ${HAIRLINE_LIST_CLASS}`}>
-                    {WHATS_NEW_DELIVERY.points.map((point) => (
-                      <li key={point}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="text-xl leading-snug font-semibold tracking-[-0.01em] text-balance text-white sm:text-2xl">
-                    {WHATS_NEW_DELIVERY.downloads.heading}
-                  </h4>
-                  {WHATS_NEW_DELIVERY.downloads.paragraphs.map((paragraph) => (
-                    <p key={paragraph} className={`mt-5 ${BODY_CLASS}`}>
-                      {paragraph}
-                    </p>
-                  ))}
-
-                  {/* Two numbers doing one comparison: a KPI pair, not a
-                      chart. Reading order is label then value, so the
-                      figure never arrives without its window; the visual
-                      order is reversed because the number is the headline.
-                      Proportional figures — `tabular-nums` only belongs in
-                      a column of numbers that must align. */}
-                  <p className="mt-9 border-t border-white/12 pt-8 text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/70 uppercase">
-                    {WHATS_NEW_DELIVERY.statsHeading}
-                  </p>
-                  <dl
-                    data-testid="whats-new-delivery-stats"
-                    className="mt-6 grid gap-5 sm:grid-cols-2"
-                  >
-                    {WHATS_NEW_DELIVERY.stats.map((stat) => (
-                      <div
-                        key={stat.label}
-                        data-testid="whats-new-delivery-stat"
-                        className="flex flex-col-reverse"
-                      >
-                        <dt className="mt-3 text-sm leading-6 text-white/70">
-                          {stat.label}
-                          <span className="mt-1 block text-xs text-white/45">
-                            {stat.detail}
-                          </span>
-                        </dt>
-                        <dd className="text-5xl leading-none font-semibold tracking-[-0.02em] text-white">
-                          {stat.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <p className="mt-6 text-xs leading-6 text-white/45">
-                    {WHATS_NEW_DELIVERY.note}
-                  </p>
-                </div>
+              <div className="flex items-center gap-4">
+                <DeliveryIcon
+                  aria-hidden
+                  className="size-5 shrink-0 text-white opacity-45"
+                />
+                <p className={EYEBROW_CLASS}>{WHATS_NEW_DELIVERY.eyebrow}</p>
               </div>
-
-              <p className={`mt-12 max-w-3xl ${BODY_CLASS}`}>
-                {WHATS_NEW_DELIVERY.closing}
+              <h3 className="mt-5 max-w-3xl text-2xl leading-snug font-semibold tracking-[-0.015em] text-balance text-white sm:text-3xl">
+                {WHATS_NEW_DELIVERY.heading}
+              </h3>
+              <p className={`mt-6 max-w-3xl ${BODY_CLASS}`}>
+                {WHATS_NEW_DELIVERY.paragraph}
               </p>
             </div>
           </div>
         </section>
 
-        {/* Help us improve Watch */}
-        <section
-          aria-labelledby="whats-new-closing-heading"
-          className={`relative isolate overflow-hidden border-t border-white/10 ${ACCENT_GRADIENT_CLASS}`}
-        >
-          <NoiseOverlay />
-          <div
-            className={`${WATCH_PAGE_CONTENT_CLASSES} relative py-20 text-center sm:py-24`}
-          >
-            <p className={EYEBROW_CLASS}>{WHATS_NEW_CLOSING.eyebrow}</p>
-            <h2
-              id="whats-new-closing-heading"
-              className={`mx-auto mt-4 max-w-3xl ${SECTION_HEADING_CLASS}`}
-            >
-              {WHATS_NEW_CLOSING.heading}
-            </h2>
-            <div className="mx-auto mt-6 max-w-2xl space-y-4">
-              {WHATS_NEW_CLOSING.paragraphs.map((paragraph) => (
-                <p
-                  key={paragraph}
-                  className="text-base leading-8 text-white/80 sm:text-lg"
-                >
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-            <div className="mt-10 flex flex-col items-center gap-6">
-              <div className="w-full max-w-md">{languageSwitcher}</div>
-              <WhatsNewFeedbackButton
-                label={WHATS_NEW_HERO.feedbackCta}
-                className={PRIMARY_CTA_CLASS}
-              />
-            </div>
-          </div>
-        </section>
         {/* The three blocks that ask the reader for something close the
             page. The cork band steps the page from the dark sections down
             to the white shelf the vote and the FAQ share, which hands off
             to the white footer instead of ending on another dark section. */}
         <WhatsNewNoteBoard contentClass={WATCH_PAGE_CONTENT_CLASSES} />
         <WhatsNewFeatureVote contentClass={WATCH_PAGE_CONTENT_CLASSES} />
-        <WhatsNewFaq contentClass={WATCH_PAGE_CONTENT_CLASSES} />
+        <WhatsNewFaq
+          contentClass={WATCH_PAGE_CONTENT_CLASSES}
+          /* Was a full-width band of its own, above the cork board. As a
+             sidebar it sits beside the questions instead — which is where
+             a reader who did not find their answer already is, and it
+             sticks while they scroll the list rather than having been
+             passed three sections ago.
+
+             Dark card on the light shelf on purpose: the block is an ask,
+             not an answer, and it has to read as a different KIND of thing
+             from the questions it sits next to. */
+          aside={
+            <div
+              data-testid="whats-new-closing"
+              aria-labelledby="whats-new-closing-heading"
+              className={`relative isolate overflow-hidden rounded-3xl border border-black/10 bg-[#131111] p-7 text-white lg:p-8 ${ACCENT_GRADIENT_CLASS}`}
+            >
+              <NoiseOverlay />
+              <div className="relative">
+                <p className={EYEBROW_CLASS}>{WHATS_NEW_CLOSING.eyebrow}</p>
+                <h2
+                  id="whats-new-closing-heading"
+                  className="mt-4 text-2xl leading-snug font-semibold tracking-[-0.015em] text-balance text-white"
+                >
+                  {WHATS_NEW_CLOSING.heading}
+                </h2>
+                <div className="mt-5 space-y-4">
+                  {WHATS_NEW_CLOSING.paragraphs.map((paragraph) => (
+                    <p
+                      key={paragraph}
+                      className="text-sm leading-7 text-white/80"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+                <WhatsNewFeedbackButton
+                  label={WHATS_NEW_HERO.feedbackCta}
+                  /* Sized to its label, not to the column. At `w-full` in
+                     a 19rem sidebar the label wrapped onto two lines
+                     inside the pill; the column is 21rem now and the
+                     button takes the width its text needs. */
+                  className={`mt-7 ${PRIMARY_CTA_CLASS}`}
+                />
+              </div>
+            </div>
+          }
+        />
       </main>
       <WatchHomeFooter />
     </>

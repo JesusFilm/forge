@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 import {
   WHATS_NEW_FORMATS,
@@ -316,11 +316,21 @@ export function WhatsNewFormatDiagram({
   headingClass,
   bodyClass,
   contentClass,
+  aside,
 }: {
   eyebrowClass: string
   headingClass: string
   bodyClass: string
   contentClass: string
+  /**
+   * Prose beside the heading column, from `lg` up. The era stage's closing
+   * paragraph lands here: it is the conclusion of the arc the diagram then
+   * draws, so it belongs level with the heading rather than trailing the
+   * stage two screens earlier where nothing pointed at it.
+   *
+   * Optional — without it the header keeps its own single column.
+   */
+  aside?: ReactNode
 }) {
   const count = WHATS_NEW_FORMATS.length
 
@@ -378,13 +388,31 @@ export function WhatsNewFormatDiagram({
         <span aria-hidden className="watch-bokeh-grain" />
       </div>
       <div className={`${contentClass} relative py-16 sm:py-20 lg:py-24`}>
-        <header className="max-w-3xl">
-          <p className={eyebrowClass}>{WHATS_NEW_FORMAT_DIAGRAM.eyebrow}</p>
-          <h2 id="whats-new-formats-heading" className={`mt-4 ${headingClass}`}>
-            {WHATS_NEW_FORMAT_DIAGRAM.heading}
-          </h2>
-          <p className={`mt-6 ${bodyClass}`}>{WHATS_NEW_FORMAT_DIAGRAM.body}</p>
-        </header>
+        <div
+          className={
+            aside ? "grid items-end gap-10 lg:grid-cols-2 lg:gap-16" : undefined
+          }
+        >
+          <header className="max-w-3xl">
+            <p className={eyebrowClass}>{WHATS_NEW_FORMAT_DIAGRAM.eyebrow}</p>
+            <h2
+              id="whats-new-formats-heading"
+              className={`mt-4 ${headingClass}`}
+            >
+              {WHATS_NEW_FORMAT_DIAGRAM.heading}
+            </h2>
+            <p className={`mt-6 ${bodyClass}`}>
+              {WHATS_NEW_FORMAT_DIAGRAM.body}
+            </p>
+          </header>
+
+          {/* `items-end` on the grid: the two columns are different lengths,
+              and aligning their LAST lines reads as one block of prose
+              rather than two ragged ones. */}
+          {aside ? (
+            <div data-testid="whats-new-format-aside">{aside}</div>
+          ) : null}
+        </div>
 
         {/* The row breaks out of the page rail. It is the one block in this
             section that is a full-width diagram rather than a column of

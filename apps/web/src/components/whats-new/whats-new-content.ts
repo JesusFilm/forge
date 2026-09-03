@@ -15,10 +15,38 @@
  * availability depends on the individual video asset.
  */
 
+/**
+ * The deck deliberately does NOT sell the redesign. Most readers who reach
+ * this page arrive irritated — something they relied on moved or broke — and
+ * to that reader "a better way to find, watch and share" (the previous deck)
+ * is the claim under dispute, asserted before anything has been conceded.
+ * So the first screen names their situation and lists what the page will
+ * answer, in the order they care about it.
+ *
+ * `lastUpdated` is a hand-maintained date, printed under the deck. A page
+ * titled "what's new" carrying no date reads stale on its second day, and
+ * the leadership audience checks it before the copy. Nothing updates it
+ * automatically: move it by hand whenever any claim on this page moves,
+ * and treat a stale date as worse than none — it dates the wrong copy.
+ */
 export const WHATS_NEW_HERO = {
   eyebrow: "Jesus Film Watch · Product update",
   title: "Jesus Film Watch is changing. Here's why.",
-  deck: "A better way to find, watch, and share the story of Jesus — in the language and format that fits the moment.",
+  // Promises only what the page still delivers. An earlier draft also
+  // offered "what has not changed" and "what we have already fixed",
+  // which were two sections that have since been removed — a deck that
+  // lists contents the page does not have is a worse first screen than a
+  // vague one, because the reader goes looking.
+  deck: "If Jesus Film Watch has changed under you, this page is for you: why it changed, what is coming next, and where to tell us when something breaks.",
+  lastUpdatedLabel: "Last updated",
+  lastUpdated: "31 August 2026",
+  /**
+   * The same day as `lastUpdated`, for the rendered `<time datetime>`. Two
+   * fields for one fact is a drift hazard, so a test in
+   * `__tests__/whats-new-content.test.ts` parses this and asserts it names
+   * the day the prose above names. Update both, or that test fails.
+   */
+  lastUpdatedIso: "2026-08-31",
   feedbackCta: "Share feedback",
 } as const
 
@@ -32,11 +60,16 @@ export const WHATS_NEW_LANGUAGE_SWITCHER = {
   label: "Read this page in your language",
 } as const
 
+/**
+ * The page's fragment anchors, in render order. Nothing renders this as a
+ * nav today; it is the registry the page test walks to prove every id it
+ * names is a section that actually exists.
+ */
 export const WHATS_NEW_CONTENTS = [
-  { id: "formats", label: "Every format" },
-  { id: "assistants", label: "The AI shift" },
   { id: "why", label: "Why it matters" },
   { id: "partners", label: "For partners" },
+  { id: "formats", label: "Every format" },
+  { id: "assistants", label: "The AI shift" },
   { id: "improving", label: "What is improving" },
   { id: "board", label: "The board" },
   { id: "faq", label: "Questions" },
@@ -45,7 +78,7 @@ export const WHATS_NEW_CONTENTS = [
 export const WHATS_NEW_LEDE = {
   eyebrow: "A history of changing formats",
   heading:
-    "From a projector in a field, to first page in Google search, to answer the spiritual questions in ChatGPT",
+    "From a projector in a field, to the first page of Google, to an answer inside ChatGPT",
   /**
    * Closing line, rendered AFTER the stage. Every other paragraph of the
    * argument is a `beat` sitting above the era card it introduces, so the
@@ -245,7 +278,7 @@ export const WHATS_NEW_FORMATS = [
 export const WHATS_NEW_ASSISTANTS = {
   eyebrow: "The shift already underway",
   heading:
-    "The fastest-growing way people reach Jesus Film Watch is a conversation",
+    "The fastest-growing way people reach Jesus Film Watch is AI conversations",
   intro: [
     "The chart below is referrals to our site from AI assistants — people who asked ChatGPT, Gemini, Copilot, or Perplexity a question and arrived here from the answer. For most of the period it is a flat, noisy line. Then it is not.",
     "Nothing about our catalog changed to produce the right-hand side of that curve. What changed is where people go first when they have a question.",
@@ -266,36 +299,13 @@ export const WHATS_NEW_ASSISTANTS = {
     /** Screen-reader description; the chart carries no readable numbers. */
     alt: "A line chart of visits referred to our site by AI assistants. The line holds a low, noisy, roughly flat level across the first two thirds of the period, then climbs steeply and repeatedly to its highest point at the right-hand edge.",
   },
-  valueEyebrow: "Why this traffic matters",
-  valueHeading:
-    "It is small today, and it is the most qualified traffic we have",
   /**
-   * Three reasons, deliberately ordered weakest-claim-first: volume is the
-   * least interesting thing about this traffic.
-   */
-  reasons: [
-    {
-      icon: "compass",
-      tint: "#7c5cf0",
-      title: "The question is already formed",
-      body: "Nobody arrives from an assistant by accident. They described a situation in their own words, in their own language, and something we published was judged relevant enough to hand them. That is a warmer start than any search ranking.",
-    },
-    {
-      icon: "conversation",
-      tint: "#f0567c",
-      title: "They are mid-conversation, not mid-browse",
-      body: "A search result competes with nine other links. An answer arrives inside a conversation someone is already having about their own life — which is why what we publish has to be quotable in that answer, not just findable.",
-    },
-    {
-      icon: "globe",
-      tint: "#e0a24c",
-      title: "It routes around the language wall",
-      body: "Assistants answer in the language they are asked in. Someone can put a question in Tagalog or Amharic and be handed a film in that language — if the library is described well enough for the assistant to know it exists.",
-    },
-  ],
-  /**
-   * The phone that sits beside the three reasons: the moment they are all
-   * describing, shown once instead of asserted three times.
+   * The phone: the moment this section is about, shown once.
+   *
+   * It used to sit beside a "why this traffic matters" heading and three
+   * reason cards making the same case in prose. Those were removed — the
+   * transcript IS the argument, and showing it once beat asserting it
+   * three times beside it.
    *
    * This is a REAL exchange, captured from a public ChatGPT share link
    * (`sourceHref`) — someone asks which Jesus film is most accurate, and
@@ -403,6 +413,21 @@ export const WHATS_NEW_ASSISTANTS = {
   researchIntro: [
     "The reason this matters for a ministry is not the traffic number. It is the subject matter. Study after study now finds that the single largest thing people bring to an AI assistant is not code, or email, or homework — it is themselves.",
   ],
+  /**
+   * Summary on the disclosure that holds the three studies.
+   *
+   * The studies are the page's strongest material for a leadership reader
+   * and its heaviest for the partner it is written for — a working number
+   * of paragraphs about an NBER paper, between them and the answer they
+   * came for. Collapsed, the plain-language claim in `researchIntro` above
+   * still carries the argument; open, nothing is abridged.
+   *
+   * `researchIntro` therefore has to stand ALONE, and `closing` must not
+   * point at the list as though the reader can see it. The first closing
+   * line used to open "Put those findings next to each other" — which
+   * dangles the moment the list is shut.
+   */
+  sourcesToggleLabel: "Read the three studies",
   sources: [
     {
       id: "hbr",
@@ -445,7 +470,7 @@ export const WHATS_NEW_ASSISTANTS = {
   closingHeading:
     "People are already having the conversation. We should be findable inside it.",
   closing: [
-    "Put those findings next to each other and the picture is hard to miss. Millions of people are describing loneliness, grief, guilt, fear, and the search for meaning to a machine, at three in the morning, because it is available and it does not judge them. Some of them are asking directly about Jesus. Many more are circling the questions the story of Jesus answers, without ever using a word that would have matched a search query.",
+    "The studies count different things and point the same way. Millions of people are describing loneliness, grief, guilt, fear, and the search for meaning to a machine, at three in the morning, because it is available and it does not judge them. Some of them are asking directly about Jesus. Many more are circling the questions the story of Jesus answers, without ever using a word that would have matched a search query.",
     "We are not going to be the therapist in that conversation, and we should not try to be. But when someone asks what forgiveness means, or why they cannot stop feeling ashamed, or who Jesus actually was, there is a two-hour film, and thousands of scenes inside it, in thousands of languages — and an assistant can only offer any of that if it can find it, understand it, and cite it.",
     "That is the whole reason for the work described on this page. Search that understands intent rather than titles. Scenes small enough to be handed to one person at one moment. Language treated as a first-class part of the library rather than a setting inside a player. Metadata and transcripts written so a machine can tell what a video is actually about. None of it is chasing a trend. It is the same instinct that put a projector in a field: go where people already are, in the language they already speak.",
   ],
@@ -464,8 +489,8 @@ export const WHATS_NEW_IMPROVEMENTS = [
     tint: { from: "#4f46e5", to: "#a855f7" },
     title: "A more useful place to begin",
     paragraphs: [
-      "The Jesus Film Watch home page now provides a clearer and more visual way to discover content, with cinematic featured stories, curated collections, improved layouts, and more opportunities to continue exploring.",
-      "The goal is not simply to show more videos. It is to help each person find something relevant more quickly.",
+      "The home page now opens on a featured story, with search above it and curated rows below — so someone who arrives without a title in mind still has somewhere to start.",
+      "The goal is not to show more videos. It is to get each person to something relevant sooner.",
     ],
     points: [],
     featured: false,
@@ -482,18 +507,16 @@ export const WHATS_NEW_IMPROVEMENTS = [
     tint: { from: "#0e7490", to: "#38bdf8" },
     title: "Better playback on more devices",
     paragraphs: [
-      "The video experience has been rebuilt around a modern streaming platform. Improvements include:",
+      "The player has been rebuilt on a new video service. What that means where you are watching:",
     ],
     points: [
-      "Higher-quality playback, including 4K when an appropriate source is available",
-      "More dependable fullscreen viewing, including on mobile devices",
-      "Better audio and subtitle controls",
-      "Visual previews while moving through a video",
-      "Motion previews that help people understand a video before selecting it",
-      "Faster loading and more resilient delivery",
+      "Sharper picture, up to 4K where the film itself was made at that quality",
+      "Fullscreen that works properly, including on phones",
+      "Audio and subtitle controls that are easier to find and to change",
+      "A preview of the picture as you drag through a video",
+      "Short moving previews, so you can tell what a video is before you open it",
+      "Faster starts, and fewer failures on a weak connection",
     ],
-    closing:
-      "These improvements required substantial engineering work that may not always be visible, but they make Jesus Film Watch faster, clearer, and more dependable around the world.",
     featured: false,
   },
   {
@@ -516,7 +539,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
       "Distinguish between spoken-audio and subtitle languages",
       "Change languages without losing their place",
       "Search using words and questions natural to them",
-      "Discover content available for their intended audience",
+      "See at a glance what exists in a language before they go looking for it",
     ],
     closing:
       "Our direction is simple: people should be able to find the story of Jesus in the language they understand best.",
@@ -598,70 +621,36 @@ export const WHATS_NEW_IMPROVEMENTS = [
 }[]
 
 /**
- * The Brightcove → Mux migration, told for the people who feel it most:
- * partners working where connections are slow and languages are small.
+ * The platform move, told for the people who feel it most: partners
+ * working where connections are slow and languages are small.
  *
- * Every number here is a checkable claim on a public page, and the two
- * halves rest on DIFFERENT evidence — keep them apart when editing:
+ * Cut to a single paragraph on request. What it used to carry, and why it
+ * is not coming back piecemeal:
  *
- * - `stats` are playback complaints counted BY HAND from support tickets
- *   (a keyword count was close but missed one and admitted five false
- *   positives), windowed on the June 2026 update: 5 complaints in the five
- *   months before it, 0 in the 881 tickets of the twelve weeks after, and
- *   11 in the 21 months before. That update shipped the platform move AND
- *   the redesign, so the copy credits the WINDOW, not the migration alone.
- * - the download story is field and support experience, not that same
- *   ticket pass, so it is stated without a rate.
+ * - Three bullet points and a separate downloads sub-block. The downloads
+ *   story now lives in the letter's `future.shipped` list, where a partner
+ *   meets it as a commitment rather than as a spec.
+ * - A hand-counted support-ticket KPI pair (5 playback complaints in the
+ *   five months before the June 2026 update, 0 in the 881 tickets of the
+ *   twelve weeks after, 2.0 per 1,000 across the 21 months before) plus the
+ *   method note that made it honest. Removed with its note, together: the
+ *   figures were only publishable BECAUSE the note said they were
+ *   hand-counted and measured against an update that shipped the migration
+ *   and the redesign at once. If any of those numbers ever comes back, its
+ *   window and its method come back with it — a bare "0" reads as "zero
+ *   complaints, ever", which is not what was measured.
  *
- * Re-confirm both against current tickets before launch, and move the
- * window wording in `stats` and `note` when the numbers move.
+ * Both vendor names stay. "We moved the whole library" means nothing
+ * without the two ends of the move, and a reader who knows the industry
+ * can only judge the claim if they know what we left and what we chose.
  */
 export const WHATS_NEW_DELIVERY = {
   eyebrow: "Under the hood",
   icon: "videotape",
-  heading: "Every video now streams from Mux",
-  paragraphs: [
-    "Jesus Film Watch used to serve its video from Brightcove. Stalled playback, videos that would not start until something warmed up a cache, and downloads that failed in the places our partners actually work were mostly not ours to fix — they lived on the other side of that platform. So we moved the whole library to Mux.",
-    "Mux is a next-generation video platform. It encodes every film into a ladder of qualities and chooses between them per viewer, so the same video plays as well as a given place and connection allow — a fibre line in a city, a shared mobile connection at the end of a long road, and everything in between.",
-  ],
-  points: [
-    "Quality now adapts to each viewer's location and connection instead of one setting for everyone",
-    "The caching problems that made videos stall, or refuse to start at all, are gone",
-    "Every language in the catalog is delivered and downloaded the same way",
-  ],
-  downloads: {
-    heading: "Downloads, especially in smaller languages",
-    paragraphs: [
-      "Before the move we heard a couple of complaints a week that videos would not download in remote parts of Africa and Asia — almost always for one of our smaller languages.",
-      "Those languages are no longer a second class of file: every language is treated the same and downloads the same. Since the migration we have not had a single complaint about download performance.",
-    ],
-  },
-  /**
-   * A KPI pair, not a chart — two numbers whose job is one comparison.
-   * The five-month window is the fair one to put beside twelve weeks; the
-   * 21-month rate lives in `note` so the shorter window cannot be read as
-   * cherry-picking.
-   */
-  statsHeading: "Playback complaints in support tickets",
-  stats: [
-    {
-      value: "5",
-      label: "In the five months before the June 2026 update",
-      detail: "3.6 per 1,000 support tickets",
-    },
-    {
-      value: "0",
-      label: "In the twelve weeks since",
-      detail: "Across 881 support tickets",
-    },
-  ] as const satisfies readonly {
-    value: string
-    label: string
-    detail: string
-  }[],
-  note: "Counted by hand rather than by keyword, and measured against the June 2026 update, which shipped the platform move together with the redesign. Across the 21 months before it the rate was 2.0 per 1,000 tickets. One subtitle-display problem was reported in the twelve weeks after and fixed; it was not a playback failure.",
-  closing:
-    "None of this shows up in the interface, which is the point. For a partner in the field it shows up as a video that starts, plays, and downloads.",
+  heading:
+    "Videos now start faster and download more reliably — especially in smaller languages",
+  paragraph:
+    "Stalled playback, videos that would not start until something had warmed up, and downloads that failed in the places our partners actually work were mostly not ours to fix — they belonged to the company whose video service we were renting. So we moved the whole library to a different one (from Brightcove to Mux, if the names mean anything to you), which stores every film at several quality levels and picks one for each viewer. None of that is visible on the page, which is the point: in the field it shows up as a video that starts, plays, and finishes downloading.",
 } as const
 
 export const WHATS_NEW_AUDIENCES = {
@@ -674,12 +663,24 @@ export const WHATS_NEW_AUDIENCES = {
    * (violet and crimson from the accent gradient, amber from the language
    * switcher's chip).
    */
+  /**
+   * ORDER IS LOAD-BEARING, in two ways.
+   *
+   * Ministry partners leads. It is the card the estimate stage keeps —
+   * the one still on screen when the question about it arrives — so it
+   * starts in the left column and stays there while the other two clear
+   * away. It also renumbers the set: partners is `01`.
+   *
+   * And the ordinals are rendered from this array's index, so reordering
+   * here renumbers the cards on the page. That is intended; what must not
+   * happen is the numbers drifting out of step with the columns.
+   */
   cards: [
     {
-      icon: "compass",
-      tint: "#7c5cf0",
-      title: "For someone seeking answers",
-      body: "Jesus Film Watch should help a person move from a question to a relevant story, teaching, or passage — and then offer a clear, appropriate next step.",
+      icon: "handshake",
+      tint: "#e0a24c",
+      title: "For ministry partners",
+      body: "Jesus Film Watch should provide dependable language, playback, sharing, and download tools for ministry in both everyday and challenging contexts.",
     },
     {
       icon: "share",
@@ -688,10 +689,10 @@ export const WHATS_NEW_AUDIENCES = {
       body: "Jesus Film Watch should make it simple to find and share a focused piece of trusted content with a friend, family member, or online community.",
     },
     {
-      icon: "handshake",
-      tint: "#e0a24c",
-      title: "For ministry partners",
-      body: "Jesus Film Watch should provide dependable language, playback, sharing, and download tools for ministry in both everyday and challenging contexts.",
+      icon: "compass",
+      tint: "#7c5cf0",
+      title: "For someone seeking answers",
+      body: "Jesus Film Watch should help a person move from a question to a relevant story, teaching, or passage — and then offer a clear, appropriate next step.",
     },
   ] as const satisfies readonly {
     icon: WhatsNewIconKey
@@ -699,22 +700,43 @@ export const WHATS_NEW_AUDIENCES = {
     title: string
     body: string
   }[],
-  closing:
-    "Trying to place all three audiences into one generic catalog creates confusion. The new direction gives each person a clearer way into the content while preserving a shared platform underneath.",
 } as const
+
+/**
+ * The share of Jesus Film Watch visitors who are there for ministry work.
+ *
+ * Declared once, above the quiz, because three separate sentences print it —
+ * the reveal heading, the reveal's note to partners, and the letter's
+ * pull-quote via the quiz's `actualPercent`. Two of those used to carry
+ * their own literal "2%", so a corrected figure would have left the page
+ * printing two different numbers about the same audience and discrediting
+ * both.
+ */
+const MINISTRY_SHARE_PERCENT = 2
 
 /**
  * Guess-the-number quiz that opens the audiences section.
  *
  * `actualPercent` is Jesus Film Project's own figure for the share of
- * Watch visitors who are professional missionaries. It is a real claim on
- * a public page — re-confirm it against current analytics before launch,
- * and update `sourceNote` if the basis changes.
+ * Jesus Film Watch visitors who are there for ministry work. It is a real
+ * claim on a public page — re-confirm it against current analytics before
+ * launch, and update the wording if the basis changes.
+ *
+ * The question deliberately does NOT say "professional missionaries", which
+ * is what it asked first. Most of the people this page is written for are
+ * volunteers, pastors, church planters, translators and radio hosts — read
+ * the ministry board at the foot of the page — and none of them would count
+ * themselves in that noun. A reader who excludes themselves from the
+ * category reads the answer as being about somebody else, which loses the
+ * one number the whole section exists to land. The noun here MUST match
+ * whatever the analytics figure actually measures; if the measure is
+ * narrower than "using it for ministry work", narrow this line to match
+ * rather than leaving the broader claim standing.
  */
 export const WHATS_NEW_QUIZ = {
   eyebrow: "Before you read on",
   question:
-    "What share of Jesus Film Watch visitors do you think are professional missionaries?",
+    "What share of Jesus Film Watch visitors do you think are using it for ministry work?",
   helper: "Drag to your best guess, then lock it in.",
   sliderLabel: "Your guess, as a percentage of Jesus Film Watch visitors",
   submit: "Lock in my guess",
@@ -722,84 +744,18 @@ export const WHATS_NEW_QUIZ = {
   dismiss: "Close",
   guessLabel: "Your guess",
   actualLabel: "Actually",
-  actualPercent: 2,
+  actualPercent: MINISTRY_SHARE_PERCENT,
   restLabel: "Seekers and believers",
-  revealHeading: "About 2%.",
+  revealHeading: `About ${MINISTRY_SHARE_PERCENT}%.`,
   revealBody:
     "Ninety-eight out of every hundred people who arrive at Jesus Film Watch are seekers and believers — most of them looking for something, not for us. That is why the experience has to serve them well.",
-  revealPartners:
-    "And it is why the other 2% matters just as much: missionaries and ministry partners depend on Jesus Film Watch for their work, and none of this is built at their expense.",
+  // Interpolated, never retyped: this line used to carry its own literal
+  // "2%", so editing the share above would have left two different numbers
+  // on the same panel.
+  revealPartners: `And it is why the other ${MINISTRY_SHARE_PERCENT}% matters just as much: missionaries and ministry partners depend on Jesus Film Watch for their work, and none of this is built at their expense.`,
   overGuess: "That is {factor}× the real number.",
   closeGuess: "Closer than most people get.",
   underGuess: "Lower than the real figure — but the point still stands.",
-} as const
-
-/**
- * Self-identification question that closes the audiences section.
- *
- * The quiz above tells the reader how the audiences are weighted; this
- * asks which one the reader is, so the section ends on their own
- * situation rather than on our numbers. Each option mirrors one of
- * `WHATS_NEW_AUDIENCES.cards` — same order, same icon, same `tint` — so
- * the choice reads as picking a card, not as answering a survey. Keep
- * those three in step when a card changes.
- *
- * The fourth option is the honest answer for most staff and partners, and
- * it takes the neutral wash rather than a fourth hue on purpose: a new
- * colour would imply a fourth audience instead of the blend of three.
- *
- * Answers are held in component state only. Nothing is persisted or sent,
- * which is what `note` promises the reader — if that ever changes, that
- * line has to change with it.
- */
-export const WHATS_NEW_SELF_ID = {
-  eyebrow: "Now your turn",
-  question: "Which of these is you today?",
-  helper:
-    "Pick the one that fits best. Nothing is submitted, and “more than one” is a real answer.",
-  options: [
-    {
-      id: "seeker",
-      icon: "compass",
-      tint: "#7c5cf0",
-      label: "I'm looking for something myself",
-      response:
-        "Then the changes you will notice first are search that follows a question rather than a title, shorter pieces you can watch in a minute, and a clearer next step when a film raises more questions than it answers.",
-    },
-    {
-      id: "sharing",
-      icon: "share",
-      tint: "#f0567c",
-      label: "I share content with other people",
-      response:
-        "The sharing path is where most of this work lands for you: a trusted link, the right language, and — increasingly — the single scene or passage that fits the conversation instead of a two-hour film.",
-    },
-    {
-      id: "partner",
-      icon: "handshake",
-      tint: "#e0a24c",
-      label: "I use Jesus Film Watch for ministry work",
-      // Interpolated, not retyped: this line only lands because the quiz
-      // above just showed the reader that same number.
-      response: `You are the ${WHATS_NEW_QUIZ.actualPercent}% from the question above, and none of this is built at your expense. Language coverage, dependable playback, downloads, and embedding stay first-class as the rest of the experience grows around them.`,
-    },
-    {
-      id: "all",
-      icon: "globe",
-      tint: "#e8eaf0",
-      label: "Honestly, all three",
-      response:
-        "That is the usual answer here, and it is why Jesus Film Watch stays one platform underneath. The three doors are different ways in, not three separate products — nothing you rely on in one of them is traded away for another.",
-    },
-  ] as const satisfies readonly {
-    id: string
-    icon: WhatsNewIconKey
-    tint: string
-    label: string
-    response: string
-  }[],
-  answerLabel: "What that means for you",
-  note: "Your answer stays in this browser tab — it is not stored or sent anywhere.",
 } as const
 
 /**
@@ -819,14 +775,16 @@ export const WHATS_NEW_SELF_ID = {
  * partner who keeps it reads every layout decision as a betrayal instead
  * of as arithmetic.
  *
- * The letter carries no proof of its own. The Brightcove → Mux work that
- * shows we take their side seriously is `WHATS_NEW_DELIVERY`, and as of
- * the 2026-08-25 reorder that band sits BELOW this letter — so the letter
- * asks a partner to accept an unflattering number before it has shown
- * them anything. That is a deliberate placement, not an oversight: if the
- * letter ever reads as unearned, move the band up rather than moving the
- * letter down, because the letter answers the self-identification
- * question directly above it.
+ * The letter carries its own proof rather than promising it: the
+ * `future.shipped` list below names work a reader can go and use today,
+ * and the platform move behind the playback and download claims is in
+ * `WHATS_NEW_DELIVERY`, further down the page. Keep proof in the letter,
+ * not in a forward reference — the reader who needs this letter most is
+ * the one least willing to extend credit for evidence arriving later.
+ *
+ * The letter still sits after the audiences section, because it answers
+ * the question the estimate stage has just put to the reader and quotes
+ * that stage's figure.
  *
  * First person singular on purpose: the rest of the page speaks as "we",
  * and this one place does not, because a sentence like "you are 2%" is
@@ -843,10 +801,24 @@ export const WHATS_NEW_SELF_ID = {
  */
 export const WHATS_NEW_PARTNER_LETTER = {
   eyebrow: "A note to missionaries and field partners",
-  heading: "Tell me if this sounds about right.",
-  greeting: "Hey there —",
+  // The question the letter exists to answer, in the reader's own terms.
+  // It was "Tell me if this sounds about right." — the letter's ASK, not
+  // its subject, which made the section look like a survey; that line
+  // still closes the letter in `ask` below, where it belongs.
+  //
+  // Leading "Why" is added to the phrase as briefed: without it the
+  // heading is a sentence fragment, and with it the heading IS the
+  // question the first paragraph then answers.
+  heading: "Why we are changing it at all, when it was working for you",
+  // "Hey there —" was the first draft. It is a register that belongs to one
+  // country and one generation: a good share of the people this letter is
+  // written for are reading in their second or third language, or come from
+  // places where a stranger opening that way reads as unserious. The letter
+  // is asking them to accept an unflattering number from someone they have
+  // never met, so it opens the way a letter does.
+  greeting: "Dear friends —",
   beforeFigure: [
-    "If you use Jesus Film videos for ministry work, there is a good chance I know why you opened this page: something changed, some of the way you work broke, and you are wondering why we had to change anything at all. Why not leave it the way it was?",
+    "We are rebuilding Jesus Film Watch, and by now you will have noticed — a few of the things you reach for have moved. A release note can tell you what moved. It cannot tell you this.",
     "To answer that, let me ask you to picture a Christian video store in a busy city centre. It was opened for people like you — partners and missionaries who use media to serve God. You came in and got what you needed: VHS tapes, DVDs, a projector, video files to take with you on a mission trip.",
     "Then, slowly, other people started coming through the door. Ordinary believers, and people who were not believers at all, wandering in to see what was on the shelves and watch a film about Jesus. Especially people whose language has almost nothing else online — for them, this shop is very nearly the only one. Google noticed that the people it sent here found what they came for, and started sending more of them. Then more again.",
     "Today, if you stood by the door and counted:",
@@ -864,8 +836,63 @@ export const WHATS_NEW_PARTNER_LETTER = {
   afterFigure: [
     "To serve the people now filling the store, we have to change how the store is laid out: what goes in the window, what sits at the front, how the shelves are grouped, which films we put on display and how we describe them. A shop arranged for someone who knows exactly which box they came for is a bewildering place for someone who wandered in because a film about Jesus came up in a Google search.",
     "You see the Jesus Film library the way you use it — as ministry equipment — and so does everyone you talk to about it. From inside that circle it looks like a tool for people like you, with some visitors passing through. It is the other way around.",
-    "It changes what the front door has to do. When we have to choose between an interface that assumes you know what you are looking for and one that assumes you do not, we have to build the second one, because ninety-eight times out of a hundred that is the person standing there. Language, downloads, sharing, embedding — none of it goes away. It stops being the first thing every visitor sees.",
+    "It changes what the front door has to do. When we have to choose between a front page that assumes you know what you are looking for and one that assumes you do not, we have to build the second one, because ninety-eight times out of a hundred that is the person standing there. Language, downloads, sharing, embedding — none of it goes away. It stops being the first thing every visitor sees.",
   ],
+  /**
+   * The letter's turn from explanation to loyalty.
+   *
+   * It replaces a single paragraph that pointed at one fixed bug as proof.
+   * One fix reads as an exception; a list of shipped work reads as a
+   * direction, which is the thing a partner is actually trying to work out
+   * — not "did they fix my thing" but "are they still on my side".
+   *
+   * `shipped` is what a reader can go and use TODAY, and every claim in it
+   * has to survive them clicking through. `coming` is direction and is
+   * phrased as direction: no dates, no "soon", nothing a partner could
+   * plan a trip around. Keep that seam — the moment an unshipped item
+   * migrates into `shipped` to sound better, the whole list stops being
+   * worth reading.
+   *
+   * Links are declared as route KINDS rather than strings, and the page
+   * resolves them through the builders in `src/lib/routes.ts`. Two reasons:
+   * the app has a `/watch` basePath, so a hand-typed href here would send
+   * a reader to the site root, and the per-language page needs the slug the
+   * reader arrived under, which content cannot know.
+   */
+  future: {
+    loyalty:
+      "None of that is a reason to think we have stopped building for you. The opposite: the same work that makes the front door easier for a stranger is putting things in your hands that were not there a year ago, and more of them, faster than we have managed before.",
+    shippedLead: "Already there, today:",
+    shipped: [
+      {
+        text: "Playback and downloads are faster and steadier — most of all in the smaller languages, where they used to fail.",
+      },
+      {
+        text: "One page that lists every language we have, instead of a picker buried in the player.",
+        link: { label: "Browse every language", to: "languages" },
+      },
+      {
+        text: "One page that holds every video in a single language, so you can see the whole shelf at once.",
+        link: {
+          label: "See everything in your language",
+          to: "language-videos",
+        },
+      },
+      {
+        text: "Whole collections downloadable in one go, rather than one file at a time.",
+      },
+      {
+        text: "Vertical videos, cut for the phone screens most people are actually holding.",
+      },
+    ],
+    comingLead: "Being built now:",
+    coming: [
+      "Automated translation, so every language gets more of the library — subtitles first, and increasingly automated voiceover.",
+      "Optional accounts, with your own collections and playlists to assemble and share.",
+    ],
+    pledge:
+      "So: more is coming for missionaries and partners, and it is coming at a rate we have not managed before. Where that shows up as something rough or something moved, we are asking for your patience — and for your report, because that is what tells us which of it to fix first.",
+  },
   ask: "So — tell me if this sounds about right. If it does not, or if something we shipped made your work harder, say so plainly. That is the report we act on fastest.",
   signature: {
     name: "Vlad Mitkovsky",
@@ -892,11 +919,19 @@ export type WhatsNewVoteIcon =
 /**
  * Vote carousel for the roadmap.
  *
- * IMPORTANT: there is no vote endpoint. Votes are held in this browser
- * only (localStorage) and are never sent anywhere, which is why the panel
- * says so on its face — a public ballot that silently discards input would
- * be worse than no ballot. Wire `POST` to a real collector before treating
- * any of this as signal.
+ * Votes ARE collected. `src/lib/whats-new-votes.ts` reads
+ * `whatsNewFeatureVoteTallies` and writes `castWhatsNewFeatureVote` /
+ * `retractWhatsNewFeatureVote` against Admin's public GraphQL surface;
+ * localStorage holds the ballot id so a reader can peel their own sticker
+ * back off, not the votes themselves.
+ *
+ * This comment previously said the opposite — "there is no vote endpoint,
+ * votes are held in this browser only" — which was true when the panel was
+ * built and stopped being true when the collector landed. It is recorded
+ * here rather than quietly deleted because a stale "nothing is collected"
+ * note is the dangerous direction of drift: it invites someone to add a
+ * privacy line to the panel that would be false, or to rebuild a collector
+ * that already exists.
  */
 export const WHATS_NEW_VOTES = {
   eyebrow: "Vote for features",
@@ -1042,8 +1077,14 @@ export const WHATS_NEW_FAQ = {
     {
       id: "removal",
       question: "Is anything being removed from Jesus Film Watch?",
+      // Deliberately NOT a flat "No." The reader asking this is usually
+      // holding a task they could do last month and cannot do today, and
+      // answering "nothing changed for you" contradicts their own week in
+      // the first word — after which nothing further down the page is
+      // believed. Moved-not-removed is both the true answer and the one
+      // that leaves the reader somewhere to go.
       answer:
-        "No. Everything you can do today — find a film, choose a language, play it, share it, download what is available — you can still do. The changes add ways in; they do not close the ones you already use.",
+        "Nothing is being removed on purpose. Some things have moved — where you choose a language, where downloads and sharing live — and a few things broke on the way. If you cannot do something today that you could do before, treat that as a bug rather than a decision, and tell us: that is the report we act on fastest.",
     },
     {
       id: "account",
@@ -1055,7 +1096,18 @@ export const WHATS_NEW_FAQ = {
       id: "languages",
       question: "Will my language still be available?",
       answer:
-        "Yes. Language coverage is not shrinking — it is the thing the new experience is being built around. Finding content in your own language should get easier, not harder.",
+        "Yes — every language in the catalog is still there, and coverage is not shrinking. If you cannot find yours, then finding is what broke, not the language: report it and we will fix the path to it. The full list lives at jesusfilm.org/watch/languages.",
+    },
+    {
+      id: "classic",
+      question: "Can I go back to the old version of the site?",
+      // Grounded rather than aspirational: legacy `/watch/*.html` URLs were
+      // confirmed still resolving in production. There is no separate
+      // "classic" site to send anyone to, and a support note on the cork
+      // board shows at least one reader believes there is — so the answer
+      // says so plainly instead of leaving them hunting for it.
+      answer:
+        "No — the previous version has been replaced rather than kept alongside the new one. The links from it still work: old addresses, including the older .html ones, resolve to the page they now live at. If something you did on the old site has no equivalent on this one, that is worth telling us about, because it means we missed it.",
     },
     {
       id: "links",
@@ -1095,8 +1147,7 @@ export const WHATS_NEW_CLOSING = {
   eyebrow: "Help us improve Jesus Film Watch",
   heading: "If something is unclear, tell us",
   paragraphs: [
-    "We know that significant changes need explanation, and we do not want to wait until confusion becomes a problem.",
-    "If something is unclear, difficult to use, or missing, please tell us. Your feedback helps us understand what people need and where Jesus Film Watch should improve next.",
+    "If something is unclear, harder than it was, or missing, please tell us. What you send is what decides which of it we fix next.",
   ],
 } as const
 
@@ -1139,8 +1190,15 @@ export const WHATS_NEW_BOARD = {
   body: "Three boards, one pad of paper. Write a note, pick your colour, and stick it wherever you like — drag it around until it sits right.",
   provenance:
     "The notes already up are real messages people sent our support inbox about the Jesus Film Watch site, shortened. Names are stand-ins — the words and the country are theirs.",
+  // This sat directly above a button reading "Send this to the team", which
+  // made the panel contradict itself on its own face — and a public board
+  // that announces it collects nothing undercuts every "tell us" elsewhere
+  // on the page. Both halves are true and the note now says which is which:
+  // pinning is local, the button opens the shared feedback composer, which
+  // does deliver. If a collector is ever wired up, this is the line that
+  // has to change with it.
   localOnlyNote:
-    "Your notes stay in this browser for now — nothing is sent to us yet. The collector that makes them public is what we are building next.",
+    "Notes you pin stay in this browser — the board is yours to arrange, and we do not read it. Press “Send this to the team” on a note to put it in front of us for real.",
   boardsLabel: "Pin boards",
   writeLabel: "Write a note",
   paperLabel: "Paper",
