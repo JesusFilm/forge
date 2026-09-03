@@ -84,9 +84,13 @@ that same item, so the keyed media element does not change and playback stops.
   9.94 microseconds/build; head median 46.53 microseconds/build. The added
   36.59 microseconds is below 0.05 ms for the single initialization build and
   does not add page-loading I/O or payload bytes.
-- Browser automation was unavailable in this checkout. The rendered jsdom test
-  covers the exact ended-to-new-player-to-play chain; LFG's browser-test gate
-  retains the environment limitation without claiming visual proof.
+- Browser QA passed at `/watch` with the local Next.js server and headless
+  Chrome. The run stored 217 of 218 serialized video IDs as played so "The
+  Beginning" was the final unplayed hero, dispatched its media `ended` event,
+  and observed a different keyed element playing "Agape / Love" at ready state
+  4 with advancing media time. No console error was attributable to the
+  rollover; the page's existing duplicate collection key, image-position
+  warning, and unavailable optional recommendation profile remained unrelated.
 
 ## Not In Scope
 
