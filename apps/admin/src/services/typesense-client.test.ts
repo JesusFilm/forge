@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { TypesenseClient, TypesenseImportError } from "./typesense-client"
+import {
+  TypesenseClient,
+  TypesenseImportError,
+  TypesenseImportResponseError,
+} from "./typesense-client"
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -153,6 +157,21 @@ describe("TypesenseClient", () => {
     ).rejects.toEqual(expect.any(TypesenseImportError))
   })
 
+  it("rejects a mismatched Typesense import line count", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ success: true })),
+    )
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.importDocuments("chunks", [{ id: "a" }, { id: "b" }]),
+    ).rejects.toEqual(expect.any(TypesenseImportResponseError))
+  })
+
   it("upserts lightweight documents and deletes stale documents by filter", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -216,6 +235,25 @@ describe("TypesenseClient", () => {
         body: JSON.stringify({ titles: ["Renamed title"] }),
       }),
     )
+  })
+
+  it("reads one exact document and treats a missing document as absent", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ id: "chunk-1", text: "hope" }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.getDocument<{ id: string; text: string }>("chunks", "chunk-1"),
+    ).resolves.toEqual({ id: "chunk-1", text: "hope" })
+    await expect(
+      client.getDocument("chunks", "missing-chunk"),
+    ).resolves.toBeUndefined()
   })
 
   it("surfaces a failed multi-search result", async () => {

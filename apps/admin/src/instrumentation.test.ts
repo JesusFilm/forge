@@ -11,6 +11,10 @@ const mockEnv = vi.hoisted(() => ({
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: 12,
     RECOMMENDATION_RECOVERY_MAX_ATTEMPTS: 12,
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: 10_000,
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED: "false" as
+      | "true"
+      | "false"
+      | undefined,
   },
 }))
 
@@ -26,6 +30,9 @@ const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
 )
 const ensureRecommendationEpisodeFinalizationRecovery = vi.hoisted(() =>
   vi.fn(),
+)
+const ensureWatchSearchTranscriptPublicationWorkerStarted = vi.hoisted(() =>
+  vi.fn(async () => ({ started: false, reason: "disabled" as const })),
 )
 const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
 const prisma = vi.hoisted(() => ({ id: "mock-prisma" }))
@@ -74,6 +81,9 @@ vi.mock("@/services/recommendations/control-readiness/job", () => ({
 vi.mock("@/services/recommendations/finalization/job", () => ({
   ensureRecommendationEpisodeFinalizationRecovery,
 }))
+vi.mock("@/services/typesense-watch-search-transcript-publication", () => ({
+  ensureWatchSearchTranscriptPublicationWorkerStarted,
+}))
 vi.mock("@/services/watch-search.service", () => ({
   prewarmWatchSearchQueryEmbeddings,
 }))
@@ -93,6 +103,11 @@ describe("workflow instrumentation", () => {
     ensureRecommendationRetentionSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
     ensureRecommendationEpisodeFinalizationRecovery.mockReset()
+    ensureWatchSearchTranscriptPublicationWorkerStarted.mockReset()
+    ensureWatchSearchTranscriptPublicationWorkerStarted.mockResolvedValue({
+      started: false,
+      reason: "disabled",
+    })
     prewarmWatchSearchQueryEmbeddings.mockReset()
     prewarmWatchSearchQueryEmbeddings.mockResolvedValue(undefined)
     clearWorkflowStartupState()
@@ -102,6 +117,7 @@ describe("workflow instrumentation", () => {
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS = 12
     mockEnv.env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS = 12
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 10_000
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "false"
   })
 
   afterEach(() => {
@@ -126,6 +142,9 @@ describe("workflow instrumentation", () => {
     expect(ensureRecommendationRetentionSchedulerStarted).not.toHaveBeenCalled()
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).not.toHaveBeenCalled()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
@@ -161,6 +180,9 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not start a world in the edge runtime", async () => {
@@ -182,6 +204,9 @@ describe("workflow instrumentation", () => {
     expect(ensureRecommendationRetentionSchedulerStarted).not.toHaveBeenCalled()
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).not.toHaveBeenCalled()
   })
 
@@ -206,6 +231,12 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(ensureWatchSearchTranscriptPublicationWorkerStarted).toHaveBeenCalledWith(
+      prisma,
+    )
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)

@@ -100,6 +100,13 @@ export class TypesenseImportError extends TypesenseRequestError {
   }
 }
 
+export class TypesenseImportResponseError extends TypesenseRequestError {
+  constructor(message: string) {
+    super(message)
+    this.name = "TypesenseImportResponseError"
+  }
+}
+
 function normalizeHost(host: string): string {
   return host.replace(/\/+$/, "")
 }
@@ -238,14 +245,24 @@ export class TypesenseClient {
     const response = responseText
       .split("\n")
       .filter(Boolean)
-      .map(
-        (line) =>
-          JSON.parse(line) as {
+      .map((line, index) => {
+        try {
+          return JSON.parse(line) as {
             success: boolean
             error?: string
             document?: unknown
-          },
+          }
+        } catch (error) {
+          throw new TypesenseImportResponseError(
+            `Typesense import response line ${index + 1} is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      })
+    if (response.length !== documents.length) {
+      throw new TypesenseImportResponseError(
+        `Typesense import response length ${response.length} does not match request length ${documents.length}`,
       )
+    }
     const failures = response
       .filter((entry) => !entry.success)
       .map((entry) => ({
@@ -253,6 +270,17 @@ export class TypesenseClient {
         document: entry.document,
       }))
     if (failures.length > 0) throw new TypesenseImportError(failures)
+  }
+
+  getDocument<T extends object>(
+    collection: string,
+    id: string,
+  ): Promise<T | undefined> {
+    return this.request(
+      `/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(id)}`,
+      {},
+      { acceptedStatuses: [404] },
+    )
   }
 
   async deleteDocumentsByFilter(

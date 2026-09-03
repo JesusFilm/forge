@@ -19,6 +19,7 @@ import {
   watchSearchPrimaryModeEnvSchema,
   watchSearchTypesenseProfileEnvSchema,
   watchSearchCandidateComparisonEnabledEnvSchema,
+  watchSearchTranscriptPublicationEnabledEnvSchema,
   watchSearchTranscriptProjectionRevisionEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
@@ -137,6 +138,9 @@ describe("env", () => {
       )
       expect(
         watchSearchCandidateComparisonEnabledEnvSchema.parse(undefined),
+      ).toBe(false)
+      expect(
+        watchSearchTranscriptPublicationEnabledEnvSchema.parse(undefined),
       ).toBe(false)
       expect(
         watchSearchTranscriptProjectionRevisionEnvSchema.parse(undefined),

@@ -150,6 +150,8 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/control-readiness/job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
+  const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
+    await import("@/services/typesense-watch-search-transcript-publication")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
@@ -158,6 +160,8 @@ async function startWorkflowWorld(): Promise<void> {
   await ensureSearchTraceRetentionSchedulerStarted()
   await ensureRecommendationRetentionSchedulerStarted()
   await ensureRecommendationControlReadinessSchedulerStarted()
+  const { prisma } = await import("@/db/client")
+  await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
   )
