@@ -12,6 +12,165 @@ const migrationSql = readFileSync(
   "utf8",
 )
 
+async function createLegacyCandidateTables(client: Client) {
+  await client.query(`
+    CREATE TABLE "watch_search_candidate_generation" (
+      "id" text PRIMARY KEY,
+      "application_revision" text NOT NULL,
+      "source_epoch" text NOT NULL,
+      "source_digests" jsonb NOT NULL,
+      "catalog_collection" text NOT NULL,
+      "availability_collection" text NOT NULL,
+      "lexical_collection" text NOT NULL,
+      "transcript_collection" text NOT NULL,
+      "transcript_projection_revision" bigint NOT NULL,
+      "catalog_fields" jsonb NOT NULL,
+      "availability_fields" jsonb NOT NULL,
+      "lexical_fields" jsonb NOT NULL,
+      "transcript_fields" jsonb NOT NULL,
+      "owned_collections" jsonb NOT NULL,
+      "shared_collections" jsonb NOT NULL,
+      "state" text NOT NULL,
+      "version" integer NOT NULL,
+      "validated_at" timestamptz,
+      "invalidated_at" timestamptz,
+      "invalidation_reason" text,
+      "retired_at" timestamptz,
+      "deletion_progress" jsonb NOT NULL,
+      "created_at" timestamptz NOT NULL DEFAULT now(),
+      "updated_at" timestamptz NOT NULL DEFAULT now()
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "watch_search_candidate_qualification" (
+      "id" text PRIMARY KEY,
+      "generation_id" text NOT NULL,
+      "status" text NOT NULL,
+      "application_revision" text NOT NULL,
+      "transcript_collection" text NOT NULL,
+      "transcript_projection_revision" bigint NOT NULL,
+      "qrels_revision" text NOT NULL,
+      "current_bindings" jsonb NOT NULL,
+      "evidence" jsonb NOT NULL,
+      "created_at" timestamptz NOT NULL DEFAULT now()
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "watch_search_candidate_lease" (
+      "resource_key" text PRIMARY KEY,
+      "kind" text NOT NULL,
+      "holder_token" text NOT NULL,
+      "generation_id" text NOT NULL,
+      "application_revision" text NOT NULL,
+      "transcript_collection" text NOT NULL,
+      "transcript_projection_revision" bigint NOT NULL,
+      "current_bindings" jsonb NOT NULL,
+      "acquired_at" timestamptz NOT NULL DEFAULT now(),
+      "renewed_at" timestamptz NOT NULL DEFAULT now(),
+      "expires_at" timestamptz NOT NULL DEFAULT now()
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "content_embedding_contract_pointer" (
+      "id" text PRIMARY KEY,
+      "active_contract_id" text NOT NULL
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "content_embedding_contract" (
+      "id" text PRIMARY KEY,
+      "storage_provider" text NOT NULL,
+      "storage_model" text NOT NULL,
+      "storage_dimensions" integer NOT NULL,
+      "storage_native_dimensions" integer NOT NULL,
+      "storage_transform_version" text
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "video_transcript" (
+      "id" text PRIMARY KEY,
+      "embedding_provider" text NOT NULL,
+      "model" text NOT NULL,
+      "dimensions" integer NOT NULL,
+      "embedding_native_dimensions" integer NOT NULL,
+      "embedding_transform_version" text,
+      "chunking_version" text NOT NULL
+    )
+  `)
+  await client.query(`
+    CREATE TABLE "video_transcript_chunk" (
+      "id" text PRIMARY KEY,
+      "transcript_id" text NOT NULL,
+      "model" text NOT NULL,
+      "dimensions" integer NOT NULL,
+      "embedding" jsonb
+    )
+  `)
+  await client.query(`
+    INSERT INTO "content_embedding_contract" (
+      "id",
+      "storage_provider",
+      "storage_model",
+      "storage_dimensions",
+      "storage_native_dimensions",
+      "storage_transform_version"
+    ) VALUES (
+      'semantic-transcript-pgvector-v1',
+      'openai',
+      'text-embedding-3-large',
+      3072,
+      3072,
+      NULL
+    )
+  `)
+  await client.query(`
+    INSERT INTO "content_embedding_contract_pointer" (
+      "id",
+      "active_contract_id"
+    ) VALUES (
+      'content-embedding-contract-pointer',
+      'semantic-transcript-pgvector-v1'
+    )
+  `)
+}
+
+async function seedActiveTranscriptCompatibility(client: Client) {
+  await client.query(`
+    INSERT INTO "video_transcript" (
+      "id",
+      "embedding_provider",
+      "model",
+      "dimensions",
+      "embedding_native_dimensions",
+      "embedding_transform_version",
+      "chunking_version"
+    ) VALUES (
+      'transcript-1',
+      'openai',
+      'text-embedding-3-large',
+      3072,
+      3072,
+      NULL,
+      'mastra-v1'
+    )
+  `)
+  await client.query(`
+    INSERT INTO "video_transcript_chunk" (
+      "id",
+      "transcript_id",
+      "model",
+      "dimensions",
+      "embedding"
+    ) VALUES (
+      'chunk-1',
+      'transcript-1',
+      'text-embedding-3-large',
+      3072,
+      '{}'::jsonb
+    )
+  `)
+}
+
 describe.skipIf(!RUN_REAL_DB_TEST)(
   "Watch search candidate trigger repair against real PostgreSQL",
   () => {
@@ -30,161 +189,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.connect()
       await client.query(`CREATE SCHEMA "${schemaName}"`)
       await client.query(`SET search_path TO "${schemaName}"`)
-      await client.query(`
-        CREATE TABLE "watch_search_candidate_generation" (
-          "id" text PRIMARY KEY,
-          "application_revision" text NOT NULL,
-          "source_epoch" text NOT NULL,
-          "source_digests" jsonb NOT NULL,
-          "catalog_collection" text NOT NULL,
-          "availability_collection" text NOT NULL,
-          "lexical_collection" text NOT NULL,
-          "transcript_collection" text NOT NULL,
-          "content_embedding_contract_id" text NOT NULL,
-          "transcript_chunking_version" text NOT NULL,
-          "transcript_projection_revision" bigint NOT NULL,
-          "catalog_fields" jsonb NOT NULL,
-          "availability_fields" jsonb NOT NULL,
-          "lexical_fields" jsonb NOT NULL,
-          "transcript_fields" jsonb NOT NULL,
-          "owned_collections" jsonb NOT NULL,
-          "shared_collections" jsonb NOT NULL,
-          "state" text NOT NULL,
-          "version" integer NOT NULL,
-          "validated_at" timestamptz,
-          "invalidated_at" timestamptz,
-          "invalidation_reason" text,
-          "retired_at" timestamptz,
-          "deletion_progress" jsonb NOT NULL,
-          "created_at" timestamptz NOT NULL DEFAULT now(),
-          "updated_at" timestamptz NOT NULL DEFAULT now()
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "watch_search_candidate_qualification" (
-          "id" text PRIMARY KEY,
-          "generation_id" text NOT NULL,
-          "status" text NOT NULL,
-          "application_revision" text NOT NULL,
-          "transcript_collection" text NOT NULL,
-          "transcript_projection_revision" bigint NOT NULL,
-          "qrels_revision" text NOT NULL,
-          "current_bindings" jsonb NOT NULL,
-          "evidence" jsonb NOT NULL,
-          "created_at" timestamptz NOT NULL DEFAULT now()
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "watch_search_candidate_lease" (
-          "resource_key" text PRIMARY KEY,
-          "kind" text NOT NULL,
-          "holder_token" text NOT NULL,
-          "generation_id" text NOT NULL,
-          "application_revision" text NOT NULL,
-          "transcript_collection" text NOT NULL,
-          "transcript_projection_revision" bigint NOT NULL,
-          "current_bindings" jsonb NOT NULL,
-          "acquired_at" timestamptz NOT NULL DEFAULT now(),
-          "renewed_at" timestamptz NOT NULL DEFAULT now(),
-          "expires_at" timestamptz NOT NULL DEFAULT now()
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "content_embedding_contract_pointer" (
-          "id" text PRIMARY KEY,
-          "active_contract_id" text NOT NULL
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "content_embedding_contract" (
-          "id" text PRIMARY KEY,
-          "storage_provider" text NOT NULL,
-          "storage_model" text NOT NULL,
-          "storage_dimensions" integer NOT NULL,
-          "storage_native_dimensions" integer NOT NULL,
-          "storage_transform_version" text
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "video_transcript" (
-          "id" text PRIMARY KEY,
-          "embedding_provider" text NOT NULL,
-          "model" text NOT NULL,
-          "dimensions" integer NOT NULL,
-          "embedding_native_dimensions" integer NOT NULL,
-          "embedding_transform_version" text,
-          "chunking_version" text NOT NULL
-        )
-      `)
-      await client.query(`
-        CREATE TABLE "video_transcript_chunk" (
-          "id" text PRIMARY KEY,
-          "transcript_id" text NOT NULL,
-          "model" text NOT NULL,
-          "dimensions" integer NOT NULL,
-          "embedding" jsonb
-        )
-      `)
-      await client.query(`
-        INSERT INTO "content_embedding_contract" (
-          "id",
-          "storage_provider",
-          "storage_model",
-          "storage_dimensions",
-          "storage_native_dimensions",
-          "storage_transform_version"
-        ) VALUES (
-          'semantic-transcript-pgvector-v1',
-          'openai',
-          'text-embedding-3-large',
-          3072,
-          3072,
-          NULL
-        )
-      `)
-      await client.query(`
-        INSERT INTO "content_embedding_contract_pointer" (
-          "id",
-          "active_contract_id"
-        ) VALUES (
-          'content-embedding-contract-pointer',
-          'semantic-transcript-pgvector-v1'
-        )
-      `)
-      await client.query(`
-        INSERT INTO "video_transcript" (
-          "id",
-          "embedding_provider",
-          "model",
-          "dimensions",
-          "embedding_native_dimensions",
-          "embedding_transform_version",
-          "chunking_version"
-        ) VALUES (
-          'transcript-1',
-          'openai',
-          'text-embedding-3-large',
-          3072,
-          3072,
-          NULL,
-          'mastra-v1'
-        )
-      `)
-      await client.query(`
-        INSERT INTO "video_transcript_chunk" (
-          "id",
-          "transcript_id",
-          "model",
-          "dimensions",
-          "embedding"
-        ) VALUES (
-          'chunk-1',
-          'transcript-1',
-          'text-embedding-3-large',
-          3072,
-          '{}'::jsonb
-        )
-      `)
+      await createLegacyCandidateTables(client)
+      await seedActiveTranscriptCompatibility(client)
       await client.query(migrationSql)
     })
 
@@ -296,6 +302,78 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           WHERE "id" = 'retired-path'
         `),
       ).resolves.toMatchObject({ rowCount: 1 })
+    })
+
+    it("allows deploy on a fresh schema with no transcript rows when no legacy rows need backfill", async () => {
+      const freshSchemaName = `candidate_trigger_empty_${Date.now()}_${Math.random()
+        .toString(36)
+        .slice(2)}`
+
+      await client.query(`CREATE SCHEMA "${freshSchemaName}"`)
+      await client.query(`SET search_path TO "${freshSchemaName}"`)
+
+      try {
+        await createLegacyCandidateTables(client)
+        await expect(client.query(migrationSql)).resolves.toMatchObject({
+          command: "DO",
+        })
+
+        const requiredColumns = await client.query<{
+          table_name: string
+          column_name: string
+          is_nullable: "YES" | "NO"
+        }>(`
+          SELECT table_name, column_name, is_nullable
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name IN (
+              'watch_search_candidate_generation',
+              'watch_search_candidate_qualification',
+              'watch_search_candidate_lease'
+            )
+            AND column_name IN (
+              'content_embedding_contract_id',
+              'transcript_chunking_version'
+            )
+          ORDER BY table_name, column_name
+        `)
+
+        expect(requiredColumns.rows).toEqual([
+          {
+            table_name: "watch_search_candidate_generation",
+            column_name: "content_embedding_contract_id",
+            is_nullable: "NO",
+          },
+          {
+            table_name: "watch_search_candidate_generation",
+            column_name: "transcript_chunking_version",
+            is_nullable: "NO",
+          },
+          {
+            table_name: "watch_search_candidate_lease",
+            column_name: "content_embedding_contract_id",
+            is_nullable: "NO",
+          },
+          {
+            table_name: "watch_search_candidate_lease",
+            column_name: "transcript_chunking_version",
+            is_nullable: "NO",
+          },
+          {
+            table_name: "watch_search_candidate_qualification",
+            column_name: "content_embedding_contract_id",
+            is_nullable: "NO",
+          },
+          {
+            table_name: "watch_search_candidate_qualification",
+            column_name: "transcript_chunking_version",
+            is_nullable: "NO",
+          },
+        ])
+      } finally {
+        await client.query(`SET search_path TO "${schemaName}"`)
+        await client.query(`DROP SCHEMA IF EXISTS "${freshSchemaName}" CASCADE`)
+      }
     })
   },
 )

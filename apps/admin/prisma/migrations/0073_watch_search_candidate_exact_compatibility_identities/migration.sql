@@ -14,7 +14,32 @@ DO $$
 DECLARE
   active_contract_id text;
   active_chunking_versions text[];
+  needs_compatibility_backfill boolean;
 BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM "watch_search_candidate_generation"
+    WHERE "content_embedding_contract_id" IS NULL
+       OR "transcript_chunking_version" IS NULL
+    UNION ALL
+    SELECT 1
+    FROM "watch_search_candidate_qualification"
+    WHERE "content_embedding_contract_id" IS NULL
+       OR "transcript_chunking_version" IS NULL
+    UNION ALL
+    SELECT 1
+    FROM "watch_search_candidate_lease"
+    WHERE "content_embedding_contract_id" IS NULL
+       OR "transcript_chunking_version" IS NULL
+  )
+  INTO needs_compatibility_backfill;
+
+  -- Fresh databases have no legacy candidate rows to backfill, so they do not
+  -- need a current transcript compatibility tuple during migration deploy.
+  IF NOT needs_compatibility_backfill THEN
+    RETURN;
+  END IF;
+
   SELECT pointer.active_contract_id
   INTO active_contract_id
   FROM content_embedding_contract_pointer pointer
