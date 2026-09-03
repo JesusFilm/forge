@@ -44,13 +44,8 @@ export async function resolveCurrentWatchSearchTranscriptCompatibility(
         AND vt.model = ${contract.storage.model}
         AND vt.dimensions = ${contract.storage.dimensions}
         AND vt.embedding_native_dimensions = ${contract.storage.nativeDimensions}
-        AND (
-          (
-            vt.embedding_transform_version IS NULL
-            AND ${contract.storage.transformVersion} IS NULL
-          )
-          OR vt.embedding_transform_version = ${contract.storage.transformVersion}
-        )
+        AND vt.embedding_transform_version IS NOT DISTINCT FROM
+          ${contract.storage.transformVersion}::text
         AND vtc.model = ${contract.storage.model}
         AND vtc.dimensions = ${contract.storage.dimensions}
       ORDER BY vt.chunking_version ASC NULLS FIRST
