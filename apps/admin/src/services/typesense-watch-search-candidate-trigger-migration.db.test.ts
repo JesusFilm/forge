@@ -235,8 +235,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             "transcript_fields", "owned_collections", "shared_collections",
             "state", "version", "deletion_progress"
           ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11,
-            $12, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb,
-            $18::jsonb, $19, $20, $21::jsonb)
+            $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb,
+            $17::jsonb, $18, $19, $20::jsonb)
         `,
         ["ready-path", ...baseValues],
       )
@@ -282,8 +282,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             "transcript_fields", "owned_collections", "shared_collections",
             "state", "version", "deletion_progress"
           ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11,
-            $12, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb,
-            $18::jsonb, $19, $20, $21::jsonb)
+            $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb,
+            $17::jsonb, $18, $19, $20::jsonb)
         `,
         ["retired-path", ...baseValues],
       )
