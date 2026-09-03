@@ -1,14 +1,22 @@
 import { createHash } from "node:crypto"
-import type { Prisma } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { canWriteDerived } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
+import {
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "./content-embedding-contract"
 
-export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
-export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
+export const EXPERIENCE_EMBEDDING_DIMENSIONS =
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS
+export const OPENROUTER_EMBEDDING_MODEL = ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL
 export const FIREWORKS_EMBEDDING_MODEL = "fireworks/qwen3-embedding-8b"
 const OPENROUTER_EMBEDDING_PROVIDER = "SiliconFlow"
 const FIREWORKS_EMBEDDING_BASE_URL =
@@ -95,6 +103,8 @@ export class EmbeddingsBatchError extends Error {
     readonly code:
       | "empty_input"
       | "missing_credentials"
+      | "contract_mismatch"
+      | "contract_unavailable"
       | "request_failed"
       | "request_timed_out"
       | "validation_failed"
@@ -216,7 +226,9 @@ type EmbeddingProvider = {
 export type EmbeddingProviderIdentity = {
   provider: EmbeddingProvider["id"]
   model: string
+  nativeDimensions: number
   dimensions: number
+  transformVersion: string | null
 }
 
 type EmbeddingProviderResult =
@@ -297,7 +309,55 @@ export function currentEmbeddingProviderIdentity(): EmbeddingProviderIdentity {
   return {
     provider: provider.id,
     model: provider.model,
+    nativeDimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
     dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    transformVersion: null,
+  }
+}
+
+function currentEmbeddingProviderTuple(): ContentEmbeddingTuple {
+  const identity = currentEmbeddingProviderIdentity()
+  return {
+    provider: identity.provider,
+    model: identity.model,
+    nativeDimensions: identity.nativeDimensions,
+    dimensions: identity.dimensions,
+    transformVersion: identity.transformVersion,
+  }
+}
+
+export async function currentContentQueryEmbeddingIdentity(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+): Promise<EmbeddingProviderIdentity & { contractId: string }> {
+  let contract: Awaited<
+    ReturnType<typeof resolveActiveContentEmbeddingContract>
+  >
+  try {
+    contract = await resolveActiveContentEmbeddingContract(prisma)
+  } catch (error) {
+    throw new EmbeddingsBatchError(
+      "contract_unavailable",
+      "Active content embedding contract is unavailable",
+      error,
+    )
+  }
+
+  const identity = currentEmbeddingProviderIdentity()
+  if (
+    !contentEmbeddingTupleMatches(
+      contract.query,
+      currentEmbeddingProviderTuple(),
+    )
+  ) {
+    throw new EmbeddingsBatchError(
+      "contract_mismatch",
+      `Configured query embedding provider ${identity.provider}/${identity.model} does not match active content embedding contract ${contract.id}`,
+    )
+  }
+
+  return {
+    contractId: contract.id,
+    ...identity,
   }
 }
 
@@ -537,6 +597,28 @@ export async function generateExperienceEmbedding(
     model: result.model,
     dimensions: result.dimensions,
     embedding: result.embeddings[0]!,
+  }
+}
+
+export async function generateCurrentContentQueryEmbedding(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+  text: string,
+): Promise<GeneratedEmbedding & { contractId: string }> {
+  const identity = await currentContentQueryEmbeddingIdentity(prisma)
+  const result = await generateExperienceEmbedding(text)
+  if (
+    result.dimensions !== identity.dimensions ||
+    result.embedding.length !== identity.dimensions
+  ) {
+    throw new EmbeddingsBatchError(
+      "dimension_mismatch",
+      `Query embedding returned ${result.embedding.length} dimensions; expected ${identity.dimensions}`,
+    )
+  }
+
+  return {
+    contractId: identity.contractId,
+    ...result,
   }
 }
 

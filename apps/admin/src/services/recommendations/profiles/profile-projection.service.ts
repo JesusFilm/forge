@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  activeTranscriptContentEmbeddingWhere,
+} from "@/services/content-embedding-contract"
 import { MULTI_INTEREST_PROFILE_MANIFEST_ID } from "../candidates/profile-candidate.service"
 import { RecommendationInternalStateError } from "../errors"
 import { withRecommendationSerializableRetry } from "../transaction-retry"
@@ -425,21 +429,18 @@ export async function loadDatabaseProfileEvidenceEmbeddings(
     JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
     WHERE transcript.video_id IN (${Prisma.join(bounded)})
       AND transcript.language = 'en'
-      AND transcript.embedding_provider = 'jesus-film-ai-gateway'
-      AND transcript.model = 'embeddings'
-      AND transcript.dimensions = 1536
-      AND transcript.embedding_native_dimensions = 1536
-      AND transcript.embedding_transform_version IS NULL
       AND chunk.embedding IS NOT NULL
-      AND chunk.model = 'embeddings'
-      AND chunk.dimensions = 1536
+      ${activeTranscriptContentEmbeddingWhere({
+        transcriptAlias: "transcript",
+        chunkAlias: "chunk",
+      })}
     GROUP BY transcript.video_id
     ORDER BY transcript.video_id
   `)
   return new Map(
     rows.flatMap((row) => {
       const vector = parsePgVector(row.embeddingText)
-      return vector.length === 1_536
+      return vector.length === ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
         ? [[row.targetMediaId, vector] as const]
         : []
     }),

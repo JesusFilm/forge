@@ -1384,6 +1384,8 @@ model LanguageFallback {
 /// normalized search text plus provider/model/dimension metadata.
 model QueryEmbeddingCache {
   id         String   @id @default(cuid())
+  contractId String   @map("contract_id") @db.VarChar(191)
+  contract   ContentEmbeddingContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
   provider   String
   model      String
   dimensions Int
@@ -1394,10 +1396,45 @@ model QueryEmbeddingCache {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  @@unique([provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@unique([contractId, provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@index([contractId, expiresAt], map: "query_embedding_cache_contract_expiry_idx")
   @@index([expiresAt])
   @@index([lastUsedAt])
   @@map("query_embedding_cache")
+}
+
+/// Immutable compatibility authority for current content embeddings. The
+/// current row declares the exact query-time and stored-vector tuples that are
+/// permitted to interoperate.
+model ContentEmbeddingContract {
+  id                    String   @id @db.VarChar(191)
+  queryProvider         String   @map("query_provider") @db.VarChar(64)
+  queryModel            String   @map("query_model") @db.VarChar(191)
+  queryNativeDimensions Int      @map("query_native_dimensions")
+  queryDimensions       Int      @map("query_dimensions")
+  queryTransformVersion String?  @map("query_transform_version") @db.VarChar(191)
+  storageProvider       String   @map("storage_provider") @db.VarChar(64)
+  storageModel          String   @map("storage_model") @db.VarChar(191)
+  storageNativeDimensions Int    @map("storage_native_dimensions")
+  storageDimensions     Int      @map("storage_dimensions")
+  storageTransformVersion String? @map("storage_transform_version") @db.VarChar(191)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  queryEmbeddingCaches QueryEmbeddingCache[]
+  pointers             ContentEmbeddingContractPointer[]
+
+  @@map("content_embedding_contract")
+}
+
+/// Singleton mutable pointer for the current contract. The registry rows are
+/// immutable; changing current serving updates only this pointer.
+model ContentEmbeddingContractPointer {
+  id               String                  @id @db.VarChar(64)
+  activeContractId String                  @map("active_contract_id") @db.VarChar(191)
+  activeContract   ContentEmbeddingContract @relation(fields: [activeContractId], references: [id], onDelete: Restrict)
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  @@map("content_embedding_contract_pointer")
 }
 
 /// A localized display name for a language. Synced from Core.

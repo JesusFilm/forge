@@ -237,7 +237,9 @@ describe("generateExperienceEmbedding", () => {
     expect(currentEmbeddingProviderIdentity()).toEqual({
       provider: "fireworks",
       model: FIREWORKS_EMBEDDING_MODEL,
+      nativeDimensions: 1536,
       dimensions: 1536,
+      transformVersion: null,
     })
   })
 

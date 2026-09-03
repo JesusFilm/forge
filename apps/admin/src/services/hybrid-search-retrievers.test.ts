@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import { CONTENT_EMBEDDING_CONTRACT_POINTER_ID } from "./content-embedding-contract"
 import {
   calculateVideoSemanticMixedScore,
   mixVideoSemanticEvidenceRows,
@@ -543,12 +544,14 @@ describe("semantic retriever provenance gates", () => {
     const values = latestRawValues(prisma)
     expect(sql).toContain("vt.embedding_provider")
     expect(sql).toContain("vt.embedding_native_dimensions")
+    expect(sql).toContain("contract.storage_provider")
+    expect(sql).toContain("contract.storage_model")
+    expect(sql).toContain("contract.storage_dimensions")
+    expect(sql).toContain("contract.storage_native_dimensions")
     expect(sql).toContain("vt.embedding_transform_version IS NULL")
     expect(sql).not.toContain("vsl.embedding_provider")
     expect(sql).not.toContain("video_scene_locale")
-    expect(values).toContain("jesus-film-ai-gateway")
-    expect(values).toContain("embeddings")
-    expect(values).toContain(1536)
+    expect(values).toContain(CONTENT_EMBEDDING_CONTRACT_POINTER_ID)
   })
 
   it("requires the approved Qwen-compatible content provenance for experience semantic rows", async () => {
@@ -565,10 +568,12 @@ describe("semantic retriever provenance gates", () => {
     expect(sql).toContain("el.embedding_model")
     expect(sql).toContain("el.embedding_dimensions")
     expect(sql).toContain("el.embedding_native_dimensions")
+    expect(sql).toContain("contract.storage_provider")
+    expect(sql).toContain("contract.storage_model")
+    expect(sql).toContain("contract.storage_dimensions")
+    expect(sql).toContain("contract.storage_native_dimensions")
     expect(sql).toContain("el.embedding_transform_version IS NULL")
-    expect(values).toContain("jesus-film-ai-gateway")
-    expect(values).toContain("embeddings")
-    expect(values).toContain(1536)
+    expect(values).toContain(CONTENT_EMBEDDING_CONTRACT_POINTER_ID)
   })
 })
 

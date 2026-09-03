@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
-  currentEmbeddingProviderIdentity,
+  currentContentQueryEmbeddingIdentity,
   EmbeddingsBatchError,
   generateExperienceEmbedding,
 } from "./embeddings.service"
@@ -1006,6 +1006,7 @@ type QueryEmbeddingCacheLookup =
     }
 
 type QueryEmbeddingCacheKey = {
+  contractId: string
   provider: string
   model: string
   dimensions: number
@@ -1016,9 +1017,13 @@ function normalizeEmbeddingCacheText(text: string): string {
   return text.replace(/\s+/g, " ").trim()
 }
 
-function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
-  const identity = currentEmbeddingProviderIdentity()
+async function queryEmbeddingCacheKey(
+  prisma: PrismaClient,
+  text: string,
+): Promise<QueryEmbeddingCacheKey> {
+  const identity = await currentContentQueryEmbeddingIdentity(prisma)
   const cacheIdentity = JSON.stringify({
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1026,6 +1031,7 @@ function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
   })
 
   return {
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1095,7 +1101,8 @@ async function deleteCachedQueryEmbedding(
 ): Promise<void> {
   await prisma.$executeRaw`
     DELETE FROM query_embedding_cache
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1110,7 +1117,8 @@ async function readCachedQueryEmbedding(
     UPDATE query_embedding_cache
     SET last_used_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1151,6 +1159,7 @@ async function rememberQueryEmbedding(
   await prisma.$executeRaw`
     INSERT INTO query_embedding_cache (
       id,
+      contract_id,
       provider,
       model,
       dimensions,
@@ -1163,6 +1172,7 @@ async function rememberQueryEmbedding(
     )
     VALUES (
       ${randomUUID()},
+      ${key.contractId},
       ${key.provider},
       ${key.model},
       ${key.dimensions},
@@ -1173,7 +1183,7 @@ async function rememberQueryEmbedding(
       CURRENT_TIMESTAMP,
       CURRENT_TIMESTAMP
     )
-    ON CONFLICT (provider, model, dimensions, query_hash)
+    ON CONFLICT (contract_id, provider, model, dimensions, query_hash)
     DO UPDATE SET
       embedding = EXCLUDED.embedding,
       expires_at = EXCLUDED.expires_at,
@@ -1186,7 +1196,7 @@ export async function defaultWatchSearchEmbedder(
   prisma: PrismaClient,
   text: string,
 ): Promise<WatchSearchQueryEmbeddingResult> {
-  const key = queryEmbeddingCacheKey(text)
+  const key = await queryEmbeddingCacheKey(prisma, text)
   const processCached = watchSearchQueryEmbeddingProcessCache.get(key)
   if (processCached != null) {
     return { embedding: processCached, detail: "cache_l1_hit" }

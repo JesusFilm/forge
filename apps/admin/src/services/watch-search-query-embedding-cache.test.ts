@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID } from "./content-embedding-contract"
 
 import {
   WatchSearchQueryEmbeddingProcessCache,
@@ -8,6 +9,7 @@ import {
 const identity = (
   overrides: Partial<WatchSearchQueryEmbeddingCacheIdentity> = {},
 ): WatchSearchQueryEmbeddingCacheIdentity => ({
+  contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   provider: "openrouter",
   model: "qwen/qwen3-embedding-8b",
   dimensions: 3,
