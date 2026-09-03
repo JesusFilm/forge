@@ -17,6 +17,7 @@ import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -81,7 +82,9 @@ type ComparisonTraceEvent = {
 
 export type TypesenseWatchSearchComparisonDeps = {
   resolveCurrentProfile(): Promise<TypesenseWatchSearchProfile>
-  resolveCandidateProfile(): Promise<TypesenseWatchSearchProfile>
+  resolveCandidateProfile(
+    currentProfile: TypesenseWatchSearchProfile,
+  ): Promise<TypesenseWatchSearchProfile>
   createSearch(profile: TypesenseWatchSearchProfile): SearchExecutor
   acquireLease(input: {
     comparisonId: string
@@ -193,8 +196,8 @@ export class TypesenseWatchSearchComparisonService {
       if (!(await this.deps.admitActor(input.actorKey))) {
         throw new ComparisonError("admission_denied")
       }
-      candidateProfile = await this.deps.resolveCandidateProfile()
       if (!currentProfile) throw new ComparisonError("profile_unavailable")
+      candidateProfile = await this.deps.resolveCandidateProfile(currentProfile)
       lease = await this.deps.acquireLease({
         comparisonId,
         current: currentProfile,
@@ -297,18 +300,32 @@ type EvaluationCandidateGenerationResolver = {
   ): Promise<ResolvedCandidateWatchSearchGeneration>
 }
 
-export async function resolveEvaluationCandidateWatchSearchProfile(
-  generations: EvaluationCandidateGenerationResolver,
-): Promise<TypesenseWatchSearchProfile> {
-  const pointer = await generations.getPointer("EVALUATION")
+export async function resolveEvaluationCandidateWatchSearchProfile(input: {
+  generations: EvaluationCandidateGenerationResolver
+  currentProfile: TypesenseWatchSearchProfile
+  transcriptCompatibility: {
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  } | null
+}): Promise<TypesenseWatchSearchProfile> {
+  if (
+    input.currentProfile.kind !== "CURRENT" ||
+    input.currentProfile.allowCompatibilityFallback ||
+    !input.transcriptCompatibility
+  ) {
+    throw new ComparisonError("profile_unavailable")
+  }
+  const pointer = await input.generations.getPointer("EVALUATION")
   if (!pointer.generationId) throw new ComparisonError("profile_unavailable")
-  const generation = await generations.getGeneration(pointer.generationId)
-  const resolved = await generations.resolveGeneration({
+  const generation = await input.generations.getGeneration(pointer.generationId)
+  const resolved = await input.generations.resolveGeneration({
     generationId: generation.id,
     indexContractRevision: candidateWatchSearchIndexContractRevision(),
-    transcriptCollection: generation.transcriptCollection,
-    contentEmbeddingContractId: generation.contentEmbeddingContractId,
-    transcriptChunkingVersion: generation.transcriptChunkingVersion,
+    transcriptCollection: input.currentProfile.binding.transcript,
+    contentEmbeddingContractId:
+      input.transcriptCompatibility.contentEmbeddingContractId,
+    transcriptChunkingVersion:
+      input.transcriptCompatibility.transcriptChunkingVersion,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
@@ -334,8 +351,13 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
 
   return new TypesenseWatchSearchComparisonService({
     resolveCurrentProfile: () => freezeCurrentWatchSearchProfile(typesense),
-    resolveCandidateProfile: () =>
-      resolveEvaluationCandidateWatchSearchProfile(generations),
+    resolveCandidateProfile: async (currentProfile) =>
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptCompatibility:
+          await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+      }),
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),
     acquireLease: async ({ comparisonId, current, candidate }) => {

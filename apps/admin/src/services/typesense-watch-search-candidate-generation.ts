@@ -20,6 +20,7 @@ import {
   freezeCurrentWatchSearchProfile,
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
 
@@ -562,7 +563,44 @@ export class TypesenseWatchSearchCandidateGenerationService {
     private readonly prisma: PrismaClient,
     private readonly typesense: SchemaClient,
     private readonly now: () => Date = () => new Date(),
+    private readonly resolveCurrentTranscriptCompatibility: typeof resolveCurrentWatchSearchTranscriptCompatibility = resolveCurrentWatchSearchTranscriptCompatibility,
   ) {}
+
+  private async assertExactCurrentTranscriptCompatibility(input: {
+    generation: StoredGeneration
+    currentBindings?: readonly string[]
+    prisma?: Pick<PrismaClient, "$queryRaw">
+  }): Promise<void> {
+    const currentProfile = await freezeCurrentWatchSearchProfile(this.typesense)
+    const authoritativeCurrentBindings =
+      watchSearchBindingMembers(currentProfile)
+    if (
+      input.currentBindings &&
+      JSON.stringify(normalizedBindings(input.currentBindings)) !==
+        JSON.stringify(authoritativeCurrentBindings)
+    ) {
+      throw new CandidateGenerationValidationError(
+        "current physical bindings changed after qualification",
+      )
+    }
+
+    const currentCompatibility =
+      await this.resolveCurrentTranscriptCompatibility(
+        (input.prisma ?? this.prisma) as Pick<PrismaClient, "$queryRaw">,
+      )
+    if (
+      input.generation.transcriptCollection !==
+        currentProfile.binding.transcript ||
+      input.generation.contentEmbeddingContractId !==
+        currentCompatibility.contentEmbeddingContractId ||
+      input.generation.transcriptChunkingVersion !==
+        currentCompatibility.transcriptChunkingVersion
+    ) {
+      throw new CandidateGenerationCompatibilityError(
+        `candidate generation ${input.generation.id} transcript identity is stale`,
+      )
+    }
+  }
 
   async createBuildingGeneration(input: CandidateGenerationInput) {
     const validated = validateInput(input)
@@ -959,6 +997,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
+        await this.assertExactCurrentTranscriptCompatibility({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
         if (input.status === "OPERATOR_ACCEPTED") {
           assertOperatorAcceptedQualificationEvidence(
             input.evidence,
@@ -1468,17 +1511,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
-          const authoritativeCurrentBindings = watchSearchBindingMembers(
-            await freezeCurrentWatchSearchProfile(this.typesense),
-          )
-          if (
-            JSON.stringify(authoritativeCurrentBindings) !==
-            JSON.stringify(currentBindings)
-          ) {
-            throw new CandidateGenerationValidationError(
-              "current physical bindings changed after qualification",
-            )
-          }
+          await this.assertExactCurrentTranscriptCompatibility({
+            generation,
+            currentBindings,
+            prisma: tx,
+          })
           const qrelsRevision = requiredString(
             input.qrelsRevision,
             "qrels revision",

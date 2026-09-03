@@ -367,7 +367,12 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
     resolveCandidateProfile: async (currentProfile) => {
       const profile =
         source === "EVALUATION"
-          ? await resolveEvaluationCandidateWatchSearchProfile(generations)
+          ? await resolveEvaluationCandidateWatchSearchProfile({
+              generations,
+              currentProfile,
+              transcriptCompatibility:
+                await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+            })
           : await resolveServingCandidateWatchSearchProfile({
               generations,
               currentProfile,

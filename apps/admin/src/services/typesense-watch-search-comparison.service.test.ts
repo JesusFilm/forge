@@ -128,7 +128,9 @@ function fixture() {
   }
   const deps = {
     resolveCurrentProfile: vi.fn(async () => currentProfile),
-    resolveCandidateProfile: vi.fn(async () => candidateProfile),
+    resolveCandidateProfile: vi.fn(
+      async (_currentProfile: TypesenseWatchSearchProfile) => candidateProfile,
+    ),
     createSearch: vi.fn((profile: TypesenseWatchSearchProfile) => ({
       searchWithDiagnostics:
         profile.kind === "CURRENT" ? currentSearch : candidateSearch,
@@ -175,7 +177,14 @@ describe("TypesenseWatchSearchComparisonService", () => {
     }
 
     await expect(
-      resolveEvaluationCandidateWatchSearchProfile(generations),
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptCompatibility: {
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
+        },
+      }),
     ).resolves.toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
@@ -187,6 +196,50 @@ describe("TypesenseWatchSearchComparisonService", () => {
       transcriptCollection: "watch_search_transcripts_physical",
       contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
       transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 7n,
+      requireQualified: false,
+    })
+  })
+
+  it("rejects evaluation candidates when the active transcript compatibility tuple drifted", async () => {
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+        version: 1,
+        updatedAt: new Date(),
+      })),
+      getGeneration: vi.fn(async () => ({
+        id: "generation-1",
+        transcriptCollection: "watch_search_transcripts_physical",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 7n,
+      })),
+      resolveGeneration: vi.fn(async () => {
+        throw new Error("candidate generation transcript identity is stale")
+      }),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptCompatibility: {
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+          transcriptChunkingVersion: "mastra-v2",
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "Error",
+      message: "candidate generation transcript identity is stale",
+    })
+    expect(generations.resolveGeneration).toHaveBeenCalledWith({
+      generationId: "generation-1",
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
+      transcriptCollection: currentProfile.binding.transcript,
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+      transcriptChunkingVersion: "mastra-v2",
       transcriptProjectionRevision: 7n,
       requireQualified: false,
     })
