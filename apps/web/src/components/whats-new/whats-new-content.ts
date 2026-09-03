@@ -873,7 +873,10 @@ export const WHATS_NEW_PARTNER_LETTER = {
       },
       {
         text: "One page that holds every video in a single language, so you can see the whole shelf at once.",
-        link: { label: "See everything in your language", to: "language-videos" },
+        link: {
+          label: "See everything in your language",
+          to: "language-videos",
+        },
       },
       {
         text: "Whole collections downloadable in one go, rather than one file at a time.",
