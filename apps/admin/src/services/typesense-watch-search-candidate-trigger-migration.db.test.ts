@@ -12,6 +12,14 @@ const migrationSql = readFileSync(
   "utf8",
 )
 
+type QueryCommandResult = { command: string }
+
+function queryCommands(result: QueryCommandResult | QueryCommandResult[]) {
+  return Array.isArray(result)
+    ? result.map((entry) => entry.command)
+    : [result.command]
+}
+
 async function createLegacyCandidateTables(client: Client) {
   await client.query(`
     CREATE TABLE "watch_search_candidate_generation" (
@@ -314,9 +322,18 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
       try {
         await createLegacyCandidateTables(client)
-        await expect(client.query(migrationSql)).resolves.toMatchObject({
-          command: "DO",
-        })
+        const migrationResult = await client.query(migrationSql)
+        expect(queryCommands(migrationResult)).toContain("DO")
+
+        const triggerNames = await client.query<{ tgname: string }>(`
+          SELECT tgname
+          FROM pg_trigger
+          WHERE tgrelid = 'watch_search_candidate_generation'::regclass
+            AND NOT tgisinternal
+        `)
+        expect(triggerNames.rows).toEqual([
+          { tgname: "watch_search_candidate_generation_identity_guard" },
+        ])
 
         const requiredColumns = await client.query<{
           table_name: string

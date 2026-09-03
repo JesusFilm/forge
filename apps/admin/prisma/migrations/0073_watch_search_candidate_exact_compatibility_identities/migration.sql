@@ -231,3 +231,11 @@ BEGIN
   RETURN NEW;
 END
 $$;
+
+DROP TRIGGER IF EXISTS "watch_search_candidate_generation_identity_guard"
+ON "watch_search_candidate_generation";
+
+CREATE TRIGGER "watch_search_candidate_generation_identity_guard"
+BEFORE UPDATE ON "watch_search_candidate_generation"
+FOR EACH ROW
+EXECUTE FUNCTION "reject_watch_search_candidate_identity_update"();
