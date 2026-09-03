@@ -3,7 +3,7 @@ id: "feat-434"
 title: "Cut Seeker over to Forge RAG with rollback"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-01"
 duration: 3
 depends_on: ["feat-432"]
@@ -41,3 +41,10 @@ Prepare and execute an atomic base-URL/allowlist cutover, verify Seeker, and ret
 
 - Seeker retrieval smoke and eval use Forge RAG through the approved route.
 - Rollback is exercised or safely rehearsed and timed.
+
+## Resolution
+
+PR #2153 shipped the production guard while intentionally leaving this feature
+in progress until the live cutover. The follow-up closure PR records the
+successful Railway-private variable cutover and Seeker retrieval smoke in
+`docs/roadmap/rag/evidence/feat-434/seeker-cutover.md`.
