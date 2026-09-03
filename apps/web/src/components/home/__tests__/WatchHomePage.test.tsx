@@ -9,6 +9,7 @@ import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import {
+  addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,
   readWatchHomeTvPlayedIds,
   readWatchHomeVerticalVideoIds,
@@ -1022,6 +1023,57 @@ describe("WatchHomePage", () => {
         .some((className) => className.includes("px-4 sm:px-6 lg:px-8")),
     ).toBe(false)
   })
+
+  it("continues autoplay after the final unplayed pooled video ends", async () => {
+    vi.useFakeTimers()
+
+    try {
+      addWatchHomeTvPlayedId("queued-1")
+      addWatchHomeTvPlayedId("queued-2")
+      vi.spyOn(Math, "random").mockReturnValue(0)
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )
+      const finalUnplayedVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const finalUnplayedSrc = finalUnplayedVideo.getAttribute("src")
+
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
+      expect(finalUnplayedSrc).toBe("https://stream.example/queued-three.m3u8")
+
+      await act(async () => {
+        finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      const replacementVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const replacementPlay = vi.fn(() => Promise.resolve())
+      replacementVideo.play =
+        replacementPlay as unknown as HTMLVideoElement["play"]
+
+      expect(replacementVideo).not.toBe(finalUnplayedVideo)
+      expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
+      expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
+
+      await act(async () => {
+        replacementVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+        vi.advanceTimersByTime(1_500)
+        await Promise.resolve()
+      })
+
+      expect(replacementPlay).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("keeps the server-rendered opening slide independent of the random draw", () => {
     const model = makeSequencedModel()
     const markup = [0, 0.99].map((value) => {
