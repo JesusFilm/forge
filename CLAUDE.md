@@ -208,6 +208,9 @@ tags:                         # Searchable: cms, manager, web, mobile, tv, graph
 
 This repo uses the compound engineering workflow. After completing work:
 
+- Always use the available Compound Engineering skills for Forge software-engineering work, including Forge checkouts and Codex worktrees outside `/home/lado/Projects`. Repository identity, not filesystem path, controls this rule.
+- Use the smallest Compound Engineering workflow that fits the request. Invoke `compound-engineering:lfg` only when the user explicitly requests LFG or hands-off shipping through commit, push, PR creation, and CI babysitting.
+
 1. Run `ce:compound` to capture what you learned.
 2. Tag solutions with the correct category from `docs/solutions/`.
 3. Update this CLAUDE.md if a new pattern should be permanent.
