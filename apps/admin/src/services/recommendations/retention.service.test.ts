@@ -32,9 +32,7 @@ function buildPrisma() {
       count: count(),
       findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
-      findFirst: vi.fn(
-        async (): Promise<{ expiresAt: Date } | null> => null,
-      ),
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
     },
     recommendationPlaybackFact: { count: count() },
     recommendationOutcomeRevision: { count: count() },

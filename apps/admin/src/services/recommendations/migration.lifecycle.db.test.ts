@@ -533,6 +533,24 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         ],
       )
+      await client.query("COMMIT")
+
+      await expect(
+        client.query(
+          `UPDATE recommendation_playback_fact
+           SET payload = '{"changed":true}'::jsonb WHERE id = 'append-only-fact'`,
+        ),
+      ).rejects.toThrow("recommendation fact/revision is append only")
+      await expect(
+        client.query(
+          `UPDATE recommendation_outcome_revision
+           SET qualified_view = true WHERE id = 'append-only-outcome'`,
+        ),
+      ).rejects.toThrow("recommendation fact/revision is append only")
+    })
+
+    it("executes eligibility projection against PostgreSQL without mutating its immutable outcome", async () => {
+      await client.query("BEGIN")
       const preGrant = await insertLifecycleGraph(
         "eligibility-projection-pre-grant",
       )
@@ -564,30 +582,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         ],
       )
-      await client.query("COMMIT")
-
-      await expect(
-        client.query(
-          `UPDATE recommendation_playback_fact
-           SET payload = '{"changed":true}'::jsonb WHERE id = 'append-only-fact'`,
-        ),
-      ).rejects.toThrow("recommendation fact/revision is append only")
-      await expect(
-        client.query(
-          `UPDATE recommendation_outcome_revision
-           SET qualified_view = true WHERE id = 'append-only-outcome'`,
-        ),
-      ).rejects.toThrow("recommendation fact/revision is append only")
-    })
-
-    it("executes eligibility projection against PostgreSQL without mutating its immutable outcome", async () => {
-      await client.query("BEGIN")
       const graph = await insertLifecycleGraph("eligibility-projection")
       await client.query(
         `UPDATE recommendation_playback_episode
          SET media_id = 'eligibility-projection-video', session_digest = $1
          WHERE id = $2`,
-        ["f".repeat(64), graph.episodeId],
+        ["a".repeat(64), graph.episodeId],
       )
       // This source starts after the durable consent watermark used below.
       // The pre-grant fixture above deliberately keeps its August 19
@@ -682,6 +682,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(eligible.durable).toEqual([
           expect.objectContaining({
             sourceId: "eligibility-projection-outcome",
+            targetMediaId: "eligibility-projection-video",
             eligibilityPolicyVersion: "recommendation-integrity-v1",
             outcomeClassifierVersion: "active-watch-proxy-v1",
             sourceExpiresAt: new Date(expiresAt),

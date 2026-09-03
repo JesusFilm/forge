@@ -266,15 +266,15 @@ export async function loadDatabaseProfileProjectionEvidence(
         JOIN recommendation_outcome_revision outcome
           ON outcome.id = contribution.source_outcome_id
         JOIN recommendation_playback_episode episode
-          ON episode.request_id = outcome.request_id
-          AND episode.item_id = outcome.item_id
-          AND episode.id = outcome.episode_id
-        JOIN recommendation_selection selection
+          ON episode.id = outcome.episode_id
+          AND episode.request_id IS NOT DISTINCT FROM outcome.request_id
+          AND episode.item_id IS NOT DISTINCT FROM outcome.item_id
+        LEFT JOIN recommendation_selection selection
           ON selection.request_id = episode.request_id
           AND selection.item_id = episode.item_id
           AND selection.id = episode.selection_id
-        JOIN recommendation_request request
-          ON request.id = outcome.request_id
+        LEFT JOIN recommendation_request request
+          ON request.id = episode.request_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
@@ -291,8 +291,15 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
-          AND request.created_at >= profile.created_at
-          AND selection.occurred_at >= profile.created_at
+          AND contribution.target_media_id = episode.media_id
+          AND (
+            episode.request_id IS NULL
+            OR request.created_at >= profile.created_at
+          )
+          AND (
+            episode.selection_id IS NULL
+            OR selection.occurred_at >= profile.created_at
+          )
           AND COALESCE(episode.claimed_at, episode.created_at) >= profile.created_at
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
@@ -323,7 +330,7 @@ export async function loadDatabaseProfileProjectionEvidence(
       >(Prisma.sql`
         SELECT
           outcome.id AS "sourceId",
-          item.target_media_id AS "targetMediaId",
+          episode.media_id AS "targetMediaId",
           LEAST(1, GREATEST(0, decision.contribution_weight))::double precision AS weight,
           outcome.created_at AS "occurredAt",
           LEAST(outcome.expires_at, decision.expires_at) AS "sourceExpiresAt",
@@ -334,21 +341,18 @@ export async function loadDatabaseProfileProjectionEvidence(
           ON link.profile_id = profile.id
           AND link.privacy_generation = profile.privacy_generation
           AND link.expires_at > ${input.now}
-        JOIN recommendation_request request
-          ON request.session_digest = link.session_digest
-          AND request.expires_at > ${input.now}
-        JOIN recommendation_outcome_revision outcome
-          ON outcome.request_id = request.id
         JOIN recommendation_playback_episode episode
-          ON episode.request_id = outcome.request_id
-          AND episode.item_id = outcome.item_id
-          AND episode.id = outcome.episode_id
-        JOIN recommendation_selection selection
+          ON episode.session_digest = link.session_digest
+        JOIN recommendation_outcome_revision outcome
+          ON outcome.episode_id = episode.id
+          AND outcome.request_id IS NOT DISTINCT FROM episode.request_id
+          AND outcome.item_id IS NOT DISTINCT FROM episode.item_id
+        LEFT JOIN recommendation_request request
+          ON request.id = episode.request_id
+        LEFT JOIN recommendation_selection selection
           ON selection.request_id = episode.request_id
           AND selection.item_id = episode.item_id
           AND selection.id = episode.selection_id
-        JOIN recommendation_served_item item
-          ON item.request_id = outcome.request_id AND item.id = outcome.item_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
           AND decision.is_current = true
@@ -358,11 +362,27 @@ export async function loadDatabaseProfileProjectionEvidence(
         WHERE profile.id = ${input.profileId}
           AND profile.state = 'active'
           AND profile.privacy_generation = ${input.privacyGeneration}
+          AND profile.token_digest IS NOT NULL
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
-          AND request.created_at >= GREATEST(profile.created_at, link.linked_at)
-          AND selection.occurred_at >= GREATEST(profile.created_at, link.linked_at)
+          AND (
+            episode.request_id IS NULL
+            OR (
+              request.expires_at > ${input.now}
+              AND request.created_at >= GREATEST(
+                profile.created_at,
+                link.linked_at
+              )
+            )
+          )
+          AND (
+            episode.selection_id IS NULL
+            OR selection.occurred_at >= GREATEST(
+              profile.created_at,
+              link.linked_at
+            )
+          )
           AND COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)
           AND outcome.expires_at > ${input.now}
           AND decision.expires_at > ${input.now}
@@ -372,7 +392,7 @@ export async function loadDatabaseProfileProjectionEvidence(
           )
           AND NOT EXISTS (
             SELECT 1 FROM recommendation_promotion_slate_fence fence
-            WHERE fence.request_id = outcome.request_id
+            WHERE fence.request_id = episode.request_id
           )
         ORDER BY outcome.created_at DESC, outcome.id
         LIMIT 64

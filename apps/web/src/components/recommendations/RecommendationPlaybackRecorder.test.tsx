@@ -7,7 +7,10 @@ import type { Root } from "react-dom/client"
 import { describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
-import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
+import {
+  RECOMMENDATION_TAB_CORRELATION_KEY,
+  type RecommendationPlaybackEvent,
+} from "@/lib/recommendation-contracts"
 import {
   deferred,
   makePlayer,
@@ -356,13 +359,14 @@ describe("RecommendationPlaybackRecorder", () => {
     await act(async () => vi.advanceTimersByTimeAsync(7_000))
     await act(async () => player.dispatch("pause"))
 
-    const events = fetchMock.mock.calls
-      .slice(1)
-      .flatMap(
-        ([, init]) =>
-          (JSON.parse(init.body as string) as { events?: Array<any> }).events ??
-          [],
-      )
+    const events = fetchMock.mock.calls.slice(1).flatMap(
+      ([, init]) =>
+        (
+          JSON.parse(init.body as string) as {
+            events?: RecommendationPlaybackEvent[]
+          }
+        ).events ?? [],
+    )
     expect(
       events
         .filter((event) => event.kind === "playback_active_visible_playing")

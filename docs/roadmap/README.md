@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 2, 2026)
+## Status (September 3, 2026)
 
 - **Total tickets:** 619
 - **Complete:** 462
-- **In progress:** 47
-- **Not started:** 38
+- **In progress:** 48
+- **Not started:** 37
 - **Blocked:** 72
-- **Overdue and not complete:** 113
+- **Overdue and not complete:** 114
 
 ## Feature Index
 
@@ -20,7 +20,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | ID                                                                                                             | Feature                                                                                         | Owner      | Priority | Start      | Days | Due        | Status      |
 | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-368](content-discovery/feat-368-production-semantic-recommendation-tracer.md)                            | Production semantic recommendation tracer                                                       | nisal      | P0       | —          | 10   | —          | complete    |
-| [feat-369](content-discovery/feat-369-recommendation-playback-episodes-active-playback.md)                     | Recommendation playback episodes and active-playback proxy                                      | nisal      | P0       | —          | 6    | —          | not-started |
+| [feat-369](content-discovery/feat-369-recommendation-playback-episodes-active-playback.md)                     | Recommendation playback episodes and active-playback proxy                                      | nisal      | P0       | —          | 6    | —          | in-progress |
 | [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | blocked     |
 | [feat-373](content-discovery/feat-373-watch-surface-impressions-ctr.md)                                        | Watch surface impressions and CTR                                                               | nisal      | P0       | —          | 5    | —          | not-started |
 | [feat-376](content-discovery/feat-376-recommendation-integrity-eligibility.md)                                 | Recommendation integrity and evidence eligibility                                               | nisal      | P0       | —          | 6    | —          | complete    |
@@ -30,7 +30,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-383](content-discovery/feat-383-shadow-candidate-evaluation.md)                                          | Shadow candidate evaluation                                                                     | nisal      | P0       | —          | 5    | —          | complete    |
 | [feat-384](content-discovery/feat-384-recommendation-experiment-spine.md)                                      | Recommendation experiment spine                                                                 | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | complete    |
-| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live consent-aware hybrid personalization rollout                                               | nisal      | P0       | —          | 8    | —          | in-progress |
+| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | in-progress |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |

@@ -23,7 +23,7 @@ const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 71 && name.includes("recommendation")
+    return ordinal >= 52 && ordinal <= 72 && name.includes("recommendation")
   })
   .sort()
   .map((name) =>
@@ -295,94 +295,30 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const expiresAt = new Date(projectAt.getTime() + 7 * 86_400_000)
       const activeUntil = new Date(eventAt.getTime() + 60_000)
       const hardUntil = new Date(eventAt.getTime() + 120_000)
-      const handoffExpiresAt = new Date(eventAt.getTime() + 60_000)
-
-      await admin.query("BEGIN")
-      await admin.query(
-        `INSERT INTO recommendation_request (
-          id, contract_version, surface_version, manifest_id,
-          strategy_version, classifier_version, session_digest,
-          seed_media_id, locale, expected_item_count, state, result,
-          delivery_jti, signing_kid, created_at, issued_at, expires_at
-        ) VALUES (
-          'profile-learning-request', 'semantic-recommendation-v1',
-          'watch-below-player-v1', 'multi-interest-profile-shadow-v1',
-          'multi-interest-profile-shadow-v1', 'active-watch-proxy-v1',
-          $1, 'profile-learning-seed', 'en', 1, 'prepared', 'served',
-          'profile-learning-delivery-jti', 'test-kid', $2, $2, $3
-        )`,
-        [sessionDigest, eventAt, expiresAt],
-      )
-      await admin.query(
-        `INSERT INTO recommendation_served_item (
-          id, request_id, position, target_media_id, canonical_href,
-          candidate_generator, candidate_provenance, presentation,
-          capability_jti, signing_kid, created_at, expires_at
-        ) VALUES (
-          'profile-learning-item', 'profile-learning-request', 0,
-          'profile-learning-source', '/watch/profile-learning-source.html',
-          'semantic', '{}'::jsonb, '{}'::jsonb,
-          'profile-learning-item-jti', 'test-kid', $1, $2
-        )`,
-        [eventAt, expiresAt],
-      )
-      await admin.query(
-        `UPDATE recommendation_request
-         SET state = 'issued'
-         WHERE id = 'profile-learning-request'`,
-      )
-      await admin.query("COMMIT")
-      await admin.query(
-        `INSERT INTO recommendation_selection (
-          id, request_id, item_id, capability_jti, event_id,
-          payload_digest, claim_nonce_digest, handoff_expires_at,
-          claimed_at, occurred_at, received_at, expires_at
-        ) VALUES (
-          'profile-learning-selection', 'profile-learning-request',
-          'profile-learning-item', 'profile-learning-selection-jti',
-          'profile-learning-selection-event', $1, $2, $3, $4, $4, $4, $5
-        )`,
-        ["d".repeat(64), "e".repeat(64), handoffExpiresAt, eventAt, expiresAt],
-      )
       await admin.query(
         `INSERT INTO recommendation_playback_episode (
-          id, request_id, item_id, selection_id, media_id, session_digest,
+          id, media_id, session_digest,
           state, active_until, hard_until, next_fact_sequence, generation,
-          claimed_at, finalized_at, created_at, expires_at
+          capability_jti, signing_kid, claimed_at, finalized_at, created_at,
+          expires_at
         ) VALUES (
-          'profile-learning-episode', 'profile-learning-request',
-          'profile-learning-item', 'profile-learning-selection',
-          'profile-learning-source', $1, 'finalized', $2, $3, 2, 1,
-          $4, $4, $4, $5
+          'profile-learning-episode', 'profile-learning-source', $1,
+          'finalized', $2, $3, 1, 1, 'profile-learning-episode-jti',
+          'test-kid', $4, $4, $4, $5
         )`,
         [sessionDigest, activeUntil, hardUntil, eventAt, expiresAt],
       )
       await admin.query(
-        `INSERT INTO recommendation_playback_fact (
-          id, request_id, item_id, episode_id, capability_jti, event_id,
-          payload_digest, sequence, kind, payload, occurred_at, received_at,
-          expires_at
-        ) VALUES (
-          'profile-learning-fact', 'profile-learning-request',
-          'profile-learning-item', 'profile-learning-episode',
-          'profile-learning-playback-jti', 'profile-learning-playback-event',
-          $1, 1, 'progress', '{"activeMilliseconds":60000}'::jsonb,
-          $2, $2, $3
-        )`,
-        ["f".repeat(64), eventAt, expiresAt],
-      )
-      await admin.query(
         `INSERT INTO recommendation_outcome_revision (
-          id, request_id, item_id, episode_id, classifier_version,
+          id, episode_id, classifier_version,
           fact_watermark, input_digest, revision, qualified_view,
           view_quality_weight, view_quality_weight_reason, reasons,
           learning_eligible, generation, active_playback_milliseconds,
           duration_seconds, duration_cohort, active_coverage, created_at,
           expires_at
         ) VALUES (
-          'profile-learning-outcome', 'profile-learning-request',
-          'profile-learning-item', 'profile-learning-episode',
-          'active-watch-proxy-v1', 1, $1, 1, true, 0.8,
+          'profile-learning-outcome', 'profile-learning-episode',
+          'active-watch-proxy-v1', 0, $1, 1, true, 0.8,
           'active_fraction_of_duration', ARRAY['qualified_view'], false, 1,
           60000, 120, 'medium', 'complete', $2, $3
         )`,
@@ -442,16 +378,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(generation).toMatchObject({
         state: "PUBLISHED",
         durableInterestCount: 1,
-        sessionIntentPresent: true,
-        contributionCount: 2,
+        sessionIntentPresent: false,
+        contributionCount: 1,
       })
-      expect(interests.map((interest) => interest.kind).sort()).toEqual([
-        "DURABLE",
-        "SESSION",
+      expect(interests.map((interest) => interest.kind)).toEqual(["DURABLE"])
+      expect(contributions.map((contribution) => contribution.kind)).toEqual([
+        "QUALIFIED_OUTCOME",
       ])
-      expect(
-        contributions.map((contribution) => contribution.kind).sort(),
-      ).toEqual(["QUALIFIED_OUTCOME", "SESSION_SELECTION"])
       expect(
         contributions.find(
           (contribution) => contribution.kind === "QUALIFIED_OUTCOME",
@@ -483,7 +416,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         id: receipt.generationId,
         scope: "durable",
         generation: 1,
-        interestCount: 2,
+        interestCount: 1,
       })
       expect(
         candidates?.nominations.find(
@@ -498,6 +431,26 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(JSON.stringify(candidates)).not.toMatch(
         /profileTokenDigest|sessionDigest|vectorText/,
       )
+
+      const replayAt = new Date(projectAt.getTime() + 2_000)
+      await admin.query(
+        `UPDATE recommendation_profile_session_link
+         SET expires_at = $1
+         WHERE profile_id = $2 AND privacy_generation = $3`,
+        [new Date(projectAt.getTime() + 1_000), grant.profileId, 1],
+      )
+      await expect(
+        projectionService.project({
+          sessionDigest,
+          profileId: grant.profileId,
+          privacyGeneration: grant.privacyGeneration,
+          now: replayAt,
+        }),
+      ).resolves.toMatchObject({
+        generationId: receipt.generationId,
+        generation: 1,
+        replay: true,
+      })
     })
   },
 )

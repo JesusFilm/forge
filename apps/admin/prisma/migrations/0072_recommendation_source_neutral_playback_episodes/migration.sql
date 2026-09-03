@@ -105,7 +105,14 @@ ALTER TABLE "recommendation_playback_fact"
   ALTER COLUMN "request_id" DROP NOT NULL,
   ALTER COLUMN "item_id" DROP NOT NULL,
   ADD CONSTRAINT "recommendation_fact_episode_fkey"
-    FOREIGN KEY ("episode_id") REFERENCES "recommendation_playback_episode"("id") ON DELETE CASCADE;
+    FOREIGN KEY ("episode_id") REFERENCES "recommendation_playback_episode"("id") ON DELETE CASCADE,
+  ADD CONSTRAINT "recommendation_fact_lineage_shape_check" CHECK (
+    ("request_id" IS NULL AND "item_id" IS NULL)
+    OR ("request_id" IS NOT NULL AND "item_id" IS NOT NULL)
+  ),
+  ADD CONSTRAINT "recommendation_fact_episode_lineage_fkey"
+    FOREIGN KEY ("request_id", "item_id", "episode_id")
+    REFERENCES "recommendation_playback_episode"("request_id", "item_id", "id") ON DELETE CASCADE;
 
 ALTER TABLE "recommendation_outcome_revision"
   DROP CONSTRAINT "recommendation_outcome_episode_lineage_fkey",
@@ -115,13 +122,28 @@ ALTER TABLE "recommendation_outcome_revision"
   ADD COLUMN "active_intervals" jsonb,
   ADD CONSTRAINT "recommendation_outcome_episode_fkey"
     FOREIGN KEY ("episode_id") REFERENCES "recommendation_playback_episode"("id") ON DELETE CASCADE,
+  ADD CONSTRAINT "recommendation_outcome_lineage_shape_check" CHECK (
+    ("request_id" IS NULL AND "item_id" IS NULL)
+    OR ("request_id" IS NOT NULL AND "item_id" IS NOT NULL)
+  ),
+  ADD CONSTRAINT "recommendation_outcome_episode_lineage_fkey"
+    FOREIGN KEY ("request_id", "item_id", "episode_id")
+    REFERENCES "recommendation_playback_episode"("request_id", "item_id", "id") ON DELETE CASCADE,
+  ADD CONSTRAINT "recommendation_outcome_episode_id_key"
+    UNIQUE ("episode_id", "id"),
   ADD CONSTRAINT "recommendation_outcome_supersedes_fkey"
-    FOREIGN KEY ("supersedes_id") REFERENCES "recommendation_outcome_revision"("id") ON DELETE RESTRICT;
+    FOREIGN KEY ("supersedes_id") REFERENCES "recommendation_outcome_revision"("id") ON DELETE RESTRICT,
+  ADD CONSTRAINT "recommendation_outcome_supersedes_episode_fkey"
+    FOREIGN KEY ("episode_id", "supersedes_id")
+    REFERENCES "recommendation_outcome_revision"("episode_id", "id") ON DELETE RESTRICT;
 
 ALTER TABLE "recommendation_content_action"
   DROP CONSTRAINT "recommendation_content_action_episode_lineage_fkey",
   ADD CONSTRAINT "recommendation_content_action_episode_fkey"
-    FOREIGN KEY ("episode_id") REFERENCES "recommendation_playback_episode"("id") ON DELETE SET NULL;
+    FOREIGN KEY ("episode_id") REFERENCES "recommendation_playback_episode"("id") ON DELETE SET NULL,
+  ADD CONSTRAINT "recommendation_content_action_episode_lineage_fkey"
+    FOREIGN KEY ("request_id", "item_id", "episode_id")
+    REFERENCES "recommendation_playback_episode"("request_id", "item_id", "id") ON DELETE SET NULL;
 
 ALTER TABLE "recommendation_capability_submission_budget"
   DROP CONSTRAINT "recommendation_capability_submission_budget_request_id_fkey",

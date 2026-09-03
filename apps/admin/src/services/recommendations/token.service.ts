@@ -359,7 +359,11 @@ export function createRecommendationTokenService(
         input.receivedAt,
       )
       const parsed = EpisodeClaims.safeParse(payload)
-      const { eventKind, occurredAt, receivedAt, ...expected } = input
+      const { occurredAt, receivedAt } = input
+      const expected: Record<string, unknown> = { ...input }
+      delete expected.eventKind
+      delete expected.occurredAt
+      delete expected.receivedAt
       if (
         !parsed.success ||
         parsed.data.exp - parsed.data.iat !==

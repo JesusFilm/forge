@@ -69,6 +69,7 @@ Deploy in expand-then-activate order:
    FROM recommendation_capability_submission_budget
    WHERE (request_id IS NULL) = (episode_id IS NULL);
    ```
+
 2. Deploy Admin and Web with generated GraphQL artifacts in parity. Keep
    `sceneRecommendations` and the legacy Watch recorder available.
 3. Configure one active recommendation capability signer, the Web consumer
@@ -252,7 +253,7 @@ Admin health is a truth table over recommendation-owned durable evidence:
 | `loss_suspected`      | A committed rejection or write-failure audit exists; inspect its bounded reason.                                         |
 | `replay`              | An identical event digest was submitted again; the first accepted fact remains canonical.                                |
 | `conflict`            | The same event identity arrived with a different digest and was quarantined.                                             |
-| `late`                | A fact that occurred inside the active window was received later, before the hard horizon.                              |
+| `late`                | A fact that occurred inside the active window was received later, before the hard horizon.                               |
 | `classifier_lag`      | A terminal/deadline episode has no outcome, or an open episode is past its deadline.                                     |
 | `retention_overdue`   | Purge propagation or success-watermark freshness failed; attributed serving stays disabled.                              |
 
