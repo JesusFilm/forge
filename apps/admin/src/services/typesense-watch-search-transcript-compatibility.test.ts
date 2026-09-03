@@ -32,6 +32,18 @@ describe("resolveCurrentWatchSearchTranscriptCompatibility", () => {
       transcriptChunkingVersion: "mastra-v1",
     })
     expect(resolveActiveContentEmbeddingContract).toHaveBeenCalledWith(prisma)
+
+    const firstCall = (prisma.$queryRaw.mock.calls as unknown[][])[0]
+    expect(firstCall).toBeDefined()
+    const statement = firstCall?.[0] as {
+      strings: readonly string[]
+      values: readonly unknown[]
+    }
+    expect(statement.strings.join(" ")).toContain(
+      "embedding_transform_version IS NOT DISTINCT FROM",
+    )
+    expect(statement.strings.join(" ")).toContain("::text")
+    expect(statement.values).toContain(null)
   })
 
   it("uses the resolved contract snapshot for the chunking-version query", async () => {
