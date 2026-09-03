@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("./content-embedding-contract", () => ({
-  activeTranscriptContentEmbeddingWhere: vi.fn(() => ""),
   resolveActiveContentEmbeddingContract: vi.fn(async () => ({
     id: "semantic-transcript-pgvector-v1",
+    storage: {
+      provider: "jesus-film-ai-gateway",
+      model: "embeddings",
+      dimensions: 1536,
+      nativeDimensions: 1536,
+      transformVersion: null,
+    },
   })),
 }))
 
@@ -26,6 +32,50 @@ describe("resolveCurrentWatchSearchTranscriptCompatibility", () => {
       transcriptChunkingVersion: "mastra-v1",
     })
     expect(resolveActiveContentEmbeddingContract).toHaveBeenCalledWith(prisma)
+  })
+
+  it("uses the resolved contract snapshot for the chunking-version query", async () => {
+    vi.mocked(resolveActiveContentEmbeddingContract).mockResolvedValueOnce({
+      id: "semantic-transcript-pgvector-v2",
+      query: {
+        provider: "openrouter",
+        model: "qwen/qwen3-embedding-8b",
+        dimensions: 1536,
+        nativeDimensions: 1536,
+        transformVersion: null,
+      },
+      storage: {
+        provider: "jesus-film-ai-gateway",
+        model: "embeddings-v2",
+        dimensions: 3072,
+        nativeDimensions: 4096,
+        transformVersion: "normalize-v2",
+      },
+    })
+    const prisma = {
+      $queryRaw: vi.fn(async () => [{ chunkingVersion: "mastra-v2" }]),
+    }
+
+    await resolveCurrentWatchSearchTranscriptCompatibility(prisma as never)
+
+    const firstCall = (prisma.$queryRaw.mock.calls as unknown[][])[0]
+    expect(firstCall).toBeDefined()
+    const statement = firstCall?.[0] as {
+      strings: readonly string[]
+      values: readonly unknown[]
+    }
+    expect(statement.strings.join(" ")).not.toContain(
+      "content_embedding_contract_pointer",
+    )
+    expect(statement.values).toEqual(
+      expect.arrayContaining([
+        "jesus-film-ai-gateway",
+        "embeddings-v2",
+        3072,
+        4096,
+        "normalize-v2",
+      ]),
+    )
   })
 
   it("fails closed when no chunking version is available", async () => {

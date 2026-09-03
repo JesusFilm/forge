@@ -1,9 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 
-import {
-  activeTranscriptContentEmbeddingWhere,
-  resolveActiveContentEmbeddingContract,
-} from "./content-embedding-contract"
+import { resolveActiveContentEmbeddingContract } from "./content-embedding-contract"
 
 export type WatchSearchTranscriptCompatibilityIdentity = Readonly<{
   contentEmbeddingContractId: string
@@ -43,10 +40,19 @@ export async function resolveCurrentWatchSearchTranscriptCompatibility(
       JOIN video_transcript_chunk vtc
         ON vtc.transcript_id = vt.id
       WHERE vtc.embedding IS NOT NULL
-        ${activeTranscriptContentEmbeddingWhere({
-          transcriptAlias: "vt",
-          chunkAlias: "vtc",
-        })}
+        AND vt.embedding_provider = ${contract.storage.provider}
+        AND vt.model = ${contract.storage.model}
+        AND vt.dimensions = ${contract.storage.dimensions}
+        AND vt.embedding_native_dimensions = ${contract.storage.nativeDimensions}
+        AND (
+          (
+            vt.embedding_transform_version IS NULL
+            AND ${contract.storage.transformVersion} IS NULL
+          )
+          OR vt.embedding_transform_version = ${contract.storage.transformVersion}
+        )
+        AND vtc.model = ${contract.storage.model}
+        AND vtc.dimensions = ${contract.storage.dimensions}
       ORDER BY vt.chunking_version ASC NULLS FIRST
     `,
   )
