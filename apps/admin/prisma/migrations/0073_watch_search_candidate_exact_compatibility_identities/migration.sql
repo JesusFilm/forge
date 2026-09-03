@@ -85,12 +85,18 @@ BEGIN
   WHERE "content_embedding_contract_id" IS NULL
      OR "transcript_chunking_version" IS NULL;
 
+  ALTER TABLE "watch_search_candidate_qualification"
+    DISABLE TRIGGER "watch_search_candidate_qualification_update_guard";
+
   UPDATE "watch_search_candidate_qualification"
   SET
     "content_embedding_contract_id" = active_contract_id,
     "transcript_chunking_version" = active_chunking_versions[1]
   WHERE "content_embedding_contract_id" IS NULL
      OR "transcript_chunking_version" IS NULL;
+
+  ALTER TABLE "watch_search_candidate_qualification"
+    ENABLE TRIGGER "watch_search_candidate_qualification_update_guard";
 
   UPDATE "watch_search_candidate_lease"
   SET
