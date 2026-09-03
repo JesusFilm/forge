@@ -234,6 +234,43 @@ export function activeTranscriptContentEmbeddingWhere(input: {
   `
 }
 
+/**
+ * Publication and replay paths must be able to pin transcript-vector
+ * provenance to the exact accepted contract recorded in durable state,
+ * independent of later active-contract rotations.
+ */
+export function transcriptContentEmbeddingWhereForContractId(input: {
+  contractId: string
+  transcriptAlias: string
+  chunkAlias?: string
+}): Prisma.Sql {
+  const transcriptAlias = input.transcriptAlias
+  const chunkAlias = input.chunkAlias
+  return Prisma.sql`
+    AND EXISTS (
+      SELECT 1
+      FROM content_embedding_contract contract
+      WHERE contract.id = ${input.contractId}
+        AND ${Prisma.raw(`${transcriptAlias}.embedding_provider`)} = contract.storage_provider
+        AND ${Prisma.raw(`${transcriptAlias}.model`)} = contract.storage_model
+        AND ${Prisma.raw(`${transcriptAlias}.dimensions`)} = contract.storage_dimensions
+        AND ${Prisma.raw(`${transcriptAlias}.embedding_native_dimensions`)} = contract.storage_native_dimensions
+        AND ${exactNullableSql(
+          `${transcriptAlias}.embedding_transform_version`,
+          "contract.storage_transform_version",
+        )}
+        ${
+          chunkAlias
+            ? Prisma.sql`
+                AND ${Prisma.raw(`${chunkAlias}.model`)} = contract.storage_model
+                AND ${Prisma.raw(`${chunkAlias}.dimensions`)} = contract.storage_dimensions
+              `
+            : Prisma.empty
+        }
+    )
+  `
+}
+
 export function activeExperienceContentEmbeddingWhere(
   experienceAlias: string,
 ): Prisma.Sql {

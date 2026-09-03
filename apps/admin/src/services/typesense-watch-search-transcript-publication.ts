@@ -5,7 +5,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
-import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
+import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
 import { TypesenseClient } from "./typesense-client"
 import {
   parseTypesenseVector,
@@ -295,6 +295,11 @@ async function loadCanonicalTranscriptSnapshot(
       `canonical transcript ${batch.transcriptId} advanced to source generation ${transcript.sourceGeneration.toString()} before publication`,
     )
   }
+  if (transcript.sourceContentHash !== batch.sourceContentHash) {
+    throw new WatchSearchTranscriptPublicationError(
+      `canonical transcript ${batch.transcriptId} source hash drifted before publication`,
+    )
+  }
   if (transcript.chunkingVersion !== batch.transcriptChunkingVersion) {
     throw new WatchSearchTranscriptPublicationError(
       `canonical transcript ${batch.transcriptId} chunking version drifted before publication`,
@@ -335,7 +340,8 @@ async function loadCanonicalTranscriptSnapshot(
         ON v.id = vt.video_id
       WHERE vt.id = ${batch.transcriptId}
         AND vtc.embedding IS NOT NULL
-        ${activeTranscriptContentEmbeddingWhere({
+        ${transcriptContentEmbeddingWhereForContractId({
+          contractId: batch.contentEmbeddingContractId,
           transcriptAlias: "vt",
           chunkAlias: "vtc",
         })}
@@ -431,6 +437,7 @@ async function completeTranscriptPublicationBatch(
     if (
       !currentTranscript ||
       currentTranscript.sourceGeneration !== batch.sourceGeneration ||
+      currentTranscript.sourceContentHash !== batch.sourceContentHash ||
       currentTranscript.chunkingVersion !== batch.transcriptChunkingVersion
     ) {
       throw new WatchSearchTranscriptPublicationError(

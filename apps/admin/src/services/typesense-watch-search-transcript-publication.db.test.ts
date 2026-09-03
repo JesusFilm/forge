@@ -40,6 +40,8 @@ const DEFAULT_VITEST_DATABASE_URL =
   "postgresql://test:test@localhost:5432/forge_admin_test"
 const hasRealDatabaseUrl =
   !!baseDatabaseUrl && baseDatabaseUrl !== DEFAULT_VITEST_DATABASE_URL
+const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID =
+  "semantic-transcript-pgvector-v2"
 
 function databaseUrlForDatabase(baseUrl: string, database: string): string {
   const url = new URL(baseUrl)
@@ -884,5 +886,59 @@ suite("current transcript publication into Watch Search", () => {
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
     })
+  }, 180_000)
+
+  it("publishes against the event contract even after the active contract pointer rotates", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    await prisma.contentEmbeddingContract.create({
+      data: {
+        id: ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID,
+        queryProvider: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.provider,
+        queryModel: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.model,
+        queryNativeDimensions:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.nativeDimensions,
+        queryDimensions: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.dimensions,
+        queryTransformVersion:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.transformVersion,
+        storageProvider: "alternate-provider",
+        storageModel: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.model,
+        storageNativeDimensions:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.nativeDimensions,
+        storageDimensions:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.dimensions,
+        storageTransformVersion:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.transformVersion,
+      },
+    })
+    await prisma.contentEmbeddingContractPointer.update({
+      where: { id: CONTENT_EMBEDDING_CONTRACT_POINTER_ID },
+      data: { activeContractId: ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID },
+    })
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+    })
+
+    expect(published.status).toBe("published")
+    if (published.status !== "published") {
+      throw new Error("expected a published transcript batch")
+    }
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+      documentCount: 2,
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.count({
+        where: { status: "COMPLETED" },
+      }),
+    ).toBe(1)
   }, 180_000)
 })
