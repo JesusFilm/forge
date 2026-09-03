@@ -305,6 +305,129 @@ describe("watch home carousel sequence helpers", () => {
     expect(result.nextPoolIndex).toBe(2)
   })
 
+  it("rolls over played history after preserving the final unplayed hero", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    addWatchHomeTvPlayedId("video-a", now)
+    addWatchHomeTvPlayedId("video-b", now)
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual([
+      "video-c",
+      "video-a",
+      "video-b",
+    ])
+    expect(readWatchHomeTvPlayedIds(now)).toEqual(["video-a", "video-b"])
+  })
+
+  it("preserves persistent and per-pool progress during queue rollover", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    for (const id of ["video-a", "video-b", "video-c"]) {
+      addWatchHomeTvPlayedId(id, now)
+    }
+    window.sessionStorage.setItem(
+      poolVideosStorageKey("pool-a"),
+      JSON.stringify(["video-a", "video-b", "video-c"]),
+    )
+    window.sessionStorage.setItem(poolFailuresStorageKey("pool-a"), "2")
+
+    const persistentBefore = window.localStorage.getItem(
+      WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
+    )
+    const poolProgressBefore = window.sessionStorage.getItem(
+      poolVideosStorageKey("pool-a"),
+    )
+    const poolFailuresBefore = window.sessionStorage.getItem(
+      poolFailuresStorageKey("pool-a"),
+    )
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual([
+      "video-c",
+      "video-a",
+      "video-b",
+    ])
+    expect(
+      window.localStorage.getItem(WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY),
+    ).toBe(persistentBefore)
+    expect(window.sessionStorage.getItem(poolVideosStorageKey("pool-a"))).toBe(
+      poolProgressBefore,
+    )
+    expect(
+      window.sessionStorage.getItem(poolFailuresStorageKey("pool-a")),
+    ).toBe(poolFailuresBefore)
+  })
+
+  it("keeps hard exclusions out of the rollover pass", () => {
+    const now = new Date("2026-06-04T12:00:00.000Z")
+
+    const result = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-c")],
+      excludedIds: ["video-b"],
+      playedIds: ["video-a", "video-b", "video-c"],
+      pools: [pool("pool-a", ["video-a", "video-b", "video-c"])],
+      targetVideoCount: 3,
+      now,
+      randomSource: () => 0,
+    })
+
+    expect(result.videos.map((item) => item.id)).toEqual(["video-c", "video-a"])
+  })
+
+  it("terminates empty and one-video queues at their eligible catalog size", () => {
+    const empty = buildWatchHomeVideoQueue({
+      pools: [pool("pool-a", [])],
+      targetVideoCount: 7,
+      useStoredProgress: false,
+    })
+    const oneVideo = buildWatchHomeVideoQueue({
+      existingVideos: [video("video-a")],
+      pools: [pool("pool-a", ["video-a"])],
+      targetVideoCount: 7,
+      useStoredProgress: false,
+    })
+
+    expect(empty).toEqual({ videos: [], nextPoolIndex: 0 })
+    expect(oneVideo).toEqual({
+      videos: [video("video-a")],
+      nextPoolIndex: 0,
+    })
+  })
+
+  it("stops after each distinct eligible video is queued", () => {
+    for (let videoCount = 2; videoCount <= 6; videoCount += 1) {
+      const ids = Array.from(
+        { length: videoCount },
+        (_, index) => `video-${index}`,
+      )
+      const result = buildWatchHomeVideoQueue({
+        pools: [pool("pool-a", ids)],
+        targetVideoCount: 7,
+        useStoredProgress: false,
+        randomSource: () => 0,
+      })
+
+      expect(result.videos.map((item) => item.id)).toEqual(ids)
+      expect(new Set(result.videos.map((item) => item.id)).size).toBe(
+        videoCount,
+      )
+      expect(result.nextPoolIndex).toBe(videoCount)
+    }
+  })
+
   it("tracks repeated pool failures and marks depleted pools exhausted", () => {
     const now = new Date("2026-06-04T12:00:00.000Z")
     addWatchHomeTvPlayedId("video-a", now)
