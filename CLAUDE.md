@@ -121,9 +121,33 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 
 ### Environment Variables
 
-- Local dev: `.env.local` (gitignored).
-- Deployed: Railway service environment variables.
+**Flow: Railway → Doppler → Local Dev**
+
+- **Railway** is the source of truth for all deployed environment variables (prod and staging).
+- **Doppler** syncs from Railway. Each app has a Doppler project that mirrors the Railway service config.
+- **Local dev** pulls from Doppler via `pnpm fetch-secrets`, which downloads into `.env` / `.env.local` (gitignored).
+
+Doppler projects:
+
+| App | Doppler Project |
+|---|---|
+| `apps/cms` | `forge-cms` |
+| `apps/web` | `forge-web` |
+| `apps/mobile` | `forge-mobile` |
+| `apps/manager` | `forge-manager` |
+
+**Adding new environment variables:**
+
+1. Add to Railway first (the source of truth) using the Railway CLI or dashboard.
+2. Doppler syncs automatically — the variable becomes available in the matching Doppler project.
+3. Developers pull locally with `pnpm fetch-secrets` when they need it.
+4. Non-secret config (e.g. cron schedules) with sensible defaults should use `process.env.VAR ?? "default"` so local dev works without fetching.
+
+**Rules:**
+
 - Never hardcode secrets. Never commit `.env` files.
+- Use Railway CLI (`railway variables set VAR=value`) to add new variables in deployed environments.
+- Only add variables to Doppler directly if they are local-dev-only and not needed in deployment.
 
 ## Roadmap
 
