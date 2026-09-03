@@ -35,7 +35,6 @@ import type { WatchHeroPlayerBlock, WatchVariantDownload } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
-  WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
@@ -62,8 +61,15 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
+import { isWatchHeroObscured } from "@/lib/watch-hero-scroll-cover"
+import {
+  HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX,
+  HERO_PREVIEW_BODY_OVERLAP_MAX_PX,
+  HERO_PREVIEW_BODY_OVERLAP_MIN_PX,
+  HERO_PREVIEW_BODY_OVERLAP_VIEWPORT_PERCENT,
+} from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
-import { resolveMuxHeroPosterUrl } from "@/lib/url"
+import { MUX_HERO_POSTER_MAX_WIDTH, resolveMuxHeroPosterUrl } from "@/lib/url"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -74,10 +80,14 @@ import {
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
 import { AudioLanguagesIcon, MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
+import { WATCH_LANGUAGE_TAG_CLASS } from "./watch-section-styles"
 import {
-  WATCH_LANGUAGE_TAG_CLASS,
-  WATCH_SECTION_EYEBROW_CLASS,
-} from "./watch-section-styles"
+  WATCH_HERO_ACTION_CLASS,
+  WATCH_HERO_OVERLAY_CLASS,
+  WATCH_HERO_PRIMARY_ACTION_CLASS,
+  WATCH_HERO_SECONDARY_ACTION_CLASS,
+  WatchHeroOverlay,
+} from "./WatchHeroOverlay"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
 
@@ -186,9 +196,6 @@ const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
 // on smaller/taller viewports while still keeping the episode rail in the
 // first viewport on squat windows.
 const HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX = 32
-const HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX = 50
-const HERO_PREVIEW_BODY_OVERLAP_MIN_PX = 160
-const HERO_PREVIEW_BODY_OVERLAP_MAX_PX = 288
 
 function canScrollWindowTo(windowRef: Window): boolean {
   if (typeof windowRef.scrollTo !== "function") return false
@@ -228,9 +235,8 @@ const HERO_HLS_CONFIG = {
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
-const HERO_POSTER_MAX_WIDTH = 1280
-const WATCH_NOW_LINK_CLASS =
-  "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg compact-landscape:min-h-11 compact-landscape:py-2 compact-landscape:text-base"
+// Shared so the home intro requests the same derivative; see url.ts.
+const HERO_POSTER_MAX_WIDTH = MUX_HERO_POSTER_MAX_WIDTH
 const WATCH_NEXT_WINDOW_SECONDS = 5
 
 function isResumableProgress(videoId: string): boolean {
@@ -309,7 +315,6 @@ function shouldUseFastMobilePreview(windowRef: Window): boolean {
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
-const OBSCURED_PAUSE_THRESHOLD = 0.6
 
 // `<MuxVideo>` (bare `<video>`) emits a generic error and the autoplay refusal
 // surfaces as a Promise rejection from `play()` with
@@ -888,7 +893,11 @@ export function HeroPlayer({
     const calculateMaxOverlap = () =>
       Math.min(
         HERO_PREVIEW_BODY_OVERLAP_MAX_PX,
-        Math.max(HERO_PREVIEW_BODY_OVERLAP_MIN_PX, window.innerHeight * 0.24),
+        Math.max(
+          HERO_PREVIEW_BODY_OVERLAP_MIN_PX,
+          (window.innerHeight * HERO_PREVIEW_BODY_OVERLAP_VIEWPORT_PERCENT) /
+            100,
+        ),
       ) + HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX
 
     const sync = () => {
@@ -1009,7 +1018,6 @@ export function HeroPlayer({
       // keeps the wrapper filling the viewport, so visible = viewport.
       // Otherwise visible = the wrapper's own height.
       const viewportHeight = window.innerHeight
-      const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
       // Body covers everything BELOW its viewport top; the unobscured
       // part of the visible video is from the wrapper's visible top down
       // to that line. Prefer the real body position so layout wrappers
@@ -1029,13 +1037,13 @@ export function HeroPlayer({
         typeof measuredBodyTop === "number" && Number.isFinite(measuredBodyTop)
           ? measuredBodyTop
           : heroHeight - bodyOverlap - window.scrollY
-      const unobscuredHeight = Math.max(
-        0,
-        Math.min(visibleVideoHeight, bodyTopInViewport),
-      )
-      const obscuredFraction =
-        visibleVideoHeight > 0 ? 1 - unobscuredHeight / visibleVideoHeight : 1
-      const covered = obscuredFraction >= OBSCURED_PAUSE_THRESHOLD
+      // The wrapper is pinned at the viewport top here, so the body's
+      // viewport-relative top is already its distance from the hero's top.
+      const covered = isWatchHeroObscured({
+        heroHeight,
+        viewportHeight,
+        bodyTopFromHeroTop: bodyTopInViewport,
+      })
       if (covered === prevCovered) return
       prevCovered = covered
       if (covered) {
@@ -1892,28 +1900,19 @@ export function HeroPlayer({
       >
         {!chromeRevealed && !suppressPreRevealOverlay
           ? (overlay ?? (
-              <div
-                data-testid="hero-player-overlay"
-                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto compact-landscape:relative compact-landscape:inset-x-auto compact-landscape:bottom-auto compact-landscape:w-full compact-landscape:gap-1 compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]`}
-              >
-                {visualLabel ? (
-                  <span
-                    data-testid="hero-player-overlay-label"
-                    className={WATCH_SECTION_EYEBROW_CLASS}
-                  >
-                    {videoLabels(videoLabelMessageKey(visualLabel))}
-                  </span>
-                ) : null}
-                {visualTitle ? (
-                  <h1
-                    data-testid="hero-player-overlay-title"
-                    className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl compact-landscape:max-w-[min(56vw,30rem)] compact-landscape:text-2xl"
-                  >
-                    {visualTitle}
-                  </h1>
-                ) : null}
-                <div className="flex flex-col items-start gap-3 compact-landscape:gap-1">
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3 compact-landscape:gap-x-3 compact-landscape:gap-y-1">
+              <WatchHeroOverlay
+                className={WATCH_HERO_OVERLAY_CLASS}
+                testId="hero-player-overlay"
+                labelTestId="hero-player-overlay-label"
+                titleTestId="hero-player-overlay-title"
+                label={
+                  visualLabel
+                    ? videoLabels(videoLabelMessageKey(visualLabel))
+                    : null
+                }
+                title={visualTitle}
+                actions={
+                  <>
                     <button
                       type="button"
                       data-testid="hero-player-unmute-pill"
@@ -1925,8 +1924,8 @@ export function HeroPlayer({
                       onClick={handleWatchNowClick}
                       className={
                         pillState === "tap-to-unmute"
-                          ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                          : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                          ? `${WATCH_HERO_ACTION_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                          : WATCH_HERO_PRIMARY_ACTION_CLASS
                       }
                     >
                       {pillState === "tap-to-unmute" ? (
@@ -1942,7 +1941,7 @@ export function HeroPlayer({
                         data-testid="hero-player-share-button"
                         aria-label={tBibleQuotes("share")}
                         onClick={onShareClick}
-                        className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
+                        className={WATCH_HERO_SECONDARY_ACTION_CLASS}
                       >
                         <Share2 className="h-5 w-5 shrink-0" aria-hidden />
                         <span className="hidden sm:inline">
@@ -1950,8 +1949,10 @@ export function HeroPlayer({
                         </span>
                       </button>
                     ) : null}
-                  </div>
-                  {hasHeroMetadataTags ? (
+                  </>
+                }
+                metadata={
+                  hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
                       className="mt-3 flex flex-wrap items-center gap-2 opacity-75 compact-landscape:mt-0 compact-landscape:gap-1"
@@ -2023,9 +2024,9 @@ export function HeroPlayer({
                         )
                       ) : null}
                     </div>
-                  ) : null}
-                </div>
-              </div>
+                  ) : null
+                }
+              />
             ))
           : null}
       </div>
