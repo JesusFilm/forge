@@ -1,9 +1,9 @@
 ---
-id: "feat-452"
+id: "feat-453"
 title: "Watch search current transcript publication"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-03"
 duration: 1
 depends_on:
