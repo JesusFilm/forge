@@ -127,42 +127,61 @@ describe("recommendation profile projection service", () => {
       },
     )
 
-    const queries = queryRaw.mock.calls.map(([query]) =>
-      query.strings.join(" "),
-    )
-    const sql = queries.join("\n")
-    expect(queries[0]).toContain(
+    const [sessionSql, priorDurableSql, currentDurableSql] =
+      queryRaw.mock.calls.map(([query]) =>
+        query.strings.join(" ").replace(/\s+/g, " "),
+      )
+    const durableSql = `${priorDurableSql}\n${currentDurableSql}`
+    expect(sessionSql).toContain(
       "JOIN recommendation_profile_session_link link",
     )
-    expect(queries[0]).toContain("link.session_digest")
-    expect(queries[0]).toContain("selection.occurred_at >= GREATEST(")
-    expect(queries[0]).toContain("profile.created_at, link.linked_at")
-    expect(sql).toContain("outcome.qualified_view = true")
-    expect(sql).not.toContain("outcome.learning_eligible = true")
-    expect(sql).not.toContain("outcome.created_at >= profile.created_at")
-    expect(sql).toContain("request.created_at >= profile.created_at")
-    expect(sql).toContain("link.session_digest")
-    expect(sql).toContain("GREATEST(")
-    expect(sql).toContain("profile.created_at, link.linked_at")
-    expect(sql).toContain(
-      "selection.occurred_at >= GREATEST(profile.created_at, link.linked_at)",
+    expect(sessionSql).toContain("link.session_digest")
+    expect(sessionSql).toContain("selection.occurred_at >= GREATEST(")
+    expect(sessionSql).toContain("profile.created_at, link.linked_at")
+    expect(durableSql).toContain("outcome.qualified_view = true")
+    expect(durableSql).not.toContain("outcome.learning_eligible = true")
+    expect(durableSql).not.toContain("outcome.created_at >= profile.created_at")
+    expect(priorDurableSql).toContain(
+      "episode.request_id IS NOT DISTINCT FROM outcome.request_id",
     )
-    expect(sql).toContain(
+    expect(priorDurableSql).toContain(
+      "episode.item_id IS NOT DISTINCT FROM outcome.item_id",
+    )
+    expect(priorDurableSql).toContain(
+      "contribution.target_media_id = episode.media_id",
+    )
+    expect(currentDurableSql).toContain(
+      "JOIN recommendation_playback_episode episode ON episode.session_digest = link.session_digest",
+    )
+    expect(currentDurableSql).toContain('episode.media_id AS "targetMediaId"')
+    expect(currentDurableSql).toContain(
+      "LEFT JOIN recommendation_request request",
+    )
+    expect(currentDurableSql).toContain(
+      "LEFT JOIN recommendation_selection selection",
+    )
+    expect(currentDurableSql).not.toContain(
+      "JOIN recommendation_served_item item",
+    )
+    expect(currentDurableSql).toContain("profile.token_digest IS NOT NULL")
+    expect(currentDurableSql).toContain(
+      "episode.request_id IS NULL OR ( request.expires_at >",
+    )
+    expect(currentDurableSql).toContain(
+      "episode.selection_id IS NULL OR selection.occurred_at >= GREATEST(",
+    )
+    expect(currentDurableSql).toContain(
       "COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)",
     )
-    expect(sql).toContain("outcome.expires_at >")
-    expect(sql).toContain("decision.expires_at >")
-    expect(sql).toContain("contribution.source_outcome_id")
-    expect(sql).toContain("decision.is_current = true")
-    expect(sql).toContain("decision.policy_version =")
-    expect(sql).toContain("decision.state = 'eligible'")
-    expect(sql).toContain("'profile' = ANY(decision.eligible_scopes)")
-    expect(sql).toContain("superseding.supersedes_id = outcome.id")
-    expect(sql).toContain("recommendation_promotion_slate_fence fence")
-    expect(sql).toContain("fence.request_id = outcome.request_id")
-    expect(sql).toContain("LEAST(")
-    expect(sql).toContain("selection.occurred_at")
-    expect(queries[0]).not.toMatch(/qualified_outcome|durable/i)
+    expect(durableSql).toContain("outcome.expires_at >")
+    expect(durableSql).toContain("decision.expires_at >")
+    expect(durableSql).toContain("decision.is_current = true")
+    expect(durableSql).toContain("decision.policy_version =")
+    expect(durableSql).toContain("decision.state = 'eligible'")
+    expect(durableSql).toContain("'profile' = ANY(decision.eligible_scopes)")
+    expect(durableSql).toContain("superseding.supersedes_id = outcome.id")
+    expect(durableSql).toContain("recommendation_promotion_slate_fence fence")
+    expect(sessionSql).not.toMatch(/qualified_outcome|durable/i)
   })
 
   it("publishes all projection contributions with one set-based insert", async () => {

@@ -12,6 +12,160 @@ const caller = {
 }
 
 describe("RecommendationEpisodeService", () => {
+  it.each(["direct", "search", "share", "acquisition", "editorial"] as const)(
+    "issues a one-use source-neutral %s playback context without recommendation lineage",
+    async (discoverySource) => {
+      const created: Array<Record<string, unknown>> = []
+      const service = new RecommendationEpisodeService({
+        prisma: {
+          recommendationPlaybackEpisode: {
+            create: vi.fn(
+              async ({ data }: { data: Record<string, unknown> }) => {
+                created.push(data)
+                return data
+              },
+            ),
+          },
+        } as never,
+        tokenService: {
+          activeKid: "active-kid",
+          verifyDeliveryCapability: vi.fn(),
+          signEpisodeCapability: vi.fn(),
+        },
+        now: () => new Date("2026-04-20T03:00:00.000Z"),
+        newId: () => "context-episode-1",
+        newClaimNonce: () => "source-neutral-claim-nonce",
+      })
+
+      await expect(
+        service.issueContext({
+          caller,
+          sessionDigest: "a".repeat(64),
+          mediaId: "target-video",
+          discoverySource,
+          provenance: { campaign: "bounded-campaign" },
+        }),
+      ).resolves.toEqual({
+        claimNonce: "source-neutral-claim-nonce",
+        contextVersion: "playback-context-v1",
+      })
+      expect(created[0]).toMatchObject({
+        id: "context-episode-1",
+        requestId: null,
+        itemId: null,
+        selectionId: null,
+        contextVersion: "playback-context-v1",
+        discoverySource,
+        provenance: { campaign: "bounded-campaign" },
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        state: "PENDING",
+        finalizationDueAt: null,
+        claimNonceDigest: createHash("sha256")
+          .update("source-neutral-claim-nonce")
+          .digest("hex"),
+      })
+      expect(JSON.stringify(created[0])).not.toContain(
+        "source-neutral-claim-nonce",
+      )
+    },
+  )
+
+  it("rejects fabricated recommendation attribution for a standalone context", async () => {
+    const service = new RecommendationEpisodeService({
+      prisma: {
+        recommendationPlaybackEpisode: { create: vi.fn() },
+      } as never,
+      tokenService: {
+        activeKid: "active-kid",
+        verifyDeliveryCapability: vi.fn(),
+        signEpisodeCapability: vi.fn(),
+      },
+    })
+
+    await expect(
+      service.issueContext({
+        caller,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        discoverySource: "recommendation" as never,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it("claims a standalone playback context without consulting profile or assignment state", async () => {
+    const claimedAt = new Date("2026-04-20T03:00:00.000Z")
+    const context = {
+      id: "episode-direct",
+      requestId: null,
+      itemId: null,
+      selectionId: null,
+      state: "PENDING",
+      generation: 1,
+      sessionDigest: "a".repeat(64),
+      mediaId: "target-video",
+      claimNonceDigest: createHash("sha256")
+        .update("source-neutral-claim-nonce")
+        .digest("hex"),
+      handoffExpiresAt: new Date("2026-04-20T03:10:00.000Z"),
+      claimedAt: null,
+      capabilityJti: null,
+      signingKid: null,
+      activeUntil: new Date("2026-04-20T07:00:00.000Z"),
+      hardUntil: new Date("2026-04-20T09:00:00.000Z"),
+      expiresAt: new Date("2026-05-19T03:00:00.000Z"),
+    }
+    const updateMany = vi.fn(async () => ({ count: 1 }))
+    const service = new RecommendationEpisodeService({
+      prisma: {
+        recommendationSelection: { findUnique: vi.fn(async () => null) },
+        recommendationPlaybackEpisode: {
+          findUnique: vi.fn(async () => context),
+        },
+        $transaction: vi.fn(
+          async (work: (tx: Record<string, unknown>) => unknown) =>
+            work({
+              recommendationPlaybackEpisode: { updateMany },
+            }),
+        ),
+      } as never,
+      tokenService: {
+        activeKid: "active-kid",
+        verifyDeliveryCapability: vi.fn(),
+        signEpisodeCapability: vi.fn(async () => "episode-token"),
+      },
+      now: () => claimedAt,
+      newId: () => "episode-jti",
+      dispatchFinalization: vi.fn(async () => undefined),
+    })
+
+    await expect(
+      service.claim({
+        caller,
+        sessionDigest: "a".repeat(64),
+        claimNonce: "source-neutral-claim-nonce",
+        mediaId: "target-video",
+      }),
+    ).resolves.toMatchObject({
+      episodeId: "episode-direct",
+      capability: "episode-token",
+    })
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "episode-direct",
+        state: "PENDING",
+        generation: 1,
+        claimedAt: null,
+        handoffExpiresAt: { gt: claimedAt },
+      },
+      data: expect.objectContaining({
+        state: "CLAIMED",
+        capabilityJti: "episode-jti",
+        claimedAt,
+      }),
+    })
+  })
+
   it("rejects selection after its personalized assignment is fenced", async () => {
     const item = {
       id: "item-1",

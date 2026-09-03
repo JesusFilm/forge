@@ -18,6 +18,7 @@ import {
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
 import { watchPath } from "@/lib/watch-paths"
 
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
@@ -186,6 +187,39 @@ async function claimRecommendationEpisode(
   )
 }
 
+async function issuePlaybackContext(mediaId: string): Promise<string> {
+  const discovery = consumePlaybackDiscoveryContext(mediaId)
+  return withinRecommendationDeadline(
+    undefined,
+    REQUEST_DEADLINE_MS,
+    async (signal) => {
+      const response = await fetch(PLAYBACK_ENDPOINT, {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "context",
+          mediaId,
+          discoverySource: discovery.source,
+          provenance: discovery.provenance,
+        }),
+        signal,
+      })
+      if (!response.ok) throw new RecommendationRuntimeError("request_failed")
+      const value = (await response.json()) as { claimNonce?: unknown }
+      if (
+        typeof value.claimNonce !== "string" ||
+        value.claimNonce.length < 16 ||
+        value.claimNonce.length > 191
+      ) {
+        throw new RecommendationRuntimeError("claim_invalid")
+      }
+      return value.claimNonce
+    },
+  )
+}
+
 export function RecommendationPlaybackRecorder({
   player,
   initiation,
@@ -215,6 +249,7 @@ export function RecommendationPlaybackRecorder({
   const startRecordedRef = useRef(false)
   const terminalRecordedRef = useRef(false)
   const playingRef = useRef(false)
+  const bfcacheWasPlayingRef = useRef(false)
   const activeStartedAtRef = useRef<number | null>(null)
   const playbackStartedAtRef = useRef<number | null>(null)
   const lastProgressAtRef = useRef<number | null>(null)
@@ -327,20 +362,26 @@ export function RecommendationPlaybackRecorder({
 
   useEffect(() => {
     if (claimStartedRef.current) return
-    const claimNonce = readRecommendationClaimNonce()
-    if (!claimNonce) {
-      claimSettledRef.current = true
-      return
-    }
     claimStartedRef.current = true
+    const recommendationClaimNonce = readRecommendationClaimNonce()
 
-    const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
-    const attemptClaim = (attempt: number) => {
+    const abandonPendingClaim = () => {
+      pendingRef.current = []
+      claimSettledRef.current = true
+    }
+    const attemptClaim = (
+      claimNonce: string,
+      attempt: number,
+      allowStandaloneFallback: boolean,
+    ) => {
+      const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
       void claimRecommendationEpisode(body)
         .then((value) => {
           const episode = parseRecommendationEpisodeCapability(value.episode)
           if (!episode) throw new RecommendationRuntimeError("claim_invalid")
-          clearRecommendationClaimNonce(claimNonce)
+          if (recommendationClaimNonce) {
+            clearRecommendationClaimNonce(recommendationClaimNonce)
+          }
           episodeRef.current = episode
           claimSettledRef.current = true
           outboundRef.current.push(...pendingRef.current.splice(0))
@@ -348,14 +389,19 @@ export function RecommendationPlaybackRecorder({
         })
         .catch((error) => {
           if (error instanceof DefinitiveClaimError) {
-            clearRecommendationClaimNonce(claimNonce)
-            pendingRef.current = []
-            claimSettledRef.current = true
+            if (allowStandaloneFallback) {
+              clearRecommendationClaimNonce(claimNonce)
+              void issuePlaybackContext(mediaId)
+                .then((fallbackNonce) => attemptClaim(fallbackNonce, 1, false))
+                .catch(abandonPendingClaim)
+              return
+            }
+            abandonPendingClaim()
             return
           }
           if (attempt < MAX_CLAIM_ATTEMPTS) {
             window.setTimeout(() => {
-              attemptClaim(attempt + 1)
+              attemptClaim(claimNonce, attempt + 1, allowStandaloneFallback)
             }, CLAIM_RETRY_BACKOFF_MS)
           }
           // Ambiguous failures retain both the nonce and the exact pending
@@ -363,7 +409,17 @@ export function RecommendationPlaybackRecorder({
           // committed before its response was lost.
         })
     }
-    attemptClaim(1)
+    if (recommendationClaimNonce) {
+      attemptClaim(recommendationClaimNonce, 1, true)
+      return
+    }
+    void issuePlaybackContext(mediaId)
+      .then((claimNonce) => attemptClaim(claimNonce, 1, false))
+      .catch(() => {
+        // Telemetry is strictly fail-open: the player and legacy Watch event
+        // recorder remain available when context issuance is degraded.
+        abandonPendingClaim()
+      })
   }, [mediaId, sendOutbound])
 
   useEffect(() => {
@@ -562,9 +618,23 @@ export function RecommendationPlaybackRecorder({
         true,
       )
     }
-    const onPageHide = () => recordEnd("pagehide")
+    const onPageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        bfcacheWasPlayingRef.current = playingRef.current
+        playingRef.current = false
+        flushActive()
+      } else recordEnd("pagehide")
+    }
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      playingRef.current =
+        bfcacheWasPlayingRef.current &&
+        (!canMeasurePlayerState || !player.paused)
+      bfcacheWasPlayingRef.current = false
+      startActive()
+    }
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") recordEnd("hidden")
+      if (document.visibilityState === "hidden") flushActive()
       else startActive()
     }
 
@@ -579,6 +649,7 @@ export function RecommendationPlaybackRecorder({
     player.addEventListener("ended", onEnded)
     player.addEventListener("error", onError)
     window.addEventListener("pagehide", onPageHide)
+    window.addEventListener("pageshow", onPageShow)
     document.addEventListener("visibilitychange", onVisibilityChange)
     if (initiation != null && !player.paused) onPlaying()
 
@@ -595,6 +666,7 @@ export function RecommendationPlaybackRecorder({
       player.removeEventListener("ended", onEnded)
       player.removeEventListener("error", onError)
       window.removeEventListener("pagehide", onPageHide)
+      window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [durationSeconds, enqueue, initiation, mediaId, player])

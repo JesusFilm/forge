@@ -3556,12 +3556,17 @@ model RecommendationSelection {
 /// horizons and generation fence are persisted for verifier/finalizer parity.
 model RecommendationPlaybackEpisode {
   id                String                     @id @default(cuid())
-  requestId         String                     @map("request_id")
-  request           RecommendationRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId            String                     @map("item_id")
-  item              RecommendationServedItem   @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
-  selectionId       String                     @unique(map: "recommendation_episode_selection_key") @map("selection_id")
-  selection         RecommendationSelection    @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
+  requestId         String?                    @map("request_id")
+  request           RecommendationRequest?     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId            String?                    @map("item_id")
+  item              RecommendationServedItem?  @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
+  selectionId       String?                    @unique(map: "recommendation_episode_selection_key") @map("selection_id")
+  selection         RecommendationSelection?   @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
+  contextVersion    String                     @default("playback-context-v1") @map("context_version") @db.VarChar(64)
+  discoverySource   String                     @default("direct") @map("discovery_source") @db.VarChar(32)
+  provenance        Json                       @default("{}")
+  claimNonceDigest  String?                    @unique(map: "recommendation_episode_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt  DateTime?                  @map("handoff_expires_at")
   mediaId           String                     @map("media_id") @db.VarChar(191)
   sessionDigest     String                     @map("session_digest") @db.Char(64)
   state             RecommendationEpisodeState @default(PENDING)
@@ -3573,20 +3578,27 @@ model RecommendationPlaybackEpisode {
   /// because Prisma cannot express the `IS NOT NULL` predicate.
   finalizationDueAt DateTime?                  @map("finalization_due_at")
   nextFactSequence  Int                        @default(1) @map("next_fact_sequence")
+  replayCount       Int                        @default(0) @map("replay_count")
+  conflictCount     Int                        @default(0) @map("conflict_count")
   generation        Int                        @default(1)
   claimedAt         DateTime?                  @map("claimed_at")
   finalizedAt       DateTime?                  @map("finalized_at")
   createdAt         DateTime                   @default(now()) @map("created_at")
   expiresAt         DateTime                   @map("expires_at")
 
-  facts          RecommendationPlaybackFact[]    @relation("RecommendationPlaybackFactEpisode")
-  outcomes       RecommendationOutcomeRevision[] @relation("RecommendationOutcomeRevisionEpisode")
-  contentActions RecommendationContentAction[]   @relation("RecommendationContentActionEpisode")
+  facts             RecommendationPlaybackFact[]               @relation("RecommendationPlaybackFactEpisode")
+  outcomes          RecommendationOutcomeRevision[]            @relation("RecommendationOutcomeRevisionEpisode")
+  contentActions    RecommendationContentAction[]              @relation("RecommendationContentActionEpisode")
+  submissionBudgets RecommendationCapabilitySubmissionBudget[] @relation("RecommendationCapabilitySubmissionEpisode")
+  traceAccessAudits RecommendationTraceAccessAudit[]           @relation("RecommendationTraceAccessEpisode")
 
   @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
   @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
   @@index([state, activeUntil], map: "recommendation_episode_state_deadline_idx")
   @@index([requestId], map: "recommendation_episode_request_idx")
+  @@index([discoverySource, createdAt, id], map: "recommendation_episode_source_created_idx")
+  @@index([createdAt, id], map: "recommendation_episode_created_idx")
+  @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
   @@index([expiresAt])
   @@map("recommendation_playback_episode")
 }
@@ -3595,12 +3607,12 @@ model RecommendationPlaybackEpisode {
 /// eventId+digest provides idempotent replay and conflicting digests quarantine.
 model RecommendationPlaybackFact {
   id            String                        @id @default(cuid())
-  requestId     String                        @map("request_id")
-  request       RecommendationRequest         @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId        String                        @map("item_id")
-  item          RecommendationServedItem      @relation("RecommendationPlaybackFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_fact_item_request_fkey")
+  requestId     String?                       @map("request_id")
+  request       RecommendationRequest?        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId        String?                       @map("item_id")
+  item          RecommendationServedItem?     @relation("RecommendationPlaybackFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_fact_item_request_fkey")
   episodeId     String                        @map("episode_id")
-  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackFactEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_fact_episode_lineage_fkey")
+  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackFactEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_fact_episode_fkey")
   capabilityJti String                        @map("capability_jti") @db.VarChar(191)
   eventId       String                        @map("event_id") @db.VarChar(191)
   payloadDigest String                        @map("payload_digest") @db.Char(64)
@@ -3640,7 +3652,7 @@ model RecommendationContentAction {
   itemId                  String?                               @map("item_id")
   item                    RecommendationServedItem?             @relation("RecommendationContentActionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: SetNull, map: "recommendation_content_action_item_lineage_fkey")
   episodeId               String?                               @map("episode_id")
-  episode                 RecommendationPlaybackEpisode?        @relation("RecommendationContentActionEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: SetNull, map: "recommendation_content_action_episode_lineage_fkey")
+  episode                 RecommendationPlaybackEpisode?        @relation("RecommendationContentActionEpisode", fields: [episodeId], references: [id], onDelete: SetNull, map: "recommendation_content_action_episode_fkey")
   candidateGenerator      String?                               @map("candidate_generator") @db.VarChar(64)
   destinationArtifactType String?                               @map("destination_artifact_type") @db.VarChar(64)
   destinationArtifactId   String?                               @map("destination_artifact_id") @db.VarChar(191)
@@ -3670,18 +3682,18 @@ model RecommendationContentAction {
 /// and continuous_weight_not_available; a later watermark appends a revision.
 model RecommendationOutcomeRevision {
   id                         String                         @id @default(cuid())
-  requestId                  String                         @map("request_id")
-  request                    RecommendationRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId                     String                         @map("item_id")
-  item                       RecommendationServedItem       @relation("RecommendationOutcomeRevisionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_outcome_item_request_fkey")
+  requestId                  String?                        @map("request_id")
+  request                    RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                     String?                        @map("item_id")
+  item                       RecommendationServedItem?      @relation("RecommendationOutcomeRevisionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_outcome_item_request_fkey")
   episodeId                  String                         @map("episode_id")
-  episode                    RecommendationPlaybackEpisode  @relation("RecommendationOutcomeRevisionEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_outcome_episode_lineage_fkey")
+  episode                    RecommendationPlaybackEpisode  @relation("RecommendationOutcomeRevisionEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_outcome_episode_fkey")
   classifierVersion          String                         @map("classifier_version") @db.VarChar(64)
   factWatermark              Int                            @map("fact_watermark")
   inputDigest                String                         @map("input_digest") @db.Char(64)
   revision                   Int
   supersedesId               String?                        @unique(map: "recommendation_outcome_supersedes_key") @map("supersedes_id")
-  supersedes                 RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes", fields: [requestId, itemId, episodeId, supersedesId], references: [requestId, itemId, episodeId, id], onDelete: Restrict, map: "recommendation_outcome_supersedes_lineage_fkey")
+  supersedes                 RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes", fields: [supersedesId], references: [id], onDelete: Restrict, map: "recommendation_outcome_supersedes_fkey")
   supersededBy               RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes")
   qualifiedView              Boolean                        @map("qualified_view")
   viewQualityWeight          Float?                         @map("view_quality_weight")
@@ -3690,6 +3702,7 @@ model RecommendationOutcomeRevision {
   durationSeconds            Float?                         @map("duration_seconds")
   durationCohort             String?                        @map("duration_cohort") @db.VarChar(16)
   activeCoverage             String?                        @map("active_coverage") @db.VarChar(16)
+  activeIntervals            Json?                          @map("active_intervals")
   reasons                    String[]                       @default([])
   /// Compatibility field fixed false on immutable outcomes. All consumers
   /// derive current scope eligibility from RecommendationEligibilityDecision.
@@ -3706,8 +3719,38 @@ model RecommendationOutcomeRevision {
   @@unique([requestId, itemId, episodeId, id], map: "recommendation_outcome_lineage_id_key")
   @@unique([requestId, itemId, episodeId, supersedesId], map: "recommendation_outcome_supersedes_lineage_key")
   @@index([requestId], map: "recommendation_outcome_request_idx")
+  @@index([classifierVersion, createdAt, episodeId, revision], map: "recommendation_outcome_classifier_created_idx")
   @@index([expiresAt])
   @@map("recommendation_outcome_revision")
+}
+
+/// Immutable, aggregate comparison of a playback proxy with the legacy
+/// comparator. A readiness decision can authorize shadow evaluation only;
+/// this ledger can never authorize live ranking influence.
+model PlaybackProxyEvaluation {
+  id                   String   @id @default(cuid())
+  proxyVersion         String   @map("proxy_version") @db.VarChar(64)
+  revision             Int
+  windowStart          DateTime @map("window_start")
+  windowEnd            DateTime @map("window_end")
+  sampleCount          Int      @map("sample_count")
+  pairedCount          Int      @map("paired_count")
+  missingCount         Int      @map("missing_count")
+  agreementRate        Float?   @map("agreement_rate")
+  activeQualifiedRate  Float?   @map("active_qualified_rate")
+  legacyQualifiedRate  Float?   @map("legacy_qualified_rate")
+  lateRevisionRate     Float?   @map("late_revision_rate")
+  finalizationLagP95Ms Int?     @map("finalization_lag_p95_ms")
+  durationCohorts      Json     @default("{}") @map("duration_cohorts")
+  decision             String   @db.VarChar(48)
+  reasonCodes          String[] @default([]) @map("reason_codes")
+  rankingInfluence     Boolean  @default(false) @map("ranking_influence")
+  inputDigest          String   @map("input_digest") @db.Char(64)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@unique([proxyVersion, revision], map: "playback_proxy_evaluation_revision_key")
+  @@index([proxyVersion, createdAt], map: "playback_proxy_evaluation_created_idx")
+  @@map("playback_proxy_evaluation")
 }
 
 /// Append-only integrity verdict. Raw facts without a current decision are
@@ -4113,16 +4156,19 @@ model RecommendationConflict {
 /// request-owned and cascades with the raw lifecycle root; it stores only the
 /// already-persisted opaque jti, never the raw token or browser event payload.
 model RecommendationCapabilitySubmissionBudget {
-  capabilityJti String                @id @map("capability_jti") @db.VarChar(191)
-  requestId     String                @map("request_id")
-  request       RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  capabilityJti String                         @id @map("capability_jti") @db.VarChar(191)
+  requestId     String?                        @map("request_id")
+  request       RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  episodeId     String?                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode? @relation("RecommendationCapabilitySubmissionEpisode", fields: [episodeId], references: [id], onDelete: Cascade)
   attempts      Int
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
-  expiresAt     DateTime              @map("expires_at")
+  createdAt     DateTime                       @default(now()) @map("created_at")
+  updatedAt     DateTime                       @updatedAt @map("updated_at")
+  expiresAt     DateTime                       @map("expires_at")
 
   @@index([expiresAt])
   @@index([requestId], map: "recommendation_capability_submission_budget_request_idx")
+  @@index([episodeId], map: "recommendation_capability_submission_budget_episode_idx")
   @@map("recommendation_capability_submission_budget")
 }
 
@@ -4147,15 +4193,18 @@ model RecommendationRetentionRun {
 /// Permission-gated Admin raw-trace access audit. The request FK is cleared
 /// atomically by root purge; actor digest/reason/time remain for 90 days.
 model RecommendationTraceAccessAudit {
-  id          String                 @id @default(cuid())
-  requestId   String?                @map("request_id")
-  request     RecommendationRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  actorDigest String                 @map("actor_digest") @db.Char(64)
-  reasonCode  String                 @map("reason_code") @db.VarChar(64)
-  accessedAt  DateTime               @default(now()) @map("accessed_at")
-  expiresAt   DateTime               @map("expires_at")
+  id          String                         @id @default(cuid())
+  requestId   String?                        @map("request_id")
+  request     RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  episodeId   String?                        @map("episode_id")
+  episode     RecommendationPlaybackEpisode? @relation("RecommendationTraceAccessEpisode", fields: [episodeId], references: [id], onDelete: SetNull)
+  actorDigest String                         @map("actor_digest") @db.Char(64)
+  reasonCode  String                         @map("reason_code") @db.VarChar(64)
+  accessedAt  DateTime                       @default(now()) @map("accessed_at")
+  expiresAt   DateTime                       @map("expires_at")
 
   @@index([requestId])
+  @@index([episodeId])
   @@index([expiresAt])
   @@map("recommendation_trace_access_audit")
 }

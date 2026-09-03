@@ -861,10 +861,18 @@ served-item lineage rather than inferred later from unrelated analytics.
 
 ### Recommendation Playback Episode
 
-The minimal append-only playback lineage opened atomically with a selection and
-claimed once on the selected target media. It carries server-sequenced attempt,
-start, progress, seek, active-visible-playing, terminal, and error facts within
-bounded active/hard horizons without replacing the legacy Watch recorder.
+A source-neutral root for append-only playback evidence, claimed once for one
+session and media item. It may carry complete Recommendation Request,
+Recommendation Served Item, and selection lineage, but ordinary Watch arrivals
+exist without that lineage and keep discovery provenance separate from
+attribution.
+
+It carries server-sequenced attempt, start, progress, seek,
+active-visible-playing, terminal, and error facts within bounded active and hard
+horizons. When visibility coverage is complete, active playback is derived from
+the union of foreground-playing intervals, never from wall time, player
+position, progress, seeks, or background time; incomplete coverage is retained
+as an explicit qualification rather than presented as certain foreground time.
 
 ### Recommendation Outcome Revision
 
@@ -872,7 +880,9 @@ An immutable, recomputable classifier result over one episode's ordered fact
 watermark and digest. A later fact watermark may append a monotonic superseding
 revision; an old retry cannot become latest. `legacy-position-v0` is a named
 position/progress comparator with no continuous weight or satisfaction claim,
-and every U1 revision is learning-ineligible.
+while active-playback classifiers derive their result from explicit interval
+facts. Publication is learning-ineligible; downstream consumers independently
+decide whether a revision may influence a particular purpose.
 
 ### Recommendation Strategy Manifest
 

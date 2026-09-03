@@ -33,6 +33,7 @@ function XBrandIcon({ size = 18 }: { size?: number }) {
 }
 
 import { env } from "@/env"
+import { markWatchUrlAsShared } from "@/lib/playback-discovery"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -87,11 +88,14 @@ export function ShareModal({
   })
   const tabIdPrefix = useId()
 
-  const shareableUrl = resolveWatchShareUrl({
+  const canonicalShareableUrl = resolveWatchShareUrl({
     origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
     videoSlug,
     languageSlug: currentLanguageSlug,
   })
+  const shareableUrl = canonicalShareableUrl
+    ? markWatchUrlAsShared(canonicalShareableUrl)
+    : null
   // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
   // interpolating into the iframe `src` and returns "" on null/invalid; the
   // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
