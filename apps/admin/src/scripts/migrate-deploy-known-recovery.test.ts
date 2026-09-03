@@ -12,6 +12,8 @@ import {
 
 const videoLocaleSearchSocialMetadataMigration =
   "0047_video_locale_search_social_metadata"
+const watchSearchCandidateExactCompatibilityMigration =
+  "0073_watch_search_candidate_exact_compatibility_identities"
 
 describe("isKnownRecoverableP3009", () => {
   it("matches only P3009 output for known recoverable migrations", () => {
@@ -31,6 +33,14 @@ describe("isKnownRecoverableP3009", () => {
     expect(
       isKnownRecoverableP3009(
         `Error code: P3009 ${videoLocaleSearchSocialMetadataMigration}`,
+      ),
+    ).toBe(true)
+  })
+
+  it("recovers the failed Watch search exact compatibility migration", () => {
+    expect(
+      isKnownRecoverableP3009(
+        `Error code: P3009 ${watchSearchCandidateExactCompatibilityMigration}`,
       ),
     ).toBe(true)
   })
@@ -88,6 +98,25 @@ describe("deployWithKnownRecovery", () => {
     await deployWithKnownRecovery(runner)
 
     expect(runner).toHaveBeenNthCalledWith(1, ["migrate", "deploy"])
+    expect(runner).toHaveBeenNthCalledWith(2, [
+      "migrate",
+      "resolve",
+      "--rolled-back",
+      migration,
+    ])
+    expect(runner).toHaveBeenNthCalledWith(3, ["migrate", "deploy"])
+  })
+
+  it("resolves the failed Watch search exact compatibility migration", async () => {
+    const migration = watchSearchCandidateExactCompatibilityMigration
+    const runner = vi
+      .fn()
+      .mockResolvedValueOnce(result(1, `P3009 ${migration}`))
+      .mockResolvedValueOnce(result(0))
+      .mockResolvedValueOnce(result(0))
+
+    await deployWithKnownRecovery(runner)
+
     expect(runner).toHaveBeenNthCalledWith(2, [
       "migrate",
       "resolve",

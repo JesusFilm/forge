@@ -64,6 +64,22 @@ async function createLegacyCandidateTables(client: Client) {
     )
   `)
   await client.query(`
+    CREATE FUNCTION "reject_watch_search_candidate_qualification_mutation"()
+    RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      RAISE EXCEPTION 'watch search candidate qualification evidence is append-only';
+    END
+    $$
+  `)
+  await client.query(`
+    CREATE TRIGGER "watch_search_candidate_qualification_update_guard"
+    BEFORE UPDATE OR DELETE ON "watch_search_candidate_qualification"
+    FOR EACH ROW
+    EXECUTE FUNCTION "reject_watch_search_candidate_qualification_mutation"()
+  `)
+  await client.query(`
     CREATE TABLE "watch_search_candidate_lease" (
       "resource_key" text PRIMARY KEY,
       "kind" text NOT NULL,
@@ -179,6 +195,32 @@ async function seedActiveTranscriptCompatibility(client: Client) {
   `)
 }
 
+async function seedLegacyQualification(client: Client) {
+  await client.query(`
+    INSERT INTO "watch_search_candidate_qualification" (
+      "id",
+      "generation_id",
+      "status",
+      "application_revision",
+      "transcript_collection",
+      "transcript_projection_revision",
+      "qrels_revision",
+      "current_bindings",
+      "evidence"
+    ) VALUES (
+      'legacy-qualification',
+      'legacy-generation',
+      'passed',
+      'revision',
+      'transcript',
+      1,
+      'qrels-v1',
+      '{}'::jsonb,
+      '{}'::jsonb
+    )
+  `)
+}
+
 describe.skipIf(!RUN_REAL_DB_TEST)(
   "Watch search candidate trigger repair against real PostgreSQL",
   () => {
@@ -199,6 +241,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query(`SET search_path TO "${schemaName}"`)
       await createLegacyCandidateTables(client)
       await seedActiveTranscriptCompatibility(client)
+      await seedLegacyQualification(client)
       await client.query(migrationSql)
     })
 
@@ -210,6 +253,32 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
 
     it("accepts valid lifecycle updates and preserves identity guards", async () => {
+      const migratedQualification = await client.query<{
+        content_embedding_contract_id: string
+        transcript_chunking_version: string
+      }>(`
+        SELECT
+          "content_embedding_contract_id",
+          "transcript_chunking_version"
+        FROM "watch_search_candidate_qualification"
+        WHERE "id" = 'legacy-qualification'
+      `)
+      expect(migratedQualification.rows).toEqual([
+        {
+          content_embedding_contract_id: "semantic-transcript-pgvector-v1",
+          transcript_chunking_version: "mastra-v1",
+        },
+      ])
+      await expect(
+        client.query(`
+          UPDATE "watch_search_candidate_qualification"
+          SET "evidence" = '{"changed":true}'::jsonb
+          WHERE "id" = 'legacy-qualification'
+        `),
+      ).rejects.toThrow(
+        "watch search candidate qualification evidence is append-only",
+      )
+
       const baseValues = [
         "revision",
         "epoch",

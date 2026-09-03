@@ -233,6 +233,34 @@ export async function purgeExpiredRecommendationRequests(
         select: { id: true },
       })
       const directActionIds = directActions.map((action) => action.id)
+      const standaloneEpisodes =
+        await tx.recommendationPlaybackEpisode.findMany({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        })
+      const standaloneEpisodeIds = standaloneEpisodes.map(({ id }) => id)
+      rowCounts.expiredStandalonePlaybackFacts =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : await tx.recommendationPlaybackFact.count({
+              where: { episodeId: { in: standaloneEpisodeIds } },
+            })
+      rowCounts.expiredStandaloneOutcomes =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : await tx.recommendationOutcomeRevision.count({
+              where: { episodeId: { in: standaloneEpisodeIds } },
+            })
+      rowCounts.expiredStandaloneEpisodes =
+        standaloneEpisodeIds.length === 0
+          ? 0
+          : (
+              await tx.recommendationPlaybackEpisode.deleteMany({
+                where: { id: { in: standaloneEpisodeIds } },
+              })
+            ).count
       rowCounts.expiredEligibilityDecisions =
         directActionIds.length === 0
           ? 0
@@ -550,6 +578,7 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredProfileProjectionContribution,
         oldestExpiredProfileInterest,
         oldestExpiredProfileProjectionGeneration,
+        oldestExpiredStandaloneEpisode,
       ] = await Promise.all([
         tx.recommendationRequest.findFirst({
           where: { expiresAt: { lte: now } },
@@ -631,6 +660,11 @@ export async function purgeExpiredRecommendationRequests(
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
+        tx.recommendationPlaybackEpisode.findFirst({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
       ])
       const oldestExpiredAt = earliestDate([
         oldestExpiredRoot?.expiresAt,
@@ -649,6 +683,7 @@ export async function purgeExpiredRecommendationRequests(
         oldestExpiredProfileProjectionContribution?.expiresAt,
         oldestExpiredProfileInterest?.expiresAt,
         oldestExpiredProfileProjectionGeneration?.expiresAt,
+        oldestExpiredStandaloneEpisode?.expiresAt,
       ])
       const overdueAfterRun =
         oldestExpiredAt != null &&
@@ -739,7 +774,8 @@ export async function readRecommendationRetentionHealth(
         (SELECT min(expires_at) FROM recommendation_profile_projection_run WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_profile_projection_contribution WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_profile_interest WHERE expires_at <= ${propagationCutoff}),
-        (SELECT min(expires_at) FROM recommendation_profile_projection_generation WHERE expires_at <= ${propagationCutoff})
+        (SELECT min(expires_at) FROM recommendation_profile_projection_generation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_playback_episode WHERE request_id IS NULL AND expires_at <= ${propagationCutoff})
       ) AS "oldestOverdueAt"
   `)
   const latestSuccessAt = snapshot?.latestSuccessAt ?? null

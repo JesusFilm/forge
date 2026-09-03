@@ -9,6 +9,7 @@ const workflowRun = vi.hoisted(() => ({
 const recommendationPlaybackEpisode = vi.hoisted(() => ({
   findUnique: vi.fn(),
   findMany: vi.fn(),
+  updateMany: vi.fn(),
 }))
 const recommendationEvidenceAudit = vi.hoisted(() => ({ create: vi.fn() }))
 const queryRaw = vi.hoisted(() => vi.fn())
@@ -97,8 +98,22 @@ beforeEach(() => {
   })
   dispatchRecommendationProfileFeedback.mockResolvedValue(undefined)
   recommendationOutcomeRevision.findUnique.mockResolvedValue({
+    id: "active-outcome",
+    episodeId: "episode-1",
+    classifierVersion: "active-watch-proxy-v1",
+    revision: 1,
+    factWatermark: 3,
+    inputDigest: "f".repeat(64),
+    qualifiedView: true,
+    activePlaybackMilliseconds: 35_000,
+    durationSeconds: 120,
+    durationCohort: "medium",
+    activeCoverage: "complete",
     createdAt: new Date("2026-08-19T03:01:00.000Z"),
     episode: {
+      discoverySource: "recommendation",
+      provenance: {},
+      mediaId: "media-1",
       sessionDigest: "a".repeat(64),
       request: {
         experimentAssignment: {
@@ -127,6 +142,7 @@ beforeEach(() => {
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
     request: { expiresAt: new Date("2026-09-17T03:00:00.000Z") },
   })
+  recommendationPlaybackEpisode.updateMany.mockResolvedValue({ count: 1 })
 })
 
 describe("recommendation episode finalization job", () => {
@@ -262,8 +278,22 @@ describe("recommendation episode finalization job", () => {
       inputDigest: "f".repeat(64),
     })
     recommendationOutcomeRevision.findUnique.mockResolvedValueOnce({
+      id: "direct-outcome",
+      episodeId: "episode-1",
+      classifierVersion: "active-watch-proxy-v1",
+      revision: 1,
+      factWatermark: 3,
+      inputDigest: "f".repeat(64),
+      qualifiedView: true,
+      activePlaybackMilliseconds: 35_000,
+      durationSeconds: 120,
+      durationCohort: "medium",
+      activeCoverage: "complete",
       createdAt: new Date("2026-08-19T03:01:00.000Z"),
       episode: {
+        discoverySource: "direct",
+        provenance: {},
+        mediaId: "media-1",
         sessionDigest: "a".repeat(64),
       },
     })
@@ -287,12 +317,48 @@ describe("recommendation episode finalization job", () => {
     })
   })
 
+  it("re-arms durable recovery and fails the run when consumer dispatch fails", async () => {
+    finalize.mockResolvedValue({
+      status: "existing",
+      activeOutcomeId: "active-outcome",
+      revision: 1,
+      factWatermark: 3,
+      inputDigest: "f".repeat(64),
+    })
+    classifyPlaybackOutcome.mockRejectedValueOnce(
+      new Error("consumer unavailable"),
+    )
+
+    await expect(
+      runRecommendationEpisodeFinalizationJob({
+        episodeId: "episode-1",
+        generation: 2,
+        reason: "recovery",
+        ledgerRunId: "ledger-1",
+      }),
+    ).rejects.toThrow("consumer unavailable")
+    expect(recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
+      where: { id: "episode-1", generation: 2 },
+      data: { finalizationDueAt: expect.any(Date) },
+    })
+    expect(workflowLog.markWorkflowRunFailed).toHaveBeenCalledWith(
+      "ledger-1",
+      expect.any(Error),
+    )
+    expect(workflowRun.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "SUCCEEDED" }),
+      }),
+    )
+  })
+
   it("replaces a lost claim-time wake when the earlier deadline fences not-ready", async () => {
     const activeUntil = new Date("2099-08-19T10:00:00.000Z")
     finalize.mockResolvedValue({ status: "fenced", reason: "not_ready" })
     recommendationPlaybackEpisode.findUnique.mockResolvedValueOnce({
       generation: 2,
       activeUntil,
+      expiresAt: new Date("2099-09-17T03:00:00.000Z"),
       request: { expiresAt: new Date("2099-09-17T03:00:00.000Z") },
     })
     workflowLog.createWorkflowRunLog.mockResolvedValueOnce({
@@ -365,6 +431,7 @@ describe("recommendation episode finalization job", () => {
       'episode."finalization_due_at" <=',
     )
     expect(query.strings.join("?")).toContain('episode."expires_at" >')
+    expect(query.strings.join("?")).toContain("episode.\"state\" <> 'pending'")
     expect(query.strings.join("?")).toContain(
       'ORDER BY episode."finalization_due_at" ASC, episode."id" ASC',
     )

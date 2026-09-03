@@ -17,6 +17,7 @@ import {
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
+import { markWatchUrlForPlaybackSource } from "@/lib/playback-discovery"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
   asLocaleSlug,
@@ -232,10 +233,15 @@ export function VideoCard({
     pill?.kind === "count" && result.childCount != null
       ? t("episodeCount", { count: result.childCount })
       : pill?.text
+  const rawHref = hrefBuilder(result, requestedLanguageSlug)
+  const href =
+    !isUnavailable && result.type === "video"
+      ? (markWatchUrlForPlaybackSource(rawHref, "search") as Route)
+      : rawHref
 
   return (
     <Link
-      href={hrefBuilder(result, requestedLanguageSlug)}
+      href={href}
       prefetch={isUnavailable ? false : undefined}
       onClick={(event) => {
         if (

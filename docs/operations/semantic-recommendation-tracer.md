@@ -1,11 +1,13 @@
 # Semantic Recommendation Tracer Operations
 
 This runbook covers the production semantic recommendation path from the
-automatic Watch block through the authorized Admin request trace, plus the
-consent-aware semantic + anonymous-profile hybrid's shadow-evaluation and
-promotion controls. It does not authorize non-zero hybrid exposure by itself,
-and it does not replace the human approval required by the promotion ledger.
-The legacy `sceneRecommendations` and `WatchEvent` contracts remain compatible.
+automatic Watch block through the authorized Admin request trace, plus current
+direct anonymous-profile delivery. Ordinary profile delivery does not consult
+experiment assignment, shadow evaluation, or promotion state. The historical
+evaluation and promotion procedures remain below for reconciling old records
+and for explicitly governed future experiments; they do not authorize or block
+current direct-profile delivery. The legacy `sceneRecommendations` and
+`WatchEvent` contracts remain compatible.
 
 ## Pinned Contracts and Bounds
 
@@ -18,6 +20,9 @@ Treat these identifiers as persisted protocol versions, not display labels:
 | Watch surface      | `watch-below-player-v1`           |
 | Semantic strategy  | `semantic-transcript-pgvector-v1` |
 | Outcome classifier | `legacy-position-v0`              |
+| Active proxy       | `active-watch-proxy-v1`           |
+| Playback context   | `playback-context-v1`             |
+| Outcome handoff    | `playback-outcome-v1`             |
 
 The semantic delivery returns at most six items and at most 64 KiB. Evidence
 requests are at most 8 KiB and 16 events; an episode accepts at most 128 facts.
@@ -36,15 +41,35 @@ sets `learningEligible=false`.
 Deploy in expand-then-activate order:
 
 1. Run `prisma migrate deploy` through
-   `0071_recommendation_assignment_generation_key` while serving remains
+   `0072_recommendation_source_neutral_playback_episodes` while serving remains
    disabled. Confirm `prisma migrate status` (or `_prisma_migrations`) reports
    every recommendation migration from
-   `0052_production_semantic_recommendation_tracer` through `0071` as applied
+   `0052_production_semantic_recommendation_tracer` through `0072` as applied
    successfully before deploying application code. Migration `0052` registers
    the immutable bootstrap manifest and a disabled singleton
    `recommendation-serving-control` row; later migrations add profile,
    experiment, hybrid-composition, consent, and assignment-generation state
-   required by this release.
+   required by this release. Before `0072`, reconcile episode capability
+   budgets with:
+
+   ```sql
+   SELECT b.capability_jti, b.request_id
+   FROM recommendation_capability_submission_budget b
+   LEFT JOIN recommendation_playback_episode e
+     ON e.capability_jti = b.capability_jti
+   WHERE e.id IS NULL;
+   ```
+
+   Unmatched rows are valid delivery/evidence budgets and remain request-owned.
+   Matched episode rows move to episode ownership. After the migration, this
+   invariant query must return zero rows:
+
+   ```sql
+   SELECT capability_jti
+   FROM recommendation_capability_submission_budget
+   WHERE (request_id IS NULL) = (episode_id IS NULL);
+   ```
+
 2. Deploy Admin and Web with generated GraphQL artifacts in parity. Keep
    `sceneRecommendations` and the legacy Watch recorder available.
 3. Configure one active recommendation capability signer, the Web consumer
@@ -61,7 +86,11 @@ Deploy in expand-then-activate order:
 6. Reconcile an anonymous Watch selection and target playback at
    `/dashboard/recommendations` before broadening traffic.
 
-## Exact Hybrid Shadow Evaluation
+## Historical/Future Exact Hybrid Shadow Evaluation
+
+The procedure in this section is not part of ordinary current hybrid delivery.
+Use it only to inspect historical experiment evidence or when a future rollout
+ticket explicitly places a new manifest behind governed experimental exposure.
 
 The hybrid manifest is `semantic-profile-hybrid-v1`; its generator set is
 `semantic-profile-hybrid-generators-v1`. Creating the manifest does not expose
@@ -125,11 +154,11 @@ WHERE workflow_key = 'recommendation-shadow-evaluation'
 ORDER BY created_at, id;
 ```
 
-Only an unexpired exact `promote_to_experiment` decision can be offered to the
-bounded-approval flow. Even then, keep exposure at zero until an authorized
-person reviews Admin's evidence, impact preview, semantic holdout, privacy
-state, fallback, rollback, and kill-switch proof. Permanent default still
-requires recent authentication and a separate human confirmation.
+For an explicitly governed future experiment, only an unexpired exact
+`promote_to_experiment` decision can be offered to its bounded-approval flow.
+This rule does not apply retroactively to current direct-profile delivery.
+Historical assignments and exposures remain immutable and inspectable when
+present; their absence is normal on current requests.
 
 Production must have Redis available. Redis loss fails new attributed delivery
 closed before retrieval; only non-production uses the process-local admission
@@ -188,15 +217,18 @@ reject outstanding capabilities by design.
 Each request gets one immutable expiry 29 days after creation. Served items,
 render/impression/selection facts, episodes, playback facts, outcomes, and
 request-linked audit/conflict records inherit that root expiry and cannot
-extend it. Reads hide expired roots immediately. The daily advisory-locked
+extend it. Source-neutral standalone playback episodes receive the same
+29-day horizon and are purged as bounded roots with their cascading facts and
+outcomes. Reads hide expired roots immediately. The daily advisory-locked
 purge runs at 10:30 UTC in batches of 500 (hard maximum 5,000), deletes request
 roots under database cascades, and fences late finalizers from recreating or
 publishing deleted generations.
 
 The purge has a 24-hour propagation SLA and a 30-day hard ceiling. Retention is
-overdue when a root is more than 24 hours past expiry, a bounded run leaves an
-overdue root, or no successful run exists for 36 hours. Strategy manifests do
-not expire automatically. Sanitized retention-run records and privileged
+overdue when a request or standalone playback root is more than 24 hours past
+expiry, a bounded run leaves an overdue root, or no successful run exists for
+36 hours. Strategy manifests do not expire automatically. Sanitized
+retention-run records and privileged
 trace-access audits retain for 90 days; root purge sets the access audit's
 request link to null atomically so the retained row cannot be joined back to a
 request or session.
@@ -221,7 +253,7 @@ Admin health is a truth table over recommendation-owned durable evidence:
 | `loss_suspected`      | A committed rejection or write-failure audit exists; inspect its bounded reason.                                         |
 | `replay`              | An identical event digest was submitted again; the first accepted fact remains canonical.                                |
 | `conflict`            | The same event identity arrived with a different digest and was quarantined.                                             |
-| `late`                | An allowed terminal fact was received after the active window but inside the hard horizon.                               |
+| `late`                | A fact that occurred inside the active window was received later, before the hard horizon.                               |
 | `classifier_lag`      | A terminal/deadline episode has no outcome, or an open episode is past its deadline.                                     |
 | `retention_overdue`   | Purge propagation or success-watermark freshness failed; attributed serving stays disabled.                              |
 
@@ -234,6 +266,12 @@ Aggregate access (`read:recommendation-aggregates`) never includes request IDs,
 cursors, or detail links. Trace access (`read:recommendation-traces`) is
 separate, paginated at 50 rows, and every detail read creates a 90-day sanitized
 access audit.
+
+The durable 11:00 UTC control-readiness scheduler also runs the bounded
+seven-day `active-watch-proxy-v1` offline evaluation after a six-hour maturity
+lag. Each attempt has its own workflow ledger and immutable evaluation
+revision. Its `rankingInfluence` remains false for every decision; readiness
+can authorize later shadow evaluation, never live ranking.
 
 ## Migration and Application Rollback
 

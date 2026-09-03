@@ -81,6 +81,8 @@ export class RecommendationIntegrityService {
                   sessionDigest: true,
                   mediaId: true,
                   capabilityJti: true,
+                  replayCount: true,
+                  conflictCount: true,
                   createdAt: true,
                   facts: { select: { late: true } },
                 },
@@ -100,24 +102,6 @@ export class RecommendationIntegrityService {
             )
           }
           const measures = await measurePlaybackSource(tx, outcome.episode)
-          const [conflictCount, replay] = await Promise.all([
-            outcome.episode.capabilityJti
-              ? tx.recommendationConflict.count({
-                  where: {
-                    requestId: outcome.requestId,
-                    capabilityJti: outcome.episode.capabilityJti,
-                  },
-                })
-              : Promise.resolve(0),
-            tx.recommendationEvidenceAudit.aggregate({
-              where: {
-                requestId: outcome.requestId,
-                kind: "REPLAY",
-                reasonCode: { startsWith: "playback_" },
-              },
-              _sum: { count: true },
-            }),
-          ])
           const decision = outcome.request?.promotionSlateFence
             ? rollbackFencedDecision()
             : decideRecommendationEligibility({
@@ -126,8 +110,8 @@ export class RecommendationIntegrityService {
                 qualifiedView: outcome.qualifiedView,
                 baseWeight: outcome.viewQualityWeight ?? 0,
                 late: outcome.episode.facts.some((fact) => fact.late),
-                replayCount: replay._sum.count ?? 0,
-                conflictCount,
+                replayCount: outcome.episode.replayCount,
+                conflictCount: outcome.episode.conflictCount,
                 contributionOrdinal: measures.contributionOrdinal,
                 distinctAnonymousSupport: measures.distinctSupport,
                 identityConcentration: measures.identityConcentration,

@@ -5083,7 +5083,9 @@ describe("FloatingSearchProvider — search pagination", () => {
     await submitSearch(input, "the bible project")
 
     const link = Array.from(document.querySelectorAll("a")).find(
-      (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
+      (anchor) =>
+        anchor.getAttribute("href") ===
+        "/first-result-slug.html?playback_source=search",
     )
     const searchRequestId =
       mockedRunSearch.mock.calls[0]?.[0].languageContext?.clientRequestId

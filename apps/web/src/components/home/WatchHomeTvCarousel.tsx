@@ -35,25 +35,50 @@ import {
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import {
+  useWatchHomeHeroFittedHeight,
+  useWatchHomeHeroScrollPause,
+} from "@/components/home/useWatchHomeHero"
+import {
+  WATCH_HERO_PRIMARY_ACTION_CLASS,
+  WatchHeroOverlay,
+} from "@/components/watch/WatchHeroOverlay"
+import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { getWebVttCueText } from "@/lib/webvtt"
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
+  /**
+   * Pin the intro and let the body scroll over it. False for an authored hero
+   * block placed mid-page: it renders inside the body zone, so it has nothing
+   * above it to pin against and nothing to be covered by.
+   */
+  pinned?: boolean
 }
 
 function WatchHomeTvCarouselRegion({
   activeSlide,
   children,
+  pinned,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
   children: ReactNode
+  pinned: boolean
 }) {
   return (
     <section
       aria-label={activeSlide.title}
-      className="relative bg-black"
+      // Pinned, like the watch-page hero: the body scrolls UP over the intro
+      // instead of the intro scrolling away, and `z-0` keeps it below the body
+      // zone that covers it. An authored hero placed mid-page is NOT pinned —
+      // it sits inside that body zone, so pinning it would leave it stuck at
+      // the top under content that measures as covering all of it.
+      className={cn("bg-black", pinned ? "sticky top-0 z-0" : "relative")}
       data-testid="watch-home-tv-carousel"
+      data-pinned={pinned ? "true" : "false"}
     >
       {children}
     </section>
@@ -94,7 +119,18 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
 ): WatchHomeTvCarouselSlide[] {
   return slides.map((slide) => {
     const muxThumbnail = muxThumbnailUrl(slide.playbackId)
-    const posterUrl = slide.imageUrl ?? muxThumbnail
+    // Frame-first for the hero, authored-first for the card below. The admin
+    // library holds only mobile derivatives for these videos (measured 640x300
+    // for `mobileCinematicHigh`), which a full-bleed intro upscales about
+    // fourfold; the Mux frame is 1280x720 from the same warm derivative the
+    // watch-page hero requests. At card size the authored image has pixels to
+    // spare, so it stays preferred there.
+    // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
+    // and `??` would both keep it and suppress the Mux tier below it.
+    const posterUrl =
+      resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
+      slide.imageUrl ||
+      muxThumbnail
 
     return {
       kind: "video",
@@ -129,7 +165,9 @@ function PrimaryAction({
   return (
     <Link
       href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
-      className="inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
+      // The watch page's primary hero action, so both surfaces show the same
+      // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
+      className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
     >
       <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
       <span className="truncate">{t("watchNow")}</span>
@@ -187,7 +225,26 @@ function WatchHomeTvMedia({
   return (
     <div
       ref={wrapperRef}
-      className="absolute inset-0 isolate z-0 overflow-hidden bg-black"
+      // The hero frame stays on the 1920px content rail so the overlay copy
+      // lines up with the rest of the page, but the media itself bleeds to the
+      // viewport edges the way the watch-page hero does. `<main>` carries
+      // `overflow-x-clip` (see WatchHomePage/WatchHomeExperiencePage), so the
+      // 100vw span never adds horizontal scroll.
+      style={
+        {
+          "--watch-hero-body-overlap": WATCH_HERO_BODY_OVERLAP_CSS,
+        } as CSSProperties
+      }
+      className={cn(
+        "absolute top-0 left-1/2 isolate z-0 w-screen max-w-none -translate-x-1/2 overflow-hidden bg-black",
+        // While muted the media reaches below the frame's flow bottom so the
+        // video continues behind the panel that covers it, the way a watch
+        // page's hero runs on under its body. Unmuting drops it, exactly as
+        // revealing that hero's chrome drops its overlap to zero.
+        isMuted
+          ? "bottom-[calc(-1_*_var(--watch-hero-body-overlap))]"
+          : "bottom-0",
+      )}
       data-testid="watch-home-tv-media-frame"
     >
       {leavingSlide ? (
@@ -226,8 +283,41 @@ function WatchHomeTvMedia({
           )}
         />
       ) : null}
-      <div className="absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)]" />
-      <div className="absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)]" />
+      {/* Muted preview wears the exact scrim the watch-page hero uses for its
+          own muted state (`hero-player-muted-backdrop`), so the home intro and
+          the inner pages read identically while sound is off. Unmuting drops
+          the flat dim — same as the hero revealing its chrome — and falls back
+          to the legibility gradients the overlay copy needs. */}
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-muted-backdrop"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-30 [background:var(--watch-player-muted-backdrop)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-100" : "opacity-0",
+        )}
+        style={
+          {
+            "--watch-player-muted-backdrop":
+              WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+          } as CSSProperties
+        }
+      />
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-unmuted-scrim"
+        className={cn(
+          "pointer-events-none absolute inset-0 z-30 bg-[linear-gradient(180deg,rgba(0,0,0,0.18),rgba(0,0,0,0)_36%,rgba(0,0,0,0.35)_70%,rgba(0,0,0,0.72)_100%)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-0" : "opacity-100",
+        )}
+      />
+      <div
+        aria-hidden
+        data-testid="watch-home-tv-unmuted-scrim"
+        className={cn(
+          "pointer-events-none absolute inset-y-0 left-0 z-30 w-3/5 bg-[linear-gradient(90deg,rgba(0,0,0,0.48)_0%,rgba(0,0,0,0)_100%)] transition-opacity duration-500 motion-reduce:transition-none",
+          isMuted ? "opacity-0" : "opacity-100",
+        )}
+      />
     </div>
   )
 }
@@ -460,10 +550,11 @@ function WatchHomeTvOverlayContent({
   const exitDelays = [0, 35, 70]
   const itemClassName =
     mode === "entering" ? "watch-home-copy-enter" : "watch-home-copy-exit"
+  // Positioning only — WatchHeroOverlay owns the copy stack itself.
   const wrapperClassName =
     mode === "leaving"
-      ? "pointer-events-none absolute bottom-0 left-0 flex w-full flex-col items-start gap-3 sm:gap-4"
-      : "relative flex flex-col items-start gap-3 sm:gap-4"
+      ? "pointer-events-none absolute bottom-0 left-0 w-full sm:gap-4"
+      : "relative sm:gap-4"
   const delayStyle = (index: number) => {
     const delay =
       mode === "entering"
@@ -473,38 +564,32 @@ function WatchHomeTvOverlayContent({
   }
 
   return (
-    <div className={wrapperClassName} aria-hidden={mode === "leaving"}>
-      <div className="min-w-0">
-        <p
-          className={cn(
-            itemClassName,
-            "text-xs font-bold tracking-[0.24em] text-amber-300 uppercase sm:text-sm",
-          )}
-          style={delayStyle(0)}
-        >
-          <WatchHomeTvSlideLabel slide={slide} />
-        </p>
-        <p
-          className={cn(
-            itemClassName,
-            "line-clamp-3 leading-tight font-extrabold sm:line-clamp-2",
-            "text-3xl max-[360px]:text-2xl sm:text-5xl md:text-6xl",
-          )}
-          data-testid={
-            mode === "entering" ? "watch-home-tv-active-title" : undefined
-          }
-          style={delayStyle(1)}
-        >
-          {slide.title}
-        </p>
-      </div>
-      <div className={itemClassName} style={delayStyle(2)}>
+    // The watch page's hero copy block, reused: same eyebrow, same title
+    // treatment, same action pill. What differs is passed in — the title is a
+    // `p` here because the page heading lives outside the carousel, and the
+    // action is a link to the video rather than a button driving this player.
+    <WatchHeroOverlay
+      className={wrapperClassName}
+      ariaHidden={mode === "leaving"}
+      label={<WatchHomeTvSlideLabel slide={slide} />}
+      labelSlot={{ className: itemClassName, style: delayStyle(0) }}
+      title={slide.title}
+      titleAs="p"
+      titleTestId={
+        mode === "entering" ? "watch-home-tv-active-title" : undefined
+      }
+      titleSlot={{
+        className: cn(itemClassName, "line-clamp-3 sm:line-clamp-2"),
+        style: delayStyle(1),
+      }}
+      actions={
         <PrimaryAction
           slide={slide}
           playbackTimeSeconds={playbackTimeSeconds}
         />
-      </div>
-    </div>
+      }
+      actionsSlot={{ className: itemClassName, style: delayStyle(2) }}
+    />
   )
 }
 
@@ -635,6 +720,7 @@ function NextVideoButton({
 }
 
 export function WatchHomeTvCarousel({
+  pinned = true,
   sequence = null,
   slides,
 }: WatchHomeTvCarouselProps) {
@@ -659,8 +745,20 @@ export function WatchHomeTvCarousel({
   } = useWatchHomeTvCarousel(carouselSlides, sequence)
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
+  // Separate from wrapperRef: that one is on the media layer, which reaches
+  // below the frame while muted. Coverage must be measured against the frame
+  // the viewer actually sees.
+  const heroFrameRef = useRef<HTMLDivElement | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   usePauseForWatchModal(player, activeSlide?.id ?? null)
+  const fittedHeroHeight = useWatchHomeHeroFittedHeight(pinned && isMuted)
+  useWatchHomeHeroScrollPause({
+    enabled: pinned,
+    fittedHeight: fittedHeroHeight,
+    heroRef: heroFrameRef,
+    player,
+    videoRef,
+  })
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
     setPlayer((current) => (current === next ? current : next))
   }, [])
@@ -680,8 +778,38 @@ export function WatchHomeTvCarousel({
   if (!activeSlide) return null
 
   return (
-    <WatchHomeTvCarouselRegion activeSlide={activeSlide}>
-      <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
+    <WatchHomeTvCarouselRegion activeSlide={activeSlide} pinned={pinned}>
+      {/* Two things this frame does NOT do. It has no `overflow-hidden` — the
+          media layer below deliberately spans the full viewport width and
+          clips itself. And while muted it stands shorter than the 16:9 frame
+          by the same ceiling `HeroPlayer` pulls its episode rail up by, so the
+          muted intro reads at the height an inner watch page's muted preview
+          does; unmuting expands it back, the way revealing the hero's chrome
+          drops that overlap to zero. */}
+      <div
+        ref={heroFrameRef}
+        style={
+          {
+            // Measured fit wins once hydrated; the classes below are the
+            // pre-hydration estimate it refines (and the fallback when the
+            // page has no categories rail to measure).
+            ...(fittedHeroHeight != null
+              ? { height: `${fittedHeroHeight}px` }
+              : {}),
+          } as CSSProperties
+        }
+        className={cn(
+          "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isMuted
+            ? // Short enough for the categories rail to sit fully inside the
+              // first viewport, floored so a squat window keeps a usable intro
+              // rather than collapsing it. `min(…, 56.25vw)` also keeps the
+              // watch-page behaviour where the overlap stops biting once the
+              // 16:9 frame already leaves room below.
+              "h-[max(34svh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
+            : "h-[66svh] md:h-[min(100svh,56.25vw)]",
+        )}
+      >
         <WatchHomeTvMedia
           activeSlide={activeSlide}
           isMuted={isMuted}

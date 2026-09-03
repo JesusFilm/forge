@@ -7,7 +7,10 @@ import type { Root } from "react-dom/client"
 import { describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
-import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
+import {
+  RECOMMENDATION_TAB_CORRELATION_KEY,
+  type RecommendationPlaybackEvent,
+} from "@/lib/recommendation-contracts"
 import {
   deferred,
   makePlayer,
@@ -313,6 +316,65 @@ describe("RecommendationPlaybackRecorder", () => {
     )
   })
 
+  it("pauses active measurement across BFCache and resumes without ending the episode", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "episode-1",
+            capability: "episode-capability-secret",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockResolvedValue(response({ receipts: [] }))
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => player.dispatch("playing"))
+    await act(async () => vi.advanceTimersByTimeAsync(5_000))
+    const pagehide = new Event("pagehide")
+    Object.defineProperty(pagehide, "persisted", { value: true })
+    await act(async () => window.dispatchEvent(pagehide))
+    await act(async () => vi.advanceTimersByTimeAsync(10_000))
+    const pageshow = new Event("pageshow")
+    Object.defineProperty(pageshow, "persisted", { value: true })
+    await act(async () => window.dispatchEvent(pageshow))
+    await act(async () => vi.advanceTimersByTimeAsync(7_000))
+    await act(async () => player.dispatch("pause"))
+
+    const events = fetchMock.mock.calls.slice(1).flatMap(
+      ([, init]) =>
+        (
+          JSON.parse(init.body as string) as {
+            events?: RecommendationPlaybackEvent[]
+          }
+        ).events ?? [],
+    )
+    expect(
+      events
+        .filter((event) => event.kind === "playback_active_visible_playing")
+        .reduce((total, event) => total + event.payload.activeMilliseconds, 0),
+    ).toBe(12_000)
+    expect(events.some((event) => event.kind === "playback_end")).toBe(false)
+  })
+
   it("keeps automatic initiation separate and marks unavailable player-state coverage partial", async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -530,6 +592,65 @@ describe("RecommendationPlaybackRecorder", () => {
       .filter((fact) => fact.kind === "playback_active_visible_playing")
       .reduce((total, fact) => total + fact.payload.activeMilliseconds, 0)
     expect(activeMilliseconds).toBe(3_000)
+  })
+
+  it("excludes hidden time and resumes the same episode when visible again", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "episode-1",
+            capability: "episode-capability-secret",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockResolvedValue(response({ receipts: [] }))
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+    let visibility: DocumentVisibilityState = "visible"
+    const visibilitySpy = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockImplementation(() => visibility)
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => player.dispatch("playing"))
+    vi.advanceTimersByTime(2_000)
+    visibility = "hidden"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(20_000)
+    visibility = "visible"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(3_000)
+    await act(async () => window.dispatchEvent(new Event("pagehide")))
+    await act(async () => await Promise.resolve())
+    visibilitySpy.mockRestore()
+
+    const events = fetchMock.mock.calls
+      .slice(1)
+      .flatMap(([, init]) => JSON.parse(init.body as string).events)
+    const activeMilliseconds = events
+      .filter((fact) => fact.kind === "playback_active_visible_playing")
+      .reduce((total, fact) => total + fact.payload.activeMilliseconds, 0)
+    expect(activeMilliseconds).toBe(5_000)
+    expect(events.filter((fact) => fact.kind === "playback_end")).toHaveLength(
+      1,
+    )
   })
 
   it("timestamps bounded active chunks as adjacent intervals", async () => {

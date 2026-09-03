@@ -73,6 +73,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
+import { markWatchUrlAsShared } from "@/lib/playback-discovery"
 import { recordWatchShareAction } from "@/lib/recommendation-content-actions"
 import {
   readSubtitlePreference,
@@ -256,7 +257,9 @@ function buildShareFallbackHref({
     videoSlug,
     languageSlug: currentLanguageSlug,
   })
-  return shareableUrl ? buildFbShareUrl(shareableUrl) : undefined
+  return shareableUrl
+    ? buildFbShareUrl(markWatchUrlAsShared(shareableUrl))
+    : undefined
 }
 
 export function WatchPageClient({

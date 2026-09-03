@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationPlaybackService } from "./playback.service"
-import { RecommendationBindingError } from "./errors"
 import { MAX_EPISODE_FACTS } from "./contracts"
 
 const caller = {
@@ -35,7 +34,16 @@ function episode() {
   }
 }
 
-function harness(options: { current?: ReturnType<typeof episode> } = {}) {
+type EpisodeFixture = Omit<
+  ReturnType<typeof episode>,
+  "requestId" | "itemId" | "request"
+> & {
+  requestId: string | null
+  itemId: string | null
+  request: ReturnType<typeof episode>["request"] | null
+}
+
+function harness(options: { current?: EpisodeFixture } = {}) {
   const current = options.current ?? episode()
   const facts: Array<Record<string, unknown>> = []
   const tx = {
@@ -127,7 +135,7 @@ const baseInput = {
 }
 
 describe("RecommendationPlaybackService", () => {
-  it("rejects playback after its personalized assignment is fenced", async () => {
+  it("records playback independently after a personalized assignment is fenced", async () => {
     const current = episode()
     Object.assign(current.request, {
       experimentAssignment: {
@@ -157,8 +165,10 @@ describe("RecommendationPlaybackService", () => {
           },
         ],
       }),
-    ).rejects.toBeInstanceOf(RecommendationBindingError)
-    expect(verifyEpisodeCapability).not.toHaveBeenCalled()
+    ).resolves.toEqual([
+      { eventId: "attempt-fenced", status: "accepted", sequence: 1 },
+    ])
+    expect(verifyEpisodeCapability).toHaveBeenCalledOnce()
   })
 
   it("accepts strict ordered facts with server sequences and wakes finalization after terminal commit", async () => {
@@ -331,6 +341,66 @@ describe("RecommendationPlaybackService", () => {
     )
   })
 
+  it.each(["recommendation", "standalone"] as const)(
+    "persists equivalent episode-owned replay and conflict counts for %s playback",
+    async (lineage) => {
+      const current = episode()
+      if (lineage === "standalone") {
+        Object.assign(current, {
+          requestId: null,
+          itemId: null,
+          request: null,
+        })
+      }
+      const { service, tx, facts } = harness({ current })
+      const replay = {
+        eventId: "existing-replay",
+        kind: "playback_start" as const,
+        occurredAt: now.toISOString(),
+        payload: { positionSeconds: 0 },
+      }
+      facts.push(
+        {
+          eventId: replay.eventId,
+          kind: replay.kind,
+          payloadDigest: await service.digest(replay),
+          sequence: 1,
+        },
+        {
+          eventId: "existing-conflict",
+          kind: "playback_start",
+          payloadDigest: "f".repeat(64),
+          sequence: 2,
+        },
+      )
+
+      await expect(
+        service.record({
+          ...baseInput,
+          events: [
+            replay,
+            {
+              eventId: "existing-conflict",
+              kind: "playback_start",
+              occurredAt: now.toISOString(),
+              payload: { positionSeconds: 30 },
+            },
+          ],
+        }),
+      ).resolves.toEqual([
+        { eventId: "existing-replay", status: "replay", sequence: 1 },
+        { eventId: "existing-conflict", status: "conflict", sequence: 2 },
+      ])
+      expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
+        where: { id: "episode-1", generation: 3 },
+        data: {
+          replayCount: { increment: 1 },
+          conflictCount: { increment: 1 },
+        },
+      })
+    },
+  )
+
   it("does not dispatch finalization when a batched audit write fails", async () => {
     const { service, tx, dispatchFinalization } = harness()
     tx.recommendationEvidenceAudit.createMany.mockRejectedValueOnce(
@@ -448,6 +518,39 @@ describe("RecommendationPlaybackService", () => {
     })
   })
 
+  it("revises a timed-out episode when a late non-terminal fact advances its watermark", async () => {
+    const current = episode()
+    current.state = "TIMED_OUT"
+    const { service, tx, dispatchFinalization } = harness({ current })
+
+    await service.record({
+      ...baseInput,
+      events: [
+        {
+          eventId: "late-active-interval",
+          kind: "playback_active_visible_playing",
+          occurredAt: now.toISOString(),
+          payload: { activeMilliseconds: 4_000, coverage: "complete" },
+        },
+      ],
+    })
+
+    expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "episode-1",
+        generation: 3,
+        nextFactSequence: 1,
+      },
+      data: { nextFactSequence: 2, finalizationDueAt: now },
+    })
+    expect(dispatchFinalization).toHaveBeenCalledWith({
+      episodeId: "episode-1",
+      generation: 3,
+      reason: "timeout",
+      notBefore: now,
+    })
+  })
+
   it("returns replay/conflict receipts without allocating new sequence numbers", async () => {
     const { service, tx, facts } = harness()
     const event = {
@@ -474,7 +577,10 @@ describe("RecommendationPlaybackService", () => {
     await expect(
       service.record({ ...baseInput, events: [event] }),
     ).resolves.toEqual([{ eventId: "start-1", status: "replay", sequence: 8 }])
-    expect(tx.recommendationPlaybackEpisode.updateMany).not.toHaveBeenCalled()
+    expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
+      where: { id: "episode-1", generation: 3 },
+      data: { replayCount: { increment: 1 } },
+    })
     expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
@@ -498,6 +604,12 @@ describe("RecommendationPlaybackService", () => {
     ])
     expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
     expect(tx.$queryRaw).toHaveBeenCalledOnce()
+    expect(
+      tx.recommendationPlaybackEpisode.updateMany,
+    ).toHaveBeenLastCalledWith({
+      where: { id: "episode-1", generation: 3 },
+      data: { conflictCount: { increment: 1 } },
+    })
   })
 
   it("commits a sanitized rejection audit when per-kind cardinality is exhausted", async () => {
@@ -619,7 +731,7 @@ describe("RecommendationPlaybackService", () => {
     expect(prisma.recommendationEvidenceAudit.create).not.toHaveBeenCalled()
   })
 
-  it("rejects a non-terminal late fact before writing business state", async () => {
+  it("accepts a reordered non-terminal fact received late when it occurred inside the active horizon", async () => {
     const current = {
       ...episode(),
       activeUntil: new Date("2026-08-19T02:00:00.000Z"),
@@ -644,8 +756,43 @@ describe("RecommendationPlaybackService", () => {
           },
         ],
       }),
-    ).rejects.toThrow("late terminal")
-    expect(prisma.$transaction).not.toHaveBeenCalled()
+    ).resolves.toEqual([
+      { eventId: "progress-late", status: "accepted", sequence: 1 },
+    ])
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+  })
+
+  it("records a standalone episode with no recommendation request or item", async () => {
+    const current = {
+      ...episode(),
+      requestId: null,
+      itemId: null,
+      request: null,
+    }
+    const { service, facts, prisma, tx } = harness({ current })
+
+    await expect(
+      service.record({
+        ...baseInput,
+        events: [
+          {
+            eventId: "direct-start",
+            kind: "playback_start",
+            occurredAt: now.toISOString(),
+            payload: { positionSeconds: 0 },
+          },
+        ],
+      }),
+    ).resolves.toEqual([
+      { eventId: "direct-start", status: "accepted", sequence: 1 },
+    ])
+    expect(facts[0]).toMatchObject({
+      requestId: null,
+      itemId: null,
+      episodeId: "episode-1",
+    })
+    expect(prisma.recommendationEvidenceAudit.create).not.toHaveBeenCalled()
+    expect(tx.recommendationEvidenceAudit.createMany).not.toHaveBeenCalled()
   })
 
   it("accepts a terminal fact received late when it occurred inside the active horizon", async () => {

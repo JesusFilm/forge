@@ -159,6 +159,29 @@ export const adminClaimSemanticRecommendationEpisodeOperation = adminGraphql(
   adminClaimSemanticRecommendationEpisodeMutation,
 )
 
+export const adminIssueWatchPlaybackContextMutation = `
+  mutation IssueWatchPlaybackContext(
+    $sessionDigest: String!
+    $mediaId: ID!
+    $discoverySource: String!
+    $provenance: JSON!
+  ) {
+    issueWatchPlaybackContext(
+      sessionDigest: $sessionDigest
+      mediaId: $mediaId
+      discoverySource: $discoverySource
+      provenance: $provenance
+    ) {
+      claimNonce
+      contextVersion
+    }
+  }
+` as const
+
+export const adminIssueWatchPlaybackContextOperation = adminGraphql(
+  adminIssueWatchPlaybackContextMutation,
+)
+
 export const adminRecordSemanticRecommendationPlaybackMutation = `
   mutation RecordSemanticRecommendationPlayback(
     $contractVersion: String!

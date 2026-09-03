@@ -861,10 +861,18 @@ served-item lineage rather than inferred later from unrelated analytics.
 
 ### Recommendation Playback Episode
 
-The minimal append-only playback lineage opened atomically with a selection and
-claimed once on the selected target media. It carries server-sequenced attempt,
-start, progress, seek, active-visible-playing, terminal, and error facts within
-bounded active/hard horizons without replacing the legacy Watch recorder.
+A source-neutral root for append-only playback evidence, claimed once for one
+session and media item. It may carry complete Recommendation Request,
+Recommendation Served Item, and selection lineage, but ordinary Watch arrivals
+exist without that lineage and keep discovery provenance separate from
+attribution.
+
+It carries server-sequenced attempt, start, progress, seek,
+active-visible-playing, terminal, and error facts within bounded active and hard
+horizons. When visibility coverage is complete, active playback is derived from
+the union of foreground-playing intervals, never from wall time, player
+position, progress, seeks, or background time; incomplete coverage is retained
+as an explicit qualification rather than presented as certain foreground time.
 
 ### Recommendation Outcome Revision
 
@@ -872,7 +880,9 @@ An immutable, recomputable classifier result over one episode's ordered fact
 watermark and digest. A later fact watermark may append a monotonic superseding
 revision; an old retry cannot become latest. `legacy-position-v0` is a named
 position/progress comparator with no continuous weight or satisfaction claim,
-and every U1 revision is learning-ineligible.
+while active-playback classifiers derive their result from explicit interval
+facts. Publication is learning-ineligible; downstream consumers independently
+decide whether a revision may influence a particular purpose.
 
 ### Recommendation Strategy Manifest
 
@@ -1168,7 +1178,7 @@ _Avoid:_ Mux insert.
 
 The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
 
-A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. The queue holds a fixed size as content is consumed: unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. Unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. This rollover ignores the Played Set only for candidate selection; it keeps the set intact for later hero choices and visits.
 
 ### Carousel Pool
 
@@ -1182,7 +1192,7 @@ An eligible film is emitted as a single parent tile, never expanded into its Cha
 
 ### Played Set
 
-The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a separate bounded cycling policy can clear it early; selection-only Hero Queue rollover does not.
 
 A video enters the set when the rotation departs its slide, regardless of why it departed — watched to the end, navigated away, or skipped by a playback failure — so a persistently failing slide is recorded as "seen" just like a watched one and yields its priority until the set resets.
 

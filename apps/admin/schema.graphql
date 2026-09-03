@@ -1250,6 +1250,7 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -2492,6 +2493,11 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+type WatchPlaybackContextReceipt {
+  claimNonce: String!
+  contextVersion: String!
 }
 
 type WatchProgressEntry {

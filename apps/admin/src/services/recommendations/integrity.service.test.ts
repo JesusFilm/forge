@@ -53,6 +53,8 @@ describe("RecommendationIntegrityService", () => {
         sessionDigest: "a".repeat(64),
         mediaId: "media-1",
         capabilityJti: "episode-jti",
+        replayCount: 0,
+        conflictCount: 0,
         createdAt: NOW,
         facts: [{ late: false }],
       },
@@ -128,6 +130,8 @@ describe("RecommendationIntegrityService", () => {
         sessionDigest: "c".repeat(64),
         mediaId: "media-fenced",
         capabilityJti: "episode-fenced-jti",
+        replayCount: 0,
+        conflictCount: 0,
         createdAt: NOW,
         facts: [{ late: false }],
       },
@@ -207,6 +211,8 @@ describe("RecommendationIntegrityService", () => {
         sessionDigest: "a".repeat(64),
         mediaId: "media-1",
         capabilityJti: "episode-jti",
+        replayCount: 0,
+        conflictCount: 0,
         createdAt: NOW,
         facts: [{ late: false }],
       },
@@ -233,6 +239,43 @@ describe("RecommendationIntegrityService", () => {
         isCurrent: true,
       },
       data: { isCurrent: false },
+    })
+  })
+
+  it("uses episode-owned conflict evidence for standalone playback", async () => {
+    const { prisma, tx } = fixture()
+    tx.recommendationOutcomeRevision.findUnique.mockResolvedValue({
+      id: "standalone-outcome",
+      requestId: null,
+      episodeId: "standalone-episode",
+      classifierVersion: "active-watch-proxy-v1",
+      qualifiedView: true,
+      viewQualityWeight: 0.8,
+      createdAt: NOW,
+      expiresAt: EXPIRES,
+      supersededBy: null,
+      episode: {
+        id: "standalone-episode",
+        sessionDigest: "d".repeat(64),
+        mediaId: "media-1",
+        capabilityJti: "standalone-jti",
+        replayCount: 0,
+        conflictCount: 1,
+        createdAt: NOW,
+        facts: [{ late: false }],
+      },
+    })
+
+    await expect(
+      new RecommendationIntegrityService({
+        prisma: prisma as never,
+        now: () => NOW,
+        newId: () => "standalone-decision",
+      }).classifyPlaybackOutcome("standalone-outcome"),
+    ).resolves.toMatchObject({
+      state: "quarantined",
+      reasonCodes: expect.arrayContaining(["conflicting_evidence"]),
+      eligibleScopes: [],
     })
   })
 })

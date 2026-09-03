@@ -16,10 +16,6 @@ import {
 } from "./contracts"
 import { assertWebRecommendationCaller } from "./caller"
 import {
-  isRecommendationAssignmentCapabilityCurrent,
-  lockRecommendationAssignmentCapabilityFence,
-} from "./assignment-capability"
-import {
   RecommendationBindingError,
   RecommendationCapabilityUnavailableError,
   RecommendationConflictError,
@@ -130,25 +126,16 @@ export class RecommendationPlaybackService {
     const episode =
       await this.deps.prisma.recommendationPlaybackEpisode.findUnique({
         where: { id: parsed.episodeId },
-        include: {
-          request: {
-            include: {
-              experimentAssignment: { include: { profile: true } },
-            },
-          },
-        },
+        include: { request: true },
       })
     if (
       !episode ||
       episode.sessionDigest !== parsed.sessionDigest ||
       episode.mediaId !== parsed.mediaId ||
       episode.capabilityJti == null ||
-      episode.request.expiresAt <= now ||
-      episode.request.generation !== episode.generation ||
-      !isRecommendationAssignmentCapabilityCurrent(
-        episode.request.experimentAssignment,
-        now,
-      ) ||
+      episode.expiresAt <= now ||
+      (episode.request != null &&
+        episode.request.generation !== episode.generation) ||
       episode.state === RecommendationEpisodeState.PENDING
     ) {
       throw new RecommendationBindingError(
@@ -164,19 +151,18 @@ export class RecommendationPlaybackService {
     const capabilityBinding: EpisodeCapabilityBinding = {
       jti: episode.capabilityJti,
       episodeId: episode.id,
-      requestId: episode.requestId,
-      itemId: episode.itemId,
+      ...(episode.requestId && episode.itemId
+        ? { requestId: episode.requestId, itemId: episode.itemId }
+        : {}),
       sessionDigest: episode.sessionDigest,
       mediaId: episode.mediaId,
       generation: episode.generation,
     }
     for (const event of parsed.events) {
       const occurredAt = new Date(event.occurredAt)
-      const isTerminal = isTerminalRecommendationFactKind(event.kind)
-      const late = now > episode.activeUntil || occurredAt > episode.activeUntil
-      if (occurredAt > episode.activeUntil || (late && !isTerminal)) {
+      if (occurredAt > episode.activeUntil) {
         throw new RecommendationInputError(
-          "Recommendation playback late terminal fact is invalid",
+          "Recommendation playback fact occurred outside the active horizon",
         )
       }
       await this.deps.tokenService.verifyEpisodeCapability(parsed.capability, {
@@ -191,7 +177,7 @@ export class RecommendationPlaybackService {
       episodeId: episode.id,
       capabilityJti: episode.capabilityJti,
       attempts: parsed.events.length,
-      expiresAt: episode.request.expiresAt,
+      expiresAt: episode.expiresAt,
     })
 
     const newId = this.deps.newId ?? randomUUID
@@ -200,6 +186,7 @@ export class RecommendationPlaybackService {
       acceptedFact: boolean
       acceptedTerminal: boolean
       hasTerminal: boolean
+      acceptedTimedOut: boolean
     }
     try {
       transactionResult = await withRecommendationSerializableRetry(() =>
@@ -210,41 +197,20 @@ export class RecommendationPlaybackService {
         `
             const locked = await tx.recommendationPlaybackEpisode.findUnique({
               where: { id: parsed.episodeId },
-              include: {
-                request: {
-                  include: {
-                    experimentAssignment: { include: { profile: true } },
-                  },
-                },
-              },
+              include: { request: true },
             })
             if (
               !locked ||
               locked.generation !== episode.generation ||
-              locked.request.generation !== episode.generation ||
+              (locked.request != null &&
+                locked.request.generation !== episode.generation) ||
               locked.capabilityJti !== episode.capabilityJti ||
-              locked.request.expiresAt <= now ||
-              !isRecommendationAssignmentCapabilityCurrent(
-                locked.request.experimentAssignment,
-                now,
-              )
+              locked.expiresAt <= now
             ) {
               throw new RecommendationConflictError(
                 "Recommendation playback generation conflicted",
               )
             }
-            if (
-              !(await lockRecommendationAssignmentCapabilityFence(
-                tx,
-                locked.request.experimentAssignment,
-                now,
-              ))
-            ) {
-              throw new RecommendationBindingError(
-                "Recommendation playback binding is invalid",
-              )
-            }
-
             const pending: Array<{
               event: RecommendationPlaybackEvent
               digest: string
@@ -267,6 +233,8 @@ export class RecommendationPlaybackService {
             )
             const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
               []
+            let replayCount = 0
+            let conflictCount = 0
             for (const event of parsed.events) {
               const digest = this.digest(event)
               const existing = existingByEventId.get(event.eventId)
@@ -275,26 +243,32 @@ export class RecommendationPlaybackService {
                 continue
               }
               if (existing.payloadDigest === digest) {
-                replayAudits.push({
-                  requestId: locked.requestId,
-                  kind: RecommendationAuditKind.REPLAY,
-                  reasonCode: "playback_fact_replay",
-                  expiresAt: locked.request.expiresAt,
-                })
+                replayCount += 1
+                if (locked.requestId) {
+                  replayAudits.push({
+                    requestId: locked.requestId,
+                    kind: RecommendationAuditKind.REPLAY,
+                    reasonCode: "playback_fact_replay",
+                    expiresAt: locked.expiresAt,
+                  })
+                }
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
                   status: "replay",
                   sequence: existing.sequence,
                 })
               } else {
-                await recordRecommendationConflict(tx, {
-                  requestId: locked.requestId,
-                  capabilityJti: locked.capabilityJti!,
-                  eventId: event.eventId,
-                  acceptedDigest: existing.payloadDigest,
-                  rejectedDigest: digest,
-                  expiresAt: locked.request.expiresAt,
-                })
+                conflictCount += 1
+                if (locked.requestId) {
+                  await recordRecommendationConflict(tx, {
+                    requestId: locked.requestId,
+                    capabilityJti: locked.capabilityJti!,
+                    eventId: event.eventId,
+                    acceptedDigest: existing.payloadDigest,
+                    rejectedDigest: digest,
+                    expiresAt: locked.expiresAt,
+                  })
+                }
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
                   status: "conflict",
@@ -339,6 +313,8 @@ export class RecommendationPlaybackService {
                 )
               }
               hasTerminal = terminalCount === 1
+              const acceptedTimedOut =
+                locked.state === RecommendationEpisodeState.TIMED_OUT
 
               const nextFactSequence = locked.nextFactSequence + pending.length
               const reserved =
@@ -350,7 +326,15 @@ export class RecommendationPlaybackService {
                   },
                   data: {
                     nextFactSequence,
-                    ...(hasTerminal ? { finalizationDueAt: now } : {}),
+                    ...(replayCount > 0
+                      ? { replayCount: { increment: replayCount } }
+                      : {}),
+                    ...(conflictCount > 0
+                      ? { conflictCount: { increment: conflictCount } }
+                      : {}),
+                    ...(hasTerminal || acceptedTimedOut
+                      ? { finalizationDueAt: now }
+                      : {}),
                   },
                 })
               if (reserved.count !== 1) {
@@ -379,16 +363,18 @@ export class RecommendationPlaybackService {
                   occurredAt: new Date(event.occurredAt),
                   receivedAt: now,
                   late,
-                  expiresAt: locked.request.expiresAt,
+                  expiresAt: locked.expiresAt,
                 })
-                evidenceAudits.push({
-                  requestId: locked.requestId,
-                  kind: late
-                    ? RecommendationAuditKind.LATE
-                    : RecommendationAuditKind.EVIDENCE_SUCCESS,
-                  reasonCode: event.kind,
-                  expiresAt: locked.request.expiresAt,
-                })
+                if (locked.requestId) {
+                  evidenceAudits.push({
+                    requestId: locked.requestId,
+                    kind: late
+                      ? RecommendationAuditKind.LATE
+                      : RecommendationAuditKind.EVIDENCE_SUCCESS,
+                    reasonCode: event.kind,
+                    expiresAt: locked.expiresAt,
+                  })
+                }
                 receipts.set(event.eventId, {
                   eventId: event.eventId,
                   status: "accepted",
@@ -398,9 +384,33 @@ export class RecommendationPlaybackService {
               await tx.recommendationPlaybackFact.createMany({
                 data: factRows,
               })
-              await tx.recommendationEvidenceAudit.createMany({
-                data: evidenceAudits,
-              })
+              if (evidenceAudits.length > 0) {
+                await tx.recommendationEvidenceAudit.createMany({
+                  data: evidenceAudits,
+                })
+              }
+            } else if (replayCount > 0 || conflictCount > 0) {
+              const counted = await tx.recommendationPlaybackEpisode.updateMany(
+                {
+                  where: {
+                    id: locked.id,
+                    generation: locked.generation,
+                  },
+                  data: {
+                    ...(replayCount > 0
+                      ? { replayCount: { increment: replayCount } }
+                      : {}),
+                    ...(conflictCount > 0
+                      ? { conflictCount: { increment: conflictCount } }
+                      : {}),
+                  },
+                },
+              )
+              if (counted.count !== 1) {
+                throw new RecommendationConflictError(
+                  "Recommendation playback integrity count conflicted",
+                )
+              }
             }
             return {
               receipts: parsed.events.map(
@@ -411,6 +421,9 @@ export class RecommendationPlaybackService {
                 isTerminalRecommendationFactKind(event.kind),
               ),
               hasTerminal,
+              acceptedTimedOut:
+                pending.length > 0 &&
+                locked.state === RecommendationEpisodeState.TIMED_OUT,
             }
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -418,20 +431,28 @@ export class RecommendationPlaybackService {
       )
     } catch (error) {
       if (error instanceof PlaybackCommittedRejectionError) {
-        await this.deps.prisma.recommendationEvidenceAudit.create({
-          data: {
-            requestId: episode.requestId,
-            kind: RecommendationAuditKind.COMMITTED_REJECTION,
-            reasonCode: error.reasonCode,
-            detail: { episodeId: episode.id, generation: episode.generation },
-            expiresAt: episode.request.expiresAt,
-          },
-        })
+        if (episode.requestId) {
+          await this.deps.prisma.recommendationEvidenceAudit.create({
+            data: {
+              requestId: episode.requestId,
+              kind: RecommendationAuditKind.COMMITTED_REJECTION,
+              reasonCode: error.reasonCode,
+              detail: {
+                episodeId: episode.id,
+                generation: episode.generation,
+              },
+              expiresAt: episode.expiresAt,
+            },
+          })
+        }
       }
       throw error
     }
 
-    if (transactionResult.acceptedFact && transactionResult.hasTerminal) {
+    if (
+      transactionResult.acceptedFact &&
+      (transactionResult.hasTerminal || transactionResult.acceptedTimedOut)
+    ) {
       scheduleRecommendationEpisodeFinalization(
         this.deps.dispatchFinalization,
         {
@@ -439,7 +460,9 @@ export class RecommendationPlaybackService {
           generation: episode.generation,
           reason: transactionResult.acceptedTerminal
             ? "terminal-fact"
-            : "fact-advanced",
+            : transactionResult.acceptedTimedOut
+              ? "timeout"
+              : "fact-advanced",
           notBefore: now,
         },
       )

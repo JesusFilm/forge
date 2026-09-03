@@ -7,6 +7,8 @@ export {
 export {
   adminClaimSemanticRecommendationEpisodeMutation,
   adminClaimSemanticRecommendationEpisodeOperation,
+  adminIssueWatchPlaybackContextMutation,
+  adminIssueWatchPlaybackContextOperation,
   adminRecommendationProfileStatusMutation,
   adminRecommendationProfileStatusOperation,
   adminRecordSemanticRecommendationEvidenceMutation,

@@ -11,6 +11,8 @@ export const RECOMMENDATION_CONTRACTS = {
 } as const
 
 export const ACTIVE_WATCH_PROXY_VERSION = "active-watch-proxy-v1" as const
+export const PLAYBACK_CONTEXT_VERSION = "playback-context-v1" as const
+export const PLAYBACK_OUTCOME_CONTRACT_VERSION = "playback-outcome-v1" as const
 export const RECOMMENDATION_CONTENT_ACTION_CONTRACT =
   "recommendation-content-action-v1" as const
 export const RECOMMENDATION_PROFILE_CONTRACT =
@@ -29,6 +31,39 @@ export const CANDIDATE_POOL_TTL_SECONDS = 60
 export const RECOMMENDATION_RAW_RETENTION_DAYS = 29
 export const RECOMMENDATION_RETENTION_PROPAGATION_HOURS = 24
 export const RECOMMENDATION_RETENTION_HARD_CEILING_DAYS = 30
+
+export const PlaybackDiscoverySourceSchema = z.enum([
+  "direct",
+  "recommendation",
+  "search",
+  "share",
+  "acquisition",
+  "editorial",
+])
+export type PlaybackDiscoverySource = z.infer<
+  typeof PlaybackDiscoverySourceSchema
+>
+export const PlaybackContextDiscoverySourceSchema = z.enum([
+  "direct",
+  "search",
+  "share",
+  "acquisition",
+  "editorial",
+])
+export type PlaybackContextDiscoverySource = z.infer<
+  typeof PlaybackContextDiscoverySourceSchema
+>
+
+export const PlaybackContextIssueSchema = z
+  .object({
+    sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    mediaId: z.string().min(1).max(191),
+    discoverySource: PlaybackContextDiscoverySourceSchema,
+    provenance: z
+      .record(z.string().regex(/^[a-z][a-z0-9_]{0,31}$/), z.string().max(191))
+      .refine((value) => Object.keys(value).length <= 8),
+  })
+  .strict()
 
 export const RecommendationEvidenceKind = z.enum([
   "render",
@@ -502,6 +537,16 @@ export type ActivePlaybackInterval = Readonly<{
 export function unionActivePlaybackIntervals(
   intervals: readonly ActivePlaybackInterval[],
 ): number {
+  return mergeActivePlaybackIntervals(intervals).reduce(
+    (covered, interval) =>
+      covered + interval.endMilliseconds - interval.startMilliseconds,
+    0,
+  )
+}
+
+export function mergeActivePlaybackIntervals(
+  intervals: readonly ActivePlaybackInterval[],
+): ActivePlaybackInterval[] {
   const ordered = intervals
     .map(({ startMilliseconds, endMilliseconds }) => ({
       startMilliseconds: Math.max(0, startMilliseconds),
@@ -518,9 +563,9 @@ export function unionActivePlaybackIntervals(
         left.startMilliseconds - right.startMilliseconds ||
         left.endMilliseconds - right.endMilliseconds,
     )
-  if (ordered.length === 0) return 0
+  if (ordered.length === 0) return []
 
-  let covered = 0
+  const merged: ActivePlaybackInterval[] = []
   let start = ordered[0]!.startMilliseconds
   let end = ordered[0]!.endMilliseconds
   for (const interval of ordered.slice(1)) {
@@ -528,11 +573,15 @@ export function unionActivePlaybackIntervals(
       end = Math.max(end, interval.endMilliseconds)
       continue
     }
-    covered += end - start
+    merged.push({ startMilliseconds: start, endMilliseconds: end })
     start = interval.startMilliseconds
     end = interval.endMilliseconds
   }
-  return Math.round(covered + end - start)
+  merged.push({ startMilliseconds: start, endMilliseconds: end })
+  return merged.map((interval) => ({
+    startMilliseconds: Math.round(interval.startMilliseconds),
+    endMilliseconds: Math.round(interval.endMilliseconds),
+  }))
 }
 
 export type ActiveWatchProxyInput = Readonly<{

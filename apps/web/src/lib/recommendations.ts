@@ -4,6 +4,7 @@ import { adminGraphql } from "@forge/admin-graphql"
 import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminClaimSemanticRecommendationEpisodeOperation,
+  adminIssueWatchPlaybackContextOperation,
   adminRecommendationProfileStatusOperation,
   adminRecordSemanticRecommendationEvidenceOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
@@ -551,6 +552,21 @@ export async function claimSemanticRecommendationEpisode(
     throw new RecommendationRuntimeError("episode_unavailable")
   }
   return result.data.claimSemanticRecommendationEpisode
+}
+
+export async function issueWatchPlaybackContext(
+  variables: AdminVariablesOf<typeof adminIssueWatchPlaybackContextOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminIssueWatchPlaybackContextOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.issueWatchPlaybackContext) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.issueWatchPlaybackContext
 }
 
 export async function recordSemanticRecommendationPlayback(
