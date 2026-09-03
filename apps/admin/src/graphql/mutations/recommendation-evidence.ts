@@ -16,6 +16,7 @@ import {
   createRecommendationContentActionService,
   type RecommendationContentActionReceipt,
 } from "@/services/recommendations/content-action.service"
+import { PlaybackContextDiscoverySourceSchema } from "@/services/recommendations/contracts"
 
 type SelectionReceipt = {
   status: "accepted" | "replay" | "conflict"
@@ -29,6 +30,11 @@ type EpisodeClaim = {
   capability: string
   activeUntil: string
   hardUntil: string
+}
+
+type PlaybackContextReceipt = {
+  claimNonce: string
+  contextVersion: string
 }
 
 const RecommendationEvidenceEventInput = builder.inputType(
@@ -114,6 +120,16 @@ EpisodeClaimRef.implement({
   }),
 })
 
+const PlaybackContextReceiptRef = builder.objectRef<PlaybackContextReceipt>(
+  "WatchPlaybackContextReceipt",
+)
+PlaybackContextReceiptRef.implement({
+  fields: (t) => ({
+    claimNonce: t.exposeString("claimNonce", { nullable: false }),
+    contextVersion: t.exposeString("contextVersion", { nullable: false }),
+  }),
+})
+
 function evidenceKind(kind: string): "render" | "impression" {
   if (kind !== "render" && kind !== "impression") {
     throw new RecommendationInputError(
@@ -137,6 +153,33 @@ function evidencePayload(payload: unknown): Record<string, unknown> {
 }
 
 builder.mutationFields((t) => ({
+  issueWatchPlaybackContext: t.field({
+    type: PlaybackContextReceiptRef,
+    nullable: false,
+    authScopes: { public: true },
+    args: {
+      sessionDigest: t.arg.string({ required: true }),
+      mediaId: t.arg.id({ required: true }),
+      discoverySource: t.arg.string({ required: true }),
+      provenance: t.arg({ type: "JSON", required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      resolveRecommendationOperation(() =>
+        createRecommendationEpisodeService(prisma).issueContext({
+          caller: ctx.user,
+          sessionDigest: args.sessionDigest,
+          mediaId: String(args.mediaId),
+          discoverySource: PlaybackContextDiscoverySourceSchema.parse(
+            args.discoverySource,
+          ),
+          provenance: evidencePayload(args.provenance) as Record<
+            string,
+            string
+          >,
+        }),
+      ),
+  }),
+
   recordSemanticRecommendationEvidence: t.field({
     type: [EvidenceReceiptRef],
     nullable: false,

@@ -28,7 +28,14 @@ function buildPrisma() {
     recommendationRenderedFact: { count: count() },
     recommendationImpression: { count: count() },
     recommendationSelection: { count: count() },
-    recommendationPlaybackEpisode: { count: count() },
+    recommendationPlaybackEpisode: {
+      count: count(),
+      findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(
+        async (): Promise<{ expiresAt: Date } | null> => null,
+      ),
+    },
     recommendationPlaybackFact: { count: count() },
     recommendationOutcomeRevision: { count: count() },
     recommendationContentAction: {
@@ -147,7 +154,7 @@ function buildPrisma() {
   }
   const prisma = {
     $queryRaw: vi.fn(
-      async (): Promise<RetentionHealthSnapshot> => [
+      async (_query?: unknown): Promise<RetentionHealthSnapshot> => [
         { latestSuccessAt: null, oldestOverdueAt: null },
       ],
     ),
@@ -172,6 +179,7 @@ function buildPrisma() {
     recommendationProfileProjectionContribution: { findFirst: vi.fn() },
     recommendationProfileInterest: { findFirst: vi.fn() },
     recommendationProfileProjectionGeneration: { findFirst: vi.fn() },
+    recommendationPlaybackEpisode: { findFirst: vi.fn() },
     $transaction: vi.fn(async (callback) => callback(transaction)),
   }
   return { prisma, transaction }
@@ -244,6 +252,13 @@ describe("recommendation retention service", () => {
       transaction.recommendationEligibilityDecision.count,
     ).toHaveBeenCalledWith({
       where: { contentActionId: { in: ["direct-action-1"] } },
+    })
+    expect(
+      transaction.recommendationPlaybackEpisode.findFirst,
+    ).toHaveBeenCalledWith({
+      where: { requestId: null, expiresAt: { lte: now } },
+      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+      select: { expiresAt: true },
     })
     expect(transaction.recommendationProfile.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -386,6 +401,31 @@ describe("recommendation retention service", () => {
     )
   })
 
+  it("reports a standalone playback backlog that remains after the bounded batch", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    transaction.recommendationRequest.findMany.mockResolvedValueOnce([])
+    transaction.recommendationContentAction.findMany.mockResolvedValueOnce([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValueOnce([
+      { id: "standalone-episode-1" },
+    ])
+    transaction.recommendationPlaybackEpisode.findFirst.mockResolvedValueOnce({
+      expiresAt: new Date("2026-09-15T00:00:00.000Z"),
+    })
+    transaction.recommendationPlaybackEpisode.deleteMany.mockResolvedValueOnce({
+      count: 1,
+    })
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      rootsDeleted: 0,
+      rowCounts: { expiredStandaloneEpisodes: 1 },
+      oldestExpiredAtAfter: "2026-09-15T00:00:00.000Z",
+      overdueAfterRun: true,
+    })
+  })
+
   it("requires both a recent durable success and no propagation-overdue root", async () => {
     const { prisma } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")
@@ -399,6 +439,12 @@ describe("recommendation retention service", () => {
       readRecommendationRetentionHealth(prisma as never, now),
     ).resolves.toMatchObject({ healthy: true, reason: "healthy" })
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    const healthQuery = prisma.$queryRaw.mock.calls[0]?.[0] as
+      | { strings: readonly string[] }
+      | undefined
+    expect(healthQuery?.strings.join("?")).toContain(
+      "recommendation_playback_episode WHERE request_id IS NULL",
+    )
 
     prisma.$queryRaw.mockResolvedValueOnce([
       {

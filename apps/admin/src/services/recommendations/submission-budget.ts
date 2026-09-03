@@ -37,7 +37,7 @@ export async function consumeDeliveryCapabilitySubmissions(
 export async function consumeEpisodeCapabilitySubmissions(
   prisma: SubmissionBudgetClient | Prisma.TransactionClient,
   input: {
-    requestId: string
+    requestId: string | null
     episodeId: string
     capabilityJti: string
     attempts: number

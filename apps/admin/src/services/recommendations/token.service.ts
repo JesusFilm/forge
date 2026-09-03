@@ -6,7 +6,6 @@ import {
 } from "jose"
 import { z } from "zod"
 import {
-  isTerminalRecommendationFactKind,
   RECOMMENDATION_CONTRACTS,
   RecommendationEvidenceKind,
 } from "./contracts"
@@ -140,12 +139,19 @@ const DeliveryClaims = CommonClaims.extend({
 const EpisodeClaims = CommonClaims.extend({
   typ: z.literal(EPISODE_TYP),
   episodeId: z.string().min(1).max(191),
-  requestId: z.string().min(1).max(191),
-  itemId: z.string().min(1).max(191),
+  requestId: z.string().min(1).max(191).optional(),
+  itemId: z.string().min(1).max(191).optional(),
   sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
   mediaId: z.string().min(1).max(191),
   generation: z.number().int().positive(),
   hardExp: z.number().int(),
+}).superRefine((claims, context) => {
+  if ((claims.requestId == null) !== (claims.itemId == null)) {
+    context.addIssue({
+      code: "custom",
+      message: "Episode recommendation lineage must be complete",
+    })
+  }
 })
 
 export type DeliveryCapabilityBinding = Omit<
@@ -366,7 +372,6 @@ export function createRecommendationTokenService(
       }
       const occurredAtSeconds = Math.floor(occurredAt.getTime() / 1_000)
       const receivedAtSeconds = Math.floor(receivedAt.getTime() / 1_000)
-      const terminal = isTerminalRecommendationFactKind(eventKind)
       if (
         occurredAtSeconds <
           parsed.data.iat - RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS ||
@@ -378,9 +383,6 @@ export function createRecommendationTokenService(
         throw new RecommendationTokenInvalidError()
       }
       const late = receivedAtSeconds > parsed.data.exp
-      if (late && !terminal) {
-        throw new RecommendationTokenInvalidError()
-      }
       return { ...parsed.data, late }
     },
   }

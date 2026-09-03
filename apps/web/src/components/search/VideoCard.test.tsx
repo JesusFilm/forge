@@ -688,7 +688,7 @@ describe("VideoCard", () => {
       })
 
       expect(container.querySelector("a")?.getAttribute("href")).toBe(
-        expectedHref,
+        `${expectedHref}${expectedHref.includes("?") ? "&" : "?"}playback_source=search`,
       )
       expect(
         container.querySelector(
@@ -978,7 +978,7 @@ describe("VideoCard container availability", () => {
     const href = defaultHrefBuilder(result, "english")
     expect(href).toBe("/easter.html")
     expect(container?.querySelector("a")?.getAttribute("href")).toBe(
-      "/easter.html",
+      "/easter.html?playback_source=search",
     )
   })
 

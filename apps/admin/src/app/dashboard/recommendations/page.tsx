@@ -13,11 +13,13 @@ import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import {
   RECOMMENDATION_TRACE_PAGE_SIZE,
+  loadPlaybackEvidenceOverview,
   loadRecommendationOverview,
   loadRecommendationTracePage,
   type RecommendationOverviewData,
   type RecommendationTraceFilters,
   type RecommendationTracePageData,
+  type PlaybackEvidenceOverview,
 } from "@/services/recommendations/admin-ops"
 import {
   displayRecommendationToken,
@@ -106,7 +108,7 @@ export default async function RecommendationsPage({
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces] = await Promise.all([
+  const [overview, traces, playback] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -118,6 +120,11 @@ export default async function RecommendationsPage({
           evidenceState: params.evidence,
           cursor: params.cursor,
         })
+      : null,
+    canReadTraces
+      ? loadPlaybackEvidenceOverview(prisma, { window: params.window }).catch(
+          () => null,
+        )
       : null,
   ])
 
@@ -135,6 +142,7 @@ export default async function RecommendationsPage({
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />
       <ExperimentEvaluation overview={overview} />
       <ProfileShadowEvaluation overview={overview} />
+      <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
@@ -150,6 +158,156 @@ export default async function RecommendationsPage({
         </PageSection>
       )}
     </div>
+  )
+}
+
+function PlaybackEvidence({
+  playback,
+  canReadTraces,
+}: {
+  playback: PlaybackEvidenceOverview | null
+  canReadTraces: boolean
+}) {
+  if (!canReadTraces) {
+    return (
+      <PageSection title="Playback proxy evidence" meta="ADMIN-ONLY">
+        <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
+          Episode provenance, immutable facts, and revision evidence require
+          Admin trace access.
+        </p>
+      </PageSection>
+    )
+  }
+  if (!playback) {
+    return (
+      <PageSection title="Playback proxy evidence" meta="UNAVAILABLE">
+        <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
+          Playback evidence could not be read. No readiness claim is shown.
+        </p>
+      </PageSection>
+    )
+  }
+  const evaluation = playback.latestEvaluation
+  const cohorts = evaluation?.durationCohorts ?? {}
+  return (
+    <PageSection
+      title="Playback proxy evidence"
+      meta="SOURCE-NEUTRAL / IMMUTABLE / NO LIVE RANKING"
+    >
+      <div className="grid gap-px bg-[var(--color-hairline)] sm:grid-cols-2 lg:grid-cols-4">
+        <Definition
+          label="Episodes"
+          value={formatCount(playback.counts.episodes)}
+        />
+        <Definition
+          label="Finalized"
+          value={formatCount(playback.counts.finalized)}
+        />
+        <Definition
+          label="Immutable facts"
+          value={formatCount(playback.counts.facts)}
+        />
+        <Definition
+          label="Outcome revisions"
+          value={formatCount(playback.counts.outcomes)}
+        />
+      </div>
+      <div className="grid gap-4 border-t border-[var(--color-hairline)] p-4 lg:grid-cols-2">
+        <div>
+          <div className="label-text">Discovery sources</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {playback.sourceCounts.map((source) => (
+              <StatusPill key={source.source} tone="muted">
+                {displayRecommendationToken(source.source)} · {source.count}
+              </StatusPill>
+            ))}
+            {playback.sourceCounts.length === 0 ? (
+              <span className="text-[13px] text-[var(--color-text-muted)]">
+                No episodes in this window.
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <div className="label-text">Latest proxy decision</div>
+          {evaluation ? (
+            <>
+              <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">
+                {displayRecommendationToken(evaluation.decision)} · revision{" "}
+                {evaluation.revision}
+                {" · "}
+                {evaluation.sampleCount} samples · {evaluation.pairedCount}{" "}
+                paired
+                {" · "}
+                {evaluation.missingCount} missing
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                Legacy qualified {formatPercent(evaluation.legacyQualifiedRate)}{" "}
+                · active qualified{" "}
+                {formatPercent(evaluation.activeQualifiedRate)} · agreement{" "}
+                {formatPercent(evaluation.agreementRate)} · late revisions{" "}
+                {formatPercent(evaluation.lateRevisionRate)}
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                Cohorts short {cohorts.short ?? 0} · medium{" "}
+                {cohorts.medium ?? 0} · long {cohorts.long ?? 0} · unknown{" "}
+                {cohorts.unknown ?? 0}. Ranking influence is fenced off.
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">
+              No immutable proxy evaluation has been recorded.
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="overflow-x-auto border-t border-[var(--color-hairline)]">
+        <table className="w-full min-w-[760px] border-collapse text-left text-[12px]">
+          <thead>
+            <tr className="border-b border-[var(--color-hairline)] text-[var(--color-text-muted)]">
+              <th className="px-4 py-2 font-medium">Episode</th>
+              <th className="px-4 py-2 font-medium">Source</th>
+              <th className="px-4 py-2 font-medium">Projection</th>
+              <th className="px-4 py-2 font-medium">Finalized</th>
+            </tr>
+          </thead>
+          <tbody>
+            {playback.recent.map((episode) => (
+              <tr
+                key={episode.id}
+                className="border-b border-[var(--color-hairline)]"
+              >
+                <td className="px-4 py-3">
+                  <Link
+                    href={
+                      `/dashboard/recommendations/playback/${encodeURIComponent(episode.id)}?window=${playback.window.preset}` as Route
+                    }
+                    className="break-all font-mono text-[var(--color-info)] underline-offset-2 hover:underline"
+                  >
+                    {episode.id}
+                  </Link>
+                  <div className="mt-1 text-[var(--color-text-muted)]">
+                    {episode.mediaId}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  {displayRecommendationToken(episode.discoverySource)}
+                </td>
+                <td className="px-4 py-3 font-mono text-[11px]">
+                  r{episode.latestRevision ?? "—"} · watermark{" "}
+                  {episode.factWatermark ?? "—"} ·{" "}
+                  {episode.activePlaybackMilliseconds ?? "—"} ms ·{" "}
+                  {displayRecommendationToken(episode.activeCoverage)}
+                </td>
+                <td className="px-4 py-3 font-mono text-[11px] text-[var(--color-text-muted)]">
+                  {formatRecommendationDateTime(episode.finalizedAt)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </PageSection>
   )
 }
 

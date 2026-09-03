@@ -11,7 +11,7 @@ import {
   classifyActiveWatchProxy,
   classifyLegacyPosition,
   isTerminalRecommendationFactKind,
-  unionActivePlaybackIntervals,
+  mergeActivePlaybackIntervals,
   type ActiveWatchProxyOutcome,
   type LegacyPositionOutcome,
 } from "./contracts"
@@ -25,7 +25,7 @@ type OutcomeDependencies = {
   newId?: () => string
 }
 
-type FrozenFact = {
+export type FrozenPlaybackFact = {
   eventId: string
   sequence: number
   kind: string
@@ -65,7 +65,7 @@ function booleanField(payload: unknown, field: string): boolean | null {
   return typeof value === "boolean" ? value : null
 }
 
-function legacyInputs(facts: readonly FrozenFact[]) {
+function legacyInputs(facts: readonly FrozenPlaybackFact[]) {
   let maxPositionSeconds = 0
   let maxProgress: number | null = null
   for (const fact of facts) {
@@ -82,7 +82,7 @@ function legacyInputs(facts: readonly FrozenFact[]) {
   return { maxPositionSeconds, maxProgress }
 }
 
-function activeProxyInput(facts: readonly FrozenFact[]) {
+function activeProxyInput(facts: readonly FrozenPlaybackFact[]) {
   const activeFacts = facts.filter(
     (fact) => fact.kind === "playback_active_visible_playing",
   )
@@ -112,8 +112,14 @@ function activeProxyInput(facts: readonly FrozenFact[]) {
           )
         ? ("partial" as const)
         : ("complete" as const)
+  const activeIntervals = mergeActivePlaybackIntervals(intervals)
   return {
-    activeMilliseconds: unionActivePlaybackIntervals(intervals),
+    activeMilliseconds: activeIntervals.reduce(
+      (total, interval) =>
+        total + interval.endMilliseconds - interval.startMilliseconds,
+      0,
+    ),
+    activeIntervals,
     durationSeconds,
     completed:
       terminal?.kind === "playback_end" &&
@@ -123,7 +129,7 @@ function activeProxyInput(facts: readonly FrozenFact[]) {
 }
 
 function outcomeReasons(
-  facts: readonly FrozenFact[],
+  facts: readonly FrozenPlaybackFact[],
   finalizationReason: FinalizationInput["reason"],
   classifier: LegacyPositionOutcome | ActiveWatchProxyOutcome,
 ): string[] {
@@ -155,10 +161,34 @@ function outcomeReasons(
   return [...new Set(reasons)]
 }
 
+export function rebuildPlaybackProjection(
+  facts: readonly FrozenPlaybackFact[],
+  finalizationReason: FinalizationInput["reason"],
+) {
+  const ordered = [...facts].sort(
+    (left, right) => left.sequence - right.sequence,
+  )
+  const legacy = classifyLegacyPosition(legacyInputs(ordered))
+  const activeInput = activeProxyInput(ordered)
+  const active = classifyActiveWatchProxy(activeInput)
+  return {
+    factWatermark: ordered.at(-1)?.sequence ?? 0,
+    legacy: {
+      ...legacy,
+      reasons: outcomeReasons(ordered, finalizationReason, legacy),
+    },
+    active: {
+      ...active,
+      activeIntervals: activeInput.activeIntervals,
+      reasons: outcomeReasons(ordered, finalizationReason, active),
+    },
+  }
+}
+
 export class RecommendationOutcomeService {
   constructor(private readonly deps: OutcomeDependencies) {}
 
-  digestFacts(facts: readonly FrozenFact[]): string {
+  digestFacts(facts: readonly FrozenPlaybackFact[]): string {
     return recommendationEvidenceDigest(
       [...facts]
         .sort((left, right) => left.sequence - right.sequence)
@@ -197,14 +227,15 @@ export class RecommendationOutcomeService {
           }
           if (
             episode.generation !== input.generation ||
-            episode.request.generation !== input.generation
+            (episode.request != null &&
+              episode.request.generation !== input.generation)
           ) {
             return {
               status: "fenced" as const,
               reason: "generation_changed" as const,
             }
           }
-          if (episode.request.expiresAt <= now) {
+          if (episode.expiresAt <= now) {
             return {
               status: "fenced" as const,
               reason: "root_expired" as const,
@@ -213,7 +244,7 @@ export class RecommendationOutcomeService {
 
           const facts = [...episode.facts].sort(
             (left, right) => left.sequence - right.sequence,
-          ) as FrozenFact[]
+          ) as FrozenPlaybackFact[]
           const hasTerminal = facts.some((fact) =>
             isTerminalRecommendationFactKind(fact.kind),
           )
@@ -230,34 +261,67 @@ export class RecommendationOutcomeService {
           ) {
             return { status: "fenced" as const, reason: "not_ready" as const }
           }
-          const factWatermark = facts.at(-1)?.sequence ?? 0
+          const projection = rebuildPlaybackProjection(facts, input.reason)
+          const factWatermark = projection.factWatermark
           const inputDigest = this.digestFacts(facts)
-          const legacy = classifyLegacyPosition(legacyInputs(facts))
-          const active = classifyActiveWatchProxy(activeProxyInput(facts))
           const classifiers = [
             {
-              outcome: legacy,
+              outcome: projection.legacy,
               derived: {
                 activePlaybackMilliseconds: null,
+                activeIntervals: null,
                 durationSeconds: null,
                 durationCohort: null,
                 activeCoverage: null,
               },
             },
             {
-              outcome: active,
+              outcome: projection.active,
               derived: {
-                activePlaybackMilliseconds: active.activeMilliseconds,
-                durationSeconds: active.durationSeconds,
-                durationCohort: active.durationCohort,
-                activeCoverage: active.coverage,
+                activePlaybackMilliseconds:
+                  projection.active.activeMilliseconds,
+                activeIntervals: projection.active.activeIntervals,
+                durationSeconds: projection.active.durationSeconds,
+                durationCohort: projection.active.durationCohort,
+                activeCoverage: projection.active.coverage,
               },
             },
           ] as const
+          const exactOutcomes = await Promise.all(
+            classifiers.map((classifier) =>
+              tx.recommendationOutcomeRevision.findUnique({
+                where: {
+                  episodeId_classifierVersion_factWatermark_inputDigest: {
+                    episodeId: episode.id,
+                    classifierVersion: classifier.outcome.classifierVersion,
+                    factWatermark,
+                    inputDigest,
+                  },
+                },
+              }),
+            ),
+          )
+          const latestOutcomes = await Promise.all(
+            classifiers.map((classifier, index) =>
+              exactOutcomes[index]
+                ? null
+                : tx.recommendationOutcomeRevision.findFirst({
+                    where: {
+                      episodeId: episode.id,
+                      classifierVersion: classifier.outcome.classifierVersion,
+                    },
+                    orderBy: { revision: "desc" },
+                  }),
+            ),
+          )
           const prepared: Array<{
             outcome: LegacyPositionOutcome | ActiveWatchProxyOutcome
             derived: {
               activePlaybackMilliseconds: number | null
+              activeIntervals: ReadonlyArray<{
+                startMilliseconds: number
+                endMilliseconds: number
+              }> | null
               durationSeconds: number | null
               durationCohort: string | null
               activeCoverage: string | null
@@ -275,26 +339,9 @@ export class RecommendationOutcomeService {
               inputDigest: string
             } | null
           }> = []
-          for (const classifier of classifiers) {
-            const exact = await tx.recommendationOutcomeRevision.findUnique({
-              where: {
-                episodeId_classifierVersion_factWatermark_inputDigest: {
-                  episodeId: episode.id,
-                  classifierVersion: classifier.outcome.classifierVersion,
-                  factWatermark,
-                  inputDigest,
-                },
-              },
-            })
-            const latest = exact
-              ? null
-              : await tx.recommendationOutcomeRevision.findFirst({
-                  where: {
-                    episodeId: episode.id,
-                    classifierVersion: classifier.outcome.classifierVersion,
-                  },
-                  orderBy: { revision: "desc" },
-                })
+          for (const [index, classifier] of classifiers.entries()) {
+            const exact = exactOutcomes[index] ?? null
+            const latest = latestOutcomes[index] ?? null
             if (latest && latest.factWatermark >= factWatermark) {
               if (latest.factWatermark === factWatermark) {
                 throw new RecommendationConflictError(
@@ -343,15 +390,16 @@ export class RecommendationOutcomeService {
                 viewQualityWeightReason:
                   classifier.outcome.viewQualityWeightReason,
                 ...classifier.derived,
-                reasons: outcomeReasons(
-                  facts,
-                  input.reason,
-                  classifier.outcome,
-                ),
+                activeIntervals:
+                  classifier.derived.activeIntervals == null
+                    ? Prisma.DbNull
+                    : (classifier.derived
+                        .activeIntervals as Prisma.InputJsonValue),
+                reasons: classifier.outcome.reasons,
                 learningEligible: false,
                 generation: episode.generation,
                 createdAt: now,
-                expiresAt: episode.request.expiresAt,
+                expiresAt: episode.expiresAt,
               },
             })
             results.push({
@@ -410,6 +458,70 @@ export class RecommendationOutcomeService {
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
     )
+  }
+
+  async rebuildProjection(input: { episodeId: string; generation: number }) {
+    const episode =
+      await this.deps.prisma.recommendationPlaybackEpisode.findUnique({
+        where: { id: input.episodeId },
+        include: {
+          facts: { orderBy: { sequence: "asc" } },
+          outcomes: { orderBy: { revision: "desc" } },
+        },
+      })
+    if (!episode || episode.generation !== input.generation) {
+      return { status: "fenced" as const }
+    }
+    const facts = episode.facts as FrozenPlaybackFact[]
+    const reason = facts.some((fact) =>
+      isTerminalRecommendationFactKind(fact.kind),
+    )
+      ? ("terminal-fact" as const)
+      : ("timeout" as const)
+    const rebuilt = rebuildPlaybackProjection(facts, reason)
+    const inputDigest = this.digestFacts(facts)
+    const latestLegacy = episode.outcomes.find(
+      (outcome) =>
+        outcome.classifierVersion === RECOMMENDATION_CONTRACTS.outcome,
+    )
+    const latestActive = episode.outcomes.find(
+      (outcome) => outcome.classifierVersion === ACTIVE_WATCH_PROXY_VERSION,
+    )
+    const storedIntervals = Array.isArray(latestActive?.activeIntervals)
+      ? latestActive.activeIntervals
+      : []
+    const intervalsMatch =
+      rebuilt.active.activeIntervals.every((interval, index) => {
+        const stored = storedIntervals[index]
+        return (
+          stored != null &&
+          typeof stored === "object" &&
+          !Array.isArray(stored) &&
+          stored.startMilliseconds === interval.startMilliseconds &&
+          stored.endMilliseconds === interval.endMilliseconds
+        )
+      }) && storedIntervals.length === rebuilt.active.activeIntervals.length
+    const matches =
+      latestLegacy?.factWatermark === rebuilt.factWatermark &&
+      latestLegacy.inputDigest === inputDigest &&
+      latestLegacy.qualifiedView === rebuilt.legacy.qualifiedView &&
+      latestActive?.factWatermark === rebuilt.factWatermark &&
+      latestActive.inputDigest === inputDigest &&
+      latestActive.qualifiedView === rebuilt.active.qualifiedView &&
+      latestActive.activePlaybackMilliseconds ===
+        rebuilt.active.activeMilliseconds &&
+      latestActive.durationSeconds === rebuilt.active.durationSeconds &&
+      latestActive.durationCohort === rebuilt.active.durationCohort &&
+      latestActive.activeCoverage === rebuilt.active.coverage &&
+      intervalsMatch
+
+    return {
+      status: matches ? ("matched" as const) : ("drift" as const),
+      factWatermark: rebuilt.factWatermark,
+      inputDigest,
+      activePlaybackMilliseconds: rebuilt.active.activeMilliseconds,
+      activeIntervals: rebuilt.active.activeIntervals,
+    }
   }
 }
 
