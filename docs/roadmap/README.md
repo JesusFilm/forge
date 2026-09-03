@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 3, 2026)
 
-- **Total tickets:** 619
-- **Complete:** 462
+- **Total tickets:** 620
+- **Complete:** 463
 - **In progress:** 48
 - **Not started:** 37
 - **Blocked:** 72
@@ -155,6 +155,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-440](content-discovery/feat-440-watch-home-random-hero-video.md)                                         | Watch home hero opens on a random library video                                                 | vlad       | P1       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-441](content-discovery/feat-441-watch-vertical-inventory-thumbnails.md)                                  | Watch Vertical Inventory Thumbnails                                                             | vlad       | P1       | 2026-08-28 | 1    | 2026-08-28 | complete    |
 | [feat-450](content-discovery/feat-450-content-embedding-contract-authority.md)                                 | Content embedding contract authority                                                            | codex      | P1       | 2026-09-02 | 1    | 2026-09-02 | complete    |
+| [feat-451](content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md)                | Watch search candidate exact compatibility identities                                           | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
