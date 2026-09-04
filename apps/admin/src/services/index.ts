@@ -44,6 +44,7 @@ import {
   TypesenseWatchSearchUnavailableError,
 } from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
+import { WatchRouteAlertService } from "@/services/watch-route-alert.service"
 
 export type Services = ReturnType<typeof createServices>
 
@@ -221,5 +222,6 @@ export function createServices(prisma: PrismaClient) {
     typesenseWatchSearchSuggestions:
       createTypesenseWatchSearchSuggestionsService(prisma),
     watchSetting: new WatchSettingService(prisma),
+    watchRouteAlert: new WatchRouteAlertService(prisma),
   }
 }

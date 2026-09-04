@@ -261,7 +261,7 @@ stateDiagram-v2
 
 ## Verification Contract
 
-- `pnpm --filter @forge/admin prisma:generate`
+- `pnpm --filter @forge/admin db:generate`
 - `pnpm --filter @forge/admin schema:print`
 - `pnpm --filter @forge/admin-graphql generate`
 - `pnpm --filter @forge/admin test -- --runInBand` or the package-supported focused equivalent

@@ -459,9 +459,13 @@ export function toAdminSeoProposal(
   })
 }
 
-async function callAdminSeo<TResult>(input: {
+export async function callAdminSeo<TResult>(input: {
   capability: SeoWorkloadCapability
-  path: "/api/seo/ingest" | "/api/seo/evaluate" | "/api/seo/tickets"
+  path:
+    | "/api/seo/ingest"
+    | "/api/seo/evaluate"
+    | "/api/seo/tickets"
+    | "/api/seo/watch-route-alerts"
   payload: unknown
   responseSchema: z.ZodType<TResult>
   config?: SeoConfig

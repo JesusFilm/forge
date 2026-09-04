@@ -3,10 +3,10 @@ id: "feat-455"
 title: "Surface Watch route 404 alerts"
 owner: "codex"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-04"
-completed_date: null
-duration: null
+completed_date: "2026-09-04"
+duration: 1
 depends_on: []
 blocks: []
 tags:
@@ -76,4 +76,29 @@ the source is complete.
 
 ## Verification
 
-- Pending implementation.
+- Admin: 401 test files passed, 6,109 tests passed; typecheck and lint passed.
+- Mastra: full test suite passed; focused workflow/client/probe coverage,
+  typecheck, and lint passed.
+- Manager: 150 test files and 1,173 tests passed; typecheck, lint, and the
+  production Next.js build passed.
+- Shared Watch URL policy: generated localized-title drift check, 75 tests,
+  typecheck, and lint passed. The Web catalog parity test passed.
+- Prisma schema format, validation, and client generation passed. Admin GraphQL
+  schema and gql.tada introspection were regenerated successfully.
+- Browser verification covered populated/unavailable report rendering, 390px
+  horizontal overflow, Alerts navigation, and an axe scan with zero violations.
+
+## Resolution
+
+Implemented a default-off daily Mastra workflow that reads the explicit GA4
+`page_not_found` event and the generated localized-title fallback as separate
+quality lanes, classifies normalized `/watch/*` paths against a fresh Admin
+route manifest, and attaches bounded allowlisted live-probe evidence. Admin now
+owns idempotent run claims, progress, alert episodes, retention, and a strict
+versioned completion report. Manager exposes the resulting operator report at
+`/dashboard/alerts` with source health, impact, evidence, lifecycle, and cursor
+pagination.
+
+The monitor remains post-request detection and is disabled until receiver-first
+deployment and a reviewed dry run. Explicit Web not-found telemetry and any
+deploy-time zero-viewer route gate remain follow-up work in `feat-456`.

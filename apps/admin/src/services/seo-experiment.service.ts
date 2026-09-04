@@ -15,6 +15,10 @@ import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import { hasPermission } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import type { VerifiedSeoApprovalAssertion } from "@/auth/seo-approval-assertion"
+import {
+  consumeSeoWorkloadAssertion,
+  SeoAssertionReplayError,
+} from "@/auth/seo-assertion-ledger"
 import type { VerifiedSeoWorkloadAssertion } from "@/auth/seo-service-assertion"
 import { env } from "@/config/env"
 import { ForbiddenError } from "./errors"
@@ -1034,7 +1038,7 @@ export class SeoExperimentService {
       try {
         return await this.prisma.$transaction(
           async (tx) => {
-            await this.consumeWorkloadAssertion(tx, assertion)
+            await consumeSeoWorkloadAssertion(tx, assertion)
             const mode = leastPermissiveMode(
               enumMode(input.mode),
               await this.lockAutomationMode(tx),
@@ -1190,7 +1194,7 @@ export class SeoExperimentService {
     ).catch(() => ({ healthy: false as const }))
     return this.prisma.$transaction(
       async (tx) => {
-        await this.consumeWorkloadAssertion(tx, assertion)
+        await consumeSeoWorkloadAssertion(tx, assertion)
         const run = await tx.seoRun.findUnique({ where: { id: input.runId } })
         if (!run) throw new SeoLedgerConflictError("run_not_found")
         if (run.status !== "RUNNING") {
@@ -2116,7 +2120,7 @@ export class SeoExperimentService {
     input: Extract<z.infer<typeof SeoEvaluateInput>, { action: "claim_due" }>
   }) {
     return this.prisma.$transaction(async (tx) => {
-      await this.consumeWorkloadAssertion(tx, assertion)
+      await consumeSeoWorkloadAssertion(tx, assertion)
       await this.assertLiveAutomationMode(tx)
       const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT id FROM seo_experiment
@@ -2183,7 +2187,7 @@ export class SeoExperimentService {
     >
   }) {
     return this.prisma.$transaction(async (tx) => {
-      await this.consumeWorkloadAssertion(tx, assertion)
+      await consumeSeoWorkloadAssertion(tx, assertion)
       await this.assertLiveAutomationMode(tx)
       const experiment = await tx.seoExperiment.findUnique({
         where: { id: input.experimentId },
@@ -2400,7 +2404,7 @@ export class SeoExperimentService {
     input: Extract<z.infer<typeof SeoTicketsInput>, { action: "claim" }>
   }) {
     return this.prisma.$transaction(async (tx) => {
-      await this.consumeWorkloadAssertion(tx, assertion)
+      await consumeSeoWorkloadAssertion(tx, assertion)
       await this.assertLiveAutomationMode(tx)
       const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         SELECT id FROM seo_ticket_outbox
@@ -2457,7 +2461,7 @@ export class SeoExperimentService {
     input: Exclude<z.infer<typeof SeoTicketsInput>, { action: "claim" }>
   }) {
     return this.prisma.$transaction(async (tx) => {
-      await this.consumeWorkloadAssertion(tx, assertion)
+      await consumeSeoWorkloadAssertion(tx, assertion)
       const leaseHash = createHash("sha256")
         .update(input.leaseToken)
         .digest("hex")
@@ -3086,33 +3090,6 @@ export class SeoExperimentService {
     }
   }
 
-  private async consumeWorkloadAssertion(
-    tx: SeoTransaction,
-    assertion: VerifiedSeoWorkloadAssertion,
-  ) {
-    try {
-      await tx.seoWorkloadAssertion.create({
-        data: {
-          jtiHash: assertion.jtiHash,
-          keyId: assertion.keyId,
-          environment: assertion.environment,
-          audience: assertion.audience,
-          capability: assertion.capability,
-          requestDigest: assertion.requestDigest,
-          expiresAt: assertion.expiresAt,
-        },
-      })
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        throw new SeoAssertionReplayError()
-      }
-      throw error
-    }
-  }
-
   private async consumeApprovalNonce(
     tx: SeoTransaction,
     assertion: VerifiedSeoApprovalAssertion,
@@ -3284,12 +3261,5 @@ export class SeoLedgerConflictError extends Error {
   constructor(readonly code: string) {
     super("SEO ledger transition rejected")
     this.name = "SeoLedgerConflictError"
-  }
-}
-
-export class SeoAssertionReplayError extends Error {
-  constructor() {
-    super("SEO assertion has already been consumed")
-    this.name = "SeoAssertionReplayError"
   }
 }
