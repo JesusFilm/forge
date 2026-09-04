@@ -1026,6 +1026,79 @@ suite("current transcript publication into Watch Search", () => {
     ).toBe(1)
   }, 180_000)
 
+  it("completes older backed-off events when a newer source generation publishes", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: async () => {
+          throw new Error("simulated publication failure")
+        },
+      }),
+    ).rejects.toThrow("simulated publication failure")
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        where: { sourceGeneration: 1n },
+        select: { status: true, nextAttemptAt: true },
+      }),
+    ).toMatchObject({
+      status: "PENDING",
+      nextAttemptAt: expect.any(Date),
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "replace-run",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [{ text: "Hope and fellowship", embedding, tokenCount: 3 }],
+      }),
+    )
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      now: new Date("2100-01-01T00:00:00.000Z"),
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 2n,
+      documentCount: 1,
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+        orderBy: { sourceGeneration: "asc" },
+        select: { sourceGeneration: true, status: true, nextAttemptAt: true },
+      }),
+    ).toEqual([
+      { sourceGeneration: 1n, status: "COMPLETED", nextAttemptAt: null },
+      { sourceGeneration: 2n, status: "COMPLETED", nextAttemptAt: null },
+    ])
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:01:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toEqual({ status: "idle" })
+  }, 180_000)
+
   it("uses the caller's publication lock database when coordinating the batch fence", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

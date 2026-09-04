@@ -218,6 +218,16 @@ function eligibleCurrentEventWhere(now: Date) {
   `
 }
 
+function claimableTranscriptBatchWhere(now: Date) {
+  return Prisma.sql`
+    status != 'completed'
+    AND NOT (
+      status = 'claimed'
+      AND lease_expires_at > ${now}
+    )
+  `
+}
+
 async function claimNextTranscriptPublicationBatch(
   prisma: PrismaClient,
   now: Date,
@@ -253,7 +263,7 @@ async function claimNextTranscriptPublicationBatch(
         created_at AS "createdAt"
       FROM watch_search_current_transcript_publication_event
       WHERE transcript_id = ${transcriptId}
-        AND ${eligibleCurrentEventWhere(now)}
+        AND ${claimableTranscriptBatchWhere(now)}
       ORDER BY source_generation DESC, created_at DESC
       FOR UPDATE
     `)
