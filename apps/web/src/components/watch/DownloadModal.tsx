@@ -35,6 +35,10 @@ import {
   type DownloadTier as Tier,
   type WatchDownloadOption,
 } from "@/components/watch/download-options"
+import {
+  WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
+  WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
+} from "@/components/watch/watch-modal-presentation"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type DownloadModalDownload = WatchDownloadOption
@@ -354,19 +358,23 @@ export function DownloadModal({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           data-testid="watch-download-modal"
-          className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-          viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+          viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
           showCloseButton={false}
         >
           <WatchModalViewportCloseButton
             open={open}
             onClose={() => handleOpenChange(false)}
             testId="watch-download-modal-close"
+            renderInline
           />
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-          <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+          <div
+            data-testid="watch-download-modal-content"
+            className="flex flex-col gap-7"
+          >
             {modalHeader}
 
             <div
@@ -415,19 +423,23 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+        viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
       >
         <WatchModalViewportCloseButton
           open={open}
           onClose={() => handleOpenChange(false)}
           testId="watch-download-modal-close"
+          renderInline
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+        <div
+          data-testid="watch-download-modal-content"
+          className="flex flex-col gap-7"
+        >
           {modalHeader}
 
           {/* Body: file size dropdown */}
@@ -678,7 +690,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
     <div
       aria-hidden="false"
       data-testid="watch-download-modal-terms-overlay"
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex overflow-x-hidden overflow-y-auto bg-black/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
       onClick={(event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -694,7 +706,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
         aria-modal="true"
         aria-labelledby="watch-download-modal-terms-title"
         data-testid="watch-download-modal-terms-dialog"
-        className="flex max-h-[85vh] flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
         onClick={stopNestedDialogEvent}
         onPointerDown={stopNestedDialogEvent}
       >
@@ -719,7 +731,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
 
         <div
           data-testid="watch-download-modal-terms-body"
-          className="flex-1 space-y-4 overflow-y-auto pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600"
+          className="space-y-4 pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200"
         >
           {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>

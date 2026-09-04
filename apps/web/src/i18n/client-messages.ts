@@ -50,6 +50,7 @@ export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
   "HeroPlayer",
   "HeroPlayerControls",
   "LanguageCombobox",
+  "LanguageInventory",
   "LanguagePickerModal",
   "SearchResultCard",
   "SeriesPage",

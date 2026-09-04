@@ -27,22 +27,30 @@ export function RecommendationCookieSettings({
 
   useEffect(() => {
     if (!open) return
+    const previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
     titleRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose()
     }
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      document.body.style.overflow = previousBodyOverflow
+    }
   }, [busy, onClose, open])
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[110] grid place-items-center bg-black/75 p-4">
+    <div
+      data-testid="recommendation-cookie-settings-viewport"
+      className="fixed inset-0 z-[110] flex overflow-x-hidden overflow-y-auto bg-black/75 p-4"
+    >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="recommendation-cookie-settings-title"
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-stone-700 bg-stone-950 p-6 text-white shadow-2xl"
+        className="m-auto w-full max-w-xl shrink-0 rounded-2xl border border-stone-700 bg-stone-950 p-6 text-white shadow-2xl"
       >
         <h2
           id="recommendation-cookie-settings-title"

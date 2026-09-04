@@ -287,7 +287,20 @@ describe("RecommendationConsentShell", () => {
     )!
     expect(personalization.checked).toBe(true)
 
+    const dialog = container.querySelector('[role="dialog"]')
+    const viewport = container.querySelector(
+      '[data-testid="recommendation-cookie-settings-viewport"]',
+    )
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(dialog?.parentElement).toBe(viewport)
+    expect(dialog?.className).toContain("m-auto")
+    expect(dialog?.className).toContain("shrink-0")
+    expect(dialog?.className).not.toContain("overflow-y-auto")
+    expect(dialog?.className).not.toContain("max-h-")
+    expect(document.body.style.overflow).toBe("hidden")
+
     act(() => button("Cancel").click())
+    expect(document.body.style.overflow).toBe("")
     expect(container.querySelector('[role="dialog"]')).toBeNull()
     expect(document.activeElement).toBe(manage)
     expect(fetchMock).toHaveBeenCalledTimes(2)
