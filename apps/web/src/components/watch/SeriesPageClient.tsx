@@ -417,15 +417,13 @@ export function SeriesPageClient({
         audioLanguageCountLabel={audioLanguageCountLabel}
         subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
-          // Stack the label on top, then a horizontal row with the title
-          // on the left and the share pill on the right. Using
-          // `items-center` on that row aligns the share button to the
-          // title's vertical midline rather than its bottom — earlier
-          // `items-end` alignment positioned the share slightly below
-          // the title baseline because the pill is shorter than the H1.
+          // Stack the label on top, then keep title and actions vertical on
+          // phones so the fixed-width pills cannot squeeze the heading into
+          // a one-word column. Desktop keeps the established side-by-side
+          // band, with the pills aligned to the title's lower edge.
           <div
             data-testid="series-page-hero-overlay"
-            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-8 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             <span
               data-testid="series-page-label"
@@ -433,24 +431,31 @@ export function SeriesPageClient({
             >
               {t("seriesLabel", { episodes: episodeLabel })}
             </span>
-            <div className="flex items-end justify-between gap-4">
+            <div
+              data-testid="series-page-hero-content-row"
+              className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-4"
+            >
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <div
+                data-testid="series-page-hero-actions"
+                className="flex w-full flex-wrap justify-start gap-2 md:w-auto md:shrink-0 md:justify-end"
+              >
                 {episodes.length > 0 ? (
                   <Button
                     variant="pill"
+                    className="max-w-full min-w-0 px-3 text-[0.6875rem] md:max-w-none md:px-5 md:text-xs"
                     onClick={openDownload}
                     disabled={downloadPending}
                     aria-label={t("downloadCollection")}
                     data-testid="series-page-download-button"
                   >
                     <Download size={16} />
-                    <span>
+                    <span className="min-w-0 truncate">
                       {downloadPending
                         ? t("checkingDownloads")
                         : t("downloadCollection")}
@@ -459,12 +464,13 @@ export function SeriesPageClient({
                 ) : null}
                 <Button
                   variant="pill"
+                  className="px-3 text-[0.6875rem] md:px-5 md:text-xs"
                   onClick={openShare}
                   aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>{t("share")}</span>
+                  <span className="max-[360px]:sr-only">{t("share")}</span>
                 </Button>
               </div>
             </div>

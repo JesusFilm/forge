@@ -39,6 +39,7 @@ import {
   useWatchHomeHeroFittedHeight,
   useWatchHomeHeroScrollPause,
 } from "@/components/home/useWatchHomeHero"
+import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
 import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WatchHeroOverlay,
@@ -806,7 +807,7 @@ export function WatchHomeTvCarousel({
               // rather than collapsing it. `min(…, 56.25vw)` also keeps the
               // watch-page behaviour where the overlap stops biting once the
               // 16:9 frame already leaves room below.
-              "h-[max(34svh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
+              WATCH_MUTED_INTRO_HEIGHT_CLASS
             : "h-[66svh] md:h-[min(100svh,56.25vw)]",
         )}
       >
