@@ -18,6 +18,33 @@ const mastraRegistrationSource = readFileSync(
 )
 
 describe("video-first devotional runtime authority", () => {
+  // Both seams shipped unwired once: production ran them on in-code prompts
+  // while every sibling read its prompt from the Workspace, which quietly took
+  // the owner's closing-line and point-selection rules off the surface she can
+  // edit without a deploy. Nothing failed, because no test looked at the call
+  // site. This pins the SOURCE of each prompt, so dropping either override
+  // turns this red rather than silently changing what the pipeline writes.
+  // The prompt WIRING is asserted behaviourally in
+  // video-first-devotional-authored-prompts.test.ts, which runs the real content
+  // composition and checks what each service receives. Source-text assertions
+  // used to stand in for that and were a poor substitute: they pass for a mention
+  // in a comment and say nothing about what reaches a model.
+  //
+  // What stays here is what behaviour cannot see. The explaining seam produces
+  // the picker's rationale and every critic's issues, and both used to be
+  // computed and dropped because no caller passed it. A behavioural test would
+  // have to assert on stdout to catch that; the durable end of it is the artifact
+  // write, which is asserted directly. The seam is COUNTED, not merely present:
+  // there are two call sites, and `toContain("log,")` still passed when one of
+  // them lost it — which is how the first version of this pin failed its own
+  // falsification.
+  it("persists the run's reasoning and passes the log seam at both call sites", () => {
+    expect(workflowSource).toContain(
+      "value: { devotional, safety, quality, notes },",
+    )
+    expect(workflowSource.match(/^\s+log,$/gm) ?? []).toHaveLength(2)
+  })
+
   it("does not import compiled corpora, catalogs, or default prompts", () => {
     for (const forbidden of [
       "JESUS_FILM_CHAPTERS",

@@ -20,6 +20,9 @@ import {
 import type { JesusFilmChapter } from "./jesus-film-catalog"
 import { modernizeReflection } from "./reflection-modernizer"
 import { pickReflectionHighlights } from "./reflection-highlighter"
+import { pickReflectionPoints } from "./reflection-point-picker"
+import { commentaryPreamble, splitCommentaryPoints } from "./reflection-points"
+import { writeDevotionalConclusion } from "./devotional-conclusion"
 import { splitReflection } from "./reflection-split"
 import { pickBestSpurgeon } from "./spurgeon-ranker"
 import { rotateVoice } from "./voice-rotation"
@@ -75,6 +78,22 @@ export type GeneratedDevotional = {
     attribution: string
     /** Which rotation flavor produced it. */
     flavor: ReflectionFlavor
+    /** The passage the SOURCE is about, which is not always the film's passage.
+     *  A Spurgeon selection is chosen by theme, so its own reference (say
+     *  Isaiah 26:3) can differ from the clip's (Luke 8:22-25). The fidelity
+     *  critic judges the adaptation against its SOURCE, so it needs this one;
+     *  coherence judges the finished devotional against the verse on screen, so
+     *  it needs the film's. Optional: a devotional generated before this field
+     *  existed does not carry it. */
+    sourceReference?: string
+    /** The excerpt actually HANDED TO the modernizer — already narrowed to the
+     *  chosen points, not the author's full passage. That is the right thing for
+     *  the fidelity critic to compare `text` against, since it judges whether
+     *  the adaptation kept what the writer was given; it is NOT a record of
+     *  everything the author wrote, and the pre-narrowing text is persisted
+     *  nowhere. Optional: a devotional generated before this field existed does
+     *  not carry it, and a localized copy does not re-derive it. */
+    sourceExcerpt?: string
   }
   /** One phrase to accent per reflection chunk (verbatim substring, or ""),
    *  aligned with splitReflection(reflection.text). */
@@ -112,6 +131,8 @@ export const GeneratedDevotionalSchema = z.object({
     source: z.string(),
     attribution: z.string(),
     flavor: z.enum(["commentary", "spurgeon"]),
+    sourceReference: z.string().optional(),
+    sourceExcerpt: z.string().optional(),
   }),
   reflectionHighlights: z.array(z.string()),
   conclusion: z.string(),
@@ -135,6 +156,11 @@ export type GenerateDevotionalDeps = {
   pickSpurgeon?: typeof pickBestSpurgeon
   /** Picks the accent phrase per reflection chunk (defaults to the real one). */
   pickHighlights?: typeof pickReflectionHighlights
+  /** Narrows a multi-point commentary to the points that fit the verse
+   *  (defaults to the real one). */
+  pickPoints?: typeof pickReflectionPoints
+  /** Writes the closing line after the copywriter (defaults to the real one). */
+  writeConclusion?: typeof writeDevotionalConclusion
 }
 
 export type GenerateDevotionalInput = {
@@ -147,6 +173,8 @@ export type GenerateDevotionalInput = {
   llm: DevotionalLlm
   /** Words for the spoken reflection (~30–45s). */
   approxWords?: number
+  /** Operator progress line, threaded through to content composition. */
+  log?: (message: string) => void
 }
 
 export async function generateDevotional(
@@ -165,6 +193,7 @@ export async function generateDevotional(
       date: input.date,
       llm: input.llm,
       approxWords: input.approxWords,
+      log: input.log,
     },
     deps,
   )
@@ -209,6 +238,10 @@ export type ComposeContentInput = {
   llm: DevotionalLlm
   /** Words for the spoken reflection (~60–75s). */
   approxWords?: number
+  /** Operator progress line. The point picker explains WHICH of the author's
+   *  points it kept and why, and that rationale has no home in the output
+   *  shape, so it would otherwise be computed and dropped. */
+  log?: (message: string) => void
 }
 
 export async function composeDevotionalContent(
@@ -221,6 +254,8 @@ export async function composeDevotionalContent(
   const writeCopy = deps.writeCopy ?? writeDevotionalCopy
   const pickSpurgeon = deps.pickSpurgeon ?? pickBestSpurgeon
   const pickHighlights = deps.pickHighlights ?? pickReflectionHighlights
+  const pickPoints = deps.pickPoints ?? pickReflectionPoints
+  const writeConclusion = deps.writeConclusion ?? writeDevotionalConclusion
 
   let selection = selectReflection(
     {
@@ -268,8 +303,36 @@ export async function composeDevotionalContent(
     }
   }
 
+  // Owner rule: at most TWO of the author's points per devotional. Narrow the
+  // excerpt BEFORE the writer sees it, so the rule is enforced by what data
+  // reaches the writer rather than by an instruction it can drift from.
+  // Excerpts with no ordinal structure (roughly a fifth of the corpus) pass
+  // through whole.
+  const allPoints = splitCommentaryPoints(selection.text)
+  let focusedSource = selection.text
+  if (allPoints.length >= 3) {
+    const { chosen, reason } = await pickPoints({
+      points: allPoints,
+      sceneTitle: chapter.title,
+      scriptureReference: scripture.reference,
+      scriptureText: scripture.text,
+      approxWords: input.approxWords ?? 170,
+      llm: input.llm,
+    })
+    const kept = allPoints.filter((p) => chosen.includes(p.index))
+    if (kept.length > 0) {
+      const preamble = commentaryPreamble(selection.text)
+      focusedSource = [preamble, ...kept.map((p) => p.text)]
+        .filter(Boolean)
+        .join("\n\n")
+      input.log?.(
+        `reflection points ${chosen.join("+")} of ${allPoints.length} — ${reason}`,
+      )
+    }
+  }
+
   const modern = await modernize({
-    sourceText: selection.text,
+    sourceText: focusedSource,
     focusReference: selection.focusReference,
     sourceName: selection.source,
     approxWords: input.approxWords ?? 170,
@@ -289,6 +352,19 @@ export async function composeDevotionalContent(
     // Rotate the cover-hook form by sequence so openings vary (not always a
     // question / "What if...").
     hookStyle: hookStyleForSequence(input.sequence, deps.hookStyles),
+    llm: input.llm,
+  })
+
+  // Conclusion runs AFTER copy — it needs to see the chosen title/question/
+  // prayer to stay complementary rather than redundant with them.
+  const { conclusion } = await writeConclusion({
+    sceneTitle: chapter.title,
+    reference: scripture.reference,
+    scriptureText: scripture.text,
+    reflection: reflectionText,
+    title: copy.title,
+    question: copy.question,
+    prayer: copy.prayer,
     llm: input.llm,
   })
 
@@ -318,9 +394,11 @@ export async function composeDevotionalContent(
       source: selection.source,
       attribution: modern.attribution,
       flavor: selection.flavor,
+      sourceReference: selection.focusReference,
+      sourceExcerpt: focusedSource,
     },
     reflectionHighlights,
-    conclusion: stripDashes(copy.conclusion),
+    conclusion: stripDashes(conclusion),
     question: stripDashes(copy.question),
     prayer: stripDashes(copy.prayer),
     mood: chapter.mood,

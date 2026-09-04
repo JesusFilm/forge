@@ -70,6 +70,16 @@ const deps = {
     .fn()
     .mockImplementation(async ({ candidates }) => candidates[0] ?? null),
   pickHighlights: vi.fn().mockResolvedValue([]),
+  // Keeps every point, so these fixtures exercise the unnarrowed path. The
+  // narrowing itself is covered in reflection-point-picker.test.ts and by the
+  // dedicated cases below.
+  pickPoints: vi.fn().mockImplementation(async ({ points }) => ({
+    chosen: points.map((p: { index: number }) => p.index),
+    reason: "test keeps every point",
+  })),
+  writeConclusion: vi
+    .fn()
+    .mockResolvedValue({ conclusion: "Grace that finds you keeps you." }),
 }
 
 describe("generateDevotional", () => {
@@ -85,6 +95,118 @@ describe("generateDevotional", () => {
     expect(d.reflection.text).toBe("Modernized reflection text.")
     expect(d.mood).toBe("peace")
     expect(d.question).toContain("storm")
+  })
+
+  // Owner rule: at most TWO of the author's points per devotional, enforced by
+  // narrowing the source BEFORE the writer sees it rather than by asking the
+  // writer to self-limit. Each case below fails if that wiring is removed.
+  describe("point narrowing (owner rule: at most two points)", () => {
+    const THREE_POINTS = [
+      "These verses describe a storm on the lake.",
+      "We learn, firstly, that Christ's disciples are not spared trouble.",
+      "We learn, secondly, that he sleeps while they panic.",
+      "We learn, thirdly, that a word from him is enough.",
+    ].join(" ")
+    const multiPoint = {
+      ...deps,
+      corpora: {
+        ...corpora,
+        matthewHenry: [
+          {
+            source: "Matthew Henry, Commentary on the Whole Bible",
+            reference: "Luke 8",
+            osisRef: "Luke.8",
+            text: THREE_POINTS,
+          },
+        ],
+      },
+      // Keep points 1 and 3 so a passing result cannot come from "kept
+      // everything" — point 2 must be absent for the assertions to hold.
+      pickPoints: vi
+        .fn()
+        .mockResolvedValue({ chosen: [1, 3], reason: "fit the verse" }),
+    }
+
+    it("hands the writer only the chosen points, not the whole excerpt", async () => {
+      await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm },
+        multiPoint,
+      )
+      const handed = multiPoint.modernize.mock.calls.at(-1)?.[0].sourceText
+      expect(handed).toContain("firstly")
+      expect(handed).toContain("thirdly")
+      expect(handed).not.toContain("secondly")
+      // The preamble frames the scene, so it survives the narrowing.
+      expect(handed).toContain("These verses describe a storm")
+    })
+
+    it("records the narrowed excerpt as provenance for the fidelity critic", async () => {
+      const d = await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm },
+        multiPoint,
+      )
+      // Without this field the fidelity critic has nothing to compare the
+      // adaptation against and self-skips, i.e. the gate goes quietly dormant.
+      expect(d.reflection.sourceExcerpt).toContain("thirdly")
+      expect(d.reflection.sourceExcerpt).not.toContain("secondly")
+    })
+
+    it("reports which points were kept, so the choice is not silent", async () => {
+      const log = vi.fn()
+      await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm, log },
+        multiPoint,
+      )
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("reflection points 1+3 of 3"),
+      )
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("fit the verse"))
+    })
+
+    it("passes an excerpt with no ordinal structure through whole", async () => {
+      // Roughly a fifth of the corpus is continuous exposition. Narrowing must
+      // not fire there, and the picker must not be paid for nothing.
+      await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm },
+        deps,
+      )
+      expect(deps.pickPoints).not.toHaveBeenCalled()
+      expect(deps.modernize.mock.calls.at(-1)?.[0].sourceText).toBe(
+        "Henry on Luke 8 (the storm).",
+      )
+    })
+  })
+
+  describe("closing line", () => {
+    it("comes from the dedicated conclusion agent, not the copywriter", async () => {
+      const d = await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm },
+        deps,
+      )
+      expect(d.conclusion).toBe("Grace that finds you keeps you.")
+      // The copywriter still returns a conclusion of its own; using it would be
+      // a silent downgrade, so pin that it is NOT what ships.
+      expect(d.conclusion).not.toBe(
+        "The One who calms the sea is in your boat.",
+      )
+    })
+
+    it("sees the copywriter's chosen fields, so it stays complementary", async () => {
+      await generateDevotional(
+        { chapterIndex: 19, sequence: 0, date: "d", llm },
+        deps,
+      )
+      // Ordering rule: conclusion runs AFTER copy. If it ran before, these
+      // would be undefined.
+      expect(deps.writeConclusion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Peace in the Storm",
+          question: "What storm do you need to hand to Jesus today?",
+          prayer: "Jesus, help me trust you.",
+          reflection: "Modernized reflection text.",
+        }),
+      )
+    })
   })
 
   it("rotates: even seq → Henry commentary + Voice D; odd → Spurgeon + Voice E", async () => {
@@ -103,6 +225,28 @@ describe("generateDevotional", () => {
     expect(odd.reflection.flavor).toBe("spurgeon")
     expect(odd.reflection.source).toContain("Spurgeon")
     expect(odd.voice).toBe("male-e")
+  })
+
+  it("records the SOURCE's own passage, which a Spurgeon pick does not share with the film", async () => {
+    // Spurgeon entries are chosen by theme, so the reflection can be about a
+    // different book than the clip. The fidelity critic judges the adaptation
+    // against its source, so that reference has to survive onto the devotional —
+    // without it the critic is asked whether an adaptation of Isaiah is faithful
+    // to Luke.
+    const spurgeon = await generateDevotional(
+      { chapterIndex: 19, sequence: 1, date: "d", llm }, // odd seq → Spurgeon
+      deps,
+    )
+    expect(spurgeon.reflection.flavor).toBe("spurgeon")
+    expect(spurgeon.reflection.sourceReference).toBe("Isaiah 26:3")
+    expect(spurgeon.passage.reference).toBe("Luke 8:22-25")
+
+    // Commentary sits ON the film's passage, so the two agree there.
+    const commentary = await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      deps,
+    )
+    expect(commentary.reflection.sourceReference).toBe("Luke 8:22-25")
   })
 
   it("falls back to commentary when the Spurgeon ranker finds no genuine fit", async () => {

@@ -65,6 +65,14 @@ const PromptBundleSchema = z
         hookQuestion: PromptSchema,
         safety: PromptSchema,
         videoMatcher: PromptSchema,
+        // `.optional()` because `prompts` is `.strict()` and the DEPLOYED
+        // document predates these two keys: making them required would make the
+        // live Workspace unreadable the moment this ships. The consumers fall
+        // back to their in-code prompt when a key is absent, which is a
+        // transitional state, not the design — retire the fallback (and drop
+        // `.optional()`) once the deployed document carries both.
+        conclusion: PromptSchema.optional(),
+        pointPicker: PromptSchema.optional(),
       })
       .strict(),
     generation: z
