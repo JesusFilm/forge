@@ -156,7 +156,9 @@ describe("slugToBcp47Primary", () => {
 
   it("maps single-word language slugs too", () => {
     expect(slugToBcp47Primary("english")).toBe("en")
-    expect(slugToBcp47Primary("spanish")).toBe("es")
+    // `spanish` was soft-deleted in admin (2026-09 regeneration); the
+    // regional slug carries the same primary subtag.
+    expect(slugToBcp47Primary("spanish-latin-american")).toBe("es")
     expect(slugToBcp47Primary("french")).toBe("fr")
     expect(slugToBcp47Primary("russian")).toBe("ru")
     expect(slugToBcp47Primary("japanese")).toBe("ja")
@@ -271,7 +273,7 @@ describe("parseAcceptLanguage", () => {
 describe("resolveUiLocale (catalog-driven fallback)", () => {
   it("resolves spanish-* slugs to the UI locale 'es'", () => {
     expect(resolveUiLocale("spanish-castilian")).toBe("es")
-    expect(resolveUiLocale("spanish")).toBe("es")
+    expect(resolveUiLocale("spanish-latin-american")).toBe("es")
   })
 
   it("resolves portuguese-* slugs to the UI locale 'pt'", () => {
@@ -382,6 +384,22 @@ describe("resolveWatchLocaleIdentity", () => {
 
   it("defaults locale-less surfaces to English", () => {
     expect(resolveWatchLocaleIdentity(null)).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
+  })
+})
+
+describe("public watch language corpus freshness (FGE-81)", () => {
+  it("includes languages admin published after the 2026-05-28 snapshot", () => {
+    // These four 404'd in production on 2026-09-04 because the corpus was a
+    // frozen snapshot. Any future regression probe must keep at least one
+    // slug from outside the previous snapshot in it.
+    for (const slug of ["german-pennsylvania", "salar", "fore", "ralte"]) {
+      expect(isPublicWatchLanguageSlug(slug)).toBe(true)
+    }
+    expect(slugToBcp47Tag("german-pennsylvania")).toBe("pdc")
+    expect(resolveWatchLocaleIdentity("german-pennsylvania")).toEqual({
       locale: "en",
       htmlLang: "en",
     })

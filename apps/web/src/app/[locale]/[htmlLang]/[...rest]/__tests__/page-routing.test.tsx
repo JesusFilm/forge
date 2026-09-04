@@ -3618,3 +3618,92 @@ describe("Catch-all routing — unknown shape", () => {
     expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })
+
+describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
+  // SYNTHETIC fixture: absent from the compiled corpus so it can only be
+  // recognized through the manifest (see the proxy suite for the same pin).
+  const NEW_LANGUAGE = "newly-published-language"
+  const manifestWithNewLanguage = {
+    version: "test",
+    generatedAt: "2026-09-04T00:00:00.000Z",
+    contentSlugs: ["jesus"],
+    oneSegmentSlugs: [],
+    episodePairsByParent: { jesus: ["the-beginning"] },
+    audioLanguageSlugs: ["english", NEW_LANGUAGE],
+    audioLanguageIndexesByContent: { jesus: [0, 1] },
+    audioLanguageIndexesByEpisode: { jesus: { "the-beginning": [0, 1] } },
+  }
+
+  it("classifies a two-segment route as a video when the manifest lists the language", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(manifestWithNewLanguage)
+    mockRouteVideo(
+      makeWatchVideoResult("featureFilm", {
+        slug: NEW_LANGUAGE,
+        bcp47: "xx",
+        name: "Newly Published",
+      }),
+    )
+
+    await render2Seg("jesus", NEW_LANGUAGE)
+
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
+      "jesus",
+      NEW_LANGUAGE,
+    )
+    expect(resolveSeriesEpisodeBySlugMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(notFoundMock).not.toHaveBeenCalled()
+  })
+
+  it("classifies a three-segment route as an explicit-language episode when the manifest lists the language", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(manifestWithNewLanguage)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(
+      makeEpisodeResult({
+        slug: NEW_LANGUAGE,
+        bcp47: "xx",
+        name: "Newly Published",
+      }),
+    )
+
+    await render3Seg("jesus", "the-beginning", NEW_LANGUAGE)
+
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "jesus",
+      "the-beginning",
+      NEW_LANGUAGE,
+    )
+    expect(notFoundMock).not.toHaveBeenCalled()
+  })
+
+  it("falls back to the implicit-English episode reading when the manifest is unavailable", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(null)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(null)
+
+    await expect(render2Seg("jesus", NEW_LANGUAGE)).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    )
+
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "jesus",
+      NEW_LANGUAGE,
+      "english",
+    )
+    expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("does not await the manifest for a language the compiled corpus already knows", async () => {
+    // A never-settling manifest must not block classification of a known
+    // language; the render branch starts the manifest request itself.
+    getWatchRouteManifestMock.mockReturnValue(new Promise(() => {}))
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+
+    const renderPromise = render2Seg("jesus", "english")
+    await vi.waitFor(() => {
+      expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
+        "jesus",
+        "english",
+      )
+    })
+    void renderPromise.catch(() => {})
+  })
+})
