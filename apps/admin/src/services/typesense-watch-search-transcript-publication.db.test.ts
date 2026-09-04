@@ -888,6 +888,48 @@ suite("current transcript publication into Watch Search", () => {
     })
   }, 180_000)
 
+  it("refuses to complete a batch when the canonical chunk set no longer matches the event evidence", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        where: { sourceGeneration: 1n },
+        select: { currentDocumentIds: true },
+      })
+    await prisma.videoTranscriptChunk.delete({
+      where: { id: pendingEvent.currentDocumentIds[1]! },
+    })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+      }),
+    ).rejects.toThrow(/chunk count .* batch evidence/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        where: { sourceGeneration: 1n },
+        select: {
+          status: true,
+          lastErrorCode: true,
+        },
+      }),
+    ).toMatchObject({
+      status: "PENDING",
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).rejects.toThrow()
+  }, 180_000)
+
   it("publishes against the event contract even after the active contract pointer rotates", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

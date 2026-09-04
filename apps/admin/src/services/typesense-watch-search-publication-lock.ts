@@ -4,6 +4,7 @@
  * operation; lease acquisition probes the same key transactionally.
  */
 import { Client } from "pg"
+import { env } from "@/config/env"
 
 export const TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID = 1_179_605_063
 
@@ -36,7 +37,7 @@ function defaultLockClientFactory(
 export async function withTypesenseWatchSearchIndexLock<T>(
   run: () => Promise<T>,
   {
-    databaseUrl = process.env.DATABASE_URL,
+    databaseUrl = env.DATABASE_URL,
     clientFactory = defaultLockClientFactory,
   }: {
     databaseUrl?: string

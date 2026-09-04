@@ -172,6 +172,24 @@ function exactIdFilter(ids: readonly string[]): string {
   return `id:=[${ids.map((id) => `\`${id.replaceAll("`", "\\`")}\``).join(",")}]`
 }
 
+function assertCanonicalDocumentIdsMatchBatch(
+  actualIds: readonly string[],
+  expectedIds: readonly string[],
+): void {
+  if (actualIds.length !== expectedIds.length) {
+    throw new WatchSearchTranscriptPublicationError(
+      `canonical transcript chunk count ${actualIds.length} does not match batch evidence ${expectedIds.length}`,
+    )
+  }
+  for (let index = 0; index < expectedIds.length; index += 1) {
+    if (actualIds[index] !== expectedIds[index]) {
+      throw new WatchSearchTranscriptPublicationError(
+        `canonical transcript chunk evidence drifted at index ${index}: expected ${expectedIds[index]}, got ${actualIds[index] ?? "<missing>"}`,
+      )
+    }
+  }
+}
+
 function eligibleCurrentEventWhere(now: Date) {
   return Prisma.sql`
     (
@@ -353,6 +371,10 @@ async function loadCanonicalTranscriptSnapshot(
       `canonical transcript ${batch.transcriptId} has no current chunk embeddings`,
     )
   }
+  assertCanonicalDocumentIdsMatchBatch(
+    rows.map((row) => row.id),
+    batch.currentDocumentIds,
+  )
 
   return {
     sourceGeneration: transcript.sourceGeneration,
