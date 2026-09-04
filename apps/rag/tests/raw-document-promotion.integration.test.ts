@@ -1,6 +1,14 @@
 /* eslint-disable max-lines -- integration scenarios share one isolated PostgreSQL fixture */
 import { Prisma, PrismaClient } from "../src/generated/prisma/index.js"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import {
   RagOperationalError,
@@ -324,7 +332,20 @@ describe("Prisma raw-document promotion", () => {
         .finally(() => {
           acquisitionSettled = true
         })
-      await new Promise((resolve) => setTimeout(resolve, 25))
+      await vi.waitFor(async () => {
+        const [lockState] = await gateDb.$queryRaw<
+          Array<{ waiting: bigint }>
+        >(Prisma.sql`
+          SELECT COUNT(*)::bigint AS waiting
+          FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND database = (
+              SELECT oid FROM pg_database WHERE datname = current_database()
+            )
+            AND granted = false
+        `)
+        expect(Number(lockState?.waiting)).toBeGreaterThan(0)
+      })
       expect(acquisitionSettled).toBe(false)
 
       promotion = promoteRawDocuments(source, target, {
