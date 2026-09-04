@@ -14,6 +14,12 @@ export type CurrentWatchSearchTranscriptProjection = Readonly<{
   projectionRevision: bigint
 }>
 
+type CurrentWatchSearchTranscriptProjectionInput = Readonly<{
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+}>
+
 export class WatchSearchCurrentTranscriptProjectionError extends Error {
   constructor(message: string) {
     super(message)
@@ -40,6 +46,7 @@ type StoredProjectionRow = {
 }
 
 type ProjectionReader = Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
+type ProjectionWriter = Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
 
 type ProjectionFallbackReader = Pick<
   PrismaClient,
@@ -73,6 +80,12 @@ function normalizeStoredProjection(
   })
 }
 
+export function initialCurrentWatchSearchTranscriptProjectionRevision(): bigint {
+  return (
+    (resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? 0n) + 1n
+  )
+}
+
 async function readStoredCurrentWatchSearchTranscriptProjection(
   prisma: ProjectionReader,
 ): Promise<CurrentWatchSearchTranscriptProjection | null> {
@@ -94,6 +107,49 @@ export async function resolveCurrentWatchSearchTranscriptProjection(
     )
   }
   return projection
+}
+
+export async function advanceCurrentWatchSearchTranscriptProjection(
+  prisma: ProjectionWriter,
+  input: CurrentWatchSearchTranscriptProjectionInput,
+): Promise<CurrentWatchSearchTranscriptProjection> {
+  const row = await prisma.watchSearchCurrentTranscriptProjection.upsert({
+    where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+    create: {
+      id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
+      transcriptCollection: requiredString(
+        input.transcriptCollection,
+        "current transcript collection",
+      ),
+      contentEmbeddingContractId: requiredString(
+        input.contentEmbeddingContractId,
+        "current transcript content embedding contract id",
+      ),
+      transcriptChunkingVersion: requiredString(
+        input.transcriptChunkingVersion,
+        "current transcript chunking version",
+      ),
+      projectionRevision: initialCurrentWatchSearchTranscriptProjectionRevision(),
+      version: 1,
+    },
+    update: {
+      transcriptCollection: requiredString(
+        input.transcriptCollection,
+        "current transcript collection",
+      ),
+      contentEmbeddingContractId: requiredString(
+        input.contentEmbeddingContractId,
+        "current transcript content embedding contract id",
+      ),
+      transcriptChunkingVersion: requiredString(
+        input.transcriptChunkingVersion,
+        "current transcript chunking version",
+      ),
+      projectionRevision: { increment: 1 },
+      version: { increment: 1 },
+    },
+  })
+  return normalizeStoredProjection(row)
 }
 
 export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(

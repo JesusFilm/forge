@@ -8,7 +8,11 @@ import {
 } from "@/config/env"
 import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
 import { TypesenseClient } from "./typesense-client"
-import { WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID } from "./typesense-watch-search-current-transcript-projection"
+import {
+  advanceCurrentWatchSearchTranscriptProjection,
+  initialCurrentWatchSearchTranscriptProjectionRevision,
+  WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID,
+} from "./typesense-watch-search-current-transcript-projection"
 import {
   parseTypesenseVector,
   canonicalTypesenseVideoId,
@@ -135,9 +139,7 @@ function sha256(value: unknown): string {
 }
 
 function initialProjectionRevision(): bigint {
-  return (
-    (resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? 0n) + 1n
-  )
+  return initialCurrentWatchSearchTranscriptProjectionRevision()
 }
 
 function normalizeEmbedding(value: unknown): number[] {
@@ -490,23 +492,10 @@ async function completeTranscriptPublicationBatch(
       )
     }
 
-    const projection = await tx.watchSearchCurrentTranscriptProjection.upsert({
-      where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
-      create: {
-        id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
-        transcriptCollection: input.transcriptCollection,
-        contentEmbeddingContractId: input.contentEmbeddingContractId,
-        transcriptChunkingVersion: input.transcriptChunkingVersion,
-        projectionRevision: initialProjectionRevision(),
-        version: 1,
-      },
-      update: {
-        transcriptCollection: input.transcriptCollection,
-        contentEmbeddingContractId: input.contentEmbeddingContractId,
-        transcriptChunkingVersion: input.transcriptChunkingVersion,
-        projectionRevision: { increment: 1 },
-        version: { increment: 1 },
-      },
+    const projection = await advanceCurrentWatchSearchTranscriptProjection(tx, {
+      transcriptCollection: input.transcriptCollection,
+      contentEmbeddingContractId: input.contentEmbeddingContractId,
+      transcriptChunkingVersion: input.transcriptChunkingVersion,
     })
     const completed =
       await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({

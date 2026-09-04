@@ -25,6 +25,7 @@ import {
   TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
   withTypesenseWatchSearchIndexLock,
 } from "./typesense-watch-search-publication-lock"
+import { rebuildTypesenseWatchSearchIndex } from "./typesense-watch-search-indexer"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -923,6 +924,62 @@ suite("current transcript publication into Watch Search", () => {
       slug: "watch-search-transcript-fixture",
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
+    })
+  }, 180_000)
+
+  it("advances the stored transcript projection when a rebuild rotates the active transcript collection", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const firstPublish = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(firstPublish).toMatchObject({
+      status: "published",
+      projectionRevision: 1n,
+      transcriptCollection: expect.stringMatching(
+        /^watch_search_transcripts_fixture$/,
+      ),
+    })
+    if (firstPublish.status !== "published") {
+      throw new Error("expected a published transcript batch")
+    }
+
+    const rebuild = await withTypesenseWatchSearchIndexLock(
+      () =>
+        rebuildTypesenseWatchSearchIndex({
+          prisma,
+          typesense,
+          buildId: "rebuild-2",
+          transcriptStrategy: "rebuild",
+        }),
+      { databaseUrl },
+    )
+    expect(rebuild.transcriptCollection).toBe(
+      "watch_search_transcripts_rebuild-2",
+    )
+
+    const projection = await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow(
+      {
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      },
+    )
+    expect(projection).toMatchObject({
+      transcriptCollection: "watch_search_transcripts_rebuild-2",
+      contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+      transcriptChunkingVersion: "mastra-v1",
+      projectionRevision: 2n,
+    })
+    expect(
+      await typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
+    ).toMatchObject({
+      collection_name: "watch_search_transcripts_rebuild-2",
     })
   }, 180_000)
 

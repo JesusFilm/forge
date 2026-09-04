@@ -9,6 +9,8 @@ import {
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
 import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import { advanceCurrentWatchSearchTranscriptProjection } from "./typesense-watch-search-current-transcript-projection"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -985,6 +987,15 @@ export async function rebuildTypesenseWatchSearchIndex({
       catalogSchema.name,
     )
     catalogAliasUpdated = true
+    if (!transcriptReused) {
+      const compatibility =
+        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+      await advanceCurrentWatchSearchTranscriptProjection(prisma, {
+        transcriptCollection,
+        contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
+        transcriptChunkingVersion: compatibility.transcriptChunkingVersion,
+      })
+    }
   } catch (error) {
     const restoreAlias = async (
       alias: string,
