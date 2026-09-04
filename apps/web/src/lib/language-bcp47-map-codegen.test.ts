@@ -7,8 +7,10 @@ import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 import {
   ADMIN_LANGUAGES_PAGE_SIZE,
+  PRODUCTION_ADMIN_GRAPHQL_URL,
   PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES,
   buildLanguageBcp47Map,
+  parseGenerateLanguageBcp47MapArgs,
   buildPublicWatchLanguageSlugs,
   diffLanguageCorpus,
   fetchAdminLanguages,
@@ -49,13 +51,26 @@ describe("buildLanguageBcp47Map", () => {
       "invalid-bcp47",
     ])
   })
+
+  it("keeps a well-formed slug in the URL corpus even when its BCP-47 is missing or malformed", () => {
+    // Admin's route manifest admits a playable language by slug alone, so the
+    // URL corpus must not depend on the tag. (39 such rows existed at the
+    // 2026-05-28 snapshot and were silently unroutable.)
+    const { map, publicSlugs } = buildLanguageBcp47Map([
+      { slug: "no-tag", bcp47: null },
+      { slug: "bad-tag", bcp47: "not a tag" },
+      { slug: "zulu", bcp47: "zu" },
+    ])
+    expect(publicSlugs).toEqual(["bad-tag", "no-tag", "zulu"])
+    expect(Object.keys(map)).toEqual(["zulu"])
+  })
 })
 
 describe("buildPublicWatchLanguageSlugs", () => {
-  it("unions the map keys with the public URL overrides, deduplicated and sorted", () => {
+  it("unions the upstream slugs with the public URL overrides, deduplicated and sorted", () => {
     expect(
       buildPublicWatchLanguageSlugs(
-        { zulu: "zu", "spanish-latin-american": "es", aari: "aiw" },
+        ["zulu", "spanish-latin-american", "aari"],
         ["spanish-latin-american", "english-british"],
       ),
     ).toEqual(["aari", "english-british", "spanish-latin-american", "zulu"])
@@ -168,6 +183,26 @@ describe("fetchAdminLanguages", () => {
       offset: ADMIN_LANGUAGES_PAGE_SIZE,
     })
     expect(new Headers(secondInit?.headers).has("authorization")).toBe(false)
+    // Every page carries a timeout so a hung admin fails the scheduled job
+    // instead of stalling it until the runner's job timeout.
+    expect(secondInit?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it("rejects when a page exceeds the timeout budget", async () => {
+    const fetchImpl: typeof fetch = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(init.signal?.reason ?? new Error("aborted")),
+        )
+      })
+
+    await expect(
+      fetchAdminLanguages({
+        adminGraphqlUrl: "https://admin.example/api/graphql",
+        fetchImpl,
+        timeoutMs: 20,
+      }),
+    ).rejects.toMatchObject({ name: "TimeoutError" })
   })
 
   it("throws on HTTP failures and GraphQL errors instead of writing a truncated corpus", async () => {
@@ -190,5 +225,40 @@ describe("fetchAdminLanguages", () => {
         ),
       }),
     ).rejects.toThrow("denied")
+  })
+})
+
+describe("parseGenerateLanguageBcp47MapArgs", () => {
+  it("defaults to a generating run against production admin", () => {
+    expect(parseGenerateLanguageBcp47MapArgs([])).toEqual({
+      check: false,
+      adminGraphqlUrl: PRODUCTION_ADMIN_GRAPHQL_URL,
+    })
+  })
+
+  it("prefers --admin-url over the environment, and the environment over production", () => {
+    const env = { ADMIN_GRAPHQL_URL: "http://localhost:1437/admin/api/graphql" }
+    expect(parseGenerateLanguageBcp47MapArgs(["--check"], env)).toEqual({
+      check: true,
+      adminGraphqlUrl: "http://localhost:1437/admin/api/graphql",
+    })
+    expect(
+      parseGenerateLanguageBcp47MapArgs(
+        ["--admin-url", "https://admin.example/api/graphql", "--check"],
+        env,
+      ),
+    ).toEqual({
+      check: true,
+      adminGraphqlUrl: "https://admin.example/api/graphql",
+    })
+  })
+
+  it("fails fast on unknown flags and malformed URLs", () => {
+    expect(() => parseGenerateLanguageBcp47MapArgs(["--nope"])).toThrow(
+      "Unknown argument --nope",
+    )
+    expect(() =>
+      parseGenerateLanguageBcp47MapArgs(["--admin-url", "not a url"]),
+    ).toThrow()
   })
 })

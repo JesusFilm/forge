@@ -36,7 +36,16 @@ export type SkippedLanguageRow = {
 }
 
 export type LanguageBcp47MapBuild = {
+  /** slug -> BCP-47, only for rows whose BCP-47 value is present and well-formed. */
   map: LanguageBcp47Map
+  /**
+   * Every row with a well-formed public slug, sorted — INCLUDING rows whose
+   * BCP-47 is missing or malformed. The URL corpus derives from this list,
+   * not from `map`, because admin's route manifest admits a playable language
+   * by slug alone; a language must never lose its URL for lacking a tag.
+   */
+  publicSlugs: string[]
+  /** Rows excluded from `map` (and, for slug reasons, from `publicSlugs`). */
   skipped: SkippedLanguageRow[]
 }
 
@@ -81,6 +90,7 @@ export function buildLanguageBcp47Map(
   rows: readonly AdminLanguageRow[],
 ): LanguageBcp47MapBuild {
   const entries = new Map<string, string>()
+  const publicSlugs = new Set<string>()
   const skipped: SkippedLanguageRow[] = []
 
   for (const row of rows) {
@@ -88,12 +98,13 @@ export function buildLanguageBcp47Map(
       skipped.push({ row, reason: "missing-slug" })
       continue
     }
-    if (!row.bcp47) {
-      skipped.push({ row, reason: "missing-bcp47" })
-      continue
-    }
     if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(row.slug)) {
       skipped.push({ row, reason: "invalid-slug" })
+      continue
+    }
+    publicSlugs.add(row.slug)
+    if (!row.bcp47) {
+      skipped.push({ row, reason: "missing-bcp47" })
       continue
     }
     if (!BCP47_VALUE_PATTERN.test(row.bcp47)) {
@@ -107,16 +118,61 @@ export function buildLanguageBcp47Map(
   for (const slug of [...entries.keys()].sort(compareCodePoints)) {
     map[slug] = entries.get(slug) as string
   }
-  return { map: Object.freeze(map), skipped }
+  return {
+    map: Object.freeze(map),
+    publicSlugs: [...publicSlugs].sort(compareCodePoints),
+    skipped,
+  }
 }
 
+/**
+ * The slug-only URL corpus: every well-formed upstream slug (with or without
+ * a BCP-47 tag) plus the public URL overrides, deduplicated and sorted.
+ */
 export function buildPublicWatchLanguageSlugs(
-  map: LanguageBcp47Map,
+  publicSlugs: readonly string[],
   overrides: readonly string[] = PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES,
 ): string[] {
-  return [...new Set([...Object.keys(map), ...overrides])].sort(
-    compareCodePoints,
-  )
+  return [...new Set([...publicSlugs, ...overrides])].sort(compareCodePoints)
+}
+
+export type GenerateLanguageBcp47MapArgs = {
+  check: boolean
+  adminGraphqlUrl: string
+}
+
+export const PRODUCTION_ADMIN_GRAPHQL_URL =
+  "https://admin.jesusfilm.org/api/graphql"
+
+/**
+ * CLI argument resolution for `scripts/generate-language-bcp47-map.ts`.
+ * The admin URL resolves from `--admin-url`, then `ADMIN_GRAPHQL_URL`, then
+ * production. Throws on unknown flags or a malformed URL so a typo fails
+ * with a clear message instead of a fetch error.
+ */
+export function parseGenerateLanguageBcp47MapArgs(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>> = {},
+): GenerateLanguageBcp47MapArgs {
+  let check = false
+  let adminGraphqlUrl: string | undefined
+  for (let index = 0; index < argv.length; index += 1) {
+    const flag = argv[index]
+    if (flag === "--check") {
+      check = true
+    } else if (flag === "--admin-url" && argv[index + 1]) {
+      adminGraphqlUrl = argv[index + 1]
+      index += 1
+    } else {
+      throw new Error(
+        `Unknown argument ${flag}. Usage: generate-language-bcp47-map [--check] [--admin-url <url>]`,
+      )
+    }
+  }
+  const resolvedUrl =
+    adminGraphqlUrl ?? env.ADMIN_GRAPHQL_URL ?? PRODUCTION_ADMIN_GRAPHQL_URL
+  new URL(resolvedUrl)
+  return { check, adminGraphqlUrl: resolvedUrl }
 }
 
 /**
@@ -261,7 +317,11 @@ export type FetchAdminLanguagesOptions = {
   adminGraphqlUrl: string
   fetchImpl?: typeof fetch
   pageSize?: number
+  /** Per-page request budget; a hung admin must fail the job, not stall it. */
+  timeoutMs?: number
 }
+
+export const ADMIN_LANGUAGES_PAGE_TIMEOUT_MS = 30_000
 
 /**
  * Page through admin's public `languages` query. Stops on the first short
@@ -273,6 +333,7 @@ export async function fetchAdminLanguages(
 ): Promise<AdminLanguageRow[]> {
   const fetchImpl = options.fetchImpl ?? fetch
   const pageSize = options.pageSize ?? ADMIN_LANGUAGES_PAGE_SIZE
+  const timeoutMs = options.timeoutMs ?? ADMIN_LANGUAGES_PAGE_TIMEOUT_MS
   const rows: AdminLanguageRow[] = []
 
   for (let offset = 0; ; offset += pageSize) {
@@ -283,6 +344,7 @@ export async function fetchAdminLanguages(
         query: ADMIN_LANGUAGES_QUERY,
         variables: { limit: pageSize, offset },
       }),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (!response.ok) {
       throw new Error(

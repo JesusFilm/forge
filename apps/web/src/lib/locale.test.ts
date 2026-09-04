@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
+import { PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES } from "./language-bcp47-map-codegen"
 import {
   isLocale,
   isLocaleSlug,
@@ -86,13 +87,18 @@ describe("isLocaleSlug (bcp47 OR English-name kebab heuristic)", () => {
 })
 
 describe("public watch language slug guards", () => {
-  it("keeps the shared slug-only corpus aligned with Web's BCP-47 map", () => {
-    const expected = new Set([
-      ...Object.keys(LANGUAGE_BCP47_MAP),
-      "spanish-latin-american",
-    ])
-
-    expect(PUBLIC_WATCH_LANGUAGE_SLUGS).toEqual(expected)
+  it("keeps the shared slug-only corpus a superset of Web's BCP-47 map plus the URL overrides", () => {
+    // The corpus may legitimately hold slugs the map lacks (admin rows with
+    // no BCP-47 still route); the reverse would strand a tagged language.
+    for (const slug of Object.keys(LANGUAGE_BCP47_MAP)) {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)).toBe(true)
+    }
+    for (const slug of PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES) {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)).toBe(true)
+      // Each override exists because HTML_LANG_OVERRIDES supplies its tag;
+      // an override without one would render <html lang="en">.
+      expect(slugToBcp47Tag(slug)).not.toBeNull()
+    }
   })
 
   it("accepts English-name audio slugs used in public /watch URLs", () => {

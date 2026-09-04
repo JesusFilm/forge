@@ -1598,6 +1598,21 @@ describe("two-segment language disambiguation consults the live route manifest (
     ).toBe(true)
   })
 
+  it("does not log the implicit-episode signal when the short context is rescued by a 301 to the standalone video", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const response = await proxy(
+      makeRequest("/discipleship.html/parable-of-the-sower-and-the-seed.html"),
+    )
+
+    expect(response.status).toBe(301)
+    expect(
+      warn.mock.calls.some(([line]) =>
+        String(line).includes("watch_route.implicit_english_episode.rejected"),
+      ),
+    ).toBe(false)
+  })
+
   it("does not log the implicit-episode signal for an admitted English episode", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 

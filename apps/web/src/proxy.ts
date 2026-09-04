@@ -639,14 +639,17 @@ async function classifyManifestAdmission(
     ) {
       return { kind: "admit" }
     }
-    logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
     // Preserve the legacy duplicate-expansion terminal 404 (`/slug` becomes
     // `/slug.html/slug.html`) instead of turning it into a second redirect.
     if (
       decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
     ) {
+      logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
       return { kind: "not-found" }
     }
+    // Otherwise fall through: the child may still be an admitted standalone
+    // video (301 below), which is a rescue, not a rejection — log only at
+    // the terminal not-found.
   } else if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
     return { kind: "admit" }
   }
@@ -690,6 +693,12 @@ async function classifyManifestAdmission(
     return { kind: "known-content-language-gap" }
   }
 
+  if (
+    decision.requiresExactEpisodeAdmission &&
+    decision.manifestRoute.kind === "episode"
+  ) {
+    logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
+  }
   return { kind: "not-found" }
 }
 

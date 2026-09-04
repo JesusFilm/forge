@@ -3692,9 +3692,16 @@ describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
   })
 
   it("does not await the manifest for a language the compiled corpus already knows", async () => {
-    // A never-settling manifest must not block classification of a known
-    // language; the render branch starts the manifest request itself.
-    getWatchRouteManifestMock.mockReturnValue(new Promise(() => {}))
+    // A pending manifest must not block classification of a known language:
+    // the resolver must start while the manifest is still unresolved, and
+    // the render must then complete once the manifest settles (so a future
+    // change that suspends rendering behind the manifest fails here).
+    let resolveManifest!: (value: null) => void
+    getWatchRouteManifestMock.mockReturnValue(
+      new Promise<null>((resolve) => {
+        resolveManifest = resolve
+      }),
+    )
     mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
     const renderPromise = render2Seg("jesus", "english")
@@ -3704,6 +3711,10 @@ describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
         "english",
       )
     })
-    void renderPromise.catch(() => {})
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+
+    resolveManifest(null)
+    await renderPromise
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
   })
 })

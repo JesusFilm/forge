@@ -26,13 +26,12 @@ import {
   diffLanguageCorpus,
   fetchAdminLanguages,
   hasLanguageCorpusDrift,
+  parseGenerateLanguageBcp47MapArgs,
   parseLanguageBcp47MapSource,
   parsePublicWatchLanguageSlugsSource,
   renderLanguageBcp47MapSource,
   renderPublicWatchLanguageSlugsSource,
 } from "../src/lib/language-bcp47-map-codegen"
-
-const PRODUCTION_ADMIN_GRAPHQL_URL = "https://admin.jesusfilm.org/api/graphql"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const MAP_PATH = resolve(scriptDir, "../src/lib/language-bcp47-map.ts")
@@ -41,47 +40,23 @@ const CORPUS_PATH = resolve(
   "../../../packages/watch-url-policy/src/public-watch-language-slugs.ts",
 )
 
-type Args = { check: boolean; adminGraphqlUrl: string }
-
-function parseArgs(argv: readonly string[]): Args {
-  let check = false
-  let adminGraphqlUrl: string | undefined
-  for (let index = 0; index < argv.length; index += 1) {
-    const flag = argv[index]
-    if (flag === "--check") {
-      check = true
-    } else if (flag === "--admin-url" && argv[index + 1]) {
-      adminGraphqlUrl = argv[index + 1]
-      index += 1
-    } else {
-      throw new Error(
-        `Unknown argument ${flag}. Usage: generate-language-bcp47-map [--check] [--admin-url <url>]`,
-      )
-    }
-  }
-  const resolvedUrl =
-    adminGraphqlUrl ??
-    process.env.ADMIN_GRAPHQL_URL ??
-    PRODUCTION_ADMIN_GRAPHQL_URL
-  // Validate early so a typo fails with a clear message, not a fetch error.
-  new URL(resolvedUrl)
-  return { check, adminGraphqlUrl: resolvedUrl }
-}
-
 function formatSlugList(slugs: readonly string[]): string {
   return slugs.length ? slugs.join(", ") : "(none)"
 }
 
 async function main(): Promise<number> {
-  const args = parseArgs(process.argv.slice(2))
+  const args = parseGenerateLanguageBcp47MapArgs(
+    process.argv.slice(2),
+    process.env,
+  )
   console.log(`Fetching admin languages from ${args.adminGraphqlUrl} …`)
   const rows = await fetchAdminLanguages({
     adminGraphqlUrl: args.adminGraphqlUrl,
   })
   const build = buildLanguageBcp47Map(rows)
-  const nextSlugs = buildPublicWatchLanguageSlugs(build.map)
+  const nextSlugs = buildPublicWatchLanguageSlugs(build.publicSlugs)
   console.log(
-    `Fetched ${rows.length} rows → ${Object.keys(build.map).length} map entries, ${build.skipped.length} skipped.`,
+    `Fetched ${rows.length} rows → ${nextSlugs.length} corpus slugs, ${Object.keys(build.map).length} BCP-47 map entries, ${build.skipped.length} rows skipped from the map.`,
   )
   for (const skipped of build.skipped) {
     console.log(
