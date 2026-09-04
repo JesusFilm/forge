@@ -282,9 +282,11 @@ export const currentBindings = [
   "watch_search_transcripts_active",
 ] as const
 
-export const currentTranscriptCompatibility = {
+export const currentTranscriptProjection = {
+  transcriptCollection: "watch_search_transcripts_active",
   contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
   transcriptChunkingVersion: "mastra-v1",
+  projectionRevision: 17n,
 } as const
 
 export const currentAliasTargets = new Map<string, string>([
@@ -438,21 +440,23 @@ export function operatorAcceptanceReport(input: {
 }
 
 export function createCandidateGenerationTestHarness(input?: {
-  currentTranscriptCompatibility?: {
+  currentTranscriptProjection?: {
+    transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    projectionRevision: bigint
   }
 }) {
   const db = memoryPrisma()
   const typesense = schemaClient()
   let now = new Date("2026-08-10T00:00:00.000Z")
-  const transcriptCompatibility =
-    input?.currentTranscriptCompatibility ?? currentTranscriptCompatibility
+  const transcriptProjection =
+    input?.currentTranscriptProjection ?? currentTranscriptProjection
   const service = new TypesenseWatchSearchCandidateGenerationService(
     db.prisma as never,
     typesense,
     () => now,
-    async () => transcriptCompatibility,
+    async () => transcriptProjection,
   )
 
   return {

@@ -20,7 +20,7 @@ import {
   freezeCurrentWatchSearchProfile,
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import { resolveCurrentWatchSearchTranscriptProjection } from "./typesense-watch-search-current-transcript-projection"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
 
@@ -62,6 +62,15 @@ export type CandidateGenerationInput = {
     transcript: CandidateCollectionMember
   }
 }
+
+type CurrentTranscriptProjectionResolver = (
+  prisma: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">,
+) => Promise<{
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  projectionRevision: bigint
+}>
 
 type SchemaClient = Pick<TypesenseClient, "getAlias" | "getCollectionSchema">
 type PointerKind = WatchSearchCandidatePointerKind
@@ -568,13 +577,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
     private readonly prisma: PrismaClient,
     private readonly typesense: SchemaClient,
     private readonly now: () => Date = () => new Date(),
-    private readonly resolveCurrentTranscriptCompatibility: typeof resolveCurrentWatchSearchTranscriptCompatibility = resolveCurrentWatchSearchTranscriptCompatibility,
+    private readonly resolveCurrentTranscriptProjection: CurrentTranscriptProjectionResolver = resolveCurrentWatchSearchTranscriptProjection,
   ) {}
 
-  private async assertExactCurrentTranscriptCompatibility(input: {
+  private async assertExactCurrentTranscriptProjection(input: {
     generation: StoredGeneration
     currentBindings?: readonly string[]
-    prisma?: Pick<PrismaClient, "$queryRaw">
+    prisma?: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
   }): Promise<void> {
     const currentProfile = await freezeCurrentWatchSearchProfile(this.typesense)
     const authoritativeCurrentBindings =
@@ -589,17 +598,24 @@ export class TypesenseWatchSearchCandidateGenerationService {
       )
     }
 
-    const currentCompatibility =
-      await this.resolveCurrentTranscriptCompatibility(
-        (input.prisma ?? this.prisma) as Pick<PrismaClient, "$queryRaw">,
+    const currentProjection =
+      await this.resolveCurrentTranscriptProjection(
+        (input.prisma ?? this.prisma) as Pick<
+          PrismaClient,
+          "watchSearchCurrentTranscriptProjection"
+        >,
       )
     if (
       input.generation.transcriptCollection !==
         currentProfile.binding.transcript ||
+      input.generation.transcriptCollection !==
+        currentProjection.transcriptCollection ||
       input.generation.contentEmbeddingContractId !==
-        currentCompatibility.contentEmbeddingContractId ||
+        currentProjection.contentEmbeddingContractId ||
       input.generation.transcriptChunkingVersion !==
-        currentCompatibility.transcriptChunkingVersion
+        currentProjection.transcriptChunkingVersion ||
+      input.generation.transcriptProjectionRevision !==
+        currentProjection.projectionRevision
     ) {
       throw new CandidateGenerationCompatibilityError(
         `candidate generation ${input.generation.id} transcript identity is stale`,
@@ -1006,7 +1022,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
-        await this.assertExactCurrentTranscriptCompatibility({
+        await this.assertExactCurrentTranscriptProjection({
           generation,
           currentBindings,
           prisma: tx,
@@ -1520,7 +1536,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
-          await this.assertExactCurrentTranscriptCompatibility({
+          await this.assertExactCurrentTranscriptProjection({
             generation,
             currentBindings,
             prisma: tx,

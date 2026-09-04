@@ -10,7 +10,7 @@ import {
   createCandidateGenerationTestHarness,
   currentAliasTargets,
   currentBindings,
-  currentTranscriptCompatibility,
+  currentTranscriptProjection,
   generationInput,
   passingQualificationReport,
   qualificationAudit,
@@ -528,10 +528,67 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("rejects stale qualification and serving promotion after exact transcript compatibility drifts", async () => {
     const harness = createCandidateGenerationTestHarness({
-      currentTranscriptCompatibility: {
-        ...currentTranscriptCompatibility,
+      currentTranscriptProjection: {
+        ...currentTranscriptProjection,
         contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
         transcriptChunkingVersion: "mastra-v2",
+        projectionRevision: 18n,
+      },
+    })
+    const staleService = harness.service
+    const staleDb = harness.db
+    await harness.ready()
+
+    await expect(
+      staleService.recordQualification({
+        qualificationAudit,
+        generationId: "candidate-1",
+        status: "PASSED",
+        indexContractRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v2",
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-reviewed-1",
+        currentBindings,
+        evidence: passingQualificationReport({ currentBindings }),
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(staleDb.qualifications).toHaveLength(0)
+
+    staleDb.qualifications.push({
+      id: "qualification-1",
+      generationId: "candidate-1",
+      status: "PASSED",
+      indexContractRevision: "admin-app-sha-1",
+      transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 17n,
+      qrelsRevision: "qrels-reviewed-1",
+      currentBindings,
+      evidence: passingQualificationReport({ currentBindings }),
+    })
+    await expect(
+      staleService.pinServingGeneration({
+        qualificationAudit,
+        generationId: "candidate-1",
+        indexContractRevision: "admin-app-sha-1",
+        expectedPointerVersion: 0,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v2",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(staleDb.pointers.get("SERVING")?.generationId).toBeNull()
+  })
+
+  it("rejects stale qualification and serving promotion after the published transcript projection revision changes in place", async () => {
+    const harness = createCandidateGenerationTestHarness({
+      currentTranscriptProjection: {
+        ...currentTranscriptProjection,
+        projectionRevision: 18n,
       },
     })
     const staleService = harness.service
