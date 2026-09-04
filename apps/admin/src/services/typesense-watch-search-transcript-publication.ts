@@ -22,7 +22,10 @@ import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watc
 import { withTypesenseWatchSearchIndexLock } from "./typesense-watch-search-publication-lock"
 import type { TypesenseWatchTranscriptDocument } from "./typesense-watch-search-schema"
 
-const LEASE_MS = 60_000
+const BASE_LEASE_MS = 60_000
+const MAX_LEASE_MS = 5 * 60_000
+const LEASE_PER_DOCUMENT_MS = 250
+const READBACK_CONCURRENCY = 16
 const RETRY_DELAY_MS = 5_000
 const POLL_MS = 5_000
 
@@ -138,6 +141,20 @@ function sha256(value: unknown): string {
     .digest("hex")
 }
 
+function publicationLeaseMs(input: {
+  currentDocumentCount: number
+  staleDocumentCount: number
+}): number {
+  const totalDocuments = Math.max(
+    0,
+    input.currentDocumentCount + input.staleDocumentCount,
+  )
+  return Math.min(
+    MAX_LEASE_MS,
+    BASE_LEASE_MS + totalDocuments * LEASE_PER_DOCUMENT_MS,
+  )
+}
+
 function initialProjectionRevision(): bigint {
   return initialCurrentWatchSearchTranscriptProjectionRevision()
 }
@@ -184,6 +201,34 @@ function exactIdFilter(ids: readonly string[]): string {
     )
   }
   return `id:=[${ids.map((id) => `\`${id.replaceAll("`", "\\`")}\``).join(",")}]`
+}
+
+async function mapWithConcurrency<Value, Result>(
+  values: readonly Value[],
+  concurrency: number,
+  mapper: (value: Value, index: number) => Promise<Result>,
+): Promise<Result[]> {
+  if (values.length === 0) return []
+  const normalizedConcurrency = Math.max(
+    1,
+    Math.min(concurrency, values.length),
+  )
+  const results = new Array<Result>(values.length)
+  let nextIndex = 0
+
+  const worker = async () => {
+    for (;;) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+      if (currentIndex >= values.length) return
+      results[currentIndex] = await mapper(values[currentIndex]!, currentIndex)
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: normalizedConcurrency }, () => worker()),
+  )
+  return results
 }
 
 function assertCanonicalDocumentIdsMatchBatch(
@@ -280,7 +325,13 @@ async function claimNextTranscriptPublicationBatch(
       rows.reduce((max, row) => Math.max(max, row.leaseGeneration), 0) + 1
     const leaseToken = randomUUID()
     const leaseTokenHash = createHash("sha256").update(leaseToken).digest("hex")
-    const leaseExpiresAt = new Date(now.getTime() + LEASE_MS)
+    const leaseExpiresAt = new Date(
+      now.getTime() +
+        publicationLeaseMs({
+          currentDocumentCount: latest.currentDocumentIds.length,
+          staleDocumentCount: staleDocumentIds.length,
+        }),
+    )
     const updated =
       await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
         where: { id: { in: eventIds } },
@@ -423,12 +474,13 @@ async function readBackTranscriptDocuments(
   collection: string,
   ids: readonly string[],
 ): Promise<TypesenseWatchTranscriptDocument[]> {
-  const rows = await Promise.all(
-    ids.map((id) =>
+  const rows = await mapWithConcurrency(
+    ids,
+    READBACK_CONCURRENCY,
+    (id) =>
       typesense.getDocument<
         TypesenseWatchTranscriptDocument & { embedding?: unknown }
       >(collection, id),
-    ),
   )
   return rows.map((row, index) => {
     if (!row) {
@@ -448,8 +500,10 @@ async function assertStaleDocumentsRemoved(
   collection: string,
   ids: readonly string[],
 ): Promise<void> {
-  const rows = await Promise.all(
-    ids.map((id) => typesense.getDocument(collection, id)),
+  const rows = await mapWithConcurrency(
+    ids,
+    READBACK_CONCURRENCY,
+    (id) => typesense.getDocument(collection, id),
   )
   const present = rows.findIndex((row) => row != null)
   if (present !== -1) {
@@ -748,7 +802,9 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
 export const _internals = {
   exactIdFilter,
   initialProjectionRevision,
+  mapWithConcurrency,
   normalizeEmbedding,
   normalizeTranscriptDocument,
+  publicationLeaseMs,
   sha256,
 }

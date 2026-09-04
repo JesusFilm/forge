@@ -114,4 +114,47 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
 
     expect(_internals.initialProjectionRevision()).toBe(8n)
   })
+
+  it("sizes the publication lease to the transcript batch and caps it", async () => {
+    const { _internals } = await import(
+      "./typesense-watch-search-transcript-publication"
+    )
+
+    expect(
+      _internals.publicationLeaseMs({
+        currentDocumentCount: 1,
+        staleDocumentCount: 0,
+      }),
+    ).toBe(60_250)
+    expect(
+      _internals.publicationLeaseMs({
+        currentDocumentCount: 2_000,
+        staleDocumentCount: 500,
+      }),
+    ).toBe(300_000)
+  })
+
+  it("bounds per-document readback concurrency", async () => {
+    const { _internals } = await import(
+      "./typesense-watch-search-transcript-publication"
+    )
+    let inFlight = 0
+    let peakInFlight = 0
+
+    const results = await _internals.mapWithConcurrency(
+      Array.from({ length: 40 }, (_, index) => index),
+      16,
+      async (value) => {
+        inFlight += 1
+        peakInFlight = Math.max(peakInFlight, inFlight)
+        await Promise.resolve()
+        await Promise.resolve()
+        inFlight -= 1
+        return value
+      },
+    )
+
+    expect(results).toEqual(Array.from({ length: 40 }, (_, index) => index))
+    expect(peakInFlight).toBeLessThanOrEqual(16)
+  })
 })
