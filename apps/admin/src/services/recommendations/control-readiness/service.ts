@@ -143,6 +143,19 @@ export class RecommendationControlReadinessService {
             JOIN active_requests request ON request.id = selection.request_id
             WHERE selection.received_at <= ${capturedAt}
           ),
+          eligible_selections AS MATERIALIZED (
+            SELECT selection.*
+            FROM scoped_selections selection
+            WHERE selection.attribution_eligible_at <= ${capturedAt}
+          ),
+          attribution_eligible_episodes AS MATERIALIZED (
+            SELECT episode.id
+            FROM recommendation_playback_episode episode
+            JOIN eligible_selections selection
+              ON selection.request_id = episode.request_id
+              AND selection.item_id = episode.item_id
+              AND selection.id = episode.selection_id
+          ),
           latest_outcomes AS MATERIALIZED (
             SELECT outcome.*
             FROM recommendation_outcome_revision outcome
@@ -177,6 +190,10 @@ export class RecommendationControlReadinessService {
             WHERE outcome.eligibility_state = 'eligible'
               AND outcome.actor_class IN ('human_anonymous', 'human_signed_in')
               AND 'aggregate' = ANY(outcome.eligible_scopes)
+              AND EXISTS (
+                SELECT 1 FROM attribution_eligible_episodes episode
+                WHERE episode.id = outcome.episode_id
+              )
           ),
           scoped_actions AS MATERIALIZED (
             SELECT action.*, decision.actor_class AS eligibility_actor_class,
@@ -196,6 +213,10 @@ export class RecommendationControlReadinessService {
               AND action.eligibility_state = 'eligible'
               AND action.eligibility_actor_class IN ('human_anonymous', 'human_signed_in')
               AND 'aggregate' = ANY(action.eligible_scopes)
+              AND EXISTS (
+                SELECT 1 FROM attribution_eligible_episodes episode
+                WHERE episode.id = action.episode_id
+              )
           ),
           mission_by_episode AS MATERIALIZED (
             SELECT
@@ -225,14 +246,12 @@ export class RecommendationControlReadinessService {
             COUNT(*) FILTER (WHERE request.result = 'fallback') AS "fallbackRequests",
             (SELECT COUNT(*) FROM served_items) AS "servedItems",
             (SELECT COUNT(*) FROM scoped_impressions) AS impressions,
-            (SELECT COUNT(*) FROM scoped_selections) AS selections,
+            (SELECT COUNT(*) FROM eligible_selections) AS selections,
             (
               SELECT COUNT(*)
               FROM scoped_selections selection
-              WHERE NOT EXISTS (
-                SELECT 1 FROM scoped_impressions impression
-                WHERE impression.item_id = selection.item_id
-              )
+              WHERE selection.attribution_eligible_at IS NULL
+                OR selection.attribution_eligible_at > ${capturedAt}
             ) AS "selectionWithoutImpression",
             (SELECT COUNT(*) FROM human_outcomes) AS "matureOutcomes",
             (SELECT COUNT(*) FROM human_outcomes WHERE qualified_view = true) AS "qualifiedViewOutcomes",
@@ -281,7 +300,10 @@ export class RecommendationControlReadinessService {
               FILTER (WHERE request.retrieval_latency_ms IS NOT NULL) AS "retrievalP95Ms",
             MAX(COALESCE(request.issued_at, request.created_at)) AS "requestWatermark",
             (SELECT MAX(received_at) FROM scoped_impressions) AS "impressionWatermark",
-            (SELECT MAX(received_at) FROM scoped_selections) AS "selectionWatermark",
+            (
+              SELECT MAX(GREATEST(received_at, COALESCE(attribution_eligible_at, received_at)))
+              FROM scoped_selections
+            ) AS "selectionWatermark",
             (SELECT MAX(created_at) FROM latest_outcomes) AS "outcomeWatermark",
             (SELECT MAX(received_at) FROM scoped_actions) AS "missionWatermark",
             (

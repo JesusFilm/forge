@@ -205,6 +205,7 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND request.expires_at > ${input.now}
           AND selection.expires_at > ${input.now}
+          AND selection.attribution_eligible_at <= ${input.now}
           AND selection.occurred_at >= GREATEST(
             ${sessionStart}, profile.created_at, link.linked_at
           )
@@ -226,6 +227,7 @@ export async function loadDatabaseProfileProjectionEvidence(
         WHERE request.session_digest = ${input.sessionDigest}
           AND request.expires_at > ${input.now}
           AND selection.expires_at > ${input.now}
+          AND selection.attribution_eligible_at <= ${input.now}
           AND selection.occurred_at >= ${sessionStart}
           AND selection.occurred_at <= ${input.now}
         ORDER BY selection.occurred_at DESC, selection.id
@@ -298,7 +300,11 @@ export async function loadDatabaseProfileProjectionEvidence(
           )
           AND (
             episode.selection_id IS NULL
-            OR selection.occurred_at >= profile.created_at
+            OR (
+              selection.attribution_eligible_at IS NOT NULL
+              AND selection.attribution_eligible_at <= ${input.now}
+              AND selection.occurred_at >= profile.created_at
+            )
           )
           AND COALESCE(episode.claimed_at, episode.created_at) >= profile.created_at
           AND outcome.expires_at > ${input.now}
@@ -378,9 +384,13 @@ export async function loadDatabaseProfileProjectionEvidence(
           )
           AND (
             episode.selection_id IS NULL
-            OR selection.occurred_at >= GREATEST(
-              profile.created_at,
-              link.linked_at
+            OR (
+              selection.attribution_eligible_at IS NOT NULL
+              AND selection.attribution_eligible_at <= ${input.now}
+              AND selection.occurred_at >= GREATEST(
+                profile.created_at,
+                link.linked_at
+              )
             )
           )
           AND COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)

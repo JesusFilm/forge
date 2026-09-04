@@ -109,6 +109,8 @@ export async function getRecommendationRecentContext(
       FROM recent_requests request
       JOIN recommendation_selection selection
         ON selection.request_id = request.id
+        AND selection.attribution_eligible_at IS NOT NULL
+        AND selection.attribution_eligible_at <= ${input.now}
         AND selection.occurred_at >= ${windowStart}
         AND selection.occurred_at <= ${input.now}
     ),

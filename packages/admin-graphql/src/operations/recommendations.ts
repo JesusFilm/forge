@@ -113,6 +113,7 @@ export const adminSelectSemanticRecommendationMutation = `
     $eventId: String!
     $occurredAt: String!
     $tabDigest: String
+    $claimNonce: String!
   ) {
     selectSemanticRecommendation(
       contractVersion: $contractVersion
@@ -123,6 +124,7 @@ export const adminSelectSemanticRecommendationMutation = `
       eventId: $eventId
       occurredAt: $occurredAt
       tabDigest: $tabDigest
+      claimNonce: $claimNonce
     ) {
       status
       claimNonce

@@ -75,6 +75,7 @@ export type PlaybackEpisodeDetail = Readonly<{
   state: string
   generation: number
   nextFactSequence: number
+  transportReplayCount: number
   replayCount: number
   conflictCount: number
   activeUntil: Date
@@ -235,6 +236,7 @@ export async function loadPlaybackEpisodeDetail(
         state: true,
         generation: true,
         nextFactSequence: true,
+        transportReplayCount: true,
         replayCount: true,
         conflictCount: true,
         activeUntil: true,

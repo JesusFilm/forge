@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationOutcomeService } from "./outcome.service"
 import { RecommendationPlaybackService } from "./playback.service"
@@ -21,7 +22,7 @@ const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 72 && name.includes("recommendation")
+    return ordinal >= 52 && ordinal <= 74 && name.includes("recommendation")
   })
   .sort()
   .map((name) =>
@@ -367,6 +368,265 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         status: "published",
         revision: 2,
         factWatermark: 3,
+      })
+    })
+
+    it("serializes concurrent selection and impression while preserving exact replay semantics", async () => {
+      const raceNow = new Date()
+      const raceExpiresAt = new Date(raceNow.getTime() + 24 * 60 * 60 * 1_000)
+      const sessionDigest = "9".repeat(64)
+      const capabilityJti = "race-item-capability-jti"
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "race-test",
+              status: "active",
+              key: Buffer.alloc(32, 9).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenCore = createRecommendationTokenService({
+        keyring,
+        readRevokedKids: async () => [],
+        now: () => raceNow,
+      })
+      const tokenService = { activeKid: keyring.active.kid, ...tokenCore }
+      const capability = await tokenCore.signDeliveryCapability({
+        jti: capabilityJti,
+        requestId: "race-request",
+        itemId: "race-item",
+        sessionDigest,
+        surface: "watch-below-player-v1",
+        manifestId: "semantic-transcript-pgvector-v1",
+      })
+
+      await client.query("BEGIN")
+      await client.query(
+        `INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest,
+          seed_media_id, locale, expected_item_count, state, result,
+          delivery_jti, signing_kid, issued_at, expires_at
+        ) VALUES (
+          'race-request', 'semantic-recommendation-v1',
+          'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
+          'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
+          'race-seed', 'en', 1, 'prepared', 'served',
+          'race-delivery-jti', 'race-test', $2, $3
+        )`,
+        [sessionDigest, raceNow, raceExpiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_served_item (
+          id, request_id, position, target_media_id, canonical_href,
+          candidate_generator, candidate_provenance, capability_jti,
+          signing_kid, expires_at
+        ) VALUES (
+          'race-item', 'race-request', 0, 'race-target',
+          '/watch/race-target.html', 'semantic', '{}'::jsonb, $1,
+          'race-test', $2
+        )`,
+        [capabilityJti, raceExpiresAt],
+      )
+      await client.query(
+        `UPDATE recommendation_request SET state = 'issued'
+         WHERE id = 'race-request'`,
+      )
+      await client.query("COMMIT")
+
+      let raceId = 0
+      const dispatchProfileFeedback = vi.fn(async () => undefined)
+      const episodeService = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => raceNow,
+        newId: () => `race-generated-${++raceId}`,
+        dispatchProfileFeedback,
+      })
+      const evidenceService = new RecommendationEvidenceService({
+        prisma,
+        tokenService,
+        now: () => raceNow,
+        dispatchProfileFeedback,
+      })
+      const selectionInput = {
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability,
+        requestId: "race-request",
+        itemId: "race-item",
+        sessionDigest,
+        eventId: "race-selection-event",
+        occurredAt: raceNow.toISOString(),
+        tabDigest: "8".repeat(64),
+        claimNonce: "race-client-handoff-nonce",
+      }
+      const [selection, impression] = await Promise.all([
+        episodeService.select(selectionInput),
+        evidenceService.record({
+          caller,
+          contractVersion: "recommendation-evidence-v1",
+          capability,
+          requestId: "race-request",
+          itemId: "race-item",
+          sessionDigest,
+          events: [
+            {
+              eventId: "race-impression-event",
+              kind: "impression" as const,
+              occurredAt: raceNow.toISOString(),
+              payload: { visibilityPolicy: "watch-below-player-v1" },
+            },
+          ],
+        }),
+      ])
+
+      expect(selection).toMatchObject({
+        status: "accepted",
+        claimNonce: selectionInput.claimNonce,
+      })
+      expect(impression).toEqual([
+        { eventId: "race-impression-event", status: "accepted" },
+      ])
+      await expect(
+        episodeService.select(selectionInput),
+      ).resolves.toMatchObject({
+        status: "replay",
+        claimNonce: selectionInput.claimNonce,
+      })
+      await expect(
+        episodeService.select({
+          ...selectionInput,
+          claimNonce: "different-client-handoff-nonce",
+        }),
+      ).resolves.toMatchObject({ status: "conflict", claimNonce: null })
+      const committed = await prisma.recommendationSelection.findUnique({
+        where: { itemId: "race-item" },
+        select: { attributionEligibleAt: true },
+      })
+      expect(committed?.attributionEligibleAt).toEqual(raceNow)
+      expect(dispatchProfileFeedback).not.toHaveBeenCalled()
+    })
+
+    it("keeps navigation-only selections out of attribution and separates transport replays", async () => {
+      const receivedAt = new Date()
+      const expiresAt = new Date(receivedAt.getTime() + 24 * 60 * 60 * 1_000)
+      const activeUntil = new Date(receivedAt.getTime() + 60 * 60 * 1_000)
+      const hardUntil = new Date(receivedAt.getTime() + 2 * 60 * 60 * 1_000)
+      await client.query("BEGIN")
+      await client.query(
+        `INSERT INTO recommendation_request (
+          id, contract_version, surface_version, manifest_id,
+          strategy_version, classifier_version, session_digest,
+          seed_media_id, locale, expected_item_count, result, expires_at
+        ) VALUES (
+          'attribution-request', 'semantic-recommendation-v1',
+          'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
+          'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
+          'seed-media', 'en', 1, 'served', $2
+        )`,
+        ["b".repeat(64), expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_served_item (
+          id, request_id, position, target_media_id, canonical_href,
+          candidate_generator, candidate_provenance, expires_at
+        ) VALUES (
+          'attribution-item', 'attribution-request', 0, 'target-media',
+          '/watch/target.html', 'semantic', '{}'::jsonb, $1
+        )`,
+        [expiresAt],
+      )
+      await client.query("COMMIT")
+      await client.query(
+        `INSERT INTO recommendation_selection (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, claim_nonce_digest, handoff_expires_at,
+          occurred_at, received_at, expires_at
+        ) VALUES (
+          'attribution-selection', 'attribution-request', 'attribution-item',
+          'attribution-selection-jti', 'selection-event', $1, $2, $3,
+          $4, $4, $3
+        )`,
+        ["c".repeat(64), "d".repeat(64), expiresAt, receivedAt],
+      )
+
+      const pending = await client.query<{ count: number }>(
+        `SELECT COUNT(*)::integer AS count
+         FROM recommendation_selection
+         WHERE id = 'attribution-selection'
+           AND attribution_eligible_at <= $1`,
+        [receivedAt],
+      )
+      expect(pending.rows[0]?.count).toBe(0)
+      await expect(
+        client.query(
+          `UPDATE recommendation_selection
+           SET attribution_eligible_at = $1
+           WHERE id = 'attribution-selection'`,
+          [receivedAt],
+        ),
+      ).rejects.toThrow("requires an eligible impression")
+
+      await client.query(
+        `INSERT INTO recommendation_impression (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, visibility_policy, occurred_at, received_at,
+          expires_at
+        ) VALUES (
+          'attribution-impression', 'attribution-request', 'attribution-item',
+          'attribution-impression-jti', 'impression-event', $1,
+          'watch-below-player-v1', $2, $2, $3
+        )`,
+        ["e".repeat(64), receivedAt, expiresAt],
+      )
+      await client.query(
+        `UPDATE recommendation_selection
+         SET attribution_eligible_at = $1
+         WHERE id = 'attribution-selection'`,
+        [receivedAt],
+      )
+      await expect(
+        client.query(
+          `UPDATE recommendation_selection
+           SET attribution_eligible_at = $1
+           WHERE id = 'attribution-selection'`,
+          [new Date(receivedAt.getTime() + 1)],
+        ),
+      ).rejects.toThrow("immutable once eligible")
+
+      await client.query(
+        `INSERT INTO recommendation_playback_episode (
+          id, request_id, item_id, selection_id, media_id, session_digest,
+          state, active_until, hard_until, expires_at
+        ) VALUES (
+          'attribution-episode', 'attribution-request', 'attribution-item',
+          'attribution-selection', 'target-media', $1, 'pending', $2, $3, $4
+        )`,
+        ["b".repeat(64), activeUntil, hardUntil, expiresAt],
+      )
+      await client.query(
+        `UPDATE recommendation_playback_episode
+         SET transport_replay_count = transport_replay_count + 5
+         WHERE id = 'attribution-episode'`,
+      )
+      const episode = await client.query<{
+        replayCount: number
+        transportReplayCount: number
+        conflictCount: number
+      }>(
+        `SELECT replay_count AS "replayCount",
+                transport_replay_count AS "transportReplayCount",
+                conflict_count AS "conflictCount"
+         FROM recommendation_playback_episode
+         WHERE id = 'attribution-episode'`,
+      )
+      expect(episode.rows[0]).toEqual({
+        replayCount: 0,
+        transportReplayCount: 5,
+        conflictCount: 0,
       })
     })
   },

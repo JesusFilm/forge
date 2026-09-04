@@ -85,6 +85,62 @@ export async function recommendationJsonWithDeadline<T = unknown>(
   )
 }
 
+export async function recommendationJsonWithRetry<T = unknown>(
+  url: string,
+  init: RequestInit,
+  deadlineMs: number,
+  options: {
+    attempts?: number
+    backoffMs?: number
+    accept?: (value: T) => boolean
+    onAttemptFailure?: (failure: {
+      attempt: number
+      reason: "response_invalid" | "transport"
+      willRetry: boolean
+    }) => void
+  } = {},
+): Promise<T> {
+  const attempts = Math.max(1, Math.min(3, options.attempts ?? 2))
+  const backoffMs = Math.max(0, Math.min(1_000, options.backoffMs ?? 100))
+  return withinRecommendationDeadline(
+    init.signal,
+    deadlineMs,
+    async (signal) => {
+      let lastError: unknown
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        let failureReason: "response_invalid" | "transport" = "transport"
+        try {
+          const response = await fetch(url, { ...init, signal })
+          if (!response.ok) {
+            throw new RecommendationRuntimeError("request_failed")
+          }
+          const value = (await response.json()) as T
+          if (options.accept && !options.accept(value)) {
+            failureReason = "response_invalid"
+            throw new RecommendationRuntimeError("request_failed")
+          }
+          return value
+        } catch (error) {
+          lastError = error
+          const willRetry = !signal.aborted && attempt + 1 < attempts
+          options.onAttemptFailure?.({
+            attempt: attempt + 1,
+            reason: failureReason,
+            willRetry,
+          })
+          if (!willRetry) break
+          if (backoffMs > 0) {
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, backoffMs * 2 ** attempt)
+            })
+          }
+        }
+      }
+      throw lastError
+    },
+  )
+}
+
 export function randomRecommendationNonce() {
   const bytes = new Uint8Array(16)
   crypto.getRandomValues(bytes)
