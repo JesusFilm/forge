@@ -25,6 +25,7 @@ import {
   isoDate,
   writeStatusFileAtomically,
   withExclusiveFileLock,
+  validateSliceFileReferences,
 } from "../scripts/source-status.js"
 import { validateSourceStatusRegistry } from "../src/contracts/source-status.js"
 import type { Mutation } from "../scripts/source-status.js"
@@ -147,6 +148,37 @@ describe("canonical registry reconciliation", () => {
     expect(() =>
       validateSourceStatusRegistry(file, [{ key: "foo", languages: ["es"] }]),
     ).toThrow(/languages/)
+  })
+})
+
+describe("slice file reference validation", () => {
+  const packageRoot = "/workspace/apps/rag"
+
+  it("accepts an existing package-local Markdown record", () => {
+    expect(() =>
+      validateSliceFileReferences(
+        validateDoc(loadDoc(FIXTURE)),
+        packageRoot,
+        (file) => file === `${packageRoot}/docs/slices/foo.md`,
+      ),
+    ).not.toThrow()
+  })
+
+  it("rejects missing, non-Markdown, and package-escaping records", () => {
+    const file = validateDoc(loadDoc(FIXTURE))
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => false),
+    ).toThrow(/does not exist/)
+
+    file.sources.foo.slice_file = "docs/slices/foo.txt"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/Markdown/)
+
+    file.sources.foo.slice_file = "../../outside.md"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/escapes/)
   })
 })
 

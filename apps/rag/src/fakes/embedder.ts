@@ -1,7 +1,7 @@
 /**
  * In-memory Embedder fake. Deterministic vectors (see vector-math) so unit
  * tests get stable, comparable embeddings with no network. Adopts the
- * reconciled port shape (docs/architecture.md §4 note): `embed` returns
+ * reconciled port shape (docs/architecture.md §4): `embed` returns
  * `(number[] | null)[]` — null for empty/whitespace input — and exposes
  * `readonly model` / `readonly dimensions`. The null-per-empty-input is the
  * load-bearing skip path the dedup/ingest logic relies on.

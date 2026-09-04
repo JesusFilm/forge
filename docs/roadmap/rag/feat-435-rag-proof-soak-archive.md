@@ -6,7 +6,7 @@ priority: "P0"
 status: "not-started"
 start_date: "2026-10-04"
 duration: 7
-depends_on: ["feat-434"]
+depends_on: ["feat-434", "feat-452"]
 blocks: []
 tags: ["rag", "verification", "retirement"]
 ---

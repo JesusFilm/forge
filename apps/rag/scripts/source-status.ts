@@ -31,6 +31,7 @@
  * tested from tests/source-status-cli.test.ts; main() holds the fs + argv I/O.
  */
 import { readFile, rename, rm, writeFile } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseDocument, isMap } from "yaml"
@@ -382,12 +383,30 @@ function req(flags: Record<string, string>, key: string): string {
 
 // ── I/O entrypoint ───────────────────────────────────────────────────────────
 
-const FILE = path.resolve(
-  import.meta.dirname,
-  "..",
-  "docs",
-  "source-status.yaml",
-)
+const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..")
+const FILE = path.join(PACKAGE_ROOT, "docs", "source-status.yaml")
+
+export function validateSliceFileReferences(
+  file: SourceStatusFile,
+  packageRoot: string,
+  exists: (file: string) => boolean = existsSync,
+): void {
+  for (const [key, row] of Object.entries(file.sources)) {
+    const resolved = path.resolve(packageRoot, row.slice_file)
+    if (!resolved.startsWith(`${packageRoot}${path.sep}`))
+      throw new Error(
+        `source '${key}' slice_file escapes the RAG package: ${row.slice_file}`,
+      )
+    if (path.extname(resolved) !== ".md")
+      throw new Error(
+        `source '${key}' slice_file must reference Markdown: ${row.slice_file}`,
+      )
+    if (!exists(resolved))
+      throw new Error(
+        `source '${key}' slice_file does not exist: ${row.slice_file}`,
+      )
+  }
+}
 
 export interface AtomicFileOps {
   writeFile(
@@ -454,7 +473,8 @@ async function main(argv: string[]): Promise<void> {
   const cmd = parseArgv(argv)
 
   if (cmd.kind === "check") {
-    validateCanonicalDoc(loadDoc(await readFile(FILE, "utf8")))
+    const file = validateCanonicalDoc(loadDoc(await readFile(FILE, "utf8")))
+    validateSliceFileReferences(file, PACKAGE_ROOT)
     console.log("✔ docs/source-status.yaml is valid")
     return
   }

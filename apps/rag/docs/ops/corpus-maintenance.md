@@ -124,6 +124,70 @@ and write preflight shown
 above. Record source key, limit, model identifier, summary counts, and pass/fail
 only.
 
+## Promote locally acquired raw documents
+
+For a new walled or metered source, production acquisition would pay to fetch
+content already validated locally. The optional `raws:promote` path copies only
+that source's newest staged row per canonical URL into production. It omits the
+source row ID, `ingested_at`, and index-attempt fields, so production assigns new
+IDs and every promoted row remains pending for the normal production indexer.
+
+Use normal `acquire:production` for free HTTP sources. Promotion deliberately
+accepts only a source with no existing production `raw_documents`; it is not an
+update, append, overwrite, or recovery mechanism. A nonempty target fails before
+mutation.
+
+Set the local database separately so the generic `DATABASE_URL` cannot be
+mistaken for production. The production target comes only from the namespaced
+Doppler value, and its exact host must match:
+
+```sh
+export RAG_LOCAL_DATABASE_URL='<local PostgreSQL URL>'
+doppler run --project forge-rag --config prd -- \
+  env RAG_LOCAL_DATABASE_URL="$RAG_LOCAL_DATABASE_URL" \
+  pnpm --filter @forge/rag raws:promote --source <source-key>
+```
+
+The first run is read-only and reports only the source key, distinct-row count,
+and a content digest. Record the exact `rows` and `digest` values. After reviewing
+them, pin both values on the apply command along with the second production-write
+signal:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  env RAG_LOCAL_DATABASE_URL="$RAG_LOCAL_DATABASE_URL" \
+      JFRAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag raws:promote --source <source-key> \
+    --expected-rows <reviewed-count> \
+    --expected-digest <reviewed-digest> \
+    --apply
+```
+
+The command requires `JFRAG_EXPECTED_POSTGRES_HOST` from the approved production
+configuration, refuses identical source/target database identities, selects the
+newest row per canonical URL, copies in batches inside one serializable target
+transaction, and rolls back unless source and target count/digest reconciliation
+succeeds. Serialization also makes concurrent empty-target checks fail closed
+instead of allowing two promotions to append the same source.
+`--apply` refuses before target mutation if the current local count or digest no
+longer matches the reviewed dry-run values.
+It never prints URLs, credentials, raw content, or row IDs.
+
+After promotion, preview and apply the existing bounded production index path;
+embedding remains a separate metered write:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag index:production --source <source-key> --limit 10
+doppler run --project forge-rag --config prd -- \
+  env JFRAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag index:production --source <source-key> --limit 10 --apply
+```
+
+Record only the source key, promoted count, digest, batch count, and pass/fail.
+Do not record connection details or corpus content. If the process fails, the
+target transaction rolls back; rerun the dry-run preflight before retrying.
+
 ## Language sweep and guarded reversal
 
 Default to blank-language rows, one source, a small limit, and dry run:
