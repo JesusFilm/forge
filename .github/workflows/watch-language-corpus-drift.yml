@@ -1,0 +1,120 @@
+name: watch-language-corpus-drift
+
+# Web's public Watch language namespace (apps/web/src/lib/language-bcp47-map.ts
+# and packages/watch-url-policy/src/public-watch-language-slugs.ts) is generated
+# from admin's public `languages` query. PR CI cannot reach production admin, so
+# this scheduled job is the drift gate: when admin has published languages the
+# committed corpus lacks, it regenerates the files and opens (or refreshes) a PR.
+#
+# The runtime route classifier already admits manifest-listed languages before
+# this lands, so drift degrades <html lang> / UI chrome for a new language rather
+# than 404ing its URL — but the corpus still feeds the client-side pickers and
+# URL parsers, which is why it must be kept fresh.
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    # Daily, 07:30 UTC (after admin's overnight Core sync).
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: watch-language-corpus-drift
+  cancel-in-progress: true
+
+env:
+  ADMIN_URL: https://admin.jesusfilm.org/api/graphql
+  BRANCH: chore/watch-language-corpus-refresh
+
+jobs:
+  check-and-refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          # Pushes and PRs made with the default github.token do not start
+          # other workflows, so a refresh PR would carry no ci-gate. Provide
+          # WATCH_CORPUS_REFRESH_TOKEN (a fine-grained PAT or GitHub App
+          # installation token with contents+pull-requests write) to get CI
+          # on the refresh PR automatically; without it, a maintainer must
+          # push an empty commit or close/reopen the PR to start CI.
+          token: ${{ secrets.WATCH_CORPUS_REFRESH_TOKEN || github.token }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Check committed corpus against admin
+        id: check
+        continue-on-error: true
+        run: pnpm --filter @forge/web check:language-bcp47-map --admin-url "$ADMIN_URL"
+      - name: Regenerate corpus
+        if: steps.check.outcome == 'failure'
+        run: |
+          pnpm --filter @forge/web generate:language-bcp47-map --admin-url "$ADMIN_URL"
+          pnpm exec prettier --write \
+            apps/web/src/lib/language-bcp47-map.ts \
+            packages/watch-url-policy/src/public-watch-language-slugs.ts
+          pnpm --filter @forge/web check:language-bcp47-map --admin-url "$ADMIN_URL"
+          git diff --stat
+      - name: Open or refresh the refresh PR
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.WATCH_CORPUS_REFRESH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The checkout is main-only, so the refresh branch has no
+          # remote-tracking ref yet. Fetch it (absent on the first run) so the
+          # lease below compares against the real remote tip instead of
+          # rejecting every second run with "stale info".
+          git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          git checkout -B "$BRANCH"
+          git add apps/web/src/lib/language-bcp47-map.ts packages/watch-url-policy/src/public-watch-language-slugs.ts
+          if git diff --cached --quiet; then
+            echo "Drift reported but no file changes were produced; failing so the check output is inspected."
+            exit 1
+          fi
+          git commit \
+            -m "chore(web): refresh Watch language corpus from admin" \
+            -m "Automated regeneration by .github/workflows/watch-language-corpus-drift.yml. Run 'pnpm --filter @forge/web check:language-bcp47-map' for the diff."
+          git push --force-with-lease origin "$BRANCH"
+          if gh pr view "$BRANCH" --json number --jq .number >/dev/null 2>&1; then
+            echo "Existing PR refreshed."
+          else
+            {
+              echo "Admin has published languages that the committed Watch language namespace lacks."
+              echo "This PR regenerates apps/web/src/lib/language-bcp47-map.ts and"
+              echo "packages/watch-url-policy/src/public-watch-language-slugs.ts from admin's public languages query."
+              echo
+              echo "Until it merges, the proxy and page still route these languages through the live route"
+              echo "manifest (isWatchAudioLanguageSlug), but the language pickers and client-side URL parsers"
+              echo "only learn them from this corpus."
+              echo
+              echo "Generated by the watch-language-corpus-drift workflow. See Linear FGE-81."
+              echo
+              echo "If no CI checks appear, the PR was opened with the default github.token (which cannot"
+              echo "start workflows): push an empty commit or close/reopen it, or configure the"
+              echo "WATCH_CORPUS_REFRESH_TOKEN secret so future refresh PRs get CI automatically."
+            } > "$RUNNER_TEMP/pr-body.md"
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore(web): refresh Watch language corpus from admin" \
+              --body-file "$RUNNER_TEMP/pr-body.md"
+          fi
+      - name: Fail the run when drift was found
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::error::Watch language corpus drift detected; a refresh PR was opened or updated on branch $BRANCH."
+          exit 1
