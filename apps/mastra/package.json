@@ -41,6 +41,7 @@
     "@aws-sdk/s3-request-presigner": "3.1100.0",
     "@forge/devotional-workspace": "workspace:*",
     "@forge/experience-schema": "workspace:*",
+    "@forge/watch-url-policy": "workspace:*",
     "@mastra/core": "1.64.0",
     "@mastra/duckdb": "1.6.4",
     "@mastra/editor": "0.14.3",

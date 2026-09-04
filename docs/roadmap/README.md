@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 4, 2026)
 
-- **Total tickets:** 624
-- **Complete:** 467
+- **Total tickets:** 626
+- **Complete:** 468
 - **In progress:** 48
 - **Not started:** 37
-- **Blocked:** 72
+- **Blocked:** 73
 - **Overdue and not complete:** 116
 
 ## Feature Index
@@ -293,7 +293,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-402](platform/feat-402-mobile-expo-sdk57-patch-alignment.md)                     | Mobile Expo SDK 57 patch alignment                                               | edmonday   | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-426](platform/feat-426-admin-mcp-oauth-resource-binding.md)                      | Repair Admin MCP OAuth resource binding                                          | codex      | P0       | 2026-08-26 | 2    | 2026-08-27 | complete    |
 | [feat-423](platform/feat-423-changelog-admin-access-grants.md)                         | Grant local Changelog Reader access by command                                   | edmonday   | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
+| [feat-455](platform/feat-455-watch-route-alerts.md)                                    | Surface Watch route 404 alerts                                                   | codex      | P0       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
+| [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit consent-approved Watch page-not-found telemetry                             | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                  | Roadmap Operations and Owner Hygiene                                             | josh       | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -515,7 +517,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-428](platform/feat-428-watch-infinite-feed-shared-cache.md)                      | Watch infinite feed shared cache                                                 | codex      | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-423](platform/feat-423-devcontainer-host-accessible-dev-ports.md)                | Expose devcontainer development servers to the host                              | nisal      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-424](platform/feat-424-watch-series-footer-parity.md)                            | Watch series footer parity                                                       | codex      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
-| [feat-453](platform/feat-453-watch-template-content-rail.md)                           | Unify Watch template content rails                                               | codex      | P2       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-454](platform/feat-454-watch-series-intro-dimensions.md)                         | Align Watch series intro dimensions                                              | codex      | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
@@ -582,6 +583,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-425](platform/feat-425-admin-ai-chat-collapsible-rail.md)                        | Admin AI Chat Collapsible Rail                                                   | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-425](platform/feat-425-watch-single-collection-parent-link.md)                   | Watch single collection parent link                                              | codex      | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-427](platform/feat-427-watch-carousel-content-labels.md)                         | Watch carousel content labels                                                    | codex      | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
+| [feat-453](platform/feat-453-watch-template-content-rail.md)                           | Unify Watch template content rails                                               | codex      | P2       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-342](platform/feat-342-tv-device-grant-scaffold-teardown.md)                     | TV device-grant scaffold teardown                                                | ekkasit    | P2       | 2026-09-15 | 2    | 2026-09-16 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |

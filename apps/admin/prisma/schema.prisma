@@ -340,6 +340,42 @@ enum WatchSearchCandidateLeaseKind {
   EVALUATION @map("evaluation")
 }
 
+/// Execution mode is persisted with each Watch-route monitoring run so a
+/// diagnostic dry run can never be mistaken for an alert-producing run.
+enum WatchRouteAlertAutomationMode {
+  OFF     @map("off")
+  DRY_RUN @map("dry_run")
+  LIVE    @map("live")
+}
+
+enum WatchRouteAlertRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum WatchRouteAlertCountKind {
+  EVENT_COUNT @map("event_count")
+  PAGE_VIEWS  @map("page_views")
+}
+
+enum WatchRouteAlertVerdict {
+  SUPPORTED_ROUTE_FAILURE @map("supported_route_failure")
+  PLAUSIBLE_MISSING_ROUTE @map("plausible_missing_route")
+}
+
+enum WatchRouteAlertSeverity {
+  CRITICAL @map("critical")
+  HIGH     @map("high")
+  MEDIUM   @map("medium")
+}
+
+enum WatchRouteAlertLifecycle {
+  OPEN      @map("open")
+  RECOVERED @map("recovered")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -1146,6 +1182,137 @@ model SeoLesson {
 
   @@index([status, createdAt])
   @@map("seo_lesson")
+}
+
+// -----------------------------------------------------------------------------
+// Watch route alert ledger
+// -----------------------------------------------------------------------------
+
+/// One idempotent property/window collection attempt. Only a hash of the
+/// execution token is stored; generation plus token fence every completion.
+model WatchRouteAlertRun {
+  id                       String                            @id @default(cuid())
+  idempotencyKey           String                            @unique @map("idempotency_key") @db.Char(64)
+  propertyId               String                            @map("property_id") @db.VarChar(191)
+  origin                   String                            @db.VarChar(255)
+  contractVersion          String                            @map("contract_version") @db.VarChar(64)
+  mode                     WatchRouteAlertAutomationMode
+  status                   WatchRouteAlertRunStatus          @default(RUNNING)
+  windowStart              DateTime                          @map("window_start")
+  windowEnd                DateTime                          @map("window_end")
+  manifestVersion          String?                           @map("manifest_version") @db.VarChar(191)
+  report                   Json                              @default("{}")
+  actionableCount          Int                               @default(0) @map("actionable_count")
+  noiseCount               Int                               @default(0) @map("noise_count")
+  executionFenceGeneration Int                               @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash  String?                           @map("execution_claim_token_hash") @db.Char(64)
+  executionClaimExpiresAt  DateTime?                         @map("execution_claim_expires_at")
+  startedAt                DateTime                          @default(now()) @map("started_at")
+  completedAt              DateTime?                         @map("completed_at")
+  detailExpiresAt          DateTime                          @map("detail_expires_at")
+  detailExpiredAt          DateTime?                         @map("detail_expired_at")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  updatedAt                DateTime                          @updatedAt @map("updated_at")
+  observations             WatchRouteAlertDailyObservation[]
+
+  @@index([propertyId, startedAt])
+  @@index([status, executionClaimExpiresAt])
+  @@index([detailExpiresAt, detailExpiredAt])
+  @@map("watch_route_alert_run")
+}
+
+/// Last complete live window for each independently reconciled GA4 property.
+model WatchRouteAlertPropertyProgress {
+  propertyId              String   @id @map("property_id") @db.VarChar(191)
+  lastCompleteWindowStart DateTime @map("last_complete_window_start")
+  lastCompleteWindowEnd   DateTime @map("last_complete_window_end")
+  lastCompleteRunId       String   @map("last_complete_run_id")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([lastCompleteWindowEnd])
+  @@map("watch_route_alert_property_progress")
+}
+
+/// Stable identity for one property plus normalized, query-free Watch path.
+/// Episode rows below carry reopen/recovery history without changing this ID.
+model WatchRouteAlert {
+  id              String                            @id @default(cuid())
+  semanticKey     String                            @unique @map("semantic_key") @db.Char(64)
+  propertyId      String                            @map("property_id") @db.VarChar(191)
+  origin          String                            @db.VarChar(255)
+  normalizedPath  String                            @map("normalized_path") @db.VarChar(1000)
+  lifecycle       WatchRouteAlertLifecycle          @default(OPEN)
+  verdict         WatchRouteAlertVerdict
+  severity        WatchRouteAlertSeverity
+  latestCount     Int                               @default(0) @map("latest_count")
+  countKind       WatchRouteAlertCountKind          @map("count_kind")
+  activeUsers     Int                               @default(0) @map("active_users")
+  occurrenceCount Int                               @default(0) @map("occurrence_count")
+  firstSeenAt     DateTime                          @map("first_seen_at")
+  lastSeenAt      DateTime                          @map("last_seen_at")
+  lastProbedAt    DateTime?                         @map("last_probed_at")
+  lastHttpStatus  Int?                              @map("last_http_status")
+  lastProbeKind   String?                           @map("last_probe_kind") @db.VarChar(32)
+  manifestVersion String                            @map("manifest_version") @db.VarChar(191)
+  latestEvidence  Json                              @default("{}") @map("latest_evidence")
+  latestRunId     String                            @map("latest_run_id")
+  recoveredAt     DateTime?                         @map("recovered_at")
+  createdAt       DateTime                          @default(now()) @map("created_at")
+  updatedAt       DateTime                          @updatedAt @map("updated_at")
+  episodes        WatchRouteAlertEpisode[]
+  observations    WatchRouteAlertDailyObservation[]
+
+  @@unique([propertyId, normalizedPath])
+  @@index([lifecycle, severity, latestCount(sort: Desc), lastSeenAt(sort: Desc), id])
+  @@index([propertyId, lifecycle, severity, lastSeenAt, id])
+  @@index([propertyId, lifecycle, lastProbedAt, id])
+  @@map("watch_route_alert")
+}
+
+/// One open-to-recovered lifecycle. Reappearance appends another episode.
+model WatchRouteAlertEpisode {
+  id               String          @id @default(cuid())
+  alertId          String          @map("alert_id")
+  alert            WatchRouteAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  sequence         Int
+  openedAt         DateTime        @map("opened_at")
+  lastSeenAt       DateTime        @map("last_seen_at")
+  recoveredAt      DateTime?       @map("recovered_at")
+  openedByRunId    String          @map("opened_by_run_id")
+  recoveredByRunId String?         @map("recovered_by_run_id")
+  evidence         Json            @default("{}")
+  detailExpiresAt  DateTime?       @map("detail_expires_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@unique([alertId, sequence])
+  @@index([alertId, recoveredAt])
+  @@index([detailExpiresAt])
+  @@map("watch_route_alert_episode")
+}
+
+/// Idempotent per-run evidence used for history and occurrence accounting.
+model WatchRouteAlertDailyObservation {
+  id          String                   @id @default(cuid())
+  runId       String                   @map("run_id")
+  run         WatchRouteAlertRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alertId     String                   @map("alert_id")
+  alert       WatchRouteAlert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  observedOn  DateTime                 @map("observed_on") @db.Date
+  count       Int
+  countKind   WatchRouteAlertCountKind @map("count_kind")
+  activeUsers Int                      @map("active_users")
+  verdict     WatchRouteAlertVerdict
+  severity    WatchRouteAlertSeverity
+  evidence    Json                     @default("{}")
+  observedAt  DateTime                 @map("observed_at")
+  expiresAt   DateTime                 @map("expires_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  @@unique([runId, alertId])
+  @@index([alertId, observedOn])
+  @@index([expiresAt, id])
+  @@map("watch_route_alert_daily_observation")
 }
 
 // -----------------------------------------------------------------------------

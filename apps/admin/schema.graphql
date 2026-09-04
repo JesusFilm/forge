@@ -1003,6 +1003,71 @@ type ManagerViewer {
   username: String
 }
 
+type ManagerWatchRouteAlertItem {
+  activeUsers: Int!
+  count: Int!
+  countKind: String!
+  firstSeenAt: String!
+  httpStatus: Int
+  id: ID!
+  lastProbedAt: String
+  lastSeenAt: String!
+  lifecycle: String!
+  manifestVersion: String!
+  occurrenceCount: Int!
+  origin: String!
+  path: String!
+  propertyId: String!
+  severity: String!
+  sources: [String!]!
+  verdict: String!
+}
+
+type ManagerWatchRouteAlertLane {
+  caveats: [String!]!
+  countKind: String!
+  rowCount: Int!
+  source: String!
+  status: String!
+  windowEnd: String!
+  windowStart: String!
+}
+
+type ManagerWatchRouteAlertRun {
+  completedAt: String
+  id: ID!
+  lanes: [ManagerWatchRouteAlertLane!]!
+  mode: String!
+  propertyId: String!
+  startedAt: String!
+  status: String!
+  validationCaveats: [String!]!
+}
+
+type ManagerWatchRouteAlertSummary {
+  critical: Int!
+  open: Int!
+  plausibleMissingRoutes: Int!
+  recovered: Int!
+  supportedRouteFailures: Int!
+}
+
+type ManagerWatchRouteAlertsPage {
+  generatedAt: String!
+  hasNextPage: Boolean!
+  items: [ManagerWatchRouteAlertItem!]!
+  lastSuccessfulAt: String
+  latestRun: ManagerWatchRouteAlertRun
+  monitorState: String!
+  nextCursor: String
+  propertyRuns: [ManagerWatchRouteAlertRun!]!
+  propertyRunsTruncated: Boolean!
+  recoverySuppressed: Boolean!
+  showing: Int!
+  summary: ManagerWatchRouteAlertSummary!
+  totalCount: Int!
+}
+
 """
 An uploaded image, video, PDF, or file registered in the Apps admin media library.
 """
@@ -1469,6 +1534,7 @@ type Query {
   Current Admin session projected into the narrow Manager access contract.
   """
   managerViewer: ManagerViewer
+  managerWatchRouteAlerts(after: String, limit: Int = 25): ManagerWatchRouteAlertsPage!
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
