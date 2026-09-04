@@ -38,13 +38,27 @@ vi.mock("next/image", () => ({
   default: ({
     alt,
     className,
+    loading,
+    priority,
+    sizes,
     src,
   }: {
     alt: string
     className?: string
+    loading?: "eager" | "lazy"
+    priority?: boolean
+    sizes?: string
     src: string
   }) => (
-    <span role="img" aria-label={alt} className={className} data-src={src} />
+    <span
+      role="img"
+      aria-label={alt}
+      className={className}
+      data-loading={priority ? "eager" : (loading ?? "lazy")}
+      data-priority={priority === true ? "true" : "false"}
+      data-sizes={sizes}
+      data-src={src}
+    />
   ),
 }))
 
@@ -286,15 +300,19 @@ describe("WatchHomePage", () => {
     expect(activeTitle?.textContent).toBe("Jesus")
     // Structural guard for the removed secondary paragraph. The hero copy is
     // the shared WatchHeroOverlay now, so the whole block is one level: an
-    // eyebrow span, the title, and the actions wrapper. Pinning the child list
-    // AND the paragraph count together is what stops a paragraph reappearing
-    // either as a sibling of the title or inside the actions wrapper.
+    // eyebrow span, the title, and the shared overlay's metadata/actions shell.
+    // The stable action row sits beside this rotating copy so slide changes do
+    // not remount focused controls.
     const overlayRoot = activeTitle?.parentElement
     expect(
       Array.from(overlayRoot?.children ?? []).map((el) => el.tagName),
     ).toEqual(["SPAN", "P", "DIV"])
     expect(overlayRoot?.querySelectorAll("p")).toHaveLength(1)
-    expect(overlayRoot?.textContent).toBe("FeaturedJesusWatch Now")
+    expect(overlayRoot?.textContent).toBe("FeaturedJesus")
+    expect(
+      carousel?.querySelector('[data-testid="watch-home-tv-actions"]')
+        ?.textContent,
+    ).toContain("Watch Now")
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
@@ -437,14 +455,31 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-video"]'),
     ).not.toBeNull()
     expect(
-      container.querySelectorAll('button[aria-label="Next video"]'),
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
     ).toHaveLength(2)
     expect(
-      container.querySelectorAll('[data-testid="watch-home-next-progress"]'),
+      container.querySelectorAll('[data-testid="watch-home-current-progress"]'),
     ).toHaveLength(2)
+    const muteButton = container.querySelector(
+      'button[aria-label="Unmute preview"]',
+    )
+    const watchNowLink = container.querySelector(
+      "a[href='/jesus.html/english.html?autoplay=1']",
+    )
     expect(
       container.querySelectorAll('button[aria-label="Unmute preview"]'),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
+    expect(muteButton?.parentElement).toBe(watchNowLink?.parentElement)
+    const actionChildren = Array.from(
+      watchNowLink?.parentElement?.children ?? [],
+    )
+    expect(actionChildren.slice(0, 2)).toEqual([watchNowLink, muteButton])
+    expect(actionChildren).toHaveLength(3)
+    expect(
+      actionChildren[2]?.querySelector(
+        '[data-testid="watch-home-video-timeline"][data-size="compact"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
     ).toHaveLength(3)
@@ -553,7 +588,9 @@ describe("WatchHomePage", () => {
         '[data-testid="watch-home-hero-thumbnail-frame"]',
       ),
     ).toBeNull()
-    for (const fallback of container.querySelectorAll('[aria-label="Jesus"]')) {
+    for (const fallback of container.querySelectorAll(
+      'div[aria-label="Jesus"]',
+    )) {
       expect(fallback.className).not.toContain("group")
       expect(fallback.className).not.toContain("focus-visible:outline-none")
       expect(fallback.className).not.toContain("hover:shadow")
@@ -858,7 +895,31 @@ describe("WatchHomePage", () => {
                       id: "queued-2",
                       title: "Queued Two",
                       href: "/queued-two.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-two-thumb.jpg",
                       src: "https://stream.example/queued-two.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-3",
+                      title: "Queued Three",
+                      href: "/queued-three.html/english.html",
+                      thumbnailUrl:
+                        "https://cdn.example/queued-three-thumb.jpg",
+                      src: "https://stream.example/queued-three.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-4",
+                      title: "Queued Four",
+                      href: "/queued-four.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-four-thumb.jpg",
+                      src: "https://stream.example/queued-four.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-5",
+                      title: "Queued Five",
+                      href: "/queued-five.html/english.html",
+                      posterUrl: "https://cdn.example/queued-five-poster.jpg",
+                      thumbnailUrl: "",
+                      src: "https://stream.example/queued-five.m3u8",
                     }),
                   ],
                 },
@@ -901,12 +962,121 @@ describe("WatchHomePage", () => {
     expect(heroVideo.getAttribute("src")).toBe(
       "https://stream.example/queued-one.m3u8",
     )
+    const timelines = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+    )
+    expect(timelines).toHaveLength(2)
+    const desktopTimeline = timelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "large",
+    )
+    const mobileTimeline = timelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "compact",
+    )
+    expect(desktopTimeline).toBeDefined()
+    expect(mobileTimeline).toBeDefined()
+    const actionRow = container.querySelector(
+      '[data-testid="watch-home-tv-actions"]',
+    )
+    expect(actionRow?.contains(mobileTimeline!)).toBe(true)
+    expect(actionRow?.contains(desktopTimeline!)).toBe(false)
+    const desktopCircles = Array.from(
+      desktopTimeline!.querySelectorAll(
+        '[data-testid="watch-home-video-circle"]',
+      ),
+    )
+    const mobileCircles = Array.from(
+      mobileTimeline!.querySelectorAll(
+        '[data-testid="watch-home-video-circle"]',
+      ),
+    )
+    expect(
+      desktopCircles.map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1", "2", "3"])
+    expect(
+      mobileCircles.map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1"])
+    expect(
+      desktopCircles.map((circle) =>
+        circle.querySelector('[role="img"]')?.getAttribute("data-src"),
+      ),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+      "https://cdn.example/queued-four-thumb.jpg",
+    ])
+    expect(
+      mobileCircles.map((circle) =>
+        circle.querySelector('[role="img"]')?.getAttribute("data-src"),
+      ),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+    ])
+    for (const timeline of timelines) {
+      const circles = Array.from(
+        timeline.querySelectorAll('[data-testid="watch-home-video-circle"]'),
+      )
+      expect(
+        circles.every(
+          (circle) =>
+            circle
+              .querySelector('[role="img"]')
+              ?.getAttribute("data-loading") === "lazy",
+        ),
+      ).toBe(true)
+      expect(
+        circles.every(
+          (circle) =>
+            circle
+              .querySelector('[role="img"]')
+              ?.getAttribute("data-priority") === "false",
+        ),
+      ).toBe(true)
+      const currentCircle = timeline.querySelector('[data-offset="0"]')
+      expect(
+        currentCircle?.querySelector("button")?.getAttribute("aria-label"),
+      ).toBe("Queued One")
+      expect(
+        currentCircle
+          ?.querySelector('[aria-current="true"] [role="img"]')
+          ?.getAttribute("data-src"),
+      ).toBe("https://cdn.example/queued-one-thumb.jpg")
+      expect(
+        currentCircle?.querySelectorAll(
+          '[data-testid="watch-home-current-progress"]',
+        ),
+      ).toHaveLength(1)
+    }
+    expect(
+      desktopTimeline!
+        .querySelector('[role="img"]')
+        ?.getAttribute("data-sizes"),
+    ).toBe("48px")
+    expect(
+      mobileTimeline!.querySelector('[role="img"]')?.getAttribute("data-sizes"),
+    ).toBe("36px")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-overlay"]')
+        ?.getAttribute("class"),
+    ).toContain("pb-4 sm:pb-8 compact-landscape:pb-4")
+
+    const queuedTwoButton = container.querySelector(
+      'button[aria-label="Show Queued Two"]',
+    ) as HTMLButtonElement
+    queuedTwoButton.focus()
+    expect(document.activeElement).toBe(queuedTwoButton)
 
     await act(async () => {
-      container
-        .querySelector('button[aria-label="Next video"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      queuedTwoButton.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
+
+    expect(document.activeElement).toBe(queuedTwoButton)
+    expect(queuedTwoButton.getAttribute("aria-label")).toBe("Queued Two")
+    expect(queuedTwoButton.getAttribute("aria-current")).toBe("true")
+    expect(queuedTwoButton.getAttribute("aria-disabled")).toBe("true")
+    expect(queuedTwoButton.disabled).toBe(false)
 
     const carousel = container.querySelector(
       '[data-testid="watch-home-tv-carousel"]',
@@ -925,14 +1095,64 @@ describe("WatchHomePage", () => {
         ) as HTMLVideoElement
       ).getAttribute("src"),
     ).toBe("https://stream.example/queued-two.m3u8")
+    const advancedTimelines = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+    )
+    const advancedDesktopTimeline = advancedTimelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "large",
+    )
+    const advancedMobileTimeline = advancedTimelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "compact",
+    )
     expect(
-      container.querySelector('button[aria-label="Next video"]'),
-    ).not.toBeNull()
+      Array.from(
+        advancedDesktopTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"]',
+        ),
+      ).map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["-1", "0", "1", "2", "3"])
+    expect(
+      Array.from(
+        advancedMobileTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"]',
+        ),
+      ).map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1"])
+    for (const timeline of advancedTimelines) {
+      expect(
+        timeline
+          .querySelector('[data-offset="0"] [aria-current="true"] [role="img"]')
+          ?.getAttribute("data-src"),
+      ).toBe("https://cdn.example/queued-two-thumb.jpg")
+    }
+    expect(
+      Array.from(
+        advancedDesktopTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"] [role="img"]',
+        ),
+      ).map((image) => image.getAttribute("data-src")),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+      "https://cdn.example/queued-four-thumb.jpg",
+      "https://cdn.example/queued-five-poster.jpg",
+    ])
+    expect(
+      Array.from(
+        advancedMobileTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"] [role="img"]',
+        ),
+      ).map((image) => image.getAttribute("data-src")),
+    ).toEqual([
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+    ])
 
-    // R2: with the secondary paragraph gone, the copy stagger runs
-    // eyebrow -> title -> action with no dead beat where the paragraph used to
-    // animate. Both the incoming and the outgoing overlay are checked, because
-    // the enter and exit delay tables are indexed separately.
+    // R2: with the secondary paragraph gone, the rotating copy stagger runs
+    // eyebrow -> title with no dead beat where the paragraph used to animate.
+    // The action row is deliberately stable so carousel advances cannot steal
+    // focus from Watch Now or mute/unmute.
     // These two classes are applied only to the staggered overlay items, so
     // querying the carousel pins both the delays and the item count without
     // depending on how deeply the overlay nests them.
@@ -940,13 +1160,9 @@ describe("WatchHomePage", () => {
       Array.from(carousel?.querySelectorAll(`.${className}`) ?? []).map((el) =>
         (el as HTMLElement).style.getPropertyValue("--watch-home-copy-delay"),
       )
-    // Entering runs offset by 430ms while the outgoing copy clears: 430+0/70/140.
-    expect(delaysFor("watch-home-copy-enter")).toEqual([
-      "430ms",
-      "500ms",
-      "570ms",
-    ])
-    expect(delaysFor("watch-home-copy-exit")).toEqual(["0ms", "35ms", "70ms"])
+    // Entering runs offset by 430ms while the outgoing copy clears: 430+0/70.
+    expect(delaysFor("watch-home-copy-enter")).toEqual(["430ms", "500ms"])
+    expect(delaysFor("watch-home-copy-exit")).toEqual(["0ms", "35ms"])
 
     // The hero reveals the shell chrome on mount; it never hides it now that
     // there is no full-player takeover.
@@ -1024,6 +1240,215 @@ describe("WatchHomePage", () => {
     ).toBe(false)
   })
 
+  it("moves focus to the current circle when autoplay removes the focused past circle", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const numberWords = ["One", "Two", "Three", "Four", "Five"]
+
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: numberWords.map((word, index) =>
+                    makeCarouselSlide({
+                      id: `queued-${index + 1}`,
+                      title: `Queued ${word}`,
+                      href: `/queued-${index + 1}.html/english.html`,
+                      src: `https://stream.example/queued-${index + 1}.m3u8`,
+                    }),
+                  ),
+                },
+              ],
+            },
+          })}
+        />,
+      )
+    })
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Show Queued Two"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const pastButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"] [data-offset="-1"] button',
+    ) as HTMLButtonElement
+    pastButton.focus()
+    expect(document.activeElement).toBe(pastButton)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    const currentButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
+    ) as HTMLButtonElement
+    expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
+    expect(document.activeElement).toBe(currentButton)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    const repeatedlyRecoveredCurrentButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
+    ) as HTMLButtonElement
+    expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
+      "Queued Five",
+    )
+    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
+  })
+
+  it("resets a completed playback ring when a timeline video is selected", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              carousel: {
+                pools: [
+                  {
+                    id: "pool-a",
+                    collectionIds: ["pool-a"],
+                    videos: [
+                      makeCarouselSlide(),
+                      makeCarouselSlide({
+                        id: "queued-2",
+                        title: "Queued Two",
+                      }),
+                      makeCarouselSlide({
+                        id: "queued-3",
+                        title: "Queued Three",
+                      }),
+                      makeCarouselSlide({
+                        id: "queued-4",
+                        title: "Queued Four",
+                      }),
+                    ],
+                  },
+                ],
+              },
+            })}
+          />,
+        )
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(9_420)
+      })
+
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued Two"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-progress-reset"]'),
+      ).toHaveLength(2)
+
+      await act(async () => {
+        vi.advanceTimersByTime(950)
+      })
+
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-progress-reset"]'),
+      ).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("prefetches three future timeline videos near the queue tail", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      const videos = Array.from({ length: 10 }, (_, index) => {
+        const number = index + 1
+        return makeCarouselSlide({
+          id: `queued-${number}`,
+          title: `Queued ${number}`,
+          href: `/queued-${number}.html/english.html`,
+          thumbnailUrl: `https://cdn.example/queued-${number}-thumb.jpg`,
+          src: `https://stream.example/queued-${number}.m3u8`,
+        })
+      })
+
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              carousel: {
+                pools: [{ id: "pool-a", collectionIds: ["pool-a"], videos }],
+              },
+            })}
+          />,
+        )
+      })
+
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued 4"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued 7"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(0)
+      })
+
+      const timelines = Array.from(
+        container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+      )
+      const desktopTimeline = timelines.find(
+        (timeline) => timeline.getAttribute("data-size") === "large",
+      )
+      const mobileTimeline = timelines.find(
+        (timeline) => timeline.getAttribute("data-size") === "compact",
+      )
+      const circleLabels = (timeline: Element) =>
+        Array.from(
+          timeline.querySelectorAll('[data-testid="watch-home-video-circle"]'),
+        ).map((circle) =>
+          circle.querySelector("button")?.getAttribute("aria-label"),
+        )
+      expect(circleLabels(desktopTimeline!)).toEqual([
+        "Show Queued 6",
+        "Queued 7",
+        "Show Queued 9",
+        "Show Queued 10",
+        "Show Queued 8",
+      ])
+      expect(circleLabels(mobileTimeline!)).toEqual([
+        "Queued 7",
+        "Show Queued 9",
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("continues autoplay after the final unplayed pooled video ends", async () => {
     vi.useFakeTimers()
 
@@ -1047,6 +1472,12 @@ describe("WatchHomePage", () => {
       expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
       expect(finalUnplayedSrc).toBe("https://stream.example/queued-three.m3u8")
 
+      const muteButton = container.querySelector(
+        'button[aria-label="Unmute preview"]',
+      ) as HTMLButtonElement
+      muteButton.focus()
+      expect(document.activeElement).toBe(muteButton)
+
       await act(async () => {
         finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
       })
@@ -1061,6 +1492,10 @@ describe("WatchHomePage", () => {
       expect(replacementVideo).not.toBe(finalUnplayedVideo)
       expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
       expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
+      expect(
+        container.querySelector('button[aria-label="Unmute preview"]'),
+      ).toBe(muteButton)
+      expect(document.activeElement).toBe(muteButton)
 
       await act(async () => {
         replacementVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
@@ -1069,6 +1504,21 @@ describe("WatchHomePage", () => {
       })
 
       expect(replacementPlay).toHaveBeenCalledTimes(1)
+
+      const watchNow = container.querySelector(
+        '[data-testid="watch-home-tv-actions"] a',
+      ) as HTMLAnchorElement
+      watchNow.focus()
+      expect(document.activeElement).toBe(watchNow)
+
+      await act(async () => {
+        replacementVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-actions"] a'),
+      ).toBe(watchNow)
+      expect(document.activeElement).toBe(watchNow)
     } finally {
       vi.useRealTimers()
     }
@@ -1305,7 +1755,7 @@ describe("WatchHomePage", () => {
 
     await act(async () => {
       container
-        .querySelector('button[aria-label="Next video"]')
+        .querySelector('button[aria-label="Show Portrait Two"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
     expect(label()).toBe("Portrait Two")
@@ -1784,7 +2234,9 @@ describe("WatchHomePage", () => {
     const title = container.querySelector(
       '[data-testid="watch-home-tv-active-title"]',
     ) as HTMLElement
-    const action = title.parentElement?.querySelector("a") as HTMLAnchorElement
+    const action = container.querySelector(
+      '[data-testid="watch-home-tv-actions"] a',
+    ) as HTMLAnchorElement
 
     // Both surfaces render WatchHeroOverlay, so the title and the primary
     // action carry its classes rather than a home-only copy of them.

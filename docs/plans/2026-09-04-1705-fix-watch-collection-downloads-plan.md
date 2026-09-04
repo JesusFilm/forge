@@ -113,7 +113,7 @@ The existing anchor queue marks an episode complete as soon as it clicks a link,
 ### Sources
 
 - `docs/roadmap/topic-experiences/feat-251-watch-collection-sequential-downloads.md`
-- `docs/roadmap/platform/feat-453-watch-modal-page-scroll.md`
+- `docs/roadmap/platform/feat-457-watch-modal-page-scroll.md`
 - `docs/solutions/ui-bugs/watch-collection-anchor-queue-false-completion.md`
 - `docs/solutions/ui-bugs/watch-download-modal-safeguards-can-regress-independently.md`
 - `docs/solutions/ui-bugs/watch-modal-close-button-viewport-accessibility.md`
@@ -275,7 +275,7 @@ flowchart TB
 - **Goal:** Leave the roadmap and institutional record aligned with the verified implementation.
 - **Requirements:** R1 through R12.
 - **Dependencies:** U1, U2, U3, U4.
-- **Files:** `docs/roadmap/topic-experiences/feat-251-watch-collection-sequential-downloads.md`, `docs/roadmap/platform/feat-453-watch-modal-page-scroll.md`, `docs/roadmap/README.md`, `docs/solutions/ui-bugs/watch-collection-anchor-queue-false-completion.md`.
+- **Files:** `docs/roadmap/topic-experiences/feat-251-watch-collection-sequential-downloads.md`, `docs/roadmap/platform/feat-457-watch-modal-page-scroll.md`, `docs/roadmap/README.md`, `docs/solutions/ui-bugs/watch-collection-anchor-queue-false-completion.md`.
 - **Approach:** Reopen both roadmap tickets as the first execution step and keep them in progress until code and browser gates pass, then mark them complete and regenerate the root index. Reconcile the solution note so it distinguishes verified directory completion from native browser handoff and records retry/collision prevention.
 - **Test scenarios:** Test expectation: none -- this unit updates derived planning and solution documentation after behavioral verification.
 - **Verification:** Roadmap lint and generated-index checks pass, ticket states match the shipped outcome, and the solution note does not overstate fallback guarantees.

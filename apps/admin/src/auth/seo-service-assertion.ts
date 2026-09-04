@@ -12,7 +12,12 @@ import {
 export const SEO_WORKLOAD_ASSERTION_HEADER = "x-forge-seo-assertion"
 const SEO_WORKLOAD_ASSERTION_MAX_LIFETIME_SECONDS = 120
 
-export const SeoWorkloadCapability = z.enum(["ingest", "evaluate", "tickets"])
+export const SeoWorkloadCapability = z.enum([
+  "ingest",
+  "evaluate",
+  "tickets",
+  "watch_alerts",
+])
 export type SeoWorkloadCapability = z.infer<typeof SeoWorkloadCapability>
 
 const WorkloadClaims = z.object({

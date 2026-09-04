@@ -12209,8 +12209,22 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   }
 
   .design-system-shell-sidebar {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "nav"
+      "switcher";
     padding-top: 14px;
     padding-bottom: 14px;
+  }
+
+  .design-system-shell-nav,
+  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
+    .design-system-shell-nav {
+    width: 100%;
+    justify-self: stretch;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 
   .design-system-hero-copy h1 {
