@@ -85,6 +85,8 @@ type TypesenseTranscriptPublisher = Pick<
   "deleteDocumentsByFilter" | "getDocument" | "getAlias" | "importDocuments"
 >
 
+type IndexLockRunner = <T>(run: () => Promise<T>) => Promise<T>
+
 type WorkerGlobal = typeof globalThis & {
   __forgeAdminWatchSearchTranscriptPublication?: {
     started: boolean
@@ -587,6 +589,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
     "assertCurrentPublicationAllowed"
   >
   now?: Date
+  withIndexLock?: IndexLockRunner
 }): Promise<
   | { status: "idle" }
   | {
@@ -600,11 +603,13 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
 > {
   const prisma = input.prisma
   const now = input.now ?? new Date()
+  const withIndexLock =
+    input.withIndexLock ?? ((run) => withTypesenseWatchSearchIndexLock(run))
   const batch = await claimNextTranscriptPublicationBatch(prisma, now)
   if (!batch) return { status: "idle" }
 
   try {
-    const result = await withTypesenseWatchSearchIndexLock(async () => {
+    const result = await withIndexLock(async () => {
       if (input.generations) {
         await input.generations.assertCurrentPublicationAllowed({
           rebuildTranscripts: false,

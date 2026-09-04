@@ -22,6 +22,10 @@ import {
   WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
 } from "./typesense-watch-search-transcript-publication"
 import {
+  TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
+  withTypesenseWatchSearchIndexLock,
+} from "./typesense-watch-search-publication-lock"
+import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
@@ -859,10 +863,18 @@ suite("current transcript publication into Watch Search", () => {
     })
     expect(before.results).toEqual([])
 
+    const retryEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        where: { sourceGeneration: 1n },
+        select: { nextAttemptAt: true },
+      })
     const published = await publishOneCurrentTranscriptToWatchSearch({
       prisma,
       typesense,
       generations,
+      now: new Date((retryEvent.nextAttemptAt ?? new Date()).getTime() + 1),
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
     })
     expect(published.status).toBe("published")
     if (published.status !== "published") {
@@ -940,6 +952,8 @@ suite("current transcript publication into Watch Search", () => {
         prisma,
         typesense,
         generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
       }),
     ).rejects.toThrow(/chunk count .* batch evidence/i)
 
@@ -997,6 +1011,8 @@ suite("current transcript publication into Watch Search", () => {
       prisma,
       typesense,
       generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
     })
 
     expect(published.status).toBe("published")
@@ -1014,5 +1030,47 @@ suite("current transcript publication into Watch Search", () => {
         where: { status: "COMPLETED" },
       }),
     ).toBe(1)
+  }, 180_000)
+
+  it("uses the caller's publication lock database when coordinating the batch fence", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const lockHolder = new Client({ connectionString: databaseUrl })
+    await lockHolder.connect()
+    try {
+      await lockHolder.query("SELECT pg_advisory_lock($1)", [
+        TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
+      ])
+
+      await expect(
+        publishOneCurrentTranscriptToWatchSearch({
+          prisma,
+          typesense,
+          generations,
+          withIndexLock: (run) =>
+            withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+        }),
+      ).rejects.toThrow(/index release is already running/i)
+
+      expect(
+        await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+          where: { sourceGeneration: 1n },
+          select: { status: true, lastErrorCode: true, attemptCount: true },
+        }),
+      ).toMatchObject({
+        status: "PENDING",
+        lastErrorCode: "Error",
+        attemptCount: 1,
+      })
+    } finally {
+      await lockHolder.query("SELECT pg_advisory_unlock($1)", [
+        TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
+      ])
+      await lockHolder.end()
+    }
+
   }, 180_000)
 })
