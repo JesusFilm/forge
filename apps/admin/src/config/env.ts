@@ -155,6 +155,15 @@ function normalizeWatchSearchRuntimeEnv(
   })
 }
 
+export function resolveWatchSearchTranscriptPublicationEnabled(
+  value: unknown = env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 /**
  * `createEnv` deliberately skips transforms while CI builds. Normalize the
  * search controls again at runtime so Railway's raw strings cannot become

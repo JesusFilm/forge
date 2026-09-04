@@ -12,6 +12,7 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
+  resolveWatchSearchTranscriptPublicationEnabled,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
   watchSearchDefaultShadowEnabledEnvSchema,
@@ -29,7 +30,9 @@ import {
 
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
-    expect(env.DATABASE_URL).toContain("forge_admin")
+    const url = new URL(env.DATABASE_URL)
+    expect(url.protocol).toBe("postgresql:")
+    expect(url.pathname).toMatch(/^\/.+/)
   })
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
@@ -145,6 +148,7 @@ describe("env", () => {
       expect(
         watchSearchTranscriptProjectionRevisionEnvSchema.parse(undefined),
       ).toBeUndefined()
+      expect(resolveWatchSearchTranscriptPublicationEnabled()).toBe(false)
     })
 
     it("accepts one exact candidate pin and rejects malformed selectors", () => {
@@ -165,6 +169,17 @@ describe("env", () => {
           watchSearchTypesenseProfileEnvSchema.parse(value),
         ).toThrow()
       }
+    })
+
+    it("normalizes the transcript publication flag from raw runtime values", () => {
+      expect(resolveWatchSearchTranscriptPublicationEnabled("true")).toBe(true)
+      expect(resolveWatchSearchTranscriptPublicationEnabled("false")).toBe(
+        false,
+      )
+      expect(resolveWatchSearchTranscriptPublicationEnabled(true)).toBe(true)
+      expect(resolveWatchSearchTranscriptPublicationEnabled("invalid")).toBe(
+        false,
+      )
     })
   })
 

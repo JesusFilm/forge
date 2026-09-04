@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from "node:crypto"
 
 import { Prisma, type PrismaClient } from "@prisma/client"
-import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
+import {
+  env,
+  resolveWatchSearchRuntimeEnv,
+  resolveWatchSearchTranscriptPublicationEnabled,
+} from "@/config/env"
 import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
 import { TypesenseClient } from "./typesense-client"
 import { WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID } from "./typesense-watch-search-current-transcript-projection"
@@ -704,7 +708,7 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
       reason: "already-started" | "disabled" | "missing-config"
     }
 > {
-  const enabled = env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED === true
+  const enabled = resolveWatchSearchTranscriptPublicationEnabled()
   if (!enabled) {
     return { started: false, reason: "disabled" }
   }
