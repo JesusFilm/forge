@@ -27,6 +27,7 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -771,7 +772,7 @@ function GroupedVideoListSection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -812,9 +813,8 @@ function GroupedVideoListSection({
                 // The sidebar gets a wider track from `xl` up: at 1280px the
                 // group is 1201px wide and 340px left the collection panel only
                 // 28% of it, cramping the title and description against a
-                // 859px-wide episode list. No `2xl` step — the section content is
-                // capped at `max-w-7xl`, so measured group width stops growing at
-                // 1216px (verified 1536/1920/2560px all identical).
+                // 859px-wide episode list. Keep the 440px maximum at wider
+                // breakpoints so the episode list receives the added rail space.
                 className="overflow-clip rounded-lg border border-white/10 bg-white/[0.035] lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:grid-cols-[minmax(320px,440px)_minmax(0,1fr)]"
                 aria-label={group.title}
                 data-testid="language-inventory-collection-group"
@@ -902,7 +902,7 @@ function InventorySection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -1018,7 +1018,9 @@ export function LanguageInventoryPage({
         {/* 54vh is three quarters of the previous 72vh. Read as "reduce to 3/4"
             rather than a 3:4 aspect ratio: the hero is already 2.2:1, so a 3:4
             ratio would have made it ~3x TALLER, not shorter. */}
-        <div className="relative mx-auto grid min-h-[54vh] max-w-7xl items-end gap-8 px-5 pt-36 pb-10 sm:px-8 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44">
+        <div
+          className={`relative grid min-h-[54vh] items-end gap-8 pt-36 pb-10 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44 ${WATCH_PAGE_CONTENT_CLASSES}`}
+        >
           <div className="max-w-4xl">
             <h1 className="text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl">
               {t("heroTitle", { language: languageDisplayName })}
@@ -1062,7 +1064,7 @@ export function LanguageInventoryPage({
             className="border-t border-white/10 py-14"
             data-testid="language-inventory-empty"
           >
-            <div className="mx-auto max-w-7xl px-5 sm:px-8">
+            <div className={WATCH_PAGE_CONTENT_CLASSES}>
               <p className="rounded-lg border border-white/10 bg-white/[0.04] px-5 py-8 text-stone-300">
                 {t("noPublishedVideos")}
               </p>
@@ -1088,7 +1090,7 @@ export function LanguageInventoryPage({
           no client JavaScript and keeps this Server Component free of a client
           boundary. Styled as the shared watch pill, like "Open collection". */}
       <div className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-7xl justify-center px-5 sm:px-8">
+        <div className={`flex justify-center ${WATCH_PAGE_CONTENT_CLASSES}`}>
           <a
             href={`#${LANGUAGE_INVENTORY_TOP_ID}`}
             data-slot="button"

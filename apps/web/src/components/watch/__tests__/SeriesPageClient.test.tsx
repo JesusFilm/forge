@@ -181,6 +181,7 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -356,6 +357,13 @@ describe("SeriesPageClient — shared content surface", () => {
     const metadata = container.querySelector('[data-testid="series-page-meta"]')
     for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
       expect(metadata?.className).toContain(className)
+    }
+
+    const content = container.querySelector(
+      '[data-testid="series-page-meta-content"]',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(content?.className).toContain(className)
     }
   })
 
