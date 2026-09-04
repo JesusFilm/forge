@@ -1156,6 +1156,80 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toEqual({ status: "idle" })
   }, 180_000)
 
+  it("does not complete publication when the canonical visibility projection drifts before completion", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    let driftInjected = false
+    const racingTypesense = {
+      getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
+        typesense.getAlias(...args),
+      importDocuments: (
+        ...args: Parameters<TypesenseClient["importDocuments"]>
+      ) => typesense.importDocuments(...args),
+      deleteDocumentsByFilter: (
+        ...args: Parameters<TypesenseClient["deleteDocumentsByFilter"]>
+      ) => typesense.deleteDocumentsByFilter(...args),
+      getDocument: async (
+        ...args: Parameters<TypesenseClient["getDocument"]>
+      ) => {
+        if (!driftInjected) {
+          driftInjected = true
+          await prisma.videoLocale.updateMany({
+            where: {
+              videoId: "video-1",
+              locale: "en",
+              deletedAt: null,
+            },
+            data: { status: "DRAFT" },
+          })
+        }
+        return typesense.getDocument(...args)
+      },
+    } satisfies Pick<
+      TypesenseClient,
+      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+    >
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense: racingTypesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(
+      "canonical transcript projection changed before publication completion",
+    )
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: {
+            status: true,
+            lastErrorCode: true,
+            completedAt: true,
+            nextAttemptAt: true,
+          },
+        },
+      ),
+    ).toMatchObject({
+      status: "PENDING",
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+      completedAt: null,
+      nextAttemptAt: expect.any(Date),
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).toBeNull()
+  }, 180_000)
+
   it("uses the caller's publication lock database when coordinating the batch fence", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

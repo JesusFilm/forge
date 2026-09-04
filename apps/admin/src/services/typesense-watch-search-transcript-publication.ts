@@ -87,6 +87,12 @@ type ProjectionState = {
   projectionRevision: bigint
 }
 
+type CanonicalTranscriptSnapshotReader = Pick<
+  PrismaClient,
+  "videoTranscript" | "$queryRaw"
+> &
+  Pick<Prisma.TransactionClient, "videoTranscript" | "$queryRaw">
+
 type TypesenseTranscriptPublisher = Pick<
   TypesenseClient,
   "deleteDocumentsByFilter" | "getDocument" | "getAlias" | "importDocuments"
@@ -366,7 +372,7 @@ async function claimNextTranscriptPublicationBatch(
 }
 
 async function loadCanonicalTranscriptSnapshot(
-  prisma: PrismaClient,
+  prisma: CanonicalTranscriptSnapshotReader,
   batch: ClaimedPublicationBatch,
 ): Promise<CanonicalTranscriptSnapshot> {
   const transcript = await prisma.videoTranscript.findUnique({
@@ -520,68 +526,66 @@ async function completeTranscriptPublicationBatch(
     transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    projectedFingerprint: string
   },
   now: Date,
 ): Promise<ProjectionState> {
   const leaseTokenHash = createHash("sha256")
     .update(batch.leaseToken)
     .digest("hex")
-  return prisma.$transaction(async (tx) => {
-    const currentTranscript = await tx.videoTranscript.findUnique({
-      where: { id: batch.transcriptId },
-      select: {
-        sourceGeneration: true,
-        sourceContentHash: true,
-        chunkingVersion: true,
-      },
-    })
-    if (
-      !currentTranscript ||
-      currentTranscript.sourceGeneration !== batch.sourceGeneration ||
-      currentTranscript.sourceContentHash !== batch.sourceContentHash ||
-      currentTranscript.chunkingVersion !== batch.transcriptChunkingVersion
-    ) {
-      throw new WatchSearchTranscriptPublicationError(
-        "canonical transcript changed before publication completion",
+  return prisma.$transaction(
+    async (tx) => {
+      const canonical = await loadCanonicalTranscriptSnapshot(tx, batch)
+      const latestCanonicalFingerprint = sha256(
+        canonical.documents.map(normalizeTranscriptDocument),
       )
-    }
+      if (latestCanonicalFingerprint !== input.projectedFingerprint) {
+        throw new WatchSearchTranscriptPublicationError(
+          "canonical transcript projection changed before publication completion",
+        )
+      }
 
-    const projection = await advanceCurrentWatchSearchTranscriptProjection(tx, {
-      transcriptCollection: input.transcriptCollection,
-      contentEmbeddingContractId: input.contentEmbeddingContractId,
-      transcriptChunkingVersion: input.transcriptChunkingVersion,
-    })
-    const completed =
-      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
-        where: {
-          id: { in: batch.eventIds },
-          status: "CLAIMED",
-          leaseGeneration: batch.leaseGeneration,
-          leaseTokenHash,
-          leaseExpiresAt: { gt: now },
+      const projection = await advanceCurrentWatchSearchTranscriptProjection(
+        tx,
+        {
+          transcriptCollection: input.transcriptCollection,
+          contentEmbeddingContractId: input.contentEmbeddingContractId,
+          transcriptChunkingVersion: input.transcriptChunkingVersion,
         },
-        data: {
-          status: "COMPLETED",
-          leaseTokenHash: null,
-          leaseExpiresAt: null,
-          nextAttemptAt: null,
-          lastErrorCode: null,
-          completedAt: now,
-          updatedAt: now,
-        },
-      })
-    if (completed.count !== batch.eventIds.length) {
-      throw new WatchSearchTranscriptPublicationError(
-        "transcript publication batch fence was lost before completion",
       )
-    }
-    return {
-      transcriptCollection: projection.transcriptCollection,
-      contentEmbeddingContractId: projection.contentEmbeddingContractId,
-      transcriptChunkingVersion: projection.transcriptChunkingVersion,
-      projectionRevision: projection.projectionRevision,
-    }
-  })
+      const completed =
+        await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
+          where: {
+            id: { in: batch.eventIds },
+            status: "CLAIMED",
+            leaseGeneration: batch.leaseGeneration,
+            leaseTokenHash,
+            leaseExpiresAt: { gt: now },
+          },
+          data: {
+            status: "COMPLETED",
+            leaseTokenHash: null,
+            leaseExpiresAt: null,
+            nextAttemptAt: null,
+            lastErrorCode: null,
+            completedAt: now,
+            updatedAt: now,
+          },
+        })
+      if (completed.count !== batch.eventIds.length) {
+        throw new WatchSearchTranscriptPublicationError(
+          "transcript publication batch fence was lost before completion",
+        )
+      }
+      return {
+        transcriptCollection: projection.transcriptCollection,
+        contentEmbeddingContractId: projection.contentEmbeddingContractId,
+        transcriptChunkingVersion: projection.transcriptChunkingVersion,
+        projectionRevision: projection.projectionRevision,
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  )
 }
 
 async function releaseTranscriptPublicationBatch(
@@ -708,6 +712,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
           transcriptCollection,
           contentEmbeddingContractId: batch.contentEmbeddingContractId,
           transcriptChunkingVersion: batch.transcriptChunkingVersion,
+          projectedFingerprint,
         },
         new Date(),
       )
