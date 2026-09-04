@@ -20,7 +20,10 @@ import {
   freezeCurrentWatchSearchProfile,
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
-import { resolveCurrentWatchSearchTranscriptProjection } from "./typesense-watch-search-current-transcript-projection"
+import {
+  resolveCurrentWatchSearchTranscriptProjection,
+  resolveCurrentWatchSearchTranscriptProjectionWithFallback,
+} from "./typesense-watch-search-current-transcript-projection"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
 
@@ -599,12 +602,21 @@ export class TypesenseWatchSearchCandidateGenerationService {
     }
 
     const currentProjection =
-      await this.resolveCurrentTranscriptProjection(
-        (input.prisma ?? this.prisma) as Pick<
-          PrismaClient,
-          "watchSearchCurrentTranscriptProjection"
-        >,
-      )
+      this.resolveCurrentTranscriptProjection ===
+      resolveCurrentWatchSearchTranscriptProjection
+        ? await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+            prisma: (input.prisma ?? this.prisma) as Pick<
+              PrismaClient,
+              "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+            >,
+            currentProfile,
+          })
+        : await this.resolveCurrentTranscriptProjection(
+            (input.prisma ?? this.prisma) as Pick<
+              PrismaClient,
+              "watchSearchCurrentTranscriptProjection"
+            >,
+          )
     if (
       input.generation.transcriptCollection !==
         currentProfile.binding.transcript ||

@@ -13,7 +13,7 @@ import {
   TypesenseWatchSearchCandidateGenerationService,
 } from "@/services/typesense-watch-search-candidate-generation"
 import { candidateWatchSearchIndexContractRevision } from "@/services/typesense-watch-search-candidate-identity"
-import { resolveCurrentWatchSearchTranscriptProjection } from "@/services/typesense-watch-search-current-transcript-projection"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
@@ -711,7 +711,10 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       sourceEpoch: requiredEnv("WATCH_SEARCH_CANDIDATE_SOURCE_EPOCH"),
       transcript: await (async () => {
         const projection =
-          await resolveCurrentWatchSearchTranscriptProjection(prisma)
+          await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+            prisma,
+            typesense,
+          })
         return {
           collection: projection.transcriptCollection,
           contentEmbeddingContractId: projection.contentEmbeddingContractId,

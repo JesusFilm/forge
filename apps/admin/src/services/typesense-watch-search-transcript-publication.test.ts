@@ -13,7 +13,7 @@ const envMock = vi.hoisted(() => ({
     defaultShadowEnabled: true,
     fleetPrimaryEnabled: false,
     candidateComparisonEnabled: false,
-    transcriptProjectionRevision: undefined,
+    transcriptProjectionRevision: undefined as bigint | undefined,
   })),
   resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
     (value?: unknown) =>
@@ -98,5 +98,20 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
       prisma,
       expect.any(Object),
     )
+  })
+
+  it("continues the legacy runtime projection revision when creating the first stored row", async () => {
+    envMock.resolveWatchSearchRuntimeEnv.mockReturnValue({
+      defaultShadowEnabled: true,
+      fleetPrimaryEnabled: false,
+      candidateComparisonEnabled: false,
+      transcriptProjectionRevision: 7n,
+    })
+
+    const { _internals } = await import(
+      "./typesense-watch-search-transcript-publication"
+    )
+
+    expect(_internals.initialProjectionRevision()).toBe(8n)
   })
 })

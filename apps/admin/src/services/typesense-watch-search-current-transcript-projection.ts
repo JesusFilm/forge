@@ -1,4 +1,8 @@
 import type { PrismaClient } from "@prisma/client"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
+import type { TypesenseClient } from "./typesense-client"
+import { freezeCurrentWatchSearchProfile } from "./typesense-watch-search-profile"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
 
 export const WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID =
   "watch-search-current-transcript-projection"
@@ -28,17 +32,25 @@ function requiredString(
   return normalized
 }
 
-export async function resolveCurrentWatchSearchTranscriptProjection(
-  prisma: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">,
-): Promise<CurrentWatchSearchTranscriptProjection> {
-  const row = await prisma.watchSearchCurrentTranscriptProjection.findUnique({
-    where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
-  })
-  if (!row) {
-    throw new WatchSearchCurrentTranscriptProjectionError(
-      "current transcript projection is missing",
-    )
-  }
+type StoredProjectionRow = {
+  transcriptCollection: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
+  projectionRevision: bigint
+}
+
+type ProjectionReader = Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
+
+type ProjectionFallbackReader = Pick<
+  PrismaClient,
+  "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+>
+
+type AliasReader = Pick<TypesenseClient, "getAlias">
+
+function normalizeStoredProjection(
+  row: StoredProjectionRow,
+): CurrentWatchSearchTranscriptProjection {
   if (row.projectionRevision < 1n) {
     throw new WatchSearchCurrentTranscriptProjectionError(
       "current transcript projection revision must be at least 1",
@@ -58,5 +70,79 @@ export async function resolveCurrentWatchSearchTranscriptProjection(
       "current transcript chunking version",
     ),
     projectionRevision: row.projectionRevision,
+  })
+}
+
+async function readStoredCurrentWatchSearchTranscriptProjection(
+  prisma: ProjectionReader,
+): Promise<CurrentWatchSearchTranscriptProjection | null> {
+  const row = await prisma.watchSearchCurrentTranscriptProjection.findUnique({
+    where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+  })
+  return row ? normalizeStoredProjection(row) : null
+}
+
+export async function resolveCurrentWatchSearchTranscriptProjection(
+  prisma: ProjectionReader,
+): Promise<CurrentWatchSearchTranscriptProjection> {
+  const projection = await readStoredCurrentWatchSearchTranscriptProjection(
+    prisma,
+  )
+  if (!projection) {
+    throw new WatchSearchCurrentTranscriptProjectionError(
+      "current transcript projection is missing",
+    )
+  }
+  return projection
+}
+
+export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(
+  input: {
+    prisma: ProjectionFallbackReader
+    currentProfile?: {
+      binding: {
+        transcript: string
+      }
+    }
+    typesense?: AliasReader
+  },
+): Promise<CurrentWatchSearchTranscriptProjection> {
+  const stored = await readStoredCurrentWatchSearchTranscriptProjection(
+    input.prisma,
+  )
+  if (stored) return stored
+
+  const transcriptCollection =
+    input.currentProfile?.binding.transcript ??
+    (
+      input.typesense
+        ? (await freezeCurrentWatchSearchProfile(input.typesense)).binding
+            .transcript
+        : null
+    )
+  if (!transcriptCollection) {
+    throw new WatchSearchCurrentTranscriptProjectionError(
+      "current transcript projection is missing",
+    )
+  }
+
+  const runtimeProjectionRevision =
+    resolveWatchSearchRuntimeEnv().transcriptProjectionRevision
+  if (runtimeProjectionRevision == null || runtimeProjectionRevision < 1n) {
+    throw new WatchSearchCurrentTranscriptProjectionError(
+      "current transcript projection revision is missing",
+    )
+  }
+
+  const compatibility =
+    await resolveCurrentWatchSearchTranscriptCompatibility(input.prisma)
+  return Object.freeze({
+    transcriptCollection: requiredString(
+      transcriptCollection,
+      "current transcript collection",
+    ),
+    contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
+    transcriptChunkingVersion: compatibility.transcriptChunkingVersion,
+    projectionRevision: runtimeProjectionRevision,
   })
 }

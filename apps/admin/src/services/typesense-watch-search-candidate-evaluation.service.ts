@@ -11,7 +11,7 @@ import {
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 import { resolveEvaluationCandidateWatchSearchProfile } from "./typesense-watch-search-comparison.service"
-import { resolveCurrentWatchSearchTranscriptProjection } from "./typesense-watch-search-current-transcript-projection"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "./typesense-watch-search-current-transcript-projection"
 import {
   assertQualificationProfilesMatchLease,
   freezeCurrentWatchSearchProfile,
@@ -381,7 +381,12 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
               generations,
               currentProfile,
               transcriptProjection:
-                await resolveCurrentWatchSearchTranscriptProjection(prisma),
+                await resolveCurrentWatchSearchTranscriptProjectionWithFallback(
+                  {
+                    prisma,
+                    currentProfile,
+                  },
+                ),
             })
           : await resolveServingCandidateWatchSearchProfile({
               generations,
@@ -390,7 +395,12 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
                 candidateWatchSearchIndexContractRevision(),
               rankingRevision: candidateWatchSearchRankingRevision(),
               transcriptProjection:
-                await resolveCurrentWatchSearchTranscriptProjection(prisma),
+                await resolveCurrentWatchSearchTranscriptProjectionWithFallback(
+                  {
+                    prisma,
+                    currentProfile,
+                  },
+                ),
               qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
             })
       if (

@@ -17,7 +17,7 @@ import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
-import { resolveCurrentWatchSearchTranscriptProjection } from "./typesense-watch-search-current-transcript-projection"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "./typesense-watch-search-current-transcript-projection"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -364,7 +364,10 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
         generations,
         currentProfile,
         transcriptProjection:
-          await resolveCurrentWatchSearchTranscriptProjection(prisma),
+          await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+            prisma,
+            currentProfile,
+          }),
       }),
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),

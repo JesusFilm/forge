@@ -132,6 +132,12 @@ function sha256(value: unknown): string {
     .digest("hex")
 }
 
+function initialProjectionRevision(): bigint {
+  return (
+    (resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? 0n) + 1n
+  )
+}
+
 function normalizeEmbedding(value: unknown): number[] {
   const array =
     typeof value === "string"
@@ -479,7 +485,7 @@ async function completeTranscriptPublicationBatch(
         transcriptCollection: input.transcriptCollection,
         contentEmbeddingContractId: input.contentEmbeddingContractId,
         transcriptChunkingVersion: input.transcriptChunkingVersion,
-        projectionRevision: 1n,
+        projectionRevision: initialProjectionRevision(),
         version: 1,
       },
       update: {
@@ -737,6 +743,7 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
 
 export const _internals = {
   exactIdFilter,
+  initialProjectionRevision,
   normalizeEmbedding,
   normalizeTranscriptDocument,
   sha256,

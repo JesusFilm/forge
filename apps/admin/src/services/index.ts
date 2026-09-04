@@ -37,7 +37,7 @@ import {
   type TypesenseWatchSearchProfile,
   watchSearchBindingMembers,
 } from "@/services/typesense-watch-search-profile"
-import { resolveCurrentWatchSearchTranscriptProjection } from "@/services/typesense-watch-search-current-transcript-projection"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   createTypesenseWatchSearchService,
   TypesenseWatchSearchService,
@@ -194,7 +194,10 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
           indexContractRevision: candidateWatchSearchIndexContractRevision(),
           rankingRevision: candidateWatchSearchRankingRevision(),
           transcriptProjection:
-            await resolveCurrentWatchSearchTranscriptProjection(prisma),
+            await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+              prisma,
+              typesense,
+            }),
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
           typesense,
           generations,
