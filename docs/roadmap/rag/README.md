@@ -11,8 +11,8 @@ database into Admin.
 ## Status (September 4, 2026)
 
 - **Total tickets:** 17
-- **Complete:** 12
-- **In progress:** 1
+- **Complete:** 13
+- **In progress:** 0
 - **Not started:** 4
 - **Blocked:** 0
 
@@ -36,7 +36,7 @@ database into Admin.
 | [feat-439](feat-439-rag-railway-infrastructure-as-code.md)     | —                                                             | Migrate RAG Railway configuration to Infrastructure as Code | not-started | —                                                                                                            |
 | [feat-445](feat-445-rag-registry-policy-test-consolidation.md) | —                                                             | Make registry policy tests execute production filtering     | not-started | —                                                                                                            |
 | [feat-446](feat-446-rag-typed-operational-errors.md)           | —                                                             | Complete typed operational errors across RAG                | not-started | —                                                                                                            |
-| [feat-452](feat-452-rag-migration-recovery.md)                 | [#130](https://github.com/JesusFilm/jesusfilm-rag/issues/130) | Recover omitted RAG migration contracts                     | in-progress | —                                                                                                            |
+| [feat-452](feat-452-rag-migration-recovery.md)                 | [#130](https://github.com/JesusFilm/jesusfilm-rag/issues/130) | Recover omitted RAG migration contracts                     | complete    | [#2164](https://github.com/JesusFilm/forge/pull/2164)                                                        |
 
 ## Programme invariants
 

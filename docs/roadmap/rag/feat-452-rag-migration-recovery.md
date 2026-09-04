@@ -3,7 +3,7 @@ id: "feat-452"
 title: "Recover omitted RAG migration contracts"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-04"
 duration: 3
 depends_on: ["feat-431", "feat-432"]
@@ -73,3 +73,14 @@ architecture and ADR corpus that does not exist in Forge.
   focused tests pass without a production connection.
 - RAG tests, typecheck, lint, dependency-cruiser, status checks, dashboard
   verification, and repository formatting pass.
+
+## Resolution
+
+Completed in [Forge PR #2164](https://github.com/JesusFilm/forge/pull/2164).
+
+The recovery restores the durable lifecycle, architecture, and decision records;
+reconciles source planning and dashboard state; makes missing lifecycle targets a
+test failure; and adds preview-pinned, source-scoped raw-document promotion with
+unit and real-Postgres integration coverage. Historical proof that was never
+recorded remains explicitly unclaimed, and the live small-source proof and final
+retirement stay in `feat-435`.
