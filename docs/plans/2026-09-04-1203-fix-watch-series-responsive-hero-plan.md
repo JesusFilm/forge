@@ -110,7 +110,7 @@ Static series heroes used an unbounded 16:9 frame that could grow taller than th
 - **Goal:** Leave durable proof that the responsive repair works and does not degrade page loading.
 - **Requirements:** R3-R7.
 - **Dependencies:** U1, U2.
-- **Files:** `design-qa.md`, `docs/roadmap/platform/feat-453-watch-series-intro-dimensions.md`, `docs/roadmap/README.md`.
+- **Files:** `design-qa.md`, `docs/roadmap/platform/feat-454-watch-series-intro-dimensions.md`, `docs/roadmap/README.md`.
 - **Approach:** Record the source defect, final responsive screenshots, cover-treatment confirmation, interaction checks, and loading-performance review. Mark the roadmap ticket complete after validation.
 - **Test expectation:** None -- this unit records evidence for behavior proven by U1 and U2.
 - **Verification:** The QA record covers 320x700, 390x844, and 1920x1080 viewports. The roadmap ticket lists the focused tests, typecheck, lint, formatting, browser smoke, and performance conclusion.

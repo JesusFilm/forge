@@ -4,6 +4,10 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+} from "@/lib/content-width"
 import { resolvePosterUrl } from "@/lib/url"
 import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
 import { HeroPlayer } from "./HeroPlayer"
@@ -166,12 +170,12 @@ function SeriesHeroStatic({
           to the video page in both modes. */}
       <div
         data-testid="hero-player-overlay-anchor"
-        className="relative z-10 h-0 w-full"
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       >
         {overlay ?? (
           <div
             data-testid="series-hero-overlay"
-            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-start gap-4 pb-6 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             {series.label ? (
               <span

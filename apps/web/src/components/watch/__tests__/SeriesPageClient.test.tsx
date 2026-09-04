@@ -181,6 +181,7 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -357,6 +358,13 @@ describe("SeriesPageClient — shared content surface", () => {
     for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
       expect(metadata?.className).toContain(className)
     }
+
+    const content = container.querySelector(
+      '[data-testid="series-page-meta-content"]',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(content?.className).toContain(className)
+    }
   })
 
   it("activates a routed subtitle on the playable series trailer", () => {
@@ -523,11 +531,11 @@ describe("SeriesPageClient — responsive hero overlay", () => {
       '[data-testid="series-page-hero-actions"]',
     )
 
-    expect(overlay?.className).toContain("right-5")
-    expect(overlay?.className).toContain("left-5")
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(overlay?.className).toContain(className)
+    }
     expect(overlay?.className).toContain("pb-5")
     expect(overlay?.className).toContain("max-[360px]:pb-2")
-    expect(overlay?.className).toContain("md:right-16")
     expect(contentRow?.className).toContain("flex-col")
     expect(contentRow?.className).toContain("md:flex-row")
     expect(actions?.className).toContain("w-full")

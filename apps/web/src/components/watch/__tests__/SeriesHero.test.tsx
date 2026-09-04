@@ -50,6 +50,7 @@ import { SeriesHero } from "@/components/watch/SeriesHero"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 let container: HTMLDivElement
 let root: Root
@@ -188,6 +189,12 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
     expect(
       container.querySelector('[data-testid="hero-player-overlay-anchor"]'),
     ).not.toBeNull()
+    const overlay = container.querySelector(
+      '[data-testid="series-hero-overlay"]',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(overlay?.className).toContain(className)
+    }
 
     // Title and label overlay rendered (no Watch now button — there's
     // nothing to play in static mode).

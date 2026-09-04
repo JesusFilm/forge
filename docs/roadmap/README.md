@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 4, 2026)
 
-- **Total tickets:** 623
-- **Complete:** 466
+- **Total tickets:** 624
+- **Complete:** 467
 - **In progress:** 48
 - **Not started:** 37
 - **Blocked:** 72
@@ -515,7 +515,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-428](platform/feat-428-watch-infinite-feed-shared-cache.md)                      | Watch infinite feed shared cache                                                 | codex      | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-423](platform/feat-423-devcontainer-host-accessible-dev-ports.md)                | Expose devcontainer development servers to the host                              | nisal      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-424](platform/feat-424-watch-series-footer-parity.md)                            | Watch series footer parity                                                       | codex      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
-| [feat-453](platform/feat-453-watch-series-intro-dimensions.md)                         | Align Watch series intro dimensions                                              | codex      | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
+| [feat-453](platform/feat-453-watch-template-content-rail.md)                           | Unify Watch template content rails                                               | codex      | P2       | 2026-09-04 | 1    | 2026-09-04 | complete    |
+| [feat-454](platform/feat-454-watch-series-intro-dimensions.md)                         | Align Watch series intro dimensions                                              | codex      | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
