@@ -26,6 +26,7 @@ import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
@@ -416,15 +417,13 @@ export function SeriesPageClient({
         audioLanguageCountLabel={audioLanguageCountLabel}
         subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
-          // Stack the label on top, then a horizontal row with the title
-          // on the left and the share pill on the right. Using
-          // `items-center` on that row aligns the share button to the
-          // title's vertical midline rather than its bottom — earlier
-          // `items-end` alignment positioned the share slightly below
-          // the title baseline because the pill is shorter than the H1.
+          // Stack the label on top, then keep title and actions vertical on
+          // phones so the fixed-width pills cannot squeeze the heading into
+          // a one-word column. Desktop keeps the established side-by-side
+          // band, with the pills aligned to the title's lower edge.
           <div
             data-testid="series-page-hero-overlay"
-            className="absolute right-10 bottom-0 left-10 flex flex-col items-stretch gap-3 pb-8 md:right-16 md:left-16 md:pb-10 xl:right-24 xl:left-24"
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             <span
               data-testid="series-page-label"
@@ -432,24 +431,31 @@ export function SeriesPageClient({
             >
               {t("seriesLabel", { episodes: episodeLabel })}
             </span>
-            <div className="flex items-end justify-between gap-4">
+            <div
+              data-testid="series-page-hero-content-row"
+              className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-4"
+            >
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <div
+                data-testid="series-page-hero-actions"
+                className="flex w-full flex-wrap justify-start gap-2 md:w-auto md:shrink-0 md:justify-end"
+              >
                 {episodes.length > 0 ? (
                   <Button
                     variant="pill"
+                    className="max-w-full min-w-0 px-3 text-[0.6875rem] md:max-w-none md:px-5 md:text-xs"
                     onClick={openDownload}
                     disabled={downloadPending}
                     aria-label={t("downloadCollection")}
                     data-testid="series-page-download-button"
                   >
                     <Download size={16} />
-                    <span>
+                    <span className="min-w-0 truncate">
                       {downloadPending
                         ? t("checkingDownloads")
                         : t("downloadCollection")}
@@ -458,12 +464,13 @@ export function SeriesPageClient({
                 ) : null}
                 <Button
                   variant="pill"
+                  className="px-3 text-[0.6875rem] md:px-5 md:text-xs"
                   onClick={openShare}
                   aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>{t("share")}</span>
+                  <span className="max-[360px]:sr-only">{t("share")}</span>
                 </Button>
               </div>
             </div>
@@ -492,40 +499,48 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className={`relative z-30 grid w-full grid-cols-1 gap-6 px-5 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
+          className={`relative z-30 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
         >
-          {description ? (
-            <div className="md:col-span-3">
-              <p
-                data-testid="series-page-description"
-                className="text-base leading-relaxed text-stone-200/80 md:text-lg"
-              >
-                {description}
-              </p>
-            </div>
-          ) : (
-            // Reserve the left columns so the combobox stays in the right
-            // rail even when description is missing.
-            <div className="hidden md:col-span-3 md:block" aria-hidden="true" />
-          )}
-          {languageOptions.length > 0 ? (
-            <div
-              data-testid="series-page-languages"
-              className="flex flex-col gap-2"
-            >
-              <span
-                data-testid="series-page-languages-label"
-                className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
-              >
-                {t("languages")}
-              </span>
-              <LanguageCombobox
-                options={languageOptions}
-                value={currentLanguageSlug}
-                onChange={handleLanguageChange}
+          <div
+            data-testid="series-page-meta-content"
+            className={`grid grid-cols-1 gap-6 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:pt-12 md:pb-8 ${WATCH_PAGE_CONTENT_CLASSES}`}
+          >
+            {description ? (
+              <div className="md:col-span-3">
+                <p
+                  data-testid="series-page-description"
+                  className="text-base leading-relaxed text-stone-200/80 md:text-lg"
+                >
+                  {description}
+                </p>
+              </div>
+            ) : (
+              // Reserve the left columns so the combobox stays in the right
+              // rail even when description is missing.
+              <div
+                className="hidden md:col-span-3 md:block"
+                aria-hidden="true"
               />
-            </div>
-          ) : null}
+            )}
+            {languageOptions.length > 0 ? (
+              <div
+                data-testid="series-page-languages"
+                className="flex flex-col gap-2"
+              >
+                <span
+                  data-testid="series-page-languages-label"
+                  className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
+                >
+                  {t("languages")}
+                </span>
+                <LanguageCombobox
+                  options={languageOptions}
+                  value={currentLanguageSlug}
+                  onChange={handleLanguageChange}
+                />
+              </div>
+            ) : null}
+          </div>
         </section>
       ) : null}
 

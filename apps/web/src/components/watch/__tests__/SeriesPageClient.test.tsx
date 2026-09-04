@@ -181,6 +181,7 @@ import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
@@ -357,6 +358,13 @@ describe("SeriesPageClient — shared content surface", () => {
     for (const className of SERIES_CONTENT_GLASS_CLASS_NAME.split(" ")) {
       expect(metadata?.className).toContain(className)
     }
+
+    const content = container.querySelector(
+      '[data-testid="series-page-meta-content"]',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(content?.className).toContain(className)
+    }
   })
 
   it("activates a routed subtitle on the playable series trailer", () => {
@@ -498,6 +506,67 @@ describe("SeriesPageClient — shared content surface", () => {
         subtitleVttSrc: null,
       }),
     )
+  })
+})
+
+describe("SeriesPageClient — responsive hero overlay", () => {
+  it("stacks the hero title and contained actions on mobile", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(2) }) as Series}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    const overlay = container.querySelector(
+      '[data-testid="series-page-hero-overlay"]',
+    )
+    const contentRow = container.querySelector(
+      '[data-testid="series-page-hero-content-row"]',
+    )
+    const actions = container.querySelector(
+      '[data-testid="series-page-hero-actions"]',
+    )
+
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(overlay?.className).toContain(className)
+    }
+    expect(overlay?.className).toContain("pb-5")
+    expect(overlay?.className).toContain("max-[360px]:pb-2")
+    expect(contentRow?.className).toContain("flex-col")
+    expect(contentRow?.className).toContain("md:flex-row")
+    expect(actions?.className).toContain("w-full")
+    expect(actions?.className).toContain("flex-wrap")
+    expect(actions?.className).toContain("md:w-auto")
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]')
+        ?.className,
+    ).toContain("text-[0.6875rem]")
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]')
+        ?.className,
+    ).toContain("max-w-full")
+    expect(
+      container.querySelector(
+        '[data-testid="series-page-download-button"] span',
+      )?.className,
+    ).toContain("truncate")
+    expect(
+      container.querySelector('[data-testid="series-page-share-button"]')
+        ?.className,
+    ).toContain("md:px-5")
+    expect(
+      container
+        .querySelector('[data-testid="series-page-share-button"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Share")
+    expect(
+      container.querySelector('[data-testid="series-page-share-button"] span')
+        ?.className,
+    ).toContain("max-[360px]:sr-only")
   })
 })
 
