@@ -13,7 +13,7 @@ import {
   TypesenseWatchSearchCandidateGenerationService,
 } from "@/services/typesense-watch-search-candidate-generation"
 import { candidateWatchSearchIndexContractRevision } from "@/services/typesense-watch-search-candidate-identity"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "@/services/typesense-watch-search-transcript-compatibility"
+import { resolveCurrentWatchSearchTranscriptProjection } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
@@ -710,15 +710,13 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       indexContractRevision: candidateWatchSearchIndexContractRevision(),
       sourceEpoch: requiredEnv("WATCH_SEARCH_CANDIDATE_SOURCE_EPOCH"),
       transcript: await (async () => {
-        const compatibility =
-          await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+        const projection =
+          await resolveCurrentWatchSearchTranscriptProjection(prisma)
         return {
-          collection: requiredEnv("WATCH_SEARCH_TRANSCRIPT_COLLECTION"),
-          contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
-          chunkingVersion: compatibility.transcriptChunkingVersion,
-          projectionRevision: BigInt(
-            requiredEnv("WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION"),
-          ),
+          collection: projection.transcriptCollection,
+          contentEmbeddingContractId: projection.contentEmbeddingContractId,
+          chunkingVersion: projection.transcriptChunkingVersion,
+          projectionRevision: projection.projectionRevision,
         }
       })(),
       batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),

@@ -37,7 +37,7 @@ import {
   type TypesenseWatchSearchProfile,
   watchSearchBindingMembers,
 } from "@/services/typesense-watch-search-profile"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "@/services/typesense-watch-search-transcript-compatibility"
+import { resolveCurrentWatchSearchTranscriptProjection } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   createTypesenseWatchSearchService,
   TypesenseWatchSearchService,
@@ -56,9 +56,11 @@ export async function resolveWatchSearchServingProfile(input: {
   selector: string
   indexContractRevision: string | null
   rankingRevision: string | null
-  transcriptCompatibility: {
+  transcriptProjection: {
+    transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    projectionRevision: bigint
   } | null
   qrelsRevision: string | null
   typesense: Pick<TypesenseClient, "getAlias">
@@ -83,9 +85,9 @@ export async function resolveWatchSearchServingProfile(input: {
       "Candidate serving requires a ranking revision",
     )
   }
-  if (!input.transcriptCompatibility) {
+  if (!input.transcriptProjection) {
     throw new TypesenseWatchSearchUnavailableError(
-      "Candidate serving requires transcript compatibility",
+      "Candidate serving requires a published transcript projection",
     )
   }
   if (!input.qrelsRevision) {
@@ -103,15 +105,23 @@ export async function resolveWatchSearchServingProfile(input: {
 
   const currentProfile = await freezeCurrentWatchSearchProfile(input.typesense)
   const transcriptCollection = currentProfile.binding.transcript
+  if (
+    transcriptCollection !== input.transcriptProjection.transcriptCollection
+  ) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Current transcript alias drifted from the published transcript projection",
+    )
+  }
 
   const generation = await input.generations.resolveGeneration({
     generationId: match[1]!,
     indexContractRevision: input.indexContractRevision,
     transcriptCollection,
     contentEmbeddingContractId:
-      input.transcriptCompatibility.contentEmbeddingContractId,
+      input.transcriptProjection.contentEmbeddingContractId,
     transcriptChunkingVersion:
-      input.transcriptCompatibility.transcriptChunkingVersion,
+      input.transcriptProjection.transcriptChunkingVersion,
+    transcriptProjectionRevision: input.transcriptProjection.projectionRevision,
     requireQualified: true,
     currentBindings: watchSearchBindingMembers(currentProfile),
     qrelsRevision: input.qrelsRevision,
@@ -183,8 +193,8 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
           selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
           indexContractRevision: candidateWatchSearchIndexContractRevision(),
           rankingRevision: candidateWatchSearchRankingRevision(),
-          transcriptCompatibility:
-            await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+          transcriptProjection:
+            await resolveCurrentWatchSearchTranscriptProjection(prisma),
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
           typesense,
           generations,

@@ -1,12 +1,10 @@
 import { createHash, randomUUID } from "node:crypto"
 
-import {
-  Prisma,
-  type PrismaClient,
-} from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
 import { TypesenseClient } from "./typesense-client"
+import { WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID } from "./typesense-watch-search-current-transcript-projection"
 import {
   parseTypesenseVector,
   canonicalTypesenseVideoId,
@@ -21,7 +19,7 @@ const RETRY_DELAY_MS = 5_000
 const POLL_MS = 5_000
 
 export const WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID =
-  "watch-search-current-transcript-projection"
+  CURRENT_TRANSCRIPT_PROJECTION_ID
 
 type ClaimablePublicationRow = {
   id: string
@@ -152,7 +150,9 @@ function normalizeTranscriptDocument(
     id: document.id,
     documentKind: document.documentKind,
     videoId: document.videoId,
-    ...(document.videoEditionId ? { videoEditionId: document.videoEditionId } : {}),
+    ...(document.videoEditionId
+      ? { videoEditionId: document.videoEditionId }
+      : {}),
     canonicalVideoId: document.canonicalVideoId,
     language: document.language,
     publiclyVisible: document.publiclyVisible,
@@ -211,7 +211,9 @@ async function claimNextTranscriptPublicationBatch(
   now: Date,
 ): Promise<ClaimedPublicationBatch | null> {
   return prisma.$transaction(async (tx) => {
-    const first = await tx.$queryRaw<Array<{ transcriptId: string }>>(Prisma.sql`
+    const first = await tx.$queryRaw<
+      Array<{ transcriptId: string }>
+    >(Prisma.sql`
       SELECT transcript_id AS "transcriptId"
       FROM watch_search_current_transcript_publication_event
       WHERE ${eligibleCurrentEventWhere(now)}
@@ -247,17 +249,16 @@ async function claimNextTranscriptPublicationBatch(
 
     const latest = rows[0]!
     const eventIds = rows.map((row) => row.id)
-    const staleDocumentIds = [...new Set(rows.flatMap((row) => row.staleDocumentIds))]
+    const staleDocumentIds = [
+      ...new Set(rows.flatMap((row) => row.staleDocumentIds)),
+    ]
     const leaseGeneration =
-      rows.reduce(
-        (max, row) => Math.max(max, row.leaseGeneration),
-        0,
-      ) + 1
+      rows.reduce((max, row) => Math.max(max, row.leaseGeneration), 0) + 1
     const leaseToken = randomUUID()
     const leaseTokenHash = createHash("sha256").update(leaseToken).digest("hex")
     const leaseExpiresAt = new Date(now.getTime() + LEASE_MS)
-    const updated = await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany(
-      {
+    const updated =
+      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
         where: { id: { in: eventIds } },
         data: {
           status: "CLAIMED",
@@ -267,8 +268,7 @@ async function claimNextTranscriptPublicationBatch(
           attemptCount: { increment: 1 },
           updatedAt: now,
         },
-      },
-    )
+      })
     if (updated.count !== eventIds.length) {
       throw new WatchSearchTranscriptPublicationError(
         "failed to claim the full transcript publication batch",
@@ -401,10 +401,9 @@ async function readBackTranscriptDocuments(
 ): Promise<TypesenseWatchTranscriptDocument[]> {
   const rows = await Promise.all(
     ids.map((id) =>
-      typesense.getDocument<TypesenseWatchTranscriptDocument & { embedding?: unknown }>(
-        collection,
-        id,
-      ),
+      typesense.getDocument<
+        TypesenseWatchTranscriptDocument & { embedding?: unknown }
+      >(collection, id),
     ),
   )
   return rows.map((row, index) => {
@@ -425,7 +424,9 @@ async function assertStaleDocumentsRemoved(
   collection: string,
   ids: readonly string[],
 ): Promise<void> {
-  const rows = await Promise.all(ids.map((id) => typesense.getDocument(collection, id)))
+  const rows = await Promise.all(
+    ids.map((id) => typesense.getDocument(collection, id)),
+  )
   const present = rows.findIndex((row) => row != null)
   if (present !== -1) {
     throw new WatchSearchTranscriptPublicationError(
@@ -485,8 +486,8 @@ async function completeTranscriptPublicationBatch(
         version: { increment: 1 },
       },
     })
-    const completed = await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany(
-      {
+    const completed =
+      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
         where: {
           id: { in: batch.eventIds },
           status: "CLAIMED",
@@ -503,8 +504,7 @@ async function completeTranscriptPublicationBatch(
           completedAt: now,
           updatedAt: now,
         },
-      },
-    )
+      })
     if (completed.count !== batch.eventIds.length) {
       throw new WatchSearchTranscriptPublicationError(
         "transcript publication batch fence was lost before completion",
@@ -699,7 +699,10 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
   prisma: PrismaClient,
 ): Promise<
   | { started: true }
-  | { started: false; reason: "already-started" | "disabled" | "missing-config" }
+  | {
+      started: false
+      reason: "already-started" | "disabled" | "missing-config"
+    }
 > {
   const enabled = env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED === true
   if (!enabled) {

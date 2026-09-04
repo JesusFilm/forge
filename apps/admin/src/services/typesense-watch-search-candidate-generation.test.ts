@@ -242,6 +242,32 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     warning.mockRestore()
   })
 
+  it("invalidates a candidate when the published transcript projection revision changes", async () => {
+    await ready()
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await expect(
+      service.resolveGeneration({
+        generationId: "candidate-1",
+        indexContractRevision: "admin-app-sha-1",
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 18n,
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+
+    expect(db.generations.get("candidate-1")).toMatchObject({
+      state: "INVALIDATED",
+      invalidationReason:
+        "transcript physical collection, embedding contract, chunking version, or projection revision changed",
+    })
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining("requested_projection_revision=18"),
+    )
+    warning.mockRestore()
+  })
+
   it("acquires, renews, expires, releases, and enforces leases without waiting", async () => {
     await ready()
     const identity = {

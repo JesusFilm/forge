@@ -488,6 +488,7 @@ function assertExactIdentity(
     transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
   },
 ): void {
   if (generation.indexContractRevision !== identity.indexContractRevision) {
@@ -499,7 +500,11 @@ function assertExactIdentity(
     generation.transcriptCollection !== identity.transcriptCollection ||
     generation.contentEmbeddingContractId !==
       identity.contentEmbeddingContractId ||
-    generation.transcriptChunkingVersion !== identity.transcriptChunkingVersion
+    generation.transcriptChunkingVersion !==
+      identity.transcriptChunkingVersion ||
+    (identity.transcriptProjectionRevision !== undefined &&
+      generation.transcriptProjectionRevision !==
+        identity.transcriptProjectionRevision)
   ) {
     throw new CandidateGenerationCompatibilityError(
       `candidate generation ${generation.id} transcript identity is stale`,
@@ -825,10 +830,14 @@ export class TypesenseWatchSearchCandidateGenerationService {
       generation.transcriptCollection !== input.transcriptCollection ||
       generation.contentEmbeddingContractId !==
         input.contentEmbeddingContractId ||
-      generation.transcriptChunkingVersion !== input.transcriptChunkingVersion
+      generation.transcriptChunkingVersion !==
+        input.transcriptChunkingVersion ||
+      (input.transcriptProjectionRevision !== undefined &&
+        generation.transcriptProjectionRevision !==
+          input.transcriptProjectionRevision)
     ) {
       console.warn(
-        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion}`,
+        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion} stored_projection_revision=${generation.transcriptProjectionRevision.toString()} requested_projection_revision=${input.transcriptProjectionRevision?.toString() ?? "unspecified"}`,
       )
       await this.prisma.watchSearchCandidateGeneration.updateMany({
         where: {
@@ -841,7 +850,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
           version: { increment: 1 },
           invalidatedAt: this.now(),
           invalidationReason:
-            "transcript physical collection, embedding contract, or chunking version changed",
+            "transcript physical collection, embedding contract, chunking version, or projection revision changed",
         },
       })
       throw new CandidateGenerationCompatibilityError(

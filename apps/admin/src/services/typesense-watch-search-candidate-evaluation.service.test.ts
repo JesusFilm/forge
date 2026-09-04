@@ -453,9 +453,11 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       currentProfile,
       indexContractRevision: "watch-search-candidate/v3",
       rankingRevision: "title-and-brand-v2",
-      transcriptCompatibility: {
+      transcriptProjection: {
+        transcriptCollection: currentProfile.binding.transcript,
         contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
         transcriptChunkingVersion: "mastra-v1",
+        projectionRevision: 7n,
       },
       qrelsRevision: "qrels-reviewed-1",
     })
@@ -470,6 +472,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       transcriptCollection: currentProfile.binding.transcript,
       contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
       transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 7n,
       requireQualified: true,
       currentBindings: Object.values(currentProfile.binding),
       qrelsRevision: "qrels-reviewed-1",
@@ -505,13 +508,39 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           currentProfile,
           indexContractRevision: "watch-search-candidate/v3",
           rankingRevision: "title-and-brand-v2",
-          transcriptCompatibility: {
+          transcriptProjection: {
+            transcriptCollection: currentProfile.binding.transcript,
             contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
             transcriptChunkingVersion: "mastra-v1",
+            projectionRevision: 7n,
           },
           qrelsRevision: "qrels-reviewed-1",
         }),
       ).rejects.toBeInstanceOf(CandidateSearchEvaluationError)
     },
   )
+
+  it("fails closed when the current transcript alias drifts from the published projection", async () => {
+    const generations = {
+      getPointer: vi.fn(async () => ({ generationId: "generation-serving" })),
+      resolveGeneration: vi.fn(),
+    }
+
+    await expect(
+      resolveServingCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        indexContractRevision: "watch-search-candidate/v3",
+        rankingRevision: "title-and-brand-v2",
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_other",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
+          projectionRevision: 7n,
+        },
+        qrelsRevision: "qrels-reviewed-1",
+      }),
+    ).rejects.toBeInstanceOf(CandidateSearchEvaluationError)
+    expect(generations.getPointer).not.toHaveBeenCalled()
+  })
 })

@@ -180,9 +180,11 @@ describe("TypesenseWatchSearchComparisonService", () => {
       resolveEvaluationCandidateWatchSearchProfile({
         generations,
         currentProfile,
-        transcriptCompatibility: {
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_physical",
           contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
           transcriptChunkingVersion: "mastra-v1",
+          projectionRevision: 7n,
         },
       }),
     ).resolves.toMatchObject({
@@ -225,9 +227,11 @@ describe("TypesenseWatchSearchComparisonService", () => {
       resolveEvaluationCandidateWatchSearchProfile({
         generations,
         currentProfile,
-        transcriptCompatibility: {
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_physical",
           contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
           transcriptChunkingVersion: "mastra-v2",
+          projectionRevision: 8n,
         },
       }),
     ).rejects.toMatchObject({
@@ -240,9 +244,37 @@ describe("TypesenseWatchSearchComparisonService", () => {
       transcriptCollection: currentProfile.binding.transcript,
       contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
       transcriptChunkingVersion: "mastra-v2",
-      transcriptProjectionRevision: 7n,
+      transcriptProjectionRevision: 8n,
       requireQualified: false,
     })
+  })
+
+  it("fails closed when the current transcript alias drifts from the published projection", async () => {
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+      })),
+      getGeneration: vi.fn(),
+      resolveGeneration: vi.fn(),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_other",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
+          projectionRevision: 7n,
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "ComparisonError",
+      code: "profile_unavailable",
+    })
+    expect(generations.getPointer).not.toHaveBeenCalled()
   })
 
   it("rejects blank input with the typed comparison error", async () => {
