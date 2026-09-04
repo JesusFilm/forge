@@ -47,7 +47,14 @@ code through the normal pull-request-to-main flow.
 6. Compare source, staging, and canonical counts, sizes, and streamed SHA-256 values.
 7. Reconcile the Workspace catalog. Required scripture, reflections, and safety
    configuration must be eligible; BM25, vector storage, and the embedder must
-   all report ready.
+   all report ready. The scripture and reflection corpus comes from the
+   committed seed under `apps/mastra/devotional-workspace/inputs/scripture/`
+   and `inputs/reflections/`, so it belongs in the manifest as authored input
+   like any other. Each folder's README names the ingest script that
+   regenerates it from its public source, and
+   `committed-seed-corpus.test.ts` checks those committed bytes against this
+   reconcile step's own validator — an ineligible reflections file is excluded
+   and reported rather than rejected, so it reads here as missing data.
 8. Verify Mastra can issue signed attempt inputs/uploads, Shorts Worker can
    stream them without permanent bucket credentials, Mastra can verify and
    finalize immutable outputs, authenticated playback supports Range, and
