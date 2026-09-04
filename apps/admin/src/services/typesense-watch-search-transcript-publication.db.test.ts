@@ -863,16 +863,10 @@ suite("current transcript publication into Watch Search", () => {
     })
     expect(before.results).toEqual([])
 
-    const retryEvent =
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        where: { sourceGeneration: 1n },
-        select: { nextAttemptAt: true },
-      })
     const published = await publishOneCurrentTranscriptToWatchSearch({
       prisma,
       typesense,
       generations,
-      now: new Date((retryEvent.nextAttemptAt ?? new Date()).getTime() + 1),
       withIndexLock: (run) =>
         withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
     })
@@ -1071,6 +1065,5 @@ suite("current transcript publication into Watch Search", () => {
       ])
       await lockHolder.end()
     }
-
   }, 180_000)
 })
