@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -6,18 +6,16 @@ import { env } from "@/config/env"
 import { getRecommendationRecentContext } from "./recent-context.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrations = [
-  "0052_production_semantic_recommendation_tracer",
-  "0056_consent_aware_recommendation_profile",
-].map((migration) =>
-  readFileSync(
-    new URL(
-      `../../../prisma/migrations/${migration}/migration.sql`,
-      import.meta.url,
-    ),
-    "utf8",
-  ),
-)
+const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
+const migrations = readdirSync(migrationRoot)
+  .filter((name) => {
+    const ordinal = Number(name.slice(0, 4))
+    return ordinal >= 52 && ordinal <= 74 && name.includes("recommendation")
+  })
+  .sort()
+  .map((name) =>
+    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
+  )
 
 describe.skipIf(!RUN_REAL_DB_TEST)(
   "recommendation recent context against Postgres",
@@ -170,12 +168,31 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         )
         if (input.selected) {
           await admin.query(
+            `INSERT INTO recommendation_impression (
+              id, request_id, item_id, capability_jti, event_id,
+              payload_digest, visibility_policy, occurred_at, received_at,
+              expires_at
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, 'visibility-qualified', $7, $7, $8
+            )`,
+            [
+              `${input.requestId}-impression`,
+              input.requestId,
+              `${input.requestId}-item`,
+              `${input.requestId}-impression-capability`,
+              `${input.requestId}-impression-event`,
+              "f".repeat(64),
+              input.createdAt,
+              expiry,
+            ],
+          )
+          await admin.query(
             `INSERT INTO recommendation_selection (
               id, request_id, item_id, capability_jti, event_id,
               payload_digest, claim_nonce_digest, handoff_expires_at,
-              occurred_at, expires_at
+              attribution_eligible_at, occurred_at, expires_at
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10
             )`,
             [
               `${input.requestId}-selection`,

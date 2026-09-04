@@ -31,6 +31,7 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0074_recommendation_selection_attribution_eligibility",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -137,6 +138,36 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ],
       )
       return { requestId, itemId, selectionId, episodeId }
+    }
+
+    async function markSelectionAttributionEligible(
+      graph: Awaited<ReturnType<typeof insertLifecycleGraph>>,
+      occurredAt: string,
+    ): Promise<void> {
+      await client.query(
+        `INSERT INTO recommendation_impression (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, visibility_policy, occurred_at, received_at,
+          expires_at
+        ) VALUES ($1, $2, $3, $4, $5, $6,
+          'visibility-qualified', $7, $7, $8)`,
+        [
+          `${graph.selectionId}-impression`,
+          graph.requestId,
+          graph.itemId,
+          `${graph.selectionId}-impression-jti`,
+          `${graph.selectionId}-impression-event`,
+          digest(`${graph.selectionId}-impression`),
+          occurredAt,
+          expiresAt,
+        ],
+      )
+      await client.query(
+        `UPDATE recommendation_selection
+         SET attribution_eligible_at = $1
+         WHERE id = $2`,
+        [occurredAt, graph.selectionId],
+      )
     }
 
     beforeAll(async () => {
@@ -554,6 +585,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const preGrant = await insertLifecycleGraph(
         "eligibility-projection-pre-grant",
       )
+      await markSelectionAttributionEligible(
+        preGrant,
+        "2026-08-19T03:00:00.000Z",
+      )
       await client.query(
         `UPDATE recommendation_playback_episode
          SET media_id = 'eligibility-projection-pre-grant-video',
@@ -598,6 +633,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
          WHERE id = $1`,
         [graph.selectionId],
       )
+      await markSelectionAttributionEligible(graph, "2026-08-25T01:00:00.000Z")
       await client.query(
         `UPDATE recommendation_playback_episode
          SET claimed_at = '2026-08-25T01:00:01.000Z'

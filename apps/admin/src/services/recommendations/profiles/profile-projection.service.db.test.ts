@@ -23,7 +23,7 @@ const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 72 && name.includes("recommendation")
+    return ordinal >= 52 && ordinal <= 74 && name.includes("recommendation")
   })
   .sort()
   .map((name) =>
