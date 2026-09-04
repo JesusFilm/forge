@@ -1061,6 +1061,7 @@ export function SearchOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
+      onClick={() => setOpen(false)}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 45,
@@ -1181,6 +1182,7 @@ export function SearchOverlay() {
           <div
             ref={suggestionPanelRef}
             data-testid="search-suggestions-panel"
+            onClick={(event) => event.stopPropagation()}
             className="fixed z-[1000] m-0 flex origin-top-left flex-col overflow-hidden rounded-2xl border border-white/10 bg-stone-950/92 text-stone-100 shadow-2xl shadow-black/40 backdrop-blur-xl duration-150 animate-in fade-in-0 zoom-in-95"
             style={{
               height: suggestionListPosition.height,

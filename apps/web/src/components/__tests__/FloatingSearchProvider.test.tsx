@@ -4286,6 +4286,43 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it("closes the instant shell from its backdrop but not its search field", () => {
+    const setOpen = vi.fn()
+
+    act(() => {
+      root.render(
+        <SearchOverlayInstantShell
+          open
+          closing={false}
+          query=""
+          setOpen={setOpen}
+          setQuery={vi.fn()}
+          onSubmit={vi.fn()}
+          headerTopClass={FLOATING_HEADER_TOP_CLASS}
+          logoSlotClass="w-12"
+          headerLanguageControlVisible={false}
+        />,
+      )
+    })
+
+    const shell = document.querySelector(
+      '[data-testid="search-overlay-instant-shell"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-instant-field-shell"]',
+    ) as HTMLElement
+    const content = document.querySelector(
+      '[data-testid="search-overlay-instant-content"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    act(() => content.click())
+    expect(setOpen).not.toHaveBeenCalled()
+
+    act(() => shell.click())
+    expect(setOpen).toHaveBeenCalledWith(false)
+  })
+
   it("renders the search input shell immediately while the full controller loads", async () => {
     type LanguageOptionsResponse = Awaited<
       ReturnType<typeof getSearchLanguageOptions>
@@ -4469,6 +4506,34 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       'input[aria-label="Search videos by keyword"]',
     ) as HTMLInputElement | null
     expect(reopenedInput?.value).toBe("")
+  })
+
+  it("closes the loaded search overlay from its backdrop", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay()
+
+    const overlay = document.querySelector(
+      '[aria-label="Search and browse videos"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-field-shell"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+
+    act(() => overlay.click())
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('input[type="search"]')).toBeNull()
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).toBeNull()
   })
 
   it("ignores an in-flight search response after the modal closes", async () => {
