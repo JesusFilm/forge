@@ -802,6 +802,38 @@ suite("current transcript publication into Watch Search", () => {
     ).toBe(2)
   })
 
+  it("treats a chunking-version change as transcript drift instead of unchanged ingest", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const result = await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "idempotent",
+        mastraRunId: "changed-chunking-version-run",
+        chunkingVersion: "mastra-v2",
+      }),
+    )
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "existing_transcript_differs",
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.count(),
+    ).toBe(1)
+    expect(
+      await prisma.videoTranscript.findFirstOrThrow({
+        select: { sourceGeneration: true, chunkingVersion: true },
+      }),
+    ).toMatchObject({
+      sourceGeneration: 1n,
+      chunkingVersion: "mastra-v1",
+    })
+  })
+
   it("publishes the latest canonical transcript into current Watch Search and makes it retrievable afterward", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

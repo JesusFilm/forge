@@ -602,6 +602,7 @@ function existingMatches(
     existing.embeddingTransformVersion ===
       (payload.model.transformVersion ?? null) &&
     existing.chunkingType === payload.chunking.type &&
+    existing.chunkingVersion === (payload.chunking.version ?? null) &&
     existing.maxChunkTokens === payload.chunking.maxChunkTokens &&
     existing.overlapTokens === payload.chunking.overlapTokens &&
     existing.totalChunks === payload.chunks.length &&
