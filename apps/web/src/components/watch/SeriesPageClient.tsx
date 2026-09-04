@@ -138,9 +138,24 @@ export function SeriesPageClient({
   // what we want for series-level language switching.
   const playerRef = useRef<MuxPlayerRef | null>(null)
 
-  const episodes = (series.children ?? []).filter(
-    (child): child is NonNullable<(typeof series.children)[number]> =>
-      child != null,
+  const episodes = useMemo(
+    () =>
+      (series.children ?? []).filter(
+        (child): child is NonNullable<(typeof series.children)[number]> =>
+          child != null,
+      ),
+    [series],
+  )
+  const downloadEpisodes = useMemo(
+    () =>
+      episodes.map((episode) => ({
+        documentId: episode.documentId,
+        order: episode.order ?? null,
+        slug: episode.slug,
+        title: episode.title,
+        thumbnailUrl: resolveEpisodeImageUrl(episode),
+      })),
+    [episodes],
   )
   // R8 pluralization: ICU plural covers N === 0 / 1 / 2+. The "SERIES · …"
   // composite is built from the localized episode-count string.
@@ -547,13 +562,7 @@ export function SeriesPageClient({
           open
           collectionSlug={series.slug ?? ""}
           collectionTitle={series.title}
-          episodes={episodes.map((episode) => ({
-            documentId: episode.documentId,
-            order: episode.order ?? null,
-            slug: episode.slug,
-            title: episode.title,
-            thumbnailUrl: resolveEpisodeImageUrl(episode),
-          }))}
+          episodes={downloadEpisodes}
           languages={languageOptions}
           currentLanguageSlug={currentLanguageSlug}
           accountGateEnabled={downloadAccountGateEnabled}

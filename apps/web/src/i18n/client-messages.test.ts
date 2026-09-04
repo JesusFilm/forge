@@ -66,5 +66,8 @@ describe("route-scoped client messages", () => {
     expect(messages.CollectionDownloadModal?.dialogTitle).toBe(
       "Download collection",
     )
+    expect(messages.LanguageInventory?.videoCount).toBe(
+      "{count, plural, one {# video} other {# videos}}",
+    )
   })
 })

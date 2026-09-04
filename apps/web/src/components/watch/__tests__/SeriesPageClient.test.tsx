@@ -670,6 +670,34 @@ describe("SeriesPageClient — collection downloads", () => {
     )
   })
 
+  it("keeps the modal episode projection stable across parent re-renders", async () => {
+    const series = makeSeries({ children: makeChildren(2) })
+    act(() => {
+      root.render(
+        <SeriesPageClient series={series} selectedVariant={null} locale="en" />,
+      )
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    const modalCalls = collectionDownloadModalMock.mock.calls as unknown as {
+      episodes: unknown[]
+    }[][]
+    const firstEpisodes = modalCalls.at(-1)?.[0]?.episodes
+
+    act(() => {
+      root.render(
+        <SeriesPageClient series={series} selectedVariant={null} locale="en" />,
+      )
+    })
+
+    expect(modalCalls.at(-1)?.[0]?.episodes).toBe(firstEpisodes)
+  })
+
   it("passes an enabled account gate to the authenticated modal", async () => {
     resolveDownloadSessionAccessMock.mockResolvedValueOnce({
       ok: true,

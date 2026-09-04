@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 3, 2026)
+## Status (September 4, 2026)
 
-- **Total tickets:** 620
-- **Complete:** 463
-- **In progress:** 48
+- **Total tickets:** 623
+- **Complete:** 467
+- **In progress:** 47
 - **Not started:** 37
 - **Blocked:** 72
-- **Overdue and not complete:** 114
+- **Overdue and not complete:** 115
 
 ## Feature Index
 
@@ -156,6 +156,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-441](content-discovery/feat-441-watch-vertical-inventory-thumbnails.md)                                  | Watch Vertical Inventory Thumbnails                                                             | vlad       | P1       | 2026-08-28 | 1    | 2026-08-28 | complete    |
 | [feat-450](content-discovery/feat-450-content-embedding-contract-authority.md)                                 | Content embedding contract authority                                                            | codex      | P1       | 2026-09-02 | 1    | 2026-09-02 | complete    |
 | [feat-451](content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md)                | Watch search candidate exact compatibility identities                                           | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
+| [feat-452](content-discovery/feat-452-watch-home-autoplay-cycle.md)                                            | Watch home autoplay continues after played-history exhaustion                                   | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
+| [feat-452](content-discovery/feat-452-watch-search-backdrop-dismissal.md)                                      | Watch search backdrop dismissal                                                                 | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
@@ -513,6 +515,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-428](platform/feat-428-watch-infinite-feed-shared-cache.md)                      | Watch infinite feed shared cache                                                 | codex      | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-423](platform/feat-423-devcontainer-host-accessible-dev-ports.md)                | Expose devcontainer development servers to the host                              | nisal      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-424](platform/feat-424-watch-series-footer-parity.md)                            | Watch series footer parity                                                       | codex      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
+| [feat-453](platform/feat-453-watch-modal-page-scroll.md)                               | Watch modal page-level scrolling                                                 | vlad       | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -625,7 +628,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-196](topic-experiences/feat-196-watch-compatible-download-filenames.md)               | Watch compatible download filenames                                              | vlad       | P1       | 2026-06-17 | 2    | 2026-06-18 | complete    |
 | [feat-246](topic-experiences/feat-246-tv-home-experience-content-parity.md)                 | TV Home content parity — render rows from the single admin watch-home Experience | urim       | P1       | 2026-07-08 | 4    | 2026-07-11 | in-progress |
 | [feat-250](topic-experiences/feat-250-watch-audio-subtitle-chrome-indicators.md)            | Watch Audio and Subtitle Chrome Indicators                                       | urim       | P1       | 2026-07-13 | 1    | 2026-07-13 | complete    |
-| [feat-251](topic-experiences/feat-251-watch-collection-sequential-downloads.md)             | Watch collection sequential downloads                                            | vlad       | P1       | 2026-07-14 | 3    | 2026-07-16 | in-progress |
+| [feat-251](topic-experiences/feat-251-watch-collection-sequential-downloads.md)             | Watch collection sequential downloads                                            | vlad       | P1       | 2026-07-14 | 3    | 2026-07-16 | complete    |
 | [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                                     | tataihono  | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
 | [feat-262](topic-experiences/feat-262-tv-showcase-mode.md)                                  | TV Showcase Mode: Settings tab + felt-need excerpt reel                          | urim       | P1       | 2026-07-20 | 10   | 2026-07-29 | in-progress |
 | [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim       | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |

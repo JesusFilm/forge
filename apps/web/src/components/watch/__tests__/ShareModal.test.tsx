@@ -511,6 +511,35 @@ describe("ShareModal — clipboard failure", () => {
 })
 
 describe("ShareModal — lifecycle", () => {
+  it("scrolls at the viewport edge instead of inside the modal", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const modal = $('[data-testid="watch-share-modal"]')
+    const viewport = modal?.parentElement
+    const content = $('[data-testid="watch-share-modal-content"]')
+
+    expect(viewport?.getAttribute("data-slot")).toBe("dialog-viewport")
+    expect(viewport?.className).toContain("fixed")
+    expect(viewport?.className).toContain("inset-0")
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(modal?.className).toContain("m-auto")
+    expect(modal?.className).toContain("shrink-0")
+    expect(content?.className).not.toContain("overflow-y-auto")
+    expect(content?.className).not.toContain("max-h-")
+    expect(modal?.contains($('[data-testid="watch-share-modal-close"]'))).toBe(
+      true,
+    )
+  })
+
   it("renders the close button at the viewport top-right", () => {
     const onClose = vi.fn()
 
