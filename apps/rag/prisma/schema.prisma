@@ -113,36 +113,37 @@ model RobotsCache {
 }
 
 model RawDocument {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sourceKey    String    @map("source_key")
-  url          String
-  canonicalUrl String    @map("canonical_url")
-  title        String?
-  rawContent   String    @map("raw_content")
-  status       Int?
-  bodyHash     String?   @map("body_hash")
-  etag         String?
-  lastModified String?   @map("last_modified")
-  fetchedAt    DateTime  @default(now()) @map("fetched_at") @db.Timestamptz(6)
-  notModified  Boolean   @default(false) @map("not_modified")
-  ingestedAt   DateTime? @map("ingested_at") @db.Timestamptz(6)
-  indexAttemptedAt DateTime? @map("index_attempted_at") @db.Timestamptz(6)
-  indexAttemptedModel String? @map("index_attempted_model")
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceKey           String    @map("source_key")
+  url                 String
+  canonicalUrl        String    @map("canonical_url")
+  title               String?
+  rawContent          String    @map("raw_content")
+  status              Int?
+  bodyHash            String?   @map("body_hash")
+  etag                String?
+  lastModified        String?   @map("last_modified")
+  fetchedAt           DateTime  @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  notModified         Boolean   @default(false) @map("not_modified")
+  ingestedAt          DateTime? @map("ingested_at") @db.Timestamptz(6)
+  indexAttemptedAt    DateTime? @map("index_attempted_at") @db.Timestamptz(6)
+  indexAttemptedModel String?   @map("index_attempted_model")
 
   @@index([sourceKey], map: "raw_documents_source_key_idx")
+  @@index([sourceKey, canonicalUrl, fetchedAt(sort: Desc), id(sort: Desc)], map: "raw_documents_promotion_latest_idx")
   @@index([ingestedAt], map: "raw_documents_ingested_at_idx")
   @@map("raw_documents")
 }
 
 model LanguageChangeAudit {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  runId         String    @map("run_id")
-  documentId    String    @map("document_id") @db.Uuid
-  sourceKey     String    @map("source_key")
-  oldLanguage   String?   @map("old_language")
-  newLanguage   String?   @map("new_language")
-  detectorModel String?   @map("detector_model")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId         String   @map("run_id")
+  documentId    String   @map("document_id") @db.Uuid
+  sourceKey     String   @map("source_key")
+  oldLanguage   String?  @map("old_language")
+  newLanguage   String?  @map("new_language")
+  detectorModel String?  @map("detector_model")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([runId, documentId], map: "language_change_audits_run_document_uq")
   @@index([runId], map: "language_change_audits_run_idx")

@@ -12,6 +12,7 @@
     "db:verify": "vitest run --no-file-parallelism tests/database.integration.test.ts tests/adapters.integration.test.ts tests/raw-document-promotion.integration.test.ts",
     "db:copy-corpus": "tsx scripts/copy-corpus.ts",
     "raws:promote": "tsx scripts/promote-raw-documents.ts",
+    "raws:verify-promotion": "tsx scripts/verify-raw-document-promotion.ts",
     "acquire": "tsx scripts/acquire.ts",
     "acquire:production": "tsx scripts/acquire.ts --production",
     "index": "tsx scripts/index.ts",

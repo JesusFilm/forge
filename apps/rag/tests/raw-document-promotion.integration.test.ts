@@ -1,7 +1,13 @@
-import { PrismaClient } from "../src/generated/prisma/index.js"
+/* eslint-disable max-lines -- integration scenarios share one isolated PostgreSQL fixture */
+import { Prisma, PrismaClient } from "../src/generated/prisma/index.js"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
-import { RagOperationalError } from "../src/contracts/index.js"
+import {
+  RagOperationalError,
+  type RawDocument,
+} from "../src/contracts/index.js"
+import { PostgresRawDocumentStore } from "../src/adapters/postgres/index.js"
+import { lockRawDocumentSource } from "../src/adapters/postgres/raw-document-lock.js"
 import {
   PrismaRawDocumentPromotionStore,
   promoteRawDocuments,
@@ -10,7 +16,8 @@ import {
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl)
-  throw new Error(
+  throw new RagOperationalError(
+    "argument_invalid",
     "DATABASE_URL is required for raw-document promotion integration tests",
   )
 
@@ -30,6 +37,14 @@ const targetDb = new PrismaClient({ datasourceUrl: schemaUrl(targetSchema) })
 const source = new PrismaRawDocumentPromotionStore(sourceDb)
 const target = new PrismaRawDocumentPromotionStore(targetDb)
 const sourceKey = "starting-with-god"
+
+const deferred = (): { promise: Promise<void>; resolve(): void } => {
+  let resolve!: () => void
+  const promise = new Promise<void>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
 
 const rawTable = (schema: string): string => `
   CREATE TABLE "${schema}".raw_documents (
@@ -67,6 +82,28 @@ const fixture = (canonicalUrl: string, title: string): PromotionRow => ({
   notModified: false,
 })
 
+const acquisitionFixture = (
+  canonicalUrl: string,
+  title: string,
+): RawDocument => {
+  const row = fixture(canonicalUrl, title)
+  return {
+    sourceKey: row.sourceKey,
+    url: row.url,
+    canonicalUrl: row.canonicalUrl,
+    title: row.title,
+    rawContent: row.rawContent,
+    fetch: {
+      status: row.status,
+      bodyHash: row.bodyHash ?? "",
+      etag: row.etag,
+      lastModified: row.lastModified,
+      fetchedAt: row.fetchedAt.toISOString(),
+      notModified: row.notModified,
+    },
+  }
+}
+
 beforeAll(async () => {
   await admin.$executeRawUnsafe(`CREATE SCHEMA "${sourceSchema}"`)
   await admin.$executeRawUnsafe(`CREATE SCHEMA "${targetSchema}"`)
@@ -78,6 +115,10 @@ beforeAll(async () => {
   await admin.$executeRawUnsafe(
     `CREATE INDEX raw_documents_source_key_idx ON "${targetSchema}".raw_documents(source_key)`,
   )
+  for (const schema of [sourceSchema, targetSchema])
+    await admin.$executeRawUnsafe(
+      `CREATE INDEX raw_documents_promotion_latest_idx ON "${schema}".raw_documents(source_key, canonical_url, fetched_at DESC, id DESC)`,
+    )
   await sourceDb.$connect()
   await targetDb.$connect()
   await sourceDb.rawDocument.createMany({
@@ -171,6 +212,44 @@ describe("Prisma raw-document promotion", () => {
     expect((await target.stats(sourceKey)).totalRows).toBe(0)
   })
 
+  it("reconciles source timestamps with sub-millisecond precision", async () => {
+    const microsecondSource = "microsecond-source"
+    await sourceDb.$executeRaw(Prisma.sql`
+      INSERT INTO raw_documents (
+        source_key, url, canonical_url, raw_content, fetched_at
+      ) VALUES (
+        ${microsecondSource}, 'https://example.test/microsecond',
+        'https://example.test/microsecond', 'fixture',
+        '2026-08-14 09:12:33.481297+00'::timestamptz
+      )
+    `)
+    try {
+      const preview = await promoteRawDocuments(source, target, {
+        source: microsecondSource,
+        apply: false,
+        batchSize: 1,
+      })
+      await expect(
+        promoteRawDocuments(source, target, {
+          source: microsecondSource,
+          apply: true,
+          batchSize: 1,
+          expectedRows: preview.rows,
+          expectedDigest: preview.digest,
+        }),
+      ).resolves.toMatchObject({ rows: 1, mutation: true })
+    } finally {
+      await Promise.all([
+        sourceDb.rawDocument.deleteMany({
+          where: { sourceKey: microsecondSource },
+        }),
+        targetDb.rawDocument.deleteMany({
+          where: { sourceKey: microsecondSource },
+        }),
+      ])
+    }
+  })
+
   it("allows only one concurrent empty-target promotion to commit", async () => {
     const secondTargetDb = new PrismaClient({
       datasourceUrl: schemaUrl(targetSchema),
@@ -209,6 +288,65 @@ describe("Prisma raw-document promotion", () => {
       })
     } finally {
       await secondTargetDb.$disconnect()
+    }
+  })
+
+  it("waits for an ordinary target write and then rejects the nonempty target", async () => {
+    const gateDb = new PrismaClient({
+      datasourceUrl: schemaUrl(targetSchema),
+    })
+    const writerDb = new PrismaClient({
+      datasourceUrl: schemaUrl(targetSchema),
+    })
+    const ordinaryTarget = new PostgresRawDocumentStore(writerDb)
+    const releaseGate = deferred()
+    const gateLocked = deferred()
+    let acquisition: Promise<void> | undefined
+    let promotion: ReturnType<typeof promoteRawDocuments> | undefined
+    const gate = gateDb.$transaction(async (tx) => {
+      await lockRawDocumentSource(tx, sourceKey)
+      gateLocked.resolve()
+      await releaseGate.promise
+    })
+    try {
+      const preview = await promoteRawDocuments(source, target, {
+        source: sourceKey,
+        apply: false,
+        batchSize: 1,
+      })
+      await Promise.race([gateLocked.promise, gate])
+
+      let acquisitionSettled = false
+      acquisition = ordinaryTarget
+        .putRawDocument(
+          acquisitionFixture("https://example.test/acquired", "acquired"),
+        )
+        .finally(() => {
+          acquisitionSettled = true
+        })
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      expect(acquisitionSettled).toBe(false)
+
+      promotion = promoteRawDocuments(source, target, {
+        source: sourceKey,
+        apply: true,
+        batchSize: 1,
+        expectedRows: preview.rows,
+        expectedDigest: preview.digest,
+      })
+
+      releaseGate.resolve()
+      await acquisition
+      await expect(promotion).rejects.toThrow(/already has raw documents/)
+      expect((await target.stats(sourceKey)).totalRows).toBe(1)
+    } finally {
+      releaseGate.resolve()
+      await Promise.allSettled([
+        gate,
+        acquisition ?? Promise.resolve(),
+        promotion ?? Promise.resolve(),
+      ])
+      await Promise.all([gateDb.$disconnect(), writerDb.$disconnect()])
     }
   })
 })

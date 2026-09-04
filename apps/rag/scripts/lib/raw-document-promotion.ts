@@ -2,6 +2,7 @@
 import { Prisma, type PrismaClient } from "../../src/generated/prisma/index.js"
 
 import { RagOperationalError } from "../../src/contracts/index.js"
+import { lockRawDocumentSource } from "../../src/adapters/postgres/raw-document-lock.js"
 
 export type RawDocumentPromotionArgs = {
   source: string
@@ -13,6 +14,16 @@ export type RawDocumentPromotionArgs = {
 
 export type RawDocumentPromotionEnvironment = {
   sourceUrl: string
+  targetUrl: string
+}
+
+export type RawDocumentVerificationArgs = {
+  source: string
+  expectedRows: number
+  expectedDigest: string
+}
+
+export type RawDocumentVerificationEnvironment = {
   targetUrl: string
 }
 
@@ -46,7 +57,9 @@ export type PromotionReader = {
   ): Promise<PromotionRow[]>
 }
 
-export type PromotionWriter = PromotionReader & {
+export type PromotionWriter = {
+  stats(sourceKey: string): Promise<PromotionStats>
+  lockForPromotion(sourceKey: string): Promise<void>
   insertPending(rows: readonly PromotionRow[]): Promise<void>
 }
 
@@ -63,10 +76,19 @@ export type RawDocumentPromotionSummary = {
   mutation: boolean
 }
 
+export type RawDocumentVerificationSummary = {
+  status: "committed" | "not-committed"
+  source: string
+  rows: number
+  pendingRows: number
+  digest: string | null
+  mutation: false
+}
+
 export const PROMOTION_TRANSACTION_OPTIONS = {
   maxWait: 10_000,
   timeout: 600_000,
-  isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
 } as const
 
 const invalidArgument = (message: string): RagOperationalError =>
@@ -137,6 +159,25 @@ export function parseRawDocumentPromotionArgs(
   }
 }
 
+export function parseRawDocumentVerificationArgs(
+  argv: string[],
+): RawDocumentVerificationArgs {
+  const unsupported = argv.find(
+    (arg) => arg === "--apply" || arg === "--batch-size",
+  )
+  if (unsupported) throw invalidArgument(`unknown flag '${unsupported}'`)
+  const parsed = parseRawDocumentPromotionArgs(argv)
+  if (parsed.expectedRows === undefined || !parsed.expectedDigest)
+    throw invalidArgument(
+      "verification requires --expected-rows and --expected-digest from the reviewed dry run",
+    )
+  return {
+    source: parsed.source,
+    expectedRows: parsed.expectedRows,
+    expectedDigest: parsed.expectedDigest,
+  }
+}
+
 const postgresUrl = (name: string, value: string | undefined): URL => {
   if (!value?.trim()) throw invalidArgument(`${name} is required`)
   let parsed: URL
@@ -161,6 +202,25 @@ export function resolveRawDocumentPromotionEnvironment(
     "RAG_LOCAL_DATABASE_URL",
     input.RAG_LOCAL_DATABASE_URL,
   )
+  const target = resolveProductionTarget(input)
+  if (databaseIdentity(source) === databaseIdentity(target))
+    throw invalidArgument(
+      "local source and production target are the same database",
+    )
+  if (apply && input.JFRAG_ALLOW_PROD_WRITE !== "1")
+    throw invalidArgument(
+      "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
+    )
+  return { sourceUrl: source.href, targetUrl: target.href }
+}
+
+export function resolveRawDocumentVerificationEnvironment(
+  input: NodeJS.ProcessEnv,
+): RawDocumentVerificationEnvironment {
+  return { targetUrl: resolveProductionTarget(input).href }
+}
+
+const resolveProductionTarget = (input: NodeJS.ProcessEnv): URL => {
   const target = postgresUrl(
     "JFRAG_POSTGRESQL_DB_URL",
     input.JFRAG_POSTGRESQL_DB_URL,
@@ -174,15 +234,7 @@ export function resolveRawDocumentPromotionEnvironment(
     throw invalidArgument(
       "JFRAG_EXPECTED_POSTGRES_HOST does not match the production database host",
     )
-  if (databaseIdentity(source) === databaseIdentity(target))
-    throw invalidArgument(
-      "local source and production target are the same database",
-    )
-  if (apply && input.JFRAG_ALLOW_PROD_WRITE !== "1")
-    throw invalidArgument(
-      "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
-    )
-  return { sourceUrl: source.href, targetUrl: target.href }
+  return target
 }
 
 const statsEqual = (left: PromotionStats, right: PromotionStats): boolean =>
@@ -219,8 +271,8 @@ export async function promoteRawDocuments(
       "corpus_state_invalid",
       "reviewed promotion row count or digest no longer matches the local source",
     )
-  assertEmptyTarget(await target.stats(args.source), args.source)
-  if (!args.apply)
+  if (!args.apply) {
+    assertEmptyTarget(await target.stats(args.source), args.source)
     return {
       dryRun: true,
       source: args.source,
@@ -229,8 +281,10 @@ export async function promoteRawDocuments(
       batches: 0,
       mutation: false,
     }
+  }
 
   return target.atomic(async (writer) => {
+    await writer.lockForPromotion(args.source)
     assertEmptyTarget(await writer.stats(args.source), args.source)
     let afterCanonicalUrl: string | null = null
     let copied = 0
@@ -287,6 +341,39 @@ export async function promoteRawDocuments(
   })
 }
 
+export async function verifyRawDocumentPromotion(
+  target: PromotionReader,
+  args: RawDocumentVerificationArgs,
+): Promise<RawDocumentVerificationSummary> {
+  const observed = await target.stats(args.source)
+  if (observed.totalRows === 0)
+    return {
+      status: "not-committed",
+      source: args.source,
+      rows: 0,
+      pendingRows: 0,
+      digest: null,
+      mutation: false,
+    }
+  if (
+    observed.totalRows !== args.expectedRows ||
+    observed.latestRows !== args.expectedRows ||
+    observed.digest !== args.expectedDigest
+  )
+    throw new RagOperationalError(
+      "corpus_state_invalid",
+      "production raw-document state does not match the reviewed promotion pins",
+    )
+  return {
+    status: "committed",
+    source: args.source,
+    rows: observed.latestRows,
+    pendingRows: observed.pendingRows,
+    digest: observed.digest,
+    mutation: false,
+  }
+}
+
 type StatsRow = {
   totalRows: number
   latestRows: number
@@ -294,36 +381,112 @@ type StatsRow = {
   digest: string | null
 }
 
-const latestRows = (sourceKey: string) => Prisma.sql`
+const latestRows = (
+  sourceKey: string,
+  afterCanonicalUrl: string | null,
+) => Prisma.sql`
   SELECT DISTINCT ON (canonical_url)
     source_key, url, canonical_url, title, raw_content, status, body_hash,
     etag, last_modified, fetched_at, not_modified, ingested_at
   FROM raw_documents
   WHERE source_key = ${sourceKey}
+    ${
+      afterCanonicalUrl === null
+        ? Prisma.empty
+        : Prisma.sql`AND canonical_url > ${afterCanonicalUrl}`
+    }
   ORDER BY canonical_url, fetched_at DESC, id DESC
 `
 
+type PromotionDb = Pick<
+  Prisma.TransactionClient,
+  "$queryRaw" | "$executeRaw" | "rawDocument"
+>
+
+const queryStats = async (
+  db: PromotionDb,
+  sourceKey: string,
+): Promise<PromotionStats> => {
+  const rows = await db.$queryRaw<StatsRow[]>(Prisma.sql`
+    WITH latest AS (${latestRows(sourceKey, null)})
+    SELECT
+      (SELECT COUNT(*)::int FROM raw_documents WHERE source_key = ${sourceKey}) AS "totalRows",
+      COUNT(*)::int AS "latestRows",
+      COUNT(*) FILTER (WHERE ingested_at IS NULL)::int AS "pendingRows",
+      md5(string_agg(md5(jsonb_build_array(
+        source_key, url, canonical_url, title, raw_content, status, body_hash,
+        etag, last_modified,
+        -- Prisma transports Date values at millisecond precision during the copy.
+        to_char(fetched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS'),
+        not_modified
+      )::text), '' ORDER BY canonical_url)) AS digest
+    FROM latest
+  `)
+  return rows[0]
+}
+
+const queryLatestBatch = (
+  db: PromotionDb,
+  sourceKey: string,
+  afterCanonicalUrl: string | null,
+  limit: number,
+): Promise<PromotionRow[]> =>
+  db.$queryRaw<PromotionRow[]>(Prisma.sql`
+    WITH latest AS (${latestRows(sourceKey, afterCanonicalUrl)})
+    SELECT
+      source_key AS "sourceKey", url, canonical_url AS "canonicalUrl", title,
+      raw_content AS "rawContent", status, body_hash AS "bodyHash", etag,
+      last_modified AS "lastModified", fetched_at AS "fetchedAt",
+      not_modified AS "notModified"
+    FROM latest
+    ORDER BY canonical_url
+    LIMIT ${limit}
+  `)
+
+const insertPending = async (
+  db: PromotionDb,
+  rows: readonly PromotionRow[],
+): Promise<void> => {
+  await db.rawDocument.createMany({
+    data: rows.map((row) => ({
+      sourceKey: row.sourceKey,
+      url: row.url,
+      canonicalUrl: row.canonicalUrl,
+      title: row.title,
+      rawContent: row.rawContent,
+      status: row.status,
+      bodyHash: row.bodyHash,
+      etag: row.etag,
+      lastModified: row.lastModified,
+      fetchedAt: row.fetchedAt,
+      notModified: row.notModified,
+    })),
+  })
+}
+
+class PrismaRawDocumentPromotionWriter implements PromotionWriter {
+  constructor(private readonly db: Prisma.TransactionClient) {}
+
+  stats(sourceKey: string): Promise<PromotionStats> {
+    return queryStats(this.db, sourceKey)
+  }
+
+  async lockForPromotion(sourceKey: string): Promise<void> {
+    await lockRawDocumentSource(this.db, sourceKey)
+  }
+
+  insertPending(rows: readonly PromotionRow[]): Promise<void> {
+    return insertPending(this.db, rows)
+  }
+}
+
 export class PrismaRawDocumentPromotionStore
-  implements PromotionReader, PromotionTarget, PromotionWriter
+  implements PromotionReader, PromotionTarget
 {
   constructor(private readonly db: PrismaClient) {}
 
   async stats(sourceKey: string): Promise<PromotionStats> {
-    const rows = await this.db.$queryRaw<StatsRow[]>(Prisma.sql`
-      WITH latest AS (${latestRows(sourceKey)})
-      SELECT
-        (SELECT COUNT(*)::int FROM raw_documents WHERE source_key = ${sourceKey}) AS "totalRows",
-        COUNT(*)::int AS "latestRows",
-        COUNT(*) FILTER (WHERE ingested_at IS NULL)::int AS "pendingRows",
-        md5(string_agg(md5(jsonb_build_array(
-          source_key, url, canonical_url, title, raw_content, status, body_hash,
-          etag, last_modified,
-          to_char(fetched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US'),
-          not_modified
-        )::text), '' ORDER BY canonical_url)) AS digest
-      FROM latest
-    `)
-    return rows[0]
+    return queryStats(this.db, sourceKey)
   }
 
   async latestBatch(
@@ -331,36 +494,7 @@ export class PrismaRawDocumentPromotionStore
     afterCanonicalUrl: string | null,
     limit: number,
   ): Promise<PromotionRow[]> {
-    return this.db.$queryRaw<PromotionRow[]>(Prisma.sql`
-      WITH latest AS (${latestRows(sourceKey)})
-      SELECT
-        source_key AS "sourceKey", url, canonical_url AS "canonicalUrl", title,
-        raw_content AS "rawContent", status, body_hash AS "bodyHash", etag,
-        last_modified AS "lastModified", fetched_at AS "fetchedAt",
-        not_modified AS "notModified"
-      FROM latest
-      WHERE (${afterCanonicalUrl}::text IS NULL OR canonical_url > ${afterCanonicalUrl})
-      ORDER BY canonical_url
-      LIMIT ${limit}
-    `)
-  }
-
-  async insertPending(rows: readonly PromotionRow[]): Promise<void> {
-    await this.db.rawDocument.createMany({
-      data: rows.map((row) => ({
-        sourceKey: row.sourceKey,
-        url: row.url,
-        canonicalUrl: row.canonicalUrl,
-        title: row.title,
-        rawContent: row.rawContent,
-        status: row.status,
-        bodyHash: row.bodyHash,
-        etag: row.etag,
-        lastModified: row.lastModified,
-        fetchedAt: row.fetchedAt,
-        notModified: row.notModified,
-      })),
-    })
+    return queryLatestBatch(this.db, sourceKey, afterCanonicalUrl, limit)
   }
 
   async atomic<T>(
@@ -368,9 +502,7 @@ export class PrismaRawDocumentPromotionStore
   ): Promise<T> {
     return this.db.$transaction(
       (transaction) =>
-        operation(
-          new PrismaRawDocumentPromotionStore(transaction as PrismaClient),
-        ),
+        operation(new PrismaRawDocumentPromotionWriter(transaction)),
       PROMOTION_TRANSACTION_OPTIONS,
     )
   }

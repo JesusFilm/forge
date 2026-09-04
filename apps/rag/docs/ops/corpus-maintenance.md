@@ -165,13 +165,34 @@ doppler run --project forge-rag --config prd -- \
 
 The command requires `JFRAG_EXPECTED_POSTGRES_HOST` from the approved production
 configuration, refuses identical source/target database identities, selects the
-newest row per canonical URL, copies in batches inside one serializable target
+newest row per canonical URL, copies in batches inside one locked target
 transaction, and rolls back unless source and target count/digest reconciliation
-succeeds. Serialization also makes concurrent empty-target checks fail closed
-instead of allowing two promotions to append the same source.
+succeeds. The transaction takes the same source-scoped advisory lock as ordinary
+acquisition before its final empty-target check. Concurrent acquisition for that
+source therefore finishes before promotion and makes it fail closed, or waits
+until promotion commits; acquisition for other sources continues normally.
+The advisory lock also prevents two promotions from appending the source.
 `--apply` refuses before target mutation if the current local count or digest no
 longer matches the reviewed dry-run values.
 It never prints URLs, credentials, raw content, or row IDs.
+
+After apply, or whenever the apply process exits without a trustworthy success
+receipt, verify the production state with the same reviewed pins. This command
+is read-only and does not require the local database URL:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag raws:verify-promotion --source <source-key> \
+    --expected-rows <reviewed-count> \
+    --expected-digest <reviewed-digest>
+```
+
+`status: "committed"` means production's durable row count and content digest
+match the reviewed promotion. The reported `pendingRows` is informational and
+may decrease as indexing succeeds. `status: "not-committed"` means the source
+has no production raw rows, so rerun the dry-run preflight before retrying
+apply. A non-zero mismatch or connection failure is an unknown outcome: stop
+and investigate; do not retry promotion or start indexing.
 
 After promotion, preview and apply the existing bounded production index path;
 embedding remains a separate metered write:
@@ -184,9 +205,11 @@ doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag index:production --source <source-key> --limit 10 --apply
 ```
 
-Record only the source key, promoted count, digest, batch count, and pass/fail.
-Do not record connection details or corpus content. If the process fails, the
-target transaction rolls back; rerun the dry-run preflight before retrying.
+Record only the source key, promoted count, digest, batch count, verification
+status, and pass/fail. Do not record connection details or corpus content. A
+failed process does not prove rollback because the client can lose its success
+response after PostgreSQL commits. Run `raws:verify-promotion` before deciding
+whether a retry is safe.
 
 ## Language sweep and guarded reversal
 

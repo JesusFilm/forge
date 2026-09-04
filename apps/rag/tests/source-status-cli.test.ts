@@ -17,6 +17,7 @@ import {
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { RagOperationalError } from "../src/contracts/index.js"
 import {
   loadDoc,
   applyMutation,
@@ -26,6 +27,7 @@ import {
   writeStatusFileAtomically,
   withExclusiveFileLock,
   validateSliceFileReferences,
+  validateStatusDocumentForWrite,
 } from "../scripts/source-status.js"
 import { validateSourceStatusRegistry } from "../src/contracts/source-status.js"
 import type { Mutation } from "../scripts/source-status.js"
@@ -168,7 +170,7 @@ describe("slice file reference validation", () => {
     const file = validateDoc(loadDoc(FIXTURE))
     expect(() =>
       validateSliceFileReferences(file, packageRoot, () => false),
-    ).toThrow(/does not exist/)
+    ).toThrow(RagOperationalError)
 
     file.sources.foo.slice_file = "docs/slices/foo.txt"
     expect(() =>
@@ -179,6 +181,26 @@ describe("slice file reference validation", () => {
     expect(() =>
       validateSliceFileReferences(file, packageRoot, () => true),
     ).toThrow(/escapes/)
+  })
+
+  it("rejects an invalid canonical-document reference before writing", async () => {
+    const doc = loadDoc(
+      await readFile(
+        new URL("../docs/source-status.yaml", import.meta.url),
+        "utf8",
+      ),
+    )
+    doc.setIn(
+      ["sources", "starting-with-god", "slice_file"],
+      "docs/slices/missing.md",
+    )
+    expect(() =>
+      validateStatusDocumentForWrite(
+        doc,
+        packageRoot,
+        (file) => !file.endsWith("/missing.md"),
+      ),
+    ).toThrow(/does not exist/)
   })
 })
 

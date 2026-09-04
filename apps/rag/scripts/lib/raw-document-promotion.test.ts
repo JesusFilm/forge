@@ -1,13 +1,19 @@
+/* eslint-disable max-lines -- keeps the promotion safety contract in one characterization suite */
 import { describe, expect, it } from "vitest"
 
 import { RagOperationalError } from "../../src/contracts/index.js"
+import { RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS } from "../../src/adapters/postgres/raw-document-lock.js"
 
 import {
   parseRawDocumentPromotionArgs,
+  parseRawDocumentVerificationArgs,
+  PrismaRawDocumentPromotionStore,
   PROMOTION_TRANSACTION_OPTIONS,
   promoteRawDocuments,
   rawDocumentPromotionErrorMessage,
   resolveRawDocumentPromotionEnvironment,
+  resolveRawDocumentVerificationEnvironment,
+  verifyRawDocumentPromotion,
   type PromotionReader,
   type PromotionRow,
   type PromotionStats,
@@ -58,6 +64,10 @@ class MemoryTarget
 {
   rolledBack = false
   atomicCalls = 0
+  promotionLocks = 0
+  async lockForPromotion(): Promise<void> {
+    this.promotionLocks += 1
+  }
   async insertPending(rows: readonly PromotionRow[]): Promise<void> {
     this.rows.push(...rows)
   }
@@ -77,8 +87,11 @@ class MemoryTarget
 }
 
 describe("raw-document promotion", () => {
-  it("serializes the empty-target check with the production inserts", () => {
-    expect(PROMOTION_TRANSACTION_OPTIONS.isolationLevel).toBe("Serializable")
+  it("coordinates the promotion and acquisition transaction budgets", () => {
+    expect(PROMOTION_TRANSACTION_OPTIONS.isolationLevel).toBe("ReadCommitted")
+    expect(
+      RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS.timeout,
+    ).toBeGreaterThan(PROMOTION_TRANSACTION_OPTIONS.timeout)
   })
 
   it("prints operator-safe failures and redacts unexpected database errors", () => {
@@ -92,6 +105,28 @@ describe("raw-document promotion", () => {
     )
     expect(message).toBe("raw-document promotion failed (details redacted)")
     expect(message).not.toMatch(/hunter2|corpus body/)
+  })
+
+  it("normalizes digest timestamps to Prisma's millisecond precision", async () => {
+    let queryText = ""
+    const db = {
+      $queryRaw: async (query: { sql: string }) => {
+        queryText = query.sql
+        return [
+          {
+            totalRows: 0,
+            latestRows: 0,
+            pendingRows: 0,
+            digest: null,
+          },
+        ]
+      },
+    }
+
+    await new PrismaRawDocumentPromotionStore(db as never).stats("example")
+
+    expect(queryText).toContain("HH24:MI:SS.MS")
+    expect(queryText).not.toContain("HH24:MI:SS.US")
   })
 
   it("is dry-run by default and requires one safe source", () => {
@@ -167,6 +202,109 @@ describe("raw-document promotion", () => {
       }),
     ).resolves.toMatchObject({ rows: 3, batches: 2, mutation: true })
     expect(target.rows).toHaveLength(3)
+    expect(target.promotionLocks).toBe(1)
+  })
+
+  it("parses read-only verification pins without accepting apply", () => {
+    expect(
+      parseRawDocumentVerificationArgs([
+        "--source",
+        "small-source",
+        "--expected-rows",
+        "3",
+        "--expected-digest",
+        "0123456789abcdef0123456789abcdef",
+      ]),
+    ).toEqual({
+      source: "small-source",
+      expectedRows: 3,
+      expectedDigest: "0123456789abcdef0123456789abcdef",
+    })
+    expect(() =>
+      parseRawDocumentVerificationArgs([
+        "--source",
+        "small-source",
+        "--expected-rows",
+        "3",
+        "--expected-digest",
+        "0123456789abcdef0123456789abcdef",
+        "--apply",
+      ]),
+    ).toThrow(/unknown flag/)
+  })
+
+  it("resolves the verification target without requiring a local database", () => {
+    expect(
+      resolveRawDocumentVerificationEnvironment({
+        JFRAG_POSTGRESQL_DB_URL:
+          "postgresql://prod:secret@prod.example:5432/rag",
+        JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      }),
+    ).toEqual({
+      targetUrl: "postgresql://prod:secret@prod.example:5432/rag",
+    })
+  })
+
+  it("classifies exact, empty, and mismatched production states", async () => {
+    const expectedDigest = "0123456789abcdef0123456789abcdef"
+    const exact = new MemoryTarget([
+      row("https://example.test/a"),
+      row("https://example.test/b"),
+    ])
+    exact.stats = async () => ({
+      totalRows: 2,
+      latestRows: 2,
+      pendingRows: 2,
+      digest: expectedDigest,
+    })
+    await expect(
+      verifyRawDocumentPromotion(exact, {
+        source: "example",
+        expectedRows: 2,
+        expectedDigest,
+      }),
+    ).resolves.toMatchObject({ status: "committed", mutation: false })
+    await expect(
+      verifyRawDocumentPromotion(new MemoryTarget([]), {
+        source: "example",
+        expectedRows: 2,
+        expectedDigest,
+      }),
+    ).resolves.toMatchObject({ status: "not-committed", mutation: false })
+    await expect(
+      verifyRawDocumentPromotion(new MemoryTarget([row("https://wrong")]), {
+        source: "example",
+        expectedRows: 2,
+        expectedDigest,
+      }),
+    ).rejects.toThrow(/does not match/)
+  })
+
+  it("keeps a matching promotion verifiable after indexing rows", async () => {
+    const expectedDigest = "0123456789abcdef0123456789abcdef"
+    const indexed = new MemoryTarget([
+      row("https://example.test/a"),
+      row("https://example.test/b"),
+    ])
+    indexed.stats = async () => ({
+      totalRows: 2,
+      latestRows: 2,
+      pendingRows: 1,
+      digest: expectedDigest,
+    })
+
+    await expect(
+      verifyRawDocumentPromotion(indexed, {
+        source: "example",
+        expectedRows: 2,
+        expectedDigest,
+      }),
+    ).resolves.toMatchObject({
+      status: "committed",
+      rows: 2,
+      pendingRows: 1,
+      mutation: false,
+    })
   })
 
   it("refuses a nonempty production source before mutation", async () => {
