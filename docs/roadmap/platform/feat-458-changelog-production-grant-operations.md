@@ -3,7 +3,7 @@ id: "feat-458"
 title: "Operate Changelog production admin grants"
 owner: "edmondshen"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-05"
 duration: 1
 depends_on: []
@@ -69,5 +69,15 @@ JesusFilm/jfp-changelog#100. Run focused tests during development, typecheck,
 lint, and the full Auth suite with disposable PostgreSQL once at completion.
 Document the supported command, isolated proof and production activation order.
 
-Implementation and isolated validation are complete; the production release and
-pilot acceptance remain pending. See `docs/auth-changelog-production-access.md`.
+Implementation and isolated validation passed: 556 Auth tests, typecheck, lint,
+and GitHub CI. PR #2173 merged as
+`a4e80bbe9657628f173e235d5a1d7b2b9340c896`. Auth deployment
+`4d880bf9-9504-48b2-bb7c-3b3cc1abc76e` reported SUCCESS. The supported command
+provisioned and inspected the verified pilot's production Admin grant while
+preserving Local Reader access. Only then was production scope issuance enabled;
+configuration deployment `21c52ab6-5fb3-40a0-88fb-6eaa6b061591` reported SUCCESS.
+Real production browser sign-in reached shipment history and Admin product
+controls, including repeat visits. No Changelog data was changed for testing.
+The broader submission pilot remains in JesusFilm/jfp-changelog#100.
+
+See `docs/auth-changelog-production-access.md` for the supported procedure.
