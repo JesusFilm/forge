@@ -16,7 +16,7 @@ const priorMigrations = readdirSync(migrationRoot)
   )
 const migration = readFileSync(
   new URL(
-    "../../../prisma/migrations/0074_recommendation_selection_attribution_eligibility/migration.sql",
+    "../../../prisma/migrations/0075_recommendation_selection_attribution_eligibility/migration.sql",
     import.meta.url,
   ),
   "utf8",
