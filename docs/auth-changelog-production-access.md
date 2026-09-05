@@ -92,5 +92,9 @@ native OAuth integration tests also passed for code exchange, refresh,
 production-off behavior and exact resource binding. Typecheck and lint passed.
 
 This isolated proof does not establish the pilot user's production acceptance.
-Track that outcome in JesusFilm/jfp-changelog#101. Backups, legacy imports and
-onboarding another engineer remain outside this access change.
+The separate live production sign-in and Admin-page acceptance passed on
+2026-09-05; see
+[JesusFilm/jfp-changelog#101](https://github.com/JesusFilm/jfp-changelog/issues/101)
+and [feat-458](roadmap/platform/feat-458-changelog-production-grant-operations.md)
+for evidence. Backups, legacy imports and onboarding another engineer remain
+outside this access change.
