@@ -1377,7 +1377,9 @@ describe("WatchHomePage", () => {
   })
 
   it("prefetches three future timeline videos near the queue tail", async () => {
-    vi.useFakeTimers()
+    // Queue extension is intentionally stable per New York business date.
+    // Pin that date so this expected order does not change at midnight.
+    vi.useFakeTimers({ now: new Date("2026-09-04T12:00:00.000Z") })
 
     try {
       vi.spyOn(Math, "random").mockReturnValue(0)
