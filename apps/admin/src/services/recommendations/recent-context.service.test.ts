@@ -57,6 +57,7 @@ describe("recommendation recent context", () => {
       /root\.created_at >= session\.authorization_start/,
     )
     expect(queryShape).toMatch(/ORDER BY root\.created_at DESC, root\.id DESC/)
+    expect(queryShape).toMatch(/selection\.attribution_eligible_at IS NOT NULL/)
     expect(queryRaw.mock.calls[0]).toContain(
       MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION,
     )

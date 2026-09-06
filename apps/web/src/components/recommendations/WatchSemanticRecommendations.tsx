@@ -9,8 +9,7 @@ import { useEligibleRecommendationImpression } from "@/components/recommendation
 import {
   randomRecommendationNonce,
   recommendationEventId,
-  recommendationFetchWithRetry,
-  recommendationJsonWithDeadline,
+  recommendationJsonWithRetry,
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import {
@@ -24,6 +23,7 @@ import {
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
   WATCH_RECOMMENDATION_SURFACE,
+  parseRecommendationEvidenceReceipts,
 } from "@/lib/recommendation-contracts"
 import {
   isCanonicalWatchRecommendationHref,
@@ -689,7 +689,9 @@ export function WatchSemanticRecommendations({
       ) {
         return
       }
-      await recommendationFetchWithRetry(
+      const evidenceEventId = eventId(kind, item.id)
+      const submittedEventIds = new Set([evidenceEventId])
+      const value = await recommendationJsonWithRetry(
         EVIDENCE_ENDPOINT,
         {
           method: "POST",
@@ -704,7 +706,7 @@ export function WatchSemanticRecommendations({
             capability: item.capability,
             events: [
               {
-                eventId: eventId(kind, item.id),
+                eventId: evidenceEventId,
                 kind,
                 occurredAt: new Date().toISOString(),
                 payload:
@@ -716,7 +718,49 @@ export function WatchSemanticRecommendations({
           }),
         },
         EVIDENCE_DEADLINE_MS,
+        {
+          accept: (candidate) => {
+            const receipts = parseRecommendationEvidenceReceipts(
+              candidate,
+              submittedEventIds,
+            )
+            return receipts?.length === submittedEventIds.size
+          },
+          onAttemptFailure: ({ reason, willRetry }) => {
+            window.dispatchEvent(
+              new CustomEvent("forge:recommendation-evidence-degraded", {
+                detail: {
+                  reason:
+                    reason === "response_invalid"
+                      ? "receipt_missing"
+                      : willRetry
+                        ? "transport_retry"
+                        : "transport_exhausted",
+                  disposition: willRetry ? "retrying" : "dropped",
+                  eventIds: [evidenceEventId],
+                },
+              }),
+            )
+          },
+        },
       )
+      const receipts = parseRecommendationEvidenceReceipts(
+        value,
+        submittedEventIds,
+      )
+      const receipt = receipts?.[0]
+      if (!receipt || receipt.status === "conflict") {
+        window.dispatchEvent(
+          new CustomEvent("forge:recommendation-evidence-degraded", {
+            detail: {
+              reason: receipt ? "integrity_conflict" : "receipt_missing",
+              disposition: "dropped",
+              eventIds: [evidenceEventId],
+            },
+          }),
+        )
+        throw new RecommendationRuntimeError("evidence_failed")
+      }
     },
     [requestId],
   )
@@ -795,16 +839,21 @@ export function WatchSemanticRecommendations({
       }
       setBusyState({ requestKey, itemId: item.id })
       const correlation = tabNonce()
+      const claimNonce = randomRecommendationNonce()
+      // Persist before the fail-open navigation. If the selection commits but
+      // its response is lost, Watch can still claim the exact server binding.
+      storeClaimNonce(claimNonce)
       const isCurrentAttempt = () =>
         mountedRef.current &&
         selectionGenerationRef.current === attemptId &&
         selectionAttemptRef.current?.id === attemptId
-      void recommendationJsonWithDeadline(
+      void recommendationJsonWithRetry(
         SELECTION_ENDPOINT,
         {
           method: "POST",
           cache: "no-store",
           credentials: "same-origin",
+          keepalive: true,
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
@@ -815,23 +864,26 @@ export function WatchSemanticRecommendations({
             eventId: eventId("selection", item.id),
             occurredAt: new Date().toISOString(),
             tabNonce: correlation,
+            claimNonce,
           }),
         },
         SELECTION_DEADLINE_MS,
+        {
+          accept: (value) => {
+            if (!value || typeof value !== "object" || Array.isArray(value)) {
+              return false
+            }
+            const handoff = value as Record<string, unknown>
+            return (
+              handoff.claimNonce === claimNonce &&
+              handoff.canonicalHref === item.canonicalHref &&
+              handoff.targetMediaId === item.targetMediaId
+            )
+          },
+        },
       )
-        .then((value) => {
+        .then(() => {
           if (!isCurrentAttempt()) return
-          const handoff = value as Record<string, unknown>
-          if (
-            nonEmptyString(handoff.claimNonce, 191) &&
-            handoff.claimNonce.length >= 16 &&
-            handoff.canonicalHref === item.canonicalHref &&
-            handoff.targetMediaId === item.targetMediaId
-          ) {
-            storeClaimNonce(handoff.claimNonce)
-            navigateOnce(item.canonicalHref)
-            return
-          }
           navigateOnce(item.canonicalHref)
         })
         .catch(() => {

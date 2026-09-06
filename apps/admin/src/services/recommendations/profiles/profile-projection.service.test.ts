@@ -137,8 +137,12 @@ describe("recommendation profile projection service", () => {
     )
     expect(sessionSql).toContain("link.session_digest")
     expect(sessionSql).toContain("selection.occurred_at >= GREATEST(")
+    expect(sessionSql).toContain("selection.attribution_eligible_at <=")
     expect(sessionSql).toContain("profile.created_at, link.linked_at")
     expect(durableSql).toContain("outcome.qualified_view = true")
+    expect(durableSql).toContain(
+      "selection.attribution_eligible_at IS NOT NULL",
+    )
     expect(durableSql).not.toContain("outcome.learning_eligible = true")
     expect(durableSql).not.toContain("outcome.created_at >= profile.created_at")
     expect(priorDurableSql).toContain(
@@ -168,7 +172,7 @@ describe("recommendation profile projection service", () => {
       "episode.request_id IS NULL OR ( request.expires_at >",
     )
     expect(currentDurableSql).toContain(
-      "episode.selection_id IS NULL OR selection.occurred_at >= GREATEST(",
+      "episode.selection_id IS NULL OR ( selection.attribution_eligible_at IS NOT NULL",
     )
     expect(currentDurableSql).toContain(
       "COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)",

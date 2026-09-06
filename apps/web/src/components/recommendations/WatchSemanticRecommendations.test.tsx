@@ -39,6 +39,7 @@ import {
   startRecommendationConsentBootstrap,
 } from "@/lib/recommendation-consent-bootstrap"
 import {
+  acceptedEvidenceResponse,
   container,
   deferred,
   delivery,
@@ -375,10 +376,13 @@ describe("WatchSemanticRecommendations", () => {
 
     expect(deliveryCalls).toBe(1)
     expect((selectionSignal as AbortSignal | null)?.aborted).toBe(false)
+    const selectionBody = requestBodies(fetchMock).find(
+      (body) => body.eventId != null,
+    )
 
     pendingSelection.resolve(
       jsonResponse({
-        claimNonce: "qualified-claim-nonce",
+        claimNonce: selectionBody?.claimNonce,
         canonicalHref: sixItemDelivery.items[0].canonicalHref,
         targetMediaId: sixItemDelivery.items[0].targetMediaId,
       }),
@@ -487,15 +491,15 @@ describe("WatchSemanticRecommendations", () => {
   )
 
   it("loads after mount, keeps the capability out of DOM, and emits render/impression once per committed envelope", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith("/api/recommendations")) {
-        return jsonResponse({ delivery })
-      }
-      return jsonResponse({
-        receipts: [{ eventId: "event", status: "accepted" }],
-      })
-    })
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        return acceptedEvidenceResponse(init)
+      },
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     act(() => {
@@ -947,24 +951,26 @@ describe("WatchSemanticRecommendations", () => {
 
   it("retries rejected render evidence with the same event id", async () => {
     let evidenceAttempts = 0
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith("/api/recommendations")) {
-        return jsonResponse({ delivery })
-      }
-      if (url.endsWith("/api/recommendations/profile")) {
-        return jsonResponse({
-          profile: {
-            state: "session_only",
-            privacyGeneration: null,
-          },
-        })
-      }
-      evidenceAttempts += 1
-      return evidenceAttempts === 1
-        ? jsonResponse({ error: "temporary" }, 503)
-        : jsonResponse({ receipts: [] })
-    })
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        if (url.endsWith("/api/recommendations/profile")) {
+          return jsonResponse({
+            profile: {
+              state: "session_only",
+              privacyGeneration: null,
+            },
+          })
+        }
+        evidenceAttempts += 1
+        return evidenceAttempts === 1
+          ? jsonResponse({ error: "temporary" }, 503)
+          : acceptedEvidenceResponse(init)
+      },
+    )
     vi.stubGlobal("fetch", fetchMock)
 
     act(() => {
@@ -988,6 +994,56 @@ describe("WatchSemanticRecommendations", () => {
     )
     expect(evidenceBodies).toHaveLength(2)
     expect(evidenceBodies[1]).toEqual(evidenceBodies[0])
+  })
+
+  it("retries a successful response that omits the per-event receipt", async () => {
+    let evidenceAttempts = 0
+    const degraded = vi.fn()
+    window.addEventListener("forge:recommendation-evidence-degraded", degraded)
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          return jsonResponse({ delivery })
+        }
+        evidenceAttempts += 1
+        return evidenceAttempts === 1
+          ? jsonResponse({ receipts: [] })
+          : acceptedEvidenceResponse(init)
+      },
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(evidenceAttempts).toBe(1)
+
+    await act(async () => vi.advanceTimersByTimeAsync(100))
+    expect(evidenceAttempts).toBe(2)
+    const evidenceBodies = requestBodies(fetchMock).filter(
+      (body) => body.requestId === "request-1" && Array.isArray(body.events),
+    )
+    expect(evidenceBodies).toHaveLength(2)
+    expect(evidenceBodies[1]).toEqual(evidenceBodies[0])
+    expect(degraded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          reason: "receipt_missing",
+          disposition: "retrying",
+        }),
+      }),
+    )
+    window.removeEventListener(
+      "forge:recommendation-evidence-degraded",
+      degraded,
+    )
   })
 
   it("does not let stale evidence failure degrade a replacement slate", async () => {

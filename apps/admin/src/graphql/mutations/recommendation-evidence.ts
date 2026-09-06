@@ -227,6 +227,7 @@ builder.mutationFields((t) => ({
       eventId: t.arg.string({ required: true }),
       occurredAt: t.arg.string({ required: true }),
       tabDigest: t.arg.string({ required: false }),
+      claimNonce: t.arg.string({ required: true }),
     },
     resolve: (_root, args, ctx) =>
       resolveRecommendationOperation(() =>
@@ -240,6 +241,7 @@ builder.mutationFields((t) => ({
           eventId: args.eventId,
           occurredAt: args.occurredAt,
           tabDigest: args.tabDigest,
+          claimNonce: args.claimNonce,
         }),
       ),
   }),

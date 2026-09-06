@@ -41,10 +41,11 @@ sets `learningEligible=false`.
 Deploy in expand-then-activate order:
 
 1. Run `prisma migrate deploy` through
-   `0072_recommendation_source_neutral_playback_episodes` while serving remains
+   `0075_recommendation_selection_attribution_eligibility` while serving remains
    disabled. Confirm `prisma migrate status` (or `_prisma_migrations`) reports
    every recommendation migration from
-   `0052_production_semantic_recommendation_tracer` through `0072` as applied
+   `0052_production_semantic_recommendation_tracer` through
+   `0075_recommendation_selection_attribution_eligibility` as applied
    successfully before deploying application code. Migration `0052` registers
    the immutable bootstrap manifest and a disabled singleton
    `recommendation-serving-control` row; later migrations add profile,

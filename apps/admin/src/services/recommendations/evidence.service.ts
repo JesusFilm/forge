@@ -30,6 +30,7 @@ import { consumeDeliveryCapabilitySubmissions } from "./submission-budget"
 import type { DeliveryCapabilityBinding } from "./token.service"
 import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
+import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 
 const Event = z
   .object({
@@ -62,6 +63,12 @@ type EvidenceDependencies = {
   prisma: PrismaClient
   tokenService: DeliveryVerifier
   now?: () => Date
+  dispatchProfileFeedback?: (input: {
+    sessionDigest: string
+    profileId: string
+    privacyGeneration: number
+    evidenceWatermark: Date
+  }) => Promise<unknown>
 }
 
 export type RecommendationEvidenceReceipt = {
@@ -238,7 +245,7 @@ export class RecommendationEvidenceService {
       }
     }
 
-    return this.deps.prisma.$transaction(async (tx) => {
+    const result = await this.deps.prisma.$transaction(async (tx) => {
       if (
         !(await lockRecommendationAssignmentCapabilityFence(
           tx,
@@ -252,6 +259,7 @@ export class RecommendationEvidenceService {
       }
       await lockRecommendationItemEvidence(tx, item.id)
       const receipts: RecommendationEvidenceReceipt[] = []
+      let reconciledSelection = false
       for (const event of input.events) {
         const digest = recommendationEvidenceDigest(event)
         const existing =
@@ -264,6 +272,18 @@ export class RecommendationEvidenceService {
               })
         if (existing) {
           if (existing.payloadDigest === digest) {
+            if (event.kind === "impression") {
+              const reconciliation =
+                await tx.recommendationSelection.updateMany({
+                  where: {
+                    requestId: item.requestId,
+                    itemId: item.id,
+                    attributionEligibleAt: null,
+                  },
+                  data: { attributionEligibleAt: now },
+                })
+              reconciledSelection ||= reconciliation.count === 1
+            }
             await tx.recommendationEvidenceAudit.create({
               data: {
                 requestId: item.requestId,
@@ -305,6 +325,15 @@ export class RecommendationEvidenceService {
               visibilityPolicy: RECOMMENDATION_CONTRACTS.surface,
             },
           })
+          const reconciliation = await tx.recommendationSelection.updateMany({
+            where: {
+              requestId: item.requestId,
+              itemId: item.id,
+              attributionEligibleAt: null,
+            },
+            data: { attributionEligibleAt: now },
+          })
+          reconciledSelection ||= reconciliation.count === 1
           if (
             !item.request.promotionSlateFence &&
             assignment?.state ===
@@ -360,8 +389,28 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
-      return receipts
+      return { receipts, reconciledSelection }
     })
+    if (result.reconciledSelection) {
+      const activeProfile = await resolveActiveRecommendationProfileLink(
+        this.deps.prisma,
+        { sessionDigest: item.request.sessionDigest, now },
+      )
+      if (activeProfile) {
+        void this.deps
+          .dispatchProfileFeedback?.({
+            sessionDigest: item.request.sessionDigest,
+            profileId: activeProfile.profileId,
+            privacyGeneration: activeProfile.privacyGeneration,
+            evidenceWatermark: now,
+          })
+          .catch(() => {
+            // Evidence acknowledgement and navigation remain fail-open when
+            // the independently durable projection workflow is unavailable.
+          })
+      }
+    }
+    return result.receipts
   }
 
   private async recordCommittedRejection(
@@ -385,5 +434,13 @@ export function createRecommendationEvidenceService(
 ) {
   const tokenService = createRuntimeRecommendationTokenService(prisma)
   if (!tokenService) throw new RecommendationCapabilityUnavailableError()
-  return new RecommendationEvidenceService({ prisma, tokenService })
+  return new RecommendationEvidenceService({
+    prisma,
+    tokenService,
+    dispatchProfileFeedback: async (input) => {
+      const { dispatchRecommendationProfileFeedback } =
+        await import("./profiles/job")
+      return dispatchRecommendationProfileFeedback(input)
+    },
+  })
 }

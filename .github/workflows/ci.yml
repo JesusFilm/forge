@@ -152,6 +152,7 @@ jobs:
           src/services/recommendations/migration.candidates.db.test.ts
           src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/migration.operations.db.test.ts
+          src/services/recommendations/migration.attribution-reliability.db.test.ts
           src/services/recommendations/playback-episode.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts

@@ -9,6 +9,7 @@ import {
   RECOMMENDATION_PLAYBACK_EVENT_LIMIT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   parseRecommendationEpisodeCapability,
+  parseRecommendationPlaybackReceipts,
   type RecommendationEpisodeCapability,
   type RecommendationPlaybackEvent,
 } from "@/lib/recommendation-contracts"
@@ -28,6 +29,8 @@ const CLAIM_RETRY_BACKOFF_MS = 250
 const MAX_EPISODE_FACTS = 128
 const MAX_PENDING_CLAIM_FACTS = 16
 const MAX_PENDING_REGULAR_FACTS = MAX_PENDING_CLAIM_FACTS - 1
+const MAX_FACT_DELIVERY_ATTEMPTS = 3
+const FACT_RETRY_BACKOFF_MS = 100
 const PROGRESS_INTERVAL_MS = 10_000
 const MAX_ACTIVE_CHUNK_MS = 60_000
 const UTF8_ENCODER = new TextEncoder()
@@ -112,6 +115,7 @@ async function postPlayback(body: string, keepalive: boolean) {
       body,
     },
     REQUEST_DEADLINE_MS,
+    { attempts: 1 },
   )
 }
 
@@ -130,10 +134,26 @@ function playbackFactsBody(
   })
 }
 
-function reportOverflow(reason: "pending_claim" | "episode_limit") {
+type PlaybackDegradationReason =
+  | "body_limit"
+  | "episode_limit"
+  | "integrity_conflict"
+  | "pending_claim"
+  | "receipt_invalid"
+  | "receipt_missing"
+  | "transport_exhausted"
+  | "transport_retry"
+
+type PlaybackDegradationDisposition = "dropped" | "retrying"
+
+function reportDegradation(
+  reason: PlaybackDegradationReason,
+  eventIds: string[] = [],
+  disposition: PlaybackDegradationDisposition = "dropped",
+) {
   window.dispatchEvent(
-    new CustomEvent("forge:recommendation-playback-overflow", {
-      detail: { reason },
+    new CustomEvent("forge:recommendation-playback-degraded", {
+      detail: { reason, disposition, eventIds },
     }),
   )
 }
@@ -240,6 +260,8 @@ export function RecommendationPlaybackRecorder({
   const flushScheduledRef = useRef(false)
   const drainingRef = useRef(false)
   const drainRequestedRef = useRef(false)
+  const retryTimerRef = useRef<number | null>(null)
+  const deliveryAttemptsRef = useRef(new Map<string, number>())
   const sendOutboundRef = useRef<() => void>(() => undefined)
   const factCountRef = useRef(0)
   const factKindCountsRef = useRef<
@@ -283,19 +305,130 @@ export function RecommendationPlaybackRecorder({
               UTF8_ENCODER.encode(candidateBody).byteLength >
               RECOMMENDATION_PLAYBACK_BODY_BYTES
             ) {
-              if (events.length === 0) outboundRef.current.shift()
+              if (events.length === 0) {
+                const dropped = outboundRef.current.shift()
+                if (dropped) {
+                  deliveryAttemptsRef.current.delete(dropped.eventId)
+                  reportDegradation("body_limit", [dropped.eventId])
+                }
+              }
               break
             }
             events.push(candidate)
           }
           if (events.length === 0) continue
+          for (const fact of events) {
+            deliveryAttemptsRef.current.set(
+              fact.eventId,
+              (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) + 1,
+            )
+          }
           const body = playbackFactsBody(episode, mediaId, events)
+          let receiptInvalid = false
           try {
-            await postPlayback(body, true)
-            outboundRef.current.splice(0, events.length)
+            const response = await postPlayback(body, true)
+            const submittedIds = new Set(events.map((fact) => fact.eventId))
+            const receipts = parseRecommendationPlaybackReceipts(
+              await response.json(),
+              submittedIds,
+            )
+            if (!receipts) {
+              receiptInvalid = true
+              throw new RecommendationRuntimeError("request_failed")
+            }
+            const retired = new Set<string>()
+            for (const receipt of receipts) {
+              retired.add(receipt.eventId)
+              deliveryAttemptsRef.current.delete(receipt.eventId)
+              if (receipt.status === "conflict") {
+                reportDegradation("integrity_conflict", [receipt.eventId])
+              }
+            }
+            outboundRef.current = outboundRef.current.filter(
+              (fact) => !retired.has(fact.eventId),
+            )
+            const missing = events.filter((fact) => !retired.has(fact.eventId))
+            if (missing.length > 0) {
+              const exhausted = missing.filter(
+                (fact) =>
+                  (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) >=
+                  MAX_FACT_DELIVERY_ATTEMPTS,
+              )
+              if (exhausted.length > 0) {
+                const exhaustedIds = new Set(
+                  exhausted.map((fact) => fact.eventId),
+                )
+                outboundRef.current = outboundRef.current.filter(
+                  (fact) => !exhaustedIds.has(fact.eventId),
+                )
+                for (const eventId of exhaustedIds) {
+                  deliveryAttemptsRef.current.delete(eventId)
+                }
+                reportDegradation("receipt_missing", [...exhaustedIds])
+              }
+              const retrying = missing.filter(
+                (fact) =>
+                  !exhausted.some(({ eventId }) => eventId === fact.eventId),
+              )
+              if (retrying.length > 0) {
+                reportDegradation(
+                  "receipt_missing",
+                  retrying.map((fact) => fact.eventId),
+                  "retrying",
+                )
+              }
+              if (outboundRef.current.length > 0) {
+                const attempt = Math.max(
+                  ...missing.map(
+                    (fact) =>
+                      deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
+                  ),
+                )
+                retryTimerRef.current = window.setTimeout(
+                  () => sendOutboundRef.current(),
+                  FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
+                )
+                break
+              }
+            }
           } catch {
-            // Preserve the exact event IDs and payloads. A later player fact or
-            // lifecycle flush can replay the same idempotent batch.
+            const exhausted = events.filter(
+              (fact) =>
+                (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) >=
+                MAX_FACT_DELIVERY_ATTEMPTS,
+            )
+            if (exhausted.length > 0) {
+              const exhaustedIds = new Set(
+                exhausted.map((fact) => fact.eventId),
+              )
+              outboundRef.current = outboundRef.current.filter(
+                (fact) => !exhaustedIds.has(fact.eventId),
+              )
+              for (const eventId of exhaustedIds) {
+                deliveryAttemptsRef.current.delete(eventId)
+              }
+              reportDegradation(
+                receiptInvalid ? "receipt_invalid" : "transport_exhausted",
+                [...exhaustedIds],
+              )
+            } else {
+              reportDegradation(
+                receiptInvalid ? "receipt_invalid" : "transport_retry",
+                events.map((fact) => fact.eventId),
+                "retrying",
+              )
+            }
+            if (outboundRef.current.length > 0) {
+              const attempt = Math.max(
+                ...events.map(
+                  (fact) => deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
+                ),
+              )
+              retryTimerRef.current = window.setTimeout(
+                () => sendOutboundRef.current(),
+                FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
+              )
+            }
             break
           }
         }
@@ -310,6 +443,11 @@ export function RecommendationPlaybackRecorder({
   }, [mediaId])
   useEffect(() => {
     sendOutboundRef.current = sendOutbound
+    return () => {
+      if (retryTimerRef.current != null) {
+        window.clearTimeout(retryTimerRef.current)
+      }
+    }
   }, [sendOutbound])
 
   const enqueue = useCallback(
@@ -321,7 +459,7 @@ export function RecommendationPlaybackRecorder({
         factCountRef.current >= factLimit ||
         kindCount >= MAX_FACTS_BY_KIND[next.kind]
       ) {
-        reportOverflow("episode_limit")
+        reportDegradation("episode_limit", [next.eventId])
         return
       }
       const registerFact = () => {
@@ -334,7 +472,7 @@ export function RecommendationPlaybackRecorder({
           ? MAX_PENDING_CLAIM_FACTS
           : MAX_PENDING_REGULAR_FACTS
         if (pendingRef.current.length >= limit) {
-          reportOverflow("pending_claim")
+          reportDegradation("pending_claim", [next.eventId])
           return
         }
         pendingRef.current.push(next)
