@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
-import { deriveBibleCardArt } from "../lib/bibleCardArt"
+import { deriveBibleCardArt, type BibleCardArt } from "../lib/bibleCardArt"
 import {
   clearPassageReadCooldown,
   isPassageReadSuppressed,
@@ -61,6 +61,8 @@ export type BibleCardArtSource = {
   variants: readonly WatchVariant[]
   /** The video's own resolved card art, the ladder's middle rung. */
   authoredImageUrl: string | null
+  /** The film's own language, matched EXACTLY by the dub pin. */
+  primaryLanguageCoreId: string | null
   /** False while the watch query is still filling in from partial cached data. */
   payloadSettled: boolean
 }
@@ -107,6 +109,13 @@ const NO_PASSAGES: PassageMap = new Map()
 
 /** Stable identity so re-arming the per-video reset cannot loop a re-render. */
 const NO_ART_FAILURES: Record<string, true> = {}
+
+/** What a video with no Bible block resolves to, without pinning a dub. */
+const NO_CARD_ART = {
+  candidates: [] as string[][],
+  tier: "none",
+  hasPlaybackId: false,
+} as const satisfies BibleCardArt
 
 type ReadState =
   | { status: "idle" }
@@ -203,7 +212,8 @@ export function useBibleVerses(
   const requestIdRef = useRef(0)
   const hasCitations = citations.length > 0
 
-  const { variants, authoredImageUrl, payloadSettled } = art
+  const { variants, authoredImageUrl, primaryLanguageCoreId, payloadSettled } =
+    art
 
   useEffect(() => {
     const thisRequest = ++requestIdRef.current
@@ -311,16 +321,30 @@ export function useBibleVerses(
     return () => clearTimeout(timer)
   }, [slug])
 
+  // Gated on `hasCitations`: the derivation sorts the video's WHOLE dub list to
+  // pin one, and a video with no Bible block never reads the result. The JESUS
+  // film carries 2,281 published dubs, so this ran on every watch-screen open.
   const cardArt = useMemo(
     () =>
-      deriveBibleCardArt({
-        variants,
-        authoredImageUrl,
-        citations,
-        stockImages: BIBLE_IMAGES,
-        payloadSettled: payloadSettled || holdReleased,
-      }),
-    [variants, authoredImageUrl, citations, payloadSettled, holdReleased],
+      hasCitations
+        ? deriveBibleCardArt({
+            variants,
+            authoredImageUrl,
+            primaryLanguageCoreId,
+            citations,
+            stockImages: BIBLE_IMAGES,
+            payloadSettled: payloadSettled || holdReleased,
+          })
+        : NO_CARD_ART,
+    [
+      hasCitations,
+      variants,
+      authoredImageUrl,
+      primaryLanguageCoreId,
+      citations,
+      payloadSettled,
+      holdReleased,
+    ],
   )
 
   // Keyed by video AND citation position so an advance survives the cell
@@ -347,10 +371,9 @@ export function useBibleVerses(
   // while the payload holds, when the outcome is not yet a real one.
   const loggedSlugRef = useRef<string | null>(null)
   useEffect(() => {
-    // Gated on the REAL payload, not the hold's timed release. Releasing early
-    // resolves the ladder to stock and then flips to the still when the payload
-    // lands — logging the released state would report a stock outcome for a
-    // video that ends on a still, the alert's own false positive.
+    // The REAL payload, not the hold's timed release: the released state
+    // resolves to stock and then flips to the still, so logging it reports a
+    // stock outcome for a video that ends on one — the alert's false positive.
     if (!hasCitations || !payloadSettled) return
     if (loggedSlugRef.current === slug) return
     loggedSlugRef.current = slug

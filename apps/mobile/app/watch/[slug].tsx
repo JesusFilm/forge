@@ -242,6 +242,8 @@ export default function WatchVideoPage() {
   const bibleQuotes = useBibleVerses(decodedSlug, routeCitations, {
     variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
     authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
+    primaryLanguageCoreId:
+      video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
     payloadSettled: !loading,
   })
 
@@ -841,6 +843,7 @@ export default function WatchVideoPage() {
                   key={decodedSlug}
                   section={bibleCitationsBlock}
                   onArtworkFailed={bibleQuotes.reportArtworkFailure}
+                  videoSlug={decodedSlug}
                 />
               </View>
             )}

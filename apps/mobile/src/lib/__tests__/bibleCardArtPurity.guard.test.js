@@ -5,11 +5,9 @@
 const fs = require("fs")
 const path = require("path")
 
-// Guard: bibleCardArt is a pure derivation and must stay one. It re-runs
-// several times per screen open, so a log emitted here would weight the
-// ladder-outcome signal by render count and bias it toward false stock
-// outcomes — the hook owns the single emit per video. React, Apollo, and the
-// image library would each also make the module untestable without a harness.
+// Guard: bibleCardArt must stay a pure derivation. It re-runs several times per
+// screen open, so a log here would weight the ladder-outcome signal by render
+// count and bias it toward false stock outcomes; the hook owns the one emit.
 const FORBIDDEN = [
   { token: "datadog", why: "the hook owns the ladder-outcome emit, not this" },
   { token: 'from "react', why: "the module must stay renderer-free" },

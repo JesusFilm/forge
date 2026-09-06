@@ -13,10 +13,9 @@ jest.mock("../../../lib/openPassageSheet", () => ({
 }))
 
 /**
- * The suite had no image-library mock and so had never rendered the image
- * branch at all. A jest.fn component is the assertion surface: zero calls means
- * no image element, which is what stops the prop cases below passing against an
- * absent node. `prefetch` is a module static the carousel calls directly.
+ * A jest.fn component is the assertion surface: zero calls means no image
+ * element, which is what stops the prop cases below passing against an absent
+ * node. `prefetch` is a module static the carousel calls directly.
  */
 const mockImage = jest.fn((_props: Record<string, unknown>) => null)
 const mockPrefetch = jest.fn((..._args: unknown[]) => Promise.resolve(true))
@@ -42,7 +41,6 @@ import {
   LINK_MIN_TAP_HEIGHT,
   REFERENCE_MARGIN,
   REFERENCE_MAX_LINES,
-  SCRIM_MAX_SOLID_STOP,
   TRANSLATION_MARGIN,
   TRANSLATION_MAX_LINES,
   VERSE_FONT_SIZE_INCREASE,
@@ -50,8 +48,6 @@ import {
   VERSE_MAX_LINES,
   composeCardLabel,
   fitPassageCardRegions,
-  passageCardStackHeight,
-  scrimRampStart,
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
@@ -130,10 +126,9 @@ function sectionOf(quotes: Quote[]): AdminBlock {
 }
 
 /**
- * Every renderer is torn down after its test. The card subscribes to the OS
- * reduce-motion setting, so a renderer left mounted re-renders when that read
- * resolves — inside the NEXT test's `act`, where its props land in the image
- * mock ahead of the card actually under test.
+ * Every renderer is torn down after its test: the card subscribes to the OS
+ * reduce-motion read, so one left mounted re-renders inside the NEXT test's
+ * `act`, landing its props in the image mock ahead of the card under test.
  */
 const mounted: TestInstance[] = []
 
@@ -685,14 +680,36 @@ function stillQuote(overrides: Quote = {}): Quote {
 function imageProps(): Record<string, unknown> | undefined {
   return mockImage.mock.calls[0]?.[0]
 }
+/** A still can be pure white, so that is what any backdrop must survive. */
+const WORST_STILL: Rgba = { r: 255, g: 255, b: 255, a: 1 }
 
-/** The rendered scrim, read off the tree rather than off a duplicated constant. */
-function scrim(renderer: TestInstance) {
-  const node = renderer.root.findAll((n) => Array.isArray(n.props.colors))[0]
-  const colors = node?.props.colors as string[] | undefined
-  const locations = node?.props.locations as number[] | undefined
-  if (colors == null || locations == null) throw new Error("no scrim rendered")
-  return { colors, locations }
+/**
+ * The opaque colour the text actually sits on, whichever backdrop renders.
+ * Read off the tree, so changing CARD_TREATMENT RE-POINTS this guard rather
+ * than deleting it — the failure that made the guard treatment-agnostic.
+ */
+function backdrop(renderer: TestInstance): Rgba {
+  const gradient = renderer.root.findAll((n) =>
+    Array.isArray(n.props.colors),
+  )[0]
+  if (gradient != null) {
+    const colors = gradient.props.colors as string[]
+    return parseColor(colors[colors.length - 1] as string)
+  }
+  const tints = renderer.root
+    // Host nodes only: a composite and its host carry the same props, so an
+    // unfiltered scan counts the one tint twice.
+    .findAll(
+      (n) =>
+        typeof n.type === "string" &&
+        typeof flatStyle(n).backgroundColor === "string",
+    )
+    .map((n) => parseColor(flatStyle(n).backgroundColor as unknown as string))
+    .filter((c) => c.a < 1)
+  if (tints.length !== 1) {
+    throw new Error(`expected exactly one tint, found ${tints.length}`)
+  }
+  return composite(tints[0] as Rgba, WORST_STILL)
 }
 
 type Rgba = { r: number; g: number; b: number; a: number }
@@ -781,11 +798,10 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
 
   it("clears 4.5:1 for all four text regions over the worst still (AE13)", () => {
     const renderer = render([stillQuote()])
-    const { colors, locations } = scrim(renderer)
-
-    // The scrim's SOLID stop is the card colour, and the whole text stack sits
-    // below it, so a pure-white still never reaches any text pixel.
-    const solid = parseColor(colors[2] as string)
+    // Whichever backdrop the active treatment draws, composited over a
+    // pure-white still. Not the gradient specifically: bound to one branch,
+    // this guard was deleted rather than re-pointed by changing the treatment.
+    const ground = backdrop(renderer)
     const regions: Array<[string, Rgba]> = [
       ["verse", regionColor(renderer, "Let’s make man")],
       ["reference", regionColor(renderer, "GENESIS 1:26-27")],
@@ -793,76 +809,31 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
       ["copyright", regionColor(renderer, "Public Domain")],
     ]
     for (const [name, color] of regions) {
-      const ratio = contrast(composite(color, solid), solid)
+      const ratio = contrast(composite(color, ground), ground)
       expect({ name, ratio: ratio >= 4.5 }).toEqual({ name, ratio: true })
     }
-
-    // R9: non-zero from the card's TOP edge, so no still renders at full
-    // strength anywhere.
-    expect(locations[0]).toBe(0)
-    expect(parseColor(colors[0] as string).a).toBeGreaterThan(0)
   })
 
-  it("puts the scrim's solid stop at or above the top of the text stack", () => {
-    // This geometry is what makes the contrast case above hold for ANY still
-    // rather than for one sampled frame.
-    const width = 390
-    const cardWidth = Math.round(width - 32)
-    const renderer = renderAtSize([stillQuote()], { width, fontScale: 1 })
-    const { locations } = scrim(renderer)
-
-    // The SCREEN WIDTH the component itself reads, not a scale factor:
-    // `computeTypographyScale` takes a width, so passing 1 here would clamp to
-    // the smallest type, inflate the expected stack top, and let any real stop
-    // satisfy the assertion.
-    const fitInput = {
-      contentHeight: cardWidth - CARD_CONTENT_PADDING * 2,
-      typography: computeTypographyScale(width),
-      fontScale: 1,
-      hasVerse: true,
-      hasTranslation: true,
-      hasCopyright: true,
-      hasLink: true,
-    }
-    const stackTop =
-      (cardWidth -
-        CARD_CONTENT_PADDING -
-        passageCardStackHeight(fitInput, fitPassageCardRegions(fitInput))) /
-      cardWidth
-
-    // Equality, not an upper bound: with the component's own typography the
-    // rendered stop IS the stack top, and `<=` would still pass if the geometry
-    // silently drifted lower.
-    expect(locations[2]).toBeCloseTo(stackTop, 10)
-    expect(locations[2]).toBeGreaterThan(0)
-  })
-
-  it("holds the veil until one band above the text, rather than ramping from the edge", () => {
-    // The still occupies the region ABOVE the text. Ramping across all of it
-    // would leave the artwork already half-buried by mid-card; the transition
-    // belongs in a band immediately above the words it protects.
-    const renderer = render([{ reference: "John 3:16", text: null }])
-    const { colors, locations } = scrim(renderer)
-
-    expect(colors).toHaveLength(3)
-    // The first two stops are the SAME colour — that is what holds the veil.
-    expect(colors[0]).toBe(colors[1])
-    expect(locations).toHaveLength(3)
-    expect(locations[0]).toBe(0)
-    expect(locations[1]).toBeCloseTo(scrimRampStart(locations[2] as number), 10)
-    // A real card leaves a band of still at the light top value.
-    expect(locations[1] as number).toBeGreaterThan(0)
-  })
-
-  it("never lets the scrim sit lighter than the fixed stop it replaced", () => {
-    // A card with almost no text would otherwise push the solid point far down
-    // and leave a bright still fighting the reference.
-    const renderer = render([
-      { reference: "John 3:16", text: null, imageUrl: STILL_A },
-    ])
-    expect(scrim(renderer).locations[2]).toBeLessThanOrEqual(
-      SCRIM_MAX_SOLID_STOP,
+  it("keeps the backdrop at the floor, so lowering it cannot pass (AE13)", () => {
+    const renderer = render([stillQuote()])
+    const ground = backdrop(renderer)
+    const worst = Math.min(
+      ...(
+        [
+          "Let’s make man",
+          "GENESIS 1:26-27",
+          "World English Bible",
+          "Public Domain",
+        ] as const
+      ).map((needle) =>
+        contrast(composite(regionColor(renderer, needle), ground), ground),
+      ),
     )
+    // The tightest region clears the floor but is NEAR it. Without the upper
+    // bound a backdrop could be darkened arbitrarily and still pass, so the
+    // constant would stop being the floor its own comment claims it is.
+    expect(worst).toBeGreaterThanOrEqual(4.5)
+    expect(worst).toBeLessThan(5.0)
   })
 
   it("pins the image to the memory and disk cache tiers", () => {
@@ -901,14 +872,15 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
 
   it("keys recycling off the resolved source, not the reference label (AE9)", () => {
     // Two citations really can resolve to one label; keying on it would tell
-    // the list the two cards are the same image.
+    // the list the two cards are the same image. Only the visible card mounts
+    // (`initialNumToRender`), so the label is ruled out on that one directly.
     render([
       stillQuote({ imageUrl: STILL_A, artCandidates: [STILL_A] }),
       stillQuote({ imageUrl: STILL_B, artCandidates: [STILL_B] }),
     ])
     const keys = mockImage.mock.calls.map((call) => call[0]?.recyclingKey)
-    expect(keys).toEqual([STILL_A, STILL_B])
-    expect(new Set(keys).size).toBe(2)
+    expect(keys).toEqual([STILL_A])
+    expect(keys[0]).not.toBe(PASSAGE_QUOTE.reference)
   })
 
   it("renders a ladder-resolved URL byte-identically (KTD12)", () => {
@@ -961,10 +933,9 @@ describe("BibleQuotesCarouselRenderer — card artwork", () => {
   })
 
   it("emits the exhaustion signal once when one load reports twice", () => {
-    // SDWebImage's completion closure can call `onError` more than once for a
-    // single failed load. Both calls land in the same render pass, reading the
-    // same props, so the terminal check alone would double-count the only
-    // signal that distinguishes an exhausted card from a loading one.
+    // SDWebImage's completion closure can call `onError` twice for one failed
+    // load, both in the same render pass. The terminal check alone would then
+    // double-count the only signal separating an exhausted card from a loading one.
     const onArtworkFailed = jest.fn()
     render(
       [
@@ -1050,13 +1021,16 @@ describe("BibleQuotesCarouselRenderer — bounded prefetch", () => {
     expect(mockPrefetch).not.toHaveBeenCalled()
   })
 
-  it("prefetches the next card's still once the visible one settles", () => {
+  it("prefetches past the cards the list already mounts", () => {
     render(carousel(3))
     settleCard(0)
 
+    // Card 2, NOT card 1. The list mounts its own neighbour, whose `<Image>`
+    // requests that URL itself, so aiming at +1 re-asked for a load already in
+    // flight and the gate bounded nothing at all.
     expect(mockPrefetch).toHaveBeenCalledTimes(1)
     expect(mockPrefetch.mock.calls[0]?.[0]).toEqual([
-      "https://image.mux.com/p/thumbnail.webp?time=1.00",
+      "https://image.mux.com/p/thumbnail.webp?time=2.00",
     ])
   })
 
@@ -1105,9 +1079,12 @@ describe("BibleQuotesCarouselRenderer — bounded prefetch", () => {
     // request would suppress the prefetch for the rest of the session.
     render([
       { ...PASSAGE_QUOTE, imageUrl: null, artCandidates: [] },
-      ...carousel(1),
+      ...carousel(2),
     ])
     expect(mockPrefetch).toHaveBeenCalledTimes(1)
+    expect(mockPrefetch.mock.calls[0]?.[0]).toEqual([
+      "https://image.mux.com/p/thumbnail.webp?time=1.00",
+    ])
   })
 
   it("releases the gate on a load that never settles, and not before", () => {

@@ -6,10 +6,9 @@ import {
 } from "../bibleCardArt"
 import type { WatchBibleCitation, WatchVariant } from "../normalizeVideo"
 
-// Every gated field is an explicit argument. Deriving `muxPlaybackId` from
-// `documentId` (or `duration` from either) would let one fixture fail several
-// gates at once, and a test meant to prove the playback-id gate would pass for
-// the runtime gate's reason instead.
+// Every gated field is an explicit argument: deriving one from another lets a
+// single fixture fail several gates at once, so a test meant to prove the
+// playback-id gate would pass for the runtime gate's reason instead.
 function variant(fields: Partial<WatchVariant> = {}): WatchVariant {
   return {
     documentId: "dub-a",
@@ -61,6 +60,7 @@ function input(fields: Partial<BibleCardArtInput> = {}): BibleCardArtInput {
   return {
     variants: [variant()],
     authoredImageUrl: AUTHORED,
+    primaryLanguageCoreId: null,
     citations: citations(1),
     stockImages: STOCK,
     payloadSettled: true,
@@ -182,6 +182,97 @@ describe("deriveBibleCardArt — still selection", () => {
     expect(forward.candidates).toEqual(shuffled.candidates)
     expect(forward.tier).toBe("authored")
     expect(forward.hasPlaybackId).toBe(true)
+  })
+
+  it("pins the film's own language over a lower-sorting foreign dub", () => {
+    // Production shape from `the-meaning-of-christmas--episode-3`: a Ukrainian
+    // dub sorts before the English one, and its frames carry burned-in Cyrillic
+    // subtitles, which the card was rendering as its artwork.
+    const variants = [
+      variant({
+        documentId: "56cbf635",
+        languageBcp47: "uk",
+        muxPlaybackId: "playbackUK",
+      }),
+      variant({
+        documentId: "60a9a019",
+        languageCoreId: "lang-en",
+        muxPlaybackId: "playbackEN",
+      }),
+    ]
+    const result = deriveBibleCardArt(
+      input({ variants, primaryLanguageCoreId: "lang-en" }),
+    )
+    expect(result.candidates[0]?.[0]).toContain("/playbackEN/")
+  })
+
+  it("never treats a tag-colliding dub as the film's own language", () => {
+    // `en-nai` is English, North American Indigenous — a DIFFERENT language
+    // that shares the `en` base. It sorts second here on purpose: a bcp47
+    // prefix match would prefer it, and the documentId sort would not.
+    const variants = [
+      variant({
+        documentId: "dub-a",
+        languageCoreId: "lang-de",
+        languageBcp47: "de",
+        muxPlaybackId: "playbackDE",
+      }),
+      variant({
+        documentId: "dub-b",
+        languageCoreId: "lang-en-nai",
+        languageBcp47: "en-nai",
+        muxPlaybackId: "playbackNAI",
+      }),
+    ]
+    const result = deriveBibleCardArt(
+      input({ variants, primaryLanguageCoreId: "lang-en" }),
+    )
+    expect(result.candidates[0]?.[0]).toContain("/playbackDE/")
+  })
+
+  it("stays on the sorted-first dub when the primary language has no dub", () => {
+    // The preference is additive: with nothing to prefer, determinism is still
+    // the documentId sort, so R3 holds exactly as before.
+    const variants = [
+      variant({
+        documentId: "dub-a",
+        languageBcp47: "uk",
+        muxPlaybackId: "playbackUK",
+      }),
+      variant({
+        documentId: "dub-b",
+        languageBcp47: "de",
+        muxPlaybackId: "playbackDE",
+      }),
+    ]
+    const result = deriveBibleCardArt(
+      input({ variants, primaryLanguageCoreId: "lang-fr" }),
+    )
+    expect(result.candidates[0]?.[0]).toContain("/playbackUK/")
+  })
+
+  it("does not let the language preference override the runtime gate", () => {
+    // A primary-language dub with no runtime cannot serve a still, so the
+    // preference must not demote a video a sibling dub can actually serve.
+    const variants = [
+      variant({
+        documentId: "dub-a",
+        languageCoreId: "lang-en",
+        muxPlaybackId: "playbackEN",
+        duration: null,
+      }),
+      variant({
+        documentId: "dub-b",
+        languageBcp47: "uk",
+        muxPlaybackId: "playbackUK",
+        duration: 600,
+      }),
+    ]
+    const result = deriveBibleCardArt(
+      input({ variants, primaryLanguageCoreId: "lang-en" }),
+    )
+    expect(result.candidates[0]?.[0]).toContain("/playbackUK/")
+    expect(result.tier).toBe("still")
   })
 
   it("skips an unpublished dub even when it sorts first and is complete", () => {
@@ -415,6 +506,21 @@ describe("deriveBibleCardArt — the fallback ladder", () => {
     expect(noAuthored.candidates[0]).toHaveLength(2)
     expect(isStill(noAuthored.candidates[0]?.[0] as string)).toBe(true)
     expect(noAuthored.candidates[0]?.[1]).toBe(STOCK[0])
+  })
+
+  it("drops a protocol-relative authored value rather than resolving its host", () => {
+    // `//evil.example/x.png` is rejected today only because `new URL()` throws
+    // with no base. Nothing else pins it, so adding a base to the validator
+    // would silently start honouring an attacker-chosen host.
+    const result = deriveBibleCardArt(
+      input({
+        variants: [],
+        authoredImageUrl: "//evil.example/card.png",
+        stockImages: [],
+        citations: citations(1),
+      }),
+    )
+    expect(result.candidates[0]).toEqual([])
   })
 
   it("returns only validated URLs, so the render site cannot be handed a reject", () => {

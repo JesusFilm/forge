@@ -112,6 +112,7 @@ function response(
 const NO_ART: BibleCardArtSource = {
   variants: [],
   authoredImageUrl: null,
+  primaryLanguageCoreId: null,
   payloadSettled: true,
 }
 
@@ -648,6 +649,7 @@ function variant(overrides: Partial<WatchVariant> = {}): WatchVariant {
 const WITH_STILLS: BibleCardArtSource = {
   variants: [variant()],
   authoredImageUrl: null,
+  primaryLanguageCoreId: null,
   payloadSettled: true,
 }
 
@@ -655,6 +657,7 @@ const WITH_STILLS: BibleCardArtSource = {
 const PARTIAL_PAYLOAD: BibleCardArtSource = {
   variants: [variant({ duration: null, muxPlaybackId: null, hls: null })],
   authoredImageUrl: null,
+  primaryLanguageCoreId: null,
   payloadSettled: false,
 }
 
@@ -851,10 +854,9 @@ describe("useBibleVerses card artwork", () => {
   })
 
   it("still tries a still that only arrives after a stock failure", async () => {
-    // The cascade: the payload never settles, the hold releases onto stock,
-    // stock fails, and only THEN does the real payload land. A failure
-    // recorded by position would make the newly-prepended still look already
-    // tried, and the card would skip the one image this feature exists to show.
+    // The cascade: hold releases onto stock, stock fails, and only THEN does
+    // the payload land. A failure recorded by POSITION would make the newly
+    // prepended still look already tried, skipping the one image this is for.
     jest.useFakeTimers()
     const hook = renderHook(
       {
@@ -885,13 +887,9 @@ describe("useBibleVerses card artwork", () => {
   })
 
   it("scopes a recorded failure to its own video, not the next one", async () => {
-    // Up Next replaces the route params rather than remounting the screen, so
-    // this hook outlives the video whose failures it recorded. The failure keys
-    // carry the slug, which is what keeps them apart.
-    //
-    // This does NOT observe the per-video reset in the hook's slug effect —
-    // that is memory hygiene, and the slug-scoped keys make it behaviourally
-    // invisible. Removing the reset leaves this test green, deliberately.
+    // Up Next reuses the screen, so this hook outlives the video whose failures
+    // it recorded; the slug in each key keeps them apart. Does NOT observe the
+    // slug effect's reset — that is hygiene, and removing it leaves this green.
     const hook = renderHook({
       slug: "pilgrims-progress",
       citations: [citation("c1")],
@@ -911,6 +909,33 @@ describe("useBibleVerses card artwork", () => {
 
     // The new video starts at the top of the ladder, not one rung down.
     expect(verseCards(hook.latest())[0]?.imageUrl).toContain("image.mux.com")
+  })
+
+  it("scopes a recorded failure to the card that reported it", async () => {
+    // With no still, KTD8 gives EVERY card the same authored URL, so the key's
+    // cardIndex is the only thing keeping one card's failure off its siblings.
+    // Drop cardIndex from the key and card 1 skips a rung it never tried.
+    const authored = "https://images.example.com/authored.jpg"
+    const hook = renderHook({
+      slug: "pilgrims-progress",
+      citations: [citation("c1"), citation("c2")],
+      art: {
+        ...PARTIAL_PAYLOAD,
+        authoredImageUrl: authored,
+        payloadSettled: true,
+      },
+    })
+    await flush()
+
+    const cards = verseCards(hook.latest())
+    expect(cards[0]?.imageUrl).toBe(authored)
+    expect(cards[1]?.imageUrl).toBe(authored)
+
+    act(() => hook.latest().reportArtworkFailure(0, authored))
+
+    const after = verseCards(hook.latest())
+    expect(after[0]?.imageUrl).toContain("unsplash.com")
+    expect(after[1]?.imageUrl).toBe(authored)
   })
 
   it("ignores a failure reported against a candidate no longer on screen", async () => {
@@ -1022,6 +1047,7 @@ describe("useBibleVerses card artwork", () => {
       art: {
         variants: [variant({ duration: null })],
         authoredImageUrl: null,
+        primaryLanguageCoreId: null,
         payloadSettled: true,
       },
     })

@@ -1,10 +1,7 @@
 /**
- * The hook subscribes on mount and tears the subscription down in cleanup, and
- * that is the repo's recorded trigger for a remount-safety defect: dev
- * StrictMode runs setup -> cleanup -> setup against the SAME hook instance, so
- * anything cleanup poisons must be re-armed by the next setup. Every case here
- * therefore renders under `<StrictMode>` — wrapping the rendered ELEMENT is
- * what doubles the effect cycle.
+ * Cleanup tears down a subscription, the repo's recorded remount-safety
+ * trigger: StrictMode runs setup -> cleanup -> setup on ONE instance, so what
+ * cleanup poisons the next setup must re-arm. Element-wrapping doubles the cycle.
  */
 
 import { StrictMode, act } from "react"

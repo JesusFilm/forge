@@ -35,7 +35,13 @@ import {
   scrimSolidStop,
   verseTypography,
 } from "../../lib/bibleCardFit"
+import {
+  CARD_TREATMENT,
+  FROSTED_BLUR_INTENSITY,
+  FROSTED_TINT,
+} from "../../lib/bibleCardTreatment"
 import { datadogLog } from "../../lib/datadog"
+import { PlatformBlur } from "../ui/PlatformBlur"
 import { openPassageSheet } from "../../lib/openPassageSheet"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
@@ -85,6 +91,12 @@ export interface BibleQuotesCarouselRendererProps {
    * above this component and the card only reports upward.
    */
   onArtworkFailed?: (cardIndex: number, failedUrl: string) => void
+  /**
+   * The video the cards belong to, for the exhaustion signal only. A reference
+   * recurs across many videos, so without it a spike cannot be told apart from
+   * one bad asset, nor joined to `bible_card_art.resolved`.
+   */
+  videoSlug?: string
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -112,6 +124,16 @@ const CARD_TEXT_SHADOW = {
 const SCRIM_TOP_OPACITY = 0.3
 
 /**
+ * The credit lines. Under a uniform tint they must be OPAQUE: the tint shows
+ * through a translucent glyph, dropping the foreground as it darkens the
+ * backdrop. Hierarchy is carried by size and weight instead.
+ */
+const TRANSLATION_COLOR =
+  CARD_TREATMENT === "frosted" ? TEXT_ON_OVERLAY : "rgba(255, 255, 255, 0.65)"
+const COPYRIGHT_COLOR =
+  CARD_TREATMENT === "frosted" ? TEXT_ON_OVERLAY : "rgba(255, 255, 255, 0.55)"
+
+/**
  * A NUMBER, never an object without a duration: that form defaults to 100ms on
  * iOS and 0 on Android, so it would fade on iOS and not at all on Android —
  * and an iOS-only device check would pass.
@@ -119,10 +141,11 @@ const SCRIM_TOP_OPACITY = 0.3
 const STILL_FADE_MS = 200
 
 /**
- * How far ahead stills are requested. The bound IS the guard: `Image.prefetch`
- * has no cancel token, so leaving the screen does not stop work in flight.
+ * How far ahead stills are requested. TWO, not one: the list already mounts
+ * `initialNumToRender` cells, whose own `<Image>` requests the same URL, so
+ * targeting +1 only re-asked for a load already in flight and bounded nothing.
  */
-const PREFETCH_AHEAD = 1
+const PREFETCH_AHEAD = 2
 
 /**
  * Final release for the prefetch gate, so a load that neither completes nor
@@ -169,6 +192,7 @@ function QuoteCard({
   onOpenPassage,
   onArtworkFailed,
   onArtworkSettled,
+  videoSlug,
 }: {
   quote: QuoteItem
   cardIndex: number
@@ -179,6 +203,7 @@ function QuoteCard({
   onOpenPassage?: (url: string) => void
   onArtworkFailed?: (cardIndex: number, failedUrl: string) => void
   onArtworkSettled?: (cardIndex: number) => void
+  videoSlug?: string
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
   const scrimTop = hexToRgba(bgColor, SCRIM_TOP_OPACITY)
@@ -250,12 +275,13 @@ function QuoteCard({
       datadogLog.warn("bible_card_art.exhausted", {
         reference: quote.reference,
         candidate_count: artCandidates.length,
+        slug: videoSlug ?? null,
       })
     }
-    // The URL, not the index: the owning layer records failures by source so a
-    // candidate list that gains a higher tier later is still tried.
-    const failedUrl = artCandidates[artIndex]
-    if (failedUrl != null) onArtworkFailed?.(cardIndex, failedUrl)
+    // The URL THIS render handed the image, never `artCandidates[artIndex]`
+    // re-read: one load can report `onError` twice, and by the second report
+    // the index has advanced — failing a rung that was never actually tried.
+    if (imageUrl != null) onArtworkFailed?.(cardIndex, imageUrl)
   }
 
   return (
@@ -274,6 +300,10 @@ function QuoteCard({
     >
       {imageUrl != null && (
         <Image
+          // A rung change mounts a FRESH node, so a native error still in
+          // flight for the previous URL is delivered to an unmounted one and
+          // dropped rather than charged against the rung that replaced it.
+          key={imageUrl}
           source={imageUrl}
           style={[StyleSheet.absoluteFill, styles.cardImage]}
           contentFit="cover"
@@ -303,12 +333,36 @@ function QuoteCard({
       {/* Three stops, not two: the veil HOLDS at its top value until one band
           above the text, then turns solid. Ramping from the card's edge would
           dim the still across the whole region it actually occupies. */}
-      <LinearGradient
-        colors={[scrimTop, scrimTop, bgColor]}
-        locations={[0, scrimRampStart(solidStop), solidStop]}
-        style={styles.gradient}
-        pointerEvents="none"
-      />
+      {CARD_TREATMENT === "scrim" && (
+        <LinearGradient
+          colors={[scrimTop, scrimTop, bgColor]}
+          locations={[0, scrimRampStart(solidStop), solidStop]}
+          style={styles.gradient}
+          pointerEvents="none"
+        />
+      )}
+      {/* Only over a real image: with no still the card colour is already
+          solid and safe, so tinting would just darken it for nothing — and
+          that is the state the Experience and SDUI paths always render. */}
+      {CARD_TREATMENT === "frosted" && imageUrl != null && (
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+        >
+          {/* Blur is aesthetic and iOS-only, so `androidDim` is transparent —
+              the tint below is what holds the floor, identically on both. */}
+          <PlatformBlur
+            intensity={FROSTED_BLUR_INTENSITY}
+            style={StyleSheet.absoluteFill}
+            androidDim="transparent"
+          />
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: FROSTED_TINT }]}
+          />
+        </View>
+      )}
       <View style={styles.cardContent}>
         {quote.attribution != null && (
           <Text style={[styles.attribution, typography.caption]}>
@@ -444,6 +498,7 @@ function PaginationDots({
 export function BibleQuotesCarouselRenderer({
   section,
   onArtworkFailed,
+  videoSlug,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
@@ -474,7 +529,7 @@ export function BibleQuotesCarouselRenderer({
 
   const [settledCards, setSettledCards] =
     useState<ReadonlySet<number>>(NOTHING_SETTLED)
-  const [prefetchReleased, setPrefetchReleased] = useState(false)
+  const [releasedFor, setReleasedFor] = useState<number | null>(null)
   // Keyed by URL, not by index: the ladder can hand a card a different rung,
   // and that new URL has not been prefetched even though its index has.
   const prefetchedRef = useRef<Set<string>>(new Set())
@@ -488,10 +543,12 @@ export function BibleQuotesCarouselRenderer({
     })
   }, [])
 
+  // The INDEX released, never a boolean. React runs every passive effect for a
+  // commit before applying the state they queue, so on a scroll a boolean reset
+  // here was still read as `true` below — opening the gate on every new card.
   useEffect(() => {
-    setPrefetchReleased(false)
     const timer = setTimeout(
-      () => setPrefetchReleased(true),
+      () => setReleasedFor(activeIndex),
       PREFETCH_RELEASE_MS,
     )
     return () => clearTimeout(timer)
@@ -502,7 +559,9 @@ export function BibleQuotesCarouselRenderer({
     // will never request would suppress the prefetch for the whole session.
     const visibleUrl = resolveImageUrl(quotes[activeIndex]?.imageUrl ?? null)
     const visibleSettled =
-      visibleUrl == null || settledCards.has(activeIndex) || prefetchReleased
+      visibleUrl == null ||
+      settledCards.has(activeIndex) ||
+      releasedFor === activeIndex
     if (!visibleSettled) return
 
     const nextIndex = activeIndex + PREFETCH_AHEAD
@@ -514,7 +573,7 @@ export function BibleQuotesCarouselRenderer({
     if (url == null || prefetchedRef.current.has(url)) return
     prefetchedRef.current.add(url)
     void Image.prefetch([url], { cachePolicy: "memory-disk" })
-  }, [activeIndex, settledCards, prefetchReleased, quotes])
+  }, [activeIndex, settledCards, releasedFor, quotes])
 
   // KTD9: deliberately NOT registered as a non-route sheet id. The floating
   // window cannot be present on the watch route — `miniPlayerPresentation`
@@ -538,6 +597,7 @@ export function BibleQuotesCarouselRenderer({
         onOpenPassage={handleOpenPassage}
         onArtworkFailed={onArtworkFailed}
         onArtworkSettled={handleArtworkSettled}
+        videoSlug={videoSlug}
       />
     ),
     [
@@ -548,6 +608,7 @@ export function BibleQuotesCarouselRenderer({
       handleOpenPassage,
       onArtworkFailed,
       handleArtworkSettled,
+      videoSlug,
     ],
   )
 
@@ -613,7 +674,10 @@ export function BibleQuotesCarouselRenderer({
         contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         decelerationRate="fast"
-        initialNumToRender={2}
+        // ONE, so only the visible card requests a still while the player is
+        // starting. `windowSize` still mounts the neighbour in a later batch,
+        // which is what keeps the first swipe from meeting an empty cell.
+        initialNumToRender={1}
         windowSize={3}
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={handleMomentumScrollEnd}
@@ -722,13 +786,13 @@ const styles = StyleSheet.create({
   translation: {
     ...CARD_TEXT_SHADOW,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.65)",
+    color: TRANSLATION_COLOR,
     fontFamily: "System",
     marginBottom: TRANSLATION_MARGIN,
   },
   copyright: {
     ...CARD_TEXT_SHADOW,
-    color: "rgba(255, 255, 255, 0.55)",
+    color: COPYRIGHT_COLOR,
     fontFamily: "System",
   },
   passageLink: {

@@ -26,6 +26,8 @@ export type BibleCardArtInput = {
   /** The video's own resolved card art, already picked from its image set. */
   authoredImageUrl: string | null
   citations: readonly WatchBibleCitation[]
+  /** The film's own language, matched EXACTLY — bcp47 tags collide here. */
+  primaryLanguageCoreId: string | null
   /** The last rung of the ladder, owned by the caller so this module stays data-free. */
   stockImages: readonly string[]
   /**
@@ -76,19 +78,44 @@ function hasUsableRuntime(duration: number | null): duration is number {
 }
 
 /**
- * Admin's dub relation has no ORDER BY, so sorting by documentId is what keeps
- * a card's still identical on every view. Preferring a dub that also resolves
- * a runtime stops an unlucky pick demoting a video a sibling dub could serve.
+ * The film's own language wins, then documentId — an arbitrary sort was picking
+ * foreign masters whose frames carry burned-in subtitles. On coreId EXACTLY: a
+ * bcp47 prefix collides across languages (`en`/`en-nai`) and reopens that bug.
  */
-function pinDub(variants: readonly WatchVariant[]): WatchVariant | null {
+function preferPrimaryLanguage(
+  candidates: readonly WatchVariant[],
+  primaryCoreId: string | null,
+): WatchVariant | undefined {
+  if (primaryCoreId != null && primaryCoreId !== "") {
+    const exact = candidates.find((v) => v.languageCoreId === primaryCoreId)
+    if (exact != null) return exact
+  }
+  return candidates[0]
+}
+
+/**
+ * Admin's dub relation has no ORDER BY, so the documentId sort is what keeps a
+ * card's still identical on every view. Preferring a dub that also resolves a
+ * runtime stops an unlucky pick demoting a video a sibling dub could serve.
+ */
+function pinDub(
+  variants: readonly WatchVariant[],
+  primaryCoreId: string | null,
+): WatchVariant | null {
   const published = [...variants]
     .filter((v) => v.published)
     .sort((a, b) => a.documentId.localeCompare(b.documentId))
 
-  const qualified = published.find(
+  const qualified = published.filter(
     (v) => playbackIdOf(v) != null && hasUsableRuntime(v.duration),
   )
-  return qualified ?? published.find((v) => playbackIdOf(v) != null) ?? null
+  const playable = published.filter((v) => playbackIdOf(v) != null)
+
+  return (
+    preferPrimaryLanguage(qualified, primaryCoreId) ??
+    preferPrimaryLanguage(playable, primaryCoreId) ??
+    null
+  )
 }
 
 /**
@@ -143,7 +170,7 @@ function resolvedTier(
 export function deriveBibleCardArt(input: BibleCardArtInput): BibleCardArt {
   const { citations, stockImages, authoredImageUrl, payloadSettled } = input
 
-  const pinned = pinDub(input.variants)
+  const pinned = pinDub(input.variants, input.primaryLanguageCoreId)
   const playbackId = pinned == null ? null : playbackIdOf(pinned)
   const runtime = pinned?.duration ?? null
   const canServeStill = playbackId != null && hasUsableRuntime(runtime)
