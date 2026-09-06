@@ -626,7 +626,6 @@ async function completeTranscriptPublicationBatch(
             status: "CLAIMED",
             leaseGeneration: batch.leaseGeneration,
             leaseTokenHash,
-            leaseExpiresAt: { gt: now },
           },
           data: completion,
         })
@@ -733,11 +732,17 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
   const now = input.now ?? new Date()
   const withIndexLock =
     input.withIndexLock ?? ((run) => withTypesenseWatchSearchIndexLock(run))
-  const batch = await claimNextTranscriptPublicationBatch(prisma, now)
-  if (!batch) return { status: "idle" }
+  let claimedBatch: ClaimedPublicationBatch | null = null
 
   try {
     const result = await withIndexLock(async () => {
+      // Claim only after the session-level publication lock is held. This
+      // prevents a losing publisher or rebuild contender from rewriting an
+      // event lease that the lock owner is still processing. The lock remains
+      // held through the external write, readback, and fenced DB completion.
+      const batch = await claimNextTranscriptPublicationBatch(prisma, now)
+      if (!batch) return { status: "idle" as const }
+      claimedBatch = batch
       if (input.generations) {
         await input.generations.assertCurrentPublicationAllowed({
           rebuildTranscripts: false,
@@ -805,12 +810,14 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
     })
     return result
   } catch (error) {
-    await releaseTranscriptPublicationBatch(
-      prisma,
-      batch,
-      error instanceof Error ? error.name : "publication_failed",
-      new Date(),
-    ).catch(() => undefined)
+    if (claimedBatch) {
+      await releaseTranscriptPublicationBatch(
+        prisma,
+        claimedBatch,
+        error instanceof Error ? error.name : "publication_failed",
+        new Date(),
+      ).catch(() => undefined)
+    }
     throw error
   }
 }

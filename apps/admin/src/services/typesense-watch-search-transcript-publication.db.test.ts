@@ -990,6 +990,48 @@ suite("current transcript publication into Watch Search", () => {
     })
   }, 180_000)
 
+  it("completes while holding the publication lock even when the claim lease deadline has elapsed", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      // Deliberately make the persisted lease deadline older than wall-clock
+      // time. The session advisory lock still prevents another publisher from
+      // stealing this claim while the callback is active.
+      now: new Date("2000-01-01T00:00:00.000Z"),
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          select: {
+            status: true,
+            leaseTokenHash: true,
+            leaseExpiresAt: true,
+            completedAt: true,
+          },
+        },
+      ),
+    ).toMatchObject({
+      status: "COMPLETED",
+      leaseTokenHash: null,
+      leaseExpiresAt: null,
+      completedAt: expect.any(Date),
+    })
+  }, 180_000)
+
   it("advances the stored transcript projection when a rebuild rotates the active transcript collection", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
@@ -1235,15 +1277,29 @@ suite("current transcript publication into Watch Search", () => {
       prisma,
       payload({ mode: "idempotent", mastraRunId: "create-run" }),
     )
+    const failingTypesense = {
+      getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
+        typesense.getAlias(...args),
+      importDocuments: async () => {
+        throw new Error("simulated publication failure")
+      },
+      deleteDocumentsByFilter: (
+        ...args: Parameters<TypesenseClient["deleteDocumentsByFilter"]>
+      ) => typesense.deleteDocumentsByFilter(...args),
+      getDocument: (...args: Parameters<TypesenseClient["getDocument"]>) =>
+        typesense.getDocument(...args),
+    } satisfies Pick<
+      TypesenseClient,
+      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+    >
 
     await expect(
       publishOneCurrentTranscriptToWatchSearch({
         prisma,
-        typesense,
+        typesense: failingTypesense,
         generations,
-        withIndexLock: async () => {
-          throw new Error("simulated publication failure")
-        },
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
       }),
     ).rejects.toThrow("simulated publication failure")
 
@@ -1496,7 +1552,7 @@ suite("current transcript publication into Watch Search", () => {
     ).toBeNull()
   }, 180_000)
 
-  it("uses the caller's publication lock database when coordinating the batch fence", async () => {
+  it("does not claim an event when the caller's publication lock database is busy", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
       payload({ mode: "idempotent", mastraRunId: "create-run" }),
@@ -1523,13 +1579,21 @@ suite("current transcript publication into Watch Search", () => {
         await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
           {
             where: { sourceGeneration: 1n },
-            select: { status: true, lastErrorCode: true, attemptCount: true },
+            select: {
+              status: true,
+              lastErrorCode: true,
+              attemptCount: true,
+              leaseTokenHash: true,
+              leaseExpiresAt: true,
+            },
           },
         ),
       ).toMatchObject({
         status: "PENDING",
-        lastErrorCode: "Error",
-        attemptCount: 1,
+        lastErrorCode: null,
+        attemptCount: 0,
+        leaseTokenHash: null,
+        leaseExpiresAt: null,
       })
     } finally {
       await lockHolder.query("SELECT pg_advisory_unlock($1)", [

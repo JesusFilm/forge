@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-29
+last_updated: 2026-09-06
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -214,6 +214,18 @@ candidate leases or a serving candidate
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
 Candidate runtime, comparison, and qualification require a dedicated search
 key, while publication and deletion use a separate operator key.
+
+For a durable outbox publisher, acquire that session advisory lock before
+claiming an event and retain it through external write, independent readback,
+and fenced database completion. Otherwise a replica that loses the global lock
+can still increment attempts or replace the lease owned by the active
+publisher. Once this ordering is enforced, lease expiry is the crash-recovery
+deadline for a process that no longer holds the session lock; it must not by
+itself reject completion by the process that still holds the lock. Fence that
+completion with the claimed status, lease generation, and hashed token. A
+competing process cannot claim while the lock is held, and a lost database
+session releases the advisory lock so a later claimant changes the token and
+generation before the original process can commit.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate
