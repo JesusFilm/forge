@@ -44,6 +44,10 @@ import {
 } from "@/lib/share"
 import { cn } from "@/lib/utils"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
+import {
+  WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
+  WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
+} from "./watch-modal-presentation"
 
 // Optional fields here accept explicit `null` from the parent's `?? null`
 // fallback chain in WatchPageClient (`video.title ?? null`). The effective
@@ -223,19 +227,23 @@ export function ShareModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-share-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+        viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
       >
         <WatchModalViewportCloseButton
           open={open}
           onClose={() => handleOpenChange(false)}
           testId="watch-share-modal-close"
+          renderInline
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        <div className="flex max-h-[82vh] flex-col gap-6 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+        <div
+          data-testid="watch-share-modal-content"
+          className="flex flex-col gap-6"
+        >
           <h2 className="text-2xl font-semibold text-stone-100">
             {t("heading")}
           </h2>

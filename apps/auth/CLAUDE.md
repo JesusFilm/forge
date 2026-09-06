@@ -74,13 +74,22 @@ Running the command against a local Auth database affects only local Auth; use
 the explicit, guarded hosted procedure in
 `apps/auth/docs/railway-deployment.md` when Local Changelog is using hosted
 Auth. The command can create Local Reader access only. It cannot grant
-Production, Contributor, or Admin access, and Production Changelog token
-issuance remains disabled.
+Production, Contributor, or Admin access.
 
 After a grant, reconnect the Changelog MCP so the OAuth flow issues a fresh
 token for `http://localhost:3000/mcp`. Changelog-side documentation remains a
 separate follow-up in
 [JesusFilm/jfp-changelog#81](https://github.com/JesusFilm/jfp-changelog/issues/81).
+
+## Production Changelog access
+
+For production grant inspection, Admin provisioning, or revocation, follow
+[`docs/auth-changelog-production-access.md`](../../docs/auth-changelog-production-access.md).
+Production issuance was enabled on 2026-09-05 after the supported operator
+workflow shipped and the pilot grant was verified. See
+[`feat-458`](../../docs/roadmap/platform/feat-458-changelog-production-grant-operations.md)
+for deployment and browser verification evidence. The production gate still
+defaults to disabled in environments where it is unset.
 
 ## Deployment
 

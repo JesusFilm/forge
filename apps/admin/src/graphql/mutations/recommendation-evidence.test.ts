@@ -198,6 +198,7 @@ describe("semantic recommendation evidence resolvers", () => {
       eventId: "selection-1",
       occurredAt: "2026-08-19T03:00:00.000Z",
       tabDigest: "b".repeat(64),
+      claimNonce: "client-handoff-nonce",
     }
 
     await mutation("selectSemanticRecommendation")(

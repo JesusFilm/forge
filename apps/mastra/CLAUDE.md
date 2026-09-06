@@ -626,6 +626,20 @@ fenced completion before attempting a sanitized failed terminalization; never
 leave a claimed run active merely because the completion response was
 ambiguous.
 
+The deterministic `watch-route-alerts` workflow runs daily at `12:15 UTC` and
+uses the configured `SEO_GA4_PROPERTY_IDS`, mapping each property to
+`https://www.jesusfilm.org`; live/dry-run monitoring accepts at most two
+properties per scheduled invocation. `WATCH_ROUTE_ALERT_MODE` defaults to `off`; use
+`dry_run` before `live`. It reads both the explicit GA4 `page_not_found` event
+lane and the generated localized not-found-title fallback under `/watch/*`,
+checks candidates against the Admin Watch route manifest, and writes only
+bounded alert evidence through the signed `watch_alerts` capability. Live
+probes are allowlisted, query-free, same-origin, redirect-manual requests with
+bounded concurrency and one cached DNS resolution per property run. A manifest
+older than 72 hours or future-dated is unusable. Partial provider coverage never
+recovers an open alert. Candidate and re-probe completion batches are capped at
+25 each.
+
 ## Seeker agent
 
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the

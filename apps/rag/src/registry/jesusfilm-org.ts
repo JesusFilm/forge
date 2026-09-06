@@ -1,6 +1,7 @@
 /**
  * Jesus Film Project (jesusfilm.org) — slice #3's source and the first on the
- * discovery-crawl model (docs/architecture.md §3 fetch policy / FOLLOW-UP F).
+ * discovery-crawl model (docs/architecture.md §3 Acquisition). FOLLOW-UP F was
+ * the standalone implementation trail; the registry now carries the policy.
  * OWNED content. WordPress (Yoast sitemaps, `jesusfilm-2023` block theme),
  * Cloudflare-fronted but serves 200 — no challenge wall (probed 2026-05-26).
  *

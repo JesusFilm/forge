@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
+import { PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES } from "./language-bcp47-map-codegen"
 import {
   isLocale,
   isLocaleSlug,
@@ -86,13 +87,18 @@ describe("isLocaleSlug (bcp47 OR English-name kebab heuristic)", () => {
 })
 
 describe("public watch language slug guards", () => {
-  it("keeps the shared slug-only corpus aligned with Web's BCP-47 map", () => {
-    const expected = new Set([
-      ...Object.keys(LANGUAGE_BCP47_MAP),
-      "spanish-latin-american",
-    ])
-
-    expect(PUBLIC_WATCH_LANGUAGE_SLUGS).toEqual(expected)
+  it("keeps the shared slug-only corpus a superset of Web's BCP-47 map plus the URL overrides", () => {
+    // The corpus may legitimately hold slugs the map lacks (admin rows with
+    // no BCP-47 still route); the reverse would strand a tagged language.
+    for (const slug of Object.keys(LANGUAGE_BCP47_MAP)) {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)).toBe(true)
+    }
+    for (const slug of PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES) {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)).toBe(true)
+      // Each override exists because HTML_LANG_OVERRIDES supplies its tag;
+      // an override without one would render <html lang="en">.
+      expect(slugToBcp47Tag(slug)).not.toBeNull()
+    }
   })
 
   it("accepts English-name audio slugs used in public /watch URLs", () => {
@@ -156,7 +162,9 @@ describe("slugToBcp47Primary", () => {
 
   it("maps single-word language slugs too", () => {
     expect(slugToBcp47Primary("english")).toBe("en")
-    expect(slugToBcp47Primary("spanish")).toBe("es")
+    // `spanish` was soft-deleted in admin (2026-09 regeneration); the
+    // regional slug carries the same primary subtag.
+    expect(slugToBcp47Primary("spanish-latin-american")).toBe("es")
     expect(slugToBcp47Primary("french")).toBe("fr")
     expect(slugToBcp47Primary("russian")).toBe("ru")
     expect(slugToBcp47Primary("japanese")).toBe("ja")
@@ -271,7 +279,7 @@ describe("parseAcceptLanguage", () => {
 describe("resolveUiLocale (catalog-driven fallback)", () => {
   it("resolves spanish-* slugs to the UI locale 'es'", () => {
     expect(resolveUiLocale("spanish-castilian")).toBe("es")
-    expect(resolveUiLocale("spanish")).toBe("es")
+    expect(resolveUiLocale("spanish-latin-american")).toBe("es")
   })
 
   it("resolves portuguese-* slugs to the UI locale 'pt'", () => {
@@ -382,6 +390,22 @@ describe("resolveWatchLocaleIdentity", () => {
 
   it("defaults locale-less surfaces to English", () => {
     expect(resolveWatchLocaleIdentity(null)).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
+  })
+})
+
+describe("public watch language corpus freshness (FGE-81)", () => {
+  it("includes languages admin published after the 2026-05-28 snapshot", () => {
+    // These four 404'd in production on 2026-09-04 because the corpus was a
+    // frozen snapshot. Any future regression probe must keep at least one
+    // slug from outside the previous snapshot in it.
+    for (const slug of ["german-pennsylvania", "salar", "fore", "ralte"]) {
+      expect(isPublicWatchLanguageSlug(slug)).toBe(true)
+    }
+    expect(slugToBcp47Tag("german-pennsylvania")).toBe("pdc")
+    expect(resolveWatchLocaleIdentity("german-pennsylvania")).toEqual({
       locale: "en",
       htmlLang: "en",
     })

@@ -232,6 +232,36 @@ exact admission means the manifest proves the parent/child pair and that
 specific child's selected audio language. A global language entry or fallback
 playback stream is not proof that the contextual route exists.
 
+### Watch Route Monitor Run
+
+One bounded attempt to reconcile Watch page-not-found evidence for one
+analytics property and reporting window against current route truth and live
+HTTP behavior.
+
+A run preserves the completeness of each evidence lane. Only a complete live
+run can advance monitoring progress or provide the absence evidence needed for
+recovery. Diagnostic and failed runs do not change alert lifecycle; a partial
+live run may open or update observed alerts but cannot recover them or advance
+progress.
+
+### Watch Route Alert
+
+A durable operator-facing record that a normalized public Watch path has been
+observed as a supported-route failure or a plausible missing route.
+
+Its identity survives recurrence and recovery. Analytics traffic, route-manifest
+classification, live-probe evidence, and source completeness describe the alert
+without making any one signal sufficient to close it.
+
+### Watch Route Alert Episode
+
+One open-to-recovered occurrence of a Watch Route Alert. A later recurrence
+creates another episode under the same stable alert identity rather than
+discarding its history.
+
+Recovery requires both a complete clean analytics window and an explicit
+healthy live re-probe. Incomplete evidence leaves the episode open.
+
 ### Watch Search & Social Metadata Overlay
 
 Editor-owned, per-language promotional metadata for a Watch Video that may

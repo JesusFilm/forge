@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationTokenInvalidError } from "./token.service"
-import { RecommendationEvidenceService } from "./evidence.service"
+import {
+  RecommendationEvidenceService,
+  recommendationEvidenceDigest,
+} from "./evidence.service"
 import { RecommendationBindingError } from "./errors"
 
 const caller = {
@@ -14,6 +17,7 @@ function harness() {
   const rendered = new Map<string, { payloadDigest: string }>()
   const impressions = new Map<string, { payloadDigest: string }>()
   const conflicts: object[] = []
+  let selectionEligible = false
   const item = {
     id: "item-1",
     requestId: "request-1",
@@ -47,6 +51,13 @@ function harness() {
         return data
       }),
     },
+    recommendationSelection: {
+      updateMany: vi.fn(async () => {
+        if (selectionEligible) return { count: 0 }
+        selectionEligible = true
+        return { count: 1 }
+      }),
+    },
     recommendationExperimentExposure: {
       createMany: vi.fn(async () => ({ count: 1 })),
     },
@@ -67,6 +78,13 @@ function harness() {
   const prisma = {
     recommendationServedItem: { findUnique: vi.fn(async () => item) },
     recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
+    recommendationProfileSessionLink: {
+      findFirst: vi.fn(async () => ({
+        profileId: "profile-1",
+        privacyGeneration: 3,
+        profile: { privacyGeneration: 3 },
+      })),
+    },
     $queryRaw: vi.fn(
       async (): Promise<Array<{ attempts: number | null }>> => [
         { attempts: 1 },
@@ -80,12 +98,23 @@ function harness() {
     iat: 1_776_654_000,
     exp: 1_776_654_600,
   }))
+  const dispatchProfileFeedback = vi.fn(async () => undefined)
   const service = new RecommendationEvidenceService({
     prisma: prisma as never,
     tokenService: { verifyDeliveryCapability },
     now: () => new Date("2026-04-20T03:00:00.000Z"),
+    dispatchProfileFeedback,
   })
-  return { service, conflicts, item, prisma, tx, verifyDeliveryCapability }
+  return {
+    service,
+    conflicts,
+    impressions,
+    item,
+    prisma,
+    tx,
+    verifyDeliveryCapability,
+    dispatchProfileFeedback,
+  }
 }
 
 const validInput = {
@@ -201,6 +230,74 @@ describe("RecommendationEvidenceService", () => {
     expect(
       tx.recommendationExperimentExposure.createMany,
     ).toHaveBeenCalledTimes(1)
+  })
+
+  it("reconciles a navigation-only selection when its impression commits late", async () => {
+    const { service, tx, dispatchProfileFeedback } = harness()
+    await expect(
+      service.record({
+        ...validInput,
+        events: [
+          {
+            ...validInput.events[0]!,
+            eventId: "impression-late",
+            kind: "impression",
+            payload: { visibilityPolicy: "watch-below-player-v1" },
+          },
+        ],
+      }),
+    ).resolves.toEqual([{ eventId: "impression-late", status: "accepted" }])
+
+    expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
+      where: {
+        requestId: "request-1",
+        itemId: "item-1",
+        attributionEligibleAt: null,
+      },
+      data: {
+        attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z"),
+      },
+    })
+    expect(dispatchProfileFeedback).toHaveBeenCalledWith({
+      sessionDigest: "a".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 3,
+      evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
+    })
+  })
+
+  it("repairs a pending selection when an already-committed impression is replayed", async () => {
+    const { service, item, impressions, tx, dispatchProfileFeedback } =
+      harness()
+    const replay = {
+      ...validInput,
+      events: [
+        {
+          ...validInput.events[0]!,
+          eventId: "impression-replay",
+          kind: "impression" as const,
+          payload: { visibilityPolicy: "watch-below-player-v1" },
+        },
+      ],
+    }
+    impressions.set(item.id, {
+      payloadDigest: recommendationEvidenceDigest(replay.events[0]!),
+    })
+
+    await expect(service.record(replay)).resolves.toEqual([
+      { eventId: "impression-replay", status: "replay" },
+    ])
+    expect(tx.recommendationSelection.updateMany).toHaveBeenCalledWith({
+      where: {
+        requestId: "request-1",
+        itemId: "item-1",
+        attributionEligibleAt: null,
+      },
+      data: {
+        attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z"),
+      },
+    })
+    expect(dispatchProfileFeedback).toHaveBeenCalledOnce()
   })
 
   it("preserves a rolled-back stored slate without granting it new exposure credit", async () => {

@@ -17,6 +17,7 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import { cn } from "@/lib/utils"
 import { createWatchLanguageSearchMatcher } from "@/lib/watch-language-search"
 
 export type LanguageComboboxOption = {
@@ -552,7 +553,7 @@ export function LanguageCombobox({
       aria-haspopup="listbox"
       aria-controls={open ? listboxId : undefined}
       disabled={disabled}
-      className={`${triggerClassName} ${triggerClassNameOverride ?? ""}`}
+      className={cn(triggerClassName, triggerClassNameOverride)}
     >
       {triggerContent ?? (
         <>

@@ -1,11 +1,26 @@
 # feat-432 dashboard publication evidence
 
-Status: **prepared locally; not published, verified, or accepted**
+Status: **published and reachability-verified; detailed performance verification
+and repository-owner acceptance are not recorded**
 
-This record deliberately does not certify the feat-432 publication gate. It
-records the locally reproducible publication boundary so an authorized operator
-can append immutable deployment evidence after the reviewed commit reaches
-`main`.
+This record distinguishes the publication that subsequently occurred from the
+broader acceptance checks that were never committed. It must not be read as a
+completed performance comparison or repository-owner acceptance.
+
+## Published deployment
+
+- Workflow run:
+  [`33469924736`](https://github.com/JesusFilm/forge/actions/runs/33469924736)
+  (`verify` and `deploy` both succeeded on 2026-09-01).
+- Published commit recorded by the workflow:
+  `3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76`.
+- Assembled artifact digest:
+  `sha256:4b313a002bd290d58b0731517d9457e66decf4323eef286d55df956b78401648`.
+- Reported project URL: `https://jesusfilm.github.io/forge/`.
+- Basic recovery audit on 2026-09-04: both the project root and
+  `/forge/rag-status/` returned HTTP 200, and the dashboard provenance artifact
+  was reachable. This was a reachability/provenance check, not the three-run
+  browser performance comparison required below.
 
 ## Locally established boundary
 
@@ -40,10 +55,10 @@ exactly `index.html`, `rag-status/.dashboard-commit.json`, and
 This digest is local preparation evidence; a later release must record and match
 the digest produced from its exact reviewed commit.
 
-## External gates still required
+## Acceptance evidence still unavailable
 
-An authorized operator must complete all of these before changing this record to
-accepted or marking feat-432 complete:
+The original receipt required the following evidence, but it was not committed
+before feat-432 closed:
 
 1. Provision and prove a dedicated least-privilege production-read database
    principal, including rejected DDL and DML, without recording credentials.
@@ -53,16 +68,14 @@ accepted or marking feat-432 complete:
    comparisons and commit only the redacted canonical receipt.
 4. Confirm Forge project Pages ownership, project URL/base path, Actions source,
    and `github-pages` environment protection without displacing another site.
-5. Merge the exact reviewed release commit through the normal PR flow and allow
-   the repository workflow to publish it. Do not deploy a local worktree.
-6. Record the main commit, assembled SHA-256 digest, workflow run and deployment
-   IDs, reported public URL, and checked-at timestamp.
-7. Browser-check the root and `/rag-status/`, reconcile visible counts to the
+5. Browser-check the root and `/rag-status/`, reconcile visible counts to the
    compiled JSON, prove there are no runtime requests, and record the three-run
    transfer/request/DOMContentLoaded comparison defined in
    `apps/rag/docs/ops/dashboard.md`.
-8. Confirm the page serves the certified commit independently of Railway health,
+6. Confirm the page serves the certified commit independently of Railway health,
    then obtain repository-owner acceptance.
 
-Until those facts are present, this file is preparation evidence only and must
-not be consumed by feat-433 or later tickets as a migration gate.
+The publication facts above repair the stale claim that the page was never
+published. The missing acceptance evidence is not reconstructed from memory.
+`feat-435` must establish any quality or operational proof needed for final
+retirement using a new observed run.

@@ -76,10 +76,11 @@ const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   // slug. Keep the distinct British homepage on its actual regional identity
   // so HTML language and sitemap hreflang signals agree.
   "english-british": "en-GB",
-  // Admin's generated Language.bcp47 corpus does not currently include this
-  // public audio slug, but the URL contract does. Keep the raw dub slug in
-  // the path while allowing the static root layout to emit the regional SEO
-  // tag instead of collapsing <html lang> to plain "es".
+  // Admin exposes generic `es` for this regional public audio slug (and the
+  // generated corpus force-includes it via PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES
+  // in lib/language-bcp47-map-codegen.ts). Keep the raw dub slug in the path
+  // while allowing the static root layout to emit the regional SEO tag
+  // instead of collapsing <html lang> to plain "es".
   "spanish-latin-american": "es-419",
 })
 

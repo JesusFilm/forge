@@ -12,6 +12,17 @@ export const WATCH_HOME_HERO_RESERVE_BELOW_PX = 440
 export const WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX = 500
 
 /**
+ * Pre-hydration/fallback height for decorative muted Watch intros.
+ *
+ * The home carousel refines this after measuring its category rail. Static
+ * series heroes have no playback transition or measurable horizontal rail,
+ * so they keep this same bounded intro height. Keeping the complete Tailwind
+ * expression here prevents those two muted surfaces from drifting apart.
+ */
+export const WATCH_MUTED_INTRO_HEIGHT_CLASS =
+  "h-[max(34svh,calc(100svh_-_500px))] md:h-[max(34svh,min(56.25vw,calc(100svh_-_440px)))]"
+
+/**
  * Floor, as a share of the viewport. Without it a short window (or a rail that
  * grows past the space available) would shrink the intro to nothing; below
  * this the rail simply does not fit, which is the better failure.

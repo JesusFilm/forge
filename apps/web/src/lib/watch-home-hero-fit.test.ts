@@ -7,6 +7,9 @@ import {
   WATCH_HOME_HERO_ASPECT_RATIO,
   WATCH_HOME_HERO_MIN_HEIGHT_RATIO,
   WATCH_HOME_HERO_MOBILE_VIEWPORT_RATIO,
+  WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
+  WATCH_HOME_HERO_RESERVE_BELOW_PX,
+  WATCH_MUTED_INTRO_HEIGHT_CLASS,
 } from "@/lib/watch-home-hero-fit"
 
 describe("watch home hero fit", () => {
@@ -103,6 +106,13 @@ describe("watch home hero ratios", () => {
     expect(carousel).toContain("h-[66svh]")
     // The floor shares the same hazard.
     expect(`${WATCH_HOME_HERO_MIN_HEIGHT_RATIO * 100}svh`).toBe("34svh")
-    expect(carousel).toContain("34svh")
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("34svh")
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain("56.25vw")
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain(
+      `${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px`,
+    )
+    expect(WATCH_MUTED_INTRO_HEIGHT_CLASS).toContain(
+      `${WATCH_HOME_HERO_RESERVE_BELOW_PX}px`,
+    )
   })
 })

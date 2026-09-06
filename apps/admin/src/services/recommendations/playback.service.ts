@@ -248,7 +248,7 @@ export class RecommendationPlaybackService {
                   replayAudits.push({
                     requestId: locked.requestId,
                     kind: RecommendationAuditKind.REPLAY,
-                    reasonCode: "playback_fact_replay",
+                    reasonCode: "playback_transport_replay",
                     expiresAt: locked.expiresAt,
                   })
                 }
@@ -327,7 +327,7 @@ export class RecommendationPlaybackService {
                   data: {
                     nextFactSequence,
                     ...(replayCount > 0
-                      ? { replayCount: { increment: replayCount } }
+                      ? { transportReplayCount: { increment: replayCount } }
                       : {}),
                     ...(conflictCount > 0
                       ? { conflictCount: { increment: conflictCount } }
@@ -398,7 +398,7 @@ export class RecommendationPlaybackService {
                   },
                   data: {
                     ...(replayCount > 0
-                      ? { replayCount: { increment: replayCount } }
+                      ? { transportReplayCount: { increment: replayCount } }
                       : {}),
                     ...(conflictCount > 0
                       ? { conflictCount: { increment: conflictCount } }

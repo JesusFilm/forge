@@ -27,6 +27,10 @@ import {
   type SeoTicketReconciliation,
   type SeoWorkspace,
 } from "@/features/seo/seo-contract"
+import {
+  watchRouteAlertsPageSchema,
+  type WatchRouteAlertsPage,
+} from "@/features/alerts/watch-route-alert-contract"
 import { print } from "@apollo/client/utilities"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import { z } from "zod"
@@ -288,6 +292,84 @@ const SEO_PROPOSAL_SELECTION = `
     ticketOutboxId
   }
 `
+
+const MANAGER_WATCH_ROUTE_ALERTS_OPERATION = adminGraphql(`
+  query ManagerWatchRouteAlerts($limit: Int, $after: String) {
+    managerWatchRouteAlerts(limit: $limit, after: $after) {
+      generatedAt
+      monitorState
+      recoverySuppressed
+      lastSuccessfulAt
+      latestRun {
+        id
+        propertyId
+        mode
+        status
+        startedAt
+        completedAt
+        lanes {
+          source
+          status
+          countKind
+          rowCount
+          windowStart
+          windowEnd
+          caveats
+        }
+        validationCaveats
+      }
+      propertyRuns {
+        id
+        propertyId
+        mode
+        status
+        startedAt
+        completedAt
+        lanes {
+          source
+          status
+          countKind
+          rowCount
+          windowStart
+          windowEnd
+          caveats
+        }
+        validationCaveats
+      }
+      propertyRunsTruncated
+      summary {
+        open
+        critical
+        supportedRouteFailures
+        plausibleMissingRoutes
+        recovered
+      }
+      items {
+        id
+        propertyId
+        origin
+        path
+        lifecycle
+        verdict
+        severity
+        count
+        countKind
+        activeUsers
+        occurrenceCount
+        firstSeenAt
+        lastSeenAt
+        lastProbedAt
+        httpStatus
+        manifestVersion
+        sources
+      }
+      totalCount
+      showing
+      hasNextPage
+      nextCursor
+    }
+  }
+`)
 
 const MANAGER_SEO_RUNS_OPERATION = adminGraphql(`
   query ManagerSeoRuns($limit: Int, $after: String) {
@@ -690,6 +772,24 @@ export class AdminGraphqlClient {
     if (!parsed.success) {
       throw new Error(
         `Admin managerSeoWorkspace returned invalid SEO workspace payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async getWatchRouteAlerts(
+    limit = 25,
+    after?: string,
+  ): Promise<WatchRouteAlertsPage> {
+    const data = await this.request<
+      AdminResultOf<typeof MANAGER_WATCH_ROUTE_ALERTS_OPERATION>
+    >(print(MANAGER_WATCH_ROUTE_ALERTS_OPERATION), { limit, after })
+    const parsed = watchRouteAlertsPageSchema.safeParse(
+      readField<unknown>(data, "managerWatchRouteAlerts"),
+    )
+    if (!parsed.success) {
+      throw new Error(
+        `Admin managerWatchRouteAlerts returned an invalid payload: ${parsed.error.message}`,
       )
     }
     return parsed.data

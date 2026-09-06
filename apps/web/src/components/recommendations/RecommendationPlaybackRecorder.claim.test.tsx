@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
 import {
+  acceptedFactsResponse,
   deferred,
   makePlayer,
   response,
@@ -43,7 +44,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     const player = makePlayer()
 
     await act(async () => {
@@ -190,7 +193,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -236,7 +241,9 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",

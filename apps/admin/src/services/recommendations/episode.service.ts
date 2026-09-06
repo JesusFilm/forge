@@ -143,6 +143,7 @@ export class RecommendationEpisodeService {
     eventId: string
     occurredAt: string
     tabDigest?: string | null
+    claimNonce: string
   }) {
     assertWebRecommendationCaller(input.caller)
     if (input.contractVersion !== RECOMMENDATION_CONTRACTS.evidence) {
@@ -163,7 +164,9 @@ export class RecommendationEpisodeService {
       input.itemId.length < 1 ||
       input.itemId.length > 191 ||
       input.eventId.length < 1 ||
-      input.eventId.length > 191
+      input.eventId.length > 191 ||
+      input.claimNonce.length < 16 ||
+      input.claimNonce.length > 191
     ) {
       throw new RecommendationBindingError(
         "Recommendation selection binding is invalid",
@@ -263,12 +266,13 @@ export class RecommendationEpisodeService {
       kind: "selection",
       occurredAt: input.occurredAt,
       tabDigest: input.tabDigest ?? null,
+      claimNonceDigest: createHash("sha256")
+        .update(input.claimNonce)
+        .digest("hex"),
     })
     const newId = this.deps.newId ?? randomUUID
-    const claimNonce =
-      this.deps.newClaimNonce?.() ?? randomBytes(32).toString("base64url")
     const claimNonceDigest = createHash("sha256")
-      .update(claimNonce)
+      .update(input.claimNonce)
       .digest("hex")
     const episodeId = newId()
     const initialActiveUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
@@ -287,11 +291,25 @@ export class RecommendationEpisodeService {
         )
       }
       await lockRecommendationItemEvidence(tx, item.id)
+      const impression = await tx.recommendationImpression.findUnique({
+        where: { itemId: item.id },
+        select: { receivedAt: true },
+      })
       const existing = await tx.recommendationSelection.findUnique({
         where: { itemId: item.id },
       })
       if (existing) {
         if (existing.payloadDigest === digest) {
+          const reconciliation =
+            existing.attributionEligibleAt == null && impression
+              ? await tx.recommendationSelection.updateMany({
+                  where: {
+                    id: existing.id,
+                    attributionEligibleAt: null,
+                  },
+                  data: { attributionEligibleAt: now },
+                })
+              : { count: 0 }
           await tx.recommendationEvidenceAudit.create({
             data: {
               requestId: item.requestId,
@@ -300,7 +318,13 @@ export class RecommendationEpisodeService {
               expiresAt: item.request.expiresAt,
             },
           })
-          return { status: "replay" as const }
+          return {
+            status: "replay" as const,
+            attributionEligible:
+              existing.attributionEligibleAt != null ||
+              reconciliation.count === 1,
+            attributionReconciled: reconciliation.count === 1,
+          }
         }
         await recordRecommendationConflict(tx, {
           requestId: item.requestId,
@@ -310,7 +334,11 @@ export class RecommendationEpisodeService {
           rejectedDigest: digest,
           expiresAt: item.request.expiresAt,
         })
-        return { status: "conflict" as const }
+        return {
+          status: "conflict" as const,
+          attributionEligible: false,
+          attributionReconciled: false,
+        }
       }
       await tx.recommendationSelection.create({
         data: {
@@ -322,6 +350,7 @@ export class RecommendationEpisodeService {
           payloadDigest: digest,
           tabDigest: input.tabDigest ?? null,
           claimNonceDigest,
+          attributionEligibleAt: impression ? now : null,
           handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
           occurredAt,
           receivedAt: now,
@@ -354,9 +383,13 @@ export class RecommendationEpisodeService {
           expiresAt: item.request.expiresAt,
         },
       })
-      return { status: "accepted" as const }
+      return {
+        status: "accepted" as const,
+        attributionEligible: impression != null,
+        attributionReconciled: false,
+      }
     })
-    if (result.status !== "accepted") {
+    if (result.status === "conflict") {
       return {
         status: result.status,
         claimNonce: null,
@@ -364,19 +397,25 @@ export class RecommendationEpisodeService {
         targetMediaId: item.targetMediaId,
       }
     }
-    scheduleRecommendationEpisodeFinalization(this.deps.dispatchFinalization, {
-      episodeId,
-      generation: 1,
-      reason: "episode-opened",
-      notBefore: initialActiveUntil,
-    })
-    const activeProfile = await resolveActiveRecommendationProfileLink(
-      this.deps.prisma,
-      {
-        sessionDigest: item.request.sessionDigest,
-        now,
-      },
-    )
+    if (result.status === "accepted") {
+      scheduleRecommendationEpisodeFinalization(
+        this.deps.dispatchFinalization,
+        {
+          episodeId,
+          generation: 1,
+          reason: "episode-opened",
+          notBefore: initialActiveUntil,
+        },
+      )
+    }
+    const activeProfile =
+      (result.status === "accepted" && result.attributionEligible) ||
+      result.attributionReconciled
+        ? await resolveActiveRecommendationProfileLink(this.deps.prisma, {
+            sessionDigest: item.request.sessionDigest,
+            now,
+          })
+        : null
     if (activeProfile) {
       void this.deps
         .dispatchProfileFeedback?.({
@@ -394,8 +433,8 @@ export class RecommendationEpisodeService {
         })
     }
     return {
-      status: "accepted" as const,
-      claimNonce,
+      status: result.status,
+      claimNonce: input.claimNonce,
       canonicalHref: item.canonicalHref,
       targetMediaId: item.targetMediaId,
     }

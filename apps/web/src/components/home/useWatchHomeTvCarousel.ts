@@ -36,11 +36,13 @@ export {
 }
 export type { WatchHomeCarouselSequenceData, WatchHomeTvCarouselSlide }
 
-const IMAGE_SLIDE_ADVANCE_MS = 7000
+export const WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS = 7
+const IMAGE_SLIDE_ADVANCE_MS = WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000
 const VIDEO_POSTER_HOLD_MS = 1500
 const VIDEO_POSTER_HOLD_SECONDS = VIDEO_POSTER_HOLD_MS / 1000
 const VIDEO_POSTER_HOLD_PROGRESS_TICK_MS = 250
 export const WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS = 30
+export const WATCH_HOME_TV_TIMELINE_FUTURE_COUNT = 3
 
 function subscribeToHydrationStore() {
   return () => undefined
@@ -628,7 +630,7 @@ export function useWatchHomeTvCarousel(
       videoQueue.length < 7
         ? 7
         : activeVideoIndex >= 0
-          ? activeVideoIndex + 2
+          ? activeVideoIndex + 1 + WATCH_HOME_TV_TIMELINE_FUTURE_COUNT
           : videoQueue.length
 
     if (targetVideoCount <= videoQueue.length) return

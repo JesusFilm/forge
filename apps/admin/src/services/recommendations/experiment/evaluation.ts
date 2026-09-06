@@ -441,6 +441,16 @@ async function loadEvidence(
             AND successor.created_at <= ${input.capturedAt}
         )
     ),
+    attribution_eligible_episodes AS MATERIALIZED (
+      SELECT episode.id
+      FROM recommendation_playback_episode episode
+      JOIN recommendation_selection selection
+        ON selection.request_id = episode.request_id
+        AND selection.item_id = episode.item_id
+        AND selection.id = episode.selection_id
+      JOIN scoped_requests request ON request.id = episode.request_id
+      WHERE selection.attribution_eligible_at <= ${input.capturedAt}
+    ),
     eligible_outcomes AS MATERIALIZED (
       SELECT outcome.*
       FROM latest_outcomes outcome
@@ -448,6 +458,10 @@ async function loadEvidence(
         ON decision.source_key = 'playback_outcome:' || outcome.id
       WHERE decision.state = 'eligible'
         AND 'experiment' = ANY(decision.eligible_scopes)
+        AND EXISTS (
+          SELECT 1 FROM attribution_eligible_episodes episode
+          WHERE episode.id = outcome.episode_id
+        )
     ),
     eligible_actions AS MATERIALIZED (
       SELECT action.*, request.arm
@@ -459,20 +473,24 @@ async function loadEvidence(
         AND action.action_class = 'human_action'
         AND decision.state = 'eligible'
         AND 'experiment' = ANY(decision.eligible_scopes)
+        AND EXISTS (
+          SELECT 1 FROM attribution_eligible_episodes episode
+          WHERE episode.id = action.episode_id
+        )
     )
     SELECT
       COUNT(*) FILTER (WHERE assignment.arm = 'control') AS "controlAssigned",
       COUNT(*) FILTER (WHERE assignment.arm = 'challenger') AS "challengerAssigned",
       (SELECT COUNT(DISTINCT assignment_id) FROM scoped_exposures WHERE assigned_arm = 'control') AS "controlExposed",
       (SELECT COUNT(DISTINCT assignment_id) FROM scoped_exposures WHERE assigned_arm = 'challenger') AS "challengerExposed",
-      (SELECT COUNT(DISTINCT experiment_assignment_id) FROM scoped_requests request JOIN recommendation_selection selection ON selection.request_id = request.id WHERE request.arm = 'control' AND selection.received_at <= ${input.capturedAt}) AS "controlSelections",
-      (SELECT COUNT(DISTINCT experiment_assignment_id) FROM scoped_requests request JOIN recommendation_selection selection ON selection.request_id = request.id WHERE request.arm = 'challenger' AND selection.received_at <= ${input.capturedAt}) AS "challengerSelections",
+      (SELECT COUNT(DISTINCT experiment_assignment_id) FROM scoped_requests request JOIN recommendation_selection selection ON selection.request_id = request.id WHERE request.arm = 'control' AND selection.received_at <= ${input.capturedAt} AND selection.attribution_eligible_at <= ${input.capturedAt}) AS "controlSelections",
+      (SELECT COUNT(DISTINCT experiment_assignment_id) FROM scoped_requests request JOIN recommendation_selection selection ON selection.request_id = request.id WHERE request.arm = 'challenger' AND selection.received_at <= ${input.capturedAt} AND selection.attribution_eligible_at <= ${input.capturedAt}) AS "challengerSelections",
       (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM eligible_outcomes outcome JOIN scoped_requests request ON request.id = outcome.request_id WHERE outcome.arm = 'control' AND outcome.qualified_view = true) AS "controlQualified",
       (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM eligible_outcomes outcome JOIN scoped_requests request ON request.id = outcome.request_id WHERE outcome.arm = 'challenger' AND outcome.qualified_view = true) AS "challengerQualified",
       (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM eligible_actions action JOIN scoped_requests request ON request.id = action.request_id WHERE action.arm = 'control') AS "controlMission",
       (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM eligible_actions action JOIN scoped_requests request ON request.id = action.request_id WHERE action.arm = 'challenger') AS "challengerMission",
-      (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM recommendation_playback_fact fact JOIN scoped_requests request ON request.id = fact.request_id WHERE request.arm = 'control' AND fact.kind = 'playback_error' AND fact.received_at <= ${input.capturedAt}) AS "controlPlaybackErrors",
-      (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM recommendation_playback_fact fact JOIN scoped_requests request ON request.id = fact.request_id WHERE request.arm = 'challenger' AND fact.kind = 'playback_error' AND fact.received_at <= ${input.capturedAt}) AS "challengerPlaybackErrors",
+      (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM recommendation_playback_fact fact JOIN scoped_requests request ON request.id = fact.request_id JOIN attribution_eligible_episodes episode ON episode.id = fact.episode_id WHERE request.arm = 'control' AND fact.kind = 'playback_error' AND fact.received_at <= ${input.capturedAt}) AS "controlPlaybackErrors",
+      (SELECT COUNT(DISTINCT request.experiment_assignment_id) FROM recommendation_playback_fact fact JOIN scoped_requests request ON request.id = fact.request_id JOIN attribution_eligible_episodes episode ON episode.id = fact.episode_id WHERE request.arm = 'challenger' AND fact.kind = 'playback_error' AND fact.received_at <= ${input.capturedAt}) AS "challengerPlaybackErrors",
       (SELECT COUNT(*) FROM scoped_exposures exposure WHERE exposure.assigned_arm <> exposure.arm OR exposure.effective_manifest_id <> CASE WHEN exposure.assigned_arm = 'challenger' THEN exposure.challenger_manifest_id ELSE exposure.control_manifest_id END OR exposure.assignment_configuration_digest <> exposure.experiment_configuration_digest OR exposure.assignment_generation <> exposure.experiment_generation) AS contamination,
       (SELECT COUNT(*) FROM recommendation_conflict conflict JOIN scoped_requests request ON request.id = conflict.request_id WHERE conflict.last_seen_at <= ${input.capturedAt}) AS "conflictingOutcomes"
     FROM scoped_assignments assignment

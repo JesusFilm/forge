@@ -13,6 +13,7 @@ const { POST, dynamic, revalidate } = await import("./route")
 
 const session = "b".repeat(43)
 const tabNonce = "tab_correlation_nonce_123"
+const claimNonce = "client_handoff_nonce_1234567890"
 
 function request(body: string) {
   return new Request("https://watch.example/watch/api/recommendations/select", {
@@ -35,6 +36,7 @@ const body = {
   eventId: "selection-1",
   occurredAt: "2026-08-19T03:00:00.000Z",
   tabNonce,
+  claimNonce,
 }
 
 describe("POST /watch/api/recommendations/select", () => {
@@ -44,7 +46,7 @@ describe("POST /watch/api/recommendations/select", () => {
       data: {
         selectSemanticRecommendation: {
           status: "accepted",
-          claimNonce: "fresh_claim_nonce_1234567890",
+          claimNonce,
           canonicalHref: "/watch/target.html",
           targetMediaId: "target-1",
         },
@@ -62,7 +64,7 @@ describe("POST /watch/api/recommendations/select", () => {
     expect(response.headers.get("cache-control")).toContain("no-store")
     const responseBody = await response.json()
     expect(responseBody).toEqual({
-      claimNonce: "fresh_claim_nonce_1234567890",
+      claimNonce,
       canonicalHref: "/watch/target.html",
       targetMediaId: "target-1",
     })
@@ -79,12 +81,31 @@ describe("POST /watch/api/recommendations/select", () => {
     expect(variables.tabDigest).toBe(
       createHash("sha256").update(tabNonce).digest("hex"),
     )
+    expect(variables.claimNonce).toBe(claimNonce)
     expect(JSON.stringify(variables)).not.toContain(session)
     expect(JSON.stringify(variables)).not.toContain(tabNonce)
     expect(JSON.stringify(responseBody)).not.toContain("capability-secret")
   })
 
-  it("refuses replay/null handoffs and non-canonical Admin targets", async () => {
+  it("accepts an exact replay but refuses null handoffs and non-canonical Admin targets", async () => {
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "replay",
+          claimNonce,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const replay = await POST(request(JSON.stringify(body)))
+    expect(replay.status).toBe(200)
+    await expect(replay.json()).resolves.toEqual({
+      claimNonce,
+      canonicalHref: "/watch/target.html",
+      targetMediaId: "target-1",
+    })
+
     mutate.mockResolvedValueOnce({
       data: {
         selectSemanticRecommendation: {
@@ -95,14 +116,27 @@ describe("POST /watch/api/recommendations/select", () => {
         },
       },
     })
-    const replay = await POST(request(JSON.stringify(body)))
-    expect(replay.status).toBe(409)
+    const missing = await POST(request(JSON.stringify(body)))
+    expect(missing.status).toBe(409)
 
     mutate.mockResolvedValueOnce({
       data: {
         selectSemanticRecommendation: {
           status: "accepted",
-          claimNonce: "fresh_claim_nonce_1234567890",
+          claimNonce: "different_client_handoff_nonce_123",
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const mismatched = await POST(request(JSON.stringify(body)))
+    expect(mismatched.status).toBe(502)
+
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "accepted",
+          claimNonce,
           canonicalHref: "https://attacker.example/steal",
           targetMediaId: "target-1",
         },
@@ -116,7 +150,7 @@ describe("POST /watch/api/recommendations/select", () => {
   it("rejects malformed input before creating a handoff", async () => {
     const duplicate = await POST(
       request(
-        '{"contractVersion":"recommendation-evidence-v1","capability":"one","requestId":"request-1","itemId":"item-1","eventId":"selection-1","occurredAt":"2026-08-19T03:00:00.000Z","tabNonce":"one","tabNonce":"two"}',
+        '{"contractVersion":"recommendation-evidence-v1","capability":"one","requestId":"request-1","itemId":"item-1","eventId":"selection-1","occurredAt":"2026-08-19T03:00:00.000Z","tabNonce":"one","tabNonce":"two","claimNonce":"client_handoff_nonce_1234567890"}',
       ),
     )
     expect(duplicate.status).toBe(400)

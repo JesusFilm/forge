@@ -346,6 +346,42 @@ enum WatchSearchCurrentTranscriptPublicationStatus {
   COMPLETED @map("completed")
 }
 
+/// Execution mode is persisted with each Watch-route monitoring run so a
+/// diagnostic dry run can never be mistaken for an alert-producing run.
+enum WatchRouteAlertAutomationMode {
+  OFF     @map("off")
+  DRY_RUN @map("dry_run")
+  LIVE    @map("live")
+}
+
+enum WatchRouteAlertRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum WatchRouteAlertCountKind {
+  EVENT_COUNT @map("event_count")
+  PAGE_VIEWS  @map("page_views")
+}
+
+enum WatchRouteAlertVerdict {
+  SUPPORTED_ROUTE_FAILURE @map("supported_route_failure")
+  PLAUSIBLE_MISSING_ROUTE @map("plausible_missing_route")
+}
+
+enum WatchRouteAlertSeverity {
+  CRITICAL @map("critical")
+  HIGH     @map("high")
+  MEDIUM   @map("medium")
+}
+
+enum WatchRouteAlertLifecycle {
+  OPEN      @map("open")
+  RECOVERED @map("recovered")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -1200,6 +1236,137 @@ model SeoLesson {
 
   @@index([status, createdAt])
   @@map("seo_lesson")
+}
+
+// -----------------------------------------------------------------------------
+// Watch route alert ledger
+// -----------------------------------------------------------------------------
+
+/// One idempotent property/window collection attempt. Only a hash of the
+/// execution token is stored; generation plus token fence every completion.
+model WatchRouteAlertRun {
+  id                       String                            @id @default(cuid())
+  idempotencyKey           String                            @unique @map("idempotency_key") @db.Char(64)
+  propertyId               String                            @map("property_id") @db.VarChar(191)
+  origin                   String                            @db.VarChar(255)
+  contractVersion          String                            @map("contract_version") @db.VarChar(64)
+  mode                     WatchRouteAlertAutomationMode
+  status                   WatchRouteAlertRunStatus          @default(RUNNING)
+  windowStart              DateTime                          @map("window_start")
+  windowEnd                DateTime                          @map("window_end")
+  manifestVersion          String?                           @map("manifest_version") @db.VarChar(191)
+  report                   Json                              @default("{}")
+  actionableCount          Int                               @default(0) @map("actionable_count")
+  noiseCount               Int                               @default(0) @map("noise_count")
+  executionFenceGeneration Int                               @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash  String?                           @map("execution_claim_token_hash") @db.Char(64)
+  executionClaimExpiresAt  DateTime?                         @map("execution_claim_expires_at")
+  startedAt                DateTime                          @default(now()) @map("started_at")
+  completedAt              DateTime?                         @map("completed_at")
+  detailExpiresAt          DateTime                          @map("detail_expires_at")
+  detailExpiredAt          DateTime?                         @map("detail_expired_at")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  updatedAt                DateTime                          @updatedAt @map("updated_at")
+  observations             WatchRouteAlertDailyObservation[]
+
+  @@index([propertyId, startedAt])
+  @@index([status, executionClaimExpiresAt])
+  @@index([detailExpiresAt, detailExpiredAt])
+  @@map("watch_route_alert_run")
+}
+
+/// Last complete live window for each independently reconciled GA4 property.
+model WatchRouteAlertPropertyProgress {
+  propertyId              String   @id @map("property_id") @db.VarChar(191)
+  lastCompleteWindowStart DateTime @map("last_complete_window_start")
+  lastCompleteWindowEnd   DateTime @map("last_complete_window_end")
+  lastCompleteRunId       String   @map("last_complete_run_id")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([lastCompleteWindowEnd])
+  @@map("watch_route_alert_property_progress")
+}
+
+/// Stable identity for one property plus normalized, query-free Watch path.
+/// Episode rows below carry reopen/recovery history without changing this ID.
+model WatchRouteAlert {
+  id              String                            @id @default(cuid())
+  semanticKey     String                            @unique @map("semantic_key") @db.Char(64)
+  propertyId      String                            @map("property_id") @db.VarChar(191)
+  origin          String                            @db.VarChar(255)
+  normalizedPath  String                            @map("normalized_path") @db.VarChar(1000)
+  lifecycle       WatchRouteAlertLifecycle          @default(OPEN)
+  verdict         WatchRouteAlertVerdict
+  severity        WatchRouteAlertSeverity
+  latestCount     Int                               @default(0) @map("latest_count")
+  countKind       WatchRouteAlertCountKind          @map("count_kind")
+  activeUsers     Int                               @default(0) @map("active_users")
+  occurrenceCount Int                               @default(0) @map("occurrence_count")
+  firstSeenAt     DateTime                          @map("first_seen_at")
+  lastSeenAt      DateTime                          @map("last_seen_at")
+  lastProbedAt    DateTime?                         @map("last_probed_at")
+  lastHttpStatus  Int?                              @map("last_http_status")
+  lastProbeKind   String?                           @map("last_probe_kind") @db.VarChar(32)
+  manifestVersion String                            @map("manifest_version") @db.VarChar(191)
+  latestEvidence  Json                              @default("{}") @map("latest_evidence")
+  latestRunId     String                            @map("latest_run_id")
+  recoveredAt     DateTime?                         @map("recovered_at")
+  createdAt       DateTime                          @default(now()) @map("created_at")
+  updatedAt       DateTime                          @updatedAt @map("updated_at")
+  episodes        WatchRouteAlertEpisode[]
+  observations    WatchRouteAlertDailyObservation[]
+
+  @@unique([propertyId, normalizedPath])
+  @@index([lifecycle, severity, latestCount(sort: Desc), lastSeenAt(sort: Desc), id])
+  @@index([propertyId, lifecycle, severity, lastSeenAt, id])
+  @@index([propertyId, lifecycle, lastProbedAt, id])
+  @@map("watch_route_alert")
+}
+
+/// One open-to-recovered lifecycle. Reappearance appends another episode.
+model WatchRouteAlertEpisode {
+  id               String          @id @default(cuid())
+  alertId          String          @map("alert_id")
+  alert            WatchRouteAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  sequence         Int
+  openedAt         DateTime        @map("opened_at")
+  lastSeenAt       DateTime        @map("last_seen_at")
+  recoveredAt      DateTime?       @map("recovered_at")
+  openedByRunId    String          @map("opened_by_run_id")
+  recoveredByRunId String?         @map("recovered_by_run_id")
+  evidence         Json            @default("{}")
+  detailExpiresAt  DateTime?       @map("detail_expires_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@unique([alertId, sequence])
+  @@index([alertId, recoveredAt])
+  @@index([detailExpiresAt])
+  @@map("watch_route_alert_episode")
+}
+
+/// Idempotent per-run evidence used for history and occurrence accounting.
+model WatchRouteAlertDailyObservation {
+  id          String                   @id @default(cuid())
+  runId       String                   @map("run_id")
+  run         WatchRouteAlertRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alertId     String                   @map("alert_id")
+  alert       WatchRouteAlert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  observedOn  DateTime                 @map("observed_on") @db.Date
+  count       Int
+  countKind   WatchRouteAlertCountKind @map("count_kind")
+  activeUsers Int                      @map("active_users")
+  verdict     WatchRouteAlertVerdict
+  severity    WatchRouteAlertSeverity
+  evidence    Json                     @default("{}")
+  observedAt  DateTime                 @map("observed_at")
+  expiresAt   DateTime                 @map("expires_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  @@unique([runId, alertId])
+  @@index([alertId, observedOn])
+  @@index([expiresAt, id])
+  @@map("watch_route_alert_daily_observation")
 }
 
 // -----------------------------------------------------------------------------
@@ -3577,24 +3744,25 @@ model RecommendationImpression {
   @@map("recommendation_impression")
 }
 
-/// Selection and one-use handoff authority commit together. claimNonceDigest
-/// is server generated; the raw nonce is returned once and never stored.
+/// Selection and one-use handoff authority commit together. The browser keeps
+/// the raw nonce for replay-safe handoff; Admin stores only its digest.
 model RecommendationSelection {
-  id               String                   @id @default(cuid())
-  requestId        String                   @map("request_id")
-  request          RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId           String                   @unique(map: "recommendation_selection_item_key") @map("item_id")
-  item             RecommendationServedItem @relation("RecommendationSelectionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_selection_item_request_fkey")
-  capabilityJti    String                   @unique(map: "recommendation_selection_capability_key") @map("capability_jti") @db.VarChar(191)
-  eventId          String                   @map("event_id") @db.VarChar(191)
-  payloadDigest    String                   @map("payload_digest") @db.Char(64)
-  tabDigest        String?                  @map("tab_digest") @db.Char(64)
-  claimNonceDigest String                   @unique(map: "recommendation_selection_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
-  handoffExpiresAt DateTime                 @map("handoff_expires_at")
-  claimedAt        DateTime?                @map("claimed_at")
-  occurredAt       DateTime                 @map("occurred_at")
-  receivedAt       DateTime                 @default(now()) @map("received_at")
-  expiresAt        DateTime                 @map("expires_at")
+  id                    String                   @id @default(cuid())
+  requestId             String                   @map("request_id")
+  request               RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                String                   @unique(map: "recommendation_selection_item_key") @map("item_id")
+  item                  RecommendationServedItem @relation("RecommendationSelectionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_selection_item_request_fkey")
+  capabilityJti         String                   @unique(map: "recommendation_selection_capability_key") @map("capability_jti") @db.VarChar(191)
+  eventId               String                   @map("event_id") @db.VarChar(191)
+  payloadDigest         String                   @map("payload_digest") @db.Char(64)
+  tabDigest             String?                  @map("tab_digest") @db.Char(64)
+  claimNonceDigest      String                   @unique(map: "recommendation_selection_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt      DateTime                 @map("handoff_expires_at")
+  claimedAt             DateTime?                @map("claimed_at")
+  attributionEligibleAt DateTime?                @map("attribution_eligible_at")
+  occurredAt            DateTime                 @map("occurred_at")
+  receivedAt            DateTime                 @default(now()) @map("received_at")
+  expiresAt             DateTime                 @map("expires_at")
 
   episode                        RecommendationPlaybackEpisode?                @relation("RecommendationPlaybackEpisodeSelection")
   profileProjectionContributions RecommendationProfileProjectionContribution[]
@@ -3603,6 +3771,7 @@ model RecommendationSelection {
   @@unique([requestId, itemId], map: "recommendation_selection_item_request_key")
   @@unique([requestId, itemId, id], map: "recommendation_selection_request_item_id_key")
   @@index([requestId], map: "recommendation_selection_request_idx")
+  @@index([requestId, attributionEligibleAt], map: "recommendation_selection_attribution_idx")
   @@index([claimNonceDigest, handoffExpiresAt], map: "recommendation_selection_handoff_idx")
   @@index([expiresAt])
   @@map("recommendation_selection")
@@ -3611,36 +3780,37 @@ model RecommendationSelection {
 /// Minimal append-only playback root opened with selection. Active/hard token
 /// horizons and generation fence are persisted for verifier/finalizer parity.
 model RecommendationPlaybackEpisode {
-  id                String                     @id @default(cuid())
-  requestId         String?                    @map("request_id")
-  request           RecommendationRequest?     @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId            String?                    @map("item_id")
-  item              RecommendationServedItem?  @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
-  selectionId       String?                    @unique(map: "recommendation_episode_selection_key") @map("selection_id")
-  selection         RecommendationSelection?   @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
-  contextVersion    String                     @default("playback-context-v1") @map("context_version") @db.VarChar(64)
-  discoverySource   String                     @default("direct") @map("discovery_source") @db.VarChar(32)
-  provenance        Json                       @default("{}")
-  claimNonceDigest  String?                    @unique(map: "recommendation_episode_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
-  handoffExpiresAt  DateTime?                  @map("handoff_expires_at")
-  mediaId           String                     @map("media_id") @db.VarChar(191)
-  sessionDigest     String                     @map("session_digest") @db.Char(64)
-  state             RecommendationEpisodeState @default(PENDING)
-  capabilityJti     String?                    @unique(map: "recommendation_episode_capability_key") @map("capability_jti") @db.VarChar(191)
-  signingKid        String?                    @map("signing_kid") @db.VarChar(64)
-  activeUntil       DateTime                   @map("active_until")
-  hardUntil         DateTime                   @map("hard_until")
+  id                   String                     @id @default(cuid())
+  requestId            String?                    @map("request_id")
+  request              RecommendationRequest?     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId               String?                    @map("item_id")
+  item                 RecommendationServedItem?  @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
+  selectionId          String?                    @unique(map: "recommendation_episode_selection_key") @map("selection_id")
+  selection            RecommendationSelection?   @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
+  contextVersion       String                     @default("playback-context-v1") @map("context_version") @db.VarChar(64)
+  discoverySource      String                     @default("direct") @map("discovery_source") @db.VarChar(32)
+  provenance           Json                       @default("{}")
+  claimNonceDigest     String?                    @unique(map: "recommendation_episode_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt     DateTime?                  @map("handoff_expires_at")
+  mediaId              String                     @map("media_id") @db.VarChar(191)
+  sessionDigest        String                     @map("session_digest") @db.Char(64)
+  state                RecommendationEpisodeState @default(PENDING)
+  capabilityJti        String?                    @unique(map: "recommendation_episode_capability_key") @map("capability_jti") @db.VarChar(191)
+  signingKid           String?                    @map("signing_kid") @db.VarChar(64)
+  activeUntil          DateTime                   @map("active_until")
+  hardUntil            DateTime                   @map("hard_until")
   /// Nullable recovery work marker. Its partial index is migration-owned
   /// because Prisma cannot express the `IS NOT NULL` predicate.
-  finalizationDueAt DateTime?                  @map("finalization_due_at")
-  nextFactSequence  Int                        @default(1) @map("next_fact_sequence")
-  replayCount       Int                        @default(0) @map("replay_count")
-  conflictCount     Int                        @default(0) @map("conflict_count")
-  generation        Int                        @default(1)
-  claimedAt         DateTime?                  @map("claimed_at")
-  finalizedAt       DateTime?                  @map("finalized_at")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  expiresAt         DateTime                   @map("expires_at")
+  finalizationDueAt    DateTime?                  @map("finalization_due_at")
+  nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  replayCount          Int                        @default(0) @map("replay_count")
+  transportReplayCount Int                        @default(0) @map("transport_replay_count")
+  conflictCount        Int                        @default(0) @map("conflict_count")
+  generation           Int                        @default(1)
+  claimedAt            DateTime?                  @map("claimed_at")
+  finalizedAt          DateTime?                  @map("finalized_at")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  expiresAt            DateTime                   @map("expires_at")
 
   facts             RecommendationPlaybackFact[]               @relation("RecommendationPlaybackFactEpisode")
   outcomes          RecommendationOutcomeRevision[]            @relation("RecommendationOutcomeRevisionEpisode")

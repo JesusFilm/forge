@@ -404,13 +404,12 @@ export async function loadRecommendationOverview(
         ),
         selection_summary AS (
           SELECT
-            COUNT(*) AS selections,
             COUNT(*) FILTER (
-              WHERE NOT EXISTS (
-                SELECT 1
-                FROM recommendation_impression impression
-                WHERE impression.item_id = selection.item_id
-              )
+              WHERE selection.attribution_eligible_at <= ${now}
+            ) AS selections,
+            COUNT(*) FILTER (
+              WHERE selection.attribution_eligible_at IS NULL
+                OR selection.attribution_eligible_at > ${now}
             ) AS "selectionWithoutImpression"
           FROM recommendation_selection selection
           JOIN active_roots root ON root.id = selection.request_id

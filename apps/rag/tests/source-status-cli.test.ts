@@ -17,6 +17,7 @@ import {
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { RagOperationalError } from "../src/contracts/index.js"
 import {
   loadDoc,
   applyMutation,
@@ -25,6 +26,8 @@ import {
   isoDate,
   writeStatusFileAtomically,
   withExclusiveFileLock,
+  validateSliceFileReferences,
+  validateStatusDocumentForWrite,
 } from "../scripts/source-status.js"
 import { validateSourceStatusRegistry } from "../src/contracts/source-status.js"
 import type { Mutation } from "../scripts/source-status.js"
@@ -147,6 +150,57 @@ describe("canonical registry reconciliation", () => {
     expect(() =>
       validateSourceStatusRegistry(file, [{ key: "foo", languages: ["es"] }]),
     ).toThrow(/languages/)
+  })
+})
+
+describe("slice file reference validation", () => {
+  const packageRoot = "/workspace/apps/rag"
+
+  it("accepts an existing package-local Markdown record", () => {
+    expect(() =>
+      validateSliceFileReferences(
+        validateDoc(loadDoc(FIXTURE)),
+        packageRoot,
+        (file) => file === `${packageRoot}/docs/slices/foo.md`,
+      ),
+    ).not.toThrow()
+  })
+
+  it("rejects missing, non-Markdown, and package-escaping records", () => {
+    const file = validateDoc(loadDoc(FIXTURE))
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => false),
+    ).toThrow(RagOperationalError)
+
+    file.sources.foo.slice_file = "docs/slices/foo.txt"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/Markdown/)
+
+    file.sources.foo.slice_file = "../../outside.md"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/escapes/)
+  })
+
+  it("rejects an invalid canonical-document reference before writing", async () => {
+    const doc = loadDoc(
+      await readFile(
+        new URL("../docs/source-status.yaml", import.meta.url),
+        "utf8",
+      ),
+    )
+    doc.setIn(
+      ["sources", "starting-with-god", "slice_file"],
+      "docs/slices/missing.md",
+    )
+    expect(() =>
+      validateStatusDocumentForWrite(
+        doc,
+        packageRoot,
+        (file) => !file.endsWith("/missing.md"),
+      ),
+    ).toThrow(/does not exist/)
   })
 })
 

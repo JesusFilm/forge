@@ -5,6 +5,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 ## Core model
 
 - Runs the self-hosted Mastra Server runtime for Forge agents and workflows.
+- Owns the default-off deterministic daily Watch route-alert workflow, which
+  reads bounded GA4 not-found evidence and reconciles Admin's signed alert
+  ledger without giving Manager direct access to Mastra storage or GA4.
 - Owns transcript embedding chunk planning and provider calls, then submits
   transcript vectors to Admin ingest.
 - Owns experience embedding provider calls and workflow diagnostics, then

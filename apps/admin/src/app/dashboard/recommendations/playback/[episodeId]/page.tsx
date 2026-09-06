@@ -82,7 +82,14 @@ export default async function PlaybackEpisodePage({
             label="Next fact sequence"
             value={String(detail.nextFactSequence)}
           />
-          <Value label="Replay count" value={String(detail.replayCount)} />
+          <Value
+            label="Transport replay count"
+            value={String(detail.transportReplayCount)}
+          />
+          <Value
+            label="Integrity replay count"
+            value={String(detail.replayCount)}
+          />
           <Value label="Conflict count" value={String(detail.conflictCount)} />
           <Value
             label="Request lineage"

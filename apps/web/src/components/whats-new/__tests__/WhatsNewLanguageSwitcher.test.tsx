@@ -174,11 +174,9 @@ describe("WhatsNewLanguageSwitcher", () => {
     // Measured in a browser at 48px against the feedback button's 48px, with
     // both edges within 1px. Two separate things have to hold for that:
     //
-    // …the height override must carry important modifiers, because
-    // `LanguageCombobox` concatenates `triggerClassName` onto its own class
-    // string instead of merging it through `cn`. A plain `h-12` ties with the
-    // base `h-16` on specificity and loses on stylesheet order — it measured
-    // 64px against the button's 48px until these were added.
+    // …the height override remains explicit at this call site so the switcher
+    // stays pinned to the feedback button's 48px height if the combobox base
+    // sizing changes later.
     render()
 
     const props = comboboxSpy.mock.calls.at(-1)?.[0] as {

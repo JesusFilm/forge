@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-08-28"
 duration: 5
 depends_on: []
-blocks: []
+blocks:
+  - "feat-456"
 tags:
   - "web"
   - "watch"

@@ -283,6 +283,12 @@ const navItems: Array<{
     icon: SearchCheck,
   },
   {
+    key: "alerts",
+    href: "/dashboard/alerts",
+    label: "Alerts",
+    icon: Bell,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
@@ -340,6 +346,10 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/seo")) {
     return ["Studio", "SEO"]
+  }
+
+  if (pathname.startsWith("/dashboard/alerts")) {
+    return ["Studio", "Alerts"]
   }
 
   if (pathname.startsWith("/dashboard/smart-crop")) {
@@ -851,6 +861,7 @@ export function ManagerDashboardShell({
                     <Link
                       key={item.key}
                       href={item.href}
+                      aria-label={item.label}
                       className={isActive ? "is-active" : undefined}
                       {...(isActive ? { "aria-current": "page" as const } : {})}
                     >

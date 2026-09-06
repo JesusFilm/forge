@@ -81,7 +81,6 @@ export class RecommendationIntegrityService {
                   sessionDigest: true,
                   mediaId: true,
                   capabilityJti: true,
-                  replayCount: true,
                   conflictCount: true,
                   createdAt: true,
                   facts: { select: { late: true } },
@@ -110,7 +109,10 @@ export class RecommendationIntegrityService {
                 qualifiedView: outcome.qualifiedView,
                 baseWeight: outcome.viewQualityWeight ?? 0,
                 late: outcome.episode.facts.some((fact) => fact.late),
-                replayCount: outcome.episode.replayCount,
+                // Playback exact-payload replays are acknowledgement recovery,
+                // not evidence tampering. Same-ID/different-payload facts are
+                // represented by conflictCount and remain fail-closed.
+                replayCount: 0,
                 conflictCount: outcome.episode.conflictCount,
                 contributionOrdinal: measures.contributionOrdinal,
                 distinctAnonymousSupport: measures.distinctSupport,

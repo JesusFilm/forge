@@ -342,7 +342,7 @@ describe("RecommendationPlaybackService", () => {
   })
 
   it.each(["recommendation", "standalone"] as const)(
-    "persists equivalent episode-owned replay and conflict counts for %s playback",
+    "separates transport replays from integrity conflicts for %s playback",
     async (lineage) => {
       const current = episode()
       if (lineage === "standalone") {
@@ -394,7 +394,7 @@ describe("RecommendationPlaybackService", () => {
       expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
         where: { id: "episode-1", generation: 3 },
         data: {
-          replayCount: { increment: 1 },
+          transportReplayCount: { increment: 1 },
           conflictCount: { increment: 1 },
         },
       })
@@ -579,13 +579,13 @@ describe("RecommendationPlaybackService", () => {
     ).resolves.toEqual([{ eventId: "start-1", status: "replay", sequence: 8 }])
     expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
       where: { id: "episode-1", generation: 3 },
-      data: { replayCount: { increment: 1 } },
+      data: { transportReplayCount: { increment: 1 } },
     })
     expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
           kind: "REPLAY",
-          reasonCode: "playback_fact_replay",
+          reasonCode: "playback_transport_replay",
         }),
       ],
     })
