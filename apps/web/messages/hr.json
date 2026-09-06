@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Jezična verzija nije dostupna",
     "eyebrow": "Jezična verzija nije dostupna",
-    "title": "<contentTitle>{title}</contentTitle> nije dostupan na jeziku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: nema verzije na jeziku <languageName>„{language}“</languageName>",
     "actionsLabel": "Dostupne opcije gledanja",
-    "browseInLanguage": "Pregledajte videozapise na jeziku {language}",
+    "browseInLanguage": "Svi videozapisi na jeziku „{language}“",
     "backToSearch": "Natrag na pretraživanje",
     "audioVersionsTitle": "Druge zvučne verzije",
     "audioVersionsDescription": "Odaberite jezik zvuka kako biste nastavili gledati ovaj videozapis.",

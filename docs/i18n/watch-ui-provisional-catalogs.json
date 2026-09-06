@@ -861,8 +861,8 @@
         "az": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "4f8cf650e9c9220c2cd58a9aaad93c6fb838a87afd109f43f75bb0e4e1655c88",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "7bfe0f566501d1e3a0ce50cd6dfddc2750c50ef9fa8afa5ee3ca947c3de56153",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -926,6 +926,11 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": ["WatchUnavailableLanguage.browseInLanguage"],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -1003,8 +1008,8 @@
         "az-Cyrl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "42ae1d7951e8c8031a38686a27645a8731deb18f038aae1b45767cd1ac49e874",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "3bbc2d1e533ca4d5f77cdd7fefe437301d7c56b9039d46c121043040c4d9bac9",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1068,6 +1073,11 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": ["WatchUnavailableLanguage.browseInLanguage"],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -1145,8 +1155,8 @@
         "be": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "313549c8d48ef6254e913b1c68f120bcdff8f7ed8e6ffc26eca6f8b6d7456557",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "0d55a811e3fddbda7fc9149c5806da87e5cd815d126dcf60c40e9a89da75a87e",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1210,6 +1220,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -1571,8 +1589,8 @@
         "bs": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "267ab764243d1e91b1401e56fad65237155dc5fef9a529d5e72c4e06dfdbaf1a",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "e84a6528af944053c85cc752c1f6c112ce9a5fa0b8b70cb82959edfb524444bc",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1636,14 +1654,22 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
         "bs-Cyrl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "7cb405ebbae96a2cc946d4a4288aa7a4f232a02fb91077522745b40725beb7f9",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "c0fe9a7b21234f58d93963e630dbc8e786ed09a35fc163cee92552df511a6ccb",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1707,6 +1733,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -2423,8 +2457,8 @@
         "cs": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "ba03ed0013afa130f768ddb2086a2ff3355dd55ec976eafc1082430cf0723773",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "0033f2a1cc57dd20705209acaf163ee76d500cab1993120f50b2f13f0d436fe9",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -2488,6 +2522,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -3346,8 +3388,8 @@
         "et": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "737842199c65d3aaaf39c847e07e75a211559d2c20d0382fc0d6914494abc718",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "e72b6cb81bab0d2941df9fad8213117b1e5ca0b7ec20f940ebba105c4fc2f0a1",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -3411,6 +3453,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -3630,8 +3680,8 @@
         "fi": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "dd98329e1de7b1f195c9f9624b94b881b592a8d32f86ef3d013fe1aa00e53d3f",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "f4c5792dbdfbfb14084ff34fd31961a499dadc43ff72d6931ffd3af3917b2a8c",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -3695,6 +3745,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -5334,8 +5392,8 @@
         "hr": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "ed32461ead88a6d4a25f6d6f8110960237b3369dcf67f4a49f7225fe7e63a1d1",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "76cc3be5876101148a957dffcd748edf74bfe555512808fd2137713857f7183e",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5399,6 +5457,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -5618,8 +5684,8 @@
         "id": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "65e1a7cd6cc773ee8c96c0475ce22933b3b9dbb88dac352deb62f94ff542c3b9",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "ee02accf782b9ed6a7f3a339aec846d6b6208cbba468cebdc3c84063f8d3f2c3",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5683,6 +5749,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -5831,8 +5905,8 @@
         "is": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "ed359a1c635affcbbc3f6c87ae43814ac54e420ea6bdb8026c50ce0762ec66f1",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "914c8948fea659237807dd3786154e9a8444adab3003e14824e05eeea2c77ae4",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5896,6 +5970,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -6541,8 +6623,8 @@
         "kk": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "d82dfd3d5e8df60d79865802301b9a177855c3bc9adf63b46c5f03233aaa50fb",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "cd0fd8e6b65b14f8ca8a3af633761ce83575a1aa4a6ba7569d8f489827d7b527",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -6606,6 +6688,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -7819,8 +7909,8 @@
         "lt": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "39497fd294cb52c8dc1bf456161e9c597aaee51bcf05ba952ee44ec8aa9023df",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "acaedb912de5275335e1c3add122b02aa7f61847592ddbcd156ee85f0ba8d6fd",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -7884,6 +7974,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -7961,8 +8059,8 @@
         "lv": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "7d10b55f69d8cdae16a066e4d17c36f2fdcd7d3155f07c47ca4c0d6de518d03f",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "1aea955ce26609b0e5e74eb3af21a84e71e434e1bc6ec822389f70042868ab92",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8026,6 +8124,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -10517,8 +10623,8 @@
         "pl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "4237693893ffb4c31b3f187809a7412876e0ae2251e9e762fd6bd32c709d92c5",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "2ee74941bcb49e781f77e7d6ee76789096722dc222770ef9e61738599806769d",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -10582,6 +10688,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -11156,8 +11270,8 @@
         "ru": {
           "model": "gpt-5.6",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "e9a936c8197f6cdf92849858424bea48e3b8894e5eef2a2e37697d6fe74e656a",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "cfd479dd66b496f5403746963f419e1c68484f10354dfbeeadf8af9ab59903dd",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -11208,6 +11322,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -11924,8 +12046,8 @@
         "sk": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "6cc1c27482bf2564849f2d57b6d0ce31b71324dd01fa94522a3a28dad421ad08",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "86708046d9ab4de6db0df5b282f7f04b6efcc568a112b791da30398543372595",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -11989,14 +12111,22 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
         "sl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "a90a70543772db195c151c3160e3807f8d386d4bac7d934e76ab0507cd24dcf7",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "8a0934adbdda15193421fd0cf0eae7f40d813645b1694affcba256fa4ff2d8c4",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -12060,6 +12190,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -12492,8 +12630,8 @@
         "sr": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "82c8267b2c2329eedef554150f56d1a0efc75c1a5604a3bce3c7a78924ce0da5",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "68c0fa88f8e778c61d84baa8325a9984fd6e405efd58288a938ae714929e545c",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -12557,14 +12695,22 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
         "sr-Latn": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "0c52c9f73bacecaec8f2262b95827a067b271925bcf1cf53edc04a0f3aa5eefc",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "6cf9bec0224b2e156edc18425cdc007ff31a562408477f6ce5fec0d6fa874065",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -12628,6 +12774,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -13273,8 +13427,8 @@
         "th": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "bce29dacc0336376ec44a4278a5c87cbf4abd3b0e294846bf915fda431e3aaa5",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "b0f63becb76c41d925111a3201a6e1259f034b885e175e64dd266cc1d3dd77f5",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -13338,6 +13492,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },
@@ -14480,8 +14642,8 @@
         "uk": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "5b0bfc0979b2ef20cab54aff7334a17f852bd9fb286f32e3a5426660a1bf84f4",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "fb12fc3b8306a56f585b7c174df7d25dd0d895936ae8466df70f1448c171b606",
+          "generatedOn": "2026-08-31",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -14545,6 +14707,14 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "claude-opus-5",
+              "messagePaths": [
+                "WatchUnavailableLanguage.browseInLanguage",
+                "WatchUnavailableLanguage.title"
+              ],
+              "generatedOn": "2026-08-31"
             }
           ]
         },

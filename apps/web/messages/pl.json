@@ -713,9 +713,9 @@
   "WatchUnavailableLanguage": {
     "metadataTitle": "Wersja językowa jest niedostępna",
     "eyebrow": "Wersja językowa jest niedostępna",
-    "title": "<contentTitle>{title}</contentTitle> nie jest dostępny w języku <languageName>{language}</languageName>",
+    "title": "<contentTitle>{title}</contentTitle>: brak wersji w języku <languageName>„{language}”</languageName>",
     "actionsLabel": "Dostępne opcje oglądania",
-    "browseInLanguage": "Przeglądaj filmy w języku {language}",
+    "browseInLanguage": "Wszystkie filmy w języku „{language}”",
     "backToSearch": "Wróć do wyszukiwania",
     "audioVersionsTitle": "Inne wersje językowe",
     "audioVersionsDescription": "Wybierz język dźwięku, aby kontynuować oglądanie tego filmu.",
