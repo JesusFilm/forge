@@ -8,12 +8,12 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 4, 2026)
+## Status (September 7, 2026)
 
 - **Total tickets:** 17
 - **Complete:** 13
-- **In progress:** 0
-- **Not started:** 4
+- **In progress:** 1
+- **Not started:** 3
 - **Blocked:** 0
 
 ## Feature Index
@@ -32,7 +32,7 @@ database into Admin.
 | [feat-432](feat-432-rag-ops-eval-dashboard.md)                 | [#165](https://github.com/JesusFilm/jesusfilm-rag/issues/165) | Port sources, skills, dashboard, and eval                   | complete    | [#2117](https://github.com/JesusFilm/forge/pull/2117)                                                        |
 | [feat-433](feat-433-rag-dual-operations.md)                    | [#166](https://github.com/JesusFilm/jesusfilm-rag/issues/166) | Complete owner-managed dual RAG operations                  | complete    | [#2152](https://github.com/JesusFilm/forge/pull/2152)                                                        |
 | [feat-434](feat-434-rag-seeker-cutover.md)                     | [#167](https://github.com/JesusFilm/jesusfilm-rag/issues/167) | Cut Seeker over with rollback                               | complete    | [#2153](https://github.com/JesusFilm/forge/pull/2153), [#2158](https://github.com/JesusFilm/forge/pull/2158) |
-| [feat-435](feat-435-rag-proof-soak-archive.md)                 | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                  | not-started | —                                                                                                            |
+| [feat-435](feat-435-rag-proof-soak-archive.md)                 | [#168](https://github.com/JesusFilm/jesusfilm-rag/issues/168) | Prove maintenance, soak, and archive jfrag                  | in-progress | —                                                                                                            |
 | [feat-439](feat-439-rag-railway-infrastructure-as-code.md)     | —                                                             | Migrate RAG Railway configuration to Infrastructure as Code | not-started | —                                                                                                            |
 | [feat-445](feat-445-rag-registry-policy-test-consolidation.md) | —                                                             | Make registry policy tests execute production filtering     | not-started | —                                                                                                            |
 | [feat-446](feat-446-rag-typed-operational-errors.md)           | —                                                             | Complete typed operational errors across RAG                | not-started | —                                                                                                            |
