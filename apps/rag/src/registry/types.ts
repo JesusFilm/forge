@@ -2,7 +2,7 @@
  * SourceRegistry data types — the richer, crawl-time shape of a source (the
  * persisted projection is `SourceRecord` in contracts/sources.ts). Pure data:
  * no I/O, no behavior. The registry may import only `contracts`. See
- * docs/architecture.md §3 (Acquisition) and §5.1.
+ * docs/architecture.md §3 (Acquisition) and §4–§5.
  */
 import type { IngestionMode, SourceTrust } from "../contracts/index.js"
 

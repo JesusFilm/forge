@@ -18,6 +18,18 @@
 # intel: docs/jfa-registry-findings.md and the jfa legacy SOURCES.md.
 
 gaps:
+  gotquestions:
+    host: www.gotquestions.org
+    pending:
+      - label: "remaining translations"
+        state: proposed
+        detail: "~214 languages"
+    missing: >-
+      English is acquired, ingested, retrieved, and evaluated. The remaining
+      translated sections stay under the same source key and are deferred to
+      the resumable, count-batched campaign recorded in
+      docs/slices/gotquestions-multilingual.md.
+
   jesusfilm-org:
     missing: >-
       Blog only — the /about/ leadership scope (~40 pages, catalogued by jfa)
@@ -56,28 +68,17 @@ gaps:
   everystudent:
     host: www.everystudent.com
     pending:
-      - label: "51 sibling domains"
-        state: proposed
-        detail: "≤15k"
+      - label: "lv sibling"
+        state: blocked
+        detail: "robots exclusion"
     missing: >-
-      English flagship behind a Cloudflare JS managed challenge (homepage 200 is
-      a false positive) — unblock via Firecrawl, jfa's reviewed-archive scripts
-      (its proven path; it never beat the wall either), or a Cru IP allowlist.
-      The 51 sibling language domains are largely NOT walled (jfa canary
-      fetched 46/46 with plain HTTP).
+      English and the sibling campaign have entered the pipeline: 47 campaign
+      source keys are registered, with completion and explicit deferred/open
+      exceptions recorded in source-status.yaml and
+      docs/slices/everystudent-siblings.md. The remaining unregistered Latvian
+      sibling disallows ClaudeBot in robots.txt (#133).
 
 documented:
-  gotquestions:
-    name: GotQuestions
-    host: www.gotquestions.org
-    state: proposed
-    method: plain scrape
-    languages: en
-    est_size: "1.5k–100k+"
-    note: >-
-      No bot wall — jfa ingested 342 chunks at a 1,500-page cap. The open
-      decision is crawl scope: the full site is 100k+ Q&As.
-
   knowgod:
     name: KnowGod / GodTools
     host: knowgod.com

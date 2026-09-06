@@ -37,7 +37,7 @@ const MODEL_GUARD_TTL_MS = 60_000
 const MAX_CANDIDATES = 500
 
 /**
- * Candidate fan-out before the cutoff (invariant 5): over-fetch so the minScore
+ * Candidate fan-out before the cutoff (architecture §2 invariant 5): over-fetch so the minScore
  * cutoff + 3-key dedup still leave enough rows to fill topK.
  *
  * The ceiling MUST scale with topK. It was previously a flat 50, which silently
@@ -77,7 +77,7 @@ function fingerprint(title: string | null, text: string): string {
 }
 
 /**
- * 3-key dedup (invariant 5): drop a candidate that collides with an
+ * 3-key dedup (architecture §2 invariant 5): drop a candidate that collides with an
  * already-kept (higher-scored) result on ANY of — document content-hash,
  * canonicalUrl+ord, or title+text fingerprint. content_hash is document-level
  * (sha256 of `title\n\ncontent`), so this yields at most one chunk per distinct
@@ -149,7 +149,7 @@ function toRankedResult(row: ScoredRow): RankedResult {
  * 3-small embedder after a botched cutover). Fails only when the query model is
  * in NONE of the corpus models — so a partial re-embed (mixed models) still
  * serves the rows that match. Skipped when the store can't report models or the
- * corpus is empty. See docs/ops/prod-reembed.md, ADR-0005.
+ * corpus is empty. See docs/ops/corpus-maintenance.md, ADR-0005.
  */
 async function assertModelMatch(deps: RetrieveDeps): Promise<boolean> {
   if (!deps.search.embeddingModels) return true // store can't report — skip
@@ -160,7 +160,7 @@ async function assertModelMatch(deps: RetrieveDeps): Promise<boolean> {
       `retrieval model mismatch: query embedder is "${deps.embedder.model}" but the corpus ` +
         `was embedded with [${models.join(", ")}]. Queries and documents must use the same ` +
         `embedding model or retrieval returns silent garbage — set EMBED_MODEL_ID to match ` +
-        `the corpus (see docs/ops/prod-reembed.md).`,
+        `the corpus (see docs/ops/corpus-maintenance.md).`,
     )
   }
   return true

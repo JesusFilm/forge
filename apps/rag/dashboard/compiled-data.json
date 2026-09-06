@@ -931,10 +931,17 @@
           "state": "ingested",
           "embedded_doc_count": 1,
           "detail": null
+        },
+        {
+          "label": "remaining translations",
+          "language": null,
+          "state": "proposed",
+          "embedded_doc_count": null,
+          "detail": "~214 languages"
         }
       ],
       "docs_in_prod": 10558,
-      "missing": null
+      "missing": "English is acquired, ingested, retrieved, and evaluated. The remaining translated sections stay under the same source key and are deferred to the resumable, count-batched campaign recorded in docs/slices/gotquestions-multilingual.md."
     },
     {
       "source": "thelife",
@@ -1130,15 +1137,15 @@
           "detail": null
         },
         {
-          "label": "51 sibling domains",
+          "label": "lv sibling",
           "language": null,
-          "state": "proposed",
+          "state": "blocked",
           "embedded_doc_count": null,
-          "detail": "≤15k"
+          "detail": "robots exclusion"
         }
       ],
       "docs_in_prod": 117,
-      "missing": "English flagship behind a Cloudflare JS managed challenge (homepage 200 is a false positive) — unblock via Firecrawl, jfa's reviewed-archive scripts (its proven path; it never beat the wall either), or a Cru IP allowlist. The 51 sibling language domains are largely NOT walled (jfa canary fetched 46/46 with plain HTTP)."
+      "missing": "English and the sibling campaign have entered the pipeline: 47 campaign source keys are registered, with completion and explicit deferred/open exceptions recorded in source-status.yaml and docs/slices/everystudent-siblings.md. The remaining unregistered Latvian sibling disallows ClaudeBot in robots.txt (#133)."
     },
     {
       "source": "EveryStudent — Russian (Мир студентов)",
@@ -2106,16 +2113,6 @@
       "languages": "en",
       "est_size": "curated",
       "note": "jfa had a staged YouTube/article JSON review format; needs a curation owner."
-    },
-    {
-      "source": "GotQuestions",
-      "key": "gotquestions",
-      "host": "www.gotquestions.org",
-      "state": "proposed",
-      "method": "plain scrape",
-      "languages": "en",
-      "est_size": "1.5k–100k+",
-      "note": "No bot wall — jfa ingested 342 chunks at a 1,500-page cap. The open decision is crawl scope: the full site is 100k+ Q&As."
     },
     {
       "source": "Joshua Project",

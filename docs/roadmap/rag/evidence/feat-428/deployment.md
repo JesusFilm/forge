@@ -31,3 +31,10 @@ positive/negative source-scope comparison inconclusive; the application tests
 prove that requested source scope cannot widen bearer scope and short-circuit
 retrieval when the intersection is empty. Repeat the positive deployment probe
 after corpus copy as required by the operating runbook.
+
+## Recovery audit note
+
+The 2026-09-04 migration audit found no later committed receipt for that positive
+production scope probe. This record therefore remains deliberately
+inconclusive; tests are not promoted into deployment evidence. A fresh observed
+proof may be attached to `feat-435` without rewriting this historical result.
