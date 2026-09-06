@@ -224,4 +224,48 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
       _internals.exactIdFilter(ids.slice(200)),
     )
   })
+
+  it("batches vector-bearing transcript upserts below request-body limits", async () => {
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
+    const importDocuments = vi.fn().mockResolvedValue(undefined)
+    const documents = Array.from({ length: 205 }, (_, index) => ({
+      id: `chunk-${index}`,
+      documentKind: "transcript" as const,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      canonicalVideoId: "core-video-1",
+      language: "en",
+      publiclyVisible: true,
+      text: `Chunk ${index}`,
+      startSeconds: index,
+      embedding: [index],
+    }))
+
+    await _internals.upsertCurrentTranscriptDocuments(
+      { importDocuments },
+      "watch_search_transcripts_active",
+      documents,
+    )
+
+    expect(importDocuments).toHaveBeenCalledTimes(3)
+    expect(importDocuments).toHaveBeenNthCalledWith(
+      1,
+      "watch_search_transcripts_active",
+      documents.slice(0, 100),
+      "upsert",
+    )
+    expect(importDocuments).toHaveBeenNthCalledWith(
+      2,
+      "watch_search_transcripts_active",
+      documents.slice(100, 200),
+      "upsert",
+    )
+    expect(importDocuments).toHaveBeenNthCalledWith(
+      3,
+      "watch_search_transcripts_active",
+      documents.slice(200),
+      "upsert",
+    )
+  })
 })

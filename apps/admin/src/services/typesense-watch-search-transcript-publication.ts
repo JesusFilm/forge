@@ -26,6 +26,7 @@ const BASE_LEASE_MS = 60_000
 const MAX_LEASE_MS = 5 * 60_000
 const LEASE_PER_DOCUMENT_MS = 250
 const READBACK_CONCURRENCY = 16
+const UPSERT_BATCH_SIZE = 100
 const STALE_DELETE_BATCH_SIZE = 100
 const RETRY_DELAY_MS = 5_000
 const POLL_MS = 5_000
@@ -52,6 +53,9 @@ type ClaimablePublicationRow = {
 type ClaimedPublicationBatch = {
   eventIds: string[]
   transcriptId: string
+  videoId: string
+  videoEditionId: string
+  language: string
   contentEmbeddingContractId: string
   transcriptChunkingVersion: string
   sourceGeneration: bigint
@@ -407,6 +411,9 @@ async function claimNextTranscriptPublicationBatch(
     return {
       eventIds,
       transcriptId,
+      videoId: latest.videoId,
+      videoEditionId: latest.videoEditionId,
+      language: latest.language,
       contentEmbeddingContractId: latest.contentEmbeddingContractId,
       transcriptChunkingVersion: latest.transcriptChunkingVersion,
       sourceGeneration: latest.sourceGeneration,
@@ -428,6 +435,9 @@ async function loadCanonicalTranscriptSnapshot(
     where: { id: batch.transcriptId },
     select: {
       id: true,
+      videoId: true,
+      videoEditionId: true,
+      language: true,
       sourceGeneration: true,
       sourceContentHash: true,
       chunkingVersion: true,
@@ -436,6 +446,15 @@ async function loadCanonicalTranscriptSnapshot(
   if (!transcript) {
     throw new WatchSearchTranscriptPublicationError(
       `canonical transcript ${batch.transcriptId} does not exist`,
+    )
+  }
+  if (
+    transcript.videoId !== batch.videoId ||
+    transcript.videoEditionId !== batch.videoEditionId ||
+    transcript.language !== batch.language
+  ) {
+    throw new WatchSearchTranscriptPublicationError(
+      `canonical transcript ${batch.transcriptId} identity does not match publication evidence`,
     )
   }
   if (transcript.sourceGeneration !== batch.sourceGeneration) {
@@ -499,6 +518,18 @@ async function loadCanonicalTranscriptSnapshot(
   if (rows.length === 0) {
     throw new WatchSearchTranscriptPublicationError(
       `canonical transcript ${batch.transcriptId} has no current chunk embeddings`,
+    )
+  }
+  if (
+    rows.some(
+      (row) =>
+        row.videoId !== batch.videoId ||
+        row.videoEditionId !== batch.videoEditionId ||
+        row.language !== batch.language,
+    )
+  ) {
+    throw new WatchSearchTranscriptPublicationError(
+      `canonical transcript ${batch.transcriptId} chunk identity does not match publication evidence`,
     )
   }
   assertCanonicalDocumentIdsMatchBatch(
@@ -572,6 +603,20 @@ async function deleteStaleTranscriptDocuments(
     await typesense.deleteDocumentsByFilter(
       collection,
       exactIdFilter(ids.slice(index, index + STALE_DELETE_BATCH_SIZE)),
+    )
+  }
+}
+
+async function upsertCurrentTranscriptDocuments(
+  typesense: Pick<TypesenseTranscriptPublisher, "importDocuments">,
+  collection: string,
+  documents: readonly TypesenseWatchTranscriptDocument[],
+): Promise<void> {
+  for (let index = 0; index < documents.length; index += UPSERT_BATCH_SIZE) {
+    await typesense.importDocuments(
+      collection,
+      documents.slice(index, index + UPSERT_BATCH_SIZE),
+      "upsert",
     )
   }
 }
@@ -759,10 +804,10 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         },
       )
       const canonical = await loadCanonicalTranscriptSnapshot(prisma, batch)
-      await input.typesense.importDocuments(
+      await upsertCurrentTranscriptDocuments(
+        input.typesense,
         transcriptCollection,
         canonical.documents,
-        "upsert",
       )
       await deleteStaleTranscriptDocuments(
         input.typesense,
@@ -899,4 +944,5 @@ export const _internals = {
   normalizeTranscriptDocument,
   publicationLeaseMs,
   sha256,
+  upsertCurrentTranscriptDocuments,
 }

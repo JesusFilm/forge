@@ -227,6 +227,16 @@ competing process cannot claim while the lock is held, and a lost database
 session releases the advisory lock so a later claimant changes the token and
 generation before the original process can commit.
 
+Treat every identity field in the outbox as completion evidence, not merely as
+diagnostic context. After a claim, reload the canonical parent and chunks and
+require their video, edition, and language identities to match the event before
+writing or advancing the projection. Batch vector-bearing JSONL upserts as well
+as stale-document deletes: a complete transcript can carry enough 1,536-value
+vectors to exceed a safe request-body size even though its chunk count looks
+modest. Each import batch still needs exact response-line count and success
+validation, followed by independent document and normalized-vector readback
+over the complete chunk set.
+
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate
 eviction after rejection (`apps/admin/src/services/index.ts:101-133`). The

@@ -1215,6 +1215,107 @@ suite("current transcript publication into Watch Search", () => {
     ).rejects.toThrow()
   }, 180_000)
 
+  it("refuses to publish when durable event identity does not match the canonical transcript", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: { id: true, currentDocumentIds: true },
+        },
+      )
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.update({
+      where: { id: pendingEvent.id },
+      data: { videoId: "drifted-video-id" },
+    })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/identity does not match publication evidence/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        {
+          where: { id: pendingEvent.id },
+          select: { status: true, lastErrorCode: true, completedAt: true },
+        },
+      ),
+    ).toEqual({
+      status: "PENDING",
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+      completedAt: null,
+    })
+    await expect(
+      typesense.getDocument(
+        watchTranscriptCollectionSchema("fixture").name,
+        pendingEvent.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).rejects.toThrow()
+  }, 180_000)
+
+  it("refuses to publish canonical chunks whose denormalized identity drifted", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: { id: true, currentDocumentIds: true },
+        },
+      )
+    await prisma.videoTranscriptChunk.update({
+      where: { id: pendingEvent.currentDocumentIds[0]! },
+      data: { language: "fr" },
+    })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/chunk identity does not match publication evidence/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        {
+          where: { id: pendingEvent.id },
+          select: { status: true, lastErrorCode: true, completedAt: true },
+        },
+      ),
+    ).toEqual({
+      status: "PENDING",
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+      completedAt: null,
+    })
+    await expect(
+      typesense.getDocument(
+        watchTranscriptCollectionSchema("fixture").name,
+        pendingEvent.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
   it("publishes against the event contract even after the active contract pointer rotates", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
