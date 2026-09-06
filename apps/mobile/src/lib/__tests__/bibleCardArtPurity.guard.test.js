@@ -1,7 +1,7 @@
 // Plain JS (like datadogReservedAttributes.guard.test.js): the RN tsconfig has
 // no Node types, and this guard needs fs/path to scan source files.
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global describe, expect, it, require, __dirname */
+/* global describe, expect, it, require */
 const fs = require("fs")
 const path = require("path")
 
