@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
+import { deriveBibleCardArt, type BibleCardArt } from "../lib/bibleCardArt"
 import {
   clearPassageReadCooldown,
   isPassageReadSuppressed,
@@ -12,7 +13,7 @@ import {
 } from "../lib/biblePassages"
 import { formatCitationLabel } from "../lib/citationFormat"
 import { datadogLog } from "../lib/datadog"
-import type { WatchBibleCitation } from "../lib/normalizeVideo"
+import type { WatchBibleCitation, WatchVariant } from "../lib/normalizeVideo"
 import {
   GET_VIDEO_BIBLE_PASSAGES,
   type VideoBiblePassagesData,
@@ -24,6 +25,11 @@ const JOIN_BIBLE_STUDY_URL =
 const PROMO_IMAGE_URL =
   "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
 
+/**
+ * The ladder's LAST rung, not the source of card art. Keeps a video with
+ * neither a still nor authored art from rendering bare. Do not delete, and do
+ * not sync to `apps/tv`, which still cycles its own copy per citation.
+ */
 const BIBLE_IMAGES = [
   "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
   "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
@@ -44,11 +50,36 @@ const BIBLE_IMAGES = [
  */
 export const PASSAGE_FETCH_DEADLINE_MS = 8000
 
+/**
+ * The artwork hold's own release. A payload that never settles must not strand
+ * every card at its background colour for the session.
+ */
+export const ART_HOLD_RELEASE_MS = 8000
+
+/** What the derivation needs from the video, threaded in by the watch route. */
+export type BibleCardArtSource = {
+  variants: readonly WatchVariant[]
+  /** The video's own resolved card art, the ladder's middle rung. */
+  authoredImageUrl: string | null
+  /** The film's own language, matched EXACTLY by the dub pin. */
+  primaryLanguageCoreId: string | null
+  /** False while the watch query is still filling in from partial cached data. */
+  payloadSettled: boolean
+}
+
 export type BibleQuoteBlock = {
   reference: string
   text: string
   attribution: string | null
   imageUrl: string | null
+  /**
+   * Every validated tier for this card, best first. NAMED, not a passenger on
+   * the untyped block bag: the two sides meet through an index signature, so a
+   * field added on one alone typechecks clean and silently renders nothing.
+   */
+  artCandidates: string[]
+  /** Which candidate `imageUrl` came from; the index a load failure reports. */
+  artIndex: number
   backgroundColor: string | null
   ctaLabel: string | null
   ctaLink: string | null
@@ -64,11 +95,27 @@ export type BibleQuotesState = {
   cards: BibleQuoteBlock[]
   /** True until the passage read settles, on every path including failure. */
   loading: boolean
+  /**
+   * A card's artwork failed; advance it one rung. Owned HERE, not in the card:
+   * the carousel unmounts off-window cells, so card-local state would reset on
+   * scroll-back and re-request the URL that just failed, every time.
+   */
+  reportArtworkFailure: (cardIndex: number, failedUrl: string) => void
 }
 
 type PassageMap = ReadonlyMap<string, RenderableBiblePassage>
 
 const NO_PASSAGES: PassageMap = new Map()
+
+/** Stable identity so re-arming the per-video reset cannot loop a re-render. */
+const NO_ART_FAILURES: Record<string, true> = {}
+
+/** What a video with no Bible block resolves to, without pinning a dub. */
+const NO_CARD_ART = {
+  candidates: [] as string[][],
+  tier: "none",
+  hasPlaybackId: false,
+} as const satisfies BibleCardArt
 
 type ReadState =
   | { status: "idle" }
@@ -158,11 +205,15 @@ function readCachedPassages(slug: string): ReadState {
 export function useBibleVerses(
   slug: string,
   citations: WatchBibleCitation[],
+  art: BibleCardArtSource,
 ): BibleQuotesState {
   const [read, setRead] = useState<ReadState>(IDLE)
   // A superseded video's response must never land on the new one's cards.
   const requestIdRef = useRef(0)
   const hasCitations = citations.length > 0
+
+  const { variants, authoredImageUrl, primaryLanguageCoreId, payloadSettled } =
+    art
 
   useEffect(() => {
     const thisRequest = ++requestIdRef.current
@@ -256,18 +307,105 @@ export function useBibleVerses(
     }
   }, [slug, hasCitations])
 
+  // The hold's own release. Re-armed per video, and cleared on the way out so
+  // a StrictMode setup -> cleanup -> setup cycle re-arms rather than firing the
+  // previous video's timer against this one.
+  const [holdReleased, setHoldReleased] = useState(false)
+  useEffect(() => {
+    setHoldReleased(false)
+    // Memory hygiene, not behaviour — the keys are already slug-scoped. Up
+    // Next replaces the route params rather than remounting, so without this
+    // the map grows for every video watched in the session.
+    setArtFailures(NO_ART_FAILURES)
+    const timer = setTimeout(() => setHoldReleased(true), ART_HOLD_RELEASE_MS)
+    return () => clearTimeout(timer)
+  }, [slug])
+
+  // Gated on `hasCitations`: the derivation sorts the video's WHOLE dub list to
+  // pin one, and a video with no Bible block never reads the result. The JESUS
+  // film carries 2,281 published dubs, so this ran on every watch-screen open.
+  const cardArt = useMemo(
+    () =>
+      hasCitations
+        ? deriveBibleCardArt({
+            variants,
+            authoredImageUrl,
+            primaryLanguageCoreId,
+            citations,
+            stockImages: BIBLE_IMAGES,
+            payloadSettled: payloadSettled || holdReleased,
+          })
+        : NO_CARD_ART,
+    [
+      hasCitations,
+      variants,
+      authoredImageUrl,
+      primaryLanguageCoreId,
+      citations,
+      payloadSettled,
+      holdReleased,
+    ],
+  )
+
+  // Keyed by video AND citation position so an advance survives the cell
+  // unmounting; the keys are slug-scoped so one video's failures cannot move
+  // another video's cards.
+  const [artFailures, setArtFailures] =
+    useState<Record<string, true>>(NO_ART_FAILURES)
+  const reportArtworkFailure = useCallback(
+    (cardIndex: number, failedUrl: string) => {
+      setArtFailures((prev) => {
+        // Keyed by the URL that failed, not by its POSITION. A held card can
+        // paint stock, fail, and only then receive the settled payload — which
+        // prepends the still. A positional record would skip that new top rung.
+        const key = `${slug}:${cardIndex}:${failedUrl}`
+        if (prev[key]) return prev
+        return { ...prev, [key]: true }
+      })
+    },
+    [slug],
+  )
+
+  // One event per video per screen open — the derivation re-runs several times
+  // and cannot emit this without weighting the signal by render count. Suppressed
+  // while the payload holds, when the outcome is not yet a real one.
+  const loggedSlugRef = useRef<string | null>(null)
+  useEffect(() => {
+    // The REAL payload, not the hold's timed release: the released state
+    // resolves to stock and then flips to the still, so logging it reports a
+    // stock outcome for a video that ends on one — the alert's false positive.
+    if (!hasCitations || !payloadSettled) return
+    if (loggedSlugRef.current === slug) return
+    loggedSlugRef.current = slug
+    datadogLog.info("bible_card_art.resolved", {
+      tier: cardArt.tier,
+      slug,
+      citation_count: citations.length,
+      has_playback_id: cardArt.hasPlaybackId,
+    })
+  }, [slug, hasCitations, payloadSettled, cardArt, citations.length])
+
   const loading = read.status === "unsettled"
   const passages = read.status === "settled" ? read.passages : NO_PASSAGES
 
   return useMemo(() => {
     const cards: BibleQuoteBlock[] = citations.map((citation, index) => {
       const passage = passages.get(citation.documentId)
+      const artCandidates = cardArt.candidates[index] ?? []
+      // The best rung this card has not already failed. Resolved by URL, so a
+      // list that gains a higher tier after a republish is still tried.
+      const firstUsable = artCandidates.findIndex(
+        (url) => artFailures[`${slug}:${index}:${url}`] !== true,
+      )
+      const artIndex = firstUsable === -1 ? artCandidates.length : firstUsable
       return {
         // R10: a citation with no renderable passage keeps its own reference.
         reference: passage?.reference ?? formatCitationLabel(citation),
         text: passage?.content ?? "",
         attribution: null,
-        imageUrl: BIBLE_IMAGES[index % BIBLE_IMAGES.length] ?? null,
+        imageUrl: artCandidates[artIndex] ?? null,
+        artCandidates,
+        artIndex,
         backgroundColor: null,
         ctaLabel: null,
         ctaLink: null,
@@ -278,11 +416,16 @@ export function useBibleVerses(
       }
     })
 
+    // Built AFTER the citation map, never inside it: that is what keeps the
+    // promotional card out of the ladder, rather than an index check a later
+    // edit could break. Its empty candidate list is the second belt.
     cards.push({
       reference: "FREE RESOURCES",
       text: "Want to explore life's biggest questions?",
       attribution: null,
       imageUrl: PROMO_IMAGE_URL,
+      artCandidates: [],
+      artIndex: 0,
       backgroundColor: null,
       ctaLabel: "Join Our Bible Study",
       ctaLink: JOIN_BIBLE_STUDY_URL,
@@ -292,6 +435,14 @@ export function useBibleVerses(
       loading: false,
     })
 
-    return { cards, loading }
-  }, [citations, passages, loading])
+    return { cards, loading, reportArtworkFailure }
+  }, [
+    citations,
+    passages,
+    loading,
+    cardArt,
+    artFailures,
+    slug,
+    reportArtworkFailure,
+  ])
 }
