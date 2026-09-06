@@ -45,8 +45,14 @@ type StoredProjectionRow = {
   projectionRevision: bigint
 }
 
-type ProjectionReader = Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
-type ProjectionWriter = Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
+type ProjectionReader = Pick<
+  PrismaClient,
+  "watchSearchCurrentTranscriptProjection"
+>
+type ProjectionWriter = Pick<
+  PrismaClient,
+  "watchSearchCurrentTranscriptProjection"
+>
 
 type ProjectionFallbackReader = Pick<
   PrismaClient,
@@ -98,9 +104,8 @@ async function readStoredCurrentWatchSearchTranscriptProjection(
 export async function resolveCurrentWatchSearchTranscriptProjection(
   prisma: ProjectionReader,
 ): Promise<CurrentWatchSearchTranscriptProjection> {
-  const projection = await readStoredCurrentWatchSearchTranscriptProjection(
-    prisma,
-  )
+  const projection =
+    await readStoredCurrentWatchSearchTranscriptProjection(prisma)
   if (!projection) {
     throw new WatchSearchCurrentTranscriptProjectionError(
       "current transcript projection is missing",
@@ -129,7 +134,8 @@ export async function advanceCurrentWatchSearchTranscriptProjection(
         input.transcriptChunkingVersion,
         "current transcript chunking version",
       ),
-      projectionRevision: initialCurrentWatchSearchTranscriptProjectionRevision(),
+      projectionRevision:
+        initialCurrentWatchSearchTranscriptProjectionRevision(),
       version: 1,
     },
     update: {
@@ -152,17 +158,15 @@ export async function advanceCurrentWatchSearchTranscriptProjection(
   return normalizeStoredProjection(row)
 }
 
-export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(
-  input: {
-    prisma: ProjectionFallbackReader
-    currentProfile?: {
-      binding: {
-        transcript: string
-      }
+export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(input: {
+  prisma: ProjectionFallbackReader
+  currentProfile?: {
+    binding: {
+      transcript: string
     }
-    typesense?: AliasReader
-  },
-): Promise<CurrentWatchSearchTranscriptProjection> {
+  }
+  typesense?: AliasReader
+}): Promise<CurrentWatchSearchTranscriptProjection> {
   const stored = await readStoredCurrentWatchSearchTranscriptProjection(
     input.prisma,
   )
@@ -170,12 +174,10 @@ export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(
 
   const transcriptCollection =
     input.currentProfile?.binding.transcript ??
-    (
-      input.typesense
-        ? (await freezeCurrentWatchSearchProfile(input.typesense)).binding
-            .transcript
-        : null
-    )
+    (input.typesense
+      ? (await freezeCurrentWatchSearchProfile(input.typesense)).binding
+          .transcript
+      : null)
   if (!transcriptCollection) {
     throw new WatchSearchCurrentTranscriptProjectionError(
       "current transcript projection is missing",
@@ -190,8 +192,9 @@ export async function resolveCurrentWatchSearchTranscriptProjectionWithFallback(
     )
   }
 
-  const compatibility =
-    await resolveCurrentWatchSearchTranscriptCompatibility(input.prisma)
+  const compatibility = await resolveCurrentWatchSearchTranscriptCompatibility(
+    input.prisma,
+  )
   return Object.freeze({
     transcriptCollection: requiredString(
       transcriptCollection,

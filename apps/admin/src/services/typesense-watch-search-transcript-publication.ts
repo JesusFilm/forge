@@ -480,13 +480,10 @@ async function readBackTranscriptDocuments(
   collection: string,
   ids: readonly string[],
 ): Promise<TypesenseWatchTranscriptDocument[]> {
-  const rows = await mapWithConcurrency(
-    ids,
-    READBACK_CONCURRENCY,
-    (id) =>
-      typesense.getDocument<
-        TypesenseWatchTranscriptDocument & { embedding?: unknown }
-      >(collection, id),
+  const rows = await mapWithConcurrency(ids, READBACK_CONCURRENCY, (id) =>
+    typesense.getDocument<
+      TypesenseWatchTranscriptDocument & { embedding?: unknown }
+    >(collection, id),
   )
   return rows.map((row, index) => {
     if (!row) {
@@ -506,10 +503,8 @@ async function assertStaleDocumentsRemoved(
   collection: string,
   ids: readonly string[],
 ): Promise<void> {
-  const rows = await mapWithConcurrency(
-    ids,
-    READBACK_CONCURRENCY,
-    (id) => typesense.getDocument(collection, id),
+  const rows = await mapWithConcurrency(ids, READBACK_CONCURRENCY, (id) =>
+    typesense.getDocument(collection, id),
   )
   const present = rows.findIndex((row) => row != null)
   if (present !== -1) {

@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
 import type { TypesenseClient } from "./typesense-client"
 import {
   buildAvailabilityDocuments,
@@ -37,6 +41,44 @@ function viewerSafeVideo(title: string) {
     images: [],
     children: [],
   }
+}
+
+function rawSqlText(query: unknown): string {
+  return Array.isArray(query)
+    ? query.join(" ")
+    : ((query as { strings?: string[] }).strings?.join(" ") ?? "")
+}
+
+function transcriptCompatibilityQueryResult(
+  query: unknown,
+): unknown[] | undefined {
+  const sql = rawSqlText(query)
+  if (
+    sql.includes("FROM content_embedding_contract_pointer") &&
+    sql.includes('AS "contractId"')
+  ) {
+    const contract = ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED
+    return [
+      {
+        pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+        contractId: contract.id,
+        queryProvider: contract.query.provider,
+        queryModel: contract.query.model,
+        queryNativeDimensions: contract.query.nativeDimensions,
+        queryDimensions: contract.query.dimensions,
+        queryTransformVersion: contract.query.transformVersion,
+        storageProvider: contract.storage.provider,
+        storageModel: contract.storage.model,
+        storageNativeDimensions: contract.storage.nativeDimensions,
+        storageDimensions: contract.storage.dimensions,
+        storageTransformVersion: contract.storage.transformVersion,
+      },
+    ]
+  }
+  if (sql.includes('AS "chunkingVersion"')) {
+    return [{ chunkingVersion: "test-transcript-chunking-v1" }]
+  }
+  return undefined
 }
 
 describe("Typesense Watch Search indexer", () => {
@@ -390,7 +432,9 @@ describe("Typesense Watch Search indexer", () => {
     // silently feeds transcript rows to whichever query happens to land second.
     let transcriptBatchesServed = 0
     const queryRaw = vi.fn(async (query: unknown) => {
-      const sql = (query as { strings?: string[] }).strings?.join(" ") ?? ""
+      const sql = rawSqlText(query)
+      const compatibility = transcriptCompatibilityQueryResult(query)
+      if (compatibility) return compatibility
       if (!sql.includes('AS "publiclyVisible"')) return []
       // Serve the corpus once; the transcript loader pages until a short batch.
       if (transcriptBatchesServed > 0) return []
@@ -442,6 +486,9 @@ describe("Typesense Watch Search indexer", () => {
         ]),
       },
       $queryRaw: queryRaw,
+      watchSearchCurrentTranscriptProjection: {
+        upsert: vi.fn(async ({ create }) => create),
+      },
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => []),
@@ -460,9 +507,7 @@ describe("Typesense Watch Search indexer", () => {
     // Matched by content, not call index: buildCatalogDocuments issues several
     // raw queries (subtitle rows, container descendant languages) before the
     // transcript batch, and their order is not this assertion's contract.
-    const rawSql = queryRaw.mock.calls.map((call) =>
-      (call[0] as unknown as { strings: string[] }).strings.join(" "),
-    )
+    const rawSql = queryRaw.mock.calls.map((call) => rawSqlText(call[0]))
     const transcriptSql = rawSql.find((sql) =>
       sql.includes('AS "publiclyVisible"'),
     )
@@ -813,7 +858,13 @@ describe("Typesense Watch Search indexer", () => {
   it("rebuilds transcripts when explicitly requested", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
-      $queryRaw: vi.fn(async () => []),
+      $queryRaw: vi.fn(
+        async (query: unknown) =>
+          transcriptCompatibilityQueryResult(query) ?? [],
+      ),
+      watchSearchCurrentTranscriptProjection: {
+        upsert: vi.fn(async ({ create }) => create),
+      },
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => [

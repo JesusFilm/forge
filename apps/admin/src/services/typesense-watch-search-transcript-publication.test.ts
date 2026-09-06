@@ -108,17 +108,15 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
       transcriptProjectionRevision: 7n,
     })
 
-    const { _internals } = await import(
-      "./typesense-watch-search-transcript-publication"
-    )
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
 
     expect(_internals.initialProjectionRevision()).toBe(8n)
   })
 
   it("sizes the publication lease to the transcript batch and caps it", async () => {
-    const { _internals } = await import(
-      "./typesense-watch-search-transcript-publication"
-    )
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
 
     expect(
       _internals.publicationLeaseMs({
@@ -135,9 +133,8 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
   })
 
   it("bounds per-document readback concurrency", async () => {
-    const { _internals } = await import(
-      "./typesense-watch-search-transcript-publication"
-    )
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
     let inFlight = 0
     let peakInFlight = 0
 

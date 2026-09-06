@@ -158,9 +158,9 @@ describe("TypesenseClient", () => {
   })
 
   it("rejects a mismatched Typesense import line count", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ success: true })),
-    )
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ success: true })))
     const client = new TypesenseClient({
       host: "http://localhost:8108",
       apiKey: "test-key",

@@ -60,7 +60,9 @@ describe("current Watch Search transcript projection", () => {
       transcriptChunkingVersion: "mastra-v2",
       projectionRevision: 23n,
     })
-    expect(resolveCurrentWatchSearchTranscriptCompatibility).not.toHaveBeenCalled()
+    expect(
+      resolveCurrentWatchSearchTranscriptCompatibility,
+    ).not.toHaveBeenCalled()
   })
 
   it("falls back to the current alias, exact compatibility, and runtime revision before the row exists", async () => {
@@ -83,9 +85,9 @@ describe("current Watch Search transcript projection", () => {
     })
     expect(findUnique).toHaveBeenCalledOnce()
     expect(freezeCurrentWatchSearchProfile).toHaveBeenCalledOnce()
-    expect(resolveCurrentWatchSearchTranscriptCompatibility).toHaveBeenCalledWith(
-      prisma,
-    )
+    expect(
+      resolveCurrentWatchSearchTranscriptCompatibility,
+    ).toHaveBeenCalledWith(prisma)
   })
 
   it("fails closed when neither a stored row nor a runtime revision exists", async () => {
@@ -110,6 +112,8 @@ describe("current Watch Search transcript projection", () => {
         },
       }),
     ).rejects.toBeInstanceOf(WatchSearchCurrentTranscriptProjectionError)
-    expect(resolveCurrentWatchSearchTranscriptCompatibility).not.toHaveBeenCalled()
+    expect(
+      resolveCurrentWatchSearchTranscriptCompatibility,
+    ).not.toHaveBeenCalled()
   })
 })

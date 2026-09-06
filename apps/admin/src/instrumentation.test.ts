@@ -234,9 +234,9 @@ describe("workflow instrumentation", () => {
     expect(
       ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).toHaveBeenCalledTimes(1)
-    expect(ensureWatchSearchTranscriptPublicationWorkerStarted).toHaveBeenCalledWith(
-      prisma,
-    )
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledWith(prisma)
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)

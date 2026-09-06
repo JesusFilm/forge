@@ -1,11 +1,16 @@
 import { execFileSync } from "node:child_process"
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http"
 import { fileURLToPath } from "node:url"
 
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED,
   CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
 } from "@/services/content-embedding-contract"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
@@ -199,7 +204,10 @@ class ControlledTypesenseServer {
     })
   }
 
-  private cosineSimilarity(left: readonly number[], right: readonly number[]): number {
+  private cosineSimilarity(
+    left: readonly number[],
+    right: readonly number[],
+  ): number {
     let dot = 0
     let leftMagnitude = 0
     let rightMagnitude = 0
@@ -219,11 +227,13 @@ class ControlledTypesenseServer {
     k: number
     distanceThreshold: number | null
   } | null {
-    const raw = typeof request.vector_query === "string" ? request.vector_query : null
+    const raw =
+      typeof request.vector_query === "string" ? request.vector_query : null
     if (!raw) return null
-    const match = /^embedding:\(\[([^\]]*)\], k:(\d+)(?:, distance_threshold:([0-9.]+))?\)$/.exec(
-      raw,
-    )
+    const match =
+      /^embedding:\(\[([^\]]*)\], k:(\d+)(?:, distance_threshold:([0-9.]+))?\)$/.exec(
+        raw,
+      )
     if (!match) return null
     return {
       embedding: match[1]!.split(",").map(Number),
@@ -288,7 +298,11 @@ class ControlledTypesenseServer {
             document,
             vector_distance:
               vector && Array.isArray(document.embedding)
-                ? 1 - this.cosineSimilarity(vector.embedding, document.embedding as number[])
+                ? 1 -
+                  this.cosineSimilarity(
+                    vector.embedding,
+                    document.embedding as number[],
+                  )
                 : undefined,
           })),
         })),
@@ -311,7 +325,9 @@ class ControlledTypesenseServer {
     const pathname = url.pathname
 
     if (request.method === "POST" && pathname === "/collections") {
-      const schema = JSON.parse(await this.readBody(request)) as StoredCollection["schema"]
+      const schema = JSON.parse(
+        await this.readBody(request),
+      ) as StoredCollection["schema"]
       this.collections.set(schema.name, { schema, documents: new Map() })
       this.json(response, schema)
       return
@@ -341,8 +357,14 @@ class ControlledTypesenseServer {
         })
         return
       }
-      if (parts[2] === "documents" && parts.length === 4 && request.method === "GET") {
-        const document = collection.documents.get(decodeURIComponent(parts[3] ?? ""))
+      if (
+        parts[2] === "documents" &&
+        parts.length === 4 &&
+        request.method === "GET"
+      ) {
+        const document = collection.documents.get(
+          decodeURIComponent(parts[3] ?? ""),
+        )
         if (!document) {
           response.statusCode = 404
           response.end()
@@ -367,7 +389,8 @@ class ControlledTypesenseServer {
           this.json(response, { num_deleted: 0 })
           return
         }
-        const ids = this.exactList(url.searchParams.get("filter_by"), "id") ?? []
+        const ids =
+          this.exactList(url.searchParams.get("filter_by"), "id") ?? []
         let deleted = 0
         for (const id of ids) {
           if (collection.documents.delete(id)) deleted += 1
@@ -382,9 +405,15 @@ class ControlledTypesenseServer {
       pathname.endsWith("/documents/import")
     ) {
       const parts = pathname.split("/").filter(Boolean)
-      const collection = this.resolveCollection(decodeURIComponent(parts[1] ?? ""))
+      const collection = this.resolveCollection(
+        decodeURIComponent(parts[1] ?? ""),
+      )
       if (!collection) {
-        this.text(response, JSON.stringify({ success: false, error: "missing collection" }), 404)
+        this.text(
+          response,
+          JSON.stringify({ success: false, error: "missing collection" }),
+          404,
+        )
         return
       }
       const body = await this.readBody(request)
@@ -405,7 +434,10 @@ class ControlledTypesenseServer {
         collection_name: string
       }
       this.aliases.set(alias, body.collection_name)
-      this.json(response, { name: alias, collection_name: body.collection_name })
+      this.json(response, {
+        name: alias,
+        collection_name: body.collection_name,
+      })
       return
     }
     if (request.method === "GET" && pathname.startsWith("/aliases/")) {
@@ -446,7 +478,8 @@ class ControlledTypesenseServer {
   }
 }
 
-const suite = !RUN_REAL_DB_TEST || !hasRealDatabaseUrl ? describe.skip : describe
+const suite =
+  !RUN_REAL_DB_TEST || !hasRealDatabaseUrl ? describe.skip : describe
 
 suite("current transcript publication into Watch Search", () => {
   const databaseName = `watch_search_transcript_publication_${Date.now()}_${Math.random()
@@ -472,7 +505,9 @@ suite("current transcript publication into Watch Search", () => {
       env: { ...process.env, DATABASE_URL: databaseUrl },
       stdio: "pipe",
     })
-    prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } })
+    prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
+    })
     await typesenseServer.start()
     typesense = new TypesenseClient({
       host: typesenseServer.url,
@@ -565,10 +600,12 @@ suite("current transcript publication into Watch Search", () => {
         queryModel: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.model,
         queryNativeDimensions:
           ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.nativeDimensions,
-        queryDimensions: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.dimensions,
+        queryDimensions:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.dimensions,
         queryTransformVersion:
           ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.transformVersion,
-        storageProvider: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.provider,
+        storageProvider:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.provider,
         storageModel: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.model,
         storageNativeDimensions:
           ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.storage.nativeDimensions,
@@ -593,12 +630,18 @@ suite("current transcript publication into Watch Search", () => {
     await typesense.createCollection(availabilitySchema)
     await typesense.createCollection(lexicalSchema)
     await typesense.createCollection(transcriptSchema)
-    await typesense.upsertAlias(TYPESENSE_WATCH_CATALOG_ALIAS, catalogSchema.name)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_CATALOG_ALIAS,
+      catalogSchema.name,
+    )
     await typesense.upsertAlias(
       TYPESENSE_WATCH_AVAILABILITY_ALIAS,
       availabilitySchema.name,
     )
-    await typesense.upsertAlias(TYPESENSE_WATCH_LEXICAL_ALIAS, lexicalSchema.name)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
+      lexicalSchema.name,
+    )
     await typesense.upsertAlias(
       TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
       transcriptSchema.name,
@@ -654,7 +697,11 @@ suite("current transcript publication into Watch Search", () => {
       actionVideoDubId: "dub-1",
       actionPriority: 0,
     }
-    await typesense.importDocuments(catalogSchema.name, [catalogDocument], "upsert")
+    await typesense.importDocuments(
+      catalogSchema.name,
+      [catalogDocument],
+      "upsert",
+    )
     await typesense.importDocuments(
       availabilitySchema.name,
       [availabilityDocument],
@@ -668,24 +715,30 @@ suite("current transcript publication into Watch Search", () => {
       await typesenseServer.stop()
     }
     if (databaseReady && pgClient) {
-      await pgClient.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`)
+      await pgClient.query(
+        `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
+      )
       await pgClient.end()
     }
   })
 
-  function payload(overrides: {
-    mode?: "idempotent" | "force"
-    chunkingVersion?: string
-    chunks?: Array<{ text: string; embedding: number[]; tokenCount: number }>
-    mastraRunId?: string
-    generatedAt?: string
-  } = {}) {
-    const chunks =
-      overrides.chunks ??
-      [
-        { text: "Hope and fellowship", embedding, tokenCount: 3 },
-        { text: "Stale tail chunk", embedding: makeEmbedding(0.5), tokenCount: 3 },
-      ]
+  function payload(
+    overrides: {
+      mode?: "idempotent" | "force"
+      chunkingVersion?: string
+      chunks?: Array<{ text: string; embedding: number[]; tokenCount: number }>
+      mastraRunId?: string
+      generatedAt?: string
+    } = {},
+  ) {
+    const chunks = overrides.chunks ?? [
+      { text: "Hope and fellowship", embedding, tokenCount: 3 },
+      {
+        text: "Stale tail chunk",
+        embedding: makeEmbedding(0.5),
+        tokenCount: 3,
+      },
+    ]
     const value = {
       target: {
         admin: {
@@ -761,9 +814,11 @@ suite("current transcript publication into Watch Search", () => {
     })
     expect(firstTranscript.sourceGeneration).toBe(1n)
     const firstEvent =
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        orderBy: { sourceGeneration: "asc" },
-      })
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          orderBy: { sourceGeneration: "asc" },
+        },
+      )
     expect(firstEvent.sourceGeneration).toBe(1n)
     expect(firstEvent.currentDocumentIds).toHaveLength(2)
     expect(firstEvent.staleDocumentIds).toEqual([])
@@ -778,10 +833,11 @@ suite("current transcript publication into Watch Search", () => {
       }),
     )
     expect(replaced.status).toBe("forced")
-    const transcriptAfterReplace = await prisma.videoTranscript.findUniqueOrThrow({
-      where: { id: firstTranscript.id },
-      select: { sourceGeneration: true },
-    })
+    const transcriptAfterReplace =
+      await prisma.videoTranscript.findUniqueOrThrow({
+        where: { id: firstTranscript.id },
+        select: { sourceGeneration: true },
+      })
     expect(transcriptAfterReplace.sourceGeneration).toBe(2n)
     const events =
       await prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
@@ -790,7 +846,9 @@ suite("current transcript publication into Watch Search", () => {
     expect(events).toHaveLength(2)
     expect(events[1]?.sourceGeneration).toBe(2n)
     expect(events[1]?.currentDocumentIds).toHaveLength(1)
-    expect(events[1]?.staleDocumentIds).toEqual([events[0]!.currentDocumentIds[1]!])
+    expect(events[1]?.staleDocumentIds).toEqual([
+      events[0]!.currentDocumentIds[1]!,
+    ])
 
     const unchanged = await ingestTranscriptEmbeddings(
       prisma,
@@ -882,11 +940,10 @@ suite("current transcript publication into Watch Search", () => {
       projectionRevision: 1n,
       documentCount: 1,
     })
-    const projection = await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow(
-      {
+    const projection =
+      await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
         where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
-      },
-    )
+      })
     expect(projection.projectionRevision).toBe(1n)
     expect(
       await prisma.watchSearchCurrentTranscriptPublicationEvent.count({
@@ -895,9 +952,11 @@ suite("current transcript publication into Watch Search", () => {
     ).toBe(2)
 
     const currentEvent =
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        where: { sourceGeneration: 2n },
-      })
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 2n },
+        },
+      )
     const currentDoc = await typesense.getDocument<{
       id: string
       embedding: number[]
@@ -965,11 +1024,10 @@ suite("current transcript publication into Watch Search", () => {
       "watch_search_transcripts_rebuild-2",
     )
 
-    const projection = await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow(
-      {
+    const projection =
+      await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
         where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
-      },
-    )
+      })
     expect(projection).toMatchObject({
       transcriptCollection: "watch_search_transcripts_rebuild-2",
       contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
@@ -990,10 +1048,12 @@ suite("current transcript publication into Watch Search", () => {
     )
 
     const pendingEvent =
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        where: { sourceGeneration: 1n },
-        select: { currentDocumentIds: true },
-      })
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: { currentDocumentIds: true },
+        },
+      )
     await prisma.videoTranscriptChunk.delete({
       where: { id: pendingEvent.currentDocumentIds[1]! },
     })
@@ -1009,13 +1069,15 @@ suite("current transcript publication into Watch Search", () => {
     ).rejects.toThrow(/chunk count .* batch evidence/i)
 
     expect(
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        where: { sourceGeneration: 1n },
-        select: {
-          status: true,
-          lastErrorCode: true,
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: {
+            status: true,
+            lastErrorCode: true,
+          },
         },
-      }),
+      ),
     ).toMatchObject({
       status: "PENDING",
       lastErrorCode: "WatchSearchTranscriptPublicationError",
@@ -1040,7 +1102,8 @@ suite("current transcript publication into Watch Search", () => {
         queryModel: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.model,
         queryNativeDimensions:
           ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.nativeDimensions,
-        queryDimensions: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.dimensions,
+        queryDimensions:
+          ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.dimensions,
         queryTransformVersion:
           ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.query.transformVersion,
         storageProvider: "alternate-provider",
@@ -1101,10 +1164,12 @@ suite("current transcript publication into Watch Search", () => {
     ).rejects.toThrow("simulated publication failure")
 
     expect(
-      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-        where: { sourceGeneration: 1n },
-        select: { status: true, nextAttemptAt: true },
-      }),
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+          select: { status: true, nextAttemptAt: true },
+        },
+      ),
     ).toMatchObject({
       status: "PENDING",
       nextAttemptAt: expect.any(Date),
@@ -1254,10 +1319,12 @@ suite("current transcript publication into Watch Search", () => {
       ).rejects.toThrow(/index release is already running/i)
 
       expect(
-        await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
-          where: { sourceGeneration: 1n },
-          select: { status: true, lastErrorCode: true, attemptCount: true },
-        }),
+        await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+          {
+            where: { sourceGeneration: 1n },
+            select: { status: true, lastErrorCode: true, attemptCount: true },
+          },
+        ),
       ).toMatchObject({
         status: "PENDING",
         lastErrorCode: "Error",
