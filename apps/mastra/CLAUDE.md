@@ -144,7 +144,8 @@ Origin documents:
   validates explicit `/forge-*` service routes against
   `MASTRA_SERVICE_API_KEYS`; Studio's built-in `/api/workflows` routes must
   remain reachable by the Mastra runtime. Exception: the ai-chat lane —
-  `/forge-ai-chat-history-*` (feat-241) and `/forge-seeker` (feat-250)
+  `/forge-ai-chat-history-*` (the feat-241 read routes and the feat-450
+  rename write route) and `/forge-seeker` (feat-250)
   validate only the dedicated `AI_CHAT_SERVICE_API_KEYS` CSV, sourced inside
   the shared lane admission module (`src/mastra/ai-chat-lane-admission.ts`,
   feat-283), so pool keys never reach conversation data.
@@ -206,9 +207,9 @@ of the defaults and validation contract.
 | `DEVOTIONAL_APPROVAL_API_KEYS`               | Dedicated CSV bearer allowlist for the human devotional resume/publish lane. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from `MASTRA_SERVICE_API_KEYS`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `DEVOTIONAL_PLAYBACK_API_KEYS`               | Dedicated CSV bearer allowlist for read-only devotional status and authenticated Range playback. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from both mutation key sets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `DEVOTIONAL_NEW_RUNS_ENABLED`                | Release-attested exception gate. Defaults to `false`; set exactly `true` only after every exception invariant is verified. `false` rejects canonical starts and retries while status, playback, approval, and cancel remain available.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat lane: the history read routes (`/forge-ai-chat-history-*`, feat-241) and `/forge-seeker` sends (feat-250 — the only bearer that route accepts). Read ONLY inside the shared lane admission module (`src/mastra/ai-chat-lane-admission.ts`, feat-283) — no route registration threads a key list, and the discriminating key-source test in `ai-chat-lane-admission.test.ts` pins the default source. Deliberately NOT the shared pool above, so embedding/eval pool keys never reach conversation data. Optional, **no default** — unset = empty allowlist = the lane routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key.                                                                                                                                                                                                                                                                                                                                                                                                |
+| `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat lane: the history read routes (`/forge-ai-chat-history-list` + `-replay`, feat-241), the history rename write route (`/forge-ai-chat-history-rename`, feat-450), and `/forge-seeker` sends (feat-250 — the only bearer that route accepts). Read ONLY inside the shared lane admission module (`src/mastra/ai-chat-lane-admission.ts`, feat-283) — no route registration threads a key list, and the discriminating key-source test in `ai-chat-lane-admission.test.ts` pins the default source. Deliberately NOT the shared pool above, so embedding/eval pool keys never reach conversation data. Optional, **no default** — unset = empty allowlist = the lane routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key.                                                                                                                                                                                                                                                                                                    |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot. Reused as the whole ai-chat lane's kill switch: flipping it off also darkens the history read routes (feat-241), the history rename write route (feat-450 — no dedicated lever; see "ai-chat history write surface"), and the title-repair sweep (feat-405).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `SEEKER_VIDEO_ENABLED`                       | Default-off gate for the seeker's video capability: since feat-330 it gates the `searchVideos` + `featureVideo` **tools only** — and, through them, the optional `video` field on the `/forge-seeker` terminal `result` frame. It no longer touches the prompt: the video-featuring guidance is durable content in the Langfuse-managed `seeker-system` prompt and in `SEEKER_SYSTEM_PROMPT_FALLBACK`, served in BOTH flag states, phrased tool-conditionally so flag-off degrades to "I can't look up a video right now". Optional, **no default** — unset means the resolved tool set and per-turn behavior match the pre-feat-327 agent (two deliberate exceptions: the global tool-registry footprint, see Containment; and the resolved prompt, which now always carries the guidance) (`"false"`/any other value = disabled; repo string-boolean convention). Never required at boot. Turning it ON is what arms the two credentialed tools on the code-unauthenticated `/api/agents/seekerAgent` surface — see Containment. Depends on the `ADMIN_AGENT_TOOLS_URL`/`ADMIN_AGENT_TOOLS_API_KEY` pair (documented under "Experience draft & chat generation" further below) being provisioned; unprovisioned, searches degrade to empty results and no video is ever featured. |
 | `SEEKER_FOLLOWUPS_ENABLED`                   | Default-off gate for the seeker's suggested follow-up questions (feat-366, plan `docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md`). Gates the WRITE side only: post-hoc generation after the answer stream, the optional `followUps` field on the `/forge-seeker` terminal `result` frame, and the `content.metadata.seekerFollowUps` persist. Replay of already-stored questions is deliberately NOT gated (KD1 — mirrors the settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling); retraction levers in order: this flag off → `SEEKER_ROUTE_ENABLED` off → thread purge. Optional, **no default** — only the literal `"true"` enables (repo string-boolean convention; `"false"`, unset, and every retired prototype `SEEKER_FOLLOWUPS_MODE` value = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES`       | Byte-cap on the buffered admin agent-tools response body (feat-327; the 200-path read is the only buffering read on that client). Streamed byte counter aborts the stream past the cap → the existing `parse_error` → empty-result path. Optional, runtime default `2097152` (2 MiB — a POLICY ceiling, ~4x a plausible 20-row worst case at 3 bytes/UTF-16 unit; admin truncates neither `snippet` nor `title`, so no upstream invariant bounds the true worst case), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -1355,6 +1356,8 @@ look, then send B — or send A now, which is true regardless.
 (handlers: `src/mastra/ai-chat-history-route.ts`) — the bearer-gated read path
 for persisted seeker conversations, consumed by chat's `/api/history/*`
 proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.md`.
+The lane's one WRITE route (rename, feat-450) sits beside these in its own
+module — see "ai-chat history write surface" below.
 
 - **Gate ladder (KTD2):** the shared lane admission preamble
   (`refuseUnlessLaneAdmitted`, `src/mastra/ai-chat-lane-admission.ts`,
@@ -1462,6 +1465,100 @@ toolName, result } }`) is a pinned dist fact — **re-verify on `@mastra/*`
     separate-tool-message fixture.
 - Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
   never thread ids, titles, transcript text, or exception text (KTD13).
+
+### ai-chat history write surface: rename (feat-450)
+
+`POST /forge-ai-chat-history-rename` (handler:
+`src/mastra/ai-chat-history-write-route.ts`, a sibling of the read module —
+the one write path stays reviewable on its own) sets an owned thread's title
+without touching `updatedAt`. Consumed by chat's `/api/history/rename` proxy.
+Plan: `docs/plans/2026-09-02-0245-feat-chat-conversation-rename-plan.md`.
+
+- **Gate ladder (plan KTD2):** the same shared lane admission preamble as the
+  read routes (`SEEKER_ROUTE_ENABLED` → 404, the DEDICATED
+  `AI_CHAT_SERVICE_API_KEYS` lane bearer → 401; no seams at the `index.ts`
+  registration — the isolation suite's `laneRoutes` list pins it) → body
+  guard (`{ resourceId, threadId, title }`; `threadId` ≤200 units, raw `title`
+  ≤1,024 UTF-16 units, else 400 `invalid_body`) → `user:`-prefix refusal
+  (403 `resource_forbidden`; `anon:*` and the dogfood fallback never rename)
+  → backend gate → ownership → clamp → the guarded UPDATE, every store await
+  under `TIME_BUDGET_MS.historyRead` (8s, strictly below the chat proxy's
+  window). Refusal vocabulary past admission: 400 `invalid_body` |
+  `invalid_title`, 403 `resource_forbidden` | `thread_forbidden`, 404
+  `thread_not_found`, 503 `writes_disabled`, 500 `store_failed`, 504
+  `timeout`; success is `{ ok: true, title }` with the CLAMPED title.
+- **Backend gate (KTD4):** before ANY Memory or pool construction the route
+  checks `resolveAiChatMemoryBackend() === "postgres"`, else 503
+  `writes_disabled` — the `AI_CHAT_MEMORY_BACKEND=memory` kill-switch reverts
+  writes, and a title is user-authored content landing in Postgres. Ownership
+  then resolves via `resolveOwnedExistingThread` (feat-284) over a
+  module-cached Memory built DIRECTLY on `getAiChatStorage()` (the
+  retention/erasure construction) — never `getAiChatMemory()`, whose backend
+  the kill-switch swaps for an InMemoryStore (a lookup there would answer a
+  false `thread_not_found`). The pool's connection string comes from the same
+  `getMastraDatabaseUrl()` resolver the store uses, so read and write cannot
+  target different databases. Deliberately NOT title-repair's explicit
+  `env.DATABASE_URL` refusal: that protects a scheduled bulk job from a
+  wrong-database target, while this route's target is by definition the store
+  the listing just served the row from.
+- **`updatedAt` preserved (KTD3, R12):** the write is guarded direct SQL —
+  `UPDATE ai_chat.mastra_threads SET title = $1 WHERE id = $2 AND
+"resourceId" = $3` — because `updateThread` AND `saveThread` in the
+  installed `@mastra/pg` unconditionally SET `updatedAt`, which would move the
+  renamed row to the top of the rail (the list route orders `updatedAt DESC`)
+  and reset the 25-day retention clock; `updateThread` also carries no
+  resource predicate. The `"resourceId" = $3` exact-equality predicate inside
+  the UPDATE is the blast-radius bound by construction. `rowCount === 0` after
+  the resolver passed (the thread vanished in the race) is 404
+  `thread_not_found`. The SET-clause omission holds only because `@mastra/pg`
+  installs its `trigger_set_timestamps` trigger for `TABLE_SPANS` alone, never
+  `mastra_threads` — a pinned dist fact (re-verified 2026-09-06, `@mastra/pg`
+  1.22.3) guarded by the dist-pin test in
+  `ai-chat-history-write-route.test.ts`, which fails on any `@mastra/*` bump
+  that widens the gate. **Re-verify on every `@mastra/*` bump.**
+- **Clamp (R11):** the shared `ai-chat-title-clamp.ts` bound (120 UTF-16
+  units, control + invisible-format characters stripped, whitespace
+  collapsed) applies before the write; whenever the clamp returns `""` —
+  whatever the raw input — the route answers 400 `invalid_title` and runs no
+  SQL (an empty stored title would drop the thread back into the titling and
+  repair path). The response echoes the clamped value so the client adopts
+  exactly what was stored.
+- **Pool:** module-scoped and lazy, `max: 2`, `allowExitOnIdle`, with connect
+  (2s) / query (5s) / statement (5s) timeouts all strictly below the 8s route
+  budget (`settleWithinBudget` races without aborting the inner query, so
+  the pool's own ceilings are what release the connection). Counted in the
+  pool census in `ai-chat-memory.ts`'s header (~36 total).
+- **Retraction:** no dedicated lever, by design (plan R14 — no new env
+  flag). `SEEKER_ROUTE_ENABLED=false` darkens rename with the rest of the
+  lane. `AI_CHAT_MEMORY_BACKEND=memory` refuses rename writes (503
+  `writes_disabled`) — but it is NOT a rename-scoped lever: the read routes
+  and the send path resolve through `getAiChatMemory()`, which the same flag
+  swaps to an empty `InMemoryStore`, so listing, replay, and new turns all
+  leave Postgres with it (every sidebar goes blank while the rows stay
+  untouched). Only rename resolves ownership over the persisted store
+  directly, which is why it can answer an honest 503 instead of a false
+  `thread_not_found`.
+- **Write-leg indeterminacy:** `settleWithinBudget` races without aborting
+  the inner query and one 8s signal spans the ownership read AND the UPDATE,
+  so a slow read can leave the budget firing while the UPDATE is still in
+  flight and commits. A 504 `timeout` or 500 `store_failed` on this route
+  therefore does NOT mean the title was not stored. The write is idempotent
+  (retry is always safe); the chat client keeps the previous title in the
+  editor and re-hydrates the row on its next page fetch rather than
+  asserting the old title survived.
+- **Real-database round trip:** opt-in smoke
+  `ai-chat-history-write-route.smoke.test.ts` (`AI_CHAT_RENAME_SMOKE_TEST=1`
+  - a throwaway `DATABASE_URL`, refusing Railway hosts and non-disposable
+    names) proves every non-title column of the row — `updatedAt` and
+    `updatedAtZ` included — is byte-identical after a rename, that
+    `mastra_threads` carries no user trigger after the store's DDL, and the
+    AE3 clamp on a 3-byte script. Re-verified 2026-09-06: all three tests
+    passed against a disposable PostgreSQL 16.15 database with `@mastra/pg`
+    1.22.3, `@mastra/core` 1.64.0, and `@mastra/memory` 1.28.2. Out of CI;
+    run it by hand on a `@mastra/*` bump.
+- Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
+  never a title, thread id, resource id, or exception text (R15); a
+  captured-console test covers every branch.
 
 ### ai-chat title-repair sweep (feat-405, `title-repair` workflow)
 

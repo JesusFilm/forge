@@ -1,6 +1,6 @@
 /**
  * Shared ai-chat thread-title clamp (feat-405, KTD9). ONE home for the bound
- * both title choke points apply, so the two cannot drift:
+ * every title choke point applies, so they cannot drift:
  *
  *   - the list projection in `ai-chat-history-route.ts` (`projectThreadRow`)
  *     clamps every title crossing the list wire — covering BOTH writers
@@ -11,7 +11,13 @@
  *     sidebar with a 502 rather than one row;
  *   - the title-repair sweep (`workflows/title-repair.ts`) clamps before its
  *     guarded UPDATE, refusing an empty-after-clamp result as a generation
- *     failure (that refusal is caller logic — this module only clamps).
+ *     failure (that refusal is caller logic — this module only clamps);
+ *   - the rename route (`ai-chat-history-write-route.ts`, feat-450) clamps a
+ *     user-authored title before its guarded UPDATE and refuses 400
+ *     `invalid_title` whenever the clamp returns `""`, whatever the raw input
+ *     — an empty stored title would drop the thread back into the titling
+ *     and repair path. The response echoes the clamped value so the client
+ *     adopts exactly what was stored.
  *
  * Deliberately a leaf module (no imports) so either side can pull it in
  * without dragging the other's dependency graph.
