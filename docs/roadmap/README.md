@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 4, 2026)
+## Status (September 6, 2026)
 
-- **Total tickets:** 629
-- **Complete:** 472
-- **In progress:** 47
-- **Not started:** 37
-- **Blocked:** 73
+- **Total tickets:** 631
+- **Complete:** 473
+- **In progress:** 46
+- **Not started:** 38
+- **Blocked:** 74
 - **Overdue and not complete:** 115
 
 ## Feature Index
@@ -30,7 +30,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-383](content-discovery/feat-383-shadow-candidate-evaluation.md)                                          | Shadow candidate evaluation                                                                     | nisal      | P0       | —          | 5    | —          | complete    |
 | [feat-384](content-discovery/feat-384-recommendation-experiment-spine.md)                                      | Recommendation experiment spine                                                                 | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | complete    |
-| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | in-progress |
+| [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
+| [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | not-started |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
@@ -294,6 +295,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-426](platform/feat-426-admin-mcp-oauth-resource-binding.md)                      | Repair Admin MCP OAuth resource binding                                          | codex      | P0       | 2026-08-26 | 2    | 2026-08-27 | complete    |
 | [feat-423](platform/feat-423-changelog-admin-access-grants.md)                         | Grant local Changelog Reader access by command                                   | edmonday   | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-455](platform/feat-455-watch-route-alerts.md)                                    | Surface Watch route 404 alerts                                                   | codex      | P0       | 2026-09-04 | 1    | 2026-09-04 | complete    |
+| [feat-458](platform/feat-458-changelog-production-grant-operations.md)                 | Operate Changelog production admin grants                                        | edmondshen | P0       | 2026-09-05 | 1    | 2026-09-05 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit consent-approved Watch page-not-found telemetry                             | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
