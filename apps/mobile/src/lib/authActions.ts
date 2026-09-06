@@ -15,6 +15,7 @@ import {
   type DeleteAccountOutcome,
 } from "./accountDeletion"
 import { classifySignInFailure, type SignInFailureKind } from "./authFlows"
+import { JFP_MOBILE_PROVIDER_ID } from "./authProvider"
 import {
   authFetchOptions,
   deleteFetchOptions,
@@ -43,22 +44,19 @@ function toSignInOutcome(error: unknown): SignInOutcome {
   return OUTCOME_BY_FAILURE[classifySignInFailure(error)]
 }
 
-/**
- * Hosted-page sign-in (F2): the jfp self-RP flow. The Expo client opens
- * the browser sheet itself and captures the session cookie from the
- * forgemobile:// callback; afterwards an outcome-reporting session read
- * (KTD6) determines who — if anyone — signed in.
- */
+// Hosted-page sign-in (F2): the jfp self-RP flow. The Expo client opens the sheet
+// and captures the cookie off the forgemobile:// callback; a session read (KTD6)
+// then says who signed in. `signIn.social`: 1.7 removed `/sign-in/oauth2` (404).
 async function runHostedSignIn(): Promise<SignInOutcome> {
   const store = getAuthSession()
   const before = store.getSnapshot()
   try {
-    const result = await getAuthClient().signIn.oauth2({
-      providerId: "jfp",
+    const result = await getAuthClient().signIn.social({
+      provider: JFP_MOBILE_PROVIDER_ID,
       callbackURL: "/",
-      // Bounds only the pre-browser authorize-URL POST: better-fetch clears
-      // its abort timer before onSuccess, where the expo plugin opens the
-      // sheet (dists verified 2026-08-11, expo 1.6.2 + better-fetch 1.1.21).
+      // Bounds only the pre-browser authorize-URL POST: better-fetch clears its
+      // abort timer before onSuccess, where the expo plugin opens the sheet
+      // (dists verified 2026-08-28: @better-auth/expo 1.7.1, better-fetch 1.3.1).
       ...authFetchOptions(),
     })
     if (result.error) return { status: "error" }

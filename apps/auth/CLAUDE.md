@@ -125,6 +125,90 @@ document the dashboard as canonical.
 - Stdout logs must not include raw credentials, bearer tokens, refresh tokens,
   client secrets, or unnecessary PII.
 
+## Mobile hosted sign-in — the self-RP flow on Better Auth 1.7
+
+`apps/mobile` signs in through the `jfp` generic-oauth provider: Auth is
+the OAuth CLIENT of its own OAuth provider (a self-RP), so the hosted login
+page ends in a real Better Auth session that the Expo plugin hands back to
+the app. Five things hold that flow together, and the 1.6.2 → 1.7.1
+upgrade (#1978) broke every one of them for the shipped app:
+
+- **The mobile client version is pinned in LOCKSTEP with this app.** 1.7
+  removed the generic-oauth plugin's own endpoints (`/sign-in/oauth2`,
+  `/oauth2/callback/:id`); providers now ride the core `/sign-in/social`
+  and `/callback/:id` endpoints. A mobile client left on 1.6.2 POSTs to a
+  route that no longer exists (404) and renders its retry card. Bump
+  `better-auth` and `@better-auth/expo` in `apps/mobile/package.json` in the
+  SAME PR as here;
+  `apps/mobile/src/lib/__tests__/betterAuthVersionLockstep.guard.test.js`
+  fails on drift.
+- **`handleSocialSignIn` in the route wrapper passes a `forgemobile://`
+  callback through** (`resolveMobileCallbackURL`). The web callback policy
+  only knows watch URLs; a dropped mobile callback falls back to the auth
+  base URL, the Expo cookie handoff never fires, and the sheet closes on a
+  web page. Better Auth still vets it against `trustedOrigins`. The same
+  helper feeds `errorCallbackURL` when the web policy did not claim the
+  callback, so a provider-side failure returns to the app as
+  `forgemobile:///?error=<code>` instead of stranding the sheet on
+  `/api/auth/error` (verified locally 2026-08-29: a bogus `code` on
+  `/callback/jfp` → `302 forgemobile:///?error=invalid_code`). The Expo
+  client reads only the `cookie` param, so the app still settles
+  session-less — a quiet cancel — but the sheet closes.
+- **`mobileAwareExpoPlugin` (config.ts) replaces the upstream expo plugin's
+  `/expo-authorization-proxy`.** 1.7 made that proxy refuse any
+  authorization URL on Auth's own origin (login-CSRF hardening) — which is
+  exactly what a self-RP authorize URL is. The override admits ONE
+  same-origin target: `/oauth2/authorize` for the self-RP client id, read
+  from the same expression the provider uses. Everything else is upstream's
+  rule verbatim, and `mobile-expo-plugin.guard.test.ts` pins the installed
+  `@better-auth/expo` dist by version and sha256 — a bump fails that guard
+  until someone re-diffs this mirror against the new proxy and updates the
+  pins. Verify with curl: the proxy must 302 for the jfp authorize URL and
+  400 for `/callback/google` on the same origin.
+- **`accountLinking.requireLocalEmailVerified` is set to `false`.** 1.7
+  added it with a `true` default: no provider account links to a user whose
+  LOCAL `emailVerified` is false, trusted provider or not
+  (`better-auth/dist/oauth2/link-account.mjs`). This platform sends no
+  verification email, so the default turned every password user's first
+  jfp sign-in — and every hosted sign-up, which runs inside that flow —
+  into `/api/auth/error?error=account_not_linked`. Users who already held
+  a `jfp` account row kept working, which is why the break was invisible
+  to anyone who had signed in on mobile before 2026-08-24. R1 is unchanged:
+  consumer providers still need a verified provider email. The flag alone
+  would also let a consumer provider link onto an unverified password
+  account by email match — the account pre-hijacking the 1.7 default closes
+  — so `refuseUnverifiedConsumerLink` (`account-linking-guard.ts`), wired as
+  `databaseHooks.account.create.before`, keeps that refusal for the consumer
+  providers only. `jfp` and `credential` pass; a fresh consumer sign-up (no
+  account rows yet) passes; a consumer link onto an unverified existing user
+  throws `CONSUMER_LINK_REQUIRES_VERIFIED_EMAIL`, which the callback turns
+  into its error redirect; a missing user row fails closed.
+- **`resolveSessionClientKind` reads `params.id`.** The 1.7 core callback
+  route is `/callback/:id`, so the session hook sees that pattern and
+  `params.id`; the pre-1.7 generic-oauth route was
+  `/oauth2/callback/:providerId`, and its stamp branches are DELETED (the
+  lockstep pin makes them unreachable; a test pins the retired pattern as
+  unstamped). Without the `id` read, post-upgrade mobile sessions carried
+  no `clientKind`, the minted JWT carried no mobile claim, and admin's
+  progress operations had nothing to accept (local DB: 2 `mobile` sessions
+  before 2026-08-24, none after).
+
+One packaging rule rides with those five. **`@better-auth/utils` is pinned
+to `0.4.2` in BOTH manifests.** `@better-auth/core`, `oauth-provider`, and
+`prisma-adapter` take it as an EXACT peer, while `better-call` depends on
+`^0.5.0`. Once mobile carried `core` too, pnpm's cross-importer peer dedupe
+resolved this app's peers against the `0.5.0` walk, split `core` into two
+lockfile variants, and failed the typecheck (`GenericEndpointContext`
+identity mismatch; `auth.api` lost every plugin endpoint). Declaring the
+peer at the importer pins the walk, and the mobile lockstep guard holds the
+two pins equal. Re-pin it whenever a bump moves core's peer range.
+
+Deploy order: this app first, then the mobile build. Local dev caveat:
+`next dev` deadlocks on the provider's init-time discovery fetch (the
+`/.well-known/openid-configuration` handler awaits the same auth instance
+that is fetching it); run `next build && next start -p 3004` for a local
+end-to-end sign-in.
+
 ## Sign in with Apple — App Store constraint (guideline 4.8)
 
 The hosted login page is the ONLY sign-in surface for `apps/mobile`

@@ -7,6 +7,7 @@ import {
 } from "@/auth/firebase-admin"
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
 import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
+import { resolveMobileCallbackURL } from "@/auth/mobile-callback"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
@@ -525,10 +526,17 @@ async function handleSocialSignIn(request: Request): Promise<Response> {
     callbackURL: webCallbackURL,
     oauthQuery,
   } = await parseSocialSignInRequest(request)
-  const callbackURL = webCallbackURL ?? buildContinuationURL(oauthQuery)
+  // Mobile's jfp self-RP sign-in lands here too (Better Auth 1.7 serves
+  // generic-oauth providers through /sign-in/social); its app-scheme callback
+  // is not a watch URL and must reach Better Auth intact.
+  const mobileCallbackURL = resolveMobileCallbackURL(body.callbackURL)
+  const appCallbackURL = webCallbackURL ?? mobileCallbackURL
+  const callbackURL = appCallbackURL ?? buildContinuationURL(oauthQuery)
+  // A callback error must return to the app scheme: a same-origin /error
+  // page cannot close the system browser sheet.
   const errorCallbackURL = webCallbackURL
     ? undefined
-    : buildOAuthLoginURL(oauthQuery)
+    : (mobileCallbackURL ?? buildOAuthLoginURL(oauthQuery))
   const betterAuthBody = { ...body }
   delete betterAuthBody.callbackURL
   delete betterAuthBody.email
