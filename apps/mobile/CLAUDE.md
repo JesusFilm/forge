@@ -311,6 +311,38 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   shows the login form after sign-out. A user cancel settles session-less —
   the expo plugin never throws for it — so a thrown browser open always
   classifies as a retryable error (`src/lib/authFlows.ts`).
+- **The hosted flow is `signIn.social({ provider: "jfp" })`, and the Better
+  Auth client version is pinned in LOCKSTEP with `apps/auth`.** Better Auth
+  1.7 removed the generic-oauth plugin's own endpoints (`/sign-in/oauth2`,
+  `/oauth2/callback/:id`) and its `genericOAuthClient`; generic providers now
+  ride the core `/sign-in/social` + `/callback/:id`. Auth moved to 1.7.1 on
+  2026-08-24 (#1978) while mobile stayed on 1.6.2, so every sign-in from
+  TestFlight build 1.0.0 (4) POSTed to a route that no longer existed: 404 →
+  `result.error` → the retry card, with no sheet ever opening. No mobile test
+  could see it — the client is mocked at the module boundary and the server
+  lives in another package — so
+  `src/lib/__tests__/betterAuthVersionLockstep.guard.test.js` reads BOTH
+  manifests and fails on any drift of `better-auth` / `@better-auth/expo`.
+  Bump the two apps together, in one PR, and re-read the expo plugin's
+  `routes.ts` on every bump. Four auth-side pieces the same flow depends on:
+  the route wrapper must pass a `forgemobile://` callback through
+  (`resolveMobileCallbackURL`); `mobileAwareExpoPlugin` must re-admit the
+  self-RP authorize URL in the 1.7 browser proxy — a bare `expo()` there ends
+  every sign-in on `{"message":"Invalid authorizationURL"}` inside the sheet;
+  `accountLinking.requireLocalEmailVerified` must stay `false`, or a user
+  without a `jfp` account row (every hosted sign-up) ends on
+  `error=account_not_linked` and the app reads a quiet cancel; and the
+  session stamp must read `params.id` (the 1.7 core callback is
+  `/callback/:id`), or the JWT carries no mobile claim for progress writes.
+  `@better-auth/utils` rides the same lockstep: it is `@better-auth/core`'s
+  EXACT peer, and with both apps carrying `core`, pnpm resolved auth's peers
+  against `better-call`'s `^0.5.0` walk, split `core` into two lockfile
+  variants, and failed auth's typecheck — the explicit `0.4.2` pin in BOTH
+  manifests holds the walk. A provider-side failure inside the flow returns
+  as `forgemobile:///?error=<code>` (auth's `errorCallbackURL`); the Expo
+  client ignores that param, so the app reads a quiet cancel, but the sheet
+  no longer strands on a web page. Deploy order: auth first, then the
+  mobile build.
 - **iOS auth session is EPHEMERAL** (`webBrowserOptions.preferEphemeralSession`
   on the expo client, iOS-only): no Safari cookie sharing, so no per-sign-in
   "Wants to Use…to Sign In" consent alert and no iOS shared-device residual.

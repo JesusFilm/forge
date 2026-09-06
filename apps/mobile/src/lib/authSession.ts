@@ -221,14 +221,27 @@ export function getAuthBaseUrl(): string {
 type SecureStoreLike = {
   getItem: (key: string, options?: object) => string | null
   setItem: (key: string, value: string, options?: object) => void
+  getItemAsync: (key: string, options?: object) => Promise<string | null>
+  setItemAsync: (key: string, value: string, options?: object) => Promise<void>
 }
 
-/**
- * SecureStore adapter with this-device-only accessibility (R14): the
- * keychain attribute keeps credentials out of device backups on iOS;
- * Android's exclusion is app.json's allowBackup=false. Reads degrade to
- * null (corrupt storage means signed out, never a crash).
- */
+/** A swallowed keychain failure otherwise reads as a quiet cancel; name it. */
+function reportStorageFailure(op: string, key: string): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy: telemetry must not join the auth module graph at import time
+    const { datadogLog } = require("./datadog") as typeof import("./datadog")
+    datadogLog.warn("auth_storage_failed", {
+      auth_storage_op: op,
+      auth_storage_key: key,
+    })
+  } catch {
+    // Telemetry never breaks storage access.
+  }
+}
+
+// SecureStore adapter, this-device-only (R14): the keychain attribute keeps
+// credentials out of iOS backups (Android: app.json allowBackup=false); reads
+// degrade to null. @better-auth/expo 1.7 drives requests through the ASYNC pair.
 export function createSecureStorageAdapter(
   store: SecureStoreLike,
   options: object,
@@ -238,6 +251,7 @@ export function createSecureStorageAdapter(
       try {
         return store.getItem(key, options)
       } catch {
+        reportStorageFailure("getItem", key)
         return null
       }
     },
@@ -246,6 +260,23 @@ export function createSecureStorageAdapter(
         store.setItem(key, value, options)
       } catch {
         // A failed persist surfaces as signed-out on next launch.
+        reportStorageFailure("setItem", key)
+      }
+    },
+    getItemAsync: async (key: string): Promise<string | null> => {
+      try {
+        return await store.getItemAsync(key, options)
+      } catch {
+        reportStorageFailure("getItemAsync", key)
+        return null
+      }
+    },
+    setItemAsync: async (key: string, value: string): Promise<void> => {
+      try {
+        await store.setItemAsync(key, value, options)
+      } catch {
+        // A failed persist surfaces as signed-out on next launch.
+        reportStorageFailure("setItemAsync", key)
       }
     },
   }
@@ -274,10 +305,11 @@ type BetterAuthExpoClient = {
     error?: { code?: string | null; message?: string | null } | null
   }>
   signIn: {
-    /** Hosted-page sign-in: the jfp self-RP flow (browser sheet + expo
-     *  cookie handoff land the session in SecureStore). */
-    oauth2: (options: {
-      providerId: string
+    /** Hosted-page sign-in (jfp self-RP): the browser sheet + expo cookie
+     *  handoff land the session in SecureStore. Better Auth 1.7 serves it via
+     *  the core /sign-in/social; /sign-in/oauth2 no longer exists. */
+    social: (options: {
+      provider: string
       callbackURL: string
       fetchOptions?: { timeout?: number }
     }) => Promise<{
@@ -300,8 +332,6 @@ export function getAuthClient(): BetterAuthExpoClient {
     // of module-init (the root-layout require pattern).
     const { createAuthClient } =
       require("better-auth/client") as typeof import("better-auth/client")
-    const { genericOAuthClient } =
-      require("better-auth/client/plugins") as typeof import("better-auth/client/plugins")
     const { expoClient } =
       require("@better-auth/expo/client") as typeof import("@better-auth/expo/client")
     const SecureStore =
@@ -320,8 +350,8 @@ export function getAuthClient(): BetterAuthExpoClient {
           // Android keeps the Chrome cookie; prompt=login guards the in-app path.
           webBrowserOptions: { preferEphemeralSession: true },
         }),
-        // signIn.oauth2 for the hosted-page sign-in (jfp self-RP).
-        genericOAuthClient(),
+        // No generic-oauth client plugin: Better Auth 1.7 removed it, and
+        // the jfp self-RP provider signs in through `signIn.social`.
       ],
     }) as unknown as BetterAuthExpoClient
   }

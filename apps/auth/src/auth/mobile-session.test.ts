@@ -45,6 +45,27 @@ describe("resolveSessionClientKind", () => {
     )
   })
 
+  // 1.7's core callback is `/callback/:id`, so the hook sees that PATTERN and
+  // `params.id`, not `params.providerId`. Missing it left every post-upgrade
+  // mobile session unstamped, so its JWT carried no mobile claim.
+  it("stamps the 1.7 core callback pattern as mobile when params.id is jfp", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/callback/:id",
+        params: { id: "jfp" },
+      }),
+    ).toBe(MOBILE_SESSION_CLIENT_KIND)
+  })
+
+  it("does not stamp another provider on the core callback pattern", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/callback/:id",
+        params: { id: "google" },
+      }),
+    ).toBeUndefined()
+  })
+
   it("does not stamp browser social sign-ins without an idToken", () => {
     expect(
       resolveSessionClientKind({

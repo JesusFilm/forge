@@ -5,6 +5,7 @@ const authConfigCapture = vi.hoisted(() => ({
   betterAuth: vi.fn((options: unknown) => ({ options })),
   oauthProvider: vi.fn(() => ({})),
   genericOAuth: vi.fn((_options: unknown) => ({})),
+  mobileAwareExpoPlugin: vi.fn((_options: unknown) => ({ id: "expo" })),
   jwt: vi.fn((_options: unknown) => ({})),
   env: {} as Record<string, string | undefined>,
   findAccountUnique: vi.fn(
@@ -38,6 +39,10 @@ vi.mock("@better-auth/expo", () => ({
   expo: vi.fn(() => ({})),
 }))
 
+vi.mock("@/auth/mobile-expo-plugin", () => ({
+  mobileAwareExpoPlugin: authConfigCapture.mobileAwareExpoPlugin,
+}))
+
 vi.mock("@better-auth/prisma-adapter", () => ({
   prismaAdapter: vi.fn(() => ({})),
 }))
@@ -66,6 +71,7 @@ vi.mock("@/services/changelog-oauth-grant.service", () => ({
 }))
 
 type CapturedAuthOptions = {
+  plugins: unknown[]
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
     apple?: {
@@ -79,7 +85,11 @@ type CapturedAuthOptions = {
     }
   }
   account: {
-    accountLinking: { enabled: boolean; trustedProviders: string[] }
+    accountLinking: {
+      enabled: boolean
+      trustedProviders: string[]
+      requireLocalEmailVerified?: boolean
+    }
   }
   user: {
     additionalFields?: Record<
@@ -98,6 +108,14 @@ type CapturedAuthOptions = {
     additionalFields?: Record<string, { type: string; input?: boolean }>
   }
   databaseHooks?: {
+    account?: {
+      create?: {
+        before?: (
+          account: { providerId: string; userId: string },
+          ctx: { context: { internalAdapter: unknown } } | null,
+        ) => Promise<void>
+      }
+    }
     session?: {
       create?: {
         before?: (
@@ -537,6 +555,60 @@ describe("mobile login configuration", () => {
       prompt: "login",
     })
     expect(jfp).not.toHaveProperty("clientSecret")
+  })
+
+  // The Expo browser proxy admits ONE same-origin authorize URL: the jfp
+  // self-RP client's. The two ids are read from the same expression, so a
+  // NODE_ENV-keyed client swap cannot leave the proxy pinned to the other.
+  it("hands the mobile-aware expo plugin the jfp provider's own client id", async () => {
+    const options = await captureAuthOptions()
+
+    const genericOAuthCall = authConfigCapture.genericOAuth.mock
+      .calls[0]?.[0] as { config: Array<Record<string, unknown>> }
+    const jfp = genericOAuthCall.config.find(
+      (entry) => entry.providerId === "jfp",
+    )
+
+    expect(authConfigCapture.mobileAwareExpoPlugin).toHaveBeenCalledWith({
+      selfRpClientId: jfp?.clientId,
+    })
+    // The wrapper's return is what registers — not a bare expo() plugin.
+    expect(options.plugins).toContainEqual({ id: "expo" })
+  })
+
+  // 1.7's `requireLocalEmailVerified` default (true) refused every first
+  // self-RP sign-in here, because no verification email exists. The account
+  // hook below keeps that guard for consumer providers only.
+  it("does not require a verified local email to link a provider account", async () => {
+    const options = await captureAuthOptions()
+    expect(options.account.accountLinking.requireLocalEmailVerified).toBe(false)
+  })
+
+  it("refuses a consumer provider linking onto an unverified existing user, not jfp", async () => {
+    const options = await captureAuthOptions()
+    const before = options.databaseHooks?.account?.create?.before
+    expect(before).toBeTypeOf("function")
+    const ctx = {
+      context: {
+        internalAdapter: {
+          findUserById: async () => ({ id: "u1", emailVerified: false }),
+          findAccounts: async () => [{ providerId: "credential" }],
+        },
+      },
+    }
+
+    await expect(
+      before!({ providerId: "google", userId: "u1" }, ctx),
+    ).rejects.toMatchObject({
+      body: { code: "CONSUMER_LINK_REQUIRES_VERIFIED_EMAIL" },
+    })
+    await expect(
+      before!({ providerId: "jfp", userId: "u1" }, ctx),
+    ).resolves.toBeUndefined()
+    // No endpoint context: no browser link in flight, nothing to refuse.
+    await expect(
+      before!({ providerId: "google", userId: "u1" }, null),
+    ).resolves.toBeUndefined()
   })
 
   it("enables account deletion without a verification email (fresh-session SSO re-auth instead)", async () => {
