@@ -493,6 +493,7 @@ suite("current transcript publication into Watch Search", () => {
   let typesense: TypesenseClient
   let searchService: TypesenseWatchSearchService
   let generations: TypesenseWatchSearchCandidateGenerationService
+  let databaseCreated = false
   let databaseReady = false
 
   beforeAll(async () => {
@@ -500,6 +501,7 @@ suite("current transcript publication into Watch Search", () => {
     pgClient = new Client({ connectionString: baseDatabaseUrl! })
     await pgClient.connect()
     await pgClient.query(`CREATE DATABASE "${databaseName}"`)
+    databaseCreated = true
     execFileSync("pnpm", ["db:migrate:deploy"], {
       cwd: adminPackageRoot(),
       env: { ...process.env, DATABASE_URL: databaseUrl },
@@ -714,10 +716,12 @@ suite("current transcript publication into Watch Search", () => {
     if (typesenseServer.url) {
       await typesenseServer.stop()
     }
-    if (databaseReady && pgClient) {
+    if (databaseCreated && pgClient) {
       await pgClient.query(
         `DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`,
       )
+    }
+    if (pgClient) {
       await pgClient.end()
     }
   })
@@ -1039,6 +1043,86 @@ suite("current transcript publication into Watch Search", () => {
     ).toMatchObject({
       collection_name: "watch_search_transcripts_rebuild-2",
     })
+  }, 180_000)
+
+  it("refuses to bless an out-of-band transcript alias rotation from one incremental event", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const firstPublish = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(firstPublish).toMatchObject({
+      status: "published",
+      projectionRevision: 1n,
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "replace-run",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [{ text: "Hope and fellowship", embedding, tokenCount: 3 }],
+      }),
+    )
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 2n },
+        },
+      )
+    const driftedSchema = watchTranscriptCollectionSchema("drifted")
+    await typesense.createCollection(driftedSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      driftedSchema.name,
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/full transcript rebuild/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+        select: {
+          transcriptCollection: true,
+          projectionRevision: true,
+        },
+      }),
+    ).toEqual({
+      transcriptCollection: "watch_search_transcripts_fixture",
+      projectionRevision: 1n,
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        {
+          where: { id: pendingEvent.id },
+          select: { status: true, lastErrorCode: true },
+        },
+      ),
+    ).toEqual({
+      status: "PENDING",
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+    })
+    await expect(
+      typesense.getDocument(
+        driftedSchema.name,
+        pendingEvent.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
   }, 180_000)
 
   it("refuses to complete a batch when the canonical chunk set no longer matches the event evidence", async () => {

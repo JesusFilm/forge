@@ -92,6 +92,12 @@ type ProjectionState = {
   projectionRevision: bigint
 }
 
+type IncrementalPublicationIdentity = {
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+}
+
 type CanonicalTranscriptSnapshotReader = Pick<
   PrismaClient,
   "videoTranscript" | "$queryRaw"
@@ -257,6 +263,30 @@ function assertCanonicalDocumentIdsMatchBatch(
         `canonical transcript chunk evidence drifted at index ${index}: expected ${expectedIds[index]}, got ${actualIds[index] ?? "<missing>"}`,
       )
     }
+  }
+}
+
+function assertIncrementalPublicationIdentity(
+  current: ProjectionState,
+  next: IncrementalPublicationIdentity,
+): void {
+  // A stored row certifies the identity of the whole transcript collection.
+  // Verifying one changed transcript may advance its revision, but only a full
+  // rebuild can safely certify a different collection or compatibility tuple.
+  const currentIdentity = [
+    current.transcriptCollection,
+    current.contentEmbeddingContractId,
+    current.transcriptChunkingVersion,
+  ]
+  if (currentIdentity.every((value) => value == null)) return
+  if (
+    current.transcriptCollection !== next.transcriptCollection ||
+    current.contentEmbeddingContractId !== next.contentEmbeddingContractId ||
+    current.transcriptChunkingVersion !== next.transcriptChunkingVersion
+  ) {
+    throw new WatchSearchTranscriptPublicationError(
+      "incremental transcript publication identity drifted; a full transcript rebuild is required",
+    )
   }
 }
 
@@ -715,6 +745,14 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
       }
       const profile = await freezeCurrentWatchSearchProfile(input.typesense)
       const transcriptCollection = profile.binding.transcript
+      assertIncrementalPublicationIdentity(
+        await loadCurrentWatchSearchTranscriptProjection(prisma),
+        {
+          transcriptCollection,
+          contentEmbeddingContractId: batch.contentEmbeddingContractId,
+          transcriptChunkingVersion: batch.transcriptChunkingVersion,
+        },
+      )
       const canonical = await loadCanonicalTranscriptSnapshot(prisma, batch)
       await input.typesense.importDocuments(
         transcriptCollection,
@@ -845,6 +883,7 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
 }
 
 export const _internals = {
+  assertIncrementalPublicationIdentity,
   deleteStaleTranscriptDocuments,
   exactIdFilter,
   initialProjectionRevision,

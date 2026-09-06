@@ -114,6 +114,46 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     expect(_internals.initialProjectionRevision()).toBe(8n)
   })
 
+  it("allows bootstrap but rejects incremental collection or contract identity drift", async () => {
+    const { _internals, WatchSearchTranscriptPublicationError } =
+      await import("./typesense-watch-search-transcript-publication")
+    const next = {
+      transcriptCollection: "watch_search_transcripts_active_1",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+    }
+
+    expect(() =>
+      _internals.assertIncrementalPublicationIdentity(
+        {
+          transcriptCollection: null,
+          contentEmbeddingContractId: null,
+          transcriptChunkingVersion: null,
+          projectionRevision: 0n,
+        },
+        next,
+      ),
+    ).not.toThrow()
+    expect(() =>
+      _internals.assertIncrementalPublicationIdentity(
+        { ...next, projectionRevision: 7n },
+        { ...next, transcriptCollection: "watch_search_transcripts_active_2" },
+      ),
+    ).toThrow(WatchSearchTranscriptPublicationError)
+    expect(() =>
+      _internals.assertIncrementalPublicationIdentity(
+        { ...next, projectionRevision: 7n },
+        { ...next, contentEmbeddingContractId: "contract-v2" },
+      ),
+    ).toThrow(/full transcript rebuild/i)
+    expect(() =>
+      _internals.assertIncrementalPublicationIdentity(
+        { ...next, projectionRevision: 7n },
+        { ...next, transcriptChunkingVersion: "mastra-v2" },
+      ),
+    ).toThrow(/full transcript rebuild/i)
+  })
+
   it("sizes the publication lease to the transcript batch and caps it", async () => {
     const { _internals } =
       await import("./typesense-watch-search-transcript-publication")
