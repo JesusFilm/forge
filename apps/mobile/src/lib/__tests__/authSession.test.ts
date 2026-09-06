@@ -442,6 +442,41 @@ describe("secure storage adapter (R14)", () => {
     })
   })
 
+  // Falsify the "telemetry never breaks storage access" catch: a throwing
+  // warn must stay invisible to callers on all four adapter ops.
+  it("keeps storage access alive when the telemetry itself throws", async () => {
+    mockDatadogWarn.mockClear()
+    mockDatadogWarn.mockImplementation(() => {
+      throw new Error("datadog down")
+    })
+    const failing = () => {
+      throw new Error("keychain unavailable")
+    }
+    const adapter = createSecureStorageAdapter(
+      {
+        getItem: failing,
+        setItem: failing,
+        getItemAsync: async () => failing(),
+        setItemAsync: async () => failing(),
+      },
+      {},
+    )
+
+    try {
+      expect(adapter.getItem("forge-watch_cookie")).toBeNull()
+      expect(() => adapter.setItem("forge-watch_cookie", "v")).not.toThrow()
+      await expect(
+        adapter.getItemAsync("forge-watch_cookie"),
+      ).resolves.toBeNull()
+      await expect(
+        adapter.setItemAsync("forge-watch_cookie", "v"),
+      ).resolves.toBeUndefined()
+      expect(mockDatadogWarn).toHaveBeenCalledTimes(4)
+    } finally {
+      mockDatadogWarn.mockReset()
+    }
+  })
+
   // @better-auth/expo 1.7 reads and writes the cookie through the ASYNC pair
   // on every request; an adapter without it throws "getItemAsync is not a
   // function" at the first sign-in, not at construction.

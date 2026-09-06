@@ -121,8 +121,10 @@ Auth (`apps/auth`):
   `credential` pass, a fresh consumer sign-up passes, a link onto an
   unverified existing user throws `CONSUMER_LINK_REQUIRES_VERIFIED_EMAIL`,
   a missing user row fails closed.
-- `resolveSessionClientKind` reads `params.id` as well as
-  `params.providerId`.
+- `resolveSessionClientKind` reads `params.id`. The pre-1.7
+  `/oauth2/callback` and `params.providerId` branches are deleted — the
+  exact 1.7.1 pin makes them unreachable, and a test pins the retired
+  pattern as unstamped.
 
 Deploy order: auth first, then the mobile build. The mobile change alone
 opens the sheet on the proxy's 400.
@@ -161,6 +163,9 @@ step needs a signed build. See `todos/025`.
   `@better-auth/utils` included — re-pin it when core's peer range moves.
 - Re-read `@better-auth/expo`'s `src/routes.ts` and
   `better-auth/dist/oauth2/link-account.mjs` on every bump.
+  `apps/auth/src/auth/mobile-expo-plugin.guard.test.ts` enforces the first
+  half: it pins the installed `@better-auth/expo` dist by version and
+  sha256, so a bump fails until the mirrored proxy is re-verified.
 - When a security default is switched off for one provider, keep it as a
   hook for the providers it was protecting; a flag flip is global.
 - A "do not change X behavior" line in an upgrade ticket is a claim to

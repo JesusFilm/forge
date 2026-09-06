@@ -373,8 +373,10 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   lives in another package — so
   `src/lib/__tests__/betterAuthVersionLockstep.guard.test.js` reads BOTH
   manifests and fails on any drift of `better-auth` / `@better-auth/expo`.
-  Bump the two apps together, in one PR, and re-read the expo plugin's
-  `routes.ts` on every bump. Four auth-side pieces the same flow depends on:
+  Bump the two apps together, in one PR; auth's
+  `mobile-expo-plugin.guard.test.ts` pins the installed `@better-auth/expo`
+  dist and fails on every bump until the mirrored proxy is re-verified.
+  Four auth-side pieces the same flow depends on:
   the route wrapper must pass a `forgemobile://` callback through
   (`resolveMobileCallbackURL`); `mobileAwareExpoPlugin` must re-admit the
   self-RP authorize URL in the 1.7 browser proxy — a bare `expo()` there ends

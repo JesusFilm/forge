@@ -73,18 +73,13 @@ export function resolveSessionClientKind(
   }
 
   // The endpoint context carries the route PATTERN: 1.7's core callback is
-  // `/callback/:id` (params.id); the pre-1.7 generic-oauth callback used
-  // params.providerId. The concrete-path forms are kept for both.
-  const callbackParams = ctx.params as
-    | { id?: string; providerId?: string }
-    | undefined
+  // `/callback/:id`, so the hook sees that pattern plus params.id. The
+  // concrete-path form covers contexts that carry the resolved path instead.
+  const callbackParams = ctx.params as { id?: string } | undefined
   if (
     ctx.path === `/callback/${JFP_MOBILE_PROVIDER_ID}` ||
-    ctx.path === `/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}` ||
-    ((ctx.path.startsWith("/callback") ||
-      ctx.path.startsWith("/oauth2/callback")) &&
-      (callbackParams?.id === JFP_MOBILE_PROVIDER_ID ||
-        callbackParams?.providerId === JFP_MOBILE_PROVIDER_ID))
+    (ctx.path.startsWith("/callback") &&
+      callbackParams?.id === JFP_MOBILE_PROVIDER_ID)
   ) {
     return MOBILE_SESSION_CLIENT_KIND
   }

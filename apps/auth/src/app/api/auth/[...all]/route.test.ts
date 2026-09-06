@@ -1190,9 +1190,14 @@ describe("Auth route wrapper", () => {
     )
 
     const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
-    await expect(forwardedRequest.json()).resolves.not.toHaveProperty(
-      "callbackURL",
-    )
+    const forwardedBody = (await forwardedRequest.json()) as Record<
+      string,
+      unknown
+    >
+    expect(forwardedBody).not.toHaveProperty("callbackURL")
+    // errorCallbackURL rides the same resolveMobileCallbackURL value; pin
+    // that the foreign scheme cannot leak through either field.
+    expect(forwardedBody).not.toHaveProperty("errorCallbackURL")
   })
 
   it("returns the configured provider for an existing social account", async () => {

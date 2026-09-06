@@ -160,8 +160,10 @@ upgrade (#1978) broke every one of them for the shipped app:
   exactly what a self-RP authorize URL is. The override admits ONE
   same-origin target: `/oauth2/authorize` for the self-RP client id, read
   from the same expression the provider uses. Everything else is upstream's
-  rule verbatim; re-read `@better-auth/expo`'s `src/routes.ts` on every
-  bump. Verify with curl: the proxy must 302 for the jfp authorize URL and
+  rule verbatim, and `mobile-expo-plugin.guard.test.ts` pins the installed
+  `@better-auth/expo` dist by version and sha256 — a bump fails that guard
+  until someone re-diffs this mirror against the new proxy and updates the
+  pins. Verify with curl: the proxy must 302 for the jfp authorize URL and
   400 for `/callback/google` on the same origin.
 - **`accountLinking.requireLocalEmailVerified` is set to `false`.** 1.7
   added it with a `true` default: no provider account links to a user whose
@@ -181,13 +183,15 @@ upgrade (#1978) broke every one of them for the shipped app:
   account rows yet) passes; a consumer link onto an unverified existing user
   throws `CONSUMER_LINK_REQUIRES_VERIFIED_EMAIL`, which the callback turns
   into its error redirect; a missing user row fails closed.
-- **`resolveSessionClientKind` reads `params.id` as well as
-  `params.providerId`.** The 1.7 core callback route is `/callback/:id`, so
-  the session hook sees that pattern and `params.id`; the pre-1.7
-  generic-oauth route was `/oauth2/callback/:providerId`. Without the `id`
-  read, post-upgrade mobile sessions carried no `clientKind`, the minted
-  JWT carried no mobile claim, and admin's progress operations had nothing
-  to accept (local DB: 2 `mobile` sessions before 2026-08-24, none after).
+- **`resolveSessionClientKind` reads `params.id`.** The 1.7 core callback
+  route is `/callback/:id`, so the session hook sees that pattern and
+  `params.id`; the pre-1.7 generic-oauth route was
+  `/oauth2/callback/:providerId`, and its stamp branches are DELETED (the
+  lockstep pin makes them unreachable; a test pins the retired pattern as
+  unstamped). Without the `id` read, post-upgrade mobile sessions carried
+  no `clientKind`, the minted JWT carried no mobile claim, and admin's
+  progress operations had nothing to accept (local DB: 2 `mobile` sessions
+  before 2026-08-24, none after).
 
 One packaging rule rides with those five. **`@better-auth/utils` is pinned
 to `0.4.2` in BOTH manifests.** `@better-auth/core`, `oauth-provider`, and
