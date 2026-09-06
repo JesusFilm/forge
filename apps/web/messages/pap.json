@@ -722,5 +722,28 @@
     "languageVersionLabel": "Idioma di oudio",
     "selectLanguageVersion": "Skohe un vershon di idioma",
     "watchSelectedVersion": "Wak e vershon skohí"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opshonnan di cookie",
+    "bannerTitle": "Bo opcionnan di privasidat",
+    "bannerDescription": "Cookienan esensial ta mantené Watch sigur i funshonando. Ku bo pèrmito, un cookie opshonal di promé parti por kòrda interesnan entre bishitanan pa personalisá rekomendashonnan. Rekomendashonnan kontekstual ta keda disponibel den tur kaso.",
+    "acceptAll": "Aseptá tur",
+    "essentialOnly": "Solamente esensial",
+    "manageChoices": "Manehá opcionnan",
+    "savingChoice": "Wardando bo eskoho di cookie",
+    "settings": "Konfigurashon di cookie",
+    "settingsDescription": "Skohé si Watch por kòrda interesnan di rekomendashon entre bishitanan. Bo por kambia esaki na cualkier momento.",
+    "essentialCookies": "Cookienan esensial",
+    "essentialDescription": "Seguridat, reprodukshon, opcionnan di privasidat i atribushon di petishon di rekomendashon.",
+    "alwaysActive": "Semper aktivo",
+    "personalization": "Personalisashon",
+    "personalizationDescription": "Kòrda interesnan limitá entre bishitanan. Si bo paga esaki, rekomendashonnan kontekstual lo sigui disponibel.",
+    "erasurePending": "Eliminashon di perfil ta pendient. Rekomendashonnan kontekstual ta aktivo kaba.",
+    "cancel": "Kanselá",
+    "saveChoices": "Warda opcionnan",
+    "saving": "Wardando…",
+    "loadError": "No por a karga bo eskoho. Aun asina bo por skohé abou.",
+    "grantError": "No por a aktivá personalisashon. Solamente esensial ta keda disponibel.",
+    "saveError": "No por a warda bo eskoho. Por fabor, purba atrobe."
   }
 }

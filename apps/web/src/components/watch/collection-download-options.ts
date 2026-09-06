@@ -148,6 +148,7 @@ export function buildCollectionDownloadQueue(input: {
         filename,
         title: candidate.title,
         url: buildDownloadProxyUrl({
+          capability: download.capability,
           downloadId: download.documentId,
           filename,
           variantId: candidate.variantId,

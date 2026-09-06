@@ -722,5 +722,28 @@
     "languageVersionLabel": "Idioma de audio",
     "selectLanguageVersion": "Seleccionar una versión de idioma",
     "watchSelectedVersion": "Ver la versión seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opciones de cookies",
+    "bannerTitle": "Tus opciones de privacidad",
+    "bannerDescription": "Las cookies esenciales mantienen Watch seguro y en funcionamiento. Con tu permiso, una cookie opcional de origen puede recordar tus intereses entre visitas para personalizar las recomendaciones. Las recomendaciones contextuales seguirán estando disponibles de cualquier manera.",
+    "acceptAll": "Aceptar todo",
+    "essentialOnly": "Solo esenciales",
+    "manageChoices": "Administrar opciones",
+    "savingChoice": "Guardando tu elección de cookies",
+    "settings": "Configuración de cookies",
+    "settingsDescription": "Elige si Watch puede recordar tus intereses de recomendación entre visitas. Puedes cambiar esto en cualquier momento.",
+    "essentialCookies": "Cookies esenciales",
+    "essentialDescription": "Seguridad, reproducción, opciones de privacidad y atribución de solicitudes de recomendación.",
+    "alwaysActive": "Siempre activas",
+    "personalization": "Personalización",
+    "personalizationDescription": "Recuerda intereses limitados entre visitas. Desactivar esta opción mantiene disponibles las recomendaciones contextuales.",
+    "erasurePending": "La eliminación del perfil está pendiente. Las recomendaciones contextuales ya están activas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Guardar opciones",
+    "saving": "Guardando…",
+    "loadError": "No se pudo cargar tu elección. Aun así, puedes elegir abajo.",
+    "grantError": "No se pudo activar la personalización. La opción de solo esenciales sigue disponible.",
+    "saveError": "No se pudo guardar tu elección. Inténtalo de nuevo."
   }
 }

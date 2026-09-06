@@ -3,25 +3,48 @@ import { readFileSync } from "node:fs"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 
-describe("candidateWatchSearchApplicationRevision", () => {
+describe("candidateWatchSearchIndexContractRevision", () => {
   afterEach(() => vi.unstubAllEnvs())
 
   it("does not change when an unrelated deployment commit changes", () => {
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-a")
-    const firstRevision = candidateWatchSearchApplicationRevision()
+    const firstRevision = candidateWatchSearchIndexContractRevision()
 
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-b")
 
-    expect(candidateWatchSearchApplicationRevision()).toBe(firstRevision)
-    expect(firstRevision).toBe("watch-search-candidate/v2")
+    expect(candidateWatchSearchIndexContractRevision()).toBe(firstRevision)
+    expect(firstRevision).toBe("watch-search-candidate/v3")
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v1")
+    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v2")
+  })
+
+  it("invalidates generations built before the container projection", () => {
+    // The container languages ride the catalog document, so a generation built
+    // before this projection carries documents with no such key and resolves
+    // every container as unavailable. Leaving the application revision at v2
+    // would keep that generation compatible -- free to requalify and be
+    // promoted with the benchmark green while serving the very defect the
+    // projection removes. The undeclared-field precedent settles only whether
+    // Typesense accepts the field, not whether a stale generation may serve.
+    expect(candidateWatchSearchIndexContractRevision()).toBe(
+      "watch-search-candidate/v3",
+    )
+  })
+
+  it("keeps the two revisions independently variable", () => {
+    // They answer different questions -- physical/projection compatibility vs
+    // application-side ranking behaviour -- so they must never be aliased to
+    // one value, or a ranking-only change would force a needless rebuild and a
+    // projection change could hide behind a requalification.
+    expect(candidateWatchSearchIndexContractRevision()).not.toBe(
+      candidateWatchSearchRankingRevision(),
+    )
   })
 
   it("is the only revision source used by every candidate boundary", () => {
@@ -47,7 +70,7 @@ describe("candidateWatchSearchApplicationRevision", () => {
 
     for (const consumer of consumers) {
       const source = readFileSync(consumer, "utf8")
-      expect(source).toContain("candidateWatchSearchApplicationRevision()")
+      expect(source).toContain("candidateWatchSearchIndexContractRevision()")
       expect(source).not.toMatch(
         /NEXT_PUBLIC_DATADOG_VERSION|RAILWAY_GIT_COMMIT_SHA|VERCEL_GIT_COMMIT_SHA|GIT_COMMIT_SHA/,
       )

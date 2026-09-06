@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiotaal",
     "selectLanguageVersion": "Selecteer een taalversie",
     "watchSelectedVersion": "Geselecteerde versie bekijken"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookiekeuzes",
+    "bannerTitle": "Uw privacykeuzes",
+    "bannerDescription": "Essentiële cookies zorgen ervoor dat Watch veilig blijft en goed werkt. Met uw toestemming kan een optionele first-party-cookie interesses tussen bezoeken onthouden om aanbevelingen te personaliseren. Contextuele aanbevelingen blijven in beide gevallen beschikbaar.",
+    "acceptAll": "Alles accepteren",
+    "essentialOnly": "Alleen essentieel",
+    "manageChoices": "Keuzes beheren",
+    "savingChoice": "Cookiekeuze wordt opgeslagen",
+    "settings": "Cookie-instellingen",
+    "settingsDescription": "Kies of Watch aanbevelingsinteresses tussen bezoeken mag onthouden. U kunt dit op elk moment wijzigen.",
+    "essentialCookies": "Essentiële cookies",
+    "essentialDescription": "Beveiliging, afspelen, privacykeuzes en toeschrijving van aanbevelingsverzoeken.",
+    "alwaysActive": "Altijd actief",
+    "personalization": "Personalisatie",
+    "personalizationDescription": "Onthoud beperkte interesses tussen bezoeken. Als u dit uitschakelt, blijven contextuele aanbevelingen beschikbaar.",
+    "erasurePending": "Profielverwijdering is in behandeling. Contextuele aanbevelingen zijn al actief.",
+    "cancel": "Annuleren",
+    "saveChoices": "Keuzes opslaan",
+    "saving": "Opslaan…",
+    "loadError": "Uw keuze kon niet worden geladen. U kunt hieronder nog steeds een keuze maken.",
+    "grantError": "Personalisatie kon niet worden ingeschakeld. Alleen essentieel blijft beschikbaar.",
+    "saveError": "Uw keuze kon niet worden opgeslagen. Probeer het opnieuw."
   }
 }

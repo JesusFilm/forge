@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio kedé",
     "selectLanguageVersion": "Kedé łaį́́ nádááłtʼé",
     "watchSelectedVersion": "Kedé nádááłtʼé yédı̨́ı̨́ł"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie kʼegháltsʼį",
+    "bannerTitle": "Neghá tłʼá kʼeétsʼá gotsʼę́",
+    "bannerDescription": "Cookie tʼá hotʼį́ni Watch dé gha egha gotʼį́ ełkʼásde. Dárí negha hotsʼı̨́ nı́dé, cookie dene gha tʼá begha hotʼį́ni kʼegháltsʼį́ eghála tʼá honágháh kʼe náríltthʼi, ajáné gha kʼetsʼeredhí gha. Dene kʼá honíyé ajáné tʼá hotʼį́ either way.",
+    "acceptAll": "Bekʼe tʼá nıde",
+    "essentialOnly": "Tʼá hotʼį́ni tsʼįlı̨ kʼeézhı",
+    "manageChoices": "Kʼegháltsʼį́ nákʼegháh",
+    "savingChoice": "Cookie kʼegháltsʼį́ esį́",
+    "settings": "Cookie begháh settings",
+    "settingsDescription": "Watch ajáné gha kʼetsʼeredhí honágháh kʼe cookie begha eghála łe gháh gołtsʼį. Dárí tʼá segha nádełnį.",
+    "essentialCookies": "Cookie tʼá hotʼį́ni",
+    "essentialDescription": "Ełkʼásde, playback, neghá tłʼá kʼeétsʼá kʼegháltsʼį, kʼola ajáné request attribution.",
+    "alwaysActive": "Tʼá segha hotʼį́",
+    "personalization": "Ajáné segha egháltsʼį",
+    "personalizationDescription": "Kʼetsʼeredhí tʼá gháh honágháh kʼe visits eghála. Edı̨lı̨ gha, dene kʼá honíyé ajáné tʼá hotʼį́.",
+    "erasurePending": "Ne profile ekʼegháltsʼedi gha wait hotʼį́. Dene kʼá honíyé ajáné tẹlẹ hotʼį́.",
+    "cancel": "Ághanda",
+    "saveChoices": "Kʼegháltsʼį́ esį́",
+    "saving": "Esį́…",
+    "loadError": "Ne kʼegháltsʼį́ dághełtsʼenı́le sį́ gha. Kʼola ekwí gha kʼegháltsʼį́ nídhį.",
+    "grantError": "Ajáné segha egháltsʼį́ dághełtsʼenı́le. Tʼá hotʼį́ni tsʼįlı̨ kʼeézhı kʼola hotʼį́.",
+    "saveError": "Ne kʼegháltsʼį́ dághełtsʼenı́le esį́ gha. Tʼá segha nághałtı."
   }
 }

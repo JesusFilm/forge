@@ -722,5 +722,28 @@
     "languageVersionLabel": "Oudiotaal",
     "selectLanguageVersion": "Kies 'n taalweergawe",
     "watchSelectedVersion": "Kyk na gekose weergawe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Koekiekeuses",
+    "bannerTitle": "Jou privaatheidkeuses",
+    "bannerDescription": "Noodsaaklike koekies hou Watch veilig en laat dit behoorlik werk. Met jou toestemming kan ’n opsionele eerstepartykoekie belangstellings oor verskeie besoeke onthou om aanbevelings te verpersoonlik. Kontekstuele aanbevelings bly in elk geval beskikbaar.",
+    "acceptAll": "Aanvaar alles",
+    "essentialOnly": "Slegs noodsaaklike",
+    "manageChoices": "Bestuur keuses",
+    "savingChoice": "Stoor koekiekeuse",
+    "settings": "Koekie-instellings",
+    "settingsDescription": "Kies of Watch aanbevelingsbelangstellings oor verskeie besoeke mag onthou. Jy kan dit enige tyd verander.",
+    "essentialCookies": "Noodsaaklike koekies",
+    "essentialDescription": "Sekuriteit, afspeel, privaatheidkeuses en toeskrywing van aanbevelingsversoeke.",
+    "alwaysActive": "Altyd aktief",
+    "personalization": "Verpersoonliking",
+    "personalizationDescription": "Onthou beperkte belangstellings oor verskeie besoeke. As jy dit afskakel, bly kontekstuele aanbevelings beskikbaar.",
+    "erasurePending": "Profieluitwissing is hangende. Kontekstuele aanbevelings is reeds aktief.",
+    "cancel": "Kanselleer",
+    "saveChoices": "Stoor keuses",
+    "saving": "Stoor…",
+    "loadError": "Jou keuse kon nie gelaai word nie. Jy kan steeds hieronder kies.",
+    "grantError": "Verpersoonliking kon nie geaktiveer word nie. Slegs noodsaaklike bly beskikbaar.",
+    "saveError": "Jou keuse kon nie gestoor word nie. Probeer asseblief weer."
   }
 }

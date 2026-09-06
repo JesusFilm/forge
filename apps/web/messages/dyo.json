@@ -722,5 +722,28 @@
     "languageVersionLabel": "Kanam audio",
     "selectLanguageVersion": "Tan bersionu kanam",
     "watchSelectedVersion": "Gis bersion bi nga tan"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Say tànn ci sutura sa bopp",
+    "bannerDescription": "Cookie yu soxla yi dañuy tax Watch am kaaraange te muy liggéey bu baax. Bu nga maye, benn cookie buy jot ci saet bi mën na fàttali sa yiw ngir solo ndigal yi ci wàll visit yi nga di dellu. Ndigal yu aju ci li ngay seet dañuy nekk maslaa sax.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yi soxla rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn cookie bi",
+    "settings": "Parameetar yu cookie",
+    "settingsDescription": "Tànnal ndax Watch man na fàttali sa yiw ci ndigal yi ci diggante visit yi ngay def. Mën nga ko soppi saa su ne.",
+    "essentialCookies": "Cookie yu soxla",
+    "essentialDescription": "Kaaraange, play, tànn yu sutura sa bopp, ak xamle ki laaj ndigal yi.",
+    "alwaysActive": "Dafa doon liggéey saa su ne",
+    "personalization": "Solo ku ñuul",
+    "personalizationDescription": "Fàttali yiw yi ñu teg kem-kem ci diggante visit yi. Su nga ko tëjée, ndigal yu aju ci li ngay seet dinañu nekk.",
+    "erasurePending": "Mbugal far sa profayl bi mi ngi xaar. Ndigal yu aju ci li ngay seet tàmbali na ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënu ñu yebbi sa tànn. Waaye mën nga tànn ci suuf.",
+    "grantError": "Mënu ñu doxal personalization bi. Yi soxla rekk lañuy wéyal.",
+    "saveError": "Mënu ñu denc sa tànn. Jéemaatal."
   }
 }

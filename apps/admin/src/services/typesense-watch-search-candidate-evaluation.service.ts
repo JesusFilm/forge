@@ -1,16 +1,17 @@
 import { createHash, randomUUID } from "node:crypto"
 
-import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 
 import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 import { resolveEvaluationCandidateWatchSearchProfile } from "./typesense-watch-search-comparison.service"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
 import {
   assertQualificationProfilesMatchLease,
   freezeCurrentWatchSearchProfile,
@@ -90,7 +91,11 @@ function assertCandidateDiagnostics(
     profile.kind !== "CANDIDATE" ||
     diagnostics.profile !== "CANDIDATE" ||
     diagnostics.generationId !== profile.generationId ||
-    diagnostics.applicationRevision !== profile.applicationRevision ||
+    diagnostics.indexContractRevision !== profile.indexContractRevision ||
+    diagnostics.contentEmbeddingContractId !==
+      profile.contentEmbeddingContractId ||
+    diagnostics.transcriptChunkingVersion !==
+      profile.transcriptChunkingVersion ||
     diagnostics.transcriptProjectionRevision !==
       profile.transcriptProjectionRevision ||
     diagnostics.rankingImplementation !== rankingRevision ||
@@ -120,17 +125,20 @@ type ServingCandidateGenerationResolver = {
 export async function resolveServingCandidateWatchSearchProfile(input: {
   generations: ServingCandidateGenerationResolver
   currentProfile: TypesenseWatchSearchProfile
-  applicationRevision: string | null
+  indexContractRevision: string | null
   rankingRevision: string | null
-  transcriptProjectionRevision: bigint | null
+  transcriptCompatibility: {
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  } | null
   qrelsRevision: string | null
 }): Promise<TypesenseWatchSearchProfile> {
   if (
     input.currentProfile.kind !== "CURRENT" ||
     input.currentProfile.allowCompatibilityFallback ||
-    !input.applicationRevision ||
+    !input.indexContractRevision ||
     !input.rankingRevision ||
-    input.transcriptProjectionRevision == null ||
+    !input.transcriptCompatibility ||
     !input.qrelsRevision
   ) {
     throw new CandidateSearchEvaluationError("profile_unavailable")
@@ -144,9 +152,12 @@ export async function resolveServingCandidateWatchSearchProfile(input: {
     return await resolveCandidateWatchSearchProfile({
       generations: input.generations,
       generationId: pointer.generationId,
-      applicationRevision: input.applicationRevision,
+      indexContractRevision: input.indexContractRevision,
       transcriptCollection: input.currentProfile.binding.transcript,
-      transcriptProjectionRevision: input.transcriptProjectionRevision,
+      contentEmbeddingContractId:
+        input.transcriptCompatibility.contentEmbeddingContractId,
+      transcriptChunkingVersion:
+        input.transcriptCompatibility.transcriptChunkingVersion,
       requireQualified: true,
       currentBindings: watchSearchBindingMembers(input.currentProfile),
       qrelsRevision: input.qrelsRevision,
@@ -179,7 +190,9 @@ export function candidateSearchEvaluationRevision(input: {
   if (
     profile.kind !== "CANDIDATE" ||
     !profile.generationId ||
-    !profile.applicationRevision ||
+    !profile.indexContractRevision ||
+    !profile.contentEmbeddingContractId ||
+    !profile.transcriptChunkingVersion ||
     profile.transcriptProjectionRevision == null
   ) {
     throw new CandidateSearchEvaluationError("profile_unavailable")
@@ -192,7 +205,9 @@ export function candidateSearchEvaluationRevision(input: {
   }
   const identity = {
     generationId: profile.generationId,
-    applicationRevision: profile.applicationRevision,
+    indexContractRevision: profile.indexContractRevision,
+    contentEmbeddingContractId: profile.contentEmbeddingContractId,
+    transcriptChunkingVersion: profile.transcriptChunkingVersion,
     rankingRevision: input.rankingRevision,
     transcriptProjectionRevision:
       profile.transcriptProjectionRevision.toString(),
@@ -330,7 +345,6 @@ export class TypesenseWatchSearchCandidateEvaluationService {
 export function createTypesenseWatchSearchCandidateEvaluationService(
   source: CandidateSearchEvaluationSource,
 ): TypesenseWatchSearchCandidateEvaluationService {
-  const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
   const host = env.TYPESENSE_HOST
   const apiKey = resolveTypesenseWatchSearchApiKey({
     searchApiKey: env.TYPESENSE_SEARCH_API_KEY,
@@ -353,19 +367,25 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
     resolveCandidateProfile: async (currentProfile) => {
       const profile =
         source === "EVALUATION"
-          ? await resolveEvaluationCandidateWatchSearchProfile(generations)
+          ? await resolveEvaluationCandidateWatchSearchProfile({
+              generations,
+              currentProfile,
+              transcriptCompatibility:
+                await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+            })
           : await resolveServingCandidateWatchSearchProfile({
               generations,
               currentProfile,
-              applicationRevision: candidateWatchSearchApplicationRevision(),
+              indexContractRevision:
+                candidateWatchSearchIndexContractRevision(),
               rankingRevision: candidateWatchSearchRankingRevision(),
-              transcriptProjectionRevision:
-                runtimeSearchEnv.transcriptProjectionRevision ?? null,
+              transcriptCompatibility:
+                await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
               qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
             })
       if (
-        profile.applicationRevision !==
-        candidateWatchSearchApplicationRevision()
+        profile.indexContractRevision !==
+        candidateWatchSearchIndexContractRevision()
       ) {
         throw new CandidateSearchEvaluationError("profile_unavailable")
       }
@@ -381,7 +401,9 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
     }) => {
       if (
         !candidate.generationId ||
-        !candidate.applicationRevision ||
+        !candidate.indexContractRevision ||
+        !candidate.contentEmbeddingContractId ||
+        !candidate.transcriptChunkingVersion ||
         candidate.transcriptProjectionRevision == null
       ) {
         throw new CandidateSearchEvaluationError("profile_unavailable")
@@ -397,8 +419,10 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
           holderToken,
           ttlMs: EVALUATION_LEASE_TTL_MS,
           generationId: candidate.generationId,
-          applicationRevision: candidate.applicationRevision,
+          indexContractRevision: candidate.indexContractRevision,
           transcriptCollection: candidate.binding.transcript,
+          contentEmbeddingContractId: candidate.contentEmbeddingContractId,
+          transcriptChunkingVersion: candidate.transcriptChunkingVersion,
           transcriptProjectionRevision: candidate.transcriptProjectionRevision,
           currentBindings,
         })
@@ -411,8 +435,10 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
         resourceKey,
         holderToken: lease.holderToken,
         generationId: lease.generationId,
-        applicationRevision: lease.applicationRevision,
+        indexContractRevision: lease.indexContractRevision,
         transcriptCollection: lease.transcriptCollection,
+        contentEmbeddingContractId: lease.contentEmbeddingContractId,
+        transcriptChunkingVersion: lease.transcriptChunkingVersion,
         transcriptProjectionRevision: lease.transcriptProjectionRevision,
         currentBindings,
         expiresAt: lease.expiresAt,

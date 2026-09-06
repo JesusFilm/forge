@@ -722,5 +722,28 @@
     "languageVersionLabel": "Pinulongan sa audio",
     "selectLanguageVersion": "Pagpili og bersyon sa pinulongan",
     "watchSelectedVersion": "Tan-awa ang napiling bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga kapilian sa cookie",
+    "bannerTitle": "Imong mga kapilian sa pagkapribado",
+    "bannerDescription": "Ang hinungdanong mga cookie nagpadayon nga luwas ug naglihok ang Watch. Uban sa imong pagtugot, usa ka opsyonal nga first-party cookie makahinumdom sa mga interes sa matag pagbalik aron ma-personalize ang mga rekomendasyon. Magamit gihapon ang mga rekomendasyong kontekstwál bisan unsa pa ang imong pili-on.",
+    "acceptAll": "Dawata tanan",
+    "essentialOnly": "Hinungdanon lang",
+    "manageChoices": "Dumalaa ang mga kapilian",
+    "savingChoice": "Ginasave ang kapilian sa cookie",
+    "settings": "Mga setting sa cookie",
+    "settingsDescription": "Pilia kung tugotan ba ang Watch nga mahinumdoman ang mga interes sa rekomendasyon sa matag pagbalik. Mahimo nimo kining usbon bisan kanus-a.",
+    "essentialCookies": "Hinungdanong mga cookie",
+    "essentialDescription": "Seguridad, playback, mga kapilian sa pagkapribado, ug pag-ila sa gigikanan sa hangyo sa rekomendasyon.",
+    "alwaysActive": "Kanunay aktibo",
+    "personalization": "Personalisasyon",
+    "personalizationDescription": "Hinumdoma ang piniling mga interes sa matag pagbalik. Kung pawngon kini, magamit gihapon ang mga rekomendasyong kontekstwál.",
+    "erasurePending": "Nagpaabot pa ang pagtangtang sa profile. Aktibo na daan ang mga rekomendasyong kontekstwál.",
+    "cancel": "Kanselahon",
+    "saveChoices": "I-save ang mga kapilian",
+    "saving": "Ginasave…",
+    "loadError": "Dili ma-load ang imong kapilian. Makapili gihapon ka sa ubos.",
+    "grantError": "Dili ma-enable ang personalisasyon. Ang hinungdanon lang nagpabiling magamit.",
+    "saveError": "Dili ma-save ang imong kapilian. Palihog sulayi pag-usab."
   }
 }

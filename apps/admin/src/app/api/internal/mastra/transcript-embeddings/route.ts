@@ -19,6 +19,7 @@ function statusForError(error: TranscriptEmbeddingIngestError): number {
     case "target_not_found":
       return 404
     case "target_ambiguous":
+    case "contract_mismatch":
       return 409
     case "write_failed":
       return 502

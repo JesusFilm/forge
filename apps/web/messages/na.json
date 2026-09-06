@@ -722,5 +722,28 @@
     "languageVersionLabel": "Dorerin wirim",
     "selectLanguageVersion": "Dorerin eo e ere",
     "watchSelectedVersion": "Dorerin e eren ome"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kuki ibukin",
+    "bannerTitle": "Am tiam ngkoe bun oman",
+    "bannerDescription": "Kuki bwain e kakoro Watch ma e kakaokoro ao e kona n angam. Ma e mwiom, kuki eko dogin ma e boe e kona n aoghoe me bwain am ijoor bwaeija ibukin recommendation aika anganiko. Recommendation aika contextual e kona n tuan maro iroum ngkoe naba.",
+    "acceptAll": "Buiy ir aoera",
+    "essentialOnly": "Boto bwain aikarabo",
+    "manageChoices": "Reken ibukin",
+    "savingChoice": "E tino kuki ibukin",
+    "settings": "Aterin kuki",
+    "settingsDescription": "Kakoro ngkoe bwa Watch e kona n aoghoe recommendation interests ian bwaeija aika boaki. Ngkoe e kona n ekaei ngkanne aeaun aron.",
+    "essentialCookies": "Kuki bwain aikarabo",
+    "essentialDescription": "Kawakina, playback, privacy ibukin, ao recommendation request attribution.",
+    "alwaysActive": "Tuan active ikanne",
+    "personalization": "Bweine eon tararua",
+    "personalizationDescription": "Aoghoe bounded interests ian bwaeija aika boaki. Bwa e aki ia, recommendation aika contextual e tuan maro iroum.",
+    "erasurePending": "Erasure n profile e mena. Recommendation aika contextual a tia n active.",
+    "cancel": "Kabwij",
+    "saveChoices": "Tino ibukin",
+    "saving": "E tino…",
+    "loadError": "Am ibukin e aki kona n load. Ngkoe e kona n tuan ter ibukin aika imwin.",
+    "grantError": "Personalization e aki kona n tena. Essential only e tuan mena.",
+    "saveError": "Am ibukin e aki kona n tino. Maiti, manga kaito."
   }
 }

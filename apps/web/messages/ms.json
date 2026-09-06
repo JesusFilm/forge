@@ -722,5 +722,28 @@
     "languageVersionLabel": "Bahasa audio",
     "selectLanguageVersion": "Pilih versi bahasa",
     "watchSelectedVersion": "Tonton versi yang dipilih"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilihan kuki",
+    "bannerTitle": "Pilihan privasi anda",
+    "bannerDescription": "Kuki penting memastikan Watch selamat dan berfungsi. Dengan kebenaran anda, kuki pihak pertama pilihan boleh mengingati minat anda antara lawatan untuk memperibadikan cadangan. Cadangan berdasarkan konteks tetap tersedia walau apa pun pilihan anda.",
+    "acceptAll": "Terima semua",
+    "essentialOnly": "Penting sahaja",
+    "manageChoices": "Urus pilihan",
+    "savingChoice": "Menyimpan pilihan kuki",
+    "settings": "Tetapan kuki",
+    "settingsDescription": "Pilih sama ada Watch boleh mengingati minat cadangan anda antara lawatan. Anda boleh mengubahnya pada bila-bila masa.",
+    "essentialCookies": "Kuki penting",
+    "essentialDescription": "Keselamatan, main balik, pilihan privasi dan atribusi permintaan cadangan.",
+    "alwaysActive": "Sentiasa aktif",
+    "personalization": "Pemperibadian",
+    "personalizationDescription": "Ingat minat terhad antara lawatan. Jika dimatikan, cadangan berdasarkan konteks akan tetap tersedia.",
+    "erasurePending": "Pemadaman profil sedang diproses. Cadangan berdasarkan konteks sudah aktif.",
+    "cancel": "Batal",
+    "saveChoices": "Simpan pilihan",
+    "saving": "Menyimpan…",
+    "loadError": "Pilihan anda tidak dapat dimuatkan. Anda masih boleh membuat pilihan di bawah.",
+    "grantError": "Pemperibadian tidak dapat diaktifkan. Pilihan penting sahaja masih tersedia.",
+    "saveError": "Pilihan anda tidak dapat disimpan. Sila cuba lagi."
   }
 }

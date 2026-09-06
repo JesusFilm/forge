@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio-hizkuntza",
     "selectLanguageVersion": "Aukeratu hizkuntza-bertsio bat",
     "watchSelectedVersion": "Ikusi aukeratutako bertsioa"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie aukerak",
+    "bannerTitle": "Zure pribatutasun-aukerak",
+    "bannerDescription": "Ezinbesteko cookiek Watch seguru eta martxan mantentzen dute. Zure baimenarekin, aukerako lehen mailako cookie batek interesak gorde ditzake bisiten artean gomendioak pertsonalizatzeko. Testuinguruko gomendioak erabilgarri egongo dira bi kasuetan ere.",
+    "acceptAll": "Onartu dena",
+    "essentialOnly": "Ezinbestekoak soilik",
+    "manageChoices": "Kudeatu aukerak",
+    "savingChoice": "Cookie aukera gordetzen",
+    "settings": "Cookie ezarpenak",
+    "settingsDescription": "Aukeratu Watch-ek gomendioetarako interesak bisiten artean gogora ditzakeen ala ez. Hau noiznahi alda dezakezu.",
+    "essentialCookies": "Ezinbesteko cookieak",
+    "essentialDescription": "Segurtasuna, erreprodukzioa, pribatutasun-aukerak eta gomendio-eskaeren atribuzioa.",
+    "alwaysActive": "Beti aktibo",
+    "personalization": "Pertsonalizazioa",
+    "personalizationDescription": "Gorde interes mugatuak bisiten artean. Hau desaktibatzeak testuinguruko gomendioak erabilgarri mantentzen ditu.",
+    "erasurePending": "Profilaren ezabaketa zain dago. Testuinguruko gomendioak dagoeneko aktibo daude.",
+    "cancel": "Utzi",
+    "saveChoices": "Gorde aukerak",
+    "saving": "Gordetzen…",
+    "loadError": "Ezin izan da zure aukera kargatu. Hala ere, behean aukeratu dezakezu.",
+    "grantError": "Ezin izan da pertsonalizazioa gaitu. Ezinbestekoak soilik erabil daitezke.",
+    "saveError": "Ezin izan da zure aukera gorde. Saiatu berriro, mesedez."
   }
 }

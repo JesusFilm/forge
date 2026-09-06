@@ -722,5 +722,28 @@
     "languageVersionLabel": "Tekoi er a reng",
     "selectLanguageVersion": "Omeked a belkul a tekoi",
     "watchSelectedVersion": "Omes er a belkul el omeked"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie el mo omlaut",
+    "bannerTitle": "Ngii a omloi er kau",
+    "bannerDescription": "Cookie el kirel sebechel a melemolem el mo kmal ungil me a sebechel Watch. Ngar er a omesiu, a ta er a optional first-party cookie a sebeched el mo diak a kmo melemolem er a rengul a omesodel a ultutelel el bo mo buil a mesaul a tekoi el kirel kau. A recommendation el omekrael er a context a mo melemalt er a taem el di mle mesaod.",
+    "acceptAll": "Mo ungil er a ongeruul el ullsengel a klechad",
+    "essentialOnly": "A kirel sebechel kekeald",
+    "manageChoices": "Oldecheduch er a omloi",
+    "savingChoice": "Dulech er a omloi er a cookie",
+    "settings": "Setting er a cookie",
+    "settingsDescription": "Melekla el ngdi Watch a mo sebechel el melemolem er a rengul a recommendation el kirel kau el locha mo ngar er a visit el uaisei. Ke sebechem el oldecheduch e a taem er a taem.",
+    "essentialCookies": "Cookie el kirel sebechel",
+    "essentialDescription": "Security, playback, omloi er a privacy, me a attribution er a request el kirel recommendation.",
+    "alwaysActive": "Mengai er a taem el diak",
+    "personalization": "Mesaul a tekoi el kirel kau",
+    "personalizationDescription": "Melemolem er a interest el mla mo kmal mle kirel kau er a visit el uaisei. Ngdi ke mengeseu er a diak, a recommendation el omekrael er a context a mo medengei el melemalt.",
+    "erasurePending": "A ureor er a omekngeltengat el profile a mla mo er ngii. A recommendation el omekrael er a context a mle mengai tial taem.",
+    "cancel": "Mo kltmokl",
+    "saveChoices": "Dulech er a omloi",
+    "saving": "Dulech...",
+    "loadError": "Ngii a omloi er kau a diak lsebeched el losii. Ngdi ke sebechem el omloi er a omengull.",
+    "grantError": "A personalization a diak lsebeched el me ngak. A essential only a mesaod el melemalt.",
+    "saveError": "Ngii a omloi er kau a diak lsebeched el dulech. Ngklel a ungil chimngii mlo sebechem el melekoi se el mla ta er ngak."
   }
 }

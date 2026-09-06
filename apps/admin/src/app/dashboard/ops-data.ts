@@ -11,7 +11,8 @@ import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS } from "@/services/content-embedding-contract"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
@@ -25,6 +26,7 @@ import {
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
 import { normalizeVideoThumbnailUrl } from "@/app/dashboard/video-library-utils"
+import { availabilityScoreForKind } from "@/services/watch-search-availability-score"
 
 type Metric = {
   label: string
@@ -1747,7 +1749,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
       },
       {
         label: "Index Dim",
-        value: "1536",
+        value: String(ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS),
         footer: "PGVECTOR_HNSW",
       },
     ],
@@ -2424,8 +2426,8 @@ export async function runSemanticSearch(params: {
     },
     {
       label: "Vector Dimension",
-      value: "1536",
-      detail: "Experience semantic search expects 1536-dimension vectors.",
+      value: String(ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS),
+      detail: `Experience semantic search expects ${ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS}-dimension vectors.`,
     },
     {
       label: "Input",
@@ -2459,7 +2461,10 @@ export async function runSemanticSearch(params: {
   }
 
   try {
-    const embedding = await generateExperienceEmbedding(queryText)
+    const embedding = await generateCurrentContentQueryEmbedding(
+      prisma,
+      queryText,
+    )
     const services = createServices(prisma)
     const results = await withTableFallback(
       () =>
@@ -2534,17 +2539,10 @@ function emptyWatchSearchScoreBreakdown() {
   }
 }
 
-function watchSearchAvailabilityScoreForKind(kind: string | null): number {
-  if (kind === "target_audio") return 0.25
-  if (kind === "target_subtitle") return 0.18
-  if (kind === "related_language") return 0.08
-  return 0
-}
-
 function emptyWatchSearchScoreBreakdownForAvailability(kind: string | null) {
   return {
     ...emptyWatchSearchScoreBreakdown(),
-    availability: watchSearchAvailabilityScoreForKind(kind),
+    availability: availabilityScoreForKind(kind),
   }
 }
 
@@ -2561,8 +2559,7 @@ function watchSearchScoreBreakdown(
   const evidenceBoost = jsonNumber(row.evidenceBoost)
   const relevance = jsonNumber(row.relevance)
   const availability =
-    jsonNumber(row.availability) ||
-    watchSearchAvailabilityScoreForKind(availabilityKind)
+    jsonNumber(row.availability) || availabilityScoreForKind(availabilityKind)
   const match = jsonNumber(row.match)
   const sourceScore = jsonNumber(row.sourceScore)
   if (total == null || availability == null || sourceScore == null) {

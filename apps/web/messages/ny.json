@@ -722,5 +722,28 @@
     "languageVersionLabel": "Chilankhulo cha mawu",
     "selectLanguageVersion": "Sankhani mtundu wa chilankhulo",
     "watchSelectedVersion": "Onerani mtundu womwe mwasankha"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Zosankha za cookie",
+    "bannerTitle": "Zosankha zanu zachinsinsi",
+    "bannerDescription": "Ma cookie ofunikira amateteza Watch ndi kuisunga ikugwira ntchito. Ndi chilolezo chanu, cookie yosankha ya pa tsambali ingakumbukire zokonda zanu pa maulendo osiyanasiyana kuti ikonzekere malingaliro oyenerana ndi inu. Malingaliro otengera zomwe mukuwona alipo mulimonsemo.",
+    "acceptAll": "Landirani zonse",
+    "essentialOnly": "Zofunikira zokha",
+    "manageChoices": "Sinthani zosankha",
+    "savingChoice": "Kusunga chisankho cha cookie",
+    "settings": "Makonzedwe a cookie",
+    "settingsDescription": "Sankhani ngati Watch ikhoza kukumbukira zokonda za malingaliro anu pa maulendo osiyanasiyana. Mungasinthe izi nthawi iliyonse.",
+    "essentialCookies": "Ma cookie ofunikira",
+    "essentialDescription": "Chitetezo, kusewera kanema, zosankha zachinsinsi, ndi kutsata komwe pempho la malingaliro lachokera.",
+    "alwaysActive": "Zimagwira ntchito nthawi zonse",
+    "personalization": "Kukonzedwa mogwirizana ndi inu",
+    "personalizationDescription": "Kumbukirani zokonda zina pa maulendo osiyanasiyana. Mukazimitsa izi, malingaliro otengera zomwe mukuwona adzakhalabe alipo.",
+    "erasurePending": "Kufufutidwa kwa mbiri yanu kukuyembekezera. Malingaliro otengera zomwe mukuwona ayamba kale kugwira ntchito.",
+    "cancel": "Letsani",
+    "saveChoices": "Sungani zosankha",
+    "saving": "Kusunga…",
+    "loadError": "Sitinathe kutsegula chisankho chanu. Mutha kusankhabe pansipa.",
+    "grantError": "Sitinathe kuyatsa kukonzedwa mogwirizana ndi inu. Zofunikira zokha zikadalipo.",
+    "saveError": "Sitinathe kusunga chisankho chanu. Chonde yesaninso."
   }
 }

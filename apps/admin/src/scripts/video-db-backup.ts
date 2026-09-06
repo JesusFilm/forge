@@ -26,6 +26,7 @@ import { finished, pipeline } from "node:stream/promises"
 import {
   type BackupDownloadSignerEnv,
   type BackupPlan,
+  type BackupPreflightCommandPlan,
   type BackupPreflightCapture,
   type BackupStorageEnv,
   type BackupUploadPlan,
@@ -146,6 +147,47 @@ async function captureCommand(plan: CommandPlan): Promise<string> {
       )
     })
   })
+}
+
+async function captureBackupSourceCompatibility(
+  plan: BackupPreflightCommandPlan,
+): Promise<string> {
+  const databaseIndex = plan.args.indexOf("--dbname")
+  const commandIndex = plan.args.indexOf("--command")
+  const connectionString = plan.args[databaseIndex + 1]
+  const query = plan.args[commandIndex + 1]
+  if (typeof connectionString !== "string" || typeof query !== "string") {
+    throw new VideoDbBackupError(
+      "Backup preflight source compatibility plan was invalid",
+    )
+  }
+
+  const authorityStart = connectionString.indexOf("://") + 3
+  const authorityEnd = connectionString.indexOf("/", authorityStart)
+  const authority = connectionString.slice(
+    authorityStart,
+    authorityEnd >= 0 ? authorityEnd : connectionString.length,
+  )
+  const hostList = authority.slice(authority.lastIndexOf("@") + 1)
+  if (hostList.includes(",")) {
+    return captureCommand({ ...plan, command: "psql" })
+  }
+
+  const { Client } = await import("pg")
+  const client = new Client({ connectionString })
+  try {
+    await client.connect()
+    const result = await client.query<{ compatibility: string }>(query)
+    const output = result.rows[0]?.compatibility
+    if (typeof output !== "string") {
+      throw new VideoDbBackupError(
+        "Backup preflight source compatibility output was invalid",
+      )
+    }
+    return output
+  } finally {
+    await client.end()
+  }
 }
 
 function requirePostgres18Client(
@@ -773,7 +815,7 @@ export async function executeBackupPlan(
 
   try {
     const exportStartedAt = performance.now()
-    await runBackupPreflight(plan, captureCommand)
+    await runBackupPreflight(plan, captureBackupSourceCompatibility)
     await runPlan(plan)
     const exportDurationMs = elapsedMilliseconds(exportStartedAt)
     const dumpSize = (await stat(plan.outPath)).size

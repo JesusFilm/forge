@@ -91,7 +91,7 @@ function BetaTesterModalLoadingShell({
           id="beta-tester-loading-description"
           role="status"
           aria-live="polite"
-          className="mt-3 text-sm text-stone-300"
+          className="mt-3 text-base sm:text-sm text-stone-300"
         >
           {failed ? t("loadFailed") : t("loading")}
         </p>
@@ -100,7 +100,7 @@ function BetaTesterModalLoadingShell({
             href={BETA_TESTER_URL}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-stone-950 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 text-base sm:text-sm font-semibold text-stone-950 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none"
           >
             {t("openFormNewTab")}
           </a>
@@ -108,7 +108,7 @@ function BetaTesterModalLoadingShell({
             type="button"
             autoFocus
             onClick={onClose}
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-5 text-sm font-semibold text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-5 text-base sm:text-sm font-semibold text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
           >
             {t("close")}
           </button>
@@ -277,7 +277,7 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
           disabled={triggerUnavailable || !triggerVisible}
           onClick={(event) => openModal(event.currentTarget)}
           className={cn(
-            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[45] inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-stone-950 shadow-[0_12px_36px_rgba(0,0,0,0.4)] ring-1 ring-black/10 transition-[opacity,transform,background-color] duration-300 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none disabled:pointer-events-none sm:right-6 sm:bottom-6",
+            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[45] inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-base sm:text-sm font-semibold text-stone-950 shadow-[0_12px_36px_rgba(0,0,0,0.4)] ring-1 ring-black/10 transition-[opacity,transform,background-color] duration-300 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none disabled:pointer-events-none sm:right-6 sm:bottom-6",
             triggerVisible
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-2 opacity-0",

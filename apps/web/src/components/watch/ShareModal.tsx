@@ -33,6 +33,7 @@ function XBrandIcon({ size = 18 }: { size?: number }) {
 }
 
 import { env } from "@/env"
+import { markWatchUrlAsShared } from "@/lib/playback-discovery"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -43,6 +44,10 @@ import {
 } from "@/lib/share"
 import { cn } from "@/lib/utils"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
+import {
+  WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
+  WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
+} from "./watch-modal-presentation"
 
 // Optional fields here accept explicit `null` from the parent's `?? null`
 // fallback chain in WatchPageClient (`video.title ?? null`). The effective
@@ -57,6 +62,9 @@ export type ShareModalProps = {
   posterUrl?: string | null
   /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
   playbackId?: string | null
+  onShareAction?: (
+    detail: "link_copy" | "embed_copy" | "facebook_intent" | "x_intent",
+  ) => void
   onClose: () => void
 }
 
@@ -71,6 +79,7 @@ export function ShareModal({
   videoDescription,
   posterUrl,
   playbackId,
+  onShareAction,
   onClose,
 }: ShareModalProps) {
   const t = useTranslations("ShareModal")
@@ -83,11 +92,14 @@ export function ShareModal({
   })
   const tabIdPrefix = useId()
 
-  const shareableUrl = resolveWatchShareUrl({
+  const canonicalShareableUrl = resolveWatchShareUrl({
     origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
     videoSlug,
     languageSlug: currentLanguageSlug,
   })
+  const shareableUrl = canonicalShareableUrl
+    ? markWatchUrlAsShared(canonicalShareableUrl)
+    : null
   // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
   // interpolating into the iframe `src` and returns "" on null/invalid; the
   // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
@@ -168,10 +180,11 @@ export function ShareModal({
     tabRefs.current[nextTab]?.focus()
   }
 
-  async function copy(text: string) {
+  async function copy(text: string, detail: "link_copy" | "embed_copy") {
     try {
       await navigator.clipboard.writeText(text)
       setCopyStatus("copied")
+      onShareAction?.(detail)
     } catch {
       setCopyStatus("failed")
     }
@@ -214,19 +227,23 @@ export function ShareModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-share-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+        viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
       >
         <WatchModalViewportCloseButton
           open={open}
           onClose={() => handleOpenChange(false)}
           testId="watch-share-modal-close"
+          renderInline
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        <div className="flex max-h-[82vh] flex-col gap-6 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
+        <div
+          data-testid="watch-share-modal-content"
+          className="flex flex-col gap-6"
+        >
           <h2 className="text-2xl font-semibold text-stone-100">
             {t("heading")}
           </h2>
@@ -258,7 +275,7 @@ export function ShareModal({
               {videoDescription ? (
                 <p
                   data-testid="watch-share-modal-description"
-                  className="line-clamp-4 text-sm leading-relaxed font-medium text-stone-300"
+                  className="line-clamp-4 text-base sm:text-sm leading-relaxed font-medium text-stone-300"
                 >
                   {videoDescription}
                 </p>
@@ -274,6 +291,7 @@ export function ShareModal({
                 rel="noopener noreferrer"
                 aria-label={`${t("shareOnFacebook")} (opens in a new tab)`}
                 data-testid="watch-share-modal-facebook"
+                onClick={() => onShareAction?.("facebook_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <Facebook size={18} fill="currentColor" stroke="none" />
@@ -284,6 +302,7 @@ export function ShareModal({
                 rel="noopener noreferrer"
                 aria-label={`${t("shareOnX")} (opens in a new tab)`}
                 data-testid="watch-share-modal-x"
+                onClick={() => onShareAction?.("x_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
                 <XBrandIcon size={16} />
@@ -318,7 +337,7 @@ export function ShareModal({
                   tabRefs.current.link = element
                 }}
                 className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  "flex-1 cursor-pointer px-4 py-3 text-sm sm:text-xs font-semibold tracking-[0.18em] uppercase transition",
                   !isEmbed
                     ? "border-b-2 border-brand-red text-brand-red"
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
@@ -340,7 +359,7 @@ export function ShareModal({
                   tabRefs.current.embed = element
                 }}
                 className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  "flex-1 cursor-pointer px-4 py-3 text-sm sm:text-xs font-semibold tracking-[0.18em] uppercase transition",
                   isEmbed
                     ? "border-b-2 border-brand-red text-brand-red"
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
@@ -379,7 +398,7 @@ export function ShareModal({
             {copyStatus === "failed" ? (
               <p
                 data-testid="watch-share-modal-link-fallback"
-                className="mb-2 text-xs font-semibold text-amber-400"
+                className="mb-2 text-sm sm:text-xs font-semibold text-amber-400"
               >
                 {t("copyFailed")}
               </p>
@@ -396,7 +415,7 @@ export function ShareModal({
                 rows={2}
                 value={embedSnippet}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-sm sm:text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
             ) : activeMode === "link" ? (
               <input
@@ -406,7 +425,7 @@ export function ShareModal({
                 aria-label={t("shareLinkTab")}
                 value={currentValue ?? ""}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base sm:text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
             ) : null}
           </div>
@@ -415,7 +434,7 @@ export function ShareModal({
             <Button
               variant="ghost"
               onClick={() => handleOpenChange(false)}
-              className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+              className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
               {t("close")}
             </Button>
@@ -427,8 +446,10 @@ export function ShareModal({
                     ? "watch-share-modal-embed-copy"
                     : "watch-share-modal-link-copy"
                 }
-                onClick={() => copy(currentValue)}
-                className="gap-2 px-7 py-4 text-sm"
+                onClick={() =>
+                  copy(currentValue, isEmbed ? "embed_copy" : "link_copy")
+                }
+                className="gap-2 px-7 py-4 text-base sm:text-sm"
               >
                 <Copy size={16} />
                 <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>

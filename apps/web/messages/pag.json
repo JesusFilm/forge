@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lengguahe na boses",
     "selectLanguageVersion": "Piliin so bersyon na lengguahe",
     "watchSelectedVersion": "Panonood so pinili a bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pagpilian ed cookie",
+    "bannerTitle": "Dagiti pilim ya pagkapribado",
+    "bannerDescription": "Dagiti importantin cookie et mangisalaknib tan mangipapagana ed Watch. No ipalubos mo, sakey a opsyonal a first-party cookie so makanengnengneng na dagiti interes mo ed amin a bisita pian mapersonalisar so rekomendasion. Dagiti kontekstuwal a rekomendasion et magawa la met maski anton man so piliem.",
+    "acceptAll": "Awaten amin",
+    "essentialOnly": "Importanti labat",
+    "manageChoices": "Asikasuen so pagpipilian",
+    "savingChoice": "Isasalba so pinilim a cookie",
+    "settings": "Settings na cookie",
+    "settingsDescription": "Pilien no maari ya tandaanen na Watch dagiti interes mo ed rekomendasion ed amin a bisita. Mabalin mo itan ya baliwen anyaman ya oras.",
+    "essentialCookies": "Importantin cookie",
+    "essentialDescription": "Seguridad, playback, dagiti pilim ya pagkapribado, tan atribusion na kerew ed rekomendasion.",
+    "alwaysActive": "Aktibo lan amin oras",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Tandaan dagiti limitadon interes ed amin a bisita. No patayen mo iya, magawa la met so dagiti kontekstuwal a rekomendasion.",
+    "erasurePending": "Agtatalaran niyaman so panagpunas na profile. Aktibo la natan so dagiti kontekstuwal a rekomendasion.",
+    "cancel": "Ikansela",
+    "saveChoices": "Isalba so pagpipilian",
+    "saving": "Isasalba…",
+    "loadError": "Agew na-load so pinilim. Mabalin ka la met a mamili ed baba.",
+    "grantError": "Agew na-on so personalisasion. Available la so importantin cookie labat.",
+    "saveError": "Agew naisalba so pinilim. Pangaasi ta subok manen."
   }
 }

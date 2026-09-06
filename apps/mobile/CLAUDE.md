@@ -226,6 +226,19 @@ local file does not revoke it.
 Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
 once on preview before you ever need it on production.
 
+**Any `eas.json` change moves the runtime version, and the next `update:*`
+then reaches no installed build.** The app uses the fingerprint
+`runtimeVersion` policy, and `@expo/fingerprint` hashes `eas.json` as a build
+input. An update published after such a commit targets a runtime version that
+no installed build carries. The publish exits 0 and reports nothing. Before
+you publish, compare two values. The first is the `runtimeVersion` of the
+latest FINISHED `production` build, from
+`eas build:list --platform ios --limit 1 --json`. The second is the runtime
+version that `eas update` prints. When they differ, ship a native build and
+let testers install it first. JS-only changes under `src/` and `app/` do not
+move the version. The same rule already applies to config plugins and native
+modules.
+
 **`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
 tester in minutes with no store review, so publishing an uncommitted working
 tree would ship code that exists nowhere in git. Two things about it are not
@@ -262,6 +275,43 @@ so the next upload would have been rejected as a duplicate. The record
 (`ascAppId` 6791428415, "Jesus Film Watch") is shared with `apps/tv`; App
 Store Connect keeps one build list per platform, so the tvOS numbers do not
 constrain iOS.
+
+## EAS builder toolchain pins
+
+`eas.json` has a `base` profile that every build profile extends, directly
+or through `preview`. It pins `node` and `pnpm` and sets
+`SHARP_IGNORE_GLOBAL_LIBVIPS=1`. Keep `pnpm` equal to `packageManager` in the
+root `package.json`, character for character. Keep `node` on the same major
+as `.nvmrc`. `.nvmrc` holds only the major (`24`), and `eas.json` needs a
+full semver, so the patch is the release the last green build used. Bump all
+three together. `app/__tests__/easToolchainPins.guard.test.js` pins both
+rules, the `extends` chain, and the env. A pin bump edits `eas.json`, so it
+moves the runtime version; see "Publishing an EAS Update". Never pass
+`--profile base`: it resolves to a store build with no channel and no
+build-number increment.
+
+Why: EAS takes its toolchain from the current default VM image, not from
+`packageManager`. On 2026-08-28 the default moved to macOS Tahoe / Xcode
+26.6 / Node 22 / pnpm 11.9.0. Two mobile production builds then failed in
+`Install dependencies` on `sharp@0.34.5`, an `apps/admin` dependency the
+icon script borrows. Two separate facts, verified from the build logs:
+
+- pnpm 11 ignores the root `package.json` `pnpm` field
+  (`packageExtensions`, `overrides`, `patchedDependencies`). The pins fix
+  that. They did NOT fix sharp — build `dfabe6e3` failed the same way on
+  Node 24.14.1 / pnpm 9.12.3.
+- The new image carries a global libvips. sharp's `install/check.js`
+  exits 1 silently when `useGlobalLibvips()` is true. pnpm then runs
+  `npm run build`. That build needs `node-gyp` and fails with "Please add
+  node-gyp to your dependencies". The prebuilt `@img/sharp-darwin-arm64`
+  package is in the lockfile the whole time; `SHARP_IGNORE_GLOBAL_LIBVIPS=1`
+  makes sharp use it. The last good builds (mobile 2026-07-16, TV
+  2026-08-19) ran on the older Sequoia image, which had no global libvips.
+
+`apps/tv` carries neither the pins nor the env and will hit the same
+failure on its next build. EAS build logs are Brotli-encoded JSON lines.
+Fetch `logFiles[0]` from `eas build:view <id> --json` with Node and
+`zlib.brotliDecompressSync`; python and curl on this machine lack Brotli.
 
 ## Observability (Datadog)
 

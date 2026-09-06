@@ -9,6 +9,7 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
+import { normalizeLabel } from "@/lib/video-labels"
 import {
   getVideoChildDubLanguagesBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
@@ -2670,6 +2671,15 @@ export type CarouselParent = {
   slug: string | null
   title: string | null
   children: WatchChild[]
+  /**
+   * Admin's `VideoLabel` for the parent itself. Optional because the
+   * synthesized-from-current-video parents (`virtualParent` here,
+   * `withCompatibilityAdmittedVideoChildren` in the route) describe the video
+   * being watched rather than a real container, and nothing ranks those.
+   * Populated for standalone `selectableParents`, where it decides which
+   * container the carousel opens on — see `rankSelectableCarouselParents`.
+   */
+  label?: string | null
 }
 
 export type WatchSiblingCarouselBlock = {
@@ -2684,6 +2694,17 @@ export type WatchBodyBlock = {
   kind: "WatchBody"
   video: WatchVideoRecord
   variant: WatchVariant
+}
+
+/**
+ * Route-owned production recommendation slot. It carries only the seed media
+ * identity; locale and audio language stay on the existing Watch client
+ * boundary so the static page never reads request cookies.
+ */
+export type WatchSemanticRecommendationsBlock = {
+  kind: "SemanticRecommendations"
+  seedMediaId: string
+  seedMediaSlug?: string
 }
 
 export type WatchStudyQuestionsBlock = {
@@ -2706,6 +2727,7 @@ export type WatchBlock =
   | WatchHeroPlayerBlock
   | WatchSiblingCarouselBlock
   | WatchBodyBlock
+  | WatchSemanticRecommendationsBlock
   | WatchStudyQuestionsBlock
   | WatchBibleQuotesBlock
   | WatchShareBlock
@@ -2811,6 +2833,59 @@ function nextWatchItemFromChild(
 }
 
 /**
+ * Parent labels that mean "this video is a chapter OF this thing" rather than
+ * "this video was curated INTO this thing". A segment of the Gospel of John
+ * belongs to the film in a way it never belongs to a seasonal playlist, so the
+ * film is the container a standalone page should open on.
+ *
+ * Compared through `normalizeLabel`, the same canonicalizer
+ * `videoLabelMessageKey` uses to render these labels in the carousel itself.
+ * Admin's wire enum is SNAKE_CASE (`VideoLabel` in
+ * `apps/admin/src/graphql/types/video.ts`) and is today the only spelling that
+ * reaches this field — `normalizeParent` passes `parent.label` through
+ * verbatim. The normalizer is reused anyway because a bare `toUpperCase()`
+ * maps a camelCase spelling like `featureFilm` to `FEATUREFILM` and matches
+ * nothing, so a future producer, a renamed enum, or a fixture in that shape
+ * would fail silently — straight back to the old default.
+ */
+const CONTAINING_WORK_PARENT_LABELS = new Set(["FEATURE_FILM", "SERIES"])
+
+function isContainingWorkParent(parent: CarouselParent): boolean {
+  const normalized = normalizeLabel(parent.label)
+  return normalized != null && CONTAINING_WORK_PARENT_LABELS.has(normalized)
+}
+
+/**
+ * Orders standalone carousel parents so the work the video is a chapter of
+ * wins the default slot over a curated collection.
+ *
+ * Admin hands `Video.parents` back sorted by `VideoRelation.order` — which is
+ * the *child's index inside each parent*, not a ranking between parents (see
+ * `docs/plans/2026-06-14-001-fix-watch-video-relation-order-plan.md`, where
+ * that ordering was introduced for `children` and applied to `parents` for
+ * determinism). Sorting parents by it means "whichever collection lists this
+ * video earliest wins", which is coincidence: `the-arrest-of-jesus-and-peter-denial`
+ * is #5 in the "Anticipate the Resurrection" collection and #41 in the
+ * "Life of Jesus (Gospel of John)" film, so the playlist took the default.
+ *
+ * Deliberately two tiers, not a full label ranking: promoting only
+ * FEATURE_FILM/SERIES leaves every other page byte-identical to today, so a
+ * missing or unrecognized label degrades to the previous behavior instead of
+ * reshuffling pages this bug never touched. `Array.prototype.sort` is
+ * spec-stable (ES2019), so relative order inside each tier is admin's order
+ * untouched; it sorts a copy because the caller's array is the resolver's.
+ */
+export function rankSelectableCarouselParents(
+  parents: CarouselParent[],
+): CarouselParent[] {
+  if (parents.length < 2) return parents
+  return [...parents].sort(
+    (a, b) =>
+      Number(isContainingWorkParent(b)) - Number(isContainingWorkParent(a)),
+  )
+}
+
+/**
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
@@ -2819,7 +2894,9 @@ function nextWatchItemFromChild(
  * 2. On a standalone route, when the current video has its **own** children
  *    (for example, JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
- * 3. Otherwise, use eligible selectable parents in their supplied order.
+ * 3. Otherwise, use eligible selectable parents ranked by
+ *    `rankSelectableCarouselParents` — the containing film/series first, then
+ *    admin's supplied order.
  *
  * Returns null when neither source has at least 2 entries.
  */
@@ -2864,11 +2941,14 @@ export function buildSiblingCarouselBlock(
   }
 
   if (selectableParents.length > 0) {
+    // Rank once and use the SAME array for both the default and the picker, so
+    // the dropdown's first entry is always the one the carousel opened on.
+    const rankedParents = rankSelectableCarouselParents(selectableParents)
     return {
       kind: "SiblingCarousel",
-      canonicalParent: selectableParents[0]!,
+      canonicalParent: rankedParents[0]!,
       currentVideoDocumentId: video.documentId,
-      selectableParents,
+      selectableParents: rankedParents,
     }
   }
   return null
@@ -2880,6 +2960,17 @@ export function buildWatchBodyBlock(
   variant: WatchVariant,
 ): WatchBodyBlock {
   return { kind: "WatchBody", video, variant }
+}
+
+/** Always returns the one non-authored production semantic slot. */
+export function buildSemanticRecommendationsBlock(
+  video: WatchVideoRecord,
+): WatchSemanticRecommendationsBlock {
+  return {
+    kind: "SemanticRecommendations",
+    seedMediaId: video.documentId,
+    ...(video.slug ? { seedMediaSlug: video.slug } : {}),
+  }
 }
 
 /** Returns null when the video has no study questions. */
@@ -2956,6 +3047,9 @@ type WatchSlotKey =
  */
 function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   if ("kind" in block) {
+    // The semantic slot is inserted directly by the route merge below. It is
+    // intentionally outside the Experience override map.
+    if (block.kind === "SemanticRecommendations") return null
     return block.kind
   }
   const tn = (block as { __typename?: string | null }).__typename
@@ -3035,6 +3129,13 @@ export function mergeWatchExperience({
   )
 
   for (const block of experienceBlocks) {
+    // Defensive compatibility guard: even a legacy/untyped Experience payload
+    // cannot author a second live semantic tracer.
+    if (
+      (block as unknown as { kind?: string }).kind === "SemanticRecommendations"
+    ) {
+      continue
+    }
     const slot = blockSlot(block)
     if (slot === "HeroPlayer" && !isWatchBlock(block)) {
       // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
@@ -3073,6 +3174,7 @@ export function mergeWatchExperience({
     ),
   )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
+  result.push(buildSemanticRecommendationsBlock(video))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
   pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))

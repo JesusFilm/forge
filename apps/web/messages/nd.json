@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ulimi lomsindo",
     "selectLanguageVersion": "Khetha inguqulo yolimi",
     "watchSelectedVersion": "Buka inguqulo ekhethiwe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Okukhethayo ngama-cookie",
+    "bannerTitle": "Okukhethayo ngokuvikelwa kolwazi lwakho",
+    "bannerDescription": "Ama-cookie aqakathekileyo agcina i-Watch ivikelekile njalo isebenza kuhle. Nxa usivumela, i-cookie yokuzikhethela evela kuqala ingakhumbula okuthandayo phakathi kokuvakatshela ukuze yenze izincomo zifanele wena. Izincomo ezihambelana lomongo zihlala zitholakala loba kunjalo.",
+    "acceptAll": "Vuma konke",
+    "essentialOnly": "Okuqakathekileyo kuphela",
+    "manageChoices": "Phatha okukhethayo",
+    "savingChoice": "Kugcinwa okukhethayo ngama-cookie",
+    "settings": "Izilungiselelo zama-cookie",
+    "settingsDescription": "Khetha ukuthi i-Watch ingakhumbula yini okuthandayo ngezincomo phakathi kokuvakatshela. Ungakuguqula lokhu nganoma yisiphi isikhathi.",
+    "essentialCookies": "Ama-cookie aqakathekileyo",
+    "essentialDescription": "Ukuvikeleka, ukudlalwa, okukhethayo ngokuvikelwa kolwazi, lokulandelwa kwesicelo sezincomo.",
+    "alwaysActive": "Kuhlala kusebenza",
+    "personalization": "Ukwenza kube ngokwakho",
+    "personalizationDescription": "Khumbula okuthandayo okulinganiselweyo phakathi kokuvakatshela. Ukukuvala lokhu kutshiya izincomo ezihambelana lomongo zikhona.",
+    "erasurePending": "Ukuchithwa kwephrofayili kusalindwe. Izincomo ezihambelana lomongo sezivele zisebenza.",
+    "cancel": "Khansela",
+    "saveChoices": "Gcina okukhethayo",
+    "saving": "Kuyagcinwa…",
+    "loadError": "Okukhethayo akwenelisanga ukulayitshwa. Usengakhetha ngezansi.",
+    "grantError": "Ukwenza kube ngokwakho akwenelisanga ukuvulwa. Okuqakathekileyo kuphela kusesekhona.",
+    "saveError": "Okukhethayo akwenelisanga ukugcinwa. Sicela uzame njalo."
   }
 }

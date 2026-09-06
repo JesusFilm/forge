@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lydspråk",
     "selectLanguageVersion": "Vel ein språkversjon",
     "watchSelectedVersion": "Sjå vald versjon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Informasjonskapselval",
+    "bannerTitle": "Dine val for personvern",
+    "bannerDescription": "Nødvendige informasjonskapslar held Watch trygt og i gang. Med ditt samtykke kan ei valfri førsteparts informasjonskapsel hugse interesser på tvers av besøk for å tilpasse anbefalingar. Kontekstuelle anbefalingar er tilgjengelege uansett.",
+    "acceptAll": "Godta alle",
+    "essentialOnly": "Berre nødvendige",
+    "manageChoices": "Administrer val",
+    "savingChoice": "Lagrar val av informasjonskapslar",
+    "settings": "Innstillingar for informasjonskapslar",
+    "settingsDescription": "Vel om Watch kan hugse anbefalingsinteresser på tvers av besøk. Du kan endre dette når som helst.",
+    "essentialCookies": "Nødvendige informasjonskapslar",
+    "essentialDescription": "Tryggleik, avspeling, personvernval og tilordning av førespurnader om anbefalingar.",
+    "alwaysActive": "Alltid aktiv",
+    "personalization": "Personleg tilpassing",
+    "personalizationDescription": "Hugs avgrensa interesser på tvers av besøk. Slår du dette av, vil kontekstuelle anbefalingar framleis vere tilgjengelege.",
+    "erasurePending": "Sletting av profilen ventar. Kontekstuelle anbefalingar er allereie aktive.",
+    "cancel": "Avbryt",
+    "saveChoices": "Lagre val",
+    "saving": "Lagrar…",
+    "loadError": "Valet ditt kunne ikkje lastast inn. Du kan framleis velje nedanfor.",
+    "grantError": "Personleg tilpassing kunne ikkje aktiverast. Berre nødvendige er framleis tilgjengeleg.",
+    "saveError": "Valet ditt kunne ikkje lagrast. Prøv igjen."
   }
 }

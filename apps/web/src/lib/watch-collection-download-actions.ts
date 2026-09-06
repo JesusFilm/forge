@@ -1,10 +1,17 @@
 "use server"
 
 import { type AdminResultOf } from "@forge/admin-graphql"
+import { headers } from "next/headers"
 
 import client from "@/lib/admin-client"
+import { verifyAuthSession } from "@/lib/auth-session"
+import {
+  isWatchDownloadAccountGateEnabled,
+  watchDownloadAccountGateFlagContext,
+} from "@/lib/feature-flags"
 import { getWatchCollectionDownloadDubsBySlugOperation } from "@/lib/fragments/watch-video"
 import { tryAsContentSlug, tryAsLocaleSlug } from "@/lib/routes"
+import { createWatchDownloadCapability } from "@/lib/watch-download-capability"
 
 type CollectionDownloadData = AdminResultOf<
   typeof getWatchCollectionDownloadDubsBySlugOperation
@@ -18,12 +25,16 @@ export type WatchCollectionDownloadDub = {
     height: number | null
     quality: string
     size: number | null
+    capability: string
   }>
 }
 
 export type WatchCollectionDownloadResult =
   | { ok: true; dubs: WatchCollectionDownloadDub[] }
-  | { ok: false; reason: "invalid-input" | "unavailable" }
+  | {
+      ok: false
+      reason: "auth-required" | "invalid-input" | "unavailable"
+    }
 
 export async function loadWatchCollectionDownloads(input: {
   collectionSlug: string
@@ -36,6 +47,18 @@ export async function loadWatchCollectionDownloads(input: {
   }
 
   try {
+    const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
+      watchDownloadAccountGateFlagContext,
+    )
+    let subject: string | undefined
+    if (accountGateEnabled) {
+      const session = await verifyAuthSession(await headers())
+      if (!session.authenticated) {
+        return { ok: false, reason: "auth-required" }
+      }
+      subject = session.userId
+    }
+
     const result = await client.query({
       query: getWatchCollectionDownloadDubsBySlugOperation,
       variables: { videoSlug: collectionSlug, languageSlug },
@@ -43,41 +66,86 @@ export async function loadWatchCollectionDownloads(input: {
     })
     const data = result.data as CollectionDownloadData | undefined
     const dubs = data?.videoBySlug?.downloadableChildDubs ?? []
+    const downloadableDubs = dubs.flatMap((dub) => {
+      const variantId = dub?.documentId
+      const videoId = dub?.videoId
+      if (!variantId || !videoId) return []
+      const videoSlug = tryAsContentSlug(dub.slug?.split("/", 1)[0] ?? "")
+      if (!videoSlug) return []
+      return [
+        {
+          downloads: dub.downloads ?? [],
+          languageId: dub.language?.documentId ?? null,
+          variantId,
+          videoId,
+          videoSlug,
+        },
+      ]
+    })
     return {
       ok: true,
-      dubs: dubs.flatMap((dub) => {
-        if (!dub?.documentId || !dub.videoId) return []
-        const downloads = (dub.downloads ?? []).flatMap((download) => {
-          if (!download?.documentId || !download.quality || !download.url) {
-            return []
-          }
-          const rawSize: unknown = download.size
-          const parsedSize =
-            typeof rawSize === "string"
-              ? Number.parseFloat(rawSize)
-              : typeof rawSize === "number"
-                ? rawSize
-                : null
-          return [
-            {
-              documentId: download.documentId,
-              height: download.height ?? null,
-              quality: download.quality,
-              size:
-                parsedSize != null && Number.isFinite(parsedSize)
-                  ? parsedSize
-                  : null,
-            },
-          ]
-        })
-        return [{ documentId: dub.documentId, videoId: dub.videoId, downloads }]
-      }),
+      dubs: await Promise.all(
+        downloadableDubs.map(
+          async ({
+            downloads: rawDownloads,
+            languageId,
+            variantId,
+            videoId,
+            videoSlug,
+          }): Promise<WatchCollectionDownloadDub> => {
+            const downloads = await Promise.all(
+              rawDownloads.flatMap((download) => {
+                const downloadId = download?.documentId
+                const quality = download?.quality
+                const target = download?.url
+                if (!downloadId || !quality || !target) {
+                  return []
+                }
+                const rawSize: unknown = download.size
+                const parsedSize =
+                  typeof rawSize === "string"
+                    ? Number.parseFloat(rawSize)
+                    : typeof rawSize === "number"
+                      ? rawSize
+                      : null
+                return [
+                  createWatchDownloadCapability({
+                    downloadId,
+                    variantId,
+                    videoSlug,
+                    target,
+                    ...(subject ? { subject } : {}),
+                    event: {
+                      videoId,
+                      videoDubId: variantId,
+                      languageId,
+                    },
+                  }).then((capability) => ({
+                    documentId: downloadId,
+                    height: download.height ?? null,
+                    quality,
+                    size:
+                      parsedSize != null && Number.isFinite(parsedSize)
+                        ? parsedSize
+                        : null,
+                    capability,
+                  })),
+                ]
+              }),
+            )
+            return {
+              documentId: variantId,
+              videoId,
+              downloads,
+            }
+          },
+        ),
+      ),
     }
-  } catch (error) {
+  } catch {
     console.error("[watch-collection-download] lookup failed", {
       collectionSlug,
       languageSlug,
-      error: error instanceof Error ? error.message : String(error),
     })
     return { ok: false, reason: "unavailable" }
   }

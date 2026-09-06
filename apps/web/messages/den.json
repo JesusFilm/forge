@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio kedé",
     "selectLanguageVersion": "Kedé version nádááłtʼé",
     "watchSelectedVersion": "Version nádááłtʼé yédı̨́ı̨́ł"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie ts'ı̨lı̨ k'enehtł'e",
+    "bannerTitle": "Nedáeɂa gha ts'ı̨lı̨ k'enehtł'e",
+    "bannerDescription": "Cookie t'á hot'į ats'ę́ Watch gots'ę́ gogha k'e eghálı̨ nıde. Nıfets'eh shı̨ı̨, optional first-party cookie dórı̨ ats'ę́ k'egha godets'erehshı̨ nıde, eyits'ę́ recommendation gohǫǫ̀ k'e goghałtı̨. Contextual recommendations łe t'a hǫ́lyǫ.",
+    "acceptAll": "Dahk'e k'ehłe",
+    "essentialOnly": "Ehts'ǫ́ gogha k'e t'a",
+    "manageChoices": "Ts'ı̨lı̨ k'enehtł'e goghałtı̨",
+    "savingChoice": "Cookie ts'ı̨lı̨ k'enehtł'e eghálı̨",
+    "settings": "Cookie k'egha ts'ı̨lı̨",
+    "settingsDescription": "Watch recommendation interests ats'ę́ godets'erehshı̨ hǫ́lı̨ ka t'á hot'į, eyį k'ehłe. Edahłı̨ t'a ats'ę́ goghałtı̨ hǫ́lı̨.",
+    "essentialCookies": "Cookie ehts'ǫ́ gogha k'e",
+    "essentialDescription": "Gogha k'e eghálı̨, playback, nedáeɂa ts'ı̨lı̨ k'enehtł'e, k'á recommendation request attribution.",
+    "alwaysActive": "T'a hot'į nıde",
+    "personalization": "K'edegha goghałtı̨",
+    "personalizationDescription": "Bounded interests ats'ę́ k'egha godets'erehshı̨ nıde. Edahłı̨ ats'ę́ contextual recommendations t'a hǫ́lı̨.",
+    "erasurePending": "Profile eghálı̨ gha waiting hǫ́lı̨. Contextual recommendations k'e t'a hot'į ı̨t'e.",
+    "cancel": "Ayıle",
+    "saveChoices": "Ts'ı̨lı̨ k'enehtł'e eghálı̨",
+    "saving": "Eghálı̨…",
+    "loadError": "Nedáeɂa ts'ı̨lı̨ k'enehtł'e load ayıle. K'á ekw'ı̨ı̨ hots'ę́ k'ehłe hǫ́lı̨.",
+    "grantError": "Personalization enáhshı̨ ayıle. Essential only t'a hǫ́lı̨.",
+    "saveError": "Nedáeɂa ts'ı̨lı̨ k'enehtł'e eghálı̨ ayıle. T'á segha nəgha."
   }
 }

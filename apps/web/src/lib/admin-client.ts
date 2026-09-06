@@ -15,8 +15,13 @@ const REQUEST_TIMEOUT_MS = 15_000
 const SEMANTIC_SEARCH_REQUEST_TIMEOUT_MS = 45_000
 
 function createTimeoutFetch(timeoutMs: number): typeof fetch {
-  return (input, init) =>
-    fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+  return (input, init) => {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : timeoutSignal
+    return fetch(input, { ...init, signal })
+  }
 }
 
 // Deferred construction: types in `content.ts` are imported transitively

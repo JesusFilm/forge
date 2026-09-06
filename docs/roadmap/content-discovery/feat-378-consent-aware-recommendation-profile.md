@@ -3,7 +3,7 @@ id: "feat-378"
 title: "Consent-aware recommendation profile"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 7
 depends_on:
@@ -15,6 +15,7 @@ blocks:
   - "feat-380"
   - "feat-386"
   - "feat-392"
+  - "feat-448"
 tags:
   - "admin"
   - "web"

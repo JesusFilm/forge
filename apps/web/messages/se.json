@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jietnagiella",
     "selectLanguageVersion": "Vállje giellaveršuvnna",
     "watchSelectedVersion": "Geahča válljejuvvon veršuvnna"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-válljen",
+    "bannerTitle": "Du priváhtaváljen",
+    "bannerDescription": "Vuđolaš cookie:t doallet Watcha sihkkarin ja doaibmamin. Du lohpiin sáhttá válljejuvvon vuosttášbeali cookie muitit beroštumiid galledemiid rastá, vai ávžžuhusat heivehuvvojit dutnje. Konteksttalaš ávžžuhusat leat olamuttus goabbáge láhkai.",
+    "acceptAll": "Dohkket buot",
+    "essentialOnly": "Dušše vuđolaččat",
+    "manageChoices": "Hálddaš válljemiid",
+    "savingChoice": "Vurkemin cookie-válljema",
+    "settings": "Cookie-heivehusat",
+    "settingsDescription": "Vállje, sáhttágo Watch muitit ávžžuhusberoštumiid galledemiid rastá. Dán sáhtát rievdadit goas beare.",
+    "essentialCookies": "Vuđolaš cookie:t",
+    "essentialDescription": "Sihkkarvuohta, čuojahan, priváhtaváljen ja ávžžuhusjearahusa čujuhus.",
+    "alwaysActive": "Álo aktiivvalaš",
+    "personalization": "Heiveheapmi persovdnii",
+    "personalizationDescription": "Muitte ráddjejuvvon beroštumiid galledemiid rastá. Jos dát botket eret, konteksttalaš ávžžuhusat leat ain olamuttus.",
+    "erasurePending": "Profiila sihkkun lea joatkimin. Konteksttalaš ávžžuhusat leat juo aktiivvalaččat.",
+    "cancel": "Gaskkalduhte",
+    "saveChoices": "Vurke válljemiid",
+    "saving": "Vurkemin…",
+    "loadError": "Du válljen ii sáhttán viežžat. Don sáhtát vel válljet vuolábealde.",
+    "grantError": "Persovdnalaš heiveheapmi ii sáhttán aktiveret. Dušše vuđolaččat leat ain olamuttus.",
+    "saveError": "Du válljen ii sáhttán vurkejuvvot. Geahččal ođđasit."
   }
 }

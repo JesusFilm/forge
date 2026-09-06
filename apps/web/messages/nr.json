@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ilimi lomsindo",
     "selectLanguageVersion": "Khetha inguqulo yelimi",
     "watchSelectedVersion": "Bukela inguqulo ekhethiwe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ukukhetha ama-cookie",
+    "bannerTitle": "Ukukhetha kwakho kobumfihlo",
+    "bannerDescription": "Ama-cookie aqakathekileko enza i-Watch ihlale ivikelekile begodu isebenza kuhle. Ngevumo lakho, i-cookie yokuzikhethela yangaphakathi ingakhumbula izinto ozithandako phakathi kokutjhelela kwakho ukuze yenze izincomo zibe ngezomuntu. Izincomo zomongo zisatholakala nanyana kunjalo.",
+    "acceptAll": "Yamukela koke",
+    "essentialOnly": "Okuqakathekileko kwaphela",
+    "manageChoices": "Lawula okukhethileko",
+    "savingChoice": "Kugcinwa ukukhetha kwama-cookie",
+    "settings": "Amasethingi wama-cookie",
+    "settingsDescription": "Khetha bona i-Watch ingakhumbula na izinto ozithandako zezincomo phakathi kokutjhelela kwakho. Ungakutjhugulula lokhu nanyana kunini.",
+    "essentialCookies": "Ama-cookie aqakathekileko",
+    "essentialDescription": "Ukuvikeleka, ukudlaleka, ukukhetha kobumfihlo, nokulandelelwa kwesicelo sezincomo.",
+    "alwaysActive": "Kuhlala kusebenza",
+    "personalization": "Ukwenzelwa umuntu mathupha",
+    "personalizationDescription": "Khumbula izinto ozithandako ezilinganiselweko phakathi kokutjhelela kwakho. Ukucima lokhu kwenza izincomo zomongo zihlale zitholakala.",
+    "erasurePending": "Ukusulwa kwephrofayili kusekulindweni. Izincomo zomongo sele zisebenza.",
+    "cancel": "Khansela",
+    "saveChoices": "Gcina okukhethileko",
+    "saving": "Kuyagcinwa…",
+    "loadError": "Ukukhetha kwakho akukalayitjhwa. Usengakhetha ngezansi.",
+    "grantError": "Ukwenzelwa umuntu mathupha akukavunyeliswa. Okuqakathekileko kwaphela kusatholakala.",
+    "saveError": "Ukukhetha kwakho akukagcinwa. Sibawa uzame godu."
   }
 }

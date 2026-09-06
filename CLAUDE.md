@@ -117,6 +117,7 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 - Branch naming: `feat/description`, `fix/description`, `chore/description`, `docs/description`.
 - PRs should target `main`. Squash merge.
 - **NEVER skip pre-commit hooks (`--no-verify`).** If the hook fails, fix the underlying issue. The hook exists to prevent broken code from reaching CI.
+- **Run `npx prettier --check` on new or edited markdown before pushing — do not rely on the pre-commit hook to catch it.** CI's `format` job runs `prettier --check .` over every tracked file, and failing it also fails `ci-gate`, so a docs-only PR goes red on content that reads fine. Prettier has prose opinions that are invisible by eye: it rewrites `*emphasis*` to `_emphasis_`, reflows tables, and normalizes list markers. The hook normally formats staged files (`lint-staged` runs `prettier --write` on `*`), but it cannot fire in a worktree created with `--config.ignore-scripts=true` — that skips the `prepare: husky` script, so `.husky/_` is never generated and `core.hooksPath` points at a directory that does not exist. Check `[ -d .husky/_ ]` if you are unsure whether hooks are live in your checkout.
 
 ### Environment Variables
 

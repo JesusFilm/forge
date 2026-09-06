@@ -11,6 +11,9 @@ apps/admin/schema.graphql
 apps/admin/src/app/.well-known/workflow/v1
 apps/auth/src/generated
 apps/rag/src/generated
+# RAG dashboard inputs and outputs are machine-generated and byte-verified.
+apps/rag/dashboard/prod-status-data.json
+apps/rag/dashboard/site/rag-status/index.html
 apps/yt-video-mapper-backend/src/generated
 apps/mastra-gateway/src/generated
 apps/manager/src/app/.well-known/workflow/v1

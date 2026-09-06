@@ -1,0 +1,196 @@
+# Source map — the curated companion to source-status.yaml (issue #100).
+#
+# source-status.yaml is machine-written by /slice and records only sources that
+# entered the pipeline. THIS file is hand-curated and records the rest of what
+# we know:
+#   gaps:       per-source "missing / next step" notes + pending chips (blocked
+#               sibling domains, planned language groups) for sources already on
+#               the dashboard.
+#   documented: sources we know about — mostly from the jesusfilm-ai (jfa)
+#               registry, apps/api/src/sources/registry.ts — but have never
+#               acquired here. state: proposed (future ingestion candidates) or
+#               retired (deliberately not pursued; kept so the decision stays
+#               visible).
+#
+# Consumed by `pnpm dashboard:build` (validated against sourceMapSchema in
+# scripts/lib/dashboard/types.ts). Sizes are estimates from sitemap counts, jfa
+# crawl caps, or probes — display labels, not guarantees. Provenance for the jfa
+# intel: docs/jfa-registry-findings.md and the jfa legacy SOURCES.md.
+
+gaps:
+  jesusfilm-org:
+    missing: >-
+      Blog only — the /about/ leadership scope (~40 pages, catalogued by jfa)
+      would close the org-identity gap ("who is Jesus Film?" questions).
+
+  familylife:
+    missing: >-
+      Posts only — jfa's crawl policy allowed 9,994 of 13,869 discovered pages;
+      ~7,600 sub-brand pages (Art of Marriage, Blended, …) are unseeded. The
+      Spanish deep sections are JS-rendered and sitemap-invisible (#8).
+
+  cru:
+    missing: >-
+      Complete for the crawled scope — whole domain, en+es+fr. The sole fr doc
+      is a marketing piece; eval deliberately not cased at n=1.
+
+  thelife:
+    pending:
+      - label: fa
+        state: blocked
+        detail: "~2.9k"
+    missing: >-
+      fa = shagerdan.com (Persian sibling, ~2,946 sitemap URLs) behind the same
+      Cloudflare wall as EveryStudent — Firecrawl stealth scrape or a Cru IP
+      allowlist would unblock (#8).
+
+  starting-with-god:
+    pending:
+      - label: "31 sibling domains"
+        state: proposed
+        detail: "~2–3k"
+    missing: >-
+      31 sibling language domains (jfa manifest) not started — each is a
+      different CMS, so per-source selector recon is the real cost (#43).
+
+  everystudent:
+    host: www.everystudent.com
+    pending:
+      - label: "51 sibling domains"
+        state: proposed
+        detail: "≤15k"
+    missing: >-
+      English flagship behind a Cloudflare JS managed challenge (homepage 200 is
+      a false positive) — unblock via Firecrawl, jfa's reviewed-archive scripts
+      (its proven path; it never beat the wall either), or a Cru IP allowlist.
+      The 51 sibling language domains are largely NOT walled (jfa canary
+      fetched 46/46 with plain HTTP).
+
+documented:
+  gotquestions:
+    name: GotQuestions
+    host: www.gotquestions.org
+    state: proposed
+    method: plain scrape
+    languages: en
+    est_size: "1.5k–100k+"
+    note: >-
+      No bot wall — jfa ingested 342 chunks at a 1,500-page cap. The open
+      decision is crawl scope: the full site is 100k+ Q&As.
+
+  knowgod:
+    name: KnowGod / GodTools
+    host: knowgod.com
+    state: proposed
+    method: api
+    languages: "en es fr +"
+    est_size: "~200"
+    note: >-
+      jfa ingested via the GodTools content API — no scraping needed; port the
+      API path instead of crawling the Angular shell.
+
+  victorybeyondthecup:
+    name: Victory Beyond the Cup
+    host: victorybeyondthecup.com
+    state: proposed
+    method: render scrape
+    languages: "en es fr pt"
+    est_size: "~120"
+    note: >-
+      Framer JS shell — needs browser rendering; jfa had a working scraper
+      (199 chunks across 4 languages).
+
+  victory-host-kit:
+    name: Victory host kit
+    host: drive.google.com
+    state: proposed
+    method: manual
+    languages: en
+    est_size: "14 files"
+    note: >-
+      Reviewed Google Drive archive — jfa's registry carries the 14 file IDs and
+      an import script.
+
+  arclight:
+    name: Arclight video metadata
+    host: api.arclight.org
+    state: proposed
+    method: api
+    languages: "7 langs"
+    est_size: metadata
+    note: >-
+      Video metadata API (jfa ingested 46 chunks) — API client work, not
+      scraping.
+
+  joshua-project:
+    name: Joshua Project
+    host: joshuaproject.net
+    state: proposed
+    method: manual
+    languages: en
+    est_size: data set
+    note: People-group data import, not article scraping.
+
+  nextstep-support:
+    name: NextStep support docs
+    host: support.nextstep.is
+    state: proposed
+    method: plain scrape
+    languages: en
+    est_size: small
+    note: >-
+      Help Scout docs; jfa marked them "explicitly not for doctrine" — low
+      priority.
+
+  curated-references:
+    name: Curated references
+    host: youtube.com
+    state: proposed
+    method: manual
+    languages: en
+    est_size: curated
+    note: >-
+      jfa had a staged YouTube/article JSON review format; needs a curation
+      owner.
+
+  powertochange:
+    name: Power to Change
+    host: powertochange.com
+    state: retired
+    method: plain scrape
+    languages: en
+    est_size: "—"
+    note: >-
+      Superseded — decommissioned; every content URL 301s to thelife.com, which
+      we ingested instead.
+
+  issuesiface:
+    name: IssuesIFace
+    host: issuesiface.com
+    state: retired
+    method: plain scrape
+    languages: en
+    est_size: "—"
+    note: >-
+      Rejected — unstable host (www 404s, 403/challenge); jfa discarded it as a
+      product decision.
+
+  nextstep:
+    name: NextStep
+    host: nextstep.is
+    state: retired
+    method: plain scrape
+    languages: en
+    est_size: "~8 pages"
+    note: >-
+      Deferred — thin product-marketing pages, not a seeker-Q&A corpus; possible
+      seasonal-exclusion test fixture later.
+
+  nextstep-football2026:
+    name: NextStep Football 2026
+    host: football2026.nextstep.is
+    state: retired
+    method: plain scrape
+    languages: en
+    est_size: "—"
+    note: Deferred — seasonal campaign subdomain; same reasoning as NextStep.

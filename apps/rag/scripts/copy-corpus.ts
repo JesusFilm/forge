@@ -13,6 +13,12 @@ const DEFAULT_REPORT = fileURLToPath(
     import.meta.url,
   ),
 )
+const PRODUCTION_REPORT = fileURLToPath(
+  new URL(
+    "../../../docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json",
+    import.meta.url,
+  ),
+)
 const RETRIEVAL_SCORE_TOLERANCE = 1e-5
 const REQUIRED_TABLES = [
   "sources",
@@ -75,6 +81,11 @@ type CopyOptions = {
   batchSize: number
   maxBatches: number | null
   reportPath: string
+  production: boolean
+  expectedSourceHostHash: string | null
+  expectedTargetHostHash: string | null
+  sourceSnapshotReference: string | null
+  sourceCutoff: string | null
 }
 
 type SafeReport = {
@@ -83,6 +94,13 @@ type SafeReport = {
   source: { database: string; hostHash: string }
   target: { database: string; hostHash: string }
   copiedRows: Partial<Record<TableName, number>>
+  operation: {
+    mode: "local" | "production"
+    expectedSourceHostHash: string | null
+    expectedTargetHostHash: string | null
+    sourceSnapshotReference: string | null
+    sourceCutoff: string | null
+  }
   reconciliation: unknown
 }
 
@@ -220,24 +238,48 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     batchSize: 250,
     maxBatches: null,
     reportPath: DEFAULT_REPORT,
+    production: false,
+    expectedSourceHostHash: null,
+    expectedTargetHostHash: null,
+    sourceSnapshotReference: null,
+    sourceCutoff: null,
   }
-  let confirmed = false
+  let localConfirmed = false
+  let reportOverridden = false
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === "--copy") options.dryRun = false
     else if (arg === "--verify-only") {
       options.dryRun = false
       options.verifyOnly = true
-    } else if (arg === "--confirm-local-copy") confirmed = true
-    else if (arg === "--resume") options.resume = true
+    } else if (arg === "--confirm-local-copy") localConfirmed = true
+    else if (arg === "--confirm-production-copy") {
+      options.production = true
+    } else if (arg === "--expected-source-host-hash")
+      options.expectedSourceHostHash = argv[++index] ?? ""
+    else if (arg === "--expected-target-host-hash")
+      options.expectedTargetHostHash = argv[++index] ?? ""
+    else if (arg === "--source-snapshot-reference")
+      options.sourceSnapshotReference = argv[++index] ?? ""
+    else if (arg === "--source-cutoff") {
+      const value = argv[++index] ?? ""
+      const parsed = new Date(value)
+      if (!value || Number.isNaN(parsed.valueOf()))
+        throw new MigrationUsageError(
+          "--source-cutoff requires an ISO-8601 timestamp",
+        )
+      options.sourceCutoff = parsed.toISOString()
+    } else if (arg === "--resume") options.resume = true
     else if (arg === "--source-env") options.sourceEnv = argv[++index] ?? ""
     else if (arg === "--target-env") options.targetEnv = argv[++index] ?? ""
     else if (arg === "--batch-size")
       options.batchSize = positiveInteger(arg, argv[++index])
     else if (arg === "--max-batches")
       options.maxBatches = positiveInteger(arg, argv[++index])
-    else if (arg === "--report") options.reportPath = argv[++index] ?? ""
-    else
+    else if (arg === "--report") {
+      options.reportPath = argv[++index] ?? ""
+      reportOverridden = true
+    } else
       throw new MigrationUsageError(
         `Unknown argument ${arg}; database URLs must be supplied through named environment variables`,
       )
@@ -246,9 +288,68 @@ export function parseCorpusCopyArgs(argv: string[]): CopyOptions {
     throw new MigrationUsageError(
       "Environment variable names and report path cannot be empty",
     )
-  if (!options.dryRun && !options.verifyOnly && !confirmed)
+  if (localConfirmed && options.production)
+    throw new MigrationUsageError(
+      "Choose exactly one local or production copy acknowledgement",
+    )
+  if (
+    !options.dryRun &&
+    !options.verifyOnly &&
+    !localConfirmed &&
+    !options.production
+  )
     throw new MigrationUsageError("--copy requires --confirm-local-copy")
+  if (options.production) {
+    if (!/^[a-f0-9]{16}$/.test(options.expectedSourceHostHash ?? ""))
+      throw new MigrationUsageError(
+        "Production mode requires --expected-source-host-hash from a read-only preflight",
+      )
+    if (!/^[a-f0-9]{16}$/.test(options.expectedTargetHostHash ?? ""))
+      throw new MigrationUsageError(
+        "Production mode requires --expected-target-host-hash from a read-only preflight",
+      )
+    if (!options.sourceSnapshotReference)
+      throw new MigrationUsageError(
+        "Production mode requires a recoverable source snapshot reference",
+      )
+    if (!options.sourceCutoff)
+      throw new MigrationUsageError(
+        "Production mode requires a recorded source cutoff",
+      )
+    if (!reportOverridden) options.reportPath = PRODUCTION_REPORT
+  }
   return options
+}
+
+export function sourceReadOnlyUrl(sourceUrl: string): string {
+  const readOnlySourceUrl = new URL(sourceUrl)
+  const existingOptions = readOnlySourceUrl.searchParams.get("options")
+  readOnlySourceUrl.searchParams.set(
+    "options",
+    [existingOptions, "-c default_transaction_read_only=on"]
+      .filter(Boolean)
+      .join(" "),
+  )
+  return readOnlySourceUrl.href
+}
+
+export function validateProductionIdentities(
+  options: Pick<
+    CopyOptions,
+    "production" | "expectedSourceHostHash" | "expectedTargetHostHash"
+  >,
+  sourceIdentity: { hostHash: string },
+  targetIdentity: { hostHash: string },
+): void {
+  if (!options.production) return
+  if (sourceIdentity.hostHash !== options.expectedSourceHostHash)
+    throw new MigrationUsageError(
+      "Production source identity does not match --expected-source-host-hash",
+    )
+  if (targetIdentity.hostHash !== options.expectedTargetHostHash)
+    throw new MigrationUsageError(
+      "Production target identity does not match --expected-target-host-hash",
+    )
 }
 
 export function serializeReport(report: SafeReport): string {
@@ -363,14 +464,21 @@ async function resumeCursor(
      FROM ${quote(spec.name)}`,
   )
   if (!cursor) return null
-  const [{ sourcePrefix }] = await source.$queryRawUnsafe<
-    Array<{ sourcePrefix: bigint }>
+  const [{ sourcePrefix, sourceFingerprint }] = await source.$queryRawUnsafe<
+    Array<{ sourcePrefix: bigint; sourceFingerprint: string }>
   >(
-    `SELECT count(*) AS "sourcePrefix" FROM ${quote(spec.name)}
-     WHERE ${quote(spec.cursor)} <= $1::${spec.cursorType}`,
+    `SELECT count(*) AS "sourcePrefix",
+            coalesce(sum(hashtextextended((to_jsonb(t) - 'search_tsv')::text, 0)::numeric), 0)::text AS "sourceFingerprint"
+     FROM ${quote(spec.name)} t WHERE ${quote(spec.cursor)} <= $1::${spec.cursorType}`,
     cursor,
   )
-  if (sourcePrefix !== count)
+  const [{ targetFingerprint }] = await target.$queryRawUnsafe<
+    Array<{ targetFingerprint: string }>
+  >(
+    `SELECT coalesce(sum(hashtextextended((to_jsonb(t) - 'search_tsv')::text, 0)::numeric), 0)::text AS "targetFingerprint"
+     FROM ${quote(spec.name)} t`,
+  )
+  if (sourcePrefix !== count || sourceFingerprint !== targetFingerprint)
     throw new MigrationUsageError(
       `Target ${spec.name} rows are not a resumable source prefix`,
     )
@@ -510,7 +618,9 @@ async function run(options: CopyOptions): Promise<SafeReport> {
   if (sourceUrl === targetUrl)
     throw new MigrationUsageError("Source and target databases must differ")
 
-  const source = new PrismaClient({ datasourceUrl: sourceUrl })
+  const source = new PrismaClient({
+    datasourceUrl: sourceReadOnlyUrl(sourceUrl),
+  })
   const target = new PrismaClient({ datasourceUrl: targetUrl })
   try {
     await Promise.all([source.$connect(), target.$connect()])
@@ -529,6 +639,7 @@ async function run(options: CopyOptions): Promise<SafeReport> {
       throw new MigrationUsageError(
         "Source and target resolve to the same database",
       )
+    validateProductionIdentities(options, sourceIdentity, targetIdentity)
     if (
       !options.dryRun &&
       !options.verifyOnly &&
@@ -593,6 +704,13 @@ async function run(options: CopyOptions): Promise<SafeReport> {
       source: sourceIdentity,
       target: targetIdentity,
       copiedRows,
+      operation: {
+        mode: options.production ? "production" : "local",
+        expectedSourceHostHash: options.expectedSourceHostHash,
+        expectedTargetHostHash: options.expectedTargetHostHash,
+        sourceSnapshotReference: options.sourceSnapshotReference,
+        sourceCutoff: options.sourceCutoff,
+      },
       reconciliation: {
         equivalent,
         factsEquivalent,

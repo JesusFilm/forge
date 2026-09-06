@@ -3,6 +3,7 @@ import { createHash } from "node:crypto"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import {
+  DEFAULT_OPENAI_BASE_URL,
   isSourceEquivalent,
   messageContractError,
   PermanentApiError,
@@ -473,11 +474,23 @@ async function main({ args = process.argv, environment = process.env } = {}) {
   const concurrency = integerArg("--concurrency", DEFAULT_CONCURRENCY, args)
   const maxAttempts = integerArg("--max-attempts", DEFAULT_MAX_ATTEMPTS, args)
   const shouldPromote = args.includes("--promote")
-  const apiKey = environment.OPENAI_API_KEY ?? environment.API_OPENAI
+  const configuredBaseUrl = environment.OPENAI_BASE_URL?.trim()
+  const baseUrl = (configuredBaseUrl || DEFAULT_OPENAI_BASE_URL).replace(
+    /\/+$/,
+    "",
+  )
+  const allowOpenRouterCredential =
+    Boolean(configuredBaseUrl) && baseUrl !== DEFAULT_OPENAI_BASE_URL
+  const apiKey =
+    environment.OPENAI_API_KEY ??
+    environment.API_OPENAI ??
+    (allowOpenRouterCredential
+      ? (environment.API_OPENROUTER ?? environment.OPENROUTER_API_KEY)
+      : undefined)
   if (!apiKey) {
     throw new TranslationCliError(
       "MISSING_OPENAI_API_KEY",
-      "Set OPENAI_API_KEY or API_OPENAI",
+      "Set OPENAI_API_KEY or API_OPENAI. API_OPENROUTER or OPENROUTER_API_KEY may be used only with an explicit non-default OPENAI_BASE_URL.",
     )
   }
 
@@ -680,6 +693,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
         if (keysToTranslate.length > 0) {
           const result = await requestTranslations({
             apiKey,
+            baseUrl,
             locale,
             inventoryEntry: inventoryByLocale.get(locale),
             messages,

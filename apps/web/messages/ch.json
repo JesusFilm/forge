@@ -722,5 +722,28 @@
     "languageVersionLabel": "Finoʼ audio",
     "selectLanguageVersion": "Ayek un bersión finoʼ",
     "watchSelectedVersion": "Atan i inayek na bersión"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Inafan cookie",
+    "bannerTitle": "Inafan para i pribasidåt-mu",
+    "bannerDescription": "I nesesåt na cookie siha ha na'seguru si Watch ya u funsiona por maolek. Yanggen un na'ånu, un opsional na first-party cookie siña un na'ånña' gui hinengge-mu gi entalo bisita siha para u ma'åjusta i rekomendasion siha. I rekomendasion siha sigun gi contexto gaige guaha maseha håfa.",
+    "acceptAll": "Eksèpta todu",
+    "essentialOnly": "I nesesåt ha' only",
+    "manageChoices": "Guinaha inafan",
+    "savingChoice": "Manasåttba i inafan cookie",
+    "settings": "Ajuste cookie",
+    "settingsDescription": "Ayek yanggen si Watch siña ha na'ånña' i hinengge rekomendasion gi entalo bisita siha. Siña un cambia este kada tiempo.",
+    "essentialCookies": "Cookie nesesåt siha",
+    "essentialDescription": "Seguridåt, playback, inafan pribasidåt, yan attribution para petision rekomendasion.",
+    "alwaysActive": "Siempre aktibu",
+    "personalization": "Personalizasion",
+    "personalizationDescription": "Na'ånña' i limitado na hinengge siha gi entalo bisita siha. Yanggen un apaga este, i rekomendasion sigun gi contexto siempre guaha.",
+    "erasurePending": "I diniliti perfil ti ha fina'na'guaha guini. I rekomendasion sigun gi contexto aktibuña måpos.",
+    "cancel": "Kansela",
+    "saveChoices": "Såttba i inafan siha",
+    "saving": "Manasåttba…",
+    "loadError": "Ti siña ma'karga i inafan-mu. Lao siña ha' un ayek guini gi papa'.",
+    "grantError": "Ti siña ma'aktiba i personalizasion. I nesesåt ha' siempre guaha.",
+    "saveError": "Ti siña ma'såttba i inafan-mu. Pot fabot, chule' fanu nuebu."
   }
 }

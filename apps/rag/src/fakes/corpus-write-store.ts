@@ -56,6 +56,7 @@ export class FakeCorpusWriteStore implements CorpusWriteStore {
   async replaceDocument(
     doc: NormalizedDocument,
     chunks: EmbeddedChunk[],
+    _staging?: { rawDocumentId: string; attemptedModel: string },
   ): Promise<void> {
     const source = this.sources.get(doc.sourceKey)
     if (!source) {

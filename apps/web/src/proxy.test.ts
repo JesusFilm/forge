@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+
 import { config, proxy, type ProxyRequest } from "./proxy"
 import {
   WATCH_INTERNAL_REWRITE_HEADER,
@@ -422,6 +424,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
       ["/languages", "/en/en/languages"],
+      ["/whats-new", "/en/en/whats-new"],
       ["/french.html/languages", "/fr/fr/languages"],
       ["/spanish-latin-american.html/history", "/es/es-419/history"],
       [
@@ -1457,5 +1460,201 @@ describe("proxy — resilience on malformed inputs", () => {
   it("404s four-segment paths in proxy before they can mint route cache entries", async () => {
     const response = await proxy(makeRequest("/a.html/b/c.html/d.html"))
     expectNotFoundRewrite(response)
+  })
+})
+
+describe("two-segment language disambiguation consults the live route manifest (FGE-81)", () => {
+  // SYNTHETIC fixture: a slug that is deliberately absent from the compiled
+  // corpus stands in for a language admin publishes AFTER the corpus snapshot
+  // (the production instance was `german-pennsylvania`, which is now in the
+  // corpus and therefore cannot discriminate this path). The first test pins
+  // the absence so a future regeneration cannot silently make these vacuous.
+  const NEW_LANGUAGE = "newly-published-language"
+  const NEW_LANGUAGE_INDEX = TEST_MANIFEST.audioLanguageSlugs.length
+  const MANIFEST_WITH_NEW_LANGUAGE: WatchRouteManifest = {
+    ...TEST_MANIFEST,
+    audioLanguageSlugs: [...TEST_MANIFEST.audioLanguageSlugs, NEW_LANGUAGE],
+    audioLanguageIndexesByContent: {
+      ...TEST_MANIFEST.audioLanguageIndexesByContent,
+      jesus: [
+        ...(TEST_MANIFEST.audioLanguageIndexesByContent?.jesus ?? []),
+        NEW_LANGUAGE_INDEX,
+      ],
+    },
+    audioLanguageIndexesByEpisode: {
+      "lumo-the-gospel-of-john": {
+        ...TEST_MANIFEST.audioLanguageIndexesByEpisode?.[
+          "lumo-the-gospel-of-john"
+        ],
+        "lumo-john-1-1-34": [2, 4, NEW_LANGUAGE_INDEX],
+      },
+    },
+  }
+
+  beforeEach(() => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(
+      async () => MANIFEST_WITH_NEW_LANGUAGE,
+    )
+  })
+
+  it("keeps the synthetic language outside the compiled corpus", () => {
+    expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has(NEW_LANGUAGE)).toBe(false)
+  })
+
+  it("classifies a manifest-only language as a video route and preserves the query", async () => {
+    const response = await proxy(
+      makeRequest(`/jesus.html/${NEW_LANGUAGE}.html?t=115&autoplay=1`),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+    expect(rewrite.pathname).toBe(`/en/en/jesus.html/${NEW_LANGUAGE}.html`)
+    expect(rewrite.search).toBe("?t=115&autoplay=1")
+    expect(
+      rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
+    ).toBe(`/jesus.html/${NEW_LANGUAGE}.html`)
+  })
+
+  it("admits the internal re-entry of that rewrite", async () => {
+    const first = await proxy(makeRequest(`/jesus.html/${NEW_LANGUAGE}.html`))
+    const internalPath = rewritePath(first)
+    expect(internalPath).toBe(`/en/en/jesus.html/${NEW_LANGUAGE}.html`)
+
+    const admitted = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+    expect(admitted.status).toBe(200)
+    expect(rewritePath(admitted)).toBeNull()
+  })
+
+  it("classifies a manifest-only language in the three-segment episode grammar", async () => {
+    const response = await proxy(
+      makeRequest(
+        `/lumo-the-gospel-of-john.html/lumo-john-1-1-34/${NEW_LANGUAGE}.html`,
+      ),
+    )
+
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewritePath(response)).toBe(
+      `/en/en/lumo-the-gospel-of-john.html/lumo-john-1-1-34/${NEW_LANGUAGE}.html`,
+    )
+  })
+
+  it("accepts a manifest-only language for the per-language videos index", async () => {
+    const response = await proxy(makeRequest(`/${NEW_LANGUAGE}.html/videos`))
+
+    expect(response.headers.get("location")).toBeNull()
+    expect(rewritePath(response)).toBe(`/en/en/videos/${NEW_LANGUAGE}`)
+  })
+
+  it("falls back to the compiled corpus alone when the manifest is unavailable", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const response = await proxy(
+      makeRequest(`/jesus.html/${NEW_LANGUAGE}.html`),
+    )
+
+    expectNotFoundRewrite(response)
+    expect(
+      warn.mock.calls.some(([line]) =>
+        String(line).includes(
+          "event=watch_route.implicit_english_episode.rejected",
+        ),
+      ),
+    ).toBe(true)
+    expect(
+      warn.mock.calls.some(
+        ([line]) =>
+          String(line).includes(`childSlug=${NEW_LANGUAGE}`) &&
+          String(line).includes("manifestAvailable=false"),
+      ),
+    ).toBe(true)
+  })
+
+  it("still rejects a second segment neither source knows, with a distinguishable log line", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const response = await proxy(
+      makeRequest("/jesus.html/definitely-not-a-language.html"),
+    )
+
+    expectNotFoundRewrite(response)
+    expect(
+      warn.mock.calls.some(
+        ([line]) =>
+          String(line).includes(
+            "event=watch_route.implicit_english_episode.rejected",
+          ) &&
+          String(line).includes("parentSlug=jesus") &&
+          String(line).includes("childSlug=definitely-not-a-language") &&
+          String(line).includes("manifestAvailable=true"),
+      ),
+    ).toBe(true)
+  })
+
+  it("does not log the implicit-episode signal when the short context is rescued by a 301 to the standalone video", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const response = await proxy(
+      makeRequest("/discipleship.html/parable-of-the-sower-and-the-seed.html"),
+    )
+
+    expect(response.status).toBe(301)
+    expect(
+      warn.mock.calls.some(([line]) =>
+        String(line).includes("watch_route.implicit_english_episode.rejected"),
+      ),
+    ).toBe(false)
+  })
+
+  it("does not log the implicit-episode signal for an admitted English episode", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
+    )
+
+    expect(
+      warn.mock.calls.some(([line]) =>
+        String(line).includes("watch_route.implicit_english_episode.rejected"),
+      ),
+    ).toBe(false)
+  })
+
+  it("routes the production report URL for Pennsylvania Dutch JESUS", async () => {
+    // `german-pennsylvania` was published to admin after the 2026-05-28
+    // snapshot and 404'd in production until the corpus was regenerated.
+    expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("german-pennsylvania")).toBe(true)
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageSlugs: [
+        ...TEST_MANIFEST.audioLanguageSlugs,
+        "german-pennsylvania",
+      ],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        jesus: [
+          ...(TEST_MANIFEST.audioLanguageIndexesByContent?.jesus ?? []),
+          TEST_MANIFEST.audioLanguageSlugs.length,
+        ],
+      },
+    }))
+
+    const response = await proxy(
+      makeRequest("/jesus.html/german-pennsylvania.html?t=115&autoplay=1"),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    const rewrite = new URL(response.headers.get("x-middleware-rewrite") ?? "")
+    expect(rewrite.pathname).toBe("/en/en/jesus.html/german-pennsylvania.html")
+    expect(rewrite.search).toBe("?t=115&autoplay=1")
   })
 })

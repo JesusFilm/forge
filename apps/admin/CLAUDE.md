@@ -13,6 +13,8 @@ See the origin docs for full context:
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - V1 operational surfaces: `apps/admin/docs/v1-operational-surfaces.md`
 - Worktree preview setup: `apps/admin/docs/worktree-preview-setup.md`
+- Semantic recommendation tracer operations:
+  `docs/operations/semantic-recommendation-tracer.md`
 
 ## Stack
 
@@ -1771,6 +1773,41 @@ video_locale_lexical_weighted_idx`. Trigram probe (post-0010, both
 The primary learnings doc is
 `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
 
+## Production semantic recommendation tracer
+
+Admin owns the recommendation ledger, additive delivery/evidence GraphQL,
+capability verification, finalization/retention workflows, and the authorized
+Recommendations dashboard. Watch owns presentation and player availability.
+Keep this path separate from `sceneRecommendations`, `WatchEvent`,
+`WatchSearchEvent`, and `SearchTrace`; those are compatibility or separately
+owned ledgers.
+
+The pinned U1 versions are `semantic-recommendation-v1` (delivery),
+`recommendation-evidence-v1` (facts), `watch-below-player-v1` (surface),
+`semantic-transcript-pgvector-v1` (manifest), and `legacy-position-v0`
+(provisional, learning-ineligible outcome). The migration registers the exact
+manifest and a disabled shared control. New issuance requires the environment
+ceiling, shared control, valid active keyring, healthy retention, authenticated
+Web consumer caller, and production Redis admission to agree. Disabling or
+degrading this plane must never make either Watch player unavailable.
+
+Treat request `expiresAt` as the immutable 29-day lifecycle root. Descendants
+cannot extend it; the daily bounded purge has a 24-hour propagation SLA and a
+30-day ceiling. Sanitized retention and trace-access audits last 90 days, with
+the request link cleared when the raw root is purged. Never persist or project
+raw capabilities, cookie/claim values, IPs, user IDs, bearers, embeddings, or
+vectors. Aggregate and trace permissions remain separate, and every detail
+read is audited.
+
+Key rotation is old+new verify, switch the single active signer, wait the
+six-hour hard episode horizon plus five minutes of skew, then remove the old
+key. Use the database `emergency_revoked_kids` control for compromise response;
+it is reread on issuance and verification. Successful migration rollback is
+forward-only: disable serving first, keep the additive schema, and use a later
+migration for any contraction. The complete activation, health, rotation,
+purge, recovery, rollback, redaction, and isolated-preview procedure is in
+`docs/operations/semantic-recommendation-tracer.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video
@@ -2578,6 +2615,34 @@ fresh DB-backed key**:
   - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
     §"Recovery when contracts are structurally broken" — the
     `import-from-env` deletion case.
+
+## Watch "what's new" feature votes
+
+Anonymous sticker voting for web's `/watch/whats-new` page. Three `public: true`
+fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
+`retractWhatsNewFeatureVote` — backed by `WhatsNewFeatureVoteService` and the
+`whats_new_feature_vote` table (migration `0053_whats_new_feature_vote`).
+
+- **`ballotId` is not an identity.** It is a random token web's browser keeps in
+  localStorage. Clearing site data mints a new one; that is the accepted trade
+  for collecting signal on a page with no login.
+- **`(ballotId, placementId)` is unique**, which is what makes a cast idempotent:
+  web resends placements it could not confirm, and without the index every
+  dropped response would inflate a tally.
+- **Refusals are DATA, not errors.** A spent budget or a rejected id returns
+  `{ accepted: false, refusal, tallies }`. Thrown, they would reach the public
+  client as Yoga's masked "Unexpected error." and web would retry them forever.
+  Real faults still throw.
+- **The budget (3 live stickers per ballot) is read-then-write**, so concurrent
+  casts on one ballot can overshoot to ~3–6. That is deliberate: the ballot id is
+  self-issued, so the real abuse bound is the per-IP mutation rate limit.
+- **Sticker kinds are a GraphQL enum, feature ids are bounded strings.** The
+  enum makes web fail to compile if the two sides disagree; feature ids stay
+  free-form so adding a card to web's content file needs no migration.
+- **Retraction is a soft delete.** Only the tally read decides what counts, so
+  "placed then took it back" survives as signal.
+- Real-Postgres coverage lives in `whats-new-feature-votes.db.test.ts`, skipped
+  unless `WHATS_NEW_VOTE_TEST_DATABASE_URL` is set.
 
 ## Scripture Passages
 

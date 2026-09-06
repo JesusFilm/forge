@@ -160,7 +160,7 @@ export const FloatingSearchFieldInput = forwardRef<
           <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
           <span
             aria-hidden
-            className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
+            className="max-w-[6ch] truncate whitespace-nowrap text-base sm:text-sm font-medium sm:max-w-none"
           >
             {t("submitSearch")}
           </span>

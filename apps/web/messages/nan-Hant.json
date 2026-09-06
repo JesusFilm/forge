@@ -722,5 +722,28 @@
     "languageVersionLabel": "聲音語言",
     "selectLanguageVersion": "揀一个語言版本",
     "watchSelectedVersion": "觀看揀好的版本"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 選擇",
+    "bannerTitle": "你的隱私選擇",
+    "bannerDescription": "必要的 Cookie 會予 Watch 安全閣正常運作。若你同意，一个選用的第一方 Cookie 會使記持跨次造訪的興趣，來個人化推薦。無論你按怎選，情境式推薦攏猶原會當使用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "干焦必要",
+    "manageChoices": "管理選擇",
+    "savingChoice": "咧儲存 Cookie 選擇",
+    "settings": "Cookie 設定",
+    "settingsDescription": "選擇 Watch 是毋是會當記持你跨次造訪的推薦興趣。你隨時攏會當修改。",
+    "essentialCookies": "必要的 Cookie",
+    "essentialDescription": "安全、播放、隱私選擇，佮推薦請求來源記錄。",
+    "alwaysActive": "一直啟用",
+    "personalization": "個人化",
+    "personalizationDescription": "記持你跨次造訪的有限興趣。關掉了後，情境式推薦嘛猶原會當使用。",
+    "erasurePending": "個人資料刣除申請咧處理中。情境式推薦已經啟用。",
+    "cancel": "取消",
+    "saveChoices": "儲存選擇",
+    "saving": "咧儲存…",
+    "loadError": "你的選擇無法度載入。你猶原會當佇下跤做選擇。",
+    "grantError": "無法度啟用個人化。猶原會當使用干焦必要的設定。",
+    "saveError": "你的選擇無法度儲存。請閣試一遍。"
   }
 }

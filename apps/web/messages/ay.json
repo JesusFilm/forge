@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio aru",
     "selectLanguageVersion": "Mä aru versión ajlliña",
     "watchSelectedVersion": "Ajllita versión uñchʼukiña"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie ajllinaka",
+    "bannerTitle": "Juman privacidad ajllinakamapa",
+    "bannerDescription": "Wakiskir cookies ukanakax Watch ukarux seguro ukhamarak irnaqirakiwa. Permisomampi, mä opcional cookie de primera parte ukax walja kuti mantatanakan munañanakam amtaspa, ukhamat recomendaciones ukanakax sapa maynirjamäñapataki. Recomendaciones contextuales ukanakax ukhamarak utjaskakiwa.",
+    "acceptAll": "Taqpach katuqaña",
+    "essentialOnly": "Wakiskirinakaki",
+    "manageChoices": "Ajllinaka apnaqaña",
+    "savingChoice": "Cookie ajlliwi imaski",
+    "settings": "Cookie wakicht'äwinaka",
+    "settingsDescription": "Ajllim Watch ukax walja kuti mantatanakan recomendación munañanakam amtaspa janicha. Akaxa kuna pachas mayjt'ayasmawa.",
+    "essentialCookies": "Wakiskir cookies",
+    "essentialDescription": "Seguridad, reproducción, privacidad ajllinaka, ukhamarak recomendación mayiwin uñt'ayaña.",
+    "alwaysActive": "Wiñay activo",
+    "personalization": "Sapa maynirjama wakichaña",
+    "personalizationDescription": "Walja kuti mantatanakanx juk'a munañanakam amtaña. Aka jiwt'ayasinxa, recomendaciones contextuales ukanakax utjaskakiwa.",
+    "erasurePending": "Perfil chhaqtayañax lurasiñapatak suyt'aski. Recomendaciones contextuales ukanakax niyaw activöxi.",
+    "cancel": "Janiwa",
+    "saveChoices": "Ajllinaka imaña",
+    "saving": "Imaski…",
+    "loadError": "Ajlliwimax janiw qhantkaspati. Ukampis aynachanx ajlliskakismawa.",
+    "grantError": "Personalización ukax janiw qhantayaskaspati. Wakiskirinakakïskiwa.",
+    "saveError": "Ajlliwimax janiw imatäkaspati. Mira, wasitamp yant'am."
   }
 }

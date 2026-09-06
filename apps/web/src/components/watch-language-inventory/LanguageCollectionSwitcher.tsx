@@ -92,14 +92,14 @@ export function LanguageCollectionSwitcher({
             <Languages className="h-4 w-4" aria-hidden />
           </span>
           <span
-            className="min-w-0 text-xs leading-5 font-medium tracking-media-label text-stone-300 uppercase"
+            className="min-w-0 text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300 uppercase"
             {...englishAssistAttributes("labelLanguageCollection")}
           >
             {t("languageCollection")}
           </span>
         </div>
         <span
-          className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-medium text-stone-300"
+          className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-sm sm:text-xs font-medium text-stone-300"
           {...englishAssistAttributes("labelItemCount")}
         >
           {t("itemCount", { count: totalItems })}

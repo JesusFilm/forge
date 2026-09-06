@@ -117,6 +117,10 @@ export const nextConfig = {
     },
   },
   images: {
+    // Next re-encodes on the way out and defaults to 75, which smears the
+    // text in UI screenshots. Non-default qualities must be allowlisted
+    // since Next 15.4 or the optimizer returns an error, not an image.
+    qualities: [75, 94],
     dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },
@@ -147,6 +151,15 @@ export const nextConfig = {
       },
       ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Editorial photography hot-linked from the main jesusfilm.org
+      // WordPress library (same org, deliberately not vendored into this
+      // repo). Scoped to the uploads path so the allowlist cannot widen to
+      // arbitrary jesusfilm.org routes.
+      {
+        protocol: "https",
+        hostname: "www.jesusfilm.org",
+        pathname: "/wp-content/uploads/**",
+      },
       {
         protocol: "https",
         hostname: "admin.jesusfilm.org",

@@ -3,7 +3,7 @@ id: "feat-440"
 title: "Host allowlist for the gateway chat base URL"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-15"
 duration: 1
 depends_on: []
@@ -12,6 +12,14 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-09-02 via [PR #2115](https://github.com/JesusFilm/forge/pull/2115) (`feat(mastra): host allowlist for the gateway chat base URL (feat-440)`).
+
+**What landed.** The boot assert shipped as primary enforcement exactly as briefed, with the optional runtime defense-in-depth kept at `buildSeekerGatewayModelEntry()` AND mirrored as a construction-free rung in the title-repair gate ladder (the ladder never calls the builder, so it needed its own check to keep the counted-skip contract — plus an enum-only `gateway_base_url_not_allowed` log line disambiguating the reused `gateway_unconfigured` skip from a missing key). Review added one hardening beyond the brief: the gateway fetch now pins `redirect: "error"`, so the allowlist governs the actual destination rather than only the configured URL. Zero Railway edits were needed; the paired-edit rule (base URL change to a non-default host requires the allowlist in the same edit) is documented in the env table.
+
+**Residual risk / follow-ups.** The experience-side gateway clients (`providers.ts`, `default-chat-agent.ts`, `specialized-agents.ts`, `memory.ts`) predate the redirect pin and still follow redirects with the same chat key — pre-existing, bounded by the boot assert on the configured URL, recorded in the redirect pin's code comment; no ticket filed (owner decision). The runtime re-check applies in every environment, so a non-allowlisted or http local gateway override degrades to the Gemma-only chain (documented in `apps/mastra/CLAUDE.md`).
 
 ## Problem
 

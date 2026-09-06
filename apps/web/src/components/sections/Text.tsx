@@ -41,7 +41,7 @@ const PROMOTIONAL_MARKDOWN_COMPONENTS = {
     <h5 className="mt-7 text-base font-semibold text-white">{children}</h5>
   ),
   h6: ({ children }) => (
-    <h6 className="mt-7 text-sm font-semibold tracking-wide text-white uppercase">
+    <h6 className="mt-7 text-base sm:text-sm font-semibold tracking-wide text-white uppercase">
       {children}
     </h6>
   ),
@@ -170,7 +170,7 @@ export function Text({ data }: TextProps) {
       >
         <div className="pt-2 2xl:pt-4">
           {subtitle && (
-            <p className="text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <p className="text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </p>
           )}

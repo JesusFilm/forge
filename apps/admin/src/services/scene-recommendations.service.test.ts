@@ -19,6 +19,7 @@ vi.mock("./scene-recommendations-retriever", () => ({
   resolveSlugToVideoId: vi.fn(),
   fetchInputEmbeddings: vi.fn(),
   getRelatedVideoIds: vi.fn(),
+  getEligibleRecommendationVideoIds: vi.fn(),
   queryScenesSimilar: vi.fn(),
 }))
 
@@ -62,6 +63,45 @@ beforeEach(() => {
   vi.clearAllMocks()
   // Reset row counter so default fixture shapes are hermetic across tests.
   rowCounter = 0
+})
+
+describe("SceneRecommendationsService.recheckEligibility", () => {
+  it("preserves cache order while dropping candidates that are no longer playable", async () => {
+    vi.mocked(
+      retriever.getEligibleRecommendationVideoIds,
+    ).mockResolvedValueOnce(new Set(["vid-2"]))
+    const svc = makeService()
+    const first = row({ video_id: "vid-1" })
+    const second = row({ video_id: "vid-2" })
+
+    const results = await svc.recheckEligibility(
+      [first, second].map((entry) => ({
+        videoId: entry.video_id,
+        videoSlug: entry.video_slug,
+        videoTitle: entry.video_title ?? "",
+        imageUrl: null,
+        sceneIndex: entry.scene_index,
+        description: entry.description,
+        startSeconds: entry.start_seconds,
+        endSeconds: entry.end_seconds,
+        similarity: entry.similarity,
+        themes: entry.themes,
+        demographics: entry.demographics,
+        spiritualContext: entry.spiritual_context,
+        playbackId: entry.playback_id,
+      })),
+      "en",
+      "english",
+    )
+
+    expect(results.map((item) => item.videoId)).toEqual(["vid-2"])
+    expect(retriever.getEligibleRecommendationVideoIds).toHaveBeenCalledWith(
+      expect.anything(),
+      ["vid-1", "vid-2"],
+      "en",
+      "english",
+    )
+  })
 })
 
 describe("SceneRecommendationsService.getRecommendations", () => {

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Äänen kieli",
     "selectLanguageVersion": "Valitse kieliversio",
     "watchSelectedVersion": "Katso valittu versio"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Evästevalinnat",
+    "bannerTitle": "Tietosuoja-asetuksesi",
+    "bannerDescription": "Välttämättömät evästeet pitävät Watchin turvallisena ja toimivana. Luvallasi valinnainen ensimmäisen osapuolen eväste voi muistaa kiinnostuksenkohteesi eri käyntikerroilla, jotta suosituksia voidaan personoida. Kontekstuaaliset suositukset ovat käytettävissä joka tapauksessa.",
+    "acceptAll": "Hyväksy kaikki",
+    "essentialOnly": "Vain välttämättömät",
+    "manageChoices": "Hallitse valintoja",
+    "savingChoice": "Tallennetaan evästevalintaa",
+    "settings": "Evästeasetukset",
+    "settingsDescription": "Valitse, saako Watch muistaa suosituksiin liittyvät kiinnostuksenkohteesi eri käyntikerroilla. Voit muuttaa tätä milloin tahansa.",
+    "essentialCookies": "Välttämättömät evästeet",
+    "essentialDescription": "Turvallisuus, toisto, tietosuoja-asetukset ja suosituspyyntöjen kohdistus.",
+    "alwaysActive": "Aina käytössä",
+    "personalization": "Personointi",
+    "personalizationDescription": "Muista rajatut kiinnostuksenkohteet eri käyntikerroilla. Jos poistat tämän käytöstä, kontekstuaaliset suositukset ovat edelleen käytettävissä.",
+    "erasurePending": "Profiilin poisto odottaa käsittelyä. Kontekstuaaliset suositukset ovat jo käytössä.",
+    "cancel": "Peruuta",
+    "saveChoices": "Tallenna valinnat",
+    "saving": "Tallennetaan…",
+    "loadError": "Valintaasi ei voitu ladata. Voit silti tehdä valinnan alla.",
+    "grantError": "Personointia ei voitu ottaa käyttöön. Vain välttämättömät ovat edelleen käytettävissä.",
+    "saveError": "Valintaasi ei voitu tallentaa. Yritä uudelleen."
   }
 }

@@ -6,7 +6,7 @@
 // for mutations.
 
 import type { PrismaClient } from "@prisma/client"
-import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
+import { env } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
 import { ExperiencePreviewService } from "@/services/experience-preview.service"
 import { ExperienceSearchService } from "@/services/experience.search"
@@ -21,12 +21,13 @@ import { VideoService } from "@/services/video.service"
 import { VideoSearchSocialService } from "@/services/video-search-social.service"
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
+import { WhatsNewFeatureVoteService } from "@/services/whats-new-feature-votes.service"
 import { WatchSearchService } from "@/services/watch-search.service"
 import { createTypesenseWatchSearchSuggestionsService } from "@/services/typesense-watch-search-suggestions"
 import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import {
-  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "@/services/typesense-watch-search-candidate-identity"
 import {
@@ -36,12 +37,14 @@ import {
   type TypesenseWatchSearchProfile,
   watchSearchBindingMembers,
 } from "@/services/typesense-watch-search-profile"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "@/services/typesense-watch-search-transcript-compatibility"
 import {
   createTypesenseWatchSearchService,
   TypesenseWatchSearchService,
   TypesenseWatchSearchUnavailableError,
 } from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
+import { WatchRouteAlertService } from "@/services/watch-route-alert.service"
 
 export type Services = ReturnType<typeof createServices>
 
@@ -52,9 +55,12 @@ type ServingProfileResolver = Pick<
 
 export async function resolveWatchSearchServingProfile(input: {
   selector: string
-  applicationRevision: string | null
+  indexContractRevision: string | null
   rankingRevision: string | null
-  transcriptProjectionRevision: bigint | null
+  transcriptCompatibility: {
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  } | null
   qrelsRevision: string | null
   typesense: Pick<TypesenseClient, "getAlias">
   generations: ServingProfileResolver
@@ -68,9 +74,9 @@ export async function resolveWatchSearchServingProfile(input: {
       "Invalid Typesense Watch Search serving profile",
     )
   }
-  if (!input.applicationRevision) {
+  if (!input.indexContractRevision) {
     throw new TypesenseWatchSearchUnavailableError(
-      "Candidate serving requires an application revision",
+      "Candidate serving requires an index contract revision",
     )
   }
   if (!input.rankingRevision) {
@@ -78,9 +84,9 @@ export async function resolveWatchSearchServingProfile(input: {
       "Candidate serving requires a ranking revision",
     )
   }
-  if (input.transcriptProjectionRevision == null) {
+  if (!input.transcriptCompatibility) {
     throw new TypesenseWatchSearchUnavailableError(
-      "Candidate serving requires a transcript projection revision",
+      "Candidate serving requires transcript compatibility",
     )
   }
   if (!input.qrelsRevision) {
@@ -101,9 +107,12 @@ export async function resolveWatchSearchServingProfile(input: {
 
   const generation = await input.generations.resolveGeneration({
     generationId: match[1]!,
-    applicationRevision: input.applicationRevision,
+    indexContractRevision: input.indexContractRevision,
     transcriptCollection,
-    transcriptProjectionRevision: input.transcriptProjectionRevision,
+    contentEmbeddingContractId:
+      input.transcriptCompatibility.contentEmbeddingContractId,
+    transcriptChunkingVersion:
+      input.transcriptCompatibility.transcriptChunkingVersion,
     requireQualified: true,
     currentBindings: watchSearchBindingMembers(currentProfile),
     qrelsRevision: input.qrelsRevision,
@@ -162,7 +171,6 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
     resolveCachedCandidateServingService({
       prisma,
       create: async () => {
-        const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
         const typesense = new TypesenseClient({
           host,
           apiKey,
@@ -174,10 +182,10 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
         )
         const profile = await resolveWatchSearchServingProfile({
           selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
-          applicationRevision: candidateWatchSearchApplicationRevision(),
+          indexContractRevision: candidateWatchSearchIndexContractRevision(),
           rankingRevision: candidateWatchSearchRankingRevision(),
-          transcriptProjectionRevision:
-            runtimeSearchEnv.transcriptProjectionRevision ?? null,
+          transcriptCompatibility:
+            await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
           typesense,
           generations,
@@ -208,10 +216,12 @@ export function createServices(prisma: PrismaClient) {
     videoSearchSocial: new VideoSearchSocialService(prisma),
     watchEvent: new WatchEventService(prisma),
     watchSearchEvent: new WatchSearchEventService(prisma),
+    whatsNewFeatureVote: new WhatsNewFeatureVoteService(prisma),
     watchSearch: new WatchSearchService(prisma),
     typesenseWatchSearch: createServingTypesenseWatchSearchService(prisma),
     typesenseWatchSearchSuggestions:
       createTypesenseWatchSearchSuggestionsService(prisma),
     watchSetting: new WatchSettingService(prisma),
+    watchRouteAlert: new WatchRouteAlertService(prisma),
   }
 }

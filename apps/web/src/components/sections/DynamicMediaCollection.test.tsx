@@ -40,7 +40,42 @@ vi.mock("@/components/sections/MediaCollection", () => ({
   ),
 }))
 
-import { DynamicMediaCollection } from "./DynamicMediaCollection"
+import {
+  DynamicMediaCollection,
+  FEED_EXHAUSTED_MESSAGE,
+} from "./DynamicMediaCollection"
+
+function feedSentinel() {
+  const sentinel = container.querySelector<HTMLDivElement>(
+    '[data-testid="dynamic-collection-feed-sentinel"]',
+  )
+  if (!sentinel) throw new Error("feed sentinel not rendered")
+  return sentinel
+}
+
+function sentinelMessage() {
+  return feedSentinel().querySelector("p")
+}
+
+/**
+ * jsdom applies no CSS, so `textContent` contains the exhausted-feed sentence
+ * whether it renders visibly or screen-reader-only. Every assertion about that
+ * sentence has to read the class list instead.
+ */
+function sentinelMessageIsScreenReaderOnly() {
+  return sentinelMessage()?.classList.contains("sr-only") ?? false
+}
+
+/**
+ * Returns each spacing utility still on the sentinel, so an assertion can name
+ * both independently. A single `hasSpacing` boolean would let one leftover
+ * utility — the 112px minimum height on its own is still a dead band — read as
+ * "collapsed".
+ */
+function sentinelSpacingClasses() {
+  const { classList } = feedSentinel()
+  return ["min-h-28", "py-8"].filter((utility) => classList.contains(utility))
+}
 
 let container: HTMLDivElement
 let root: Root
@@ -91,7 +126,13 @@ beforeEach(() => {
     }
     observe = (element: Element) => this.harness.observed.add(element)
     unobserve = (element: Element) => this.harness.observed.delete(element)
-    disconnect = () => this.harness.disconnect()
+    disconnect = () => {
+      // A real disconnect stops observing everything. Without this, a
+      // torn-down observer keeps its element forever and any "is the sentinel
+      // observed?" assertion matches the stale one.
+      this.harness.observed.clear()
+      this.harness.disconnect()
+    }
     takeRecords() {
       return []
     }
@@ -167,6 +208,30 @@ function section(id: string, title: string) {
 function intersect(isIntersecting = true) {
   return act(async () => {
     intersectionObservers[0]?.callback(
+      [{ isIntersecting } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+  })
+}
+
+/**
+ * The most recently created sentinel observer. `intersect()` always drives the
+ * first one, which is the disconnected observer once the feed has been
+ * exhausted and re-armed.
+ */
+function latestSentinelObserver() {
+  const sentinelObservers = intersectionObservers.filter(
+    (observer) => observer.rootMargin === "900px 0px",
+  )
+  const latest = sentinelObservers.at(-1)
+  if (!latest) throw new Error("no sentinel observer was created")
+  return latest
+}
+
+function intersectLatestSentinel(isIntersecting = true) {
+  const latest = latestSentinelObserver()
+  return act(async () => {
+    latest.callback(
       [{ isIntersecting } as IntersectionObserverEntry],
       {} as IntersectionObserver,
     )
@@ -276,9 +341,8 @@ describe("DynamicMediaCollection", () => {
     expect(container.textContent).not.toContain("Keep exploring")
     expect(container.textContent).not.toContain("More stories")
     expect(container.textContent).not.toContain("Introductory feed copy")
-    expect(container.textContent).toContain(
-      "You’ve reached the end of the collection library.",
-    )
+    expect(sentinelMessage()?.textContent).toBe(FEED_EXHAUSTED_MESSAGE)
+    expect(sentinelMessageIsScreenReaderOnly()).toBe(true)
   })
 
   it("marks draft feed requests as preview cache variants", async () => {
@@ -545,9 +609,8 @@ describe("DynamicMediaCollection", () => {
     await intersect()
     await intersect()
     expect(loadPage).toHaveBeenCalledTimes(2)
-    expect(container.textContent).toContain(
-      "You’ve reached the end of the collection library.",
-    )
+    expect(sentinelMessage()?.textContent).toBe(FEED_EXHAUSTED_MESSAGE)
+    expect(sentinelMessageIsScreenReaderOnly()).toBe(true)
   })
 
   it("ignores a late response after feed props change", async () => {
@@ -841,5 +904,140 @@ describe("DynamicMediaCollection", () => {
         (observer) => observer.disconnect.mock.calls.length > 0,
       ),
     ).toBe(true)
+  })
+
+  it("announces the exhausted feed without showing it, even when the last page appended collections", async () => {
+    loadPage.mockResolvedValue({
+      sections: [section("only", "Only")],
+      endCursor: "only",
+      hasNextPage: false,
+    } satisfies DynamicCollectionFeedPage)
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+    await intersect()
+
+    // The discriminating case: the loader's "Loaded N more collections."
+    // branch wins over its end-of-library branch whenever the final page
+    // appended something, so an implementation that reused the live-message
+    // state would announce the wrong sentence here and pass everywhere else.
+    //
+    // The sentence is spelled out rather than compared against
+    // FEED_EXHAUSTED_MESSAGE on purpose: production and the oracle would
+    // otherwise be the same value, and editing the constant to any other
+    // string — "Loading more collections…" included — would keep this green.
+    expect(sentinelMessage()?.textContent).toBe(
+      "You’ve reached the end of the collection library.",
+    )
+    expect(sentinelMessageIsScreenReaderOnly()).toBe(true)
+    expect(feedSentinel().getAttribute("aria-live")).toBe("polite")
+    expect(sentinelSpacingClasses()).toEqual([])
+  })
+
+  it("keeps the loading line visible and the sentinel spaced while pages remain", async () => {
+    const pending = deferred<DynamicCollectionFeedPage>()
+    loadPage.mockReturnValueOnce(pending.promise)
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+    await intersect()
+
+    expect(sentinelMessage()?.textContent).toBe("Loading more collections…")
+    expect(sentinelMessageIsScreenReaderOnly()).toBe(false)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
+
+    await act(async () => {
+      pending.resolve({
+        sections: [section("first", "First")],
+        endCursor: "cursor-1",
+        hasNextPage: true,
+      })
+    })
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
+  })
+
+  it("keeps the sentinel spaced for the retry button and shows no end notice on failure", async () => {
+    loadPage.mockRejectedValue(new Error("boom"))
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+    await intersect()
+
+    expect(feedSentinel().querySelector("button")).toBeTruthy()
+    expect(sentinelMessage()).toBeNull()
+    expect(container.textContent).not.toContain(FEED_EXHAUSTED_MESSAGE)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
+  })
+
+  it("re-arms the sentinel when the feed identity changes after exhaustion", async () => {
+    loadPage.mockResolvedValue({
+      sections: [section("only", "Only")],
+      endCursor: "only",
+      hasNextPage: false,
+    } satisfies DynamicCollectionFeedPage)
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+    await intersect()
+
+    const exhausted = feedSentinel()
+    expect(sentinelSpacingClasses()).toEqual([])
+    loadPage.mockClear()
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="fr"
+          languageSlug="french"
+        />,
+      )
+    })
+
+    // Same element, restyled — not unmounted and remounted. The observer
+    // effect re-observes `sentinelRef.current`, so losing the node would
+    // silently stop paging on the new locale.
+    expect(feedSentinel()).toBe(exhausted)
+    expect(sentinelSpacingClasses()).toEqual(["min-h-28", "py-8"])
+
+    // Both halves matter, and neither implies the other: the live observer
+    // must actually hold the sentinel, and driving it must resume paging on
+    // the new locale. Asserting that *some* observer holds the sentinel would
+    // pass on the disconnected one from before exhaustion.
+    expect(latestSentinelObserver().observed.has(exhausted)).toBe(true)
+
+    await intersectLatestSentinel()
+    expect(loadPage).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "fr", languageSlug: "french" }),
+      expect.anything(),
+    )
   })
 })

@@ -21,6 +21,7 @@ import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
+  rankSelectableCarouselParents,
   type CarouselParent,
   type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
@@ -76,6 +77,7 @@ import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
   getWatchNestedContainerAudioLanguageSlugs,
+  isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
@@ -323,6 +325,11 @@ function selectableParentsForStandaloneVideo(
         slug: parentSlug,
         title: filteredParent.title,
         children,
+        // Load-bearing, not decorative: `rankSelectableCarouselParents` reads
+        // this to open the carousel on the film/series a video is a chapter of
+        // rather than on whichever collection lists it earliest. Dropping it
+        // silently reverts to admin's VideoRelation.order.
+        label: filteredParent.label,
       },
     ]
   })
@@ -402,7 +409,28 @@ function resolveEpisodeWithSubtitleIntent(
     : resolveSeriesEpisodeBySlug(seriesSlug, episodeSlug, audioLanguageSlug)
 }
 
-function classify(rest: string[], internalLocale: UiLocale): Shape {
+type WatchRouteManifestGetter = () => Promise<WatchRouteManifest | null>
+
+/**
+ * Segment-count dispatch. The manifest is consulted for exactly one decision:
+ * whether an ambiguous `.html` segment is an audio-language slug. It mirrors
+ * `classifyRewrite` in `src/proxy.ts`; the two must agree or a URL the proxy
+ * admitted as a video renders here as a failed implicit-English episode.
+ *
+ * The manifest is awaited ONLY when the compiled corpus does not already
+ * recognize the segment, so the common path never serializes content
+ * resolution behind the manifest request (the render branches start both
+ * concurrently). In production the proxy has just fetched it, so the await
+ * is normally served from the 60s in-process cache.
+ */
+async function classify(
+  rest: string[],
+  internalLocale: UiLocale,
+  getManifest: WatchRouteManifestGetter,
+): Promise<Shape> {
+  const isAudioLanguageSlug = async (slug: string): Promise<boolean> =>
+    isPublicWatchLanguageSlug(slug) ||
+    isWatchAudioLanguageSlug(slug, await getManifest())
   if (rest.length === 1) {
     const slug = stripSafeSegment(rest[0])
     if (!slug) return { kind: "unknown" }
@@ -421,7 +449,7 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     const firstSlug = stripSafeSegment(rest[0])
     const secondSlug = stripSafeSegment(rest[1])
     if (!firstSlug || !secondSlug) return { kind: "unknown" }
-    if (!isPublicWatchLanguageSlug(secondSlug)) {
+    if (!(await isAudioLanguageSlug(secondSlug))) {
       return {
         kind: "episode",
         seriesSlug: firstSlug,
@@ -451,7 +479,9 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!seriesSlug || !episodeSlug || !rawLocale) {
       return { kind: "unknown" }
     }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    if (!(await isAudioLanguageSlug(rawLocale))) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "episode",
       seriesSlug,
@@ -462,6 +492,10 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   return { kind: "unknown" }
+}
+
+function getRouteManifestForClassification(): Promise<WatchRouteManifest | null> {
+  return getWatchRouteManifest().catch(() => null)
 }
 
 function watchRouteSurfaceForShape(shape: Shape): WatchRouteSurface | null {
@@ -518,7 +552,11 @@ export async function generateMetadata({
   const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(routeIntent.rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
   if (shape.kind !== "unknown") {
     setRequestLocale(shape.locale)
   }
@@ -618,7 +656,11 @@ export default async function SlugRestPage({ params }: PageProps) {
   const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(routeIntent.rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
 
   if (shape.kind === "unknown") notFound()
 
@@ -1018,8 +1060,34 @@ async function renderVideo(
       watchVideo.selectedVariant,
       formatAvailabilityCounts,
     )
+    // The filename prefix must be numbered inside the parent the viewer can
+    // actually see, or the page contradicts itself: the rail would read
+    // "Chapter 41 of 49" under the film while the saved file is named `05_...`
+    // from a collection. Two separate questions, and they take different
+    // sources:
+    //
+    //   WHICH parent — the ranked first entry of `selectableParents`, the same
+    //   manifest-filtered list the carousel opened on. Ranking the unfiltered
+    //   `video.parents` instead would pick a parent the rail may not be
+    //   showing: `selectableParents` is empty when the video's own children own
+    //   the rail, and it drops parents whose children this language cannot
+    //   route to.
+    //
+    //   WHOSE ORDER — that parent's unfiltered counterpart. Manifest filtering
+    //   removes siblings that still exist, and `resolveDownloadSequence`
+    //   derives `total` (and so the zero-padding width) from the child list.
+    //
+    // When no external parent owns the rail, keep the canonical parent.
+    const rankedCarouselParent =
+      rankSelectableCarouselParents(selectableParents)[0]
+    const downloadSequenceParent =
+      rankedCarouselParent == null
+        ? watchVideo.canonicalParent
+        : (watchVideo.video.parents.find(
+            (parent) => parent.documentId === rankedCarouselParent.documentId,
+          ) ?? rankedCarouselParent)
     const downloadSequence = resolveDownloadSequence(
-      watchVideo.canonicalParent,
+      downloadSequenceParent,
       watchVideo.video.documentId,
     )
     const clientVideo = pruneWatchVideoForClient(

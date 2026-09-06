@@ -34,7 +34,7 @@ export class FakeRawDocumentReader implements RawDocumentReader {
     return rows.map((d) => ({ ...d }))
   }
 
-  async markIngested(ids: string[]): Promise<void> {
+  async markIngested(ids: string[], _attemptedModel?: string): Promise<void> {
     for (const id of ids) this.ingested.add(id)
   }
 

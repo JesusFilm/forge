@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ses dili",
     "selectLanguageVersion": "Dil görnüşini saýlaň",
     "watchSelectedVersion": "Saýlanan görnüşi görüň"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie saýlawlary",
+    "bannerTitle": "Şahsy durmuşyňyz boýunça saýlawlar",
+    "bannerDescription": "Zerur cookie-ler Watch-y howpsuz we işleýän ýagdaýda saklaýar. Rugsadyňyz bilen, islege bagly birinji tarap cookie-si teklipleri şahsylaşdyrmak üçin saparlaryň arasynda gyzyklanmalary ýatda saklap biler. Muňa garamazdan, ýagdaýlaýyn teklipler elýeterli bolmagynda galýar.",
+    "acceptAll": "Hemmesini kabul et",
+    "essentialOnly": "Diňe zerur",
+    "manageChoices": "Saýlawlary dolandyr",
+    "savingChoice": "Cookie saýlawy saklanýar",
+    "settings": "Cookie sazlamalary",
+    "settingsDescription": "Watch-yň saparlaryň arasynda teklipler boýunça gyzyklanmalary ýatda saklap biljekdigini saýlaň. Muny islendik wagt üýtgedip bilersiňiz.",
+    "essentialCookies": "Zerur cookie-ler",
+    "essentialDescription": "Howpsuzlyk, görkezmek, şahsy durmuş saýlawlary we teklip soraglarynyň degişli bolşy.",
+    "alwaysActive": "Hemişe işjeň",
+    "personalization": "Şahsylaşdyrma",
+    "personalizationDescription": "Saparlaryň arasynda çäklendirilen gyzyklanmalary ýatda sakla. Muny öçürseňiz, ýagdaýlaýyn teklipler elýeterli bolmagynda galýar.",
+    "erasurePending": "Profiliňiziň pozulmagy garaşylýar. Ýagdaýlaýyn teklipler eýýäm işjeň.",
+    "cancel": "Ýatyr",
+    "saveChoices": "Saýlawlary ýatda sakla",
+    "saving": "Saklanýar…",
+    "loadError": "Saýlawyňyz ýükläp bolmady. Şeýle-de bolsa, aşakda saýlap bilersiňiz.",
+    "grantError": "Şahsylaşdyrmany işjeňleşdirip bolmady. Diňe zerur görnüşi elýeterli bolmagynda galýar.",
+    "saveError": "Saýlawyňyzy ýatda saklap bolmady. Täzeden synanyşyň."
   }
 }

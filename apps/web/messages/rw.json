@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ururimi rw'amajwi",
     "selectLanguageVersion": "Hitamo verisiyo y'ururimi",
     "watchSelectedVersion": "Reba verisiyo wahisemo"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Amahitamo ya kuki",
+    "bannerTitle": "Amahitamo yawe ajyanye n'ubuzima bwite",
+    "bannerDescription": "Kuki z'ingenzi zituma Watch itekana kandi ikora neza. Ubitwemereye, kuki y'inyongera yo ku rubuga ubwarwo ishobora kwibuka ibyo ushimira hagati y'ingendo zitandukanye kugira ngo ihuze inama uhabwa n'ibyo ukunda. Inama zijyanye n'ibyo ureba zikomeza kuboneka uko byagenda kose.",
+    "acceptAll": "Emera byose",
+    "essentialOnly": "Iby'ingenzi gusa",
+    "manageChoices": "Genzura amahitamo",
+    "savingChoice": "Kubika ihitamo rya kuki",
+    "settings": "Igenamiterere rya kuki",
+    "settingsDescription": "Hitamo niba Watch ishobora kwibuka ibyo ukunda mu byifashishwa mu kugusabira ibyo wareba hagati y'ingendo zitandukanye. Ushobora kubihindura igihe icyo ari cyo cyose.",
+    "essentialCookies": "Kuki z'ingenzi",
+    "essentialDescription": "Umutekano, gukina amashusho, amahitamo y'ubuzima bwite, no kumenya inkomoko y'ubusabe bw'inama.",
+    "alwaysActive": "Bihora bikora",
+    "personalization": "Guhitamo ibikubereye",
+    "personalizationDescription": "Kwibuka ibyo ukunda mu rugero runaka hagati y'ingendo zitandukanye. Iyo ubizimije, inama zijyanye n'ibyo ureba zikomeza kuboneka.",
+    "erasurePending": "Gusiba umwirondoro biracyategerejwe. Inama zijyanye n'ibyo ureba zisanzwe zikora.",
+    "cancel": "Kureka",
+    "saveChoices": "Bika amahitamo",
+    "saving": "Birabikwa…",
+    "loadError": "Ntibyashobotse gufungura ihitamo ryawe. Ushobora gukomeza guhitamo hasi aha.",
+    "grantError": "Ntibyashobotse gufungura uguhuza n'ibikubereye. Iby'ingenzi gusa biracyaboneka.",
+    "saveError": "Ntibyashobotse kubika ihitamo ryawe. Ongera ugerageze."
   }
 }

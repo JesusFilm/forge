@@ -49,7 +49,7 @@ async function workloadAssertion({
   lifetimeSeconds = 60,
 }: {
   body: string
-  capability?: "ingest" | "evaluate" | "tickets"
+  capability?: "ingest" | "evaluate" | "tickets" | "watch_alerts"
   lifetimeSeconds?: number
 }) {
   const now = nowSeconds()
@@ -148,6 +148,23 @@ describe("SEO delegated assertions", () => {
       createHash("sha256").update("approval-nonce-123456789").digest("hex"),
     )
     expect(JSON.stringify(verified)).not.toContain("approval-nonce-123456789")
+  })
+
+  it("accepts the dedicated Watch alert workload capability", async () => {
+    const body = '{"action":"claim_run"}'
+    await expect(
+      verifySeoWorkloadAssertion({
+        assertion: await workloadAssertion({
+          body,
+          capability: "watch_alerts",
+        }),
+        capability: "watch_alerts",
+        rawBody: body,
+      }),
+    ).resolves.toMatchObject({
+      capability: "watch_alerts",
+      audience: "forge-admin:seo:watch_alerts",
+    })
   })
 
   it("fails closed when an approval assertion names another environment", async () => {

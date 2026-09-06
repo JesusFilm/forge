@@ -3,7 +3,7 @@ id: "feat-376"
 title: "Recommendation integrity and evidence eligibility"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 6
 depends_on:
@@ -24,6 +24,7 @@ blocks:
   - "feat-389"
   - "feat-391"
   - "feat-392"
+  - "feat-448"
 tags:
   - "admin"
   - "watch"

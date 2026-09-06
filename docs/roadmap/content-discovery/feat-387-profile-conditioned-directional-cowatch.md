@@ -12,7 +12,8 @@ depends_on:
   - "feat-382"
   - "feat-383"
   - "feat-386"
-blocks: []
+blocks:
+  - "feat-448"
 tags:
   - "admin"
   - "recommendations"
@@ -42,6 +43,7 @@ Directional co-watch should learn trustworthy ordered transitions while using th
 
 - Write one exact contribution per distinct integrity-eligible finalized outcome revision.
 - Publish immutable directional edge generations with bounded gaps, session/pair deduplication, recency decay, quality weight, distinct-viewer support, shrinkage, confidence, and popularity-corrected lift.
+- Publish a reusable versioned co-watch feature contract for candidate generation, the deterministic/learned rankers, and a future item representation. At minimum carry support, confidence, popularity-corrected lift, recency weight, quality weight, and projection generation without requiring consumers to read raw edge contributions.
 - Keep population edges inspectable; use session/profile interests only to select anchors and provide rank features.
 - Run the generator in shadow and record a terminal decision.
 
@@ -57,12 +59,14 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Repeated plays and one manipulator cannot manufacture an edge.
 - Sparse or low-confidence edges fall back to semantic candidates.
 - Profile conditioning selects anchors; it does not hide or mutate population edge evidence.
+- The co-watch projection owns behavioral relationship truth; a later item tower may consume its published features but cannot redefine, mutate, or become the authority for the population graph.
 - Every new recommendation record declares purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback or fallback.
 - Watch serves viewers; Admin observes, verifies, and controls. Admin is not the viewer recommendation surface.
 
 ## Verification
 
 - Test directionality, deduplication, global-popularity correction, revision replacement, manipulation, sparse fallback, deletion, and rebuild equivalence.
+- Test feature-contract version compatibility, missing/stale generation behavior, and identical values across generator, ranker, and representation consumers.
 - Benchmark projection and generator latency/coverage.
 - Reconcile edges, anchors, candidates, and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.

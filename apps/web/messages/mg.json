@@ -722,5 +722,28 @@
     "languageVersionLabel": "Fitenin'ny feo",
     "selectLanguageVersion": "Misafidiana dikan-teny",
     "watchSelectedVersion": "Hijery ny dikan-teny voafidy"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Safidy momba ny cookie",
+    "bannerTitle": "Ny safidinao momba ny tsiambaratelo",
+    "bannerDescription": "Ny cookie ilaina dia mitazona an’i Watch ho azo antoka sy hiasa tsara. Raha manome alalana ianao, dia afaka mitadidy ny zavatra mahaliana anao mandritra ny fitsidihana samihafa ny cookie an’ny tranonkala mba hanokana ny soso-kevitra ho anao. Mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra na izany aza.",
+    "acceptAll": "Ekeo daholo",
+    "essentialOnly": "Ny ilaina ihany",
+    "manageChoices": "Hitantana safidy",
+    "savingChoice": "Mitahiry ny safidy cookie",
+    "settings": "Fikirana cookie",
+    "settingsDescription": "Fidio raha azon’i Watch tehirizina mandritra ny fitsidihana samihafa ny zavatra mahaliana anao amin’ny soso-kevitra. Azonao ovaina amin’ny fotoana rehetra izany.",
+    "essentialCookies": "Cookie ilaina",
+    "essentialDescription": "Fiarovana, famerenana horonan-tsary, safidy momba ny tsiambaratelo, ary fanondroana ny fangatahana soso-kevitra.",
+    "alwaysActive": "Miasa hatrany",
+    "personalization": "Fampanokanana manokana",
+    "personalizationDescription": "Mitadidy ireo zavatra mahaliana voafetra mandritra ny fitsidihana samihafa. Raha vonoina ity dia mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "erasurePending": "Eo am-piandrasana ny famafana ny mombamomba anao. Efa mandeha ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "cancel": "Hanafoana",
+    "saveChoices": "Tehirizo ny safidy",
+    "saving": "Mitahiry…",
+    "loadError": "Tsy azo nalaina ny safidinao. Mbola afaka misafidy etsy ambany ianao.",
+    "grantError": "Tsy afaka navela ny fampanokanana manokana. Mbola azo ampiasaina ny safidy ilaina ihany.",
+    "saveError": "Tsy voatahiry ny safidinao. Andramo indray azafady."
   }
 }

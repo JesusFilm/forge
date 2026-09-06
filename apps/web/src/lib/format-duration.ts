@@ -1,7 +1,7 @@
 /**
  * Format a duration in seconds as a `m:ss` (sub-hour) or `h:mm:ss`
- * (one hour or longer) timecode. Single source of truth for both the
- * search-card duration pill and the download-modal duration label.
+ * (one hour or longer) timecode. Single source of truth for media-duration
+ * labels across search cards, recommendation cards, and download modals.
  *
  * Sub-hour: `1:10`, `9:59`, `12:34` (minutes are NOT zero-padded —
  * standard media-duration convention).

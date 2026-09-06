@@ -722,5 +722,28 @@
     "languageVersionLabel": "'Apa xa tumu",
     "selectLanguageVersion": "Pula tuk'u 'apa",
     "watchSelectedVersion": "Lak'u tuk'u pula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Nawataj cookie",
+    "bannerTitle": "Nawataj privacidad ay",
+    "bannerDescription": "Cookie esencial Watch naxik'ama seguro ha naxik'ama sirik. Tawín permiso ay, jun cookie opcional propio puy ruya intereses pakin visitas para recomendaciones personalizadas. Recomendaciones contextuales kaway disponibles maski naxan.",
+    "acceptAll": "K'ulna masan",
+    "essentialOnly": "Esencial sanan",
+    "manageChoices": "Nawataj elección",
+    "savingChoice": "Nimaq'ana elección cookie",
+    "settings": "Ajustes cookie",
+    "settingsDescription": "Chaw elección si Watch puy ruya intereses de recomendación pakin visitas. Atin puy naxach'aya ankuh.",
+    "essentialCookies": "Cookie esencial",
+    "essentialDescription": "Seguridad, reproducción, nawataj privacidad, ha atribución de solicitud de recomendación.",
+    "alwaysActive": "Sanan activo",
+    "personalization": "Personalización",
+    "personalizationDescription": "Ruya intereses limitados pakin visitas. Si anin naxamutej, recomendaciones contextuales kaway disponibles.",
+    "erasurePending": "Borrado de perfil kaway paq'an. Recomendaciones contextuales kaway activas.",
+    "cancel": "Cancelar",
+    "saveChoices": "Nimaq'ana elección",
+    "saving": "Nimaq'ana…",
+    "loadError": "Elección ay ma' naxik'ama cargar. Kaway puy nachaw abajo.",
+    "grantError": "Personalización ma' naxik'ama habilitar. Esencial sanan kaway disponible.",
+    "saveError": "Elección ay ma' naxik'ama nimaq'ar. Chanin, k'ulna intento chik."
   }
 }

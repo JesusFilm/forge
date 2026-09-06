@@ -722,5 +722,28 @@
     "languageVersionLabel": "Làkku baat",
     "selectLanguageVersion": "Tànnal sumbub làkk",
     "watchSelectedVersion": "Xool sumb bi nga tànn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Saytu cookie yi",
+    "bannerTitle": "Sa tànn yi ci sutura",
+    "bannerDescription": "Cookie yu am solo yi dañuy denc Watch mu nekk ku wóor te muy dox. Bu nga ko maye, benn cookie tànneef bu njëkk mëna fàttaliku seen bëgg-bëgg diggante ñëw-yi ngir def la ndigal yu méngook yaw. Ndimbal yu aju ci li nga xool sax dinañu nekk ba noppi.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yu am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Di denc sa tànn ci cookie yi",
+    "settings": "Parameetar cookie yi",
+    "settingsDescription": "Tànnal ndax Watch man naa fàttaliku bëgg-bëgg yi ci ndigal yi saa yu nga dellusee. Mën nga soppi li saa su ne.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaaraange, play bi, tànn yi ci sutura, ak melokaanu laaj ndigal yi.",
+    "alwaysActive": "Ba fàww muy dox",
+    "personalization": "Defar ngir yaw",
+    "personalizationDescription": "Fàttaliku bëgg-bëgg yu yem ci biir saa yu nga dellusee. Su fekkee nga tëj ko, ndigal yu aju ci li nga xool dinañu sax nekk.",
+    "erasurePending": "Far sa profil mi mungi xaar. Ndigal yu aju ci li nga xool tàmbali nañu ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Di denc…",
+    "loadError": "Mënuñu woon yeb sa tànn. Waaye man nga tànn ci suuf.",
+    "grantError": "Mënuñu woon tàmbali defar ngir yaw. Yu am solo rekk la maneesa jëfandikoo.",
+    "saveError": "Mënuñu woon denc sa tànn. Jéemaatal."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Luqadda codka",
     "selectLanguageVersion": "Dooro nooca luqadda",
     "watchSelectedVersion": "Daawo nooca la doortay"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Doorashooyinka kukiyada",
+    "bannerTitle": "Doorashooyinkaaga gaarka ahaanshaha",
+    "bannerDescription": "Kukiyada lama huraanka ahi waxay Watch ka dhigaan mid ammaan ah oo shaqaynaya. Oggolaanshahaaga, kuki ikhtiyaari ah oo koowaad ayaa xusuusan kara danahaaga booqashooyin kala duwan si talooyinka laguugu habeeyo. Talooyinka ku salaysan macnaha ayaa si kastaba kuu diyaar ah.",
+    "acceptAll": "Ogolow dhammaan",
+    "essentialOnly": "Kuwa lama huraanka ah oo keliya",
+    "manageChoices": "Maamul doorashooyinka",
+    "savingChoice": "Waxaa la kaydinayaa doorashada kukiyada",
+    "settings": "Dejinta kukiyada",
+    "settingsDescription": "Dooro in Watch xusuusan karo danaha talooyinka booqashooyin kala duwan. Waad beddeli kartaa wakhti kasta.",
+    "essentialCookies": "Kukiyada lama huraanka ah",
+    "essentialDescription": "Amniga, daawashada, doorashooyinka gaarka ahaanshaha, iyo raadraaca codsiyada talooyinka.",
+    "alwaysActive": "Had iyo jeer waa shaqaynayaan",
+    "personalization": "Shakhsiyeynta",
+    "personalizationDescription": "Xusuuso danaha xaddidan booqashooyin kala duwan. Haddii aad damiso, talooyinka ku salaysan macnaha weli waa diyaar.",
+    "erasurePending": "Tirtiridda xogta astaantaada weli way socotaa. Talooyinka ku salaysan macnaha mar hore way shaqaynayaan.",
+    "cancel": "Jooji",
+    "saveChoices": "Kaydi doorashooyinka",
+    "saving": "Waa la kaydinayaa…",
+    "loadError": "Lama soo dejin karin doorashadaada. Weli hoos ayaad ka dooran kartaa.",
+    "grantError": "Shakhsiyeynta lama hawlgelin karin. Kaliya kuwa lama huraanka ah ayaa sii ahaanaya kuwo la heli karo.",
+    "saveError": "Lama kaydin karin doorashadaada. Fadlan mar kale isku day."
   }
 }

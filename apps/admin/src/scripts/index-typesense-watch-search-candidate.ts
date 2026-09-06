@@ -12,7 +12,8 @@ import {
   type CandidateGenerationState,
   TypesenseWatchSearchCandidateGenerationService,
 } from "@/services/typesense-watch-search-candidate-generation"
-import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
+import { candidateWatchSearchIndexContractRevision } from "@/services/typesense-watch-search-candidate-identity"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "@/services/typesense-watch-search-transcript-compatibility"
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
@@ -37,13 +38,15 @@ type CandidateGenerationRecord = {
   id: string
   state: CandidateGenerationState
   version: number
-  applicationRevision?: string
+  indexContractRevision?: string
   sourceEpoch?: string
   sourceDigests?: unknown
   catalogCollection?: string
   availabilityCollection?: string
   lexicalCollection?: string
   transcriptCollection: string
+  contentEmbeddingContractId?: string
+  transcriptChunkingVersion?: string
   transcriptProjectionRevision?: bigint
   catalogFields?: unknown
   availabilityFields?: unknown
@@ -162,7 +165,7 @@ function deletedCollections(value: unknown): string[] {
 
 function expectedOwnerInput({
   generationId,
-  applicationRevision,
+  indexContractRevision,
   sourceEpoch,
   transcript,
   transcriptFields,
@@ -170,18 +173,25 @@ function expectedOwnerInput({
   schemas,
 }: {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   sourceEpoch: string
-  transcript: { collection: string; projectionRevision: bigint }
+  transcript: {
+    collection: string
+    contentEmbeddingContractId: string
+    chunkingVersion: string
+    projectionRevision: bigint
+  }
   transcriptFields: readonly TypesenseCollectionField[]
   snapshot: TypesenseWatchCandidateProjectionSnapshot
   schemas: ReturnType<typeof candidateWatchCollectionSchemas>
 }): CandidateGenerationInput {
   return {
     id: generationId,
-    applicationRevision,
+    indexContractRevision,
     sourceEpoch,
     sourceDigests: snapshot.digests,
+    contentEmbeddingContractId: transcript.contentEmbeddingContractId,
+    transcriptChunkingVersion: transcript.chunkingVersion,
     transcriptProjectionRevision: transcript.projectionRevision,
     members: {
       catalog: {
@@ -214,7 +224,7 @@ function assertExistingOwner(
 ): void {
   const matches =
     generation.id === expected.id &&
-    generation.applicationRevision === expected.applicationRevision &&
+    generation.indexContractRevision === expected.indexContractRevision &&
     generation.sourceEpoch === expected.sourceEpoch &&
     jsonEqual(generation.sourceDigests, expected.sourceDigests) &&
     generation.catalogCollection === expected.members.catalog.collection &&
@@ -223,6 +233,10 @@ function assertExistingOwner(
     generation.lexicalCollection === expected.members.lexical.collection &&
     generation.transcriptCollection ===
       expected.members.transcript.collection &&
+    generation.contentEmbeddingContractId ===
+      expected.contentEmbeddingContractId &&
+    generation.transcriptChunkingVersion ===
+      expected.transcriptChunkingVersion &&
     generation.transcriptProjectionRevision ===
       expected.transcriptProjectionRevision &&
     jsonEqual(generation.catalogFields, expected.members.catalog.fields) &&
@@ -387,7 +401,7 @@ export async function publishTypesenseWatchSearchCandidate({
   typesense,
   generations,
   generationId,
-  applicationRevision,
+  indexContractRevision,
   sourceEpoch,
   transcript,
   batchSize = DEFAULT_BATCH_SIZE,
@@ -399,9 +413,14 @@ export async function publishTypesenseWatchSearchCandidate({
   typesense: CandidateTypesense
   generations: CandidateGenerationLifecycle
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   sourceEpoch: string
-  transcript: { collection: string; projectionRevision: bigint }
+  transcript: {
+    collection: string
+    contentEmbeddingContractId: string
+    chunkingVersion: string
+    projectionRevision: bigint
+  }
   batchSize?: number
   loadSnapshot?: () => Promise<TypesenseWatchCandidateProjectionSnapshot>
   runCurrentCanary?: () => Promise<void>
@@ -423,7 +442,7 @@ export async function publishTypesenseWatchSearchCandidate({
   )
   const ownerInput = expectedOwnerInput({
     generationId,
-    applicationRevision,
+    indexContractRevision,
     sourceEpoch,
     transcript,
     transcriptFields: transcriptSchema.fields,
@@ -506,6 +525,8 @@ export async function publishTypesenseWatchSearchCandidate({
       ...candidateWatchCollectionNames(generationId),
       transcript: transcript.collection,
     },
+    contentEmbeddingContractId: transcript.contentEmbeddingContractId,
+    transcriptChunkingVersion: transcript.chunkingVersion,
     transcriptProjectionRevision: transcript.projectionRevision,
     transcriptReused: true,
   }
@@ -686,14 +707,20 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       typesense,
       generations,
       generationId: requiredEnv("WATCH_SEARCH_CANDIDATE_GENERATION_ID"),
-      applicationRevision: candidateWatchSearchApplicationRevision(),
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
       sourceEpoch: requiredEnv("WATCH_SEARCH_CANDIDATE_SOURCE_EPOCH"),
-      transcript: {
-        collection: requiredEnv("WATCH_SEARCH_TRANSCRIPT_COLLECTION"),
-        projectionRevision: BigInt(
-          requiredEnv("WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION"),
-        ),
-      },
+      transcript: await (async () => {
+        const compatibility =
+          await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+        return {
+          collection: requiredEnv("WATCH_SEARCH_TRANSCRIPT_COLLECTION"),
+          contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
+          chunkingVersion: compatibility.transcriptChunkingVersion,
+          projectionRevision: BigInt(
+            requiredEnv("WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION"),
+          ),
+        }
+      })(),
       batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
       runCurrentCanary: () => currentCanary(typesense),
     })

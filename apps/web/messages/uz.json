@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio tili",
     "selectLanguageVersion": "Til versiyasini tanlang",
     "watchSelectedVersion": "Tanlangan versiyani ko‘rish"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie tanlovlari",
+    "bannerTitle": "Maxfiylik bo‘yicha tanlovlaringiz",
+    "bannerDescription": "Zarur cookie fayllari Watch’ni xavfsiz va to‘g‘ri ishlashini ta’minlaydi. Ruxsatingiz bilan tavsiyalarni shaxsiylashtirish uchun tashriflar orasida qiziqishlaringizni eslab qoladigan ixtiyoriy birinchi tomon cookie fayli ishlatilishi mumkin. Kontekstga asoslangan tavsiyalar har qanday holatda ham mavjud bo‘ladi.",
+    "acceptAll": "Hammasini qabul qilish",
+    "essentialOnly": "Faqat zarur",
+    "manageChoices": "Tanlovlarni boshqarish",
+    "savingChoice": "Cookie tanlovi saqlanmoqda",
+    "settings": "Cookie sozlamalari",
+    "settingsDescription": "Watch tavsiyalar uchun qiziqishlaringizni tashriflar orasida eslab qolish-qolmasligini tanlang. Buni istalgan vaqtda o‘zgartirishingiz mumkin.",
+    "essentialCookies": "Zarur cookie fayllari",
+    "essentialDescription": "Xavfsizlik, ijro etish, maxfiylik tanlovlari va tavsiya so‘rovi manbasini belgilash.",
+    "alwaysActive": "Har doim faol",
+    "personalization": "Shaxsiylashtirish",
+    "personalizationDescription": "Tashriflar orasida cheklangan qiziqishlarni eslab qoladi. Buni o‘chirib qo‘ysangiz ham, kontekstga asoslangan tavsiyalar mavjud bo‘ladi.",
+    "erasurePending": "Profilni o‘chirish jarayoni kutilmoqda. Kontekstga asoslangan tavsiyalar allaqachon faol.",
+    "cancel": "Bekor qilish",
+    "saveChoices": "Tanlovlarni saqlash",
+    "saving": "Saqlanmoqda…",
+    "loadError": "Tanlovingizni yuklab bo‘lmadi. Baribir quyida tanlashingiz mumkin.",
+    "grantError": "Shaxsiylashtirishni yoqib bo‘lmadi. Faqat zarur sozlama mavjud bo‘lib qoladi.",
+    "saveError": "Tanlovingizni saqlab bo‘lmadi. Iltimos, qayta urinib ko‘ring."
   }
 }

@@ -18,10 +18,152 @@ import type {
   SearchFilter,
   SourceRecord,
 } from "../../contracts/index.js"
+import { RagOperationalError } from "../../contracts/index.js"
 
 import { assertQueryDimensions, toVectorLiteral } from "./vector.js"
 
 export { EMBEDDING_DIMENSIONS } from "./vector.js"
+
+export type StoredLanguageCandidate = {
+  id: string
+  sourceKey: string
+  canonicalUrl: string
+  language: string | null
+  rawContent: string
+}
+
+export type StoredLanguageChange = {
+  id: string
+  sourceKey: string
+  oldLanguage: string | null
+  newLanguage: string | null
+}
+
+export class PostgresLanguageMaintenanceStore {
+  constructor(private readonly db: PrismaClient) {}
+
+  async listCandidates(options: {
+    sourceKey?: string
+    blanksOnly: boolean
+    limit?: number
+    afterId?: string
+  }): Promise<StoredLanguageCandidate[]> {
+    return this.db.$queryRaw(Prisma.sql`
+      SELECT DISTINCT ON (d.id)
+        d.id, s.key AS "sourceKey", d.canonical_url AS "canonicalUrl",
+        d.language, r.raw_content AS "rawContent"
+      FROM documents d
+      JOIN sources s ON s.id = d.source_id
+      JOIN raw_documents r
+        ON r.source_key = s.key AND r.canonical_url = d.canonical_url
+      WHERE (${options.sourceKey ?? null}::text IS NULL OR s.key = ${options.sourceKey ?? null})
+        AND (${options.blanksOnly} = FALSE OR d.language IS NULL)
+        AND (${options.afterId ?? null}::uuid IS NULL OR d.id > ${options.afterId ?? null}::uuid)
+      ORDER BY d.id, r.fetched_at DESC
+      ${options.limit ? Prisma.sql`LIMIT ${options.limit}` : Prisma.empty}
+    `)
+  }
+
+  async applyLanguageChanges(
+    sourceKey: string,
+    changes: ReadonlyArray<Omit<StoredLanguageChange, "sourceKey">>,
+    audit: { runId: string; detectorModel?: string },
+  ): Promise<StoredLanguageChange[]> {
+    return this.db.$transaction(
+      async (tx) => {
+        const committed: StoredLanguageChange[] = []
+        for (const change of changes) {
+          const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          UPDATE documents d SET language = ${change.newLanguage}, updated_at = NOW()
+          FROM sources s
+          WHERE d.id = ${change.id}::uuid AND d.source_id = s.id
+            AND s.key = ${sourceKey}
+            AND d.language IS NOT DISTINCT FROM ${change.oldLanguage}
+          RETURNING d.id
+        `)
+          if (rows.length) {
+            await tx.$executeRaw(Prisma.sql`
+              INSERT INTO language_change_audits
+                (run_id, document_id, source_key, old_language, new_language, detector_model)
+              VALUES
+                (${audit.runId}, ${change.id}::uuid, ${sourceKey}, ${change.oldLanguage},
+                 ${change.newLanguage}, ${audit.detectorModel ?? null})
+            `)
+            committed.push({ ...change, sourceKey })
+          }
+        }
+        return committed
+      },
+      {
+        maxWait: 10_000,
+        timeout: Math.max(30_000, changes.length * 250),
+      },
+    )
+  }
+
+  async revertLanguageChanges(
+    changes: ReadonlyArray<{
+      id: string
+      sourceKey: string
+      expectedLanguage: string | null
+      restoreLanguage: string | null
+    }>,
+  ): Promise<number> {
+    let reverted = 0
+    const bySource = new Map<string, (typeof changes)[number][]>()
+    for (const change of changes) {
+      const sourceChanges = bySource.get(change.sourceKey) ?? []
+      sourceChanges.push(change)
+      bySource.set(change.sourceKey, sourceChanges)
+    }
+    for (const [sourceKey, sourceChanges] of bySource) {
+      reverted += await this.db.$transaction(
+        async (tx) => {
+          let sourceReverted = 0
+          for (const change of sourceChanges) {
+            const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          UPDATE documents d SET language = ${change.restoreLanguage}, updated_at = NOW()
+          FROM sources s
+          WHERE d.id = ${change.id}::uuid AND d.source_id = s.id
+            AND s.key = ${sourceKey}
+            AND d.language IS NOT DISTINCT FROM ${change.expectedLanguage}
+          RETURNING d.id
+        `)
+            sourceReverted += rows.length
+          }
+          return sourceReverted
+        },
+        {
+          maxWait: 10_000,
+          timeout: Math.max(30_000, sourceChanges.length * 250),
+        },
+      )
+    }
+    return reverted
+  }
+
+  async previewLanguageReverts(
+    changes: ReadonlyArray<{
+      id: string
+      sourceKey: string
+      expectedLanguage: string | null
+    }>,
+  ): Promise<number> {
+    let matched = 0
+    for (const change of changes) {
+      const rows = await this.db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT d.id
+        FROM documents d
+        JOIN sources s ON s.id = d.source_id
+        WHERE d.id = ${change.id}::uuid
+          AND s.key = ${change.sourceKey}
+          AND d.language IS NOT DISTINCT FROM ${change.expectedLanguage}
+      `)
+      matched += rows.length
+    }
+    return matched
+  }
+}
 
 const iso = (value: Date): string => value.toISOString()
 
@@ -133,15 +275,49 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       sourceKey?: string
       limit?: number
       includeIngested?: boolean
+      targetEmbeddingModel?: string
     } = {},
   ): Promise<PendingRawDocument[]> {
+    let eligibleIds: string[] | undefined
+    if (options.targetEmbeddingModel) {
+      const ids = await this.db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        WITH latest_raws AS (
+          SELECT DISTINCT ON (r.source_key, r.canonical_url)
+            r.id, r.source_key, r.canonical_url, r.fetched_at, r.ingested_at,
+            r.index_attempted_at, r.index_attempted_model
+          FROM raw_documents r
+          WHERE (${options.sourceKey ?? null}::text IS NULL OR r.source_key = ${options.sourceKey ?? null})
+          ORDER BY r.source_key, r.canonical_url, r.fetched_at DESC, r.id DESC
+        )
+        SELECT r.id
+        FROM latest_raws r
+        LEFT JOIN sources s ON s.key = r.source_key
+        LEFT JOIN documents d
+          ON d.source_id = s.id AND d.canonical_url = r.canonical_url
+        WHERE (
+            r.ingested_at IS NULL OR (r.index_attempted_model IS DISTINCT FROM ${options.targetEmbeddingModel} AND EXISTS (
+              SELECT 1
+              FROM chunks c
+              JOIN chunk_embeddings e ON e.chunk_id = c.id
+              WHERE c.document_id = d.id
+                AND e.embedding_model <> ${options.targetEmbeddingModel}
+            )
+          )
+        )
+        ORDER BY r.fetched_at ASC, r.id ASC
+        ${options.limit ? Prisma.sql`LIMIT ${options.limit}` : Prisma.empty}
+      `)
+      eligibleIds = ids.map(({ id }) => id)
+      if (eligibleIds.length === 0) return []
+    }
     const rows = await this.db.rawDocument.findMany({
       where: {
+        id: eligibleIds ? { in: eligibleIds } : undefined,
         sourceKey: options.sourceKey,
         ingestedAt: options.includeIngested ? undefined : null,
       },
       orderBy: [{ fetchedAt: "asc" }, { id: "asc" }],
-      take: options.limit,
+      take: eligibleIds ? undefined : options.limit,
     })
     return rows.map((row) => ({
       id: row.id,
@@ -161,11 +337,15 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
     }))
   }
 
-  async markIngested(ids: string[]): Promise<void> {
+  async markIngested(ids: string[], attemptedModel?: string): Promise<void> {
     if (ids.length === 0) return
     await this.db.rawDocument.updateMany({
       where: { id: { in: ids } },
-      data: { ingestedAt: new Date() },
+      data: {
+        ingestedAt: new Date(),
+        indexAttemptedAt: new Date(),
+        indexAttemptedModel: attemptedModel,
+      },
     })
   }
 }
@@ -216,6 +396,7 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
   async replaceDocument(
     doc: NormalizedDocument,
     chunks: EmbeddedChunk[],
+    staging?: { rawDocumentId: string; attemptedModel: string },
   ): Promise<void> {
     await this.db.$transaction(async (tx) => {
       const source = await tx.source.findUnique({
@@ -223,7 +404,8 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
         select: { id: true },
       })
       if (!source) {
-        throw new Error(
+        throw new RagOperationalError(
+          "corpus_state_invalid",
           `replaceDocument: unknown source key '${doc.sourceKey}' — call upsertSource first`,
         )
       }
@@ -289,6 +471,15 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
           ),
         )}
       `)
+      if (staging)
+        await tx.rawDocument.update({
+          where: { id: staging.rawDocumentId },
+          data: {
+            ingestedAt: new Date(),
+            indexAttemptedAt: new Date(),
+            indexAttemptedModel: staging.attemptedModel,
+          },
+        })
     })
   }
 }

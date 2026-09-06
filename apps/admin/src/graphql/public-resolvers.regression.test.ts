@@ -35,6 +35,18 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "watchSearchSuggestions",
   "recordWatchSearchEvent",
   "sceneRecommendations",
+  // feat-368 U2/U4. Public-shaped; resolver-body authenticated for Web only.
+  "semanticRecommendationDelivery",
+  "recordSemanticRecommendationEvidence",
+  "selectSemanticRecommendation",
+  "claimSemanticRecommendationEpisode",
+  "recordSemanticRecommendationPlayback",
+  "recordRecommendationContentAction",
+  "recommendationProfileStatus",
+  "transitionRecommendationProfile",
+  // feat-369. Issues the bounded, opaque context used by Watch playback
+  // episodes; caller identity is still enforced inside the resolver body.
+  "issueWatchPlaybackContext",
   // consumer-migration U2 (2026-05-11) — see
   // docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md
   "video",
@@ -61,6 +73,14 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "countries",
   "keywords",
   "watchSetting",
+  // Anonymous sticker voting on web's /watch/whats-new. Deliberately public:
+  // the page has no login, so requiring one would cost the signal the votes
+  // exist to collect. The abuse story is the per-IP mutation rate limit plus
+  // the service's per-ballot budget — not the auth scope. Writes validate
+  // every id server-side and refuse rather than throw.
+  "whatsNewFeatureVoteTallies",
+  "castWhatsNewFeatureVote",
+  "retractWhatsNewFeatureVote",
 ] as const
 
 function readAllTypeSources(): string {

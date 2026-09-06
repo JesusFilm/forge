@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ljudspråk",
     "selectLanguageVersion": "Välj en språkversion",
     "watchSelectedVersion": "Titta på vald version"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookieval",
+    "bannerTitle": "Dina val för integritet",
+    "bannerDescription": "Nödvändiga cookies håller Watch säkert och fungerande. Med ditt tillstånd kan en valfri förstapartscookie komma ihåg intressen mellan besök för att anpassa rekommendationer. Kontextuella rekommendationer finns tillgängliga oavsett.",
+    "acceptAll": "Acceptera alla",
+    "essentialOnly": "Endast nödvändiga",
+    "manageChoices": "Hantera val",
+    "savingChoice": "Sparar ditt cookieval",
+    "settings": "Cookieinställningar",
+    "settingsDescription": "Välj om Watch får komma ihåg rekommendationsintressen mellan besök. Du kan ändra detta när som helst.",
+    "essentialCookies": "Nödvändiga cookies",
+    "essentialDescription": "Säkerhet, uppspelning, integritetsval och attribution för rekommendationsförfrågningar.",
+    "alwaysActive": "Alltid aktivt",
+    "personalization": "Anpassning",
+    "personalizationDescription": "Kom ihåg avgränsade intressen mellan besök. Om detta stängs av finns fortfarande kontextuella rekommendationer tillgängliga.",
+    "erasurePending": "Profilradering väntar. Kontextuella rekommendationer är redan aktiva.",
+    "cancel": "Avbryt",
+    "saveChoices": "Spara val",
+    "saving": "Sparar…",
+    "loadError": "Ditt val kunde inte läsas in. Du kan fortfarande göra ett val nedan.",
+    "grantError": "Anpassning kunde inte aktiveras. Endast nödvändiga är fortfarande tillgängliga.",
+    "saveError": "Ditt val kunde inte sparas. Försök igen."
   }
 }

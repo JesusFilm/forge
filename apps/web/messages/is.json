@@ -722,5 +722,28 @@
     "languageVersionLabel": "Hljóðtungumál",
     "selectLanguageVersion": "Veldu tungumálaútgáfu",
     "watchSelectedVersion": "Horfa á valda útgáfu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Vafrakökuvalkostir",
+    "bannerTitle": "Val á persónuvernd",
+    "bannerDescription": "Nauðsynlegar vafrakökur halda Watch öruggu og virku. Með þínu leyfi getur valfrjáls eigin vafrakaka munað áhugasvið milli heimsókna til að sérsníða ráðleggingar. Samhengisbundnar ráðleggingar eru í boði hvort sem er.",
+    "acceptAll": "Samþykkja allt",
+    "essentialOnly": "Aðeins nauðsynlegt",
+    "manageChoices": "Stjórna valkostum",
+    "savingChoice": "Vistun á vali á vafrakökum",
+    "settings": "Stillingar vafrakaka",
+    "settingsDescription": "Veldu hvort Watch megi muna áhugasvið fyrir ráðleggingar milli heimsókna. Þú getur breytt þessu hvenær sem er.",
+    "essentialCookies": "Nauðsynlegar vafrakökur",
+    "essentialDescription": "Öryggi, afspilun, persónuverndarvalkostir og rekjanleiki beiðna um ráðleggingar.",
+    "alwaysActive": "Alltaf virkt",
+    "personalization": "Sérsníðing",
+    "personalizationDescription": "Muna afmörkuð áhugasvið milli heimsókna. Ef slökkt er á þessu verða samhengisbundnar ráðleggingar áfram í boði.",
+    "erasurePending": "Eyðing prófíls er í vinnslu. Samhengisbundnar ráðleggingar eru þegar virkar.",
+    "cancel": "Hætta við",
+    "saveChoices": "Vista valkosti",
+    "saving": "Vistar…",
+    "loadError": "Ekki tókst að hlaða vali þínu. Þú getur samt valið hér fyrir neðan.",
+    "grantError": "Ekki tókst að virkja sérsníðingu. Aðeins nauðsynlegt er áfram í boði.",
+    "saveError": "Ekki tókst að vista val þitt. Reyndu aftur."
   }
 }

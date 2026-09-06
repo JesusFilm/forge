@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveDownloadPosterUrl, resolveMuxFrameThumbnailUrl } from "./url"
+import {
+  MUX_HERO_POSTER_MAX_WIDTH,
+  resolveDownloadPosterUrl,
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "./url"
 
 describe("resolveDownloadPosterUrl", () => {
   it("requests a high-resolution Mux frame for the full-width modal", () => {
@@ -81,5 +86,28 @@ describe("resolveMuxFrameThumbnailUrl", () => {
     expect(resolveMuxFrameThumbnailUrl(null)).toBeNull()
     expect(resolveMuxFrameThumbnailUrl(undefined)).toBeNull()
     expect(resolveMuxFrameThumbnailUrl("   ")).toBeNull()
+  })
+})
+
+describe("resolveMuxHeroPosterUrlAtMaxWidth", () => {
+  it("emits the derivative the watch hero already requests, byte for byte", () => {
+    // Mux caches per exact URL, so parameter ORDER is part of the cache key:
+    // HeroPlayer's image loader sets `width` on a src that already carries
+    // `time`, which lands time-first. Diverging here would mean a second,
+    // cold derivative of the same frame.
+    expect(resolveMuxHeroPosterUrlAtMaxWidth("abc123")).toBe(
+      "https://image.mux.com/abc123/thumbnail.webp?time=2&width=1280",
+    )
+    expect(MUX_HERO_POSTER_MAX_WIDTH).toBe(1280)
+  })
+
+  it("returns null without a playback id", () => {
+    expect(resolveMuxHeroPosterUrlAtMaxWidth(null)).toBeNull()
+    expect(resolveMuxHeroPosterUrlAtMaxWidth(undefined)).toBeNull()
+    expect(resolveMuxHeroPosterUrlAtMaxWidth("   ")).toBeNull()
+  })
+
+  it("encodes the playback id", () => {
+    expect(resolveMuxHeroPosterUrlAtMaxWidth("a/b?c")).toContain("a%2Fb%3Fc")
   })
 })

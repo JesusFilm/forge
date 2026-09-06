@@ -152,3 +152,33 @@ export function resolveMuxHeroPosterUrl(
   if (!playbackId) return null
   return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=2`
 }
+
+/**
+ * Widest hero poster Mux serves from a warm cache. Un-sized, the same URL
+ * returns 1920x1080 but takes ~3x as long (652ms against 190ms measured
+ * 2026-09-02) because it is not the derivative the watch hero already requests.
+ */
+export const MUX_HERO_POSTER_MAX_WIDTH = 1280
+
+/**
+ * The hero poster at the width `HeroPlayer`'s image loader asks for, in the
+ * same parameter order, so the two surfaces agree on one derivative — Mux
+ * caches per exact URL. This holds for the direct request (a `<video poster>`
+ * attribute, or an unoptimized `<Image>`); a `next/image` request still asks
+ * Mux only for this URL, and narrower devices are served by resizing it.
+ *
+ * Use this for any full-viewport surface. Authored artwork is NOT the better
+ * source there: the admin library stores mobile derivatives for these videos
+ * (`mobileCinematicHigh` measured 640x300, `videoStill` 480x270), which a
+ * full-bleed hero upscales about fourfold. Small surfaces should still prefer
+ * the authored image — at card size it has pixels to spare and it is curated.
+ */
+export function resolveMuxHeroPosterUrlAtMaxWidth(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const base = resolveMuxHeroPosterUrl(muxPlaybackId)
+  if (!base) return null
+  const url = new URL(base)
+  url.searchParams.set("width", String(MUX_HERO_POSTER_MAX_WIDTH))
+  return url.toString()
+}

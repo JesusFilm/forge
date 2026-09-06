@@ -722,5 +722,28 @@
     "languageVersionLabel": "Teanga fuaime",
     "selectLanguageVersion": "Roghnaigh leagan teanga",
     "watchSelectedVersion": "Féach ar an leagan roghnaithe"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Roghanna fianán",
+    "bannerTitle": "Do roghanna príobháideachais",
+    "bannerDescription": "Coinníonn fianáin riachtanacha Watch slán agus ag feidhmiú i gceart. Le do chead, is féidir le fianán céadpháirtí roghnach spéiseanna a mheabhrú thar chuairteanna chun moltaí a phearsanú. Beidh moltaí comhthéacsúla ar fáil cibé scéal é.",
+    "acceptAll": "Glac leo uile",
+    "essentialOnly": "Riachtanach amháin",
+    "manageChoices": "Bainistigh roghanna",
+    "savingChoice": "Rogha fianán á sábháil",
+    "settings": "Socruithe fianán",
+    "settingsDescription": "Roghnaigh an gceadaíonn tú do Watch spéiseanna molta a mheabhrú thar chuairteanna. Is féidir leat é seo a athrú am ar bith.",
+    "essentialCookies": "Fianáin riachtanacha",
+    "essentialDescription": "Slándáil, athsheinm, roghanna príobháideachais, agus sannadh iarratas moltaí.",
+    "alwaysActive": "Gníomhach i gcónaí",
+    "personalization": "Pearsanú",
+    "personalizationDescription": "Meabhraigh spéiseanna teoranta thar chuairteanna. Má mhúchann tú é seo, beidh moltaí comhthéacsúla fós ar fáil.",
+    "erasurePending": "Tá scriosadh próifíle ar feitheamh. Tá moltaí comhthéacsúla gníomhach cheana féin.",
+    "cancel": "Cealaigh",
+    "saveChoices": "Sábháil roghanna",
+    "saving": "Á shábháil…",
+    "loadError": "Níorbh fhéidir do rogha a lódáil. Is féidir leat rogha a dhéanamh thíos fós.",
+    "grantError": "Níorbh fhéidir pearsanú a chumasú. Tá an rogha riachtanach amháin ar fáil fós.",
+    "saveError": "Níorbh fhéidir do rogha a shábháil. Bain triail eile as, le do thoil."
   }
 }

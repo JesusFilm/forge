@@ -4290,8 +4290,14 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 
   it("attempts unmuted play and reveals chrome when ?autoplay=1 is set and play resolves", async () => {
     setSearchParams("autoplay=1")
+    const onPlayerActivated = vi.fn()
     act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onPlayerActivated={onPlayerActivated}
+        />,
+      )
     })
     expect(
       container.querySelector('[data-testid="hero-player-poster-layer"]')
@@ -4330,10 +4336,12 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
     )
     expect(writeWatchVolumePreferenceMock).not.toHaveBeenCalled()
+    expect(onPlayerActivated).toHaveBeenCalledWith("automatic")
   })
 
   it("leaves the player muted when play() rejects (no MEI grant)", async () => {
     setSearchParams("autoplay=1")
+    const onPlayerActivated = vi.fn()
     // Re-prime the player factory: install a play() that rejects on the
     // FIRST call only (the autoplay attempt). Subsequent calls (e.g. the
     // unmute pill click) resolve normally.
@@ -4357,7 +4365,12 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       return null
     })
     act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onPlayerActivated={onPlayerActivated}
+        />,
+      )
     })
     await fireCanPlay()
     await nextTick()
@@ -4375,6 +4388,18 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     expect(
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).not.toBeNull()
+    expect(onPlayerActivated).not.toHaveBeenCalled()
+
+    player.play.mockResolvedValue(undefined)
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="hero-player-unmute-pill"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await nextTick()
+    expect(onPlayerActivated).toHaveBeenCalledWith("manual")
   })
 
   it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {

@@ -40,6 +40,10 @@ import {
   isPrismaRuntimeError,
   sanitizePrismaErrorMessage,
 } from "@/db/prisma-errors"
+import {
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+} from "./content-embedding-contract"
 
 /**
  * Manager transcript artifacts still store `text-embedding-3-small`
@@ -47,7 +51,8 @@ import {
  * count are rejected as invalid rather than silently truncated or
  * padded.
  */
-export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
+export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS =
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
 
 /**
  * Admin's expected embedding model. Mastra may report the legacy
@@ -60,7 +65,7 @@ export const ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS: ReadonlySet<string> =
   new Set<string>([
     "openai/text-embedding-3-small",
     "text-embedding-3-small",
-    "embeddings",
+    ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
   ])
 
 // Precomputed list form for the drift-warning log payload. Avoids
