@@ -172,6 +172,21 @@ describe("TypesenseClient", () => {
     ).rejects.toEqual(expect.any(TypesenseImportResponseError))
   })
 
+  it("rejects import rows whose success marker is not the boolean true", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ success: "true" })))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.importDocuments("chunks", [{ id: "a" }]),
+    ).rejects.toEqual(expect.any(TypesenseImportError))
+  })
+
   it("upserts lightweight documents and deletes stale documents by filter", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

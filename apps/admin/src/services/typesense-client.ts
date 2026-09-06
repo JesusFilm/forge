@@ -264,10 +264,14 @@ export class TypesenseClient {
       )
     }
     const failures = response
-      .filter((entry) => !entry.success)
+      .filter((entry) => entry?.success !== true)
       .map((entry) => ({
-        error: entry.error ?? "Unknown Typesense import failure",
-        document: entry.document,
+        error:
+          entry && typeof entry === "object" && typeof entry.error === "string"
+            ? entry.error
+            : "Invalid Typesense import response",
+        document:
+          entry && typeof entry === "object" ? entry.document : undefined,
       }))
     if (failures.length > 0) throw new TypesenseImportError(failures)
   }

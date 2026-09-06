@@ -154,4 +154,34 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     expect(results).toEqual(Array.from({ length: 40 }, (_, index) => index))
     expect(peakInFlight).toBeLessThanOrEqual(16)
   })
+
+  it("batches stale document filters below request-target limits", async () => {
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
+    const deleteDocumentsByFilter = vi.fn().mockResolvedValue(0)
+    const ids = Array.from({ length: 205 }, (_, index) => `chunk-${index}`)
+
+    await _internals.deleteStaleTranscriptDocuments(
+      { deleteDocumentsByFilter },
+      "watch_search_transcripts_active",
+      ids,
+    )
+
+    expect(deleteDocumentsByFilter).toHaveBeenCalledTimes(3)
+    expect(deleteDocumentsByFilter).toHaveBeenNthCalledWith(
+      1,
+      "watch_search_transcripts_active",
+      _internals.exactIdFilter(ids.slice(0, 100)),
+    )
+    expect(deleteDocumentsByFilter).toHaveBeenNthCalledWith(
+      2,
+      "watch_search_transcripts_active",
+      _internals.exactIdFilter(ids.slice(100, 200)),
+    )
+    expect(deleteDocumentsByFilter).toHaveBeenNthCalledWith(
+      3,
+      "watch_search_transcripts_active",
+      _internals.exactIdFilter(ids.slice(200)),
+    )
+  })
 })

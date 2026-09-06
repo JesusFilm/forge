@@ -26,6 +26,7 @@ const BASE_LEASE_MS = 60_000
 const MAX_LEASE_MS = 5 * 60_000
 const LEASE_PER_DOCUMENT_MS = 250
 const READBACK_CONCURRENCY = 16
+const STALE_DELETE_BATCH_SIZE = 100
 const RETRY_DELAY_MS = 5_000
 const POLL_MS = 5_000
 
@@ -60,6 +61,10 @@ type ClaimedPublicationBatch = {
   leaseGeneration: number
   leaseToken: string
   leaseExpiresAt: Date
+}
+
+type OutstandingStaleDocumentEvidenceRow = {
+  staleDocumentIds: string[]
 }
 
 type CanonicalTranscriptDocumentRow = {
@@ -324,8 +329,22 @@ async function claimNextTranscriptPublicationBatch(
 
     const latest = rows[0]!
     const eventIds = rows.map((row) => row.id)
+    // Include immutable deletion evidence from older events that another
+    // worker has already claimed. A newer generation can win the shared index
+    // lock before that worker starts, and the newer transition may no longer
+    // repeat ids made stale by an intermediate generation.
+    const outstandingStaleEvidence = await tx.$queryRaw<
+      OutstandingStaleDocumentEvidenceRow[]
+    >(Prisma.sql`
+      SELECT stale_document_ids AS "staleDocumentIds"
+      FROM watch_search_current_transcript_publication_event
+      WHERE transcript_id = ${transcriptId}
+        AND status != 'completed'
+    `)
     const staleDocumentIds = [
-      ...new Set(rows.flatMap((row) => row.staleDocumentIds)),
+      ...new Set(
+        outstandingStaleEvidence.flatMap((row) => row.staleDocumentIds),
+      ),
     ]
     const leaseGeneration =
       rows.reduce((max, row) => Math.max(max, row.leaseGeneration), 0) + 1
@@ -514,6 +533,19 @@ async function assertStaleDocumentsRemoved(
   }
 }
 
+async function deleteStaleTranscriptDocuments(
+  typesense: Pick<TypesenseTranscriptPublisher, "deleteDocumentsByFilter">,
+  collection: string,
+  ids: readonly string[],
+): Promise<void> {
+  for (let index = 0; index < ids.length; index += STALE_DELETE_BATCH_SIZE) {
+    await typesense.deleteDocumentsByFilter(
+      collection,
+      exactIdFilter(ids.slice(index, index + STALE_DELETE_BATCH_SIZE)),
+    )
+  }
+}
+
 async function completeTranscriptPublicationBatch(
   prisma: PrismaClient,
   batch: ClaimedPublicationBatch,
@@ -548,6 +580,15 @@ async function completeTranscriptPublicationBatch(
           transcriptChunkingVersion: input.transcriptChunkingVersion,
         },
       )
+      const completion = {
+        status: "COMPLETED" as const,
+        leaseTokenHash: null,
+        leaseExpiresAt: null,
+        nextAttemptAt: null,
+        lastErrorCode: null,
+        completedAt: now,
+        updatedAt: now,
+      }
       const completed =
         await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
           where: {
@@ -557,21 +598,26 @@ async function completeTranscriptPublicationBatch(
             leaseTokenHash,
             leaseExpiresAt: { gt: now },
           },
-          data: {
-            status: "COMPLETED",
-            leaseTokenHash: null,
-            leaseExpiresAt: null,
-            nextAttemptAt: null,
-            lastErrorCode: null,
-            completedAt: now,
-            updatedAt: now,
-          },
+          data: completion,
         })
       if (completed.count !== batch.eventIds.length) {
         throw new WatchSearchTranscriptPublicationError(
           "transcript publication batch fence was lost before completion",
         )
       }
+      // An older generation can still own an unexpired event lease while this
+      // batch claims and publishes the latest generation. The shared Typesense
+      // index lock guarantees that older worker cannot publish concurrently.
+      // Complete those now-superseded events in the same transaction so they
+      // cannot later retry forever against the newer canonical generation.
+      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
+        where: {
+          transcriptId: batch.transcriptId,
+          sourceGeneration: { lt: batch.sourceGeneration },
+          status: { not: "COMPLETED" },
+        },
+        data: completion,
+      })
       return {
         transcriptCollection: projection.transcriptCollection,
         contentEmbeddingContractId: projection.contentEmbeddingContractId,
@@ -675,12 +721,11 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         canonical.documents,
         "upsert",
       )
-      if (batch.staleDocumentIds.length > 0) {
-        await input.typesense.deleteDocumentsByFilter(
-          transcriptCollection,
-          exactIdFilter(batch.staleDocumentIds),
-        )
-      }
+      await deleteStaleTranscriptDocuments(
+        input.typesense,
+        transcriptCollection,
+        batch.staleDocumentIds,
+      )
       const projected = await readBackTranscriptDocuments(
         input.typesense,
         transcriptCollection,
@@ -800,6 +845,7 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
 }
 
 export const _internals = {
+  deleteStaleTranscriptDocuments,
   exactIdFilter,
   initialProjectionRevision,
   mapWithConcurrency,

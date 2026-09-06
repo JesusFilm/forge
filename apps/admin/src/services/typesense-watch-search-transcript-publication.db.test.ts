@@ -1221,6 +1221,123 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toEqual({ status: "idle" })
   }, 180_000)
 
+  it("completes an older actively claimed event when a newer generation wins publication", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const firstPublish = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(firstPublish).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    const firstEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "shrink-run",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [{ text: "Hope and fellowship", embedding, tokenCount: 3 }],
+      }),
+    )
+    const olderEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 2n } },
+      )
+    expect(olderEvent.staleDocumentIds).toEqual([
+      firstEvent.currentDocumentIds[1],
+    ])
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.update({
+      where: { id: olderEvent.id },
+      data: {
+        status: "CLAIMED",
+        leaseGeneration: 1,
+        leaseTokenHash: "older-worker-token-hash",
+        leaseExpiresAt: new Date("2100-01-01T00:00:00.000Z"),
+        attemptCount: 1,
+      },
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "replace-run",
+        generatedAt: "2026-09-03T00:20:00.000Z",
+        chunks: [
+          { text: "Hope and fellowship", embedding, tokenCount: 3 },
+          {
+            text: "Replacement tail chunk",
+            embedding: makeEmbedding(0.75),
+            tokenCount: 3,
+          },
+        ],
+      }),
+    )
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 3n,
+      projectionRevision: 2n,
+    })
+    expect(
+      await typesense.getDocument(
+        published.status === "published" ? published.transcriptCollection : "",
+        firstEvent.currentDocumentIds[1]!,
+      ),
+    ).toBeUndefined()
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+        orderBy: { sourceGeneration: "asc" },
+        select: {
+          sourceGeneration: true,
+          status: true,
+          leaseTokenHash: true,
+          leaseExpiresAt: true,
+        },
+      }),
+    ).toEqual([
+      {
+        sourceGeneration: 1n,
+        status: "COMPLETED",
+        leaseTokenHash: null,
+        leaseExpiresAt: null,
+      },
+      {
+        sourceGeneration: 2n,
+        status: "COMPLETED",
+        leaseTokenHash: null,
+        leaseExpiresAt: null,
+      },
+      {
+        sourceGeneration: 3n,
+        status: "COMPLETED",
+        leaseTokenHash: null,
+        leaseExpiresAt: null,
+      },
+    ])
+  }, 180_000)
+
   it("does not complete publication when the canonical visibility projection drifts before completion", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
