@@ -135,7 +135,7 @@ export function SeriesEpisodeCard({
           />
         </div>
       ) : href || runtimeLabel ? (
-        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
+        <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-sm sm:text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
           {href ? (
             <Play size={12} className="fill-white" strokeWidth={0} />
           ) : null}

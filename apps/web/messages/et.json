@@ -722,5 +722,28 @@
     "languageVersionLabel": "Heli keel",
     "selectLanguageVersion": "Valige keeleversioon",
     "watchSelectedVersion": "Vaata valitud versiooni"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Küpsiste valikud",
+    "bannerTitle": "Teie privaatsusvalikud",
+    "bannerDescription": "Vajalikud küpsised hoiavad Watchi turvalise ja toimivana. Teie loal võib valikuline esimese osapoole küpsis meeles pidada huvisid eri külastuste vahel, et soovitusi isikupärastada. Kontekstipõhised soovitused on saadaval mõlemal juhul.",
+    "acceptAll": "Nõustu kõigega",
+    "essentialOnly": "Ainult vajalikud",
+    "manageChoices": "Halda valikuid",
+    "savingChoice": "Küpsisevaliku salvestamine",
+    "settings": "Küpsiste seaded",
+    "settingsDescription": "Valige, kas Watch võib eri külastuste vahel soovituste huvisid meeles pidada. Seda saate igal ajal muuta.",
+    "essentialCookies": "Vajalikud küpsised",
+    "essentialDescription": "Turvalisus, taasesitus, privaatsusvalikud ja soovituspäringute omistamine.",
+    "alwaysActive": "Alati aktiivne",
+    "personalization": "Isikupärastamine",
+    "personalizationDescription": "Jäta piiritletud huvid eri külastuste vahel meelde. Selle väljalülitamisel jäävad kontekstipõhised soovitused endiselt kättesaadavaks.",
+    "erasurePending": "Profiili kustutamine on pooleli. Kontekstipõhised soovitused on juba aktiivsed.",
+    "cancel": "Tühista",
+    "saveChoices": "Salvesta valikud",
+    "saving": "Salvestamine…",
+    "loadError": "Teie valikut ei saanud laadida. Saate siiski allpool valida.",
+    "grantError": "Isikupärastamist ei saanud sisse lülitada. Saadaval on endiselt ainult vajalikud küpsised.",
+    "saveError": "Teie valikut ei saanud salvestada. Palun proovige uuesti."
   }
 }

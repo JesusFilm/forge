@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audio gbe",
     "selectLanguageVersion": "Kɛ gbemɔ kome hewalɛ",
     "watchSelectedVersion": "Kɛ gbemɔ ni okɛ hewalɛ lɛ ele"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie hewɔmɔi",
+    "bannerTitle": "Wɔ shishi lɛ mli hewɔmɔi",
+    "bannerDescription": "Cookie si nii anɔpa lɛ ewo Watch ni eha ni ejɛɛ. Shi mli ni, ni okɛ eha, first-party cookie koŋɔ ekɛ ni eyaa hewɔmɔi lɛ feei afii ni ekɛ recommendation ni eba amɛ ha. Contextual recommendation ni hewalɛ mli kɛji ni baafee.",
+    "acceptAll": "Gba amɛnaa fɛɛ",
+    "essentialOnly": "Nii anɔpa tsɛɛ",
+    "manageChoices": "Dɔ hewɔmɔi lɛ nɔ",
+    "savingChoice": "Ehee cookie hewɔmɔi lɛ",
+    "settings": "Cookie setting ni",
+    "settingsDescription": "Lɛ Watch ekɛ ni eyaa recommendation hewɔmɔi lɛ feei afii ni, waa hewalɛ mli shishi. Oyaa ni oho eko ni mli kɛji.",
+    "essentialCookies": "Cookie ni anɔpa",
+    "essentialDescription": "Kɛjiashikɛŋ, video nɔŋmɔ, shishi hewɔmɔi, kɛ recommendation bii ni yɛlɛ lɛ.",
+    "alwaysActive": "Etsɔɔ wɔ mli nyɛɛ",
+    "personalization": "Aha mli tsui",
+    "personalizationDescription": "Yaa hewɔmɔi ni efee kɛshikɛ lɛ feei afii ni. Ni oshi lɛ eko, contextual recommendation ni baakɛ hewalɛ mli.",
+    "erasurePending": "Profile lɛ tutu lɛ mli hewalɛ yɛ. Contextual recommendation ni etsɔɔ wɔ mli dedɛ.",
+    "cancel": "Tɔŋ",
+    "saveChoices": "Hee hewɔmɔi lɛ",
+    "saving": "Ehee…",
+    "loadError": "O hewɔmɔi lɛ ekɔ able shia. Otsɔɔ akɛ oyaa lɛshi amɛnaa ni shikpon.",
+    "grantError": "Personalization lɛ ekɔ able shia. Essential only etsɔɔ wɔ mli.",
+    "saveError": "O hewɔmɔi lɛ ekɔ able hee. Bɔŋ yɛ shia ake."
   }
 }

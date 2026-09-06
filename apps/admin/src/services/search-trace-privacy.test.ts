@@ -221,8 +221,11 @@ describe("projectWatchSearchComparisonResult", () => {
       diagnostics: {
         profile: "CANDIDATE" as const,
         generationId: "generation-1",
-        applicationRevision: "revision-1",
+        indexContractRevision: "revision-1",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 7n,
+        activeTranscriptProjectionRevision: 8n,
         binding: {
           catalog: "candidate-catalog",
           availability: "candidate-availability",
@@ -293,7 +296,10 @@ describe("projectWatchSearchComparisonResult", () => {
     })
     expect(projected.candidate).toMatchObject({
       diagnostics: {
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: "7",
+        activeTranscriptProjectionRevision: "8",
         rankingAnchor: {
           sourceCanonicalVideoId: "core:safe-id",
           matchKind: "NORMALIZED_WHOLE_TITLE",

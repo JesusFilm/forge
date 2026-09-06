@@ -1003,6 +1003,71 @@ type ManagerViewer {
   username: String
 }
 
+type ManagerWatchRouteAlertItem {
+  activeUsers: Int!
+  count: Int!
+  countKind: String!
+  firstSeenAt: String!
+  httpStatus: Int
+  id: ID!
+  lastProbedAt: String
+  lastSeenAt: String!
+  lifecycle: String!
+  manifestVersion: String!
+  occurrenceCount: Int!
+  origin: String!
+  path: String!
+  propertyId: String!
+  severity: String!
+  sources: [String!]!
+  verdict: String!
+}
+
+type ManagerWatchRouteAlertLane {
+  caveats: [String!]!
+  countKind: String!
+  rowCount: Int!
+  source: String!
+  status: String!
+  windowEnd: String!
+  windowStart: String!
+}
+
+type ManagerWatchRouteAlertRun {
+  completedAt: String
+  id: ID!
+  lanes: [ManagerWatchRouteAlertLane!]!
+  mode: String!
+  propertyId: String!
+  startedAt: String!
+  status: String!
+  validationCaveats: [String!]!
+}
+
+type ManagerWatchRouteAlertSummary {
+  critical: Int!
+  open: Int!
+  plausibleMissingRoutes: Int!
+  recovered: Int!
+  supportedRouteFailures: Int!
+}
+
+type ManagerWatchRouteAlertsPage {
+  generatedAt: String!
+  hasNextPage: Boolean!
+  items: [ManagerWatchRouteAlertItem!]!
+  lastSuccessfulAt: String
+  latestRun: ManagerWatchRouteAlertRun
+  monitorState: String!
+  nextCursor: String
+  propertyRuns: [ManagerWatchRouteAlertRun!]!
+  propertyRunsTruncated: Boolean!
+  recoverySuppressed: Boolean!
+  showing: Int!
+  summary: ManagerWatchRouteAlertSummary!
+  totalCount: Int!
+}
+
 """
 An uploaded image, video, PDF, or file registered in the Apps admin media library.
 """
@@ -1158,6 +1223,10 @@ type MediaCollectionItem {
   languageSlug: String
   linkToSectionKey: String
   """
+  Same projection as resolvedTitle, resolved against the locale of the Experience being previewed. Takes no locale argument, so a preview caller cannot request a different locale than the one on screen. Null outside an ExperiencePreview, where no preview locale is bound to the item.
+  """
+  previewResolvedTitle: String
+  """
   Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
   """
   resolvedTitle(locale: String!): String
@@ -1217,6 +1286,11 @@ type Mutation {
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  """
+  Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
+  """
+  castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
+  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
@@ -1241,11 +1315,16 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  recommendationProfileStatus(consentContractVersion: String, consentReceiptDigest: String, contractVersion: String!, profileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
+  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String!): RecommendationContentActionReceipt!
+  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String!): [RecommendationEvidenceReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
@@ -1257,7 +1336,13 @@ type Mutation {
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
   restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
+  """
+  Peel one sticker off. The row is kept and stops counting; omit placementId to take a whole ballot back.
+  """
+  retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -1449,6 +1534,7 @@ type Query {
   Current Admin session projected into the narrow Manager access contract.
   """
   managerViewer: ManagerViewer
+  managerWatchRouteAlerts(after: String, limit: Int = 25): ManagerWatchRouteAlertsPage!
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
@@ -1468,6 +1554,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
+  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
@@ -1539,6 +1626,10 @@ type Query {
   Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
   """
   watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!, subtitleLanguageSlug: String): WatchRouteSnapshot
+  """
+  Totals per feature, retracted stickers excluded. Features with no votes are absent rather than zero.
+  """
+  whatsNewFeatureVoteTallies: [WhatsNewFeatureVoteTally!]!
 }
 
 """Quiz launcher button. Only valid inside SectionContent."""
@@ -1547,6 +1638,71 @@ type QuizButtonBlock {
   iframeSrc: String
   sectionKey: String
   t: String
+}
+
+type RecommendationCandidateContributor {
+  generator: String!
+  generatorVersion: String!
+  rank: Int!
+}
+
+type RecommendationContentActionReceipt {
+  actionId: ID!
+  eventId: String!
+  late: Boolean!
+  matched: Boolean!
+  status: String!
+}
+
+input RecommendationEvidenceEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationEvidenceReceipt {
+  eventId: String!
+  status: String!
+}
+
+type RecommendationPersonalizationDelivery {
+  contractVersion: String!
+  effectiveManifestId: String!
+  executionMode: String
+  interestCount: Int!
+  lane: String!
+  profileState: String
+  projectionGeneration: Int
+  projectionVersion: String
+  reason: String
+  sessionIntentPresent: Boolean!
+}
+
+input RecommendationPlaybackEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationPlaybackReceipt {
+  eventId: String!
+  sequence: Int!
+  status: String!
+}
+
+type RecommendationProfileReceipt {
+  choice: String!
+  consentChoice: String!
+  consentContractVersion: String!
+  consentCookieDisposition: String!
+  consentExpiresAt: String
+  cookieDisposition: String!
+  erasureState: String
+  expiresAt: String
+  privacyGeneration: Int
+  state: String!
 }
 
 """Single entry in RelatedQuestionsBlock.questions."""
@@ -1606,6 +1762,59 @@ type SectionBlock {
 
 """Discriminated union of block kinds allowed inside section.content."""
 union SectionContentBlock = BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | QuizButtonBlock | RelatedQuestionsBlock | TextBlock | VideoBlock | VideoCarouselBlock
+
+type SemanticRecommendationDelivery {
+  classifierVersion: String!
+  composedCount: Int
+  contractVersion: String!
+  expiresAt: String
+  items: [SemanticRecommendationDeliveryItem!]!
+  personalization: RecommendationPersonalizationDelivery
+  reason: String
+  requestId: ID
+  requestedCount: Int
+  result: String!
+  shortfallReason: String
+  strategyVersion: String!
+  surfaceVersion: String!
+}
+
+type SemanticRecommendationDeliveryItem {
+  candidateGenerator: String!
+  canonicalHref: String!
+  capability: String!
+  contributors: [RecommendationCandidateContributor!]!
+  demographics: [String!]!
+  description: String!
+  durationSeconds: Float
+  endSeconds: Float
+  id: ID!
+  imageUrl: String
+  playbackId: String!
+  position: Int!
+  sceneIndex: Int!
+  similarity: Float!
+  spiritualContext: [String!]!
+  startSeconds: Float!
+  targetMediaId: ID!
+  themes: [String!]!
+  videoSlug: String!
+  videoTitle: String!
+}
+
+type SemanticRecommendationEpisodeClaim {
+  activeUntil: String!
+  capability: String!
+  episodeId: ID!
+  hardUntil: String!
+}
+
+type SemanticRecommendationSelectionReceipt {
+  canonicalHref: String!
+  claimNonce: String
+  status: String!
+  targetMediaId: ID!
+}
 
 """Rich text block with heading, subtitle, and paragraphs."""
 type TextBlock {
@@ -2352,6 +2561,11 @@ type WatchLanguageInventoryLanguage {
   slug: String!
 }
 
+type WatchPlaybackContextReceipt {
+  claimNonce: String!
+  contextVersion: String!
+}
+
 type WatchProgressEntry {
   completed: Boolean
   durationSeconds: Int
@@ -2525,6 +2739,7 @@ type WatchSearchAvailability {
 }
 
 enum WatchSearchAvailabilityKind {
+  CONTAINER
   RELATED_LANGUAGE
   TARGET_AUDIO
   TARGET_SUBTITLE
@@ -2713,4 +2928,34 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+}
+
+enum WhatsNewFeatureVoteRefusal {
+  budget_exhausted
+  invalid_input
+}
+
+"""
+Outcome of a vote write. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type WhatsNewFeatureVoteResult {
+  accepted: Boolean!
+  """Null when accepted. Never retry a refused write."""
+  refusal: WhatsNewFeatureVoteRefusal
+  """
+  Totals after the write — present on refusals too, so a client that guessed optimistically can correct itself.
+  """
+  tallies: [WhatsNewFeatureVoteTally!]!
+}
+
+"""Live sticker count for one /watch/whats-new feature card."""
+type WhatsNewFeatureVoteTally {
+  featureId: String!
+  votes: Int!
+}
+
+enum WhatsNewSticker {
+  love
+  need
+  yes
 }

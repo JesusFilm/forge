@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jazyk zvuku",
     "selectLanguageVersion": "Vyberte jazykovú verziu",
     "watchSelectedVersion": "Pozrieť vybranú verziu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Voľby súborov cookie",
+    "bannerTitle": "Vaše voľby ochrany súkromia",
+    "bannerDescription": "Nevyhnutné súbory cookie udržiavajú Watch bezpečný a funkčný. S vaším súhlasom si môže voliteľný súbor cookie prvej strany pamätať vaše záujmy medzi návštevami a prispôsobiť odporúčania. Kontextové odporúčania budú dostupné v oboch prípadoch.",
+    "acceptAll": "Prijať všetko",
+    "essentialOnly": "Len nevyhnutné",
+    "manageChoices": "Spravovať voľby",
+    "savingChoice": "Ukladá sa voľba súborov cookie",
+    "settings": "Nastavenia súborov cookie",
+    "settingsDescription": "Vyberte, či si Watch môže medzi návštevami pamätať záujmy pre odporúčania. Toto môžete kedykoľvek zmeniť.",
+    "essentialCookies": "Nevyhnutné súbory cookie",
+    "essentialDescription": "Zabezpečenie, prehrávanie, voľby ochrany súkromia a priradenie požiadaviek na odporúčania.",
+    "alwaysActive": "Vždy aktívne",
+    "personalization": "Personalizácia",
+    "personalizationDescription": "Pamätať si obmedzené záujmy medzi návštevami. Po vypnutí budú kontextové odporúčania naďalej dostupné.",
+    "erasurePending": "Vymazanie profilu prebieha. Kontextové odporúčania sú už aktívne.",
+    "cancel": "Zrušiť",
+    "saveChoices": "Uložiť voľby",
+    "saving": "Ukladá sa…",
+    "loadError": "Vašu voľbu sa nepodarilo načítať. Stále si ju môžete vybrať nižšie.",
+    "grantError": "Personalizáciu sa nepodarilo zapnúť. Možnosť len nevyhnutných zostáva k dispozícii.",
+    "saveError": "Vašu voľbu sa nepodarilo uložiť. Skúste to znova."
   }
 }

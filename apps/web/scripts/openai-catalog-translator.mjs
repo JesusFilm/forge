@@ -17,6 +17,8 @@ const FALLBACK_LANGUAGE_NAMES = {
   xin: "Xinca",
 }
 
+const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+
 const UI_SURFACE_CONTEXTS = {
   AccountControl: "the Watch account menu",
   BetaTesterModal: "the Watch beta-feedback dialog",
@@ -33,6 +35,8 @@ const UI_SURFACE_CONTEXTS = {
   LanguageCombobox: "a searchable language selector",
   LanguageInventory: "a page listing videos available in one language",
   LanguagePickerModal: "the Watch language and subtitle picker",
+  RecommendationConsent:
+    "the Watch cookie consent banner and privacy settings dialog",
   SearchOverlay: "the full-screen Watch search experience",
   SearchResultCard: "a card in Watch search results",
   SeriesPage: "a Watch series and episodes page",
@@ -649,6 +653,7 @@ function retryDelay(attempt, retryAfterHeader) {
 
 async function requestTranslations({
   apiKey,
+  baseUrl = DEFAULT_OPENAI_BASE_URL,
   locale,
   inventoryEntry,
   messages,
@@ -660,6 +665,7 @@ async function requestTranslations({
   fetchImpl = globalThis.fetch,
   waitForRetry = wait,
 }) {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "")
   let previousError = ""
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const useResponsesApi =
@@ -679,8 +685,8 @@ async function requestTranslations({
     try {
       response = await fetchImpl(
         useResponsesApi
-          ? "https://api.openai.com/v1/responses"
-          : "https://api.openai.com/v1/chat/completions",
+          ? `${normalizedBaseUrl}/responses`
+          : `${normalizedBaseUrl}/chat/completions`,
         {
           method: "POST",
           headers: {
@@ -807,6 +813,7 @@ async function requestTranslations({
 }
 
 export {
+  DEFAULT_OPENAI_BASE_URL,
   buildUserPrompt,
   explicitScriptContractError,
   isSourceEquivalent,

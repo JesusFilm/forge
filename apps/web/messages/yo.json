@@ -722,5 +722,28 @@
     "languageVersionLabel": "Èdè ohùn",
     "selectLanguageVersion": "Yan ẹ̀dà èdè",
     "watchSelectedVersion": "Wo ẹ̀dà tí o yàn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Àwọn yíyàn kuki",
+    "bannerTitle": "Àwọn yíyàn àṣírí rẹ",
+    "bannerDescription": "Àwọn kuki pàtàkì ń jẹ́ kí Watch wà láàbò, kí ó sì ṣiṣẹ́ dáadáa. Pẹ̀lú àṣẹ rẹ, kuki àṣàyàn ẹni-kìn-ín-ní kan lè rántí àwọn ohun tí o nífẹ̀ẹ́ sí láàárín àwọn ìbẹ̀wò kí a lè ṣe àdáni àwọn àbá. Àwọn àbá tó dá lórí àkópọ̀-ọrọ ṣì wà níbẹ̀ ní ọ̀nà méjèèjì.",
+    "acceptAll": "Gba gbogbo rẹ̀",
+    "essentialOnly": "Àwọn pàtàkì nìkan",
+    "manageChoices": "Ṣàkóso àwọn yíyàn",
+    "savingChoice": "Ń fi yíyàn kuki pamọ́",
+    "settings": "Ètò kuki",
+    "settingsDescription": "Yan bóyá Watch lè rántí àwọn ohun tí o fẹ́ fún àbá láàárín àwọn ìbẹ̀wò. O lè yí èyí padà nígbàkigbà.",
+    "essentialCookies": "Àwọn kuki pàtàkì",
+    "essentialDescription": "Ààbò, ṣíṣeré fídíò, àwọn yíyàn àṣírí, àti ìtọ́kasí ìbéèrè àbá.",
+    "alwaysActive": "Ń ṣiṣẹ́ ní gbogbo ìgbà",
+    "personalization": "Ṣíṣe àdáni",
+    "personalizationDescription": "Rántí àwọn ohun tó ní ààlà tí o nífẹ̀ẹ́ sí láàárín àwọn ìbẹ̀wò. Tí o bá pa èyí, àwọn àbá tó dá lórí àkópọ̀-ọrọ yóò ṣì wà.",
+    "erasurePending": "Ìparẹ́ prófáìlì ń dúró. Àwọn àbá tó dá lórí àkópọ̀-ọrọ ti ń ṣiṣẹ́ tẹ́lẹ̀.",
+    "cancel": "Fagilé",
+    "saveChoices": "Fi àwọn yíyàn pamọ́",
+    "saving": "Ń fipamọ́…",
+    "loadError": "A kò lè gbé yíyàn rẹ wọlé. O ṣì lè yan ní ìsàlẹ̀.",
+    "grantError": "A kò lè mú ṣíṣe àdáni ṣiṣẹ́. Àwọn pàtàkì nìkan ṣì wà.",
+    "saveError": "A kò lè fi yíyàn rẹ pamọ́. Jọ̀wọ́ tún gbìyànjú."
   }
 }

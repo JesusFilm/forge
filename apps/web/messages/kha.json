@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ktien sur",
     "selectLanguageVersion": "Jied ka bynta ktien",
     "watchSelectedVersion": "Peit ia ka bynta ba la jied"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ki jingjied cookie",
+    "bannerTitle": "Ki jingjied shimet jong phi",
+    "bannerDescription": "Ki cookie kiba donkam ki pynneh ïa ka Watch ba kan long kaba shngain bad treikam bha. Da ka jingmynjur jong phi, kawei ka cookie ba jied mon na ka bynta kane ka site ka lah ban kynmaw ïa ki jingsngewtynnad hapdeng ki jingleit wan ban pynlong kyrpang ïa ki jingai jingmut. Ki jingai jingmut katkum ka jinglong ka dang don la phi jied kano kano ruh.",
+    "acceptAll": "Pdiang lut",
+    "essentialOnly": "Tang kiba donkam",
+    "manageChoices": "Pynïaid ïa ki jingjied",
+    "savingChoice": "Dang save ïa ka jingjied cookie",
+    "settings": "Ki setting cookie",
+    "settingsDescription": "Jied la ka Watch ka lah neem ban kynmaw ïa ki jingsngewtynnad recommendation hapdeng ki jingleit wan. Phi lah ban pynkylla ïa kane ha kano kano ka por.",
+    "essentialCookies": "Ki cookie kiba donkam",
+    "essentialDescription": "Ka jingshngain, playback, ki jingjied shimet, bad ka jingithuh ïa ki jingkyrpad recommendation.",
+    "alwaysActive": "Treikam barabor",
+    "personalization": "Pynlong kyrpang",
+    "personalizationDescription": "Kynmaw ïa ki jingsngewtynnad ba la pud hapdeng ki jingleit wan. Lada pyndam ïa kane, ki jingai jingmut katkum ka jinglong kin dang don.",
+    "erasurePending": "Ka jingpyndam ïa ka profile ka dang ap ban pyndep. Ki jingai jingmut katkum ka jinglong ki la treikam lypa.",
+    "cancel": "Bym leh eiei",
+    "saveChoices": "Save ïa ki jingjied",
+    "saving": "Dang save…",
+    "loadError": "Ym shym la lah ban load ïa ka jingjied jong phi. Phi dang lah ban jied hapoh.",
+    "grantError": "Ym shym la lah ban pynïaid ïa ka personalization. Tang kiba donkam ki dang don.",
+    "saveError": "Ym shym la lah ban save ïa ka jingjied jong phi. Sngewbha pyrshang biang."
   }
 }

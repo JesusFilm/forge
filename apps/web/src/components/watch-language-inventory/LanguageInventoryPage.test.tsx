@@ -41,6 +41,7 @@ import {
   WATCH_LANGUAGE_TAG_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { LanguageInventoryPage } from "./LanguageInventoryPage"
 import {
   isNewRelease,
@@ -336,9 +337,13 @@ describe("LanguageInventoryPage typography roles", () => {
     }
 
     const compactTitle = container.querySelector<HTMLElement>(
-      '[href="/episode.html"] .line-clamp-1',
+      '[href="/episode.html"] [class*="line-clamp-"]',
     )
     expect(compactTitle?.className).toContain("font-media-card-title")
+    // The compact row gets two lines on phones so the 16px phone tier does not
+    // clamp a title that fitted on one line at 14px; one line from `sm:` up.
+    expect(compactTitle?.className).toContain("line-clamp-2")
+    expect(compactTitle?.className).toContain("sm:line-clamp-1")
 
     const labels = Array.from(
       container.querySelectorAll<HTMLElement>(
@@ -989,9 +994,21 @@ describe("LanguageInventoryPage collection group layout", () => {
     expect(group?.className).toContain(
       "xl:grid-cols-[minmax(320px,440px)_minmax(0,1fr)]",
     )
-    // No `2xl` track: the section content is capped at `max-w-7xl`, so the
-    // group stops growing at 1216px (1536/1920/2560px all measured identical).
+    // The sidebar deliberately holds its 440px maximum while the shared Watch
+    // rail gives the episode list any additional wide-screen space.
     expect(group?.className).not.toContain("2xl:grid-cols-")
+
+    const sectionRail = group?.closest("[data-inv-section]")?.firstElementChild
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(sectionRail?.className).toContain(className)
+    }
+
+    const filterRail = container.querySelector(
+      '[data-testid="language-inventory-filters"] > div',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(filterRail?.className).toContain(className)
+    }
   })
 })
 

@@ -24,6 +24,7 @@ import type { PrismaClient } from "@prisma/client"
 import { dedupeByVideoIdentity } from "./video-dedup"
 import {
   fetchInputEmbeddings,
+  getEligibleRecommendationVideoIds,
   getRelatedVideoIds,
   queryScenesSimilar,
   resolveSlugToVideoId,
@@ -44,6 +45,7 @@ export type SceneRecommendation = {
   description: string
   startSeconds: number
   endSeconds: number | null
+  durationSeconds?: number | null
   similarity: number
   themes: string[]
   demographics: string[]
@@ -95,7 +97,9 @@ function mapRow(row: SceneRecommendationSqlRow): SceneRecommendation {
 }
 
 export class SceneRecommendationsService {
-  constructor(private readonly deps: { prisma: PrismaClient }) {}
+  constructor(
+    private readonly deps: { prisma: Pick<PrismaClient, "$queryRaw"> },
+  ) {}
 
   async getRecommendations(
     params: RecommendationParams,
@@ -176,6 +180,20 @@ export class SceneRecommendationsService {
     return dedupeByVideoIdentity(asDedupeInput(sorted), limit).map((entry) =>
       mapRow(entry.row),
     )
+  }
+
+  async recheckEligibility(
+    items: SceneRecommendation[],
+    locale: string,
+    audioLanguageSlug: string = locale,
+  ): Promise<SceneRecommendation[]> {
+    const eligible = await getEligibleRecommendationVideoIds(
+      this.deps.prisma,
+      items.map((item) => item.videoId),
+      locale,
+      audioLanguageSlug,
+    )
+    return items.filter((item) => eligible.has(item.videoId))
   }
 }
 

@@ -146,6 +146,7 @@ import {
 } from "./workflows/youtube-ai-christian-discovery"
 import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
 import { datadogMobileTriageWorkflow } from "./workflows/datadog-mobile-triage"
+import { titleRepairWorkflow } from "./workflows/title-repair"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -161,6 +162,7 @@ import {
 import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
+import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -320,12 +322,14 @@ export const mastra = new Mastra({
     youtubeAiChristianDiscoveryWorkflow,
     dailySupportResearchWorkflow,
     datadogMobileTriageWorkflow,
+    titleRepairWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
     seoDailyAuditWorkflow,
     seoExperimentEvaluationWorkflow,
     seoTicketDispatchWorkflow,
+    watchRouteAlertsWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via
     // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which

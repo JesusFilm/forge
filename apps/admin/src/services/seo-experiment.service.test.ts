@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { Prisma } from "@prisma/client"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   isExperimentableEngineeringBrief,
@@ -14,6 +14,10 @@ import {
   seoVideoLocaleActivationHash,
   seoVideoLocaleSnapshot,
 } from "./seo-target.service"
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 const assertion = {
   keyId: "workload-key",
@@ -489,6 +493,9 @@ describe("SEO ledger boundaries", () => {
   }, 10_000)
 
   it("lists cursor-stable summaries without selecting report bodies", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-03T00:00:00.000Z"))
+
     const first = {
       ...run("LIVE"),
       id: "run-2",

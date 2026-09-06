@@ -9,6 +9,7 @@ import { builder } from "@/graphql/builder"
 import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import type { ExperiencePreviewShape } from "@/services/experience-preview.service"
+import { stampPreviewLocaleOnMediaCollections } from "@/services/experience-preview-blocks"
 import { resolveWatchHomeCategoryRailReadBlocks } from "@/services/watch-home-category-rail-rollout"
 
 // PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
@@ -242,12 +243,22 @@ ExperiencePreviewRef.implement({
     blocks: t.field({
       type: [ExperienceBlock],
       nullable: false,
+      // Bind the locale of this preview to every media collection item so
+      // `MediaCollectionItem.previewResolvedTitle` resolves without a
+      // caller-supplied locale argument. Runs after the rail projection so
+      // synthesized blocks go through the same stamp. Deliberately NOT applied
+      // to the published blocks resolvers above: published callers pass
+      // `$locale` to `resolvedTitle` explicitly, and leaving their items
+      // unstamped is what stops one from borrowing a preview locale.
       resolve: (row, _args, ctx) =>
-        resolveWatchHomeCategoryRailReadBlocks({
-          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
-          blocks: row.blocks,
-          isHomepage: row.isHomepage,
-        }) as Block[],
+        stampPreviewLocaleOnMediaCollections(
+          resolveWatchHomeCategoryRailReadBlocks({
+            rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+            blocks: row.blocks,
+            isHomepage: row.isHomepage,
+          }),
+          row.locale,
+        ) as Block[],
     }),
   }),
 })

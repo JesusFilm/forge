@@ -30,6 +30,7 @@
  */
 
 import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
+import { clampAiChatTitle } from "./ai-chat-title-clamp"
 import { settleWithinBudget, TIME_BUDGET_MS } from "./budgets"
 import {
   resolveOwnedExistingThread,
@@ -361,7 +362,13 @@ function parseReplayBody(
 /**
  * Project one listed thread onto the wire field-by-field — never spreads, so a
  * future store field cannot silently widen the wire. A stored `""` title
- * passes through verbatim (the client's untitled sentinel).
+ * passes through verbatim — `""` is still the untitled sentinel the client
+ * turns into a date label, now repairable by the daily title-repair sweep
+ * rather than permanent (feat-405, R10). Non-empty titles are clamped through
+ * the shared `clampAiChatTitle` (feat-405, KTD9): this projection is the one
+ * bound covering BOTH writers (per-turn titling and the sweep) plus the
+ * framework's own unclamped `createThread` path, and it is what keeps 50
+ * listed titles from breaching the chat proxy's 2 MiB response cap.
  */
 function projectThreadRow(row: {
   id: string
@@ -370,7 +377,7 @@ function projectThreadRow(row: {
 }): AiChatHistoryWireThread {
   return {
     id: row.id,
-    title: typeof row.title === "string" ? row.title : "",
+    title: typeof row.title === "string" ? clampAiChatTitle(row.title) : "",
     updatedAt: toIsoString(row.updatedAt),
   }
 }

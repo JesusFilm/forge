@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ulwimi lwesandi",
     "selectLanguageVersion": "Khetha inguqulelo yolwimi",
     "watchSelectedVersion": "Bukela inguqulelo ekhethiweyo"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ukhetho lweecookie",
+    "bannerTitle": "Ukhetho lwakho lwabucala",
+    "bannerDescription": "Iicookie ezibalulekileyo zigcina i-Watch ikhuselekile kwaye isebenza. Ngemvume yakho, i-cookie yokhetho yokuqala inokukhumbula izinto onomdla kuzo phakathi kotyelelo ukuze yenze iingcebiso zibe zezakho. Iingcebiso ezisekelwe kumxholo zihlala zifumaneka nokuba ukhetha ntoni.",
+    "acceptAll": "Yamkela zonke",
+    "essentialOnly": "Ezibalulekileyo kuphela",
+    "manageChoices": "Lawula ukhetho",
+    "savingChoice": "Kugcinwa ukhetho lweecookie",
+    "settings": "Iisetingi zeecookie",
+    "settingsDescription": "Khetha ukuba i-Watch ingakhumbula na izinto onomdla kuzo kwiingcebiso phakathi kotyelelo. Ungakutshintsha oku nanini na.",
+    "essentialCookies": "Iicookie ezibalulekileyo",
+    "essentialDescription": "Ukhuseleko, ukudlala, ukhetho lwabucala, kunye nokulandelwa kwesicelo seengcebiso.",
+    "alwaysActive": "Ihlala isebenza",
+    "personalization": "Ukwenza kube ngokwakho",
+    "personalizationDescription": "Khumbula izinto onomdla kuzo phakathi kotyelelo. Ukukucima oku kugcina iingcebiso ezisekelwe kumxholo zisafumaneka.",
+    "erasurePending": "Ukucinywa kweprofayili kusalindile. Iingcebiso ezisekelwe kumxholo sele zisebenza.",
+    "cancel": "Rhoxisa",
+    "saveChoices": "Gcina ukhetho",
+    "saving": "Kuyagcinwa…",
+    "loadError": "Ukhetho lwakho alukwazanga ukulayishwa. Usenokukhetha ngezantsi.",
+    "grantError": "Ukwenza kube ngokwakho akukwazanga ukuvulwa. Ezibalulekileyo kuphela zisafumaneka.",
+    "saveError": "Ukhetho lwakho alukwazanga ukugcinwa. Nceda uzame kwakhona."
   }
 }

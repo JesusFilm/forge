@@ -27,6 +27,31 @@
 }
 
 :root {
+  /* Film-grain field. Measured mean 119.5/255 (near-neutral for an
+     `overlay` blend) with std 77.7 — high contrast, almost no mean
+     shift. The previous texture (images/overlay.svg) was BLACK
+     speckle on transparent: composited over a dark photograph its
+     effective alpha was ~0.04, which is why the grain was invisible.
+     The `%23` is a literal '#' — un-escaping it silently breaks the
+     filter reference and the tile renders as a flat black rectangle. */
+  /* Authored size is the TILE size, and `background-size` must match it
+     exactly. baseFrequency is per user unit, so drawing a 512-unit field
+     into a smaller box shrinks the grain with it: the old `fine` layer asked
+     for a 160-unit field at 74px and got 0.5px blobs, which average to flat
+     grey. Two sizes rather than two scales of one, so the layers' repeats do
+     not coincide. 512 and 317 are in roughly the golden ratio, which is the
+     furthest a pair can sit from every simple fraction: the old 150 and 74
+     were within 1.5% of 2:1 and reinforced each other every other tile, and
+     512:331 was within 3% of 3:2 — a test rejected that one. */
+  --watch-grain-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='512' height='512' filter='url(%23g)'/></svg>");
+  --watch-grain-image-fine: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='317' height='317'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='17' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='317' height='317' filter='url(%23g)'/></svg>");
+  /* Sticker sizing, as ONE number and a ratio off it. A sticker stuck to a
+     card is the finished size; the pile is deliberately larger, because a
+     sticker you are meant to pick up has to look bigger than the same
+     sticker already spent. Two literals here would drift apart the first
+     time either end is tuned. */
+  --watch-sticker-stuck: 2.25rem;
+  --watch-sticker-pile-scale: 1.25;
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
     "Noto Sans", "Liberation Sans", Arial, sans-serif;
@@ -221,6 +246,1845 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* ---------------------------------------------------------------------
+   Scroll-driven choreography for the /whats-new delivery timeline.
+
+   Native `animation-timeline: view()` — no JS, no IntersectionObserver,
+   no hydration cost on an otherwise static page, and the work runs on the
+   compositor rather than the main thread.
+
+   LOAD-BEARING: every hidden start state lives INSIDE the @supports +
+   prefers-reduced-motion:no-preference guard. A browser without
+   scroll-driven animations, or a reader who asked for less motion, gets
+   the finished layout fully visible and completely un-animated. Never
+   move an `opacity: 0` or a `transform` start state out of this block.
+   --------------------------------------------------------------------- */
+
+/*
+ * Entrance for a grid tile, as opposed to a free-floating card.
+ *
+ * Opacity only, deliberately: an improvement cell is bounded on its sides
+ * by the grid's 1px rules, and those rules are drawn by the NEIGHBOURING
+ * cell. Translating or scaling one cell therefore slides it out from under
+ * a rule that has not moved, opening a visible strip — measured at 6.47px
+ * with `watch-scroll-rise`. Invisible while the cells were transparent;
+ * obvious the moment they started painting colour to their own edges.
+ */
+@keyframes watch-scroll-tile-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-scroll-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4rem, 0) scale(0.955);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes watch-scroll-beat {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 2.25rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The slow push through the frame: the image is oversized at the top of
+   its travel and settles as the card leaves, so the photograph is never
+   static while it is on screen. */
+@keyframes watch-scroll-zoom {
+  from {
+    transform: scale(1.26) translate3d(0, -3.5%, 0);
+  }
+  to {
+    transform: scale(1.02) translate3d(0, 3.5%, 0);
+  }
+}
+
+@keyframes watch-scroll-rail {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes watch-scroll-node {
+  from {
+    opacity: 0.3;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Pinned card stack -------------------------------------------------
+   `translate` and `scale` are animated as SEPARATE properties on purpose.
+   A card runs two animations at once over different scroll ranges — it
+   slides in, then later recedes under the next card — and two animations
+   touching the same `transform` would clobber each other (the later one
+   in the list wins while its fill is active). The standalone properties
+   compose instead. */
+
+/* Travels fully opaque. A card sliding over the one below at partial
+   opacity shows the previous photograph straight through it — the deck
+   stops reading as a deck. Its clip box (`.watch-scroll-clip`) keeps it
+   invisible until it arrives, so no opacity ramp is needed. */
+@keyframes watch-scroll-slide-in {
+  from {
+    translate: 0 102%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+/* Sink into the pile. Each card's resting depth is its own custom
+   property, so cards that receded earlier end up further back and their
+   top edges stay visible above the front card. */
+@keyframes watch-scroll-recede {
+  from {
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    translate: 0 var(--sink-y, 0);
+    scale: var(--sink-scale, 0.9);
+  }
+}
+
+/* A scrim element rather than a filter on the card itself: animating
+   `brightness()` on a 34rem card repaints it every frame. */
+@keyframes watch-scroll-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.62;
+  }
+}
+
+@keyframes watch-scroll-beat-cycle {
+  0% {
+    opacity: 0;
+    translate: 0 1.75rem;
+  }
+  18% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  82% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -1.75rem;
+  }
+}
+
+/* The opening zoom's factor, mirrored as a registered custom property so
+   things INSIDE the scaled card can divide it back out. Registration is
+   what makes it interpolate — an unregistered custom property animates in
+   discrete jumps. Inherits, and defaults to 1, so every layer that does not
+   sit inside a zooming card divides by nothing. */
+@property --era-zoom {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+/* --- Opening zoom ------------------------------------------------------
+   The section does not open on its card. It opens on the lead
+   photograph filling the screen, and pulls back into the card as the
+   reader scrolls — which is also what keeps the section from opening on
+   empty black and reading as a page that failed to load. */
+@keyframes watch-scroll-intro {
+  from {
+    translate: 0 var(--intro-lift, 0);
+    scale: var(--intro-scale, 1);
+    /* Must track `scale` exactly. `scale` is animated directly rather than
+       read from this property, so that a browser which cannot interpolate
+       the mirror still gets the zoom — it just gets uncompensated grain. */
+    --era-zoom: var(--intro-scale, 1);
+  }
+  to {
+    translate: 0 0;
+    scale: 1;
+    --era-zoom: 1;
+  }
+}
+
+/* Everything around the photograph waits until the pull-back is nearly
+   done. Held rather than eased so nothing is legible at a size the zoom
+   chose for it — a caption riding the scale would arrive as poster type
+   and shrink. */
+/* The eras that have not arrived yet still paint the drop shadow of their
+   clip box, and all four boxes share one rect — so three stacked shadows
+   drew a visible seam across the full-screen photograph, brightest on flat
+   sky. Lifting the lead layer over them for the length of the zoom hides
+   them behind the photograph; it drops back to its own depth at the end,
+   before any sibling has arrived to be covered by. */
+@keyframes watch-scroll-intro-front {
+  0%,
+  98% {
+    z-index: 30;
+  }
+  100% {
+    z-index: var(--layer);
+  }
+}
+
+/* Where the picture's centre belongs changes over the zoom, so it is
+   animated rather than computed once.
+
+   At the opening frame the card is much taller than the screen whenever the
+   horizontal axis set the scale, so the picture has to be centred on the
+   SCREEN or the letterbox goes lopsided — 439px above and 153px below on a
+   5:4 window. `50svh + 39px` is that centre measured down from the card's
+   top edge, which the top-anchored lift parks 39px above the viewport top;
+   one division by the starting zoom puts it in the card's own units.
+
+   By the landed frame the picture is exactly the card's height, so it has to
+   be centred on the CARD instead — `50%`. Reading the screen's centre there
+   instead pushes the picture 239px down inside its own card and leaves a
+   dark band across the top of it, which is what a single static value did.
+
+   In between it is a straight interpolation between two correct endpoints:
+   off the true screen centre by ~90px at mid-zoom on a 5:4 window, where
+   the picture is moving and the bands are transient anyway.
+
+   `--photo-aspect` comes from the picture's own dimensions, set inline by
+   the component. It used to be a hard-coded 16:9 here, with a test tying
+   the content to it — which meant swapping the photograph was a two-file
+   change with a failing test in between. One source of truth instead. */
+@keyframes watch-scroll-intro-photo {
+  from {
+    /* COVERS the screen rather than fitting inside it: `max()` on each axis
+       takes whichever dimension the viewport demands, so the picture always
+       fills both and crops on the axis it has to. Fitting the width instead
+       left the picture short of the height on anything wider than 3:2 and
+       letterboxed it on anything narrower.
+
+       Anchored to the RIGHT, not centred, because the crop has to fall on
+       the left: the projection screen — the whole subject of the frame — is
+       in the picture's top-right corner. `50% - 50vw/scale` is the card's
+       own half-width less the viewport's, which lands the picture's right
+       edge on the screen's right edge whatever the scale.
+
+       And to the TOP for the same reason on the other axis: with the screen
+       high in the frame, a vertical crop has to come off the bottom. */
+    right: calc(50% - 50vw / var(--intro-scale));
+    width: calc(
+      max(100vw, (100svh + var(--intro-overhang)) * var(--photo-aspect)) /
+        var(--intro-scale)
+    );
+    height: calc(
+      max(100vw / var(--photo-aspect), 100svh + var(--intro-overhang)) /
+        var(--intro-scale)
+    );
+  }
+  to {
+    right: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* The lead card's outline, held back while the card is scaled wider than the
+   screen. It is real chrome once the cards stack — it is what separates one
+   from the next — but at the opening frame the card's top edge runs clear
+   across the viewport above the photograph, as a hairline that reads as a
+   stray rule rather than a card edge.
+
+   The `to` colour has to match the card's own `border-white/12`, since the
+   fill holds this value for the rest of the page; a test ties the two. */
+@keyframes watch-scroll-intro-edge {
+  from {
+    border-color: transparent;
+  }
+  to {
+    border-color: rgb(255 255 255 / 0.12);
+  }
+}
+
+@keyframes watch-scroll-intro-veil {
+  0%,
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-scroll-intro-caption {
+  0%,
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* The lead beat is part of the opening frame, not something the pull-back
+   reveals: it has to be legible over the full-screen photograph from the
+   first pixel of the section. So it holds at full opacity from the start —
+   before its own range even opens, on `both` fill — and only fades when the
+   next era's card comes for it. */
+@keyframes watch-scroll-beat-lead {
+  0%,
+  82% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -1.75rem;
+  }
+}
+
+/* …and it starts heavier, easing back to its resting weight as the card
+   lands. `font-light` over a dusk-lit crowd is thin enough to lose against
+   the busier parts of the photograph; the shadow alone was not enough.
+
+   500 is a MEASURED ceiling, not a taste call. The paragraph runs to within
+   12px of its rail at weight 500 and re-wraps at 600 on every viewport at
+   or below 1024px — 700 adds a whole line. Since this interpolates during a
+   scroll, a weight that re-wraps makes the lines jump under the reader.
+   Raise this and re-measure the line boxes at 768, 800 and 1024 first.
+
+   The shadow ends fully transparent: by the time the card has landed the
+   beat is back over the black page, where a halo only muddies it. That is
+   also why neither the weight nor the shadow is a static class — without
+   scroll-driven animations there is no full-screen photograph to be legible
+   against. */
+@keyframes watch-scroll-beat-weight {
+  from {
+    font-weight: 500;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0.9),
+      0 4px 30px rgb(0 0 0 / 0.95);
+  }
+  to {
+    font-weight: 300;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0),
+      0 4px 30px rgb(0 0 0 / 0);
+  }
+}
+
+@keyframes watch-ambient-cycle {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  78% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Die-cut sticker. Eight ZERO-BLUR drop-shadows, one per compass point,
+   build a hard white edge that hugs the emoji's own silhouette. Blurred
+   shadows (`0 0 1.5px`) give a soft halo instead — it reads as a glow, not
+   a cut edge.
+
+   The last two shadows are what makes it STUCK DOWN rather than hovering:
+   a near-zero-blur contact line directly under the die-cut edge (the vinyl's
+   own thickness), then a short, tight cast. Blur is what reads as height —
+   the previous `0 6px 12px` put the sticker a centimetre above the card, so
+   both offset and blur are small and the alpha carries the weight instead. */
+.watch-sticker-art {
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(1.4px 1.4px 0 #fff) drop-shadow(-1.4px 1.4px 0 #fff)
+    drop-shadow(1.4px -1.4px 0 #fff) drop-shadow(-1.4px -1.4px 0 #fff)
+    drop-shadow(var(--watch-sticker-edge, 0 1px 0 rgb(0 0 0 / 0.35)))
+    drop-shadow(var(--watch-sticker-cast, 0 2px 2px rgb(0 0 0 / 0.55)));
+}
+
+/* Both shadows are tuned per band: an alpha that reads as contact against a
+   near-black card reads as grime on white. Set on the section so every
+   sticker inside inherits it; the fallbacks above keep the dark bands. */
+.watch-sticker-surface-light {
+  --watch-sticker-edge: 0 1px 0 rgb(0 0 0 / 0.18);
+  --watch-sticker-cast: 0 2px 2px rgb(0 0 0 / 0.22);
+}
+
+/* Sticker landing: a quick pop so a placed sticker reads as stuck on
+   rather than faded in. */
+@keyframes watch-sticker-pop {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  70% {
+    opacity: 1;
+    scale: 1.18;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.watch-sticker-pop {
+  animation: watch-sticker-pop 320ms cubic-bezier(0.22, 1.4, 0.4, 1) both;
+}
+
+/* --- Audience quiz ------------------------------------------------------
+   A styled range input plus the reveal bars. The bar fills animate with
+   `scaleX` rather than `width` so the reveal stays on the compositor and
+   needs no mount-frame trick to transition from zero. */
+
+.watch-quiz-slider {
+  appearance: none;
+  height: 2.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.watch-quiz-slider::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+.watch-quiz-slider::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+.watch-quiz-slider::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -0.5rem;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-brand-red);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.55);
+}
+
+.watch-quiz-slider::-moz-range-thumb {
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-brand-red);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.55);
+}
+
+.watch-quiz-slider:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+
+@keyframes watch-quiz-bar {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+.watch-quiz-bar {
+  transform-origin: left;
+  animation: watch-quiz-bar 820ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The answer lands after the reader has seen their own guess. */
+.watch-quiz-bar-late {
+  animation-delay: 480ms;
+}
+
+/* --- Assistant phone: opening the app ---------------------------------
+   A tap on an icon, and the app it opens. The point is cause and effect:
+   the reader watches a person reach for ChatGPT, so the exchange that
+   follows is something someone DID, not a screenshot of a product. */
+
+/* The home screen receding as the app comes forward over it. Scale only,
+   deliberately NO fade: the app above is opaque by the time it covers
+   this, so fading it out here would only make both layers translucent at
+   once — which turned a dark wallpaper over a white app into flat grey. */
+@keyframes watch-chat-home {
+  from {
+    scale: 1;
+  }
+  62% {
+    scale: 1;
+  }
+  to {
+    scale: 1.06;
+  }
+}
+
+/* The app arriving. Starts slightly small so it reads as coming forward
+   rather than cross-fading. */
+@keyframes watch-chat-app {
+  from {
+    opacity: 0;
+    scale: 0.9;
+  }
+  38% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* The pointer crossing the screen. It comes in from the lower left — the
+   direction a thumb arrives from — decelerating into the icon, and leaves
+   once the tap has landed. Translate is a percentage of the pointer's own
+   box, which is sized against the icon, so the travel scales with the
+   device instead of drifting off target as the phone gets smaller. */
+@keyframes watch-chat-pointer {
+  from {
+    opacity: 0;
+    translate: -180% 260%;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    translate: 0 0;
+  }
+  88% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 0;
+  }
+}
+
+/* The tap: the ring contracts onto the icon and fades, the way the click
+   indicator in the iOS Simulator does. */
+@keyframes watch-chat-tap {
+  from {
+    scale: 1;
+    opacity: 0.9;
+  }
+  55% {
+    scale: 0.55;
+    opacity: 1;
+  }
+  to {
+    scale: 1.5;
+    opacity: 0;
+  }
+}
+
+/* The icon pressing in under the tap, then releasing as the app opens. */
+@keyframes watch-chat-icon {
+  from {
+    scale: 1;
+  }
+  55% {
+    scale: 0.88;
+  }
+  to {
+    scale: 1;
+  }
+}
+
+/* --- Assistant phone: the exchange, step by step ----------------------
+   Each of these is driven by a RANGE on the pin stage's timeline rather
+   than a duration, so the reader's scroll is the clock. */
+
+/* A step opening: height from nothing to its own content height. */
+@keyframes watch-chat-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+/* An answer arriving. Same growth, no opacity ramp — text that fades in
+   reads as a fade; text uncovered a line at a time reads as streaming,
+   which is what it is standing in for. */
+@keyframes watch-chat-say {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+/* The wait: opens, holds, then collapses as the answer takes over. One
+   animation with four stops rather than two animations, so the open and
+   the close cannot be retimed independently and end up overlapping. */
+@keyframes watch-chat-think {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  18% {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  72% {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/* One line being typed. The box appears at once — a text field makes room
+   for the cursor before there is anything in it — and the text is then
+   uncovered left to right. */
+@keyframes watch-chat-type {
+  from {
+    max-height: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  4% {
+    max-height: 1.4rem;
+  }
+  to {
+    max-height: 1.4rem;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Placeholder: out as the first line lands, back once the question has
+   been sent and the field is empty again. */
+@keyframes watch-chat-placeholder {
+  from {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0;
+  }
+  84% {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The typed copy leaving the composer as the bubble takes it, collapsing
+   the composer back to one line on the way out. The `from` state is what
+   holds for the whole typing phase, since the animation fills backwards. */
+@keyframes watch-chat-clear {
+  from {
+    opacity: 1;
+    max-height: var(--typed-height);
+  }
+  70% {
+    opacity: 0;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+  }
+}
+
+/* Caret arrives with the end of the last line and leaves on send. */
+@keyframes watch-chat-caret-in {
+  from {
+    opacity: 1;
+  }
+  76% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Blink. A time-based loop, not a scroll one: a cursor blinks on its own
+   clock, and tying it to scroll would freeze it whenever the reader stops
+   — which is most of the time. */
+@keyframes watch-chat-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Send control waking up while there is something to send. */
+@keyframes watch-chat-send {
+  from {
+    opacity: 0.3;
+    scale: 0.86;
+  }
+  14% {
+    opacity: 1;
+    scale: 1;
+  }
+  88% {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0.3;
+    scale: 0.86;
+  }
+}
+
+/* Waiting dots, staggered by index via a negative delay. */
+@keyframes watch-chat-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    translate: 0 0;
+  }
+  50% {
+    opacity: 0.9;
+    translate: 0 -0.12rem;
+  }
+}
+
+@keyframes watch-scroll-chat-progress {
+  from {
+    --watch-chat-progress: 0;
+  }
+  to {
+    --watch-chat-progress: 1;
+  }
+}
+
+/* The conversation viewport, as a SIZE container. Sole purpose: give the
+   reel below a unit for "one screenful of this phone" (`100cqh`). The
+   height itself is set by flex layout in the component — the device holds
+   the iPhone ratio, the chrome takes what it needs, this takes the rest. */
+.watch-chat-viewport {
+  container-type: size;
+}
+
+/* --- Assistant phone: resting state of the typed exchange -------------
+   These are the states a reader gets with no scroll-driven animation at
+   all — no support, or reduced motion. They have to read as a FINISHED
+   exchange, because that is what the section is evidence for: question
+   asked, answer given, sources cited. So every step rests OPEN, and only
+   the things that exist to be typed rest hidden.
+
+   None of these may be named `watch-scroll-*`: those all live inside the
+   scroll-driven block, and its guard test enforces that.
+
+   A step is a grid with one row so it can be opened from `0fr` to `1fr`.
+   That is the only way to animate to a content height without knowing the
+   height: a `max-height` ceiling either clips the content when it guesses
+   low, or finishes the reveal early and sits still when it guesses high,
+   and every guess is wrong at a different viewport width. */
+.watch-chat-step {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+/* The clipped half of the pair. Without `min-height: 0` a grid item
+   refuses to shrink below its content and `0fr` does nothing at all. */
+.watch-chat-step-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The gap above a step's content, set on the CHILD rather than on the
+   clipping box. `overflow: hidden` clips a box's content, never its own
+   padding, so a closed-but-padded step still draws its padding — measured
+   at 14px of blank strip per unopened step, which put the conversation in
+   a ladder of empty rows waiting for content. A child's margin is part of
+   the content it clips, so it collapses with everything else. (Margins on
+   the outer grid item are also fine: a `0fr` track collapses those.) */
+.watch-chat-step-inner > * {
+  margin-block-start: var(--step-gap, 0rem);
+}
+
+/* The wait, unlike the steps, rests CLOSED: a finished exchange is not
+   still waiting for its answer. Nothing but the scroll animation opens it,
+   so a reader who never gets that animation never sees it. */
+.watch-chat-think {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* Home-screen app label, sized against the device like the typed line —
+   a fixed rem is either illegible on a small phone or oversized on a large
+   one, and this sits directly under an icon whose size is proportional. */
+.watch-chat-app-label {
+  font-size: clamp(0.34rem, 2.6cqw, 0.58rem);
+}
+
+/* Home screen, pointer and tap all rest HIDDEN. The resting state of this
+   device is the finished exchange — a reader with no scroll-driven
+   animation should get the answer the section is evidence for, not a home
+   screen waiting for a tap that will never come. Only the animation shows
+   them, so it is structurally impossible for them to strand a reader. */
+.watch-chat-home,
+.watch-chat-pointer {
+  opacity: 0;
+}
+
+/* The app rests fully open, for the same reason. */
+.watch-chat-app {
+  opacity: 1;
+}
+
+/* The device sizes the typed line's type below. Its own width comes from
+   the aspect ratio and height, never from its contents, so containing it
+   costs nothing. */
+.watch-chat-device {
+  container-type: inline-size;
+  container-name: watch-chat-device;
+}
+
+/* Placeholder and typed text stacked in ONE grid cell. Both need to be in
+   flow: the pill's height is the taller of the two, and that is how it
+   grows a line at a time as the question is typed. Absolute positioning
+   stacks them just as well and is wrong — it takes the typed text out of
+   layout, so the pill stays one line tall and the text spills straight
+   through its bottom border. */
+.watch-chat-slot {
+  display: grid;
+}
+
+.watch-chat-slot > * {
+  grid-area: 1 / 1;
+}
+
+/* Typed text rests hidden for the same reason as the steps: the question
+   has already been sent, and it is on screen in the bubble. This is the
+   composer's transient copy of it.
+
+   It also rests COLLAPSED, and the send has to collapse it: fading it out
+   alone leaves it occupying its four lines invisibly, so the composer
+   stays four lines tall for the rest of the page with a placeholder
+   floating at the top of it. The height is exact rather than a guessed
+   ceiling — every line is `nowrap` at a fixed 1.4rem line-height, so the
+   count is the height. */
+.watch-chat-typed {
+  --typed-height: calc(var(--typed-lines, 0) * 1.4rem);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+/* `nowrap` is load-bearing. It fixes each line's height at exactly one
+   line-height, which is what lets the reveal below animate the height
+   exactly; a wrapped line would be clipped to its first line instead.
+   The cost is that an over-long line is cut off rather than wrapped —
+   see the length constraint on `phone.typedLines`. */
+.watch-chat-typed-line {
+  max-height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(0 100% 0 0);
+  /* Proportional to the DEVICE width, which is the whole reason a fixed
+     character budget for `phone.typedLines` can hold: font and available
+     width scale together, so a line that fits at one phone size fits at
+     every other. The clamp keeps it legible on a tiny phone and stops it
+     outgrowing the rest of the chrome on a large one. Line-height stays a
+     fixed 1.4rem because the typing reveal animates to exactly that. */
+  font-size: clamp(0.6rem, 4.2cqw, 0.8rem);
+}
+
+.watch-chat-caret {
+  opacity: 0;
+}
+
+/* Not named `watch-scroll-*`: this is a static declaration that must apply
+   everywhere, and the guard test requires every `.watch-scroll-` rule to
+   live inside the scroll-driven block. At progress 0 it is a no-op.
+
+   `-100%` is the reel's own height; `100cqh` is one screenful of the
+   viewport it sits in. So the travel is "scroll me by everything except
+   the last screenful" — the transcript ends resting on its final message
+   rather than running off the top. Reading the screenful as a container
+   unit rather than a shared rem constant means the two cannot drift. */
+.watch-chat-reel {
+  transform: translateY(calc(var(--watch-chat-progress, 0) * (-100% + 100cqh)));
+}
+
+.watch-bokeh-grain {
+  position: absolute;
+  /* Oversized past the drift so the step never exposes a tile edge. */
+  inset: -12%;
+  background-image: var(--watch-grain-image-fine);
+  background-repeat: repeat;
+  background-size: 317px 317px;
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: watch-grain-drift-fine 2130ms steps(1, end) infinite;
+  will-change: transform;
+}
+
+/* Radial card gather. The cards begin spread wide and square to the page,
+   then rotate and slide INWARD until they overlap into a fanned hand.
+   `transform-origin` sits well below each card so the rotation swings
+   around a shared pivot — that pivot is what makes it a fan rather than
+   three cards tilting independently.
+
+   Stacking order runs left-over-right (see `--fan-layer`), so each card
+   covers the RIGHT edge of the one behind it. That direction is
+   load-bearing: the copy is left-aligned, so covering left edges would
+   hide the start of every line. */
+/* The audiences stage, second movement: one card crosses the row.
+
+   The travelling cell slides left by whole columns and cancels the tilt and
+   drop the fan gave it, so it arrives square in the first column. Both are
+   expressed against the CELL's own box — `-100%` is one column, and the gap
+   is added per column crossed — so the distance is correct at any width
+   without a value per breakpoint.
+
+   The rotate and translate here COMPOSE with the fan's own transform rather
+   than replacing it: the fan animates the card `<div>` inside this cell,
+   this animates the cell. That split is the whole reason the effect is one
+   card travelling instead of two cards drawn in two places — two animations
+   cannot both own `translate` on a single element. */
+@keyframes watch-audience-travel {
+  from {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  to {
+    translate: var(--travel-x) calc(-1 * var(--fan-drop, 0px));
+    rotate: calc(-1 * var(--fan-rotate, 0deg));
+  }
+}
+
+/* The cards the travelling one leaves behind. They clear the ground the
+   question needs, and drift up slightly as they go so it reads as making
+   room rather than as a bug switching them off. */
+@keyframes watch-audience-clear {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -1.5rem;
+  }
+}
+
+/* The question, arriving over the vacated columns. Opacity AND travel:
+   fading alone leaves it looking like it was always there, which loses the
+   sense that the cards made room for it. */
+@keyframes watch-audience-quiz {
+  from {
+    opacity: 0;
+    translate: 6% 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* NO opacity here, deliberately.
+
+   The cards used to fade up from 0 across the gather, which meant the
+   section opened on a heading with nothing legible under it — the reader
+   sees an empty band, not three cards arriving, and every attempt to
+   close that "gap" by moving boxes around was chasing the wrong cause.
+   The cards are painted from the first frame; only their POSITION
+   animates.
+
+   NO per-card scale either, for a related reason. It used to open at
+   `scale: 0.96`, and because the origin below is 190% down — where the
+   fan's pivot has to be — scaling toward it pushed each card's top edge
+   DOWN by ~20px at the start (measured at 1440). On the first card, whose
+   opening offset is deliberately zero so it sits under the section heading
+   from the first frame, that reintroduced exactly the drift the zero was
+   written to remove. The whole hand still comes forward: `watch-fan-lift`
+   scales the list as one piece over the same range. */
+@keyframes watch-fan-gather {
+  from {
+    rotate: 0deg;
+    /* A staircase hanging BELOW the row, not straddling it: the first
+       card starts level with its landing place, the second a step under
+       it, the third two steps under — one step per card, driven by the
+       same `--fan-dir` (-1 / 0 / +1) that decides which way each card
+       spreads sideways. So the set arrives as three steps descending
+       left to right, anchored at the top, and rises into one level row
+       as the reader scrolls. */
+    translate: var(--fan-open-x, 0) var(--fan-open-y, 0);
+  }
+  to {
+    rotate: var(--fan-rotate, 0deg);
+    translate: var(--fan-closed-x, 0) var(--fan-drop, 0);
+  }
+}
+
+/* The gathered hand also comes FORWARD: it finishes larger than the slot it
+   was laid out in, so the fan reads as picked up rather than merely tilted.
+
+   Scaled as ONE hand, not card by card. Growing each card about its own
+   centre pushes its right edge over the next card's copy while pulling that
+   copy left — clearance loses `(scale - 1) x card width` in both
+   directions at once, and since the loss is proportional to card width no
+   fixed rem gather can pay for it: measured at 1.12, the copy clearance at
+   1920 went from 16px to -12px, i.e. the headings were struck through.
+   Scaling the whole list multiplies the gaps along with the cards, so every
+   clearance is preserved by construction at every width. */
+@keyframes watch-fan-lift {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: var(--fan-scale-end, 1.12);
+  }
+}
+
+@keyframes watch-scroll-year-active {
+  from {
+    opacity: 0.3;
+    scale: 0.94;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes watch-scroll-year-fill {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Improvement grid tiles. See `watch-scroll-tile-in` for why this one
+       may not carry a transform, unlike the era cards below. */
+    .watch-scroll-card {
+      animation: watch-scroll-tile-in linear both;
+      animation-timeline: view();
+      animation-range: entry 4% cover 26%;
+      will-change: opacity;
+    }
+
+    .watch-scroll-beat {
+      animation: watch-scroll-beat linear both;
+      animation-timeline: view();
+      animation-range: entry 12% cover 34%;
+      will-change: opacity, transform;
+    }
+
+    .watch-scroll-media {
+      animation: watch-scroll-zoom linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+      will-change: transform;
+    }
+
+    .watch-scroll-node {
+      animation: watch-scroll-node linear both;
+      animation-timeline: view();
+      animation-range: entry 18% cover 18%;
+      will-change: opacity, transform;
+    }
+
+    .watch-scroll-rail {
+      transform-origin: top;
+      animation: watch-scroll-rail linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 88%;
+      will-change: transform;
+    }
+
+    /* --- Assistant transcript reel --------------------------------------
+       The subject is the phone's own PIN STAGE, whose height is the
+       distance the phone is held still for. The reasons grid is the wrong
+       subject: below `lg` the phone sits underneath the three cards, so by
+       the time it is on screen the grid is most of the way through its own
+       traversal and the transcript has already run past the question. That
+       was the reported bug.
+
+       `contain` is the phase meaning "while this box covers the viewport",
+       which for a stage taller than the viewport is exactly the pinned
+       window. It requires that the stage IS taller than the viewport at
+       every width — a subject shorter than the viewport has no contain
+       phase at all, and progress then jumps 0 to 1 with nothing in
+       between. That is why the stage owns an `svh` height instead of
+       borrowing the cards' height on desktop, where it measured 146px
+       against a 704px phone.
+
+       The 34% of dead range at the head is the fix for not being able to
+       read the question: progress holds at 0 through it, so the reader
+       arrives on the question and it stays until they scroll on. The tail
+       rests on the citation card, which is the point of the illustration.
+
+       Start state is `translateY(0)`, which is also the no-animation
+       default, so a browser without scroll-driven animation and a reader
+       with reduced motion both get the transcript parked at the top on the
+       question. Nothing is hidden that the reveal has to give back. */
+    .watch-scroll-chat-stage {
+      /* Named so every step inside the phone can attach its OWN range to
+         this one timeline. Without a name each step would have to use
+         `view()` on itself, and a step's own box is meaningless here: it is
+         inside a pinned column inside an `overflow-hidden` screen, and it
+         starts at zero height, so its view progress says nothing about
+         where the reader is. */
+      view-timeline-name: --watch-chat;
+      /* The reel's own scroll, retimed to the late steps. Until then the
+         conversation is still being built and fits, so there is nothing to
+         scroll; from here the answer has outgrown the screen and the phone
+         follows it down, ending on the citation card.
+
+         `svh`, not `%`, and it must match the units the steps in
+         WhatsNewAssistantPhone.tsx use. Left as a percentage while they
+         became lengths, this fired roughly 800px after the content it is
+         supposed to follow — the citation card had already appeared and
+         sat clipped off the bottom of the screen the whole time. */
+      animation: watch-scroll-chat-progress linear both;
+      animation-timeline: view();
+      animation-range: contain 76svh contain 97svh;
+    }
+
+    .watch-scroll-chat-home {
+      animation: watch-chat-home linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      /* Overrides the resting `opacity: 0`: with the animation running,
+         the home screen is where the sequence starts. */
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-app {
+      animation: watch-chat-app linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-pointer {
+      animation: watch-chat-pointer linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-tap {
+      animation: watch-chat-tap linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-icon {
+      animation: watch-chat-icon linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* Each step carries its own `--step-range` from the choreography table
+       in WhatsNewAssistantPhone.tsx, so the sequence is readable in one
+       place as a list of moments rather than scattered across this file. */
+    .watch-scroll-chat-step {
+      animation: watch-chat-open linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* Answers stream rather than fade; see the keyframes. Its own class,
+       not a selector matching the range literal in the style attribute:
+       that would silently stop applying the day a step is retimed. */
+    .watch-scroll-chat-say {
+      animation-name: watch-chat-say;
+    }
+
+    .watch-scroll-chat-think {
+      animation: watch-chat-think linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-typed-line {
+      animation: watch-chat-type linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-typed {
+      animation: watch-chat-clear linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+      /* Overrides the resting `opacity: 0`: once the animation is running
+         the composer copy is what the reader is watching. */
+      opacity: 1;
+    }
+
+    .watch-scroll-chat-placeholder {
+      animation: watch-chat-placeholder linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-scroll-chat-caret {
+      animation: watch-chat-caret-in linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    /* The blink itself, on the inner element. Two elements because both
+       drive opacity and a single `animation` list would let the filling
+       reveal win outright, leaving a caret that never blinks. */
+    .watch-scroll-chat-caret .watch-chat-caret {
+      opacity: 1;
+      animation: watch-chat-caret-blink 1.06s steps(1, end) infinite;
+    }
+
+    .watch-scroll-chat-send {
+      animation: watch-chat-send linear both;
+      animation-timeline: --watch-chat;
+      animation-range: var(--step-range);
+    }
+
+    .watch-chat-dot {
+      animation: watch-chat-dot 1.25s ease-in-out infinite;
+      /* Index-driven negative delay: the loop is already part-way through
+         when it starts, which is what staggers three otherwise identical
+         dots without three sets of keyframes. */
+      animation-delay: calc(var(--dot-index, 0) * -0.42s);
+    }
+
+    /* --- Pinned stack: desktop and tablet only -----------------------
+       A pinned stack needs vertical room a phone does not have: at 667px
+       the composition is taller than the viewport, so the bottom of the
+       pinned block would be unreachable while it is stuck. Below this
+       breakpoint the eras stay in normal flow as a card-then-beat list
+       and get a plain rise on entry instead. */
+    @media (width < 48rem) {
+      .watch-scroll-era {
+        animation: watch-scroll-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 4% cover 26%;
+        will-change: opacity, transform;
+      }
+    }
+
+    @media (width >= 48rem) {
+      /* The stage is tall and names the timeline every layer below reads.
+         The pin sticks inside it, so the stack holds still while the page
+         scrolls past; when the stage runs out the pin releases and the
+         page resumes scrolling normally. */
+      .watch-scroll-stage {
+        view-timeline-name: --watch-era-stage;
+        view-timeline-axis: block;
+        /* The trailing term buys scroll for the opening zoom on top of the
+           eras' own slices, so adding the intro did not speed the stack up.
+           Keep it in step with `ERA_INTRO_SHARE`. */
+        min-height: calc(var(--era-count) * 92svh + 110svh);
+      }
+
+      .watch-scroll-pin {
+        position: sticky;
+        top: calc(env(safe-area-inset-top, 0px) + 6.5rem);
+        min-height: calc(100svh - 9rem);
+      }
+
+      /* Eras leave the flow and stack on top of each other. Outside this
+         block they stay a plain vertical list, which is the fallback. */
+      .watch-scroll-era {
+        position: absolute;
+        inset: 0;
+        z-index: var(--layer);
+      }
+
+      /* Applied to every era EXCEPT the first, which is already in place
+         when the section opens. */
+      .watch-scroll-era-in {
+        animation: watch-scroll-slide-in linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--enter-range);
+        will-change: translate;
+      }
+
+      /* Recede applies to the CARD, not the era wrapper, so the beat
+         underneath keeps its own size while the card sinks behind the
+         next one. `scale` is a standalone property here because the
+         wrapper is already animating `translate` — one `transform` for
+         both would clobber. */
+      .watch-scroll-sink {
+        animation: watch-scroll-recede linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--recede-range);
+        will-change: scale;
+      }
+
+      .watch-scroll-scrim {
+        animation: watch-scroll-scrim linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--recede-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-beatbox {
+        animation: watch-scroll-beat-cycle linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--beat-range);
+        will-change: opacity, translate;
+      }
+
+      /* Two tracks, because they run over different ranges: the hold-then-
+         fade belongs to the era's own slice, the weight and shadow to the
+         opening zoom. Listed explicitly rather than through the shorthand —
+         `animation` resets timeline and range, so both have to be restated
+         per track anyway. */
+      .watch-scroll-beatbox-lead {
+        animation:
+          watch-scroll-beat-lead linear both,
+          watch-scroll-beat-weight linear both;
+        animation-timeline: --watch-era-stage, --watch-era-stage;
+        animation-range: var(--beat-range), var(--intro-range);
+      }
+
+      .watch-ambient-cycle {
+        animation: watch-ambient-cycle linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--beat-range);
+        will-change: opacity;
+      }
+
+      /* --- Opening zoom: full screen, back into the card ---------------
+         Geometry, because the constants look arbitrary. The clip box hangs
+         a FIXED distance below the pinned top (sticky offset, year rail,
+         two gaps, the beat's fixed height) and takes whatever height is
+         left, so its centre lands at `50svh + ~10rem` from the top of the
+         viewport whatever the viewport height is — one constant lift
+         re-centres it. The scale it then needs is just viewport ÷ clip box,
+         on whichever axis is worse: short viewports are bound by height,
+         ultrawide ones by the 1920px content rail.
+
+         `tan(atan2(a, b))` is how CSS divides one length by another into a
+         bare number. Without it this would be a scale hard-coded per
+         breakpoint, and wrong between them.
+
+         Deliberately generous (the 1.04, and rounding the chrome up to
+         27rem — measured at 425px in the 768px band, 401px above it, plus
+         the lift's own bias): the zoom is anchored to the top edge, so
+         overshooting only crops the photograph further and grows it off the
+         bottom of the screen, while falling short leaves a strip of page
+         showing. 26rem left 5px of page below the fold at 800x760. */
+      .watch-scroll-intro {
+        /* Grows DOWNWARD from the top of the viewport, not outward from its
+           own centre. Centred, a uniform scale big enough to cover an
+           ultrawide viewport horizontally overshoots vertically by hundreds
+           of pixels, and on a 3440px display the photograph swallowed the
+           section heading on the way in. Anchored to the top edge, the
+           upward overshoot is a constant 104px at every viewport — the
+           pin's own sticky offset — whatever the scale turns out to be.
+
+           The lift is the measured distance from the pinned viewport top
+           down to the clip box — 385px between 768px and 1024px, where the
+           beat is taller, and 361px above that — taking the larger and
+           rounding UP. Falling short shows a strip of page above the
+           photograph (a 23.5rem lift left exactly 9px of it in the 768px
+           band); overshooting shows nothing at all. */
+        transform-origin: 50% 0;
+        --intro-lift: -25rem;
+        --intro-scale: clamp(
+          1.2,
+          calc(
+            max(
+                tan(atan2(100svh, max(1px, calc(100svh - 27rem)))),
+                tan(atan2(100vw, max(1px, calc(min(100vw, 1920px) - 12rem))))
+              ) *
+              1.04
+          ),
+          5
+        );
+        animation: watch-scroll-intro linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: scale, translate;
+      }
+
+      .watch-scroll-intro-front {
+        animation: watch-scroll-intro-front linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+      }
+
+      /* Opening frame: the whole WIDTH of the photograph.
+         While the card fills the screen it is far wider than the viewport —
+         2500px against 1440 at a 1440x900 window — so a card-filling
+         `object-cover` pushes roughly 40% of the picture off both sides.
+         Sizing the box to the viewport width instead, at the picture's own
+         16:9 aspect, shows all of it. `min(…, 100%)` hands the card back its
+         own footprint the moment the card becomes the narrower of the two,
+         so the landed frame is exactly what it was before this existed.
+
+         Height is animated rather than capped the same way, because the two
+         caps bite independently: a window tall enough for the width to cap
+         at the card while the height still came from the viewport left the
+         box at 1.25 instead of 16:9, and the landed picture 96px short of
+         its own card at top and bottom. Animating it from the aspect-derived
+         opening height to the card's own height keeps both endpoints exact,
+         and the interpolation between them only ever runs WIDER than 16:9 —
+         which crops vertically, never sideways.
+
+         Consequence, stated because it is a design call rather than a bug:
+         on a window narrower than 16:9 the full width cannot also fill the
+         height, so the picture letterboxes against the card's own dark
+         background. Nothing at 16:9, ~90px total at 1440x900, ~590px on a
+         5:4 window. */
+      .watch-scroll-intro-photo {
+        inset: auto;
+        /* Positioned from its top-right corner, so the two edges that must
+           never crop — the top and the right, where the projection screen
+           sits — are the two that are pinned. Width, height and the right
+           offset all travel; see the keyframes. */
+        top: 0;
+        left: auto;
+        translate: none;
+        /* How far the scaled card reaches ABOVE the viewport top. The picture
+           is anchored to the card's top, so covering the screen means
+           reaching this much further down than the viewport is tall —
+           without it the picture stopped 39px short of the bottom on any
+           window narrower than the photograph. */
+        --intro-overhang: 39px;
+        animation: watch-scroll-intro-photo linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+      }
+
+      .watch-scroll-intro-edge {
+        animation: watch-scroll-intro-edge linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+      }
+
+      .watch-scroll-intro-veil {
+        animation: watch-scroll-intro-veil linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-intro-caption {
+        animation: watch-scroll-intro-caption linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-year {
+        animation: watch-scroll-year-active linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--year-range);
+        will-change: opacity, scale;
+      }
+
+      .watch-scroll-pip {
+        animation: watch-scroll-year-active linear both;
+        animation-timeline: view();
+        animation-range: var(--pip-range);
+        will-change: opacity, scale;
+      }
+
+      /* One wipe over the whole plot box — the SVG and the endpoint marker
+         together — rather than an animation each.
+
+         Two animations cannot be kept in step here. `view()` resolves per
+         element, and the marker is a 16px dot near the top of the plot
+         while the line's subject is the full-height plot: different boxes,
+         different clocks, and the dot fades in long before the line has
+         drawn far enough to reach it. Hand-tuning a second `animation-
+         range` only hides that at one viewport size.
+
+         Wiping their shared parent instead makes the sync structural: the
+         marker sits at the right-hand edge, so the same left-to-right
+         sweep that draws the line uncovers the dot at the exact moment the
+         line arrives under it, at every width, for free.
+
+         The start state lives inside the guard for the same reason every
+         reveal on this page does: a browser without scroll-driven
+         animation must get the finished chart, never a permanently
+         clipped one. */
+      .watch-scroll-trend {
+        animation: watch-scroll-trend linear both;
+        animation-timeline: view();
+        animation-range: entry 30% cover 55%;
+        will-change: clip-path;
+      }
+
+      .watch-scroll-fan {
+        /* Absolute travel, not a percentage of card width. Clearance
+           between one card's copy and the next card's edge is
+           `padding - overlap`, and the padding is fixed — so the travel
+           has to be fixed too, and sized per breakpoint against that
+           breakpoint's padding and grid gap. */
+        --fan-spread: 2rem;
+        /* Bigger than the visual overlap it produces. The pivot below
+           swings each card sideways as it rotates — roughly
+           `pivot-distance x sin(angle)`, about 26px here — in the opposite
+           direction to this travel. Tune by measuring the gathered boxes,
+           not by reading the number. */
+        --fan-travel: 4rem;
+        /* Height of one stair. The first card starts level with the row
+           and each one after it hangs a step lower, so the run spans TWICE
+           this from the first card to the third — all of it BELOW the row.
+
+           Deliberately large: at 3.5/4.5rem the stagger was there but read
+           as a wobble rather than as three steps. Nothing above constrains
+           it now that no card starts higher than its landing place, and
+           the lowest card is free to start below the fold since it is
+           travelling up into the row anyway. Re-measure when changing it. */
+        --fan-step-y: 3.5rem;
+        --fan-open-x: calc(var(--fan-dir, 0) * var(--fan-spread));
+        /* The first card starts EXACTLY where it lands and never moves
+           vertically; the other two start below it and rise into the row.
+           `dir + 1` is what pins the first one: its `dir` is -1, so its
+           opening offset is zero by construction, and no term may be added
+           after it — a constant floor here (there was a 2.5/4rem one) lifts
+           the whole staircase and reopens a gap between the first card and
+           the section heading above it, which is the space this is written
+           to keep closed.
+
+           An earlier form straddled the row (`dir * step`), which sent the
+           first card DOWNWARD into place while the others came up. That was
+           written to close the same gap, which turned out to be the cards'
+           own `opacity: 0`, not spacing — with them visible, the direction
+           is free to be the one that reads: bottom-up, into a fixed top. */
+        --fan-open-y: calc((var(--fan-dir, 0) + 1) * var(--fan-step-y));
+        --fan-closed-x: calc(var(--fan-dir, 0) * -1 * var(--fan-travel));
+        transform-origin: 50% 190%;
+        z-index: var(--fan-layer, 1);
+        animation: watch-fan-gather linear both;
+        animation-timeline: view();
+        /* Ends at `cover 22%`, early enough that the row is fully closed
+           BEFORE the stage's own pinned window opens — measured 125px of
+           scroll to spare at 1440x900. At the previous `cover 34%` the
+           gather was still running when the fade began, so the assembled
+           row existed only as a frame in passing. */
+        animation-range: entry 8% cover 22%;
+        will-change: rotate, translate;
+      }
+
+      /* The list the cards are laid out in, grown as one. Its own box is
+         the cards' box, so `view()` here tracks the same scroll positions
+         as the gather above and the hand finishes growing exactly as the
+         cards finish closing. The origin is the list's centre: the fan's
+         own pivot sits 190% below each card and would lift the whole group
+         out of its slot instead of growing it in place. */
+      .watch-scroll-fan-hand {
+        transform-origin: 50% 50%;
+        animation: watch-fan-lift linear both;
+        animation-timeline: view();
+        animation-range: entry 8% cover 22%;
+        will-change: scale;
+      }
+
+      /* MUST follow the base rule above. The bundler flattens nested media
+         queries and hoists them, so a block written BEFORE the rule it
+         overrides ends up before it in the output too — same specificity,
+         later wins, and this override silently did nothing at every width
+         until it was moved down here. */
+      @media (width >= 64rem) {
+        .watch-scroll-fan {
+          --fan-spread: 3rem;
+          --fan-travel: 4.5rem;
+          --fan-step-y: 12rem;
+        }
+      }
+
+      /* The audiences stage. Pinned and choreographed only from `lg` up,
+         where the three cards actually sit in three columns — below that
+         they are a stacked list, there is no row to cross, and a pin would
+         hold a stack still while the reader scrolls past nothing.
+
+         Ranges are `contain`. For a subject TALLER than the viewport those
+         endpoints are not "fully visible": contain 0% is where the stage's
+         top meets the top of the scrollport and 100% is where its bottom
+         meets the bottom — exactly the window the pin is stuck for. So the
+         percentages are shares of the pinned window.
+
+         Everything finishes early in that window — the cards clear by 18%,
+         the card lands by 30%, the question is up by 45% — because what the
+         reader needs is not a long slide but a long look: the rest of the
+         210svh stage is dwell with the card and the question sitting still,
+         side by side, which is what it takes to actually drag the slider
+         and commit to a guess. */
+      @media (width >= 64rem) {
+        .watch-audience-stage {
+          view-timeline-name: --watch-audience;
+          view-timeline-axis: block;
+          /* Three things have to fit in the pinned window, in this order:
+             the HOLD on the assembled row (the three cards level, opaque,
+             and still), then the fade/travel/question, then the DWELL in
+             which the reader actually drags the slider. At 210svh the first
+             of those did not exist at all — the fade began at `contain 0%`,
+             while the gather was still closing, so the row the section is
+             built around was never once on screen finished and undisturbed.
+             The 20svh added here is what the hold spends; the ranges below
+             all start at 30% instead of 0%. Retuning any of the three means
+             re-checking the other two against this height. */
+          min-height: 230svh;
+          /* Must match the fan list's own `lg:gap-8`. The travel adds one
+             gap per column crossed, so a mismatch here lands the card
+             beside the first column instead of in it. */
+          --audience-gap: 2rem;
+          /* The two fan constants the travel has to cancel, restated here
+             because the cell cannot see the values set on `.watch-scroll-fan`
+             and `.watch-scroll-fan-hand`. Keep all four in step: a mismatch
+             does not break the layout, it just lands the card off its
+             column, which is why the browser check on the landing position
+             is part of this feature's verification and not optional. */
+          --fan-scale-end: 1.12;
+          --fan-travel-end: 4.5rem;
+        }
+
+        .watch-audience-pin {
+          position: sticky;
+          /* The pin is exactly as tall as the pair inside it — no
+             min-height, no align-content.
+
+             It used to be a screenful tall and centre its contents, which
+             parked the group nicely once stuck but cost 135px of slack
+             ABOVE the cards (measured at 1440) that was there from the
+             moment the section appeared, before the pin had stuck to
+             anything: the reader met the heading and then a band of
+             nothing. The heading is inside the pin now, so that slack sat
+             between two things the reader reads as one. The scroll distance the timeline needs comes from the
+             STAGE's height, not this box's, so shrinking it to its content
+             costs the choreography nothing.
+
+             The centring moved into `top`. In flow the group sits where
+             the section's padding puts it; once stuck it parks near the
+             middle of the screen. `max()` is the floating header's floor —
+             at a short viewport half a screen minus the group's
+             half-height rides up under it. 16rem is half the group's
+             measured height, heading included; it only decides where the
+             stuck group parks, so it degrades gently if the copy grows. */
+          top: max(
+            calc(env(safe-area-inset-top, 0px) + 6.5rem),
+            calc(50svh - 16rem)
+          );
+          display: grid;
+        }
+
+        .watch-audience-travel {
+          /* Where the card has to end up: the first column's slot.
+             Three terms, because two other transforms are already acting on
+             it by the time it starts moving and a bare column-count travel
+             lands it 113px past the gutter (measured at 1440).
+
+             1. COLUMNS — one card width plus one gap per column crossed.
+             2. UNDO GROWTH — `watch-scroll-fan-hand` has scaled the whole
+                list to `--fan-scale-end` about its centre, which pushes a
+                column-one box further left by
+                `(column + gap) x (scale - 1)`. Independent of how many
+                columns were crossed: the displacement depends on where the
+                card ENDS, and it always ends in column one. An earlier form
+                multiplied this by `(columns - 1)`, which happened to be
+                right only while the card started in the third column.
+             3. UNDO CLOSE — the card's own gather ended at
+                `--fan-closed-x`, i.e. `fan-dir x -fan-travel`. Adding
+                `fan-dir x fan-travel` cancels it.
+
+             Terms 2 and 3 read as fudge factors and are not: each one names
+             a transform that is still applied, and each is written from that
+             transform's own variables so the two cannot drift. If the fan's
+             lift or travel is retuned, this follows automatically. */
+          --travel-x: calc(
+            var(--travel-columns, 0) * (-100% - var(--audience-gap)) +
+              (100% + var(--audience-gap)) * (var(--fan-scale-end) - 1) +
+              var(--fan-dir, 0) * var(--fan-travel-end)
+          );
+          animation: watch-audience-travel linear both;
+          animation-timeline: --watch-audience;
+          /* Starts at 30%, not 0%: the first 30% of the pinned window is
+             the hold on the assembled row. Must start on the same percent
+             as the fade — the card crosses into the space the other two
+             are vacating, and starting first would send it over cards
+             still solid. */
+          animation-range: contain 30% contain 54%;
+          /* Above the cards it crosses, and above the question it lands
+             beside. */
+          position: relative;
+          z-index: 3;
+          will-change: translate, rotate;
+        }
+
+        .watch-audience-fade {
+          animation: watch-audience-clear linear both;
+          animation-timeline: --watch-audience;
+          /* Same 30% start as the travel — see there. */
+          animation-range: contain 30% contain 42%;
+          will-change: opacity, translate;
+        }
+
+        /* The section's heading leaves on the same beat as the two cards it
+           counts, using their keyframe. Once the row is down to one card and
+           a question about that card's audience, "serves three overlapping
+           audiences" describes something no longer on screen — and being the
+           only thing left above the question, it reads as a label for it.
+
+           Opacity, not `visibility` or `display`: the box keeps its space so
+           nothing below it reflows mid-hold, and the `<h2>` stays in the
+           accessibility tree as this section's `aria-labelledby` target. A
+           reader who asked for less motion never reaches this rule at all —
+           the whole guard is behind `prefers-reduced-motion` — so the
+           heading simply stays put for them. */
+        .watch-audience-heading {
+          animation: watch-audience-clear linear both;
+          animation-timeline: --watch-audience;
+          animation-range: contain 30% contain 42%;
+          will-change: opacity, translate;
+        }
+
+        .watch-audience-quiz {
+          /* Placement is Tailwind's now — same grid cell as the cards,
+             right half, `justify-self: end` — so the cell is as tall as
+             the taller of the two and the pin can centre the pair. This
+             rule keeps only the motion. */
+          animation: watch-audience-quiz linear both;
+          animation-timeline: --watch-audience;
+          /* Opens as the fade closes, and lands with 34% of the window
+             still to run — that tail is the reader's dwell for dragging
+             the slider, and it is why the hold above could not simply be
+             taken out of the end of the stage. */
+          animation-range: contain 42% contain 66%;
+          will-change: opacity, translate;
+        }
+      }
+
+      /* Below the two-column breakpoint nothing travels and nothing is
+         cleared away: the cards stay a stacked list and the question is an
+         ordinary block underneath, each with a plain entrance. */
+      @media (width < 64rem) {
+        .watch-audience-quiz {
+          animation: watch-scroll-rise linear both;
+          animation-timeline: view();
+          animation-range: entry 6% cover 30%;
+          will-change: opacity, transform;
+        }
+      }
+
+      .watch-scroll-year-fill {
+        transform-origin: left;
+        animation: watch-scroll-year-fill linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: contain 0% contain 100%;
+        will-change: scale;
+      }
+    }
+  }
+}
+
+/* Animated film grain laid over timeline photography. The texture is the
+   same repeating overlay used by the promo bands, oversized so the drift
+   never exposes an edge, and stepped rather than eased so it reads as
+   grain rather than a sliding sheet. */
+/* YouTube-ambient-mode halo: a big, heavily blurred wash of the card's own
+   dominant colour bleeding onto the page behind it. `--glow` is extracted
+   from the photograph itself — see whats-new-content.ts. Sits OUTSIDE the
+   card so the card's `overflow-hidden` cannot clip it. */
+.watch-ambient {
+  position: absolute;
+  inset: -14% -10%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow), transparent 74%);
+  filter: blur(70px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Second, faster, finer layer over the same media. Two layers drifting at
+   different rates read as film grain rather than a moving texture — a
+   single layer at any speed looks like a pattern sliding. */
+.watch-grain-fine {
+  position: absolute;
+  inset: -15%;
+  background-image: var(--watch-grain-image-fine);
+  background-repeat: repeat;
+  background-size: 317px 317px;
+  /* `screen` is the only blend that shows in the shadows: overlay against
+     a near-black backdrop multiplies to nothing. Kept low so it adds
+     sparkle without milking the blacks. */
+  opacity: 0.04;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: watch-grain-drift-fine 1730ms steps(1, end) infinite;
+  will-change: transform;
+}
+
+.watch-grain {
+  position: absolute;
+  /* Oversized so the drift below never exposes an edge, but no larger:
+     every extra percent is blended pixels recomposited ~6x a second.
+     Max drift is 7% of the layer's own 130% size = 9.1% of the slot,
+     inside this 15% margin. */
+  inset: -15%;
+  background-image: var(--watch-grain-image);
+  background-repeat: repeat;
+  /* MEASURED, and the reason this is not divided by the zoom: the grain is
+     rastered in the card's own coordinate space and then GPU-scaled with it,
+     so dividing the tile down only asks for sub-pixel noise that averages to
+     mush before the upscale ever happens. Dividing by the zoom made the
+     blobs 3px and soft at the opening frame against 1px and crisp landed,
+     AND doubled the number of visible repeats across the screen. Leaving the
+     tile alone scales grain and tile together — coarser at the opening
+     frame, but 512px between repeats instead of 150. */
+  background-size: 512px 512px;
+  /* The value a reduced-motion reader gets, because the flicker below is
+     switched off for them — so it tracks the flicker's MEAN rather than
+     sitting above its whole range, which is what 0.72 did against a range
+     that never exceeded 0.68. */
+  opacity: 0.142;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  animation:
+    watch-grain-drift 2510ms steps(1, end) infinite,
+    watch-grain-flicker 1870ms steps(1, end) infinite;
+  will-change: transform;
+}
+
 .watch-home-media-enter {
   animation: watch-home-media-enter 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -266,7 +2130,126 @@
     cubic-bezier(0.2, 1.35, 0.35, 1) forwards;
 }
 
+/* --- Pin board ----------------------------------------------------------
+   Paper notes on a plain white board, set into a warm band so the section
+   reads as a physical object dropped into the page rather than another card
+   grid. Textures are gradients only, so the section costs no new image
+   request. */
+
+/* A warm grey, not a beige: enough tint to keep the paper notes feeling
+   like they are on a surface, little enough that the band recedes behind
+   them. The corner shade is neutral grey rather than tan, and the linear
+   sweep spans a much narrower range than it used to, so the gradient reads
+   as a soft fall-off instead of a wash of colour. */
+.watch-corkroom {
+  background-color: #f1efec;
+  background-image:
+    radial-gradient(
+      ellipse at 12% 0%,
+      rgba(255, 255, 254, 0.75),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 90% 100%,
+      rgba(142, 137, 129, 0.16),
+      transparent 60%
+    ),
+    linear-gradient(168deg, #f6f4f2, #e9e6e1);
+}
+
+/* Paper. `--paper` / `--paper-shade` / `--paper-ink` come from the note's
+   chosen stock, set inline by the component. */
+.watch-note {
+  position: relative;
+  border-radius: 2px;
+  background-image: linear-gradient(168deg, var(--paper), var(--paper-shade));
+  box-shadow:
+    0 12px 20px -12px rgb(24 12 4 / 0.8),
+    0 2px 3px rgb(24 12 4 / 0.28);
+}
+
+/* Lifted bottom-right corner. Drawn rather than clipped so the focus ring
+   still gets to run the whole way round the note. */
+.watch-note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0 0 2px 0;
+  background-image: linear-gradient(
+    315deg,
+    rgb(24 12 4 / 0.22) 0 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* Marker on paper. No webfont: this is a fallback stack on purpose, so the
+   playful hand costs nothing to load and degrades to the page sans where
+   the reader has none of them. */
+.watch-note-ink {
+  font-family:
+    "Bradley Hand", "Chalkboard SE", "Segoe Print", "Comic Sans MS", cursive,
+    var(--font-sans, sans-serif);
+  color: var(--paper-ink);
+}
+
+/* Landing: a note drops onto the cork rather than fading in. */
+@keyframes watch-note-pop {
+  0% {
+    opacity: 0;
+    scale: 0.7;
+    translate: 0 -0.75rem;
+  }
+  65% {
+    opacity: 1;
+    scale: 1.06;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+}
+
+.watch-note-pop {
+  animation: watch-note-pop 280ms cubic-bezier(0.22, 1.35, 0.4, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Keep the grain, drop the motion — the texture is part of the look,
+     the jitter is the part that can bother people. */
+  .watch-grain,
+  .watch-grain-fine {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* The bokeh is the section's lighting, not an accent — hold it still
+     rather than hiding it, or the bottom half goes flat black. Every
+     light starts its crossing off-screen, so parking them needs an
+     explicit resting place or the whole field piles up on the left. */
+  .watch-bokeh-orb {
+    animation: none;
+    opacity: var(--bokeh-dim, 0.35);
+    translate: var(--bokeh-rest, 40vw) var(--bokeh-y, 0rem);
+  }
+
+  /* Grain stays — it is texture, not motion. Only the shiver goes. */
+  .watch-bokeh-grain {
+    animation: none;
+  }
+
+  /* Motion off, but the bars are the answer — they must still be there. */
+  .watch-quiz-bar,
+  .watch-sticker-pop,
+  .watch-note-pop {
+    animation: none;
+  }
+
   .watch-home-media-enter,
   .watch-home-media-exit,
   .watch-home-copy-enter,
@@ -309,6 +2292,118 @@
   100% {
     background-position: 50% 50%;
     transform: scale(1);
+  }
+}
+
+@keyframes watch-grain-drift-fine {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(4%, -5%, 0);
+  }
+  40% {
+    transform: translate3d(-5%, -2%, 0);
+  }
+  60% {
+    transform: translate3d(2%, 5%, 0);
+  }
+  80% {
+    transform: translate3d(-3%, 3%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Old-cinema shiver. Transform and density are SEPARATE animations on
+   purpose: 16 offsets over 2510ms against 9 densities over 1870ms means
+   the pair only realigns every ~7.8 minutes, so the loop never reads as
+   a repeating pattern. One combined animation repeats every cycle. */
+@keyframes watch-grain-flicker {
+  0% {
+    opacity: 0.145;
+  }
+  11.1111% {
+    opacity: 0.117;
+  }
+  22.2222% {
+    opacity: 0.165;
+  }
+  33.3333% {
+    opacity: 0.128;
+  }
+  44.4444% {
+    opacity: 0.155;
+  }
+  55.5556% {
+    opacity: 0.113;
+  }
+  66.6667% {
+    opacity: 0.17;
+  }
+  77.7778% {
+    opacity: 0.133;
+  }
+  88.8889% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 0.145;
+  }
+}
+
+@keyframes watch-grain-drift {
+  0% {
+    transform: translate3d(0%, 0%, 0);
+  }
+  6.25% {
+    transform: translate3d(-5.8%, -3.1%, 0);
+  }
+  12.5% {
+    transform: translate3d(4.2%, -6.4%, 0);
+  }
+  18.75% {
+    transform: translate3d(-2.4%, 5.9%, 0);
+  }
+  25% {
+    transform: translate3d(6.6%, 2.2%, 0);
+  }
+  31.25% {
+    transform: translate3d(-6.9%, -5.2%, 0);
+  }
+  37.5% {
+    transform: translate3d(2.8%, 6.8%, 0);
+  }
+  43.75% {
+    transform: translate3d(-4.6%, 1.4%, 0);
+  }
+  50% {
+    transform: translate3d(5.4%, -4.9%, 0);
+  }
+  56.25% {
+    transform: translate3d(-1.7%, -6.6%, 0);
+  }
+  62.5% {
+    transform: translate3d(6.1%, 5.5%, 0);
+  }
+  68.75% {
+    transform: translate3d(-6.3%, 3.6%, 0);
+  }
+  75% {
+    transform: translate3d(1.9%, -2.7%, 0);
+  }
+  81.25% {
+    transform: translate3d(-3.8%, 6.2%, 0);
+  }
+  87.5% {
+    transform: translate3d(4.9%, -1.3%, 0);
+  }
+  93.75% {
+    transform: translate3d(-5.1%, -6.9%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -566,4 +2661,55 @@
   .search-overlay-scroll:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
+}
+
+/**
+ * Colour band behind each improvement shot on /watch/whats-new.
+ *
+ * Three radials over a mixed linear base rather than one flat linear: at
+ * this size a single sweep reads as a printed swatch, while overlapping
+ * pools of the two tint stops give each card its own shape. The base is
+ * what stops the corners going bald where no radial reaches.
+ *
+ * Lives here rather than as an arbitrary Tailwind value because the
+ * `color-mix()` calls and nested commas need underscore-escaping that is
+ * unreadable and easy to break silently. `--tint-from` / `--tint-to` are
+ * set per cell in WatchWhatsNewPage; the element that carries this class
+ * also carries a mask so the band ends on a fade.
+ */
+.whats-new-tint-band {
+  background:
+    radial-gradient(74% 118% at 12% -12%, var(--tint-from) 0%, transparent 62%),
+    radial-gradient(64% 108% at 90% 4%, var(--tint-to) 0%, transparent 58%),
+    radial-gradient(
+      116% 82% at 44% 112%,
+      color-mix(in oklab, var(--tint-to) 62%, var(--tint-from)) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      158deg,
+      color-mix(in oklab, var(--tint-from) 76%, #0c0a09),
+      color-mix(in oklab, var(--tint-to) 64%, #0c0a09)
+    );
+  /*
+   * The band ends on a slanted fade rather than a level one, tilted so the
+   * RIGHT side ends lower than the left. 191deg is 11deg past straight-down,
+   * a ~20% slope — measured at 20.0% on both the two-up and the full-width
+   * cell.
+   *
+   * Angle sets the direction and the geometry; the STOPS decide how much of
+   * it you actually see. Percentages run along the gradient line, not the
+   * element height, so if the fade has not finished by the band's bottom
+   * edge the low side is cut off there and the slope flattens — and the
+   * wider the band, the sooner that bites. 72%/94% measured 5.6% against a
+   * geometric 10.5%; 48%/78% held on both at 10.5%; at this steeper angle
+   * 40%/68% left only 8px of headroom on the full-width cell before
+   * clamping, so 36%/63% it is. Re-measure if the grid widens or the angle
+   * changes — do not just edit the degrees.
+   *
+   * `-webkit-` as well, for Safari before 15.4 — without it that engine
+   * drops the mask and the band ends on a hard cut.
+   */
+  -webkit-mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
+  mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
 }

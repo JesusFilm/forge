@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jazyk zvuku",
     "selectLanguageVersion": "Vyberte jazykovou verzi",
     "watchSelectedVersion": "Sledovat vybranou verzi"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Volby souborů cookie",
+    "bannerTitle": "Vaše volby ochrany soukromí",
+    "bannerDescription": "Nezbytné soubory cookie zajišťují bezpečnost a správné fungování Watch. S vaším souhlasem si může volitelný soubor cookie první strany pamatovat vaše zájmy mezi návštěvami, aby přizpůsobil doporučení. Kontextová doporučení jsou dostupná v obou případech.",
+    "acceptAll": "Přijmout vše",
+    "essentialOnly": "Pouze nezbytné",
+    "manageChoices": "Spravovat volby",
+    "savingChoice": "Ukládání volby souborů cookie",
+    "settings": "Nastavení souborů cookie",
+    "settingsDescription": "Zvolte, zda si Watch může mezi návštěvami pamatovat zájmy pro doporučování. Toto můžete kdykoli změnit.",
+    "essentialCookies": "Nezbytné soubory cookie",
+    "essentialDescription": "Zabezpečení, přehrávání, volby ochrany soukromí a přiřazení požadavků na doporučení.",
+    "alwaysActive": "Vždy aktivní",
+    "personalization": "Personalizace",
+    "personalizationDescription": "Zapamatovat si vymezené zájmy mezi návštěvami. Když tuto možnost vypnete, kontextová doporučení zůstanou dostupná.",
+    "erasurePending": "Čeká se na vymazání profilu. Kontextová doporučení jsou již aktivní.",
+    "cancel": "Zrušit",
+    "saveChoices": "Uložit volby",
+    "saving": "Ukládání…",
+    "loadError": "Vaši volbu se nepodařilo načíst. Níže ji přesto můžete nastavit.",
+    "grantError": "Personalizaci se nepodařilo zapnout. Možnost pouze nezbytných zůstává dostupná.",
+    "saveError": "Vaši volbu se nepodařilo uložit. Zkuste to prosím znovu."
   }
 }

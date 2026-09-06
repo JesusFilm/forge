@@ -342,6 +342,29 @@ describe("createGatewayFetchWithTimeout (KTD9 abort mechanism)", () => {
     )
     expect((signal?.reason as DOMException).name).toBe("TimeoutError")
   })
+
+  it("pins redirect: 'error' on every gateway request, unoverridable by callers (feat-440)", async () => {
+    // The feat-440 allowlist bounds the CONFIGURED URL only; refusing
+    // redirects is what keeps the credentialed POST from being 3xx'd off the
+    // allowlisted host. The option sits AFTER the init spread, so even a
+    // caller passing redirect: "follow" must lose.
+    const captured: { redirect: RequestRedirect | undefined } = {
+      redirect: undefined,
+    }
+    const fetchImpl = (async (
+      _input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      captured.redirect = init?.redirect
+      return new Response("ok")
+    }) as typeof fetch
+    await createGatewayFetchWithTimeout(60_000, fetchImpl)(
+      "https://gateway.test/v1",
+      { redirect: "follow" },
+    )
+
+    expect(captured.redirect).toBe("error")
+  })
 })
 
 describe("Langfuse-managed instructions wiring (feat-272)", () => {

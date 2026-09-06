@@ -23,7 +23,6 @@ function slide(id: string, src = `${id}.m3u8`): WatchHomeTvCarouselSlide {
     kind: "video",
     id,
     title: id,
-    description: null,
     label: "Featured",
     href: `/${id}.html/english.html`,
     posterUrl: `${id}.jpg`,

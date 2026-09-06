@@ -34,10 +34,11 @@ vi.mock("@/components/home/WatchHomeFooter", () => ({
 }))
 
 vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
-  WatchHomeTvCarousel: () => (
+  WatchHomeTvCarousel: ({ pinned = true }: { pinned?: boolean }) => (
     <section
       data-testid="watch-home-hero"
       data-block-marker="WatchHomeHeroBlock"
+      data-pinned={pinned ? "true" : "false"}
     />
   ),
 }))
@@ -514,10 +515,18 @@ describe("WatchHomeExperiencePage", () => {
         '[data-testid="watch-home-category-rail"]',
       )
       expect(rails).toHaveLength(1)
-      expect(
-        container.querySelector('[data-testid="watch-home-hero"]')
-          ?.nextElementSibling,
-      ).toBe(rails[0])
+      // "Directly after" is asserted in block order rather than as a DOM
+      // sibling: the fallback carousel hero is sticky and sits OUTSIDE the
+      // body zone that covers it, while an authored hero block sits inside
+      // it. Both must still put the rail immediately after the hero.
+      const renderedBlocks = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-block-marker]"),
+      )
+      const heroIndex = renderedBlocks.findIndex(
+        (block) => block.dataset.testid === "watch-home-hero",
+      )
+      expect(heroIndex).toBeGreaterThanOrEqual(0)
+      expect(renderedBlocks[heroIndex + 1]).toBe(rails[0])
     },
   )
 
@@ -616,5 +625,149 @@ describe("WatchHomeExperiencePage", () => {
         .querySelector('[data-items-source="dynamicCollections"]')
         ?.getAttribute("data-excluded-slug-count"),
     ).toBe("200")
+  })
+  it("hoists a leading authored hero block above the body zone that covers it", async () => {
+    // This is the production /watch shape: the hero arrives as an authored
+    // block, not through the fallback carousel branch. Rendered inline it
+    // lands INSIDE the body zone, which scrolls with it and never covers it.
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[
+            makeBlock("WatchHomeHeroBlock", "hero"),
+            makeBlock("MediaCollectionBlock", "collection"),
+          ]}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const hero = container.querySelector('[data-testid="watch-home-hero"]')
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    )
+    expect(hero).not.toBeNull()
+    expect(bodyZone).not.toBeNull()
+    expect(bodyZone?.contains(hero as Node)).toBe(false)
+    expect(hero?.nextElementSibling).toBe(bodyZone)
+    // Exactly one hero: hoisting must not leave the inline copy behind.
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-hero"]'),
+    ).toHaveLength(1)
+    expect(
+      bodyZone?.querySelector('[data-block-marker="MediaCollectionBlock"]'),
+    ).not.toBeNull()
+  })
+
+  it("does not pin a mid-page authored hero block", async () => {
+    // It renders INSIDE the body zone. Pinned, it would stick at the viewport
+    // top under the very content its coverage check measures against — which
+    // reads as 100% covered, so its video would pause and never resume.
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[
+            makeBlock("MediaCollectionBlock", "collection"),
+            makeBlock("WatchHomeHeroBlock", "hero"),
+          ]}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-hero"]')
+        ?.getAttribute("data-pinned"),
+    ).toBe("false")
+  })
+
+  it("pins a hoisted leading authored hero block", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[
+            makeBlock("WatchHomeHeroBlock", "hero"),
+            makeBlock("MediaCollectionBlock", "collection"),
+          ]}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-hero"]')
+        ?.getAttribute("data-pinned"),
+    ).toBe("true")
+  })
+
+  it("leaves a mid-page authored hero block in place", async () => {
+    // Pinning a hero that starts halfway down the page has no meaning, so a
+    // non-leading hero keeps its authored position inside the body zone.
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[
+            makeBlock("MediaCollectionBlock", "collection"),
+            makeBlock("WatchHomeHeroBlock", "hero"),
+          ]}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const hero = container.querySelector('[data-testid="watch-home-hero"]')
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    )
+    expect(bodyZone?.contains(hero as Node)).toBe(true)
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-hero"]'),
+    ).toHaveLength(1)
+  })
+
+  // The production /watch route renders this page, not WatchHomePage, so the
+  // hero's full-bleed media needs its own guard here: an `overflow-x-clip`
+  // re-added to the 1920px column snaps the intro video back onto the rail.
+  // The carousel itself is mocked in this suite, so this asserts the column
+  // around it; WatchHomePage.test.tsx pins the media frame's own classes.
+  it("leaves the content column unclipped so the hero media can bleed", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[]}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const hero = container.querySelector(
+      '[data-testid="watch-home-hero"]',
+    ) as HTMLElement
+    const clippingAncestors: string[] = []
+    for (
+      let node = hero.parentElement;
+      node && node !== container;
+      node = node.parentElement
+    ) {
+      if (/overflow-(hidden|x-clip|x-hidden)/.test(node.className)) {
+        clippingAncestors.push(node.className)
+      }
+    }
+    expect(clippingAncestors).toEqual([
+      // <main> keeps its clip so the 100vw span never adds page scroll.
+      // Clip, not hidden: hidden would make <main> a scroll container and
+      // break the sticky hero.
+      "min-h-screen overflow-x-clip bg-black text-white",
+    ])
+    expect((hero.parentElement as HTMLElement).className).toContain(
+      "max-w-[1920px]",
+    )
   })
 })

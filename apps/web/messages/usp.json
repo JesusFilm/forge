@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ch'ab'äl rech audio",
     "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
     "watchSelectedVersion": "Tawila' ri ruwäch acha'on"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cha'oj rech cookie",
+    "bannerTitle": "Acha'oj rech awichinem",
+    "bannerDescription": "Ri cookies k'atzinel kakichajij Watch chi jikon chuqa' kusachaj. We atz'ib'alik, jun cookie cha'onel nab'ey wachib'al yatikïr yerunataj ri awajowab'al pa taq solik richin naya' junam taq ilonik. Ri pixa'oj pa ruxe'el wakami k'o na, pune jampa'.",
+    "acceptAll": "K'ul ronojel",
+    "essentialOnly": "Xa xe ri k'atzinel",
+    "manageChoices": "Tichajin ri cha'oj",
+    "savingChoice": "Tajin niyak ri cha'oj rech cookie",
+    "settings": "Taq nuk'ulem rech cookie",
+    "settingsDescription": "Tacha' we Watch nitïr nunataj ri awajowab'al rech pixa'oj pa taq solik. Yatikïr najalwachij re' xab'achike q'ij.",
+    "essentialCookies": "Cookies k'atzinel",
+    "essentialDescription": "Jikonem, tzijob'äl, taq acha'oj rech awichinem, chuqa' rutzijol ruto'ik k'utunem rech pixa'oj.",
+    "alwaysActive": "Nojel mul k'o",
+    "personalization": "Junamil",
+    "personalizationDescription": "Yerunataj ri awajowab'al pa taq solik. We man natzij ta re', ri pixa'oj pa ruxe'el k'o na.",
+    "erasurePending": "Ri yujul rech profil k'a tajin noyob'ëx. Ri pixa'oj pa ruxe'el xkitzij chik.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Tiyak ri taq cha'oj",
+    "saving": "Tajin niyak…",
+    "loadError": "Man xitikïr ta xqasik'ij ri acha'oj. K'a yatikïr na natcha' pan ichin.",
+    "grantError": "Man xitikïr ta xtzij ri personalization. Xa xe ri k'atzinel e k'o.",
+    "saveError": "Man xitikïr ta xyak ri acha'oj. Tatojtob'ej chik."
   }
 }

@@ -222,6 +222,54 @@ describe("searchWatchDirect", () => {
     })
   })
 
+  it("maps a CONTAINER availability to a browsable container result", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            watchSearch: {
+              results: [
+                {
+                  type: "VIDEO",
+                  id: "video-easter",
+                  slug: "easter",
+                  title: "Easter",
+                  label: "COLLECTION",
+                  childCount: 29,
+                  playbackId: null,
+                  durationSeconds: null,
+                  languageSlug: null,
+                  availability: {
+                    kind: "CONTAINER",
+                    languageSlug: "english",
+                    languageEnglishName: "English",
+                  },
+                  action: { hrefLanguageSlug: "english" },
+                },
+              ],
+              hasMore: false,
+              query: "Easter",
+              searchMode: "watch-search",
+              latencyMs: 8,
+              nextOffset: 0,
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    const result = await searchWatchDirect({ query: "Easter" })
+
+    expect(result.results[0]).toMatchObject({
+      slug: "easter",
+      availabilityKind: "container",
+      languageSlug: "english",
+      playbackId: null,
+      childCount: 29,
+    })
+  })
+
   it("preserves a GraphQL-body 429 as a rate-limited search error", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(

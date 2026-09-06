@@ -340,6 +340,42 @@ enum WatchSearchCandidateLeaseKind {
   EVALUATION @map("evaluation")
 }
 
+/// Execution mode is persisted with each Watch-route monitoring run so a
+/// diagnostic dry run can never be mistaken for an alert-producing run.
+enum WatchRouteAlertAutomationMode {
+  OFF     @map("off")
+  DRY_RUN @map("dry_run")
+  LIVE    @map("live")
+}
+
+enum WatchRouteAlertRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum WatchRouteAlertCountKind {
+  EVENT_COUNT @map("event_count")
+  PAGE_VIEWS  @map("page_views")
+}
+
+enum WatchRouteAlertVerdict {
+  SUPPORTED_ROUTE_FAILURE @map("supported_route_failure")
+  PLAUSIBLE_MISSING_ROUTE @map("plausible_missing_route")
+}
+
+enum WatchRouteAlertSeverity {
+  CRITICAL @map("critical")
+  HIGH     @map("high")
+  MEDIUM   @map("medium")
+}
+
+enum WatchRouteAlertLifecycle {
+  OPEN      @map("open")
+  RECOVERED @map("recovered")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -639,7 +675,9 @@ model WatchSearchCandidateGeneration {
   id                           String                              @id @db.VarChar(128)
   state                        WatchSearchCandidateGenerationState @default(BUILDING)
   version                      Int                                 @default(0)
-  applicationRevision          String                              @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                              @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                              @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                              @map("transcript_chunking_version") @db.VarChar(128)
   sourceEpoch                  String                              @map("source_epoch") @db.VarChar(128)
   sourceDigests                Json                                @map("source_digests")
   catalogCollection            String                              @map("catalog_collection") @db.VarChar(255)
@@ -669,6 +707,7 @@ model WatchSearchCandidateGeneration {
 
   @@index([state, createdAt])
   @@index([transcriptCollection, transcriptProjectionRevision])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion])
   @@map("watch_search_candidate_generation")
 }
 
@@ -691,7 +730,9 @@ model WatchSearchCandidateQualification {
   generationId                 String                                  @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration          @relation(fields: [generationId], references: [id], onDelete: Restrict)
   status                       WatchSearchCandidateQualificationStatus
-  applicationRevision          String                                  @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                                  @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                                  @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                                  @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                                  @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                                  @map("transcript_projection_revision")
   qrelsRevision                String                                  @map("qrels_revision") @db.VarChar(128)
@@ -711,7 +752,9 @@ model WatchSearchCandidateLease {
   holderToken                  String                         @map("holder_token") @db.VarChar(128)
   generationId                 String                         @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
-  applicationRevision          String                         @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                         @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                         @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                         @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                         @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                         @map("transcript_projection_revision")
   currentBindings              Json                           @map("current_bindings")
@@ -721,6 +764,7 @@ model WatchSearchCandidateLease {
 
   @@index([generationId, expiresAt])
   @@index([transcriptCollection, transcriptProjectionRevision, expiresAt])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion, expiresAt])
   @@index([expiresAt])
   @@map("watch_search_candidate_lease")
 }
@@ -1141,6 +1185,137 @@ model SeoLesson {
 }
 
 // -----------------------------------------------------------------------------
+// Watch route alert ledger
+// -----------------------------------------------------------------------------
+
+/// One idempotent property/window collection attempt. Only a hash of the
+/// execution token is stored; generation plus token fence every completion.
+model WatchRouteAlertRun {
+  id                       String                            @id @default(cuid())
+  idempotencyKey           String                            @unique @map("idempotency_key") @db.Char(64)
+  propertyId               String                            @map("property_id") @db.VarChar(191)
+  origin                   String                            @db.VarChar(255)
+  contractVersion          String                            @map("contract_version") @db.VarChar(64)
+  mode                     WatchRouteAlertAutomationMode
+  status                   WatchRouteAlertRunStatus          @default(RUNNING)
+  windowStart              DateTime                          @map("window_start")
+  windowEnd                DateTime                          @map("window_end")
+  manifestVersion          String?                           @map("manifest_version") @db.VarChar(191)
+  report                   Json                              @default("{}")
+  actionableCount          Int                               @default(0) @map("actionable_count")
+  noiseCount               Int                               @default(0) @map("noise_count")
+  executionFenceGeneration Int                               @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash  String?                           @map("execution_claim_token_hash") @db.Char(64)
+  executionClaimExpiresAt  DateTime?                         @map("execution_claim_expires_at")
+  startedAt                DateTime                          @default(now()) @map("started_at")
+  completedAt              DateTime?                         @map("completed_at")
+  detailExpiresAt          DateTime                          @map("detail_expires_at")
+  detailExpiredAt          DateTime?                         @map("detail_expired_at")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  updatedAt                DateTime                          @updatedAt @map("updated_at")
+  observations             WatchRouteAlertDailyObservation[]
+
+  @@index([propertyId, startedAt])
+  @@index([status, executionClaimExpiresAt])
+  @@index([detailExpiresAt, detailExpiredAt])
+  @@map("watch_route_alert_run")
+}
+
+/// Last complete live window for each independently reconciled GA4 property.
+model WatchRouteAlertPropertyProgress {
+  propertyId              String   @id @map("property_id") @db.VarChar(191)
+  lastCompleteWindowStart DateTime @map("last_complete_window_start")
+  lastCompleteWindowEnd   DateTime @map("last_complete_window_end")
+  lastCompleteRunId       String   @map("last_complete_run_id")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([lastCompleteWindowEnd])
+  @@map("watch_route_alert_property_progress")
+}
+
+/// Stable identity for one property plus normalized, query-free Watch path.
+/// Episode rows below carry reopen/recovery history without changing this ID.
+model WatchRouteAlert {
+  id              String                            @id @default(cuid())
+  semanticKey     String                            @unique @map("semantic_key") @db.Char(64)
+  propertyId      String                            @map("property_id") @db.VarChar(191)
+  origin          String                            @db.VarChar(255)
+  normalizedPath  String                            @map("normalized_path") @db.VarChar(1000)
+  lifecycle       WatchRouteAlertLifecycle          @default(OPEN)
+  verdict         WatchRouteAlertVerdict
+  severity        WatchRouteAlertSeverity
+  latestCount     Int                               @default(0) @map("latest_count")
+  countKind       WatchRouteAlertCountKind          @map("count_kind")
+  activeUsers     Int                               @default(0) @map("active_users")
+  occurrenceCount Int                               @default(0) @map("occurrence_count")
+  firstSeenAt     DateTime                          @map("first_seen_at")
+  lastSeenAt      DateTime                          @map("last_seen_at")
+  lastProbedAt    DateTime?                         @map("last_probed_at")
+  lastHttpStatus  Int?                              @map("last_http_status")
+  lastProbeKind   String?                           @map("last_probe_kind") @db.VarChar(32)
+  manifestVersion String                            @map("manifest_version") @db.VarChar(191)
+  latestEvidence  Json                              @default("{}") @map("latest_evidence")
+  latestRunId     String                            @map("latest_run_id")
+  recoveredAt     DateTime?                         @map("recovered_at")
+  createdAt       DateTime                          @default(now()) @map("created_at")
+  updatedAt       DateTime                          @updatedAt @map("updated_at")
+  episodes        WatchRouteAlertEpisode[]
+  observations    WatchRouteAlertDailyObservation[]
+
+  @@unique([propertyId, normalizedPath])
+  @@index([lifecycle, severity, latestCount(sort: Desc), lastSeenAt(sort: Desc), id])
+  @@index([propertyId, lifecycle, severity, lastSeenAt, id])
+  @@index([propertyId, lifecycle, lastProbedAt, id])
+  @@map("watch_route_alert")
+}
+
+/// One open-to-recovered lifecycle. Reappearance appends another episode.
+model WatchRouteAlertEpisode {
+  id               String          @id @default(cuid())
+  alertId          String          @map("alert_id")
+  alert            WatchRouteAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  sequence         Int
+  openedAt         DateTime        @map("opened_at")
+  lastSeenAt       DateTime        @map("last_seen_at")
+  recoveredAt      DateTime?       @map("recovered_at")
+  openedByRunId    String          @map("opened_by_run_id")
+  recoveredByRunId String?         @map("recovered_by_run_id")
+  evidence         Json            @default("{}")
+  detailExpiresAt  DateTime?       @map("detail_expires_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@unique([alertId, sequence])
+  @@index([alertId, recoveredAt])
+  @@index([detailExpiresAt])
+  @@map("watch_route_alert_episode")
+}
+
+/// Idempotent per-run evidence used for history and occurrence accounting.
+model WatchRouteAlertDailyObservation {
+  id          String                   @id @default(cuid())
+  runId       String                   @map("run_id")
+  run         WatchRouteAlertRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alertId     String                   @map("alert_id")
+  alert       WatchRouteAlert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  observedOn  DateTime                 @map("observed_on") @db.Date
+  count       Int
+  countKind   WatchRouteAlertCountKind @map("count_kind")
+  activeUsers Int                      @map("active_users")
+  verdict     WatchRouteAlertVerdict
+  severity    WatchRouteAlertSeverity
+  evidence    Json                     @default("{}")
+  observedAt  DateTime                 @map("observed_at")
+  expiresAt   DateTime                 @map("expires_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  @@unique([runId, alertId])
+  @@index([alertId, observedOn])
+  @@index([expiresAt, id])
+  @@map("watch_route_alert_daily_observation")
+}
+
+// -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------
 
@@ -1383,21 +1558,58 @@ model LanguageFallback {
 /// The raw query text is not stored; `queryHash` is the SHA-256 hash of the
 /// normalized search text plus provider/model/dimension metadata.
 model QueryEmbeddingCache {
-  id         String   @id @default(cuid())
+  id         String                   @id @default(cuid())
+  contractId String                   @map("contract_id") @db.VarChar(191)
+  contract   ContentEmbeddingContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
   provider   String
   model      String
   dimensions Int
-  queryHash  String   @map("query_hash")
+  queryHash  String                   @map("query_hash")
   embedding  Json
-  expiresAt  DateTime @map("expires_at")
-  lastUsedAt DateTime @default(now()) @map("last_used_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  expiresAt  DateTime                 @map("expires_at")
+  lastUsedAt DateTime                 @default(now()) @map("last_used_at")
+  createdAt  DateTime                 @default(now()) @map("created_at")
+  updatedAt  DateTime                 @updatedAt @map("updated_at")
 
-  @@unique([provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@unique([contractId, provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@index([contractId, expiresAt], map: "query_embedding_cache_contract_expiry_idx")
   @@index([expiresAt])
   @@index([lastUsedAt])
   @@map("query_embedding_cache")
+}
+
+/// Immutable compatibility authority for current content embeddings. The
+/// current row declares the exact query-time and stored-vector tuples that are
+/// permitted to interoperate.
+model ContentEmbeddingContract {
+  id                      String   @id @db.VarChar(191)
+  queryProvider           String   @map("query_provider") @db.VarChar(64)
+  queryModel              String   @map("query_model") @db.VarChar(191)
+  queryNativeDimensions   Int      @map("query_native_dimensions")
+  queryDimensions         Int      @map("query_dimensions")
+  queryTransformVersion   String?  @map("query_transform_version") @db.VarChar(191)
+  storageProvider         String   @map("storage_provider") @db.VarChar(64)
+  storageModel            String   @map("storage_model") @db.VarChar(191)
+  storageNativeDimensions Int      @map("storage_native_dimensions")
+  storageDimensions       Int      @map("storage_dimensions")
+  storageTransformVersion String?  @map("storage_transform_version") @db.VarChar(191)
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  queryEmbeddingCaches QueryEmbeddingCache[]
+  pointers             ContentEmbeddingContractPointer[]
+
+  @@map("content_embedding_contract")
+}
+
+/// Singleton mutable pointer for the current contract. The registry rows are
+/// immutable; changing current serving updates only this pointer.
+model ContentEmbeddingContractPointer {
+  id               String                   @id @db.VarChar(64)
+  activeContractId String                   @map("active_contract_id") @db.VarChar(191)
+  activeContract   ContentEmbeddingContract @relation(fields: [activeContractId], references: [id], onDelete: Restrict)
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  @@map("content_embedding_contract_pointer")
 }
 
 /// A localized display name for a language. Synced from Core.
@@ -2463,4 +2675,1741 @@ model ExperienceChatMessage {
 
   @@index([threadId, createdAt(sort: Asc)], map: "experience_chat_message_thread_created_idx")
   @@map("experience_chat_message")
+}
+
+// -----------------------------------------------------------------------------
+// Production semantic recommendation tracer (feat-368 U1).
+//
+// This is an additive, recommendation-owned ledger. It deliberately has no
+// relation to WatchEvent, WatchSearchEvent, or SearchTrace. Request/session
+// identity is represented only by one-way digests. Request-root descendants
+// inherit the immutable 29-day expiresAt value; migration triggers enforce the
+// cross-row invariant even for raw-SQL writers. Database cascades are the raw
+// erasure boundary, except trace-access audit whose nullable link is SET NULL.
+// -----------------------------------------------------------------------------
+
+enum RecommendationRequestState {
+  PREPARED        @map("prepared")
+  ISSUED          @map("issued")
+  ISSUANCE_FAILED @map("issuance_failed")
+}
+
+enum RecommendationDeliveryResult {
+  SERVED      @map("served")
+  FALLBACK    @map("fallback")
+  EMPTY       @map("empty")
+  UNAVAILABLE @map("unavailable")
+}
+
+enum RecommendationEpisodeState {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  FINALIZED @map("finalized")
+  TIMED_OUT @map("timed_out")
+}
+
+enum RecommendationContentActionClass {
+  HUMAN_ACTION        @map("human_action")
+  MACHINE_DISPOSITION @map("machine_disposition")
+  REPORTED_VALUE      @map("reported_value")
+}
+
+enum RecommendationContentActionKind {
+  SHARE               @map("share")
+  SAVE                @map("save")
+  COURSE_ADD          @map("course_add")
+  CONTINUATION        @map("continuation")
+  MACHINE_DISPOSITION @map("machine_disposition")
+  REPORTED_VALUE      @map("reported_value")
+}
+
+enum RecommendationContentActionActorClass {
+  HUMAN_ANONYMOUS @map("human_anonymous")
+  HUMAN_SIGNED_IN @map("human_signed_in")
+  MACHINE         @map("machine")
+  INTERNAL        @map("internal")
+  TEST            @map("test")
+}
+
+enum RecommendationEligibilitySourceType {
+  PLAYBACK_OUTCOME @map("playback_outcome")
+  CONTENT_ACTION   @map("content_action")
+}
+
+enum RecommendationEligibilityState {
+  ELIGIBLE    @map("eligible")
+  EXCLUDED    @map("excluded")
+  QUARANTINED @map("quarantined")
+}
+
+enum RecommendationRequestPurpose {
+  WATCH                 @map("watch")
+  FIND_TO_SHARE         @map("find_to_share")
+  COURSE_BUILD          @map("course_build")
+  EXPERIENCE_GENERATION @map("experience_generation")
+}
+
+enum RecommendationAuditKind {
+  DELIVERY_SUCCESS    @map("delivery_success")
+  EVIDENCE_SUCCESS    @map("evidence_success")
+  COMMITTED_REJECTION @map("committed_rejection")
+  WRITE_FAILURE       @map("write_failure")
+  REPLAY              @map("replay")
+  LATE                @map("late")
+}
+
+enum RecommendationRetentionRunStatus {
+  RUNNING   @map("running")
+  SUCCEEDED @map("succeeded")
+  FAILED    @map("failed")
+  SKIPPED   @map("skipped")
+}
+
+enum RecommendationControlReadinessState {
+  READY          @map("ready")
+  NOT_READY      @map("not_ready")
+  INCONCLUSIVE   @map("inconclusive")
+  DATA_UNHEALTHY @map("data_unhealthy")
+}
+
+enum RecommendationControlDimensionOutcome {
+  PASS         @map("pass")
+  FAIL         @map("fail")
+  INCONCLUSIVE @map("inconclusive")
+  UNHEALTHY    @map("unhealthy")
+}
+
+enum RecommendationProfileChoice {
+  DURABLE_ALLOWED @map("durable_allowed")
+}
+
+enum RecommendationProfileState {
+  ACTIVE     @map("active")
+  TOMBSTONED @map("tombstoned")
+  EXPIRED    @map("expired")
+}
+
+enum RecommendationConsentTransitionKind {
+  GRANT    @map("grant")
+  RESET    @map("reset")
+  WITHDRAW @map("withdraw")
+  DELETE   @map("delete")
+  EXPIRE   @map("expire")
+}
+
+enum RecommendationConsentChoice {
+  ESSENTIAL_ONLY  @map("essential_only")
+  PERSONALIZATION @map("personalization")
+}
+
+enum RecommendationConsentReceiptState {
+  ACTIVE  @map("active")
+  REVOKED @map("revoked")
+  EXPIRED @map("expired")
+}
+
+enum RecommendationProfileErasureState {
+  NOT_REQUIRED @map("not_required")
+  PENDING      @map("pending")
+  COMPLETED    @map("completed")
+  FAILED       @map("failed")
+}
+
+enum RecommendationProfileProjectionScope {
+  DURABLE @map("durable")
+  SESSION @map("session")
+}
+
+enum RecommendationProfileProjectionState {
+  BUILDING  @map("building")
+  PUBLISHED @map("published")
+  FAILED    @map("failed")
+  FENCED    @map("fenced")
+}
+
+enum RecommendationProfileProjectionRunState {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+  FENCED    @map("fenced")
+}
+
+enum RecommendationProfileInterestKind {
+  DURABLE @map("durable")
+  SESSION @map("session")
+}
+
+enum RecommendationProfileContributionKind {
+  QUALIFIED_OUTCOME   @map("qualified_outcome")
+  SESSION_SELECTION   @map("session_selection")
+  EXPLICIT_PREFERENCE @map("explicit_preference")
+  NEGATIVE_EVIDENCE   @map("negative_evidence")
+}
+
+enum RecommendationShadowEvaluationState {
+  ACTIVE   @map("active")
+  TERMINAL @map("terminal")
+}
+
+enum RecommendationShadowRunState {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  PUBLISHED @map("published")
+  FAILED    @map("failed")
+  FENCED    @map("fenced")
+}
+
+enum RecommendationShadowDecisionKind {
+  PROMOTE_TO_EXPERIMENT @map("promote_to_experiment")
+  REVISE                @map("revise")
+  RETIRE                @map("retire")
+  INCONCLUSIVE          @map("inconclusive")
+}
+
+enum RecommendationExperimentState {
+  ACTIVE @map("active")
+  CLOSED @map("closed")
+}
+
+enum RecommendationExperimentArm {
+  CONTROL    @map("control")
+  CHALLENGER @map("challenger")
+}
+
+enum RecommendationExperimentUnitKind {
+  ANONYMOUS_SESSION @map("anonymous_session")
+  ANONYMOUS_PROFILE @map("anonymous_profile")
+}
+
+enum RecommendationExperimentAssignmentState {
+  ACTIVE @map("active")
+  FENCED @map("fenced")
+}
+
+enum RecommendationExperimentEvaluationState {
+  PASS           @map("pass")
+  FAIL           @map("fail")
+  INCONCLUSIVE   @map("inconclusive")
+  DATA_UNHEALTHY @map("data_unhealthy")
+}
+
+enum RecommendationExperimentEvaluationRunState {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+  FENCED    @map("fenced")
+}
+
+enum RecommendationPromotionStage {
+  CONTROL   @map("control")
+  BOUNDED   @map("bounded")
+  PERMANENT @map("permanent")
+}
+
+enum RecommendationPromotionEventType {
+  APPROVAL_RECORDED       @map("approval_recorded")
+  ACTIVATION_EFFECTIVE    @map("activation_effective")
+  FIRST_ELIGIBLE_EXPOSURE @map("first_eligible_exposure")
+  PERMANENT_CONFIRMED     @map("permanent_confirmed")
+  ROLLBACK_REQUESTED      @map("rollback_requested")
+  ROLLBACK_COMPLETED      @map("rollback_completed")
+  KILL_SWITCH_ENABLED     @map("kill_switch_enabled")
+  KILL_SWITCH_CLEARED     @map("kill_switch_cleared")
+  TRANSITION_FAILED       @map("transition_failed")
+}
+
+enum RecommendationPromotionRunAction {
+  ACTIVATE_BOUNDED   @map("activate_bounded")
+  CONFIRM_PERMANENT  @map("confirm_permanent")
+  AUTOMATIC_ROLLBACK @map("automatic_rollback")
+  MANUAL_ROLLBACK    @map("manual_rollback")
+}
+
+enum RecommendationPromotionRunState {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+  FENCED    @map("fenced")
+}
+
+/// Immutable operator/configuration truth. It does not automatically expire.
+/// U1 seeds exactly semantic-transcript-pgvector-v1; later manifests append.
+model RecommendationStrategyManifest {
+  id              String   @id @db.VarChar(191)
+  strategyVersion String   @map("strategy_version") @db.VarChar(64)
+  contractVersion String   @map("contract_version") @db.VarChar(64)
+  surfaceVersion  String   @map("surface_version") @db.VarChar(64)
+  generator       String   @db.VarChar(32)
+  maxItems        Int      @map("max_items")
+  configuration   Json     @default("{}")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  servingControls              RecommendationServingControl[]
+  requests                     RecommendationRequest[]
+  controlEvaluations           RecommendationControlEvaluation[]
+  shadowEvaluations            RecommendationShadowEvaluation[]
+  controlExperiments           RecommendationExperiment[]                  @relation("RecommendationExperimentControlManifest")
+  challengerExperiments        RecommendationExperiment[]                  @relation("RecommendationExperimentChallengerManifest")
+  experimentExposures          RecommendationExperimentExposure[]          @relation("RecommendationExperimentExposureManifest")
+  promotionApprovals           RecommendationPromotionApproval[]
+  profileProjectionGenerations RecommendationProfileProjectionGeneration[]
+  personalizationDecisions     RecommendationPersonalizationDecision[]
+  activePromotionPointers      RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerActive")
+  fallbackPromotionPointers    RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerFallback")
+
+  @@unique([strategyVersion, contractVersion, surfaceVersion], map: "recommendation_manifest_contract_key")
+  @@map("recommendation_strategy_manifest")
+}
+
+/// Singleton shared kill switch. Disabled on migration so N-1 code ignores the
+/// additive rows and a deploy cannot accidentally activate serving.
+model RecommendationServingControl {
+  id                   String                         @id @db.VarChar(64)
+  enabled              Boolean                        @default(false)
+  manifestId           String                         @map("manifest_id") @db.VarChar(191)
+  manifest             RecommendationStrategyManifest @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  emergencyRevokedKids String[]                       @default([]) @map("emergency_revoked_kids")
+  reasonCode           String                         @default("bootstrap_disabled") @map("reason_code") @db.VarChar(64)
+  version              Int                            @default(1)
+  updatedAt            DateTime                       @updatedAt @map("updated_at")
+
+  @@map("recommendation_serving_control")
+}
+
+/// Raw lifecycle root. sessionDigest is a one-way, ephemeral attribution key;
+/// no cookie value, IP, user id, bearer, or caller-provided kid is stored.
+model RecommendationRequest {
+  id                     String                              @id @default(cuid())
+  contractVersion        String                              @map("contract_version") @db.VarChar(64)
+  surfaceVersion         String                              @map("surface_version") @db.VarChar(64)
+  manifestId             String                              @map("manifest_id") @db.VarChar(191)
+  manifest               RecommendationStrategyManifest      @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  strategyVersion        String                              @map("strategy_version") @db.VarChar(64)
+  classifierVersion      String                              @map("classifier_version") @db.VarChar(64)
+  sessionDigest          String                              @map("session_digest") @db.Char(64)
+  seedMediaId            String                              @map("seed_media_id") @db.VarChar(191)
+  locale                 String                              @db.VarChar(32)
+  expectedItemCount      Int                                 @map("expected_item_count")
+  state                  RecommendationRequestState          @default(PREPARED)
+  result                 RecommendationDeliveryResult
+  fallbackReason         String?                             @map("fallback_reason") @db.VarChar(64)
+  deliveryJti            String?                             @unique(map: "recommendation_request_delivery_jti_key") @map("delivery_jti") @db.VarChar(191)
+  signingKid             String?                             @map("signing_kid") @db.VarChar(64)
+  generation             Int                                 @default(1)
+  retrievalLatencyMs     Int?                                @map("retrieval_latency_ms")
+  responseBytes          Int?                                @map("response_bytes")
+  createdAt              DateTime                            @default(now()) @map("created_at")
+  issuedAt               DateTime?                           @map("issued_at")
+  expiresAt              DateTime                            @map("expires_at")
+  experimentAssignmentId String?                             @map("experiment_assignment_id")
+  experimentAssignment   RecommendationExperimentAssignment? @relation(fields: [experimentAssignmentId], references: [id], onDelete: SetNull)
+  experimentBypassReason String?                             @map("experiment_bypass_reason") @db.VarChar(64)
+
+  items                   RecommendationServedItem[]
+  renderedFacts           RecommendationRenderedFact[]
+  impressions             RecommendationImpression[]
+  selections              RecommendationSelection[]
+  episodes                RecommendationPlaybackEpisode[]
+  playbackFacts           RecommendationPlaybackFact[]
+  outcomes                RecommendationOutcomeRevision[]
+  contentActions          RecommendationContentAction[]
+  audits                  RecommendationEvidenceAudit[]
+  conflicts               RecommendationConflict[]
+  submissionBudgets       RecommendationCapabilitySubmissionBudget[]
+  traceAccessAudits       RecommendationTraceAccessAudit[]
+  candidateRun            RecommendationCandidateRun?
+  shadowRuns              RecommendationShadowRun[]
+  experimentExposures     RecommendationExperimentExposure[]
+  promotionSlateFence     RecommendationPromotionSlateFence?
+  personalizationDecision RecommendationPersonalizationDecision?
+
+  @@index([expiresAt, id], map: "recommendation_request_expiry_idx")
+  @@index([createdAt, id], map: "recommendation_request_created_idx")
+  @@index([sessionDigest, createdAt], map: "recommendation_request_session_created_idx")
+  @@index([state, createdAt], map: "recommendation_request_state_created_idx")
+  @@index([experimentAssignmentId, createdAt], map: "recommendation_request_experiment_assignment_idx")
+  @@map("recommendation_request")
+}
+
+/// Request-owned, bounded execution summary for the permanent candidate seam.
+/// It carries no viewer/session secret and expires exactly with its request.
+model RecommendationCandidateRun {
+  id                         String                @id @default(cuid())
+  requestId                  String                @unique(map: "recommendation_candidate_run_request_id_key") @map("request_id")
+  request                    RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  purpose                    String                @db.VarChar(64)
+  contextVersion             String                @map("context_version") @db.VarChar(64)
+  generatorVersion           String                @map("generator_version") @db.VarChar(64)
+  unionVersion               String                @map("union_version") @db.VarChar(64)
+  eligibilityVersion         String                @map("eligibility_version") @db.VarChar(64)
+  rankerVersion              String                @map("ranker_version") @db.VarChar(64)
+  composerVersion            String                @map("composer_version") @db.VarChar(64)
+  candidateEligibilityParity String                @map("candidate_eligibility_parity") @db.VarChar(16)
+  rankerParity               String                @map("ranker_parity") @db.VarChar(16)
+  baselineDigest             String?               @map("baseline_digest") @db.Char(64)
+  platformDigest             String?               @map("platform_digest") @db.Char(64)
+  nominatedCount             Int                   @map("nominated_count")
+  canonicalizedCount         Int                   @map("canonicalized_count")
+  deduplicatedCount          Int                   @map("deduplicated_count")
+  rejectedCount              Int                   @map("rejected_count")
+  scoredCount                Int                   @map("scored_count")
+  orderedCount               Int                   @map("ordered_count")
+  requestedCount             Int                   @default(6) @map("requested_count")
+  composedCount              Int                   @map("composed_count")
+  shortfallReason            String?               @map("shortfall_reason") @db.VarChar(64)
+  evidenceComplete           Boolean               @map("evidence_complete")
+  fallbackReason             String?               @map("fallback_reason") @db.VarChar(64)
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  expiresAt                  DateTime              @map("expires_at")
+
+  stageEvidence RecommendationCandidateStageEvidence[]
+  shadowRuns    RecommendationShadowRun[]
+
+  @@index([createdAt, id], map: "recommendation_candidate_run_created_idx")
+  @@index([expiresAt, id], map: "recommendation_candidate_run_expiry_idx")
+  @@map("recommendation_candidate_run")
+}
+
+/// Request-owned, privacy-safe record of the lane that actually served. The
+/// projection FK is intentionally detachable so profile erasure cannot delete
+/// or block the non-relinkable delivery audit; raw identity and vectors never
+/// enter this table.
+model RecommendationPersonalizationDecision {
+  requestId                  String                                     @id @map("request_id")
+  request                    RecommendationRequest                      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  effectiveManifestId        String                                     @map("effective_manifest_id") @db.VarChar(191)
+  effectiveManifest          RecommendationStrategyManifest             @relation(fields: [effectiveManifestId], references: [id], onDelete: Restrict)
+  lane                       String                                     @db.VarChar(32)
+  executionMode              String?                                    @map("execution_mode") @db.VarChar(32)
+  reasonCode                 String?                                    @map("reason_code") @db.VarChar(64)
+  projectionGenerationId     String?                                    @map("projection_generation_id")
+  projectionGeneration       RecommendationProfileProjectionGeneration? @relation(fields: [projectionGenerationId], references: [id], onDelete: SetNull)
+  projectionScope            String?                                    @map("projection_scope") @db.VarChar(16)
+  projectionVersion          String?                                    @map("projection_version") @db.VarChar(64)
+  projectionGenerationNumber Int?                                       @map("projection_generation_number")
+  interestCount              Int                                        @default(0) @map("interest_count")
+  sessionIntentPresent       Boolean                                    @default(false) @map("session_intent_present")
+  profileRetrievalLatencyMs  Int?                                       @map("profile_retrieval_latency_ms")
+  createdAt                  DateTime                                   @default(now()) @map("created_at")
+  expiresAt                  DateTime                                   @map("expires_at")
+
+  @@index([lane, createdAt], map: "recommendation_personalization_lane_created_idx")
+  @@index([projectionGenerationId], map: "recommendation_personalization_projection_idx")
+  @@index([expiresAt], map: "recommendation_personalization_expiry_idx")
+  @@map("recommendation_personalization_decision")
+}
+
+/// One bounded, privacy-safe candidate observation at a permanent request
+/// stage. Source evidence is capped by both service code and database checks.
+model RecommendationCandidateStageEvidence {
+  id                 String                     @id @default(cuid())
+  runId              String                     @map("run_id")
+  run                RecommendationCandidateRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stage              String                     @db.VarChar(32)
+  ordinal            Int
+  candidateKey       String                     @map("candidate_key") @db.VarChar(191)
+  targetMediaId      String?                    @map("target_media_id") @db.VarChar(191)
+  sourceGenerator    String?                    @map("source_generator") @db.VarChar(64)
+  sourceRank         Int?                       @map("source_rank")
+  sourceScore        Float?                     @map("source_score")
+  normalizedScore    Float?                     @map("normalized_score")
+  rrfScore           Float?                     @map("rrf_score")
+  deterministicScore Float?                     @map("deterministic_score")
+  finalPosition      Int?                       @map("final_position")
+  reasonCodes        String[]                   @default([]) @map("reason_codes")
+  sourceEvidence     Json                       @default("[]") @map("source_evidence")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  expiresAt          DateTime                   @map("expires_at")
+
+  @@unique([runId, stage, ordinal], map: "recommendation_candidate_stage_ordinal_key")
+  @@index([runId, stage, ordinal], map: "recommendation_candidate_stage_run_stage_idx")
+  @@index([expiresAt, id], map: "recommendation_candidate_stage_expiry_idx")
+  @@map("recommendation_candidate_stage_evidence")
+}
+
+/// Aggregate-only configuration and result for one generic offline shadow
+/// candidate evaluation. It cannot alter serving control, assignment, or a
+/// request's canonical served items. Terminal rows are immutable in SQL.
+model RecommendationShadowEvaluation {
+  id                     String                              @id @default(cuid())
+  manifestId             String                              @map("manifest_id") @db.VarChar(191)
+  manifest               RecommendationStrategyManifest      @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  generatorVersion       String                              @map("generator_version") @db.VarChar(64)
+  samplingVersion        String                              @map("sampling_version") @db.VarChar(64)
+  contextVersion         String                              @map("context_version") @db.VarChar(64)
+  eligibilityVersion     String                              @map("eligibility_version") @db.VarChar(64)
+  retentionPolicyVersion String                              @map("retention_policy_version") @db.VarChar(64)
+  state                  RecommendationShadowEvaluationState @default(ACTIVE)
+  generation             Int                                 @default(1)
+  windowStart            DateTime                            @map("window_start")
+  windowEnd              DateTime                            @map("window_end")
+  requestedSampleSize    Int                                 @map("requested_sample_size")
+  sampledCount           Int                                 @default(0) @map("sampled_count")
+  processedCount         Int                                 @default(0) @map("processed_count")
+  failedCount            Int                                 @default(0) @map("failed_count")
+  fencedCount            Int                                 @default(0) @map("fenced_count")
+  coverage               Float?
+  overlap                Float?
+  novelty                Float?
+  diversity              Float?
+  rejection              Float?
+  latencyP95Ms           Int?                                @map("latency_p95_ms")
+  cohortQuality          Float?                              @map("cohort_quality")
+  inputFreshnessP95Ms    Int?                                @map("input_freshness_p95_ms")
+  inputWatermark         DateTime?                           @map("input_watermark")
+  inputDigest            String?                             @map("input_digest") @db.Char(64)
+  purpose                String                              @default("shadow_candidate_evaluation") @db.VarChar(64)
+  identityClass          String                              @default("aggregate_human_no_identity") @map("identity_class") @db.VarChar(64)
+  accessClass            String                              @default("recommendation_aggregate_readers") @map("access_class") @db.VarChar(64)
+  deletionBehavior       String                              @default("request_cascade_and_scheduled_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior       String                              @default("live_semantic_untouched") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays          Int                                 @default(365) @map("retention_days")
+  createdAt              DateTime                            @default(now()) @map("created_at")
+  updatedAt              DateTime                            @updatedAt @map("updated_at")
+  expiresAt              DateTime                            @map("expires_at")
+
+  runs     RecommendationShadowRun[]
+  decision RecommendationShadowDecision?
+
+  @@index([state, createdAt], map: "recommendation_shadow_evaluation_state_created_idx")
+  @@index([manifestId, createdAt], map: "recommendation_shadow_evaluation_manifest_created_idx")
+  @@index([expiresAt], map: "recommendation_shadow_evaluation_expiry_idx")
+  @@map("recommendation_shadow_evaluation")
+}
+
+/// Request-owned sampled context and privacy-safe comparison. Projection
+/// references are cleared and the run fenced when a profile generation is
+/// reset, withdrawn, deleted, or expires.
+model RecommendationShadowRun {
+  id                       String                         @id @default(cuid())
+  evaluationId             String                         @map("evaluation_id")
+  evaluation               RecommendationShadowEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  requestId                String                         @map("request_id")
+  request                  RecommendationRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  liveCandidateRunId       String?                        @map("live_candidate_run_id")
+  liveCandidateRun         RecommendationCandidateRun?    @relation(fields: [liveCandidateRunId], references: [id], onDelete: Cascade)
+  projectionProfileId      String?                        @map("projection_profile_id")
+  projectionProfile        RecommendationProfile?         @relation(fields: [projectionProfileId], references: [id], onDelete: Cascade)
+  privacyGeneration        Int?                           @map("privacy_generation")
+  sampleOrdinal            Int                            @map("sample_ordinal")
+  samplingDigest           String                         @map("sampling_digest") @db.Char(64)
+  contextProjectionRef     String?                        @map("context_projection_ref") @db.VarChar(191)
+  contextProjectionVersion String                         @map("context_projection_version") @db.VarChar(64)
+  contextProjectionDigest  String?                        @map("context_projection_digest") @db.Char(64)
+  eligibilityVersion       String                         @map("eligibility_version") @db.VarChar(64)
+  retentionPolicyVersion   String                         @map("retention_policy_version") @db.VarChar(64)
+  state                    RecommendationShadowRunState   @default(PENDING)
+  generation               Int                            @default(1)
+  claimId                  String?                        @map("claim_id") @db.Uuid
+  claimedAt                DateTime?                      @map("claimed_at")
+  heartbeatAt              DateTime?                      @map("heartbeat_at")
+  finishedAt               DateTime?                      @map("finished_at")
+  nominatedCount           Int?                           @map("nominated_count")
+  eligibleCount            Int?                           @map("eligible_count")
+  rejectedCount            Int?                           @map("rejected_count")
+  liveSlateDigest          String?                        @map("live_slate_digest") @db.Char(64)
+  shadowSlateDigest        String?                        @map("shadow_slate_digest") @db.Char(64)
+  liveSlateUnchanged       Boolean?                       @map("live_slate_unchanged")
+  coverage                 Float?
+  overlap                  Float?
+  novelty                  Float?
+  diversity                Float?
+  rejection                Float?
+  latencyMs                Int?                           @map("latency_ms")
+  cohortQuality            Float?                         @map("cohort_quality")
+  inputCapturedAt          DateTime                       @map("input_captured_at")
+  inputFreshnessMs         Int?                           @map("input_freshness_ms")
+  failureReason            String?                        @map("failure_reason") @db.VarChar(64)
+  createdAt                DateTime                       @default(now()) @map("created_at")
+  expiresAt                DateTime                       @map("expires_at")
+
+  nominations RecommendationShadowNomination[]
+
+  @@unique([evaluationId, requestId], map: "recommendation_shadow_run_evaluation_request_key")
+  @@index([evaluationId, state, sampleOrdinal], map: "recommendation_shadow_run_evaluation_state_idx")
+  @@index([projectionProfileId, privacyGeneration], map: "recommendation_shadow_run_profile_generation_idx")
+  @@index([heartbeatAt], map: "recommendation_shadow_run_heartbeat_idx")
+  @@index([expiresAt], map: "recommendation_shadow_run_expiry_idx")
+  @@map("recommendation_shadow_run")
+}
+
+/// Bounded, sanitized counterfactual nomination. It contains content and
+/// generator provenance only—never a raw query, profile vector, or cohort list.
+model RecommendationShadowNomination {
+  id               String                  @id @default(cuid())
+  runId            String                  @map("run_id")
+  run              RecommendationShadowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  ordinal          Int
+  candidateKey     String                  @map("candidate_key") @db.VarChar(191)
+  targetMediaId    String                  @map("target_media_id") @db.VarChar(191)
+  generator        String                  @db.VarChar(64)
+  generatorVersion String                  @map("generator_version") @db.VarChar(64)
+  sourceRank       Int                     @map("source_rank")
+  sourceScore      Float                   @map("source_score")
+  eligible         Boolean
+  reasonCodes      String[]                @default([]) @map("reason_codes")
+  shadowPosition   Int?                    @map("shadow_position")
+  overlapsLive     Boolean                 @map("overlaps_live")
+  provenance       Json                    @default("{}")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  expiresAt        DateTime                @map("expires_at")
+
+  @@unique([runId, ordinal], map: "recommendation_shadow_nomination_run_ordinal_key")
+  @@index([runId, shadowPosition], map: "recommendation_shadow_nomination_run_position_idx")
+  @@index([expiresAt], map: "recommendation_shadow_nomination_expiry_idx")
+  @@map("recommendation_shadow_nomination")
+}
+
+/// One immutable terminal decision per evaluation. It authorizes only the
+/// later experiment-design step and never changes live traffic by itself.
+model RecommendationShadowDecision {
+  id                    String                           @id @default(cuid())
+  evaluationId          String                           @unique(map: "recommendation_shadow_decision_evaluation_key") @map("evaluation_id")
+  evaluation            RecommendationShadowEvaluation   @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  decision              RecommendationShadowDecisionKind
+  reasonCode            String                           @map("reason_code") @db.VarChar(64)
+  reevaluationCondition String                           @map("reevaluation_condition") @db.VarChar(512)
+  inputDigest           String                           @map("input_digest") @db.Char(64)
+  decidedAt             DateTime                         @default(now()) @map("decided_at")
+  expiresAt             DateTime                         @map("expires_at")
+
+  @@index([decision, decidedAt], map: "recommendation_shadow_decision_kind_idx")
+  @@index([expiresAt], map: "recommendation_shadow_decision_expiry_idx")
+  @@map("recommendation_shadow_decision")
+}
+
+/// Immutable experiment definition. U17 activates only a behaviorally
+/// equivalent semantic A/A challenger, so assignment cannot change item order.
+model RecommendationExperiment {
+  id                      String                         @id @db.VarChar(191)
+  experimentVersion       String                         @map("experiment_version") @db.VarChar(64)
+  surfaceVersion          String                         @map("surface_version") @db.VarChar(64)
+  controlManifestId       String                         @map("control_manifest_id") @db.VarChar(191)
+  controlManifest         RecommendationStrategyManifest @relation("RecommendationExperimentControlManifest", fields: [controlManifestId], references: [id], onDelete: Restrict)
+  challengerManifestId    String                         @map("challenger_manifest_id") @db.VarChar(191)
+  challengerManifest      RecommendationStrategyManifest @relation("RecommendationExperimentChallengerManifest", fields: [challengerManifestId], references: [id], onDelete: Restrict)
+  assignmentPolicyVersion String                         @map("assignment_policy_version") @db.VarChar(64)
+  outcomePolicyVersion    String                         @map("outcome_policy_version") @db.VarChar(64)
+  integrityPolicyVersion  String                         @map("integrity_policy_version") @db.VarChar(64)
+  evaluationPolicyVersion String                         @map("evaluation_policy_version") @db.VarChar(64)
+  configurationDigest     String                         @map("configuration_digest") @db.Char(64)
+  challengerProbability   Float                          @map("challenger_probability")
+  state                   RecommendationExperimentState  @default(ACTIVE)
+  generation              Int                            @default(1)
+  startsAt                DateTime                       @map("starts_at")
+  endsAt                  DateTime                       @map("ends_at")
+  purpose                 String                         @default("semantic_aa_experiment") @db.VarChar(64)
+  identityClass           String                         @default("pseudonymous_assignment_digest") @map("identity_class") @db.VarChar(64)
+  accessClass             String                         @default("recommendation_experiment_readers") @map("access_class") @db.VarChar(64)
+  deletionBehavior        String                         @default("fence_assignment_and_rebuild_evaluation") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior        String                         @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays           Int                            @default(365) @map("retention_days")
+  createdAt               DateTime                       @default(now()) @map("created_at")
+  expiresAt               DateTime                       @map("expires_at")
+
+  assignments    RecommendationExperimentAssignment[]
+  evaluationRuns RecommendationExperimentEvaluationRun[]
+  evaluations    RecommendationExperimentEvaluation[]
+
+  @@unique([experimentVersion, surfaceVersion], map: "recommendation_experiment_version_surface_key")
+  @@index([state, surfaceVersion, startsAt, endsAt], map: "recommendation_experiment_active_window_idx")
+  @@index([expiresAt], map: "recommendation_experiment_expiry_idx")
+  @@map("recommendation_experiment")
+}
+
+/// Sticky pseudonymous assignment. The optional profile link exists only so a
+/// reset, withdrawal, deletion, or expiry can fence its privacy generation.
+model RecommendationExperimentAssignment {
+  id                    String                                  @id @default(cuid())
+  experimentId          String                                  @map("experiment_id") @db.VarChar(191)
+  experiment            RecommendationExperiment                @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  unitKind              RecommendationExperimentUnitKind        @map("unit_kind")
+  unitDigest            String                                  @map("unit_digest") @db.Char(64)
+  profileId             String?                                 @map("profile_id")
+  profile               RecommendationProfile?                  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration     Int?                                    @map("privacy_generation")
+  arm                   RecommendationExperimentArm
+  assignmentProbability Float                                   @map("assignment_probability")
+  configurationDigest   String                                  @map("configuration_digest") @db.Char(64)
+  state                 RecommendationExperimentAssignmentState @default(ACTIVE)
+  generation            Int                                     @default(1)
+  assignedAt            DateTime                                @default(now()) @map("assigned_at")
+  fencedAt              DateTime?                               @map("fenced_at")
+  fenceReason           String?                                 @map("fence_reason") @db.VarChar(64)
+  expiresAt             DateTime                                @map("expires_at")
+
+  requests  RecommendationRequest[]
+  exposures RecommendationExperimentExposure[]
+
+  @@unique([experimentId, unitDigest, generation], map: "recommendation_experiment_assignment_unit_generation_key")
+  @@index([profileId, privacyGeneration, state], map: "recommendation_experiment_assignment_profile_generation_idx")
+  @@index([experimentId, arm, assignedAt], map: "recommendation_experiment_assignment_arm_idx")
+  @@index([expiresAt], map: "recommendation_experiment_assignment_expiry_idx")
+  @@map("recommendation_experiment_assignment")
+}
+
+/// Actual exposure is appended only for an accepted eligible impression. Its
+/// unique item key makes browser retry idempotent and request expiry owns it.
+model RecommendationExperimentExposure {
+  id                    String                             @id @default(cuid())
+  assignmentId          String                             @map("assignment_id")
+  assignment            RecommendationExperimentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requestId             String                             @map("request_id")
+  request               RecommendationRequest              @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                String                             @unique(map: "recommendation_experiment_exposure_item_key") @map("item_id")
+  item                  RecommendationServedItem           @relation(fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_experiment_exposure_item_request_fkey")
+  eventId               String                             @map("event_id") @db.VarChar(191)
+  arm                   RecommendationExperimentArm
+  effectiveManifestId   String                             @map("effective_manifest_id") @db.VarChar(191)
+  effectiveManifest     RecommendationStrategyManifest     @relation("RecommendationExperimentExposureManifest", fields: [effectiveManifestId], references: [id], onDelete: Restrict)
+  assignmentProbability Float                              @map("assignment_probability")
+  payloadDigest         String                             @map("payload_digest") @db.Char(64)
+  occurredAt            DateTime                           @map("occurred_at")
+  receivedAt            DateTime                           @map("received_at")
+  expiresAt             DateTime                           @map("expires_at")
+
+  @@unique([requestId, itemId], map: "recommendation_experiment_exposure_item_request_key")
+  @@index([assignmentId, occurredAt], map: "recommendation_experiment_exposure_assignment_idx")
+  @@index([requestId, occurredAt], map: "recommendation_experiment_exposure_request_idx")
+  @@index([expiresAt], map: "recommendation_experiment_exposure_expiry_idx")
+  @@map("recommendation_experiment_exposure")
+}
+
+/// Business-ledger truth created before workflow dispatch. A claim is valid
+/// only for its experiment generation and is heartbeat/fencing observable.
+model RecommendationExperimentEvaluationRun {
+  id            String                                     @id @default(cuid())
+  experimentId  String                                     @map("experiment_id") @db.VarChar(191)
+  experiment    RecommendationExperiment                   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  windowStart   DateTime                                   @map("window_start")
+  windowEnd     DateTime                                   @map("window_end")
+  generation    Int                                        @default(1)
+  state         RecommendationExperimentEvaluationRunState @default(PENDING)
+  claimId       String?                                    @map("claim_id") @db.Uuid
+  claimedAt     DateTime?                                  @map("claimed_at")
+  heartbeatAt   DateTime?                                  @map("heartbeat_at")
+  workflowRunId String?                                    @map("workflow_run_id") @db.VarChar(191)
+  failureReason String?                                    @map("failure_reason") @db.VarChar(64)
+  createdAt     DateTime                                   @default(now()) @map("created_at")
+  completedAt   DateTime?                                  @map("completed_at")
+  expiresAt     DateTime                                   @map("expires_at")
+
+  evaluation RecommendationExperimentEvaluation?
+
+  @@unique([experimentId, windowStart, windowEnd, generation], map: "recommendation_experiment_evaluation_run_window_generation_key")
+  @@index([state, heartbeatAt], map: "recommendation_experiment_evaluation_run_claim_idx")
+  @@index([expiresAt], map: "recommendation_experiment_evaluation_run_expiry_idx")
+  @@map("recommendation_experiment_evaluation_run")
+}
+
+/// Immutable multi-outcome evaluation. Late evidence appends a new revision
+/// and records an explicit supersedes edge rather than mutating prior truth.
+model RecommendationExperimentEvaluation {
+  id                      String                                  @id @default(cuid())
+  experimentId            String                                  @map("experiment_id") @db.VarChar(191)
+  experiment              RecommendationExperiment                @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  runId                   String                                  @unique(map: "recommendation_experiment_evaluation_run_key") @map("run_id")
+  run                     RecommendationExperimentEvaluationRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  revision                Int
+  supersedesId            String?                                 @unique(map: "recommendation_experiment_evaluation_supersedes_key") @map("supersedes_id")
+  supersedes              RecommendationExperimentEvaluation?     @relation("RecommendationExperimentEvaluationSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy            RecommendationExperimentEvaluation?     @relation("RecommendationExperimentEvaluationSupersedes")
+  state                   RecommendationExperimentEvaluationState
+  windowStart             DateTime                                @map("window_start")
+  windowEnd               DateTime                                @map("window_end")
+  inputCapturedAt         DateTime                                @map("input_captured_at")
+  assignmentWatermark     DateTime?                               @map("assignment_watermark")
+  exposureWatermark       DateTime?                               @map("exposure_watermark")
+  outcomeWatermark        DateTime?                               @map("outcome_watermark")
+  missionWatermark        DateTime?                               @map("mission_watermark")
+  eligibilityWatermark    DateTime?                               @map("eligibility_watermark")
+  assignmentPolicyVersion String                                  @map("assignment_policy_version") @db.VarChar(64)
+  outcomePolicyVersion    String                                  @map("outcome_policy_version") @db.VarChar(64)
+  integrityPolicyVersion  String                                  @map("integrity_policy_version") @db.VarChar(64)
+  evaluationPolicyVersion String                                  @map("evaluation_policy_version") @db.VarChar(64)
+  inputDigest             String                                  @map("input_digest") @db.Char(64)
+  counts                  Json
+  intentToTreat           Json                                    @map("intent_to_treat")
+  exposedOnly             Json                                    @map("exposed_only")
+  uncertainty             Json
+  guardrails              Json
+  sampleRatio             Json                                    @map("sample_ratio")
+  reasonCodes             String[]                                @default([]) @map("reason_codes")
+  purpose                 String                                  @default("multi_outcome_experiment_evaluation") @db.VarChar(64)
+  identityClass           String                                  @default("aggregate_human_no_identity") @map("identity_class") @db.VarChar(64)
+  accessClass             String                                  @default("recommendation_experiment_readers") @map("access_class") @db.VarChar(64)
+  deletionBehavior        String                                  @default("supersede_after_privacy_rebuild") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior        String                                  @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays           Int                                     @default(365) @map("retention_days")
+  evaluatedAt             DateTime                                @default(now()) @map("evaluated_at")
+  expiresAt               DateTime                                @map("expires_at")
+
+  promotionRuns RecommendationPromotionRun[]
+
+  @@unique([experimentId, windowStart, windowEnd, revision], map: "recommendation_experiment_evaluation_revision_key")
+  @@unique([experimentId, windowStart, windowEnd, inputDigest], map: "recommendation_experiment_evaluation_input_key")
+  @@index([experimentId, evaluatedAt(sort: Desc)], map: "recommendation_experiment_evaluation_latest_idx")
+  @@index([state, evaluatedAt], map: "recommendation_experiment_evaluation_state_idx")
+  @@index([expiresAt], map: "recommendation_experiment_evaluation_expiry_idx")
+  @@map("recommendation_experiment_evaluation")
+}
+
+/// Immutable, exact manifest authorization. Automation can consume this row
+/// only at or below its bounded ceiling; it cannot create or widen approval.
+model RecommendationPromotionApproval {
+  id                    String                         @id @default(cuid())
+  manifestId            String                         @map("manifest_id") @db.VarChar(191)
+  manifest              RecommendationStrategyManifest @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  manifestDigest        String                         @map("manifest_digest") @db.Char(64)
+  maxExposureBps        Int                            @map("max_exposure_bps")
+  approvedById          String                         @map("approved_by_id") @db.VarChar(191)
+  approvalPolicyVersion String                         @default("recommendation-promotion-approval-v1") @map("approval_policy_version") @db.VarChar(64)
+  purpose               String                         @default("bounded_strategy_promotion") @db.VarChar(64)
+  identityClass         String                         @default("admin_operator_identity") @map("identity_class") @db.VarChar(64)
+  accessClass           String                         @default("recommendation_promotion_operators") @map("access_class") @db.VarChar(64)
+  ingestionHealth       String                         @default("not_applicable_immutable_config") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior      String                         @default("immutable_until_audit_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior      String                         @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays         Int                            @default(2555) @map("retention_days")
+  approvedAt            DateTime                       @default(now()) @map("approved_at")
+  expiresAt             DateTime                       @map("expires_at")
+
+  runs     RecommendationPromotionRun[]
+  pointers RecommendationPromotionPointer[]
+
+  @@unique([manifestId, manifestDigest, maxExposureBps], map: "recommendation_promotion_approval_exact_key")
+  @@index([manifestId, approvedAt(sort: Desc)], map: "recommendation_promotion_approval_manifest_idx")
+  @@index([expiresAt], map: "recommendation_promotion_approval_expiry_idx")
+  @@map("recommendation_promotion_approval")
+}
+
+/// Compare-and-swap online promotion authority. The separate serving control
+/// remains the coarse recommendation-surface switch and semantic fallback.
+model RecommendationPromotionPointer {
+  id                      String                           @id @db.VarChar(64)
+  activeManifestId        String                           @map("active_manifest_id") @db.VarChar(191)
+  activeManifest          RecommendationStrategyManifest   @relation("RecommendationPromotionPointerActive", fields: [activeManifestId], references: [id], onDelete: Restrict)
+  lastKnownGoodManifestId String                           @map("last_known_good_manifest_id") @db.VarChar(191)
+  lastKnownGoodManifest   RecommendationStrategyManifest   @relation("RecommendationPromotionPointerFallback", fields: [lastKnownGoodManifestId], references: [id], onDelete: Restrict)
+  activeApprovalId        String?                          @map("active_approval_id")
+  activeApproval          RecommendationPromotionApproval? @relation(fields: [activeApprovalId], references: [id], onDelete: Restrict)
+  stage                   RecommendationPromotionStage     @default(CONTROL)
+  exposureCeilingBps      Int                              @default(0) @map("exposure_ceiling_bps")
+  generation              Int                              @default(1)
+  killSwitchEnabled       Boolean                          @default(false) @map("kill_switch_enabled")
+  reasonCode              String                           @default("semantic_control") @map("reason_code") @db.VarChar(64)
+  purpose                 String                           @default("online_promotion_authority") @db.VarChar(64)
+  identityClass           String                           @default("no_viewer_identity") @map("identity_class") @db.VarChar(64)
+  accessClass             String                           @default("recommendation_promotion_readers") @map("access_class") @db.VarChar(64)
+  ingestionHealth         String                           @default("not_applicable_online_pointer") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior        String                           @default("singleton_never_deleted") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior        String                           @default("last_known_good_manifest") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays           Int                              @default(0) @map("retention_days")
+  updatedAt               DateTime                         @updatedAt @map("updated_at")
+
+  @@map("recommendation_promotion_pointer")
+}
+
+/// Append-only promotion and rollback business truth. Operator identifiers
+/// are Admin identities, never viewer or profile identifiers.
+model RecommendationPromotionEvent {
+  id                 String                           @id @default(cuid())
+  dedupeKey          String                           @unique(map: "recommendation_promotion_event_dedupe_key") @map("dedupe_key") @db.VarChar(191)
+  eventType          RecommendationPromotionEventType @map("event_type")
+  runId              String?                          @map("run_id")
+  approvalId         String?                          @map("approval_id")
+  evaluationId       String?                          @map("evaluation_id")
+  fromManifestId     String?                          @map("from_manifest_id") @db.VarChar(191)
+  toManifestId       String                           @map("to_manifest_id") @db.VarChar(191)
+  fromStage          RecommendationPromotionStage?    @map("from_stage")
+  toStage            RecommendationPromotionStage     @map("to_stage")
+  pointerGeneration  Int                              @map("pointer_generation")
+  exposureCeilingBps Int                              @map("exposure_ceiling_bps")
+  actorClass         String                           @map("actor_class") @db.VarChar(32)
+  actorId            String?                          @map("actor_id") @db.VarChar(191)
+  reasonCode         String                           @map("reason_code") @db.VarChar(64)
+  inputDigest        String                           @map("input_digest") @db.Char(64)
+  details            Json                             @default("{}")
+  purpose            String                           @default("promotion_audit") @db.VarChar(64)
+  identityClass      String                           @default("admin_or_system_operator") @map("identity_class") @db.VarChar(64)
+  accessClass        String                           @default("recommendation_promotion_readers") @map("access_class") @db.VarChar(64)
+  ingestionHealth    String                           @default("append_only_healthy") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior   String                           @default("immutable_until_audit_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior   String                           @default("last_known_good_manifest") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays      Int                              @default(2555) @map("retention_days")
+  occurredAt         DateTime                         @default(now()) @map("occurred_at")
+  expiresAt          DateTime                         @map("expires_at")
+
+  @@index([eventType, occurredAt(sort: Desc)], map: "recommendation_promotion_event_type_idx")
+  @@index([pointerGeneration, occurredAt], map: "recommendation_promotion_event_generation_idx")
+  @@index([expiresAt], map: "recommendation_promotion_event_expiry_idx")
+  @@map("recommendation_promotion_event")
+}
+
+/// Business truth exists before workflow dispatch. A claim is valid only for
+/// its run generation and the expected promotion-pointer generation.
+model RecommendationPromotionRun {
+  id                           String                              @id @default(cuid())
+  action                       RecommendationPromotionRunAction
+  state                        RecommendationPromotionRunState     @default(PENDING)
+  generation                   Int                                 @default(1)
+  expectedPointerGeneration    Int                                 @map("expected_pointer_generation")
+  targetManifestId             String                              @map("target_manifest_id") @db.VarChar(191)
+  approvalId                   String?                             @map("approval_id")
+  approval                     RecommendationPromotionApproval?    @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+  evaluationId                 String?                             @map("evaluation_id")
+  evaluation                   RecommendationExperimentEvaluation? @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
+  exposureCeilingBps           Int                                 @map("exposure_ceiling_bps")
+  requestedActorClass          String                              @map("requested_actor_class") @db.VarChar(32)
+  requestedActorId             String?                             @map("requested_actor_id") @db.VarChar(191)
+  recentAuthenticationVerified Boolean                             @default(false) @map("recent_authentication_verified")
+  claimId                      String?                             @map("claim_id") @db.Uuid
+  claimedAt                    DateTime?                           @map("claimed_at")
+  heartbeatAt                  DateTime?                           @map("heartbeat_at")
+  workflowRunId                String?                             @map("workflow_run_id") @db.VarChar(191)
+  failureReason                String?                             @map("failure_reason") @db.VarChar(64)
+  purpose                      String                              @default("promotion_workflow_claim") @db.VarChar(64)
+  identityClass                String                              @default("admin_or_system_operator") @map("identity_class") @db.VarChar(64)
+  accessClass                  String                              @default("recommendation_promotion_operators") @map("access_class") @db.VarChar(64)
+  ingestionHealth              String                              @default("workflow_state") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior             String                              @default("scheduled_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior             String                              @default("last_known_good_manifest") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays                Int                                 @default(365) @map("retention_days")
+  createdAt                    DateTime                            @default(now()) @map("created_at")
+  completedAt                  DateTime?                           @map("completed_at")
+  expiresAt                    DateTime                            @map("expires_at")
+
+  @@index([state, heartbeatAt], map: "recommendation_promotion_run_claim_idx")
+  @@index([expectedPointerGeneration, state], map: "recommendation_promotion_run_pointer_idx")
+  @@index([expiresAt], map: "recommendation_promotion_run_expiry_idx")
+  @@map("recommendation_promotion_run")
+}
+
+/// A rollback never rewrites an issued slate. It fences its future promotion
+/// exposure attribution while preserving the original request for audit.
+model RecommendationPromotionSlateFence {
+  id                String                @id @default(cuid())
+  requestId         String                @unique(map: "recommendation_promotion_slate_fence_request_key") @map("request_id")
+  request           RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  pointerGeneration Int                   @map("pointer_generation")
+  reasonCode        String                @map("reason_code") @db.VarChar(64)
+  purpose           String                @default("rollback_exposure_fence") @db.VarChar(64)
+  identityClass     String                @default("request_id_only") @map("identity_class") @db.VarChar(64)
+  accessClass       String                @default("recommendation_evidence_services") @map("access_class") @db.VarChar(64)
+  ingestionHealth   String                @default("atomic_with_rollback") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior  String                @default("cascade_with_request") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior  String                @default("no_post_rollback_credit") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays     Int                   @default(29) @map("retention_days")
+  fencedAt          DateTime              @default(now()) @map("fenced_at")
+  expiresAt         DateTime              @map("expires_at")
+
+  @@index([expiresAt], map: "recommendation_promotion_slate_fence_expiry_idx")
+  @@map("recommendation_promotion_slate_fence")
+}
+
+/// Canonical ordered server fact. candidateProvenance is bounded by the service
+/// contract and contains generator evidence only, never viewer/session secrets.
+model RecommendationServedItem {
+  id                  String                @id @default(cuid())
+  requestId           String                @map("request_id")
+  request             RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  position            Int
+  targetMediaId       String                @map("target_media_id") @db.VarChar(191)
+  canonicalHref       String                @map("canonical_href") @db.VarChar(1024)
+  candidateGenerator  String                @map("candidate_generator") @db.VarChar(64)
+  candidateProvenance Json                  @map("candidate_provenance")
+  presentation        Json                  @default("{}")
+  capabilityJti       String?               @unique(map: "recommendation_item_capability_jti_key") @map("capability_jti") @db.VarChar(191)
+  signingKid          String?               @map("signing_kid") @db.VarChar(64)
+  createdAt           DateTime              @default(now()) @map("created_at")
+  expiresAt           DateTime              @map("expires_at")
+
+  renderedFact       RecommendationRenderedFact?       @relation("RecommendationRenderedFactItem")
+  impression         RecommendationImpression?         @relation("RecommendationImpressionItem")
+  selection          RecommendationSelection?          @relation("RecommendationSelectionItem")
+  episodes           RecommendationPlaybackEpisode[]   @relation("RecommendationPlaybackEpisodeItem")
+  facts              RecommendationPlaybackFact[]      @relation("RecommendationPlaybackFactItem")
+  outcomes           RecommendationOutcomeRevision[]   @relation("RecommendationOutcomeRevisionItem")
+  contentActions     RecommendationContentAction[]     @relation("RecommendationContentActionItem")
+  experimentExposure RecommendationExperimentExposure?
+
+  @@unique([requestId, position], map: "recommendation_item_request_position_key")
+  @@unique([requestId, id], map: "recommendation_item_request_id_key")
+  @@index([targetMediaId, createdAt], map: "recommendation_item_target_created_idx")
+  @@index([expiresAt], map: "recommendation_item_expiry_idx")
+  @@map("recommendation_served_item")
+}
+
+/// At most one accepted render per delivery capability/item.
+model RecommendationRenderedFact {
+  id            String                   @id @default(cuid())
+  requestId     String                   @map("request_id")
+  request       RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId        String                   @unique(map: "recommendation_render_item_key") @map("item_id")
+  item          RecommendationServedItem @relation("RecommendationRenderedFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_render_item_request_fkey")
+  capabilityJti String                   @unique(map: "recommendation_render_capability_key") @map("capability_jti") @db.VarChar(191)
+  eventId       String                   @map("event_id") @db.VarChar(191)
+  payloadDigest String                   @map("payload_digest") @db.Char(64)
+  occurredAt    DateTime                 @map("occurred_at")
+  receivedAt    DateTime                 @default(now()) @map("received_at")
+  expiresAt     DateTime                 @map("expires_at")
+
+  @@unique([capabilityJti, eventId], map: "recommendation_render_event_key")
+  @@unique([requestId, itemId], map: "recommendation_render_item_request_key")
+  @@index([requestId], map: "recommendation_render_request_idx")
+  @@index([expiresAt])
+  @@map("recommendation_rendered_fact")
+}
+
+/// Visibility-policy-qualified exposure; served/rendered alone are not an
+/// eligible impression. One row per item/capability in U1.
+model RecommendationImpression {
+  id               String                   @id @default(cuid())
+  requestId        String                   @map("request_id")
+  request          RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId           String                   @unique(map: "recommendation_impression_item_key") @map("item_id")
+  item             RecommendationServedItem @relation("RecommendationImpressionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_impression_item_request_fkey")
+  capabilityJti    String                   @unique(map: "recommendation_impression_capability_key") @map("capability_jti") @db.VarChar(191)
+  eventId          String                   @map("event_id") @db.VarChar(191)
+  payloadDigest    String                   @map("payload_digest") @db.Char(64)
+  visibilityPolicy String                   @map("visibility_policy") @db.VarChar(64)
+  occurredAt       DateTime                 @map("occurred_at")
+  receivedAt       DateTime                 @default(now()) @map("received_at")
+  expiresAt        DateTime                 @map("expires_at")
+
+  @@unique([capabilityJti, eventId], map: "recommendation_impression_event_key")
+  @@unique([requestId, itemId], map: "recommendation_impression_item_request_key")
+  @@index([requestId], map: "recommendation_impression_request_idx")
+  @@index([expiresAt])
+  @@map("recommendation_impression")
+}
+
+/// Selection and one-use handoff authority commit together. The browser keeps
+/// the raw nonce for replay-safe handoff; Admin stores only its digest.
+model RecommendationSelection {
+  id                    String                   @id @default(cuid())
+  requestId             String                   @map("request_id")
+  request               RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                String                   @unique(map: "recommendation_selection_item_key") @map("item_id")
+  item                  RecommendationServedItem @relation("RecommendationSelectionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_selection_item_request_fkey")
+  capabilityJti         String                   @unique(map: "recommendation_selection_capability_key") @map("capability_jti") @db.VarChar(191)
+  eventId               String                   @map("event_id") @db.VarChar(191)
+  payloadDigest         String                   @map("payload_digest") @db.Char(64)
+  tabDigest             String?                  @map("tab_digest") @db.Char(64)
+  claimNonceDigest      String                   @unique(map: "recommendation_selection_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt      DateTime                 @map("handoff_expires_at")
+  claimedAt             DateTime?                @map("claimed_at")
+  attributionEligibleAt DateTime?                @map("attribution_eligible_at")
+  occurredAt            DateTime                 @map("occurred_at")
+  receivedAt            DateTime                 @default(now()) @map("received_at")
+  expiresAt             DateTime                 @map("expires_at")
+
+  episode                        RecommendationPlaybackEpisode?                @relation("RecommendationPlaybackEpisodeSelection")
+  profileProjectionContributions RecommendationProfileProjectionContribution[]
+
+  @@unique([capabilityJti, eventId], map: "recommendation_selection_event_key")
+  @@unique([requestId, itemId], map: "recommendation_selection_item_request_key")
+  @@unique([requestId, itemId, id], map: "recommendation_selection_request_item_id_key")
+  @@index([requestId], map: "recommendation_selection_request_idx")
+  @@index([requestId, attributionEligibleAt], map: "recommendation_selection_attribution_idx")
+  @@index([claimNonceDigest, handoffExpiresAt], map: "recommendation_selection_handoff_idx")
+  @@index([expiresAt])
+  @@map("recommendation_selection")
+}
+
+/// Minimal append-only playback root opened with selection. Active/hard token
+/// horizons and generation fence are persisted for verifier/finalizer parity.
+model RecommendationPlaybackEpisode {
+  id                   String                     @id @default(cuid())
+  requestId            String?                    @map("request_id")
+  request              RecommendationRequest?     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId               String?                    @map("item_id")
+  item                 RecommendationServedItem?  @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
+  selectionId          String?                    @unique(map: "recommendation_episode_selection_key") @map("selection_id")
+  selection            RecommendationSelection?   @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
+  contextVersion       String                     @default("playback-context-v1") @map("context_version") @db.VarChar(64)
+  discoverySource      String                     @default("direct") @map("discovery_source") @db.VarChar(32)
+  provenance           Json                       @default("{}")
+  claimNonceDigest     String?                    @unique(map: "recommendation_episode_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt     DateTime?                  @map("handoff_expires_at")
+  mediaId              String                     @map("media_id") @db.VarChar(191)
+  sessionDigest        String                     @map("session_digest") @db.Char(64)
+  state                RecommendationEpisodeState @default(PENDING)
+  capabilityJti        String?                    @unique(map: "recommendation_episode_capability_key") @map("capability_jti") @db.VarChar(191)
+  signingKid           String?                    @map("signing_kid") @db.VarChar(64)
+  activeUntil          DateTime                   @map("active_until")
+  hardUntil            DateTime                   @map("hard_until")
+  /// Nullable recovery work marker. Its partial index is migration-owned
+  /// because Prisma cannot express the `IS NOT NULL` predicate.
+  finalizationDueAt    DateTime?                  @map("finalization_due_at")
+  nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  replayCount          Int                        @default(0) @map("replay_count")
+  transportReplayCount Int                        @default(0) @map("transport_replay_count")
+  conflictCount        Int                        @default(0) @map("conflict_count")
+  generation           Int                        @default(1)
+  claimedAt            DateTime?                  @map("claimed_at")
+  finalizedAt          DateTime?                  @map("finalized_at")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  expiresAt            DateTime                   @map("expires_at")
+
+  facts             RecommendationPlaybackFact[]               @relation("RecommendationPlaybackFactEpisode")
+  outcomes          RecommendationOutcomeRevision[]            @relation("RecommendationOutcomeRevisionEpisode")
+  contentActions    RecommendationContentAction[]              @relation("RecommendationContentActionEpisode")
+  submissionBudgets RecommendationCapabilitySubmissionBudget[] @relation("RecommendationCapabilitySubmissionEpisode")
+  traceAccessAudits RecommendationTraceAccessAudit[]           @relation("RecommendationTraceAccessEpisode")
+
+  @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
+  @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
+  @@index([state, activeUntil], map: "recommendation_episode_state_deadline_idx")
+  @@index([requestId], map: "recommendation_episode_request_idx")
+  @@index([discoverySource, createdAt, id], map: "recommendation_episode_source_created_idx")
+  @@index([createdAt, id], map: "recommendation_episode_created_idx")
+  @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
+  @@index([expiresAt])
+  @@map("recommendation_playback_episode")
+}
+
+/// Append-only raw fact. The server-assigned sequence is monotonic per episode;
+/// eventId+digest provides idempotent replay and conflicting digests quarantine.
+model RecommendationPlaybackFact {
+  id            String                        @id @default(cuid())
+  requestId     String?                       @map("request_id")
+  request       RecommendationRequest?        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId        String?                       @map("item_id")
+  item          RecommendationServedItem?     @relation("RecommendationPlaybackFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_fact_item_request_fkey")
+  episodeId     String                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackFactEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_fact_episode_fkey")
+  capabilityJti String                        @map("capability_jti") @db.VarChar(191)
+  eventId       String                        @map("event_id") @db.VarChar(191)
+  payloadDigest String                        @map("payload_digest") @db.Char(64)
+  sequence      Int
+  kind          String                        @db.VarChar(64)
+  payload       Json                          @default("{}")
+  occurredAt    DateTime                      @map("occurred_at")
+  receivedAt    DateTime                      @default(now()) @map("received_at")
+  late          Boolean                       @default(false)
+  expiresAt     DateTime                      @map("expires_at")
+
+  @@unique([episodeId, eventId], map: "recommendation_fact_episode_event_key")
+  @@unique([episodeId, sequence], map: "recommendation_fact_episode_sequence_key")
+  @@index([requestId, receivedAt], map: "recommendation_fact_request_received_idx")
+  @@index([expiresAt])
+  @@map("recommendation_playback_fact")
+}
+
+/// Immutable mission-value receipt. Lineage is nullable by design: a direct
+/// Watch arrival remains observable without fabricating recommendation credit.
+/// Destination deletion clears the artifact reference but retains only an
+/// opaque, non-relinkable audit id on the receipt.
+model RecommendationContentAction {
+  id                      String                                @id @default(cuid())
+  contractVersion         String                                @map("contract_version") @db.VarChar(64)
+  sessionDigest           String                                @map("session_digest") @db.Char(64)
+  eventId                 String                                @map("event_id") @db.VarChar(191)
+  payloadDigest           String                                @map("payload_digest") @db.Char(64)
+  actionClass             RecommendationContentActionClass      @map("action_class")
+  actionKind              RecommendationContentActionKind       @map("action_kind")
+  actorClass              RecommendationContentActionActorClass @map("actor_class")
+  purpose                 RecommendationRequestPurpose
+  actionDetail            String?                               @map("action_detail") @db.VarChar(64)
+  targetMediaId           String                                @map("target_media_id") @db.VarChar(191)
+  requestId               String?                               @map("request_id")
+  request                 RecommendationRequest?                @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  itemId                  String?                               @map("item_id")
+  item                    RecommendationServedItem?             @relation("RecommendationContentActionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: SetNull, map: "recommendation_content_action_item_lineage_fkey")
+  episodeId               String?                               @map("episode_id")
+  episode                 RecommendationPlaybackEpisode?        @relation("RecommendationContentActionEpisode", fields: [episodeId], references: [id], onDelete: SetNull, map: "recommendation_content_action_episode_fkey")
+  candidateGenerator      String?                               @map("candidate_generator") @db.VarChar(64)
+  destinationArtifactType String?                               @map("destination_artifact_type") @db.VarChar(64)
+  destinationArtifactId   String?                               @map("destination_artifact_id") @db.VarChar(191)
+  destinationAuditId      String?                               @map("destination_audit_id") @db.VarChar(191)
+  destinationDeletedAt    DateTime?                             @map("destination_deleted_at")
+  occurredAt              DateTime                              @map("occurred_at")
+  receivedAt              DateTime                              @default(now()) @map("received_at")
+  late                    Boolean                               @default(false)
+  /// Compatibility field fixed false at ingestion. All consumers derive
+  /// current scope eligibility from RecommendationEligibilityDecision.
+  learningEligible        Boolean                               @default(false) @map("learning_eligible")
+  replayCount             Int                                   @default(0) @map("replay_count")
+  conflictCount           Int                                   @default(0) @map("conflict_count")
+  expiresAt               DateTime                              @map("expires_at")
+
+  eligibilityDecisions RecommendationEligibilityDecision[] @relation("RecommendationEligibilityContentAction")
+
+  @@unique([sessionDigest, eventId], map: "recommendation_content_action_session_event_key")
+  @@index([requestId, occurredAt], map: "recommendation_content_action_request_occurred_idx")
+  @@index([episodeId, occurredAt], map: "recommendation_content_action_episode_occurred_idx")
+  @@index([actionKind, occurredAt], map: "recommendation_content_action_kind_occurred_idx")
+  @@index([expiresAt], map: "recommendation_content_action_expiry_idx")
+  @@map("recommendation_content_action")
+}
+
+/// Immutable classifier output. legacy-position-v0 always stores NULL weight
+/// and continuous_weight_not_available; a later watermark appends a revision.
+model RecommendationOutcomeRevision {
+  id                         String                         @id @default(cuid())
+  requestId                  String?                        @map("request_id")
+  request                    RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                     String?                        @map("item_id")
+  item                       RecommendationServedItem?      @relation("RecommendationOutcomeRevisionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_outcome_item_request_fkey")
+  episodeId                  String                         @map("episode_id")
+  episode                    RecommendationPlaybackEpisode  @relation("RecommendationOutcomeRevisionEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_outcome_episode_fkey")
+  classifierVersion          String                         @map("classifier_version") @db.VarChar(64)
+  factWatermark              Int                            @map("fact_watermark")
+  inputDigest                String                         @map("input_digest") @db.Char(64)
+  revision                   Int
+  supersedesId               String?                        @unique(map: "recommendation_outcome_supersedes_key") @map("supersedes_id")
+  supersedes                 RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes", fields: [supersedesId], references: [id], onDelete: Restrict, map: "recommendation_outcome_supersedes_fkey")
+  supersededBy               RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes")
+  qualifiedView              Boolean                        @map("qualified_view")
+  viewQualityWeight          Float?                         @map("view_quality_weight")
+  viewQualityWeightReason    String?                        @map("view_quality_weight_reason") @db.VarChar(64)
+  activePlaybackMilliseconds Int?                           @map("active_playback_milliseconds")
+  durationSeconds            Float?                         @map("duration_seconds")
+  durationCohort             String?                        @map("duration_cohort") @db.VarChar(16)
+  activeCoverage             String?                        @map("active_coverage") @db.VarChar(16)
+  activeIntervals            Json?                          @map("active_intervals")
+  reasons                    String[]                       @default([])
+  /// Compatibility field fixed false on immutable outcomes. All consumers
+  /// derive current scope eligibility from RecommendationEligibilityDecision.
+  learningEligible           Boolean                        @default(false) @map("learning_eligible")
+  generation                 Int
+  createdAt                  DateTime                       @default(now()) @map("created_at")
+  expiresAt                  DateTime                       @map("expires_at")
+
+  eligibilityDecisions           RecommendationEligibilityDecision[]           @relation("RecommendationEligibilityOutcome")
+  profileProjectionContributions RecommendationProfileProjectionContribution[]
+
+  @@unique([episodeId, classifierVersion, revision], map: "recommendation_outcome_episode_classifier_revision_key")
+  @@unique([episodeId, classifierVersion, factWatermark, inputDigest], map: "recommendation_outcome_input_key")
+  @@unique([requestId, itemId, episodeId, id], map: "recommendation_outcome_lineage_id_key")
+  @@unique([requestId, itemId, episodeId, supersedesId], map: "recommendation_outcome_supersedes_lineage_key")
+  @@index([requestId], map: "recommendation_outcome_request_idx")
+  @@index([classifierVersion, createdAt, episodeId, revision], map: "recommendation_outcome_classifier_created_idx")
+  @@index([expiresAt])
+  @@map("recommendation_outcome_revision")
+}
+
+/// Immutable, aggregate comparison of a playback proxy with the legacy
+/// comparator. A readiness decision can authorize shadow evaluation only;
+/// this ledger can never authorize live ranking influence.
+model PlaybackProxyEvaluation {
+  id                   String   @id @default(cuid())
+  proxyVersion         String   @map("proxy_version") @db.VarChar(64)
+  revision             Int
+  windowStart          DateTime @map("window_start")
+  windowEnd            DateTime @map("window_end")
+  sampleCount          Int      @map("sample_count")
+  pairedCount          Int      @map("paired_count")
+  missingCount         Int      @map("missing_count")
+  agreementRate        Float?   @map("agreement_rate")
+  activeQualifiedRate  Float?   @map("active_qualified_rate")
+  legacyQualifiedRate  Float?   @map("legacy_qualified_rate")
+  lateRevisionRate     Float?   @map("late_revision_rate")
+  finalizationLagP95Ms Int?     @map("finalization_lag_p95_ms")
+  durationCohorts      Json     @default("{}") @map("duration_cohorts")
+  decision             String   @db.VarChar(48)
+  reasonCodes          String[] @default([]) @map("reason_codes")
+  rankingInfluence     Boolean  @default(false) @map("ranking_influence")
+  inputDigest          String   @map("input_digest") @db.Char(64)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@unique([proxyVersion, revision], map: "playback_proxy_evaluation_revision_key")
+  @@index([proxyVersion, createdAt], map: "playback_proxy_evaluation_created_idx")
+  @@map("playback_proxy_evaluation")
+}
+
+/// Append-only integrity verdict. Raw facts without a current decision are
+/// explicitly pre-policy/pending and never become eligible through a read.
+/// `isCurrent` is protected by a migration-owned partial unique index; the
+/// source projection is replaced in the same serializable transaction.
+model RecommendationEligibilityDecision {
+  id                    String                                @id @default(cuid())
+  sourceType            RecommendationEligibilitySourceType   @map("source_type")
+  sourceKey             String                                @map("source_key") @db.VarChar(255)
+  outcomeId             String?                               @map("outcome_id")
+  outcome               RecommendationOutcomeRevision?        @relation("RecommendationEligibilityOutcome", fields: [outcomeId], references: [id], onDelete: Cascade)
+  contentActionId       String?                               @map("content_action_id")
+  contentAction         RecommendationContentAction?          @relation("RecommendationEligibilityContentAction", fields: [contentActionId], references: [id], onDelete: Cascade)
+  policyVersion         String                                @map("policy_version") @db.VarChar(64)
+  revision              Int
+  isCurrent             Boolean                               @default(true) @map("is_current")
+  actorClass            RecommendationContentActionActorClass @map("actor_class")
+  state                 RecommendationEligibilityState
+  reasonCodes           String[]                              @default([]) @map("reason_codes")
+  eligibleScopes        String[]                              @default([]) @map("eligible_scopes")
+  contributionWeight    Float                                 @map("contribution_weight")
+  contributionOrdinal   Int                                   @map("contribution_ordinal")
+  distinctSupport       Int                                   @map("distinct_support")
+  identityConcentration Float                                 @map("identity_concentration")
+  decidedAt             DateTime                              @default(now()) @map("decided_at")
+  expiresAt             DateTime                              @map("expires_at")
+
+  @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
+  @@index([state, decidedAt], map: "recommendation_eligibility_state_decided_idx")
+  @@index([actorClass, state, decidedAt], map: "recommendation_eligibility_actor_state_idx")
+  @@index([expiresAt], map: "recommendation_eligibility_expiry_idx")
+  @@map("recommendation_eligibility_decision")
+}
+
+/// Immutable, aggregate-only semantic-control readiness proof. It contains no
+/// viewer, session, request, or item identity. The 365-day operational record
+/// is available only to aggregate recommendation readers and is purged by the
+/// recommendation retention workflow. Expiry detaches supersedes lineage; the
+/// latest retained semantic result remains an offline observation only and
+/// never participates in serving or changes the semantic fallback.
+model RecommendationControlEvaluation {
+  id                     String                                @id @default(cuid())
+  manifestId             String                                @map("manifest_id") @db.VarChar(191)
+  manifest               RecommendationStrategyManifest        @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  strategyVersion        String                                @map("strategy_version") @db.VarChar(64)
+  contractVersion        String                                @map("contract_version") @db.VarChar(64)
+  surfaceVersion         String                                @map("surface_version") @db.VarChar(64)
+  generator              String                                @db.VarChar(32)
+  servingControlVersion  Int                                   @map("serving_control_version")
+  policyVersion          String                                @map("policy_version") @db.VarChar(64)
+  outcomePolicyVersion   String                                @map("outcome_policy_version") @db.VarChar(64)
+  classifierVersion      String                                @map("classifier_version") @db.VarChar(64)
+  integrityPolicyVersion String                                @map("integrity_policy_version") @db.VarChar(64)
+  manifestDigest         String                                @map("manifest_digest") @db.Char(64)
+  windowStart            DateTime                              @map("window_start")
+  windowEnd              DateTime                              @map("window_end")
+  inputCapturedAt        DateTime                              @map("input_captured_at")
+  requestWatermark       DateTime?                             @map("request_watermark")
+  impressionWatermark    DateTime?                             @map("impression_watermark")
+  selectionWatermark     DateTime?                             @map("selection_watermark")
+  outcomeWatermark       DateTime?                             @map("outcome_watermark")
+  missionWatermark       DateTime?                             @map("mission_watermark")
+  eligibilityWatermark   DateTime?                             @map("eligibility_watermark")
+  inputDigest            String                                @map("input_digest") @db.Char(64)
+  revision               Int
+  supersedesId           String?                               @unique(map: "recommendation_control_evaluation_supersedes_key") @map("supersedes_id")
+  supersedes             RecommendationControlEvaluation?      @relation("RecommendationControlEvaluationSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy           RecommendationControlEvaluation?      @relation("RecommendationControlEvaluationSupersedes")
+  state                  RecommendationControlReadinessState
+  deliveryOutcome        RecommendationControlDimensionOutcome @map("delivery_outcome")
+  attributionOutcome     RecommendationControlDimensionOutcome @map("attribution_outcome")
+  maturityOutcome        RecommendationControlDimensionOutcome @map("maturity_outcome")
+  operationalOutcome     RecommendationControlDimensionOutcome @map("operational_outcome")
+  missionOutcome         RecommendationControlDimensionOutcome @map("mission_outcome")
+  guardrailOutcome       RecommendationControlDimensionOutcome @map("guardrail_outcome")
+  evidence               Json
+  rates                  Json
+  uncertainty            Json
+  policyConfiguration    Json                                  @map("policy_configuration")
+  reasonCodes            String[]                              @default([]) @map("reason_codes")
+  explanation            String                                @db.VarChar(2048)
+  purpose                String                                @default("semantic_control_readiness") @db.VarChar(64)
+  identityClass          String                                @default("aggregate_human_no_identity") @map("identity_class") @db.VarChar(64)
+  accessClass            String                                @default("recommendation_aggregate_readers") @map("access_class") @db.VarChar(64)
+  deletionBehavior       String                                @default("scheduled_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior       String                                @default("last_known_semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays          Int                                   @default(365) @map("retention_days")
+  evaluatedAt            DateTime                              @default(now()) @map("evaluated_at")
+  expiresAt              DateTime                              @map("expires_at")
+
+  @@unique([surfaceVersion, manifestId, policyVersion, revision], map: "recommendation_control_evaluation_revision_key")
+  @@unique([surfaceVersion, manifestId, policyVersion, windowStart, windowEnd, inputDigest], map: "recommendation_control_evaluation_input_key")
+  @@index([surfaceVersion, policyVersion, evaluatedAt(sort: Desc)], map: "recommendation_control_evaluation_latest_idx")
+  @@index([state, evaluatedAt], map: "recommendation_control_evaluation_state_idx")
+  @@index([expiresAt], map: "recommendation_control_evaluation_expiry_idx")
+  @@map("recommendation_control_evaluation")
+}
+
+/// Consent-gated durable pseudonym. The raw token is held only by Web in a
+/// protected cookie; Admin stores its one-way digest while active. Tombstone
+/// transitions clear the digest and every session link in the fencing
+/// transaction, leaving only non-relinkable operational state.
+model RecommendationProfile {
+  id                    String                            @id @default(cuid())
+  tokenDigest           String?                           @unique(map: "recommendation_profile_token_digest_key") @map("token_digest") @db.Char(64)
+  privacyGeneration     Int                               @map("privacy_generation")
+  choice                RecommendationProfileChoice
+  state                 RecommendationProfileState        @default(ACTIVE)
+  purpose               String                            @default("personalization") @db.VarChar(64)
+  expiresAt             DateTime                          @map("expires_at")
+  tombstonedAt          DateTime?                         @map("tombstoned_at")
+  tombstoneReason       String?                           @map("tombstone_reason") @db.VarChar(64)
+  erasureState          RecommendationProfileErasureState @default(NOT_REQUIRED) @map("erasure_state")
+  erasureRequestedAt    DateTime?                         @map("erasure_requested_at")
+  erasureCompletedAt    DateTime?                         @map("erasure_completed_at")
+  erasureFailureCode    String?                           @map("erasure_failure_code") @db.VarChar(64)
+  staleWorkerRejections Int                               @default(0) @map("stale_worker_rejections")
+  deletionDrillAt       DateTime?                         @map("deletion_drill_at")
+  createdAt             DateTime                          @default(now()) @map("created_at")
+  updatedAt             DateTime                          @updatedAt @map("updated_at")
+
+  sessionLinks          RecommendationProfileSessionLink[]
+  transitions           RecommendationConsentTransition[]
+  consentReceipts       RecommendationConsentReceipt[]
+  shadowRuns            RecommendationShadowRun[]
+  experimentAssignments RecommendationExperimentAssignment[]
+  projectionGenerations RecommendationProfileProjectionGeneration[]
+  projectionPointers    RecommendationProfileProjectionPointer[]
+  projectionRuns        RecommendationProfileProjectionRun[]
+
+  @@index([state, updatedAt], map: "recommendation_profile_state_updated_idx")
+  @@index([erasureState, erasureRequestedAt], map: "recommendation_profile_erasure_idx")
+  @@index([expiresAt], map: "recommendation_profile_expiry_idx")
+  @@map("recommendation_profile")
+}
+
+/// Server truth for the separately stored, opaque Watch consent receipt. The
+/// browser holds only the raw HttpOnly token; Admin stores its one-way digest.
+/// Essential-only receipts never identify a profile. Personalized receipts are
+/// useful only while the referenced privacy generation is still active.
+model RecommendationConsentReceipt {
+  id                String                            @id @default(cuid())
+  tokenDigest       String?                           @unique(map: "recommendation_consent_receipt_token_key") @map("token_digest") @db.Char(64)
+  contractVersion   String                            @map("contract_version") @db.VarChar(64)
+  choice            RecommendationConsentChoice
+  state             RecommendationConsentReceiptState @default(ACTIVE)
+  profileId         String?                           @map("profile_id")
+  profile           RecommendationProfile?            @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  privacyGeneration Int                               @default(0) @map("privacy_generation")
+  expiresAt         DateTime                          @map("expires_at")
+  revokedAt         DateTime?                         @map("revoked_at")
+  revokeReason      String?                           @map("revoke_reason") @db.VarChar(64)
+  createdAt         DateTime                          @default(now()) @map("created_at")
+  updatedAt         DateTime                          @updatedAt @map("updated_at")
+
+  @@index([state, expiresAt], map: "recommendation_consent_receipt_state_expiry_idx")
+  @@index([profileId, privacyGeneration], map: "recommendation_consent_receipt_profile_generation_idx")
+  @@map("recommendation_consent_receipt")
+}
+
+/// Immutable bounded profile build. Durable rows require an active consent
+/// generation; session rows hold only the existing one-way 24-hour session
+/// digest. Vectors are private projection state and never returned by Admin.
+model RecommendationProfileProjectionGeneration {
+  id                       String                               @id @default(cuid())
+  manifestId               String                               @map("manifest_id") @db.VarChar(191)
+  manifest                 RecommendationStrategyManifest       @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  scope                    RecommendationProfileProjectionScope
+  profileId                String?                              @map("profile_id")
+  profile                  RecommendationProfile?               @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration        Int?                                 @map("privacy_generation")
+  sessionDigest            String?                              @map("session_digest") @db.Char(64)
+  generation               Int
+  state                    RecommendationProfileProjectionState @default(BUILDING)
+  projectionVersion        String                               @map("projection_version") @db.VarChar(64)
+  clusteringVersion        String                               @map("clustering_version") @db.VarChar(64)
+  eligibilityPolicyVersion String                               @map("eligibility_policy_version") @db.VarChar(64)
+  outcomeClassifierVersion String                               @map("outcome_classifier_version") @db.VarChar(64)
+  inputWindowStart         DateTime                             @map("input_window_start")
+  inputWindowEnd           DateTime                             @map("input_window_end")
+  inputWatermark           DateTime?                            @map("input_watermark")
+  inputDigest              String                               @map("input_digest") @db.Char(64)
+  contributionCount        Int                                  @default(0) @map("contribution_count")
+  durableInterestCount     Int                                  @default(0) @map("durable_interest_count")
+  sessionIntentPresent     Boolean                              @default(false) @map("session_intent_present")
+  explicitPreferenceCount  Int                                  @default(0) @map("explicit_preference_count")
+  negativeEvidenceCount    Int                                  @default(0) @map("negative_evidence_count")
+  coverage                 Float                                @default(0)
+  stability                Float                                @default(0)
+  cohortQuality            Float                                @default(0) @map("cohort_quality")
+  failureReason            String?                              @map("failure_reason") @db.VarChar(64)
+  purpose                  String                               @default("profile_candidate_shadow") @db.VarChar(64)
+  identityClass            String                               @default("private_pseudonymous_projection") @map("identity_class") @db.VarChar(64)
+  accessClass              String                               @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth          String                               @default("workflow_generation_fenced") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior         String                               @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior         String                               @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays            Int                                  @map("retention_days")
+  createdAt                DateTime                             @default(now()) @map("created_at")
+  publishedAt              DateTime?                            @map("published_at")
+  expiresAt                DateTime                             @map("expires_at")
+
+  interests        RecommendationProfileInterest[]
+  contributions    RecommendationProfileProjectionContribution[]
+  activePointer    RecommendationProfileProjectionPointer?
+  workflowRuns     RecommendationProfileProjectionRun[]
+  servingDecisions RecommendationPersonalizationDecision[]
+
+  @@index([profileId, privacyGeneration, state, generation], map: "recommendation_profile_projection_profile_generation_idx")
+  @@index([sessionDigest, state, generation], map: "recommendation_profile_projection_session_generation_idx")
+  @@index([state, createdAt], map: "recommendation_profile_projection_state_created_idx")
+  @@index([expiresAt], map: "recommendation_profile_projection_expiry_idx")
+  @@map("recommendation_profile_projection_generation")
+}
+
+/// Mutable publication pointer. Publication swaps this row only after a full
+/// immutable generation validates; readers never scan a half-built generation.
+model RecommendationProfileProjectionPointer {
+  scopeDigest       String                                    @id @map("scope_digest") @db.Char(64)
+  scope             RecommendationProfileProjectionScope
+  profileId         String?                                   @map("profile_id")
+  profile           RecommendationProfile?                    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration Int?                                      @map("privacy_generation")
+  sessionDigest     String?                                   @map("session_digest") @db.Char(64)
+  generationId      String                                    @unique(map: "recommendation_profile_projection_pointer_generation_key") @map("generation_id")
+  generation        RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  pointerGeneration Int                                       @map("pointer_generation")
+  updatedAt         DateTime                                  @updatedAt @map("updated_at")
+
+  @@index([profileId, privacyGeneration], map: "recommendation_profile_projection_pointer_profile_idx")
+  @@index([sessionDigest], map: "recommendation_profile_projection_pointer_session_idx")
+  @@map("recommendation_profile_projection_pointer")
+}
+
+/// Durable workflow claim state. It is private operational truth and is
+/// created before dispatch so a failed dispatch remains visible and replayable.
+model RecommendationProfileProjectionRun {
+  id                String                                     @id @default(cuid())
+  scope             RecommendationProfileProjectionScope
+  profileId         String?                                    @map("profile_id")
+  profile           RecommendationProfile?                     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration Int?                                       @map("privacy_generation")
+  sessionDigest     String?                                    @map("session_digest") @db.Char(64)
+  state             RecommendationProfileProjectionRunState    @default(PENDING)
+  generation        Int                                        @default(1)
+  claimId           String?                                    @map("claim_id") @db.Uuid
+  claimedAt         DateTime?                                  @map("claimed_at")
+  heartbeatAt       DateTime?                                  @map("heartbeat_at")
+  workflowRunId     String?                                    @map("workflow_run_id") @db.VarChar(191)
+  projectionId      String?                                    @map("projection_id")
+  projection        RecommendationProfileProjectionGeneration? @relation(fields: [projectionId], references: [id], onDelete: SetNull)
+  failureReason     String?                                    @map("failure_reason") @db.VarChar(64)
+  purpose           String                                     @default("profile_projection_workflow") @db.VarChar(64)
+  identityClass     String                                     @default("private_pseudonymous_workflow") @map("identity_class") @db.VarChar(64)
+  accessClass       String                                     @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
+  deletionBehavior  String                                     @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior  String                                     @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  createdAt         DateTime                                   @default(now()) @map("created_at")
+  completedAt       DateTime?                                  @map("completed_at")
+  expiresAt         DateTime                                   @map("expires_at")
+
+  @@index([state, heartbeatAt], map: "recommendation_profile_projection_run_claim_idx")
+  @@index([profileId, privacyGeneration, state], map: "recommendation_profile_projection_run_profile_idx")
+  @@index([sessionDigest, state], map: "recommendation_profile_projection_run_session_idx")
+  @@index([expiresAt], map: "recommendation_profile_projection_run_expiry_idx")
+  @@map("recommendation_profile_projection_run")
+}
+
+/// One durable-interest medoid or the separately derived short-lived session
+/// intent. The vector remains private to the candidate service.
+model RecommendationProfileInterest {
+  id                 String                                    @id @default(cuid())
+  generationId       String                                    @map("generation_id")
+  generation         RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  kind               RecommendationProfileInterestKind
+  interestOrdinal    Int                                       @map("interest_ordinal")
+  medoidMediaId      String                                    @map("medoid_media_id") @db.VarChar(191)
+  medoidSourceDigest String                                    @map("medoid_source_digest") @db.Char(64)
+  embedding          Unsupported("vector(1536)")
+  weight             Float
+  supportCount       Int                                       @map("support_count")
+  stability          Float
+  createdAt          DateTime                                  @default(now()) @map("created_at")
+  expiresAt          DateTime                                  @map("expires_at")
+
+  @@unique([generationId, kind, interestOrdinal], map: "recommendation_profile_interest_generation_kind_ordinal_key")
+  @@index([generationId, kind], map: "recommendation_profile_interest_generation_kind_idx")
+  @@index([expiresAt], map: "recommendation_profile_interest_expiry_idx")
+  @@map("recommendation_profile_interest")
+}
+
+/// Exact ticket-local contribution lineage for replay, revision, integrity
+/// reversal, and erasure. Membership is private and cascades with generation.
+model RecommendationProfileProjectionContribution {
+  id                       String                                    @id @default(cuid())
+  generationId             String                                    @map("generation_id")
+  generation               RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  kind                     RecommendationProfileContributionKind
+  sourceIdDigest           String                                    @map("source_id_digest") @db.Char(64)
+  sourceOutcomeId          String?                                   @map("source_outcome_id")
+  sourceOutcome            RecommendationOutcomeRevision?            @relation(fields: [sourceOutcomeId], references: [id], onDelete: SetNull)
+  sourceSelectionId        String?                                   @map("source_selection_id")
+  sourceSelection          RecommendationSelection?                  @relation(fields: [sourceSelectionId], references: [id], onDelete: Cascade)
+  targetMediaId            String                                    @map("target_media_id") @db.VarChar(191)
+  interestOrdinal          Int?                                      @map("interest_ordinal")
+  weight                   Float
+  eligibilityPolicyVersion String?                                   @map("eligibility_policy_version") @db.VarChar(64)
+  outcomeClassifierVersion String?                                   @map("outcome_classifier_version") @db.VarChar(64)
+  privacyGeneration        Int?                                      @map("privacy_generation")
+  occurredAt               DateTime                                  @map("occurred_at")
+  createdAt                DateTime                                  @default(now()) @map("created_at")
+  expiresAt                DateTime                                  @map("expires_at")
+
+  @@unique([generationId, kind, sourceIdDigest], map: "recommendation_profile_contribution_generation_source_key")
+  @@index([sourceOutcomeId], map: "recommendation_profile_contribution_outcome_idx")
+  @@index([sourceSelectionId], map: "recommendation_profile_contribution_selection_idx")
+  @@index([expiresAt], map: "recommendation_profile_contribution_expiry_idx")
+  @@map("recommendation_profile_projection_contribution")
+}
+
+/// Short-lived bridge between the existing 24-hour Watch session and an
+/// active privacy generation. It is removed atomically on reset, withdrawal,
+/// deletion, and expiry. It never stores the raw cookie value.
+model RecommendationProfileSessionLink {
+  id                String                @id @default(cuid())
+  profileId         String                @map("profile_id")
+  profile           RecommendationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration Int                   @map("privacy_generation")
+  sessionDigest     String                @map("session_digest") @db.Char(64)
+  linkedAt          DateTime              @default(now()) @map("linked_at")
+  expiresAt         DateTime              @map("expires_at")
+
+  @@unique([profileId, privacyGeneration, sessionDigest], map: "recommendation_profile_session_generation_key")
+  @@index([sessionDigest, expiresAt], map: "recommendation_profile_session_digest_idx")
+  @@index([expiresAt], map: "recommendation_profile_session_expiry_idx")
+  @@map("recommendation_profile_session_link")
+}
+
+/// Bounded privacy transition evidence. `profileId` is detached during a
+/// destructive transition, so retained audit facts cannot reconstruct one
+/// viewer's lifecycle. `auditId` is random and has no token/session derivation.
+model RecommendationConsentTransition {
+  id             String                              @id @default(cuid())
+  auditId        String                              @unique(map: "recommendation_consent_transition_audit_key") @map("audit_id") @db.Uuid
+  profileId      String?                             @map("profile_id")
+  profile        RecommendationProfile?              @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  kind           RecommendationConsentTransitionKind
+  fromGeneration Int?                                @map("from_generation")
+  toGeneration   Int?                                @map("to_generation")
+  choice         RecommendationProfileChoice?
+  erasureState   RecommendationProfileErasureState   @default(NOT_REQUIRED) @map("erasure_state")
+  occurredAt     DateTime                            @default(now()) @map("occurred_at")
+  expiresAt      DateTime                            @map("expires_at")
+
+  @@index([kind, occurredAt], map: "recommendation_consent_transition_kind_idx")
+  @@index([profileId, occurredAt], map: "recommendation_consent_transition_profile_idx")
+  @@index([expiresAt], map: "recommendation_consent_transition_expiry_idx")
+  @@map("recommendation_consent_transition")
+}
+
+/// Bounded sanitized durability signal. detail contains reason-code metadata
+/// only; never tokens, cookies, request bodies, or raw session identifiers.
+model RecommendationEvidenceAudit {
+  id         String                  @id @default(cuid())
+  requestId  String                  @map("request_id")
+  request    RecommendationRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  kind       RecommendationAuditKind
+  reasonCode String                  @map("reason_code") @db.VarChar(64)
+  count      Int                     @default(1)
+  detail     Json                    @default("{}")
+  occurredAt DateTime                @default(now()) @map("occurred_at")
+  expiresAt  DateTime                @map("expires_at")
+
+  @@index([kind, occurredAt], map: "recommendation_audit_kind_occurred_idx")
+  @@index([requestId], map: "recommendation_audit_request_idx")
+  @@index([expiresAt])
+  @@map("recommendation_evidence_audit")
+}
+
+/// One row per conflicting capability/event identity. attempts is updated with
+/// a saturating database function so concurrent abuse cannot grow row count.
+model RecommendationConflict {
+  id                    String                @id @default(cuid())
+  requestId             String                @map("request_id")
+  request               RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  capabilityJti         String                @map("capability_jti") @db.VarChar(191)
+  eventId               String                @map("event_id") @db.VarChar(191)
+  acceptedPayloadDigest String                @map("accepted_payload_digest") @db.Char(64)
+  rejectedPayloadDigest String                @map("rejected_payload_digest") @db.Char(64)
+  attempts              Int                   @default(1)
+  firstSeenAt           DateTime              @default(now()) @map("first_seen_at")
+  lastSeenAt            DateTime              @default(now()) @map("last_seen_at")
+  expiresAt             DateTime              @map("expires_at")
+
+  @@unique([capabilityJti, eventId], map: "recommendation_conflict_identity_key")
+  @@index([requestId, lastSeenAt], map: "recommendation_conflict_request_seen_idx")
+  @@index([expiresAt])
+  @@map("recommendation_conflict")
+}
+
+/// Atomic fixed event-attempt budget for one delivery or episode capability. The row is
+/// request-owned and cascades with the raw lifecycle root; it stores only the
+/// already-persisted opaque jti, never the raw token or browser event payload.
+model RecommendationCapabilitySubmissionBudget {
+  capabilityJti String                         @id @map("capability_jti") @db.VarChar(191)
+  requestId     String?                        @map("request_id")
+  request       RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  episodeId     String?                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode? @relation("RecommendationCapabilitySubmissionEpisode", fields: [episodeId], references: [id], onDelete: Cascade)
+  attempts      Int
+  createdAt     DateTime                       @default(now()) @map("created_at")
+  updatedAt     DateTime                       @updatedAt @map("updated_at")
+  expiresAt     DateTime                       @map("expires_at")
+
+  @@index([expiresAt])
+  @@index([requestId], map: "recommendation_capability_submission_budget_request_idx")
+  @@index([episodeId], map: "recommendation_capability_submission_budget_episode_idx")
+  @@map("recommendation_capability_submission_budget")
+}
+
+/// Sanitized purge truth retained for 90 days. It has no request/session link.
+model RecommendationRetentionRun {
+  id                   String                           @id @default(cuid())
+  status               RecommendationRetentionRunStatus @default(RUNNING)
+  batchSize            Int                              @map("batch_size")
+  rootsDeleted         Int                              @default(0) @map("roots_deleted")
+  rowCounts            Json                             @default("{}") @map("row_counts")
+  oldestExpiredAtAfter DateTime?                        @map("oldest_expired_at_after")
+  reasonCode           String?                          @map("reason_code") @db.VarChar(64)
+  startedAt            DateTime                         @default(now()) @map("started_at")
+  completedAt          DateTime?                        @map("completed_at")
+  expiresAt            DateTime                         @map("expires_at")
+
+  @@index([status, completedAt], map: "recommendation_retention_status_completed_idx")
+  @@index([expiresAt])
+  @@map("recommendation_retention_run")
+}
+
+/// Permission-gated Admin raw-trace access audit. The request FK is cleared
+/// atomically by root purge; actor digest/reason/time remain for 90 days.
+model RecommendationTraceAccessAudit {
+  id          String                         @id @default(cuid())
+  requestId   String?                        @map("request_id")
+  request     RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  episodeId   String?                        @map("episode_id")
+  episode     RecommendationPlaybackEpisode? @relation("RecommendationTraceAccessEpisode", fields: [episodeId], references: [id], onDelete: SetNull)
+  actorDigest String                         @map("actor_digest") @db.Char(64)
+  reasonCode  String                         @map("reason_code") @db.VarChar(64)
+  accessedAt  DateTime                       @default(now()) @map("accessed_at")
+  expiresAt   DateTime                       @map("expires_at")
+
+  @@index([requestId])
+  @@index([episodeId])
+  @@index([expiresAt])
+  @@map("recommendation_trace_access_audit")
+}
+
+/// One sticker a reader placed on a /watch/whats-new feature card.
+///
+/// Anonymous by construction: `ballotId` is a random id the browser mints
+/// and keeps in localStorage, so it identifies a BALLOT, not a person, and
+/// clearing storage mints a new one. That is the accepted trade for letting
+/// a public announcement page collect signal without a login — the budget
+/// below bounds one ballot, not one human.
+///
+/// `placementId` is minted per placement by the client and unique per
+/// ballot, which makes the cast mutation idempotent: a retried request (a
+/// dropped response, a queued offline send) lands on the same row instead
+/// of inflating the tally.
+///
+/// Retraction is a soft delete. A reader peeling a sticker off should stop
+/// counting immediately, but "placed then took it back" is signal too.
+model WhatsNewFeatureVote {
+  id          String    @id @default(cuid())
+  ballotId    String    @map("ballot_id") @db.VarChar(80)
+  placementId String    @map("placement_id") @db.VarChar(80)
+  /// Content-defined feature id (e.g. `shareable-search`). A free-form
+  /// bounded string, not an enum: the feature list is authored in web's
+  /// whats-new-content.ts and adding a card must not need a migration.
+  featureId   String    @map("feature_id") @db.VarChar(64)
+  /// Which sticker was used. Rendered as a total today; kept per-kind
+  /// because the sticker is the REASON, not just a tally.
+  stickerId   String    @map("sticker_id") @db.VarChar(32)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  retractedAt DateTime? @map("retracted_at")
+
+  @@unique([ballotId, placementId], map: "whats_new_feature_vote_ballot_placement_key")
+  @@index([featureId, retractedAt], map: "whats_new_feature_vote_feature_idx")
+  @@index([ballotId, retractedAt], map: "whats_new_feature_vote_ballot_idx")
+  @@map("whats_new_feature_vote")
 }

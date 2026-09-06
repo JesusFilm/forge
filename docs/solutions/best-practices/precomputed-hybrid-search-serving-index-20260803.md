@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-17
+last_updated: 2026-08-29
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -145,7 +145,10 @@ Deployment, private evaluation, and public serving are separate controls:
 - `SERVING` authorizes a generation for a later public selection.
 - `WATCH_SEARCH_TYPESENSE_PROFILE` is the server-owned selector beneath
   `MODERN`; it defaults to `CURRENT`, while the comparison flag defaults off
-  (`apps/admin/src/config/env.ts:672-686`).
+  (`apps/admin/src/config/env.ts:770-773`, schema at `:324-325`). The default
+  describes an unset variable, not the deployed posture — once a candidate is
+  promoted the selector names that generation indefinitely, so read the
+  deployed value rather than assuming `CURRENT`.
 - Candidate serving requires the selector and `SERVING` pointer to name the
   same generation, then revalidates the exact application revision, ranking
   revision, transcript projection, current physical bindings, and evaluation
@@ -533,9 +536,18 @@ production measurements still support the same decision. A material drift
 requires a new review decision rather than silently redefining the baseline.
 
 Normal rollback disables fleet inheritance and returns the Typesense profile to
-`CURRENT`; emergency rollback can separately return the primary mode to
-PostgreSQL `DEFAULT`. Neither operation deletes Candidate collections, moves
-the Serving pointer, or rewrites baseline history.
+the last generation known good — `CURRENT` for a first promotion, otherwise the
+previously pinned `CANDIDATE:<generation>`, since a promoted pin persists until
+something replaces it. Emergency rollback can separately return the primary
+mode to PostgreSQL `DEFAULT`. Neither operation deletes Candidate collections,
+moves the Serving pointer, or rewrites baseline history.
+
+The promotion sequence above assumes the application revision is unchanged.
+Changing `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION` invalidates
+whichever generation the Serving pointer currently names, including one under
+live traffic, and resolution then refuses to serve rather than falling back —
+see `../integration-issues/typesense-application-revision-invalidates-serving-pin.md`
+for the ordered sequence that change requires.
 
 ## Related
 
@@ -543,6 +555,7 @@ the Serving pointer, or rewrites baseline history.
 - [Typesense Watch Search production readiness](../../operations/typesense-watch-search-production-readiness.md)
 - [Admin Watch Search production rollout checklist](admin-watch-search-production-rollout-20260720.md)
 - [Canonical language and exact-title ranking](../logic-errors/canonical-language-boundaries-and-lexicographic-search-ranking.md)
+- [Application-revision bumps invalidate the live serving pin](../integration-issues/typesense-application-revision-invalidates-serving-pin.md)
 - [Result-preserving search latency optimization](../performance-issues/admin-search-result-preserving-latency-optimization.md)
 - [Admin semantic HNSW prototype parity gate](../performance-issues/admin-semantic-hnsw-prototype-parity-gate.md)
 - [Mastra offline search eval orchestration](../architecture-patterns/mastra-offline-search-eval-orchestration-boundary-pattern.md)

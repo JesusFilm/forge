@@ -362,25 +362,25 @@ describe("MediaCollection VideoCard href", () => {
   it.each([
     {
       variant: "grid",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
     },
     {
       variant: "collection",
-      expectedSlideWidth: "auto-cols-[34%]",
+      expectedSlideWidth: "auto-cols-[46%]",
       expectedCardAspect: "aspect-[2/3]",
       expectedDesktopColumns: "md:grid-cols-4",
     },
     {
       variant: "hero",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
       expectedDesktopColumns: "md:grid-cols-2",
       expectedDesktopGap: "md:gap-5",
     },
     {
       variant: "player",
-      expectedSlideWidth: "auto-cols-[56%]",
+      expectedSlideWidth: "auto-cols-[72%]",
       expectedCardAspect: "aspect-video",
       expectedDesktopColumns: "md:grid-cols-2",
       expectedDesktopGap: "md:gap-5",
@@ -496,13 +496,17 @@ describe("MediaCollection VideoCard href", () => {
     expect(frame?.getAttribute("class")).toContain("md:min-h-[10rem]")
     expect(copy?.getAttribute("class")).toContain("px-2.5")
     expect(copy?.getAttribute("class")).toContain("md:px-4")
-    expect(label?.getAttribute("class")).toContain("text-[10px]")
-    expect(label?.getAttribute("class")).toContain("sm:text-xs")
-    expect(title?.getAttribute("class")).toContain("text-sm")
+    // Phone tier floors card labels at 12px (`text-xs`) and lifts card titles
+    // to 16px (`text-base`); every larger tier is unchanged. The negative pins
+    // are the ones that go red if a sub-12px size comes back.
+    expect(label?.getAttribute("class")).toContain("text-xs")
+    expect(label?.getAttribute("class")).not.toContain("text-[10px]")
+    expect(title?.getAttribute("class")).toContain("text-base")
+    expect(title?.getAttribute("class")).not.toContain("text-sm")
     expect(title?.getAttribute("class")).toContain("md:text-xl")
     expect(itemNumber?.getAttribute("class")).toContain("text-3xl")
     expect(itemNumber?.getAttribute("class")).toContain("md:text-5xl")
-    expect(image?.getAttribute("sizes")).toContain("56vw")
+    expect(image?.getAttribute("sizes")).toContain("72vw")
   })
 
   it("keeps a single non-carousel item full width on mobile", () => {
@@ -1201,7 +1205,10 @@ describe("MediaCollection VideoCard href", () => {
     )
 
     expect(categoryLabel?.textContent).toBe("New series")
-    expect(categoryLabel?.classList).toContain("text-xs")
+    // Section eyebrow rides the phone tier: 14px on phones, the authored 12px
+    // restored from `sm:` up so every larger tier is unchanged.
+    expect(categoryLabel?.classList).toContain("text-sm")
+    expect(categoryLabel?.classList).toContain("sm:text-xs")
     expect(categoryLabel?.classList).toContain("tracking-eyebrow")
     expect(categoryLabel?.classList).toContain("text-red-100/60")
     expect(categoryLabel?.parentElement).toBe(titleRow)
@@ -1216,7 +1223,9 @@ describe("MediaCollection VideoCard href", () => {
     expect(description?.parentElement).not.toBe(titleRow)
     expect(carousel).not.toBeNull()
     expect(footer).not.toBeNull()
-    expect(footer?.classList).toContain("text-xs")
+    // Footer copy rides the phone tier: 14px on phones, authored 12px from `sm:` up.
+    expect(footer?.classList).toContain("text-sm")
+    expect(footer?.classList).toContain("sm:text-xs")
     expect(footer?.classList).toContain("xl:text-sm")
     expect(supportingTitle?.textContent).toBe("Short supporting title")
     expect(description?.textContent).toBe("Intro copy")

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Bahasa audio",
     "selectLanguageVersion": "Pilih versi bahasa",
     "watchSelectedVersion": "Tonton versi yang dipilih"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilihan cookie",
+    "bannerTitle": "Pilihan privasi Anda",
+    "bannerDescription": "Cookie esensial menjaga Watch tetap aman dan berfungsi. Dengan izin Anda, cookie pihak pertama opsional dapat mengingat minat di berbagai kunjungan untuk mempersonalisasi rekomendasi. Rekomendasi kontekstual tetap tersedia dalam kedua keadaan.",
+    "acceptAll": "Terima semua",
+    "essentialOnly": "Hanya yang esensial",
+    "manageChoices": "Kelola pilihan",
+    "savingChoice": "Menyimpan pilihan cookie",
+    "settings": "Pengaturan cookie",
+    "settingsDescription": "Pilih apakah Watch boleh mengingat minat rekomendasi di berbagai kunjungan. Anda dapat mengubahnya kapan saja.",
+    "essentialCookies": "Cookie esensial",
+    "essentialDescription": "Keamanan, pemutaran, pilihan privasi, dan atribusi permintaan rekomendasi.",
+    "alwaysActive": "Selalu aktif",
+    "personalization": "Personalisasi",
+    "personalizationDescription": "Mengingat minat terbatas di berbagai kunjungan. Menonaktifkan ini tetap membuat rekomendasi kontekstual tersedia.",
+    "erasurePending": "Penghapusan profil sedang diproses. Rekomendasi kontekstual sudah aktif.",
+    "cancel": "Batal",
+    "saveChoices": "Simpan pilihan",
+    "saving": "Menyimpan…",
+    "loadError": "Pilihan Anda tidak dapat dimuat. Anda tetap dapat memilih di bawah.",
+    "grantError": "Personalisasi tidak dapat diaktifkan. Opsi hanya esensial tetap tersedia.",
+    "saveError": "Pilihan Anda tidak dapat disimpan. Silakan coba lagi."
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one real-Postgres lifecycle shared across adapter integration scenarios */
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -6,6 +7,7 @@ import {
   PostgresCorpusSearchStore,
   PostgresCorpusWriteStore,
   PostgresFetchStateStore,
+  PostgresLanguageMaintenanceStore,
   PostgresRawDocumentReader,
   PostgresRawDocumentStore,
 } from "../src/adapters/postgres/index.js"
@@ -59,7 +61,12 @@ const vector = (axis: number): number[] => {
   return value
 }
 
-const chunk = (ord: number, text: string, axis: number): EmbeddedChunk => ({
+const chunk = (
+  ord: number,
+  text: string,
+  axis: number,
+  embeddingModel = "fixture/model",
+): EmbeddedChunk => ({
   ord,
   text,
   charStart: 0,
@@ -67,13 +74,13 @@ const chunk = (ord: number, text: string, axis: number): EmbeddedChunk => ({
   tokenCount: text.split(" ").length,
   tags: ["fixture"],
   embedding: vector(axis),
-  embeddingModel: "fixture/model",
+  embeddingModel,
 })
 
-const raw = (body: string): RawDocument => ({
+const raw = (body: string, slug = "raw"): RawDocument => ({
   sourceKey: key,
-  url: `${prefix}raw`,
-  canonicalUrl: `${prefix}raw`,
+  url: `${prefix}${slug}`,
+  canonicalUrl: `${prefix}${slug}`,
   title: "Raw",
   rawContent: body,
   fetch: {
@@ -103,6 +110,11 @@ describe("Prisma-backed RAG adapters", () => {
   const rawStore = new PostgresRawDocumentStore(db)
   const rawReader = new PostgresRawDocumentReader(db)
   const fetchState = new PostgresFetchStateStore(db)
+  const languageStore = new PostgresLanguageMaintenanceStore(db)
+  const resetCorpusFixture = async () => {
+    await db.source.deleteMany({ where: { key } })
+    await db.rawDocument.deleteMany({ where: { sourceKey: key } })
+  }
 
   it("upserts caches and preserves ISO timestamps", async () => {
     await fetchState.putHttpCache({
@@ -144,6 +156,39 @@ describe("Prisma-backed RAG adapters", () => {
     expect(
       await rawReader.listPending({ sourceKey: key, includeIngested: true }),
     ).toHaveLength(2)
+  })
+
+  it("records the attempted model in the document replacement transaction", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("atomic model state", "atomic-model"))
+    const [pending] = await rawReader.listPending({ sourceKey: key })
+
+    await writes.replaceDocument(
+      {
+        ...document("atomic-model", "en"),
+        canonicalUrl: pending.canonicalUrl,
+      },
+      [chunk(0, "Atomic model state", 0, "fixture/model-atomic")],
+      {
+        rawDocumentId: pending.id,
+        attemptedModel: "fixture/model-atomic",
+      },
+    )
+
+    await expect(
+      db.rawDocument.findUniqueOrThrow({ where: { id: pending.id } }),
+    ).resolves.toMatchObject({
+      ingestedAt: expect.any(Date),
+      indexAttemptedModel: "fixture/model-atomic",
+    })
+    await expect(
+      rawReader.listPending({
+        sourceKey: key,
+        includeIngested: true,
+        targetEmbeddingModel: "fixture/model-atomic",
+      }),
+    ).resolves.toEqual([])
   })
 
   it("atomically replaces chunks, preserves language, and retrieves the fixture", async () => {
@@ -197,6 +242,241 @@ describe("Prisma-backed RAG adapters", () => {
     expect(
       await search.vectorSearch(vector(0), { allowedSourceKeys: [] }, 5),
     ).toEqual([])
+  })
+
+  it("advances bounded forced reindex batches past the target model", async () => {
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("old-a", "old-a"))
+    await rawStore.putRawDocument(raw("old-b", "old-b"))
+    const staged = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(staged.map(({ id }) => id))
+
+    const oldDocument = (slug: string): NormalizedDocument => ({
+      ...document(slug, "en"),
+      canonicalUrl: `${prefix}${slug}`,
+      title: slug,
+    })
+    await writes.replaceDocument(oldDocument("old-a"), [
+      chunk(0, "Old model A", 0, "fixture/model-old"),
+    ])
+    await writes.replaceDocument(oldDocument("old-b"), [
+      chunk(0, "Old model B", 1, "fixture/model-old"),
+    ])
+
+    const first = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    expect(first).toHaveLength(1)
+    await writes.replaceDocument(
+      oldDocument(first[0].canonicalUrl.split("/").at(-1)!),
+      [chunk(0, "Migrated", 0, "fixture/model-target")],
+    )
+
+    const second = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    expect(second).toHaveLength(1)
+    expect(second[0].id).not.toBe(first[0].id)
+  })
+
+  it("selects the newest raw snapshot before bounding a forced batch", async () => {
+    await resetCorpusFixture()
+    const slug = `snapshot-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("older snapshot", slug))
+    const [older] = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested([older.id])
+    await rawStore.putRawDocument({
+      ...raw("newer snapshot", slug),
+      fetch: {
+        ...raw("newer snapshot", slug).fetch,
+        fetchedAt: "2026-08-28T01:00:00.000Z",
+      },
+    })
+    await writes.replaceDocument(
+      { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, "Old model", 0, "fixture/model-old")],
+    )
+
+    const [selected] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected.rawContent).toBe("newer snapshot")
+    expect(selected.id).not.toBe(older.id)
+  })
+
+  it("selects a fresh snapshot even when the document already uses the target model", async () => {
+    await resetCorpusFixture()
+    const slug = `target-snapshot-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("older snapshot", slug))
+    const [older] = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested([older.id])
+    await writes.replaceDocument(
+      { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, "Target model", 0, "fixture/model-target")],
+    )
+    await rawStore.putRawDocument({
+      ...raw("fresh changed snapshot", slug),
+      fetch: {
+        ...raw("fresh changed snapshot", slug).fetch,
+        fetchedAt: "2026-08-28T02:00:00.000Z",
+      },
+    })
+
+    const selected = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected).toHaveLength(1)
+    expect(selected[0].rawContent).toBe("fresh changed snapshot")
+  })
+
+  it("does not let drained non-indexable residue starve forced batches", async () => {
+    await resetCorpusFixture()
+    const residueSlug = `residue-${crypto.randomUUID()}`
+    const migratableSlug = `migratable-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("thin", residueSlug))
+    const residue = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(residue.map(({ id }) => id))
+    await rawStore.putRawDocument(raw("migratable", migratableSlug))
+    const staged = await rawReader.listPending({ sourceKey: key })
+    await rawReader.markIngested(staged.map(({ id }) => id))
+    await writes.replaceDocument(
+      {
+        ...document(migratableSlug, "en"),
+        canonicalUrl: `${prefix}${migratableSlug}`,
+      },
+      [chunk(0, "Old model", 0, "fixture/model-old")],
+    )
+
+    const selected = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(selected.map(({ canonicalUrl }) => canonicalUrl)).toEqual([
+      `${prefix}${migratableSlug}`,
+    ])
+  })
+
+  it("does not repeatedly select an attempted stale-model snapshot", async () => {
+    await resetCorpusFixture()
+    const stalledSlug = `stalled-${crypto.randomUUID()}`
+    const nextSlug = `next-${crypto.randomUUID()}`
+    await writes.upsertSource(source)
+    for (const slug of [stalledSlug, nextSlug]) {
+      await rawStore.putRawDocument(raw(`snapshot ${slug}`, slug))
+      const rows = await rawReader.listPending({ sourceKey: key })
+      await rawReader.markIngested(rows.map(({ id }) => id))
+      await writes.replaceDocument(
+        { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+        [chunk(0, "Old model", 0, "fixture/model-old")],
+      )
+    }
+    await db.rawDocument.updateMany({
+      where: { sourceKey: key },
+      data: { indexAttemptedAt: null },
+    })
+
+    const [first] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+    await rawReader.markIngested([first.id], "fixture/model-target")
+    const [second] = await rawReader.listPending({
+      sourceKey: key,
+      includeIngested: true,
+      targetEmbeddingModel: "fixture/model-target",
+      limit: 1,
+    })
+
+    expect(second.id).not.toBe(first.id)
+  })
+
+  it("advances bounded full language sweeps with an explicit cursor", async () => {
+    await resetCorpusFixture()
+    const sourceId = await writes.upsertSource(source)
+    for (const slug of ["language-a", "language-b"]) {
+      await rawStore.putRawDocument(raw(`content ${slug}`, slug))
+      await writes.replaceDocument(
+        { ...document(slug, "en"), canonicalUrl: `${prefix}${slug}` },
+        [chunk(0, slug, 0)],
+      )
+    }
+    const first = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: false,
+      limit: 1,
+    })
+    const second = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: false,
+      limit: 1,
+      afterId: first[0].id,
+    })
+
+    expect(first).toHaveLength(1)
+    expect(second).toHaveLength(1)
+    expect(second[0].id).not.toBe(first[0].id)
+    expect(await db.document.count({ where: { sourceId } })).toBeGreaterThan(1)
+  })
+
+  it("updates language and persists its rollback audit atomically", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    const slug = `language-audit-${crypto.randomUUID()}`
+    await rawStore.putRawDocument(raw("audited language content", slug))
+    await writes.replaceDocument(
+      { ...document(slug, null), canonicalUrl: `${prefix}${slug}` },
+      [chunk(0, slug, 0)],
+    )
+    const [candidate] = await languageStore.listCandidates({
+      sourceKey: key,
+      blanksOnly: true,
+      limit: 1,
+    })
+    const runId = `audit-${crypto.randomUUID()}`
+
+    await languageStore.applyLanguageChanges(
+      key,
+      [{ id: candidate.id, oldLanguage: null, newLanguage: "en" }],
+      { runId, detectorModel: "fixture/language" },
+    )
+
+    await expect(
+      db.document.findUniqueOrThrow({ where: { id: candidate.id } }),
+    ).resolves.toMatchObject({ language: "en", updatedAt: expect.any(Date) })
+    await expect(
+      db.languageChangeAudit.findUniqueOrThrow({
+        where: {
+          runId_documentId: { runId, documentId: candidate.id },
+        },
+      }),
+    ).resolves.toMatchObject({
+      sourceKey: key,
+      oldLanguage: null,
+      newLanguage: "en",
+      detectorModel: "fixture/language",
+    })
   })
 
   it("fails before SQL when the query vector width is wrong", async () => {

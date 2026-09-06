@@ -110,6 +110,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -133,6 +142,78 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+      - name: Exercise recommendation tracer migration against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/migration.db.test.ts
+          src/services/recommendations/migration.candidates.db.test.ts
+          src/services/recommendations/migration.lifecycle.db.test.ts
+          src/services/recommendations/migration.operations.db.test.ts
+          src/services/recommendations/migration.attribution-reliability.db.test.ts
+          src/services/recommendations/playback-episode.db.test.ts
+          src/services/recommendations/snapshot-repair.db.test.ts
+          src/services/recommendations/promotion/service.db.test.ts
+          src/services/recommendations/profile.service.db.test.ts
+          src/services/recommendations/recent-context.db.test.ts
+          src/services/recommendations/admin-ops/detail.db.test.ts
+          --no-file-parallelism
+      - name: Exercise semantic retrieval budget against pgvector
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+          RECOMMENDATION_DELIVERY_DB_FIXTURE: deterministic
+        run: pnpm --filter @forge/admin test -- src/services/recommendations/delivery-retriever.db.test.ts
+      - name: Exercise profile recommendation retrieval against deterministic pgvector
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+          RECOMMENDATION_PROFILE_DB_FIXTURE: deterministic
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/candidates/profile-candidate.db.test.ts
+          src/services/recommendations/profiles/profile-projection.service.db.test.ts
+          --no-file-parallelism
+      - name: Exercise recommendation admission against Redis
+        env:
+          RECOMMENDATION_REDIS_TEST: "1"
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+        run: pnpm --filter @forge/admin test -- src/services/recommendations/admission.redis.db.test.ts
+
+  web-redis-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/web')
+    services:
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Exercise Watch recommendation admission against Redis
+        env:
+          RECOMMENDATION_REDIS_TEST: "1"
+          REDIS_URL: redis://127.0.0.1:6379
+        run: pnpm --filter @forge/web test -- src/lib/recommendation-mutation-admission.redis.db.test.ts
 
   auth-postgres-integration:
     runs-on: ubuntu-latest
@@ -174,7 +255,7 @@ jobs:
         env:
           AUTH_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           BETTER_AUTH_SECRET: auth-integration-secret-not-for-production
-        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts --no-file-parallelism
+        run: pnpm --filter @forge/auth test -- src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts src/services/changelog-production-access.integration.test.ts --no-file-parallelism
 
   rag-postgres-integration:
     runs-on: ubuntu-latest
@@ -458,6 +539,7 @@ jobs:
       - affected
       - admin-graphql-generate
       - admin-schema-drift
+      - web-redis-integration
       - auth-postgres-integration
       - rag-postgres-integration
       - format

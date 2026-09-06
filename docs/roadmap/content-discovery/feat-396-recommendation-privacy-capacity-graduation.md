@@ -9,6 +9,9 @@ duration: 5
 depends_on:
   - "feat-394"
   - "feat-395"
+  - "feat-447"
+  - "feat-448"
+  - "feat-449"
 blocks: []
 tags:
   - "admin"

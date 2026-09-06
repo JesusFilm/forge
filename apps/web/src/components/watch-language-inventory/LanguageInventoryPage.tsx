@@ -27,6 +27,7 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
@@ -68,6 +69,28 @@ type InventoryCardImage = Pick<
   WatchLanguageInventoryCard,
   "imageUrl" | "muxPlaybackId"
 >
+
+type InventoryCardOrientation = Pick<
+  WatchLanguageInventoryCard,
+  "coreId" | "slug" | "parentSlug" | "title" | "parentTitle"
+>
+
+const PORTRAIT_INVENTORY_MARKER =
+  /(?:^|[^a-z0-9])(?:vertical|9x16)(?=$|[^a-z0-9])/i
+
+function hasPortraitInventoryMarker(candidate: string | null): boolean {
+  return candidate != null && PORTRAIT_INVENTORY_MARKER.test(candidate)
+}
+
+function isPortraitInventoryVideo(item: InventoryCardOrientation): boolean {
+  return (
+    hasPortraitInventoryMarker(item.coreId) ||
+    hasPortraitInventoryMarker(item.slug) ||
+    hasPortraitInventoryMarker(item.parentSlug) ||
+    hasPortraitInventoryMarker(item.title) ||
+    hasPortraitInventoryMarker(item.parentTitle)
+  )
+}
 
 function cardImageUrl(item: InventoryCardImage): string | null {
   return item.imageUrl ?? resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
@@ -292,7 +315,7 @@ function InventoryCard({
           <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
         ) : null}
         <div
-          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur"
+          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur"
           {...englishAssistAttributes(
             item.availability === "AUDIO" ? "stateAudio" : "stateSubtitlesOnly",
           )}
@@ -304,7 +327,7 @@ function InventoryCard({
           )}
           {availability}
         </div>
-        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
           {item.childCount === 0 && item.href ? (
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           ) : null}
@@ -312,26 +335,26 @@ function InventoryCard({
         </div>
       </div>
       <div className="space-y-2 p-4">
-        <div className="flex items-center gap-2 text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
+        <div className="flex items-center gap-2 text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
           <span>{videoLabels(videoLabelMessageKey(item.label))}</span>
         </div>
         <h3 className="line-clamp-2 text-lg leading-tight font-media-card-title break-words text-white">
           {item.title}
         </h3>
         {item.description ? (
-          <p className="line-clamp-2 text-sm leading-relaxed font-normal break-words text-stone-300">
+          <p className="line-clamp-2 text-base sm:text-sm leading-relaxed font-normal break-words text-stone-300">
             {item.description}
           </p>
         ) : null}
         {item.parentTitle ? (
-          <p className="line-clamp-1 text-xs font-medium text-stone-400">
+          <p className="line-clamp-1 text-sm sm:text-xs font-medium text-stone-400">
             {t("fromCollection", { collection: item.parentTitle })}
           </p>
         ) : null}
       </div>
       <span
         aria-hidden="true"
-        className="absolute top-3 right-3 rounded bg-white/10 px-2 py-1 text-xs font-medium text-white/70 tabular-nums"
+        className="absolute top-3 right-3 rounded bg-white/10 px-2 py-1 text-sm sm:text-xs font-medium text-white/70 tabular-nums"
       >
         {index + 1}
       </span>
@@ -463,6 +486,7 @@ function CompactVideoRow({
   const videoLabels = useTranslations("VideoLabels")
   const runtime = formatRuntime(item.durationSeconds)
   const thumbnailUrl = cardImageUrl(item)
+  const isPortrait = isPortraitInventoryVideo(item)
   const metadata = [videoLabels(videoLabelMessageKey(item.label)), runtime]
     .filter((value): value is string => Boolean(value))
     .join(" / ")
@@ -471,14 +495,28 @@ function CompactVideoRow({
       <span className="mr-1 w-10 shrink-0 text-right text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:text-lg">
         {index + 1}
       </span>
-      <span className="relative h-12 w-20 shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10 sm:h-14 sm:w-24">
+      <span
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10",
+          isPortrait
+            ? "h-12 aspect-[2/3] sm:h-14"
+            : "h-12 w-20 sm:h-14 sm:w-24",
+        )}
+      >
         {thumbnailUrl ? (
           <Image
             src={thumbnailUrl}
             alt=""
             fill
-            sizes="(max-width: 640px) 80px, 96px"
-            className="object-cover object-left-top transition duration-300 group-hover:scale-105"
+            sizes={
+              isPortrait
+                ? "(max-width: 640px) 32px, 37px"
+                : "(max-width: 640px) 80px, 96px"
+            }
+            className={cn(
+              "object-cover transition duration-300 group-hover:scale-105",
+              isPortrait ? "object-center" : "object-left-top",
+            )}
           />
         ) : (
           <span className="absolute inset-0 bg-[linear-gradient(135deg,#1c1917,#44403c_55%,#292524)]" />
@@ -497,11 +535,14 @@ function CompactVideoRow({
         ) : null}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-1 text-sm leading-tight font-media-card-title text-white">
+        {/* Two lines on phones: the row is `min-h-20`, so the 16px phone tier
+            gets its second line for free rather than clamping a title that
+            fitted on one line at 14px. */}
+        <span className="line-clamp-2 text-base sm:line-clamp-1 sm:text-sm leading-tight font-media-card-title text-white">
           {item.title}
         </span>
         {metadata ? (
-          <span className="mt-0.5 block truncate text-xs leading-5 font-medium tracking-media-label text-stone-400 uppercase">
+          <span className="mt-0.5 block truncate text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-400 uppercase">
             {metadata}
           </span>
         ) : null}
@@ -593,7 +634,7 @@ function NewReleaseBadge() {
   return (
     <span
       data-testid="language-inventory-new-release-badge"
-      className="inline-flex shrink-0 items-center rounded-full bg-brand-red px-2 py-0.5 text-[10px] leading-4 font-medium tracking-media-label text-white uppercase"
+      className="inline-flex shrink-0 items-center rounded-full bg-brand-red px-2 py-0.5 text-xs leading-4 font-medium tracking-media-label text-white uppercase sm:text-[10px]"
       {...englishAssistAttributes("stateNew")}
     >
       {t("new")}
@@ -646,13 +687,13 @@ function CollectionGroupOverview({
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#171717,#3f3f46_48%,#134e4a)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
           {t("videoCount", { count: group.items.length })}
         </span>
       </div>
       <div className="mt-4 flex flex-1 flex-col space-y-2">
         <div className="flex w-full items-center gap-2">
-          <span className="min-w-0 truncate text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
+          <span className="min-w-0 truncate text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
             {label}
           </span>
           {isNew ? <NewReleaseBadge /> : null}
@@ -689,7 +730,7 @@ function CollectionGroupOverview({
           <CollectionLanguageAvailability counts={languageCounts} />
         ) : null}
         {description ? (
-          <p className="line-clamp-4 pt-1 text-sm leading-relaxed font-normal break-words text-stone-300">
+          <p className="line-clamp-4 pt-1 text-base sm:text-sm leading-relaxed font-normal break-words text-stone-300">
             {description}
           </p>
         ) : null}
@@ -731,7 +772,7 @@ function GroupedVideoListSection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -753,7 +794,7 @@ function GroupedVideoListSection({
             </p>
           </div>
           <div
-            className="text-sm font-medium text-stone-400"
+            className="text-base sm:text-sm font-medium text-stone-400"
             {...englishAssistAttributes("labelItemCount")}
           >
             {t("videosInGroups", {
@@ -772,9 +813,8 @@ function GroupedVideoListSection({
                 // The sidebar gets a wider track from `xl` up: at 1280px the
                 // group is 1201px wide and 340px left the collection panel only
                 // 28% of it, cramping the title and description against a
-                // 859px-wide episode list. No `2xl` step — the section content is
-                // capped at `max-w-7xl`, so measured group width stops growing at
-                // 1216px (verified 1536/1920/2560px all identical).
+                // 859px-wide episode list. Keep the 440px maximum at wider
+                // breakpoints so the episode list receives the added rail space.
                 className="overflow-clip rounded-lg border border-white/10 bg-white/[0.035] lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] xl:grid-cols-[minmax(320px,440px)_minmax(0,1fr)]"
                 aria-label={group.title}
                 data-testid="language-inventory-collection-group"
@@ -862,7 +902,7 @@ function InventorySection({
       data-testid={testId}
       data-inv-section=""
     >
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div
@@ -884,7 +924,7 @@ function InventorySection({
             </p>
           </div>
           <div
-            className="text-sm font-medium text-stone-400"
+            className="text-base sm:text-sm font-medium text-stone-400"
             {...englishAssistAttributes("labelItemCount")}
           >
             {t("itemCount", { count: items.length })}
@@ -978,7 +1018,9 @@ export function LanguageInventoryPage({
         {/* 54vh is three quarters of the previous 72vh. Read as "reduce to 3/4"
             rather than a 3:4 aspect ratio: the hero is already 2.2:1, so a 3:4
             ratio would have made it ~3x TALLER, not shorter. */}
-        <div className="relative mx-auto grid min-h-[54vh] max-w-7xl items-end gap-8 px-5 pt-36 pb-10 sm:px-8 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44">
+        <div
+          className={`relative grid min-h-[54vh] items-end gap-8 pt-36 pb-10 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44 ${WATCH_PAGE_CONTENT_CLASSES}`}
+        >
           <div className="max-w-4xl">
             <h1 className="text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl">
               {t("heroTitle", { language: languageDisplayName })}
@@ -1022,7 +1064,7 @@ export function LanguageInventoryPage({
             className="border-t border-white/10 py-14"
             data-testid="language-inventory-empty"
           >
-            <div className="mx-auto max-w-7xl px-5 sm:px-8">
+            <div className={WATCH_PAGE_CONTENT_CLASSES}>
               <p className="rounded-lg border border-white/10 bg-white/[0.04] px-5 py-8 text-stone-300">
                 {t("noPublishedVideos")}
               </p>
@@ -1048,7 +1090,7 @@ export function LanguageInventoryPage({
           no client JavaScript and keeps this Server Component free of a client
           boundary. Styled as the shared watch pill, like "Open collection". */}
       <div className="border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-7xl justify-center px-5 sm:px-8">
+        <div className={`flex justify-center ${WATCH_PAGE_CONTENT_CLASSES}`}>
           <a
             href={`#${LANGUAGE_INVENTORY_TOP_ID}`}
             data-slot="button"

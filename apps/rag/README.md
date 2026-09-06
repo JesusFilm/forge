@@ -9,6 +9,17 @@ live in [`docs/ops/environment-and-secrets.md`](docs/ops/environment-and-secrets
 Fresh database migration, local pgvector, Railway config-as-code, and
 metadata-only production verification live in
 [`docs/ops/postgres-and-schema.md`](docs/ops/postgres-and-schema.md).
+Source acquisition, indexing, source-scoped reindexing, language maintenance,
+and their production write gates live in
+[`docs/ops/corpus-maintenance.md`](docs/ops/corpus-maintenance.md).
+Lifecycle status commands, identity-bound retrieval evaluation, and preparation
+of the committed public status surface live in
+[`docs/source-status.yaml`](docs/source-status.yaml),
+[`docs/ops/evaluation.md`](docs/ops/evaluation.md), and
+[`docs/ops/dashboard.md`](docs/ops/dashboard.md). The provider-neutral `/slice`,
+`/golden`, and `/status-dashboard` workflows are packaged in
+[`plugins/jfp-rag`](../../plugins/jfp-rag); they orchestrate these repository
+commands and do not replace their approval or production-target gates.
 
 HTTP deployment, public/private reachability, bearer scope, and smoke procedures
 live in [`docs/ops/http-service.md`](docs/ops/http-service.md).
@@ -28,6 +39,8 @@ gates complete.
 - `prisma` — the RAG-owned database schema and migrations
 - `scripts` — operator tooling with dry-run and explicit-target safeguards
 - `docs/ops` — operational procedures that contain no secrets or corpus text
+- `eval/qa-golden.yaml` — canonical reviewed retrieval cases; attempts remain ignored
+- `dashboard` — ignored production snapshot plus committed redacted JSON/HTML
 
 Shared HTTP contracts belong in `packages/rag-contracts`; application code must
 not be placed there.

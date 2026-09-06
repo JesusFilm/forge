@@ -14,6 +14,9 @@ export type SearchAvailabilityKind =
   | "target_audio"
   | "target_subtitle"
   | "related_language"
+  /** Series-Shaped record with no Dub of its own but a playable descendant.
+   * Browsable, not playable: no playbackId, and its route is the series page. */
+  | "container"
   | "unavailable"
 
 export type SearchLaneStatus = {
@@ -239,6 +242,7 @@ function mapWatchSearchAvailabilityKind(
   if (kind === "TARGET_AUDIO") return "target_audio"
   if (kind === "TARGET_SUBTITLE") return "target_subtitle"
   if (kind === "RELATED_LANGUAGE") return "related_language"
+  if (kind === "CONTAINER") return "container"
   if (kind === "UNAVAILABLE") return "unavailable"
   return null
 }

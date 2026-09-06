@@ -46,6 +46,13 @@ type DynamicMediaCollectionProps = {
   cacheSignatures?: DynamicCollectionFeedCacheSignatures
 }
 
+/**
+ * Announced to screen readers when the feed runs out of pages. Never rendered
+ * visibly — the sentinel's exhausted branch carries it as `sr-only` text.
+ */
+export const FEED_EXHAUSTED_MESSAGE =
+  "You’ve reached the end of the collection library."
+
 const MAX_DUPLICATE_ONLY_PAGES_PER_ATTEMPT = 3
 const DUPLICATE_ONLY_REARM_DELAY_MS = 250
 const WINDOWING_THRESHOLD = 9
@@ -193,9 +200,9 @@ export function DynamicMediaCollection({
   )
   const [retrySeconds, setRetrySeconds] = useState(0)
   const windowingActive = sections.length > WINDOWING_THRESHOLD
-  const feedIdentity = `${locale}\0${languageSlug}\0${cacheScope}\0${excludedIds.join(
-    "\0",
-  )}\0${featuredCollections.slugs.join("\0")}\0${cacheSignatures?.mobile ?? ""}\0${cacheSignatures?.desktop ?? ""}`
+  const excludedIdsIdentity = excludedIds.join("\0")
+  const featuredSlugsIdentity = featuredCollections.slugs.join("\0")
+  const feedIdentity = `${locale}\0${languageSlug}\0${cacheScope}\0${excludedIdsIdentity}\0${featuredSlugsIdentity}\0${cacheSignatures?.mobile ?? ""}\0${cacheSignatures?.desktop ?? ""}`
 
   const setFeedStatus = useCallback((next: "idle" | "loading" | "error") => {
     statusRef.current = next
@@ -311,8 +318,12 @@ export function DynamicMediaCollection({
     requestInFlightRef.current = false
     cursorRef.current = null
     hasNextPageRef.current = true
-    seenIdsRef.current = new Set(excludedIds)
-    seenSlugsRef.current = new Set(featuredCollections.slugs)
+    seenIdsRef.current = new Set(
+      excludedIdsIdentity ? excludedIdsIdentity.split("\0") : [],
+    )
+    seenSlugsRef.current = new Set(
+      featuredSlugsIdentity ? featuredSlugsIdentity.split("\0") : [],
+    )
     profileRef.current = feedProfile()
     cacheSignatureRef.current =
       profileRef.current.first === WATCH_COLLECTION_FEED_PROFILES.mobile.first
@@ -339,9 +350,14 @@ export function DynamicMediaCollection({
       requestAbortRef.current = null
       requestInFlightRef.current = false
     }
-    // The serialized identity deliberately restarts only when feed inputs change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedIdentity, setFeedStatus])
+  }, [
+    cacheSignatures?.desktop,
+    cacheSignatures?.mobile,
+    excludedIdsIdentity,
+    featuredSlugsIdentity,
+    feedIdentity,
+    setFeedStatus,
+  ])
 
   useEffect(() => {
     if (retrySeconds <= 0) return
@@ -599,7 +615,7 @@ export function DynamicMediaCollection({
             }.`,
           )
         } else if (!hasNextPageRef.current) {
-          setLiveMessage("You’ve reached the end of the collection library.")
+          setLiveMessage(FEED_EXHAUSTED_MESSAGE)
         }
         shouldRearm =
           appendedCount === 0 &&
@@ -675,6 +691,18 @@ export function DynamicMediaCollection({
     }
   }, [feedIdentity, hasNextPage])
 
+  // Once the feed is exhausted the sentinel renders nothing visible, so it
+  // stops reserving a band under the last rail. The retry button still needs
+  // the space, and so does every state where paging can still resume.
+  const feedExhausted = status !== "error" && !hasNextPage
+  const sentinelClasses = [
+    WATCH_PAGE_CONTENT_CLASSES,
+    "flex items-center justify-center",
+    feedExhausted ? null : "min-h-28 py-8",
+  ]
+    .filter(Boolean)
+    .join(" ")
+
   return (
     <section
       id={data.sectionKey ?? data.id ?? undefined}
@@ -732,7 +760,7 @@ export function DynamicMediaCollection({
                 }
               />
             ) : (
-              <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-semibold text-white/80">
+              <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-sm sm:text-xs font-semibold text-white/80">
                 {section.title} · {index + 1} of {sections.length}
               </span>
             )}
@@ -742,7 +770,8 @@ export function DynamicMediaCollection({
 
       <div
         ref={sentinelRef}
-        className={`${WATCH_PAGE_CONTENT_CLASSES} flex min-h-28 items-center justify-center py-8`}
+        data-testid="dynamic-collection-feed-sentinel"
+        className={sentinelClasses}
         aria-live="polite"
       >
         {status === "error" ? (
@@ -750,20 +779,20 @@ export function DynamicMediaCollection({
             type="button"
             onClick={() => void loadNextPage(true)}
             disabled={retrySeconds > 0}
-            className="rounded-full border border-white/35 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="rounded-full border border-white/35 px-5 py-2 text-base sm:text-sm font-semibold text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             {retrySeconds > 0
               ? `Try loading more collections again in ${retrySeconds}s`
               : "Try loading more collections again"}
           </button>
         ) : !hasNextPage ? (
-          <p className="text-sm text-stone-400">
-            You’ve reached the end of the collection library.
-          </p>
+          <p className="sr-only">{FEED_EXHAUSTED_MESSAGE}</p>
         ) : (
           <p
             className={
-              status === "loading" ? "text-sm text-stone-300" : "sr-only"
+              status === "loading"
+                ? "text-base sm:text-sm text-stone-300"
+                : "sr-only"
             }
           >
             {liveMessage}

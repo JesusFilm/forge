@@ -42,6 +42,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     },
   ],
   availability: [],
@@ -82,6 +83,13 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
     exactTitleKeyBytes: 64,
   },
 }
+
+const transcriptIdentity = {
+  collection: "watch_search_transcripts_active",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  chunkingVersion: "mastra-v1",
+  projectionRevision: 17n,
+} as const
 
 function lifecycleDouble(generationId = "generation_01") {
   let row: Record<string, unknown> | null = null
@@ -299,12 +307,9 @@ describe("Typesense Watch candidate index CLI", () => {
       typesense: typesense.client as never,
       generations: generation.lifecycle as never,
       generationId: generation.generationId,
-      applicationRevision: "app-sha-1",
+      indexContractRevision: "app-sha-1",
       sourceEpoch: "source-42",
-      transcript: {
-        collection: "watch_search_transcripts_active",
-        projectionRevision: 17n,
-      },
+      transcript: { ...transcriptIdentity },
       loadSnapshot: async () => snapshot,
       runCurrentCanary: currentCanary,
     })
@@ -394,22 +399,19 @@ describe("Typesense Watch candidate index CLI", () => {
       generations: generation.lifecycle as never,
       generationId: generation.generationId,
       sourceEpoch: "source-42",
-      transcript: {
-        collection: "watch_search_transcripts_active",
-        projectionRevision: 17n,
-      },
+      transcript: { ...transcriptIdentity },
       loadSnapshot: async () => snapshot,
     }
 
     await publishTypesenseWatchSearchCandidate({
       ...input,
-      applicationRevision: "watch-search-candidate/v1",
+      indexContractRevision: "watch-search-candidate/v1",
     })
 
     await expect(
       publishTypesenseWatchSearchCandidate({
         ...input,
-        applicationRevision: "watch-search-candidate/v2",
+        indexContractRevision: "watch-search-candidate/v3",
       }),
     ).rejects.toThrow(/immutable publication input/)
     expect(generation.lifecycle.createBuildingGeneration).toHaveBeenCalledTimes(
@@ -430,12 +432,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => ({
           ...snapshot,
           lexicalMemory: { ...snapshot.lexicalMemory, exactTitleKeyBytes: 0 },
@@ -463,12 +462,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => ({
           ...snapshot,
           lexical: [withoutExactKeys, ...remaining],
@@ -509,12 +505,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "watch-search-candidate/v2",
+        indexContractRevision: "watch-search-candidate/v3",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => snapshot,
       }),
     ).rejects.toThrow(/exact title key read smoke/)
@@ -536,12 +529,9 @@ describe("Typesense Watch candidate index CLI", () => {
         typesense: typesense.client as never,
         generations: generation.lifecycle as never,
         generationId: generation.generationId,
-        applicationRevision: "app-sha-1",
+        indexContractRevision: "app-sha-1",
         sourceEpoch: "source-42",
-        transcript: {
-          collection: "watch_search_transcripts_active",
-          projectionRevision: 17n,
-        },
+        transcript: { ...transcriptIdentity },
         loadSnapshot: async () => snapshot,
         failpoint: (step) => {
           if (step === "catalog:created") throw new Error("failpoint")

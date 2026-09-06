@@ -1185,7 +1185,7 @@ export function HeroPlayerControls({
               />
               <div
                 data-testid="hero-chrome-timeline-preview-time"
-                className="absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-[11px] leading-none font-semibold tabular-nums text-white shadow-sm backdrop-blur-[2px]"
+                className="absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-xs leading-none font-semibold tabular-nums sm:text-[11px] text-white shadow-sm backdrop-blur-[2px]"
                 style={{
                   textShadow: "0 1px 2px rgba(0,0,0,0.75)",
                 }}
@@ -1309,7 +1309,7 @@ export function HeroPlayerControls({
             {languageCode ? (
               <span
                 data-testid="hero-chrome-language-code"
-                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+                className="text-xs font-bold tracking-[0.1em] sm:text-[10px] md:tracking-[0.14em]"
               >
                 {languageCode}
               </span>
@@ -1340,7 +1340,7 @@ export function HeroPlayerControls({
             {visibleSubtitleState ? (
               <span
                 data-testid="hero-chrome-subtitle-language-code"
-                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+                className="text-xs font-bold tracking-[0.1em] sm:text-[10px] md:tracking-[0.14em]"
               >
                 {visibleSubtitleState}
               </span>

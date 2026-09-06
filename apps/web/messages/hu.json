@@ -722,5 +722,28 @@
     "languageVersionLabel": "Hangsáv nyelve",
     "selectLanguageVersion": "Nyelvi változat kiválasztása",
     "watchSelectedVersion": "Kiválasztott változat megtekintése"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-beállítások",
+    "bannerTitle": "Adatvédelmi beállításaid",
+    "bannerDescription": "Az alapvető cookie-k biztonságossá teszik a Watch használatát, és biztosítják a működését. Az engedélyeddel egy opcionális saját cookie megjegyezheti az érdeklődési köreidet a látogatások között, hogy személyre szabott ajánlásokat adhassunk. A kontextuális ajánlások így is, úgy is elérhetők maradnak.",
+    "acceptAll": "Összes elfogadása",
+    "essentialOnly": "Csak az alapvetők",
+    "manageChoices": "Beállítások kezelése",
+    "savingChoice": "Cookie-beállítás mentése",
+    "settings": "Cookie-beállítások",
+    "settingsDescription": "Válaszd ki, hogy a Watch megjegyezheti-e az ajánlási érdeklődési köreidet a látogatások között. Ezt bármikor módosíthatod.",
+    "essentialCookies": "Alapvető cookie-k",
+    "essentialDescription": "Biztonság, lejátszás, adatvédelmi beállítások és az ajánláskérések hozzárendelése.",
+    "alwaysActive": "Mindig aktív",
+    "personalization": "Személyre szabás",
+    "personalizationDescription": "Megjegyzi a korlátozott érdeklődési köröket a látogatások között. Ha ezt kikapcsolod, a kontextuális ajánlások továbbra is elérhetők maradnak.",
+    "erasurePending": "A profil törlése folyamatban van. A kontextuális ajánlások már aktívak.",
+    "cancel": "Mégse",
+    "saveChoices": "Beállítások mentése",
+    "saving": "Mentés…",
+    "loadError": "Nem sikerült betölteni a beállításodat. Alább továbbra is választhatsz.",
+    "grantError": "Nem sikerült bekapcsolni a személyre szabást. Továbbra is csak az alapvető beállítások érhetők el.",
+    "saveError": "Nem sikerült menteni a beállításodat. Kérjük, próbáld újra."
   }
 }

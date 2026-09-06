@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lea ʻo e ongo",
     "selectLanguageVersion": "Fili ha tatau lea",
     "watchSelectedVersion": "Mamata ʻi he tatau kuo fili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ngaahi fili kukisi",
+    "bannerTitle": "Hoʻo ngaahi fili ki he totonu fakapulipuli",
+    "bannerDescription": "ʻOku tokoni ʻa e ngaahi kukisi mahuʻinga ke malu mo ngaue ʻa e Watch. Kapau te ke fakangofua, ʻe lava ke manatuʻi ʻe ha kukisi fili ʻa e saiti ni hoʻo ngaahi fiekaunga ʻi he ngaahi ʻaʻahi kehekehe ke fakataautahaʻi ʻa e ngaahi fokotuʻu. ʻOku kei ʻatā pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga ʻi ha founga pē.",
+    "acceptAll": "Tali kotoa",
+    "essentialOnly": "Ngaahi mahuʻinga pē",
+    "manageChoices": "Tokangaʻi ʻa e ngaahi fili",
+    "savingChoice": "Tuku tauhi ʻa e fili kukisi",
+    "settings": "Ngaahi fokotuʻutuʻu kukisi",
+    "settingsDescription": "Fili pe ʻe lava ke manatuʻi ʻe he Watch ʻa e ngaahi fiekaunga ki he fokotuʻu ʻi he ngaahi ʻaʻahi kehekehe. ʻE lava ke ke liliu eni ʻi ha taimi pē.",
+    "essentialCookies": "Ngaahi kukisi mahuʻinga",
+    "essentialDescription": "Maluʻi, tā ʻo e vitiō, ngaahi fili ki he totonu fakapulipuli, mo e ʻuhinga ʻo e kole fokotuʻu.",
+    "alwaysActive": "Ngāue maʻu pē",
+    "personalization": "Fakataautahaʻi",
+    "personalizationDescription": "Manatuʻi ʻa e ngaahi fiekaunga fakangatangata ʻi he ngaahi ʻaʻahi kehekehe. Kapau ʻe tamateʻi eni, ʻe kei lava pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "erasurePending": "ʻOku kei tatali ʻa hono toʻo ʻo e palofaili. ʻOku ʻosi ngāue ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "cancel": "Kaniseli",
+    "saveChoices": "Tuku tauhi ʻa e ngaahi fili",
+    "saving": "ʻOku tuku tauhi…",
+    "loadError": "ʻIkai lava ke ʻomi hoʻo fili. ʻE kei lava pē ke ke fili ʻi lalo.",
+    "grantError": "ʻIkai lava ke fakaʻatā ʻa e fakataautahaʻi. ʻOku kei ʻatā pē ʻa e ngaahi mahuʻinga.",
+    "saveError": "ʻIkai lava ke tuku tauhi hoʻo fili. Kātaki ʻo toe feinga."
   }
 }

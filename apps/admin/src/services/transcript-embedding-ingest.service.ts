@@ -8,11 +8,16 @@ import {
   statusForEmbeddingRewrite,
 } from "@/services/embedding-ingest-shared"
 import {
-  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   writeTranscriptEmbeddingPayloadInTransaction,
   type TranscriptEmbeddingGenerationMode,
   type TranscriptEmbeddingPayloadChunk,
 } from "@/services/transcript-embedding.service"
+import {
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "@/services/content-embedding-contract"
 
 const AdminTargetSchema = z
   .object({
@@ -212,6 +217,7 @@ export class TranscriptEmbeddingIngestError extends Error {
       | "payload_invalid"
       | "target_not_found"
       | "target_ambiguous"
+      | "contract_mismatch"
       | "dimension_mismatch"
       | "chunk_invalid"
       | "source_hash_mismatch"
@@ -353,11 +359,12 @@ function sourceContentHash(payload: TranscriptEmbeddingIngestPayload): string {
 
 function validateChunks(
   payload: TranscriptEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
 ): readonly TranscriptEmbeddingPayloadChunk[] {
-  if (payload.model.dimensions !== EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS) {
+  if (payload.model.dimensions !== contract.storage.dimensions) {
     throw new TranscriptEmbeddingIngestError(
       "dimension_mismatch",
-      `payload dimensions=${payload.model.dimensions}; expected ${EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS}`,
+      `payload dimensions=${payload.model.dimensions}; expected ${contract.storage.dimensions}`,
     )
   }
 
@@ -403,6 +410,41 @@ function validateChunks(
     }
   }
   return sorted
+}
+
+function payloadEmbeddingTuple(
+  payload: TranscriptEmbeddingIngestPayload,
+): ContentEmbeddingTuple | null {
+  if (
+    payload.model.provider == null ||
+    payload.model.nativeDimensions == null
+  ) {
+    return null
+  }
+
+  return {
+    provider: payload.model.provider,
+    model: payload.model.name,
+    nativeDimensions: payload.model.nativeDimensions,
+    dimensions: payload.model.dimensions,
+    transformVersion: payload.model.transformVersion ?? null,
+  }
+}
+
+function assertPayloadMatchesActiveContract(
+  payload: TranscriptEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  const payloadTuple = payloadEmbeddingTuple(payload)
+  if (
+    payloadTuple == null ||
+    !contentEmbeddingTupleMatches(contract.storage, payloadTuple)
+  ) {
+    throw new TranscriptEmbeddingIngestError(
+      "contract_mismatch",
+      `transcript embedding payload does not match active content embedding contract ${contract.id}`,
+    )
+  }
 }
 
 async function resolveTarget(
@@ -541,22 +583,6 @@ async function countHealthyChunks(
   return Number(rows[0]?.count ?? 0)
 }
 
-function legacyOpenAiProviderMatches(
-  existing: ExistingTranscript,
-  payload: TranscriptEmbeddingIngestPayload,
-): boolean {
-  return (
-    existing.embeddingProvider == null &&
-    existing.embeddingNativeDimensions === existing.dimensions &&
-    existing.embeddingTransformVersion == null &&
-    payload.model.provider === "openai" &&
-    payload.model.nativeDimensions == null &&
-    payload.model.transformVersion == null &&
-    (existing.model === "openai/text-embedding-3-small" ||
-      existing.model === "text-embedding-3-small")
-  )
-}
-
 function existingMatches(
   existing: ExistingTranscript,
   payload: TranscriptEmbeddingIngestPayload,
@@ -566,10 +592,9 @@ function existingMatches(
     existing.sourceContentHash === hash &&
     existing.model === payload.model.name &&
     existing.dimensions === payload.model.dimensions &&
-    (existing.embeddingProvider === (payload.model.provider ?? null) ||
-      legacyOpenAiProviderMatches(existing, payload)) &&
+    existing.embeddingProvider === (payload.model.provider ?? null) &&
     existing.embeddingNativeDimensions ===
-      (payload.model.nativeDimensions ?? existing.dimensions) &&
+      (payload.model.nativeDimensions ?? null) &&
     existing.embeddingTransformVersion ===
       (payload.model.transformVersion ?? null) &&
     existing.chunkingType === payload.chunking.type &&
@@ -682,7 +707,6 @@ export async function ingestTranscriptEmbeddings(
   }
 
   const payload = parsed.data
-  const chunks = validateChunks(payload)
   const hash = sourceContentHash(payload)
   const target = await resolveTarget(prisma, payload)
   const mode = payload.generation.mode as TranscriptEmbeddingGenerationMode
@@ -695,6 +719,9 @@ export async function ingestTranscriptEmbeddings(
     try {
       return await prisma.$transaction(
         async (tx) => {
+          const contract = await resolveActiveContentEmbeddingContract(tx)
+          assertPayloadMatchesActiveContract(payload, contract)
+          const chunks = validateChunks(payload, contract)
           await lockTranscriptTarget(tx, target, payload.language)
           const existing = await readExistingTranscript(
             tx,

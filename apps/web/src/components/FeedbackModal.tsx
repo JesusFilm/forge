@@ -254,7 +254,7 @@ function ThemedSelect<T extends string>({
           setOpen((current) => !current)
         }}
         onKeyDown={handleKeyDown}
-        className="flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-white/15 bg-white/[0.035] px-4 text-left text-sm text-white transition hover:border-white/30 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
+        className="flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-white/15 bg-white/[0.035] px-4 text-left text-base sm:text-sm text-white transition hover:border-white/30 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
       >
         <span className="truncate">{selected?.label}</span>
         <ChevronDown
@@ -282,7 +282,7 @@ function ThemedSelect<T extends string>({
                   data-value={option.value}
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => choose(index)}
-                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition focus-visible:outline-none ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-base sm:text-sm transition focus-visible:outline-none ${
                     isSelected
                       ? "bg-brand-red text-white"
                       : isActive
@@ -307,14 +307,14 @@ function ThemedSelect<T extends string>({
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="mb-2 block text-sm font-semibold text-stone-100">
+    <span className="mb-2 block text-base sm:text-sm font-semibold text-stone-100">
       {children}
     </span>
   )
 }
 
 function inputClassName(hasError = false) {
-  return `h-11 w-full rounded-xl border bg-white/[0.035] px-4 text-sm text-white transition placeholder:text-stone-600 focus-visible:ring-2 focus-visible:outline-none ${
+  return `h-11 w-full rounded-xl border bg-white/[0.035] px-4 text-base sm:text-sm text-white transition placeholder:text-stone-600 focus-visible:ring-2 focus-visible:outline-none ${
     hasError
       ? "border-brand-red/80 focus-visible:ring-brand-red/40"
       : "border-white/15 hover:border-white/25 focus-visible:border-white/35 focus-visible:ring-white/20"
@@ -413,15 +413,17 @@ function ElementPicker({
           <Crosshair aria-hidden className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t("picker.title")}</p>
-          <p className="truncate text-xs text-stone-400">
+          <p className="text-base sm:text-sm font-semibold">
+            {t("picker.title")}
+          </p>
+          <p className="truncate text-sm sm:text-xs text-stone-400">
             {label || t("picker.hint")}
           </p>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold text-stone-200 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-base sm:text-sm font-semibold text-stone-200 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
         >
           <X aria-hidden className="size-4" />
           {t("picker.cancel")}
@@ -847,7 +849,10 @@ export function FeedbackModal({
               <DialogTitle className="mt-6 text-3xl font-semibold text-white">
                 {t("success.title")}
               </DialogTitle>
-              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300">
+              {/* `sm:text-base` is load-bearing: DialogDescription's phone tier is
+                  `text-base sm:text-sm`, and overriding only the base size would
+                  leave that `sm:` rule live and shrink this to 14px on desktop. */}
+              <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300 sm:text-base">
                 {t("success.description")}{" "}
                 {submittedWithEmail || followUpAdded
                   ? t(
@@ -866,7 +871,7 @@ export function FeedbackModal({
                 >
                   <label
                     htmlFor="feedback-follow-up-email"
-                    className="mb-2 block text-sm font-semibold text-stone-100"
+                    className="mb-2 block text-base sm:text-sm font-semibold text-stone-100"
                   >
                     {t("fields.email.label")}{" "}
                     <span className="font-normal text-stone-500">
@@ -892,7 +897,7 @@ export function FeedbackModal({
                     <button
                       type="submit"
                       disabled={followUpSubmitting}
-                      className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
+                      className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-base sm:text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {followUpSubmitting ? (
                         <Loader2 aria-hidden className="size-4 animate-spin" />
@@ -905,7 +910,7 @@ export function FeedbackModal({
                   {followUpError ? (
                     <p
                       role="alert"
-                      className="mt-2 text-xs leading-relaxed text-red-200"
+                      className="mt-2 text-sm sm:text-xs leading-relaxed text-red-200"
                     >
                       {followUpError}{" "}
                       <a
@@ -923,7 +928,7 @@ export function FeedbackModal({
               <button
                 type="button"
                 onClick={close}
-                className="mt-7 h-11 cursor-pointer rounded-full border border-white/15 px-7 text-sm font-semibold text-stone-200 transition hover:border-white/30 hover:bg-white/[0.05] hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="mt-7 h-11 cursor-pointer rounded-full border border-white/15 px-7 text-base sm:text-sm font-semibold text-stone-200 transition hover:border-white/30 hover:bg-white/[0.05] hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
                 {t("success.done")}
               </button>
@@ -950,7 +955,7 @@ export function FeedbackModal({
                   count: FEEDBACK_STEP_COUNT,
                 })}
               >
-                <span className="shrink-0 text-xs font-semibold text-stone-400">
+                <span className="shrink-0 text-sm sm:text-xs font-semibold text-stone-400">
                   {step} / {FEEDBACK_STEP_COUNT}
                 </span>
                 <div className="grid flex-1 grid-cols-5 gap-1.5" aria-hidden>
@@ -971,7 +976,7 @@ export function FeedbackModal({
               >
                 {currentStepCopy?.title}
               </h3>
-              <p className="mt-1 text-sm text-stone-400">
+              <p className="mt-1 text-base sm:text-sm text-stone-400">
                 {currentStepCopy?.helper}
               </p>
             </header>
@@ -998,7 +1003,7 @@ export function FeedbackModal({
                             return next
                           })
                         }}
-                        className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:min-h-28 ${
+                        className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border px-3 py-4 text-base sm:text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:min-h-28 ${
                           selected
                             ? "border-brand-red bg-brand-red/[0.06] text-brand-red shadow-[0_0_0_1px_rgba(239,51,64,0.12)]"
                             : "border-white/15 bg-white/[0.025] text-stone-300 hover:border-white/30 hover:bg-white/[0.05] hover:text-white"
@@ -1011,7 +1016,10 @@ export function FeedbackModal({
                   })}
                 </div>
                 {fieldErrors.category ? (
-                  <p role="alert" className="mt-3 text-sm text-brand-red">
+                  <p
+                    role="alert"
+                    className="mt-3 text-base sm:text-sm text-brand-red"
+                  >
                     {fieldErrors.category}
                   </p>
                 ) : null}
@@ -1045,9 +1053,9 @@ export function FeedbackModal({
                     }
                     onChange={(event) => setMessage(event.target.value)}
                     placeholder={t("fields.details.placeholder")}
-                    className="min-h-28 w-full resize-y bg-transparent px-4 py-3 text-sm leading-relaxed text-white placeholder:text-stone-600 focus:outline-none sm:min-h-[6.5rem]"
+                    className="min-h-28 w-full resize-y bg-transparent px-4 py-3 text-base sm:text-sm leading-relaxed text-white placeholder:text-stone-600 focus:outline-none sm:min-h-[6.5rem]"
                   />
-                  <div className="flex min-h-9 items-center border-t border-white/8 px-4 text-xs text-stone-500">
+                  <div className="flex min-h-9 items-center border-t border-white/8 px-4 text-sm sm:text-xs text-stone-500">
                     {fieldErrors.message ? (
                       <span
                         id="feedback-message-error"
@@ -1090,7 +1098,7 @@ export function FeedbackModal({
                   />
                   {languageArea ? (
                     <div className="mt-3">
-                      <span className="mb-1.5 block text-xs font-medium text-stone-400">
+                      <span className="mb-1.5 block text-sm sm:text-xs font-medium text-stone-400">
                         {t("fields.affectedLanguage.label")}
                       </span>
                       {languageOptionsState === "error" || useCustomLanguage ? (
@@ -1125,7 +1133,7 @@ export function FeedbackModal({
                           triggerClassName="!h-11 !min-h-11 !rounded-xl !px-3"
                         />
                       )}
-                      <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                      <div className="mt-2 flex items-center justify-between gap-3 text-sm sm:text-xs">
                         <span className="text-stone-500">
                           {languageOptionsState === "error"
                             ? t("languagePicker.unavailable")
@@ -1170,14 +1178,14 @@ export function FeedbackModal({
                     }}
                   />
                   {contentScope === "current" && page ? (
-                    <p className="mt-2 truncate text-xs text-stone-500">
+                    <p className="mt-2 truncate text-sm sm:text-xs text-stone-500">
                       {page.title}
                     </p>
                   ) : null}
                   {contentScope === "other" ? (
                     <div className="relative mt-3">
                       <label htmlFor="feedback-content-title">
-                        <span className="mb-1.5 block text-xs font-medium text-stone-400">
+                        <span className="mb-1.5 block text-sm sm:text-xs font-medium text-stone-400">
                           {t("fields.contentSearch.label")}
                         </span>
                       </label>
@@ -1187,11 +1195,11 @@ export function FeedbackModal({
                             aria-hidden
                             className="size-4 shrink-0 text-brand-red"
                           />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-100">
+                          <span className="min-w-0 flex-1 truncate text-base sm:text-sm font-medium text-stone-100">
                             {selectedContent.title}
                           </span>
                           {selectedContent.label ? (
-                            <span className="hidden shrink-0 text-[10px] font-semibold tracking-wide text-stone-500 uppercase sm:inline">
+                            <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-stone-500 uppercase sm:inline sm:text-[10px]">
                               {selectedContent.label.replaceAll("_", " ")}
                             </span>
                           ) : null}
@@ -1231,19 +1239,19 @@ export function FeedbackModal({
                         </div>
                       )}
                       {!selectedContent && contentSearchState === "loading" ? (
-                        <p className="mt-2 text-xs text-stone-500">
+                        <p className="mt-2 text-sm sm:text-xs text-stone-500">
                           {t("contentSearch.searching")}
                         </p>
                       ) : null}
                       {!selectedContent && contentSearchState === "error" ? (
-                        <p className="mt-2 text-xs text-stone-400">
+                        <p className="mt-2 text-sm sm:text-xs text-stone-400">
                           {t("contentSearch.error")}
                         </p>
                       ) : null}
                       {!selectedContent &&
                       contentSearchState === "ready" &&
                       contentResults.length === 0 ? (
-                        <p className="mt-2 text-xs text-stone-500">
+                        <p className="mt-2 text-sm sm:text-xs text-stone-500">
                           {t("contentSearch.noMatch")}
                         </p>
                       ) : null}
@@ -1268,10 +1276,10 @@ export function FeedbackModal({
                                   className="size-4 shrink-0 text-stone-400"
                                 />
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-medium text-stone-100">
+                                  <span className="block truncate text-base sm:text-sm font-medium text-stone-100">
                                     {result.title}
                                   </span>
-                                  <span className="block truncate text-[11px] text-stone-500">
+                                  <span className="block truncate text-xs text-stone-500 sm:text-[11px]">
                                     {result.label
                                       ? result.label.replaceAll("_", " ")
                                       : t("contentSearch.mediaFallback")}
@@ -1314,7 +1322,7 @@ export function FeedbackModal({
                   {fieldErrors.name ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-xs text-brand-red"
+                      className="mt-1.5 block text-sm sm:text-xs text-brand-red"
                     >
                       {fieldErrors.name}
                     </span>
@@ -1344,14 +1352,14 @@ export function FeedbackModal({
                   {fieldErrors.email ? (
                     <span
                       role="alert"
-                      className="mt-1.5 block text-xs text-brand-red"
+                      className="mt-1.5 block text-sm sm:text-xs text-brand-red"
                     >
                       {fieldErrors.email}
                     </span>
                   ) : null}
                   <p
                     id="feedback-email-helper"
-                    className="mt-1.5 text-xs leading-relaxed text-stone-500"
+                    className="mt-1.5 text-sm sm:text-xs leading-relaxed text-stone-500"
                   >
                     {t("fields.email.helper")}
                   </p>
@@ -1375,7 +1383,7 @@ export function FeedbackModal({
                 {page ? (
                   <div
                     data-testid="feedback-page-context"
-                    className="mt-5 flex min-h-11 items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] px-3 text-xs text-stone-400"
+                    className="mt-5 flex min-h-11 items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.025] px-3 text-sm sm:text-xs text-stone-400"
                   >
                     <FileText aria-hidden className="size-4 shrink-0" />
                     <span className="max-w-44 truncate text-stone-300">
@@ -1412,7 +1420,7 @@ export function FeedbackModal({
                     className="size-5 shrink-0 text-stone-200"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-stone-100">
+                    <span className="block truncate text-base sm:text-sm font-semibold text-stone-100">
                       {selectedElement
                         ? selectedElement.label
                         : t("picker.mark")}
@@ -1422,7 +1430,7 @@ export function FeedbackModal({
                         </span>
                       ) : null}
                     </span>
-                    <span className="block truncate text-xs text-stone-500">
+                    <span className="block truncate text-sm sm:text-xs text-stone-500">
                       {selectedElement
                         ? // {role} stays the raw English DOM tag/role token.
                           t("picker.selected", { role: selectedElement.role })
@@ -1460,10 +1468,10 @@ export function FeedbackModal({
                       className="mt-0.5 size-5 shrink-0 text-stone-400"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-stone-100">
+                      <span className="block text-base sm:text-sm font-semibold text-stone-100">
                         {t("diagnostics.include")}
                       </span>
-                      <span className="mt-0.5 block text-xs leading-relaxed text-stone-500">
+                      <span className="mt-0.5 block text-sm sm:text-xs leading-relaxed text-stone-500">
                         {t("diagnostics.description")}
                       </span>
                     </span>
@@ -1473,7 +1481,7 @@ export function FeedbackModal({
                     disabled={!diagnostics}
                     aria-expanded={detailsOpen}
                     onClick={() => setDetailsOpen((current) => !current)}
-                    className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-semibold text-stone-300 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 text-sm sm:text-xs font-semibold text-stone-300 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     {t("diagnostics.viewDetails")}
                     <ChevronDown
@@ -1483,7 +1491,7 @@ export function FeedbackModal({
                   </button>
                 </div>
                 {detailsOpen && diagnostics ? (
-                  <dl className="mt-3 grid gap-x-5 gap-y-2 rounded-xl bg-white/[0.03] p-3 text-xs sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-x-5 gap-y-2 rounded-xl bg-white/[0.03] p-3 text-sm sm:text-xs sm:grid-cols-2">
                     {Object.entries(diagnostics).map(([key, value]) => (
                       <div key={key} className="min-w-0">
                         <dt className="capitalize text-stone-500">
@@ -1500,7 +1508,7 @@ export function FeedbackModal({
             {error ? (
               <div
                 role="alert"
-                className="mt-5 rounded-xl border border-brand-red/30 bg-brand-red/[0.08] px-4 py-3 text-sm text-red-100"
+                className="mt-5 rounded-xl border border-brand-red/30 bg-brand-red/[0.08] px-4 py-3 text-base sm:text-sm text-red-100"
               >
                 <p>{error}</p>
                 <a
@@ -1528,7 +1536,7 @@ export function FeedbackModal({
                       setStep((current) => Math.max(1, current - 1))
                     }}
                     disabled={submitting}
-                    className="h-11 cursor-pointer rounded-full border border-white/15 px-5 text-sm font-semibold text-stone-200 hover:border-white/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:opacity-50"
+                    className="h-11 cursor-pointer rounded-full border border-white/15 px-5 text-base sm:text-sm font-semibold text-stone-200 hover:border-white/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:opacity-50"
                   >
                     {t("nav.back")}
                   </button>
@@ -1536,7 +1544,7 @@ export function FeedbackModal({
                 <button
                   type="submit"
                   disabled={submitting || !page}
-                  className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(239,51,64,0.2)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
+                  className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-base sm:text-sm font-semibold text-white shadow-[0_12px_28px_rgba(239,51,64,0.2)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {submitting ? (
                     <Loader2 aria-hidden className="size-4 animate-spin" />
@@ -1550,7 +1558,7 @@ export function FeedbackModal({
                         : t("nav.continue")}
                 </button>
               </div>
-              <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-stone-500">
+              <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm sm:text-xs text-stone-500">
                 <ShieldCheck aria-hidden className="size-4 shrink-0" />
                 {t("footer.reviewed")}
               </p>

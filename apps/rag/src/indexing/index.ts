@@ -18,6 +18,20 @@ export {
   type RawInput,
 } from "./normalize.js"
 export {
+  ingestPending,
+  type IngestDeps,
+  type IngestOptions,
+  type IngestStatus,
+  type IngestSummary,
+} from "./ingest.js"
+export {
+  applySourceChanges,
+  previewReverts,
+  revertChanges,
+  type LanguageChange,
+  type LanguageMaintenanceStore,
+} from "./language-maintenance.js"
+export {
   decideSweep,
   isFallback,
   resolveFromLlm,

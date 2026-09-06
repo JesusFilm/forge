@@ -107,6 +107,24 @@ concurrency at 5 against that main-client budget.
 The filter preserves the raw libpq URI outside those exact keys, including
 comma-separated failover hosts and percent-encoded supported option values.
 
+The scheduled backup's source-profile safety check uses the existing `pg`
+client for ordinary single-host Admin database URLs before invoking `pg_dump`.
+Do not add a new `psql` subprocess for this application-owned query: the
+Railway worker can successfully run the Admin database client while a spawned
+preflight executable fails at the runtime boundary. Native `psql` remains the
+fallback for libpq multi-host authorities, which `pg` does not parse, and the
+restore path remains native because it targets an arbitrary database rather
+than Admin's application connection.
+
+This distinction repaired the August 2026 publication incident. Both profiles
+last published on 3 August; every daily run from 4 August onward failed at the
+new `psql` source-compatibility preflight before `pg_dump`, while the same
+compatibility query against production returned zero excluded social-image
+references. Regression coverage must prove single-host scheduled backups do
+not spawn `psql`, the client connection closes on success and failure, query
+errors stay credential-redacted, and multi-host URLs retain the native libpq
+fallback.
+
 Scheduled exports require bucket configuration before native work starts. The
 profile intentionally excludes editorial media assets and Admin users, so
 source preflight also refuses a non-null

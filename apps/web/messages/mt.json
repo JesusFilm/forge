@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lingwa tal-awdjo",
     "selectLanguageVersion": "Agħżel verżjoni tal-lingwa",
     "watchSelectedVersion": "Ara l-verżjoni magħżula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Għażliet tal-cookies",
+    "bannerTitle": "L-għażliet tiegħek dwar il-privatezza",
+    "bannerDescription": "Il-cookies essenzjali jżommu lil Watch sigur u jaħdem kif suppost. Bil-permess tiegħek, cookie fakultattiva tal-ewwel parti tista’ tiftakar l-interessi bejn iż-żjarat biex tippersonalizza r-rakkomandazzjonijiet. Ir-rakkomandazzjonijiet kuntestwali jibqgħu disponibbli xorta waħda.",
+    "acceptAll": "Aċċetta kollox",
+    "essentialOnly": "Essenzjali biss",
+    "manageChoices": "Immaniġġja l-għażliet",
+    "savingChoice": "Qed nissejvjaw l-għażla tal-cookies",
+    "settings": "Is-settings tal-cookies",
+    "settingsDescription": "Agħżel jekk Watch jistax jiftakar l-interessi tar-rakkomandazzjonijiet bejn iż-żjarat. Tista’ tbiddel dan fi kwalunkwe ħin.",
+    "essentialCookies": "Cookies essenzjali",
+    "essentialDescription": "Sigurtà, daqq, għażliet tal-privatezza u attribuzzjoni tat-talbiet għar-rakkomandazzjonijiet.",
+    "alwaysActive": "Dejjem attivi",
+    "personalization": "Personalizzazzjoni",
+    "personalizationDescription": "Jiftakar interessi limitati bejn iż-żjarat. Jekk titfi dan, ir-rakkomandazzjonijiet kuntestwali jibqgħu disponibbli.",
+    "erasurePending": "It-tħassir tal-profil għadu pendenti. Ir-rakkomandazzjonijiet kuntestwali huma diġà attivi.",
+    "cancel": "Ikkanċella",
+    "saveChoices": "Issejvja l-għażliet",
+    "saving": "Qed nissejvjaw…",
+    "loadError": "Ma stajniex intellgħu l-għażla tiegħek. Xorta tista’ tagħżel hawn taħt.",
+    "grantError": "Ma setgħetx tiġi attivata l-personalizzazzjoni. L-għażla essenzjali biss tibqa’ disponibbli.",
+    "saveError": "Ma stajniex nissejvjaw l-għażla tiegħek. Jekk jogħġbok erġa’ pprova."
   }
 }

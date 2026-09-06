@@ -722,5 +722,28 @@
     "languageVersionLabel": "Puo ya modumo",
     "selectLanguageVersion": "Tlhopha phetolelo ya puo",
     "watchSelectedVersion": "Lebelela phetolelo e e tlhophilweng"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dikgetho tsa cookie",
+    "bannerTitle": "Dikgetho tsa gago tsa sephiri",
+    "bannerDescription": "Di-cookie tsa botlhokwa di boloka Watch e sireletsegile e bile e dira sentle. Fa o re naya tetla, cookie ya boikgethelo ya ntlha e ka gopola dikgatlhego tsotlhe mo maetong a a farologaneng gore ditshitsinyo di nne tsa gago. Ditshitsinyo tsa mo seemong di tla nna tsotlhe di le teng ka tsela nngwe le nngwe.",
+    "acceptAll": "Amogela tsotlhe",
+    "essentialOnly": "Tsa botlhokwa fela",
+    "manageChoices": "Laola dikgetho",
+    "savingChoice": "Go boloka kgetho ya cookie",
+    "settings": "Dipeakanyo tsa cookie",
+    "settingsDescription": "Tlhopha gore a Watch e ka gopola dikgatlhego tsa ditshitsinyo mo maetong a a farologaneng. O ka fetola seno nako nngwe le nngwe.",
+    "essentialCookies": "Di-cookie tsa botlhokwa",
+    "essentialDescription": "Tshireletsego, go tshameka video, dikgetho tsa sephiri, le kabelo ya kopo ya ditshitsinyo.",
+    "alwaysActive": "Ka tsotlhe e a dira",
+    "personalization": "Go dira gore e nne ya motho ka namana",
+    "personalizationDescription": "Gopola dikgatlhego tse di lekanyeditsweng mo maetong a a farologaneng. Fa o tima seno, ditshitsinyo tsa mo seemong di tla nna di sa ntse di le teng.",
+    "erasurePending": "Go phimolwa ga porofaele go sa ntse go emetse. Ditshitsinyo tsa mo seemong di setse di dira.",
+    "cancel": "Khansela",
+    "saveChoices": "Boloka dikgetho",
+    "saving": "E a bolokwa…",
+    "loadError": "Kgetho ya gago ga e a kgona go laisiwa. O sa ntse o ka tlhopha fa tlase.",
+    "grantError": "Go dira gore e nne ya motho ka namana ga go a kgona go tsenngwa tirisong. Tsa botlhokwa fela di sa ntse di le teng.",
+    "saveError": "Kgetho ya gago ga e a kgona go bolokwa. Tsweetswee leka gape."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "ʻŌlelo leo",
     "selectLanguageVersion": "Koho i kahi mana ʻōlelo",
     "watchSelectedVersion": "Nānā i ka mana i koho ʻia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Koho kuki",
+    "bannerTitle": "Kāu mau koho pilikino",
+    "bannerDescription": "Mālama nā kuki pono i ka palekana a me ka holo pono o Watch. Inā ʻae mai ʻoe, hiki i kekahi kuki koho mua ke hoʻomanaʻo i nā hoihoi ma waena o nā kipa ʻana e hoʻopilikino i nā paipai. Loaʻa nō nā paipai pili-kūlana ma kēlā me kēia ala.",
+    "acceptAll": "ʻAe i nā mea a pau",
+    "essentialOnly": "Nā mea pono wale nō",
+    "manageChoices": "Mālama i nā koho",
+    "savingChoice": "Ke mālama nei i ke koho kuki",
+    "settings": "Nā hoʻonohonoho kuki",
+    "settingsDescription": "E koho inā hiki iā Watch ke hoʻomanaʻo i nā hoihoi paipai ma waena o nā kipa ʻana. Hiki iā ʻoe ke hoʻololi i kēia i kēlā me kēia manawa.",
+    "essentialCookies": "Nā kuki pono",
+    "essentialDescription": "Palekana, pāʻani hou ʻana, nā koho pilikino, a me ka hāʻawi ʻana i ke kumu o nā noi paipai.",
+    "alwaysActive": "ʻĀ mau nō ia",
+    "personalization": "Hoʻopilikino",
+    "personalizationDescription": "E hoʻomanaʻo i nā hoihoi i kaupalena ʻia ma waena o nā kipa ʻana. Inā pio kēia, e loaʻa nō nā paipai pili-kūlana.",
+    "erasurePending": "Ke kali nei ka holoi ʻana i ka moʻokāki. Ke hana nei nā paipai pili-kūlana i kēia manawa.",
+    "cancel": "Hoʻōki",
+    "saveChoices": "Mālama i nā koho",
+    "saving": "Ke mālama nei…",
+    "loadError": "ʻAʻole hiki ke hoʻouka ʻia kāu koho. Hiki nō iā ʻoe ke koho ma lalo.",
+    "grantError": "ʻAʻole hiki ke hoʻā i ka hoʻopilikino. Loaʻa nō ka koho mea pono wale nō.",
+    "saveError": "ʻAʻole hiki ke mālama ʻia kāu koho. E hoʻāʻo hou."
   }
 }

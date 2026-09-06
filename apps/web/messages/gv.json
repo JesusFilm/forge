@@ -722,5 +722,28 @@
     "languageVersionLabel": "Çhengey sheean",
     "selectLanguageVersion": "Reih lhieggan çhengey",
     "watchSelectedVersion": "Jeeagh er y lhieggan reiht"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Reihyn cookie",
+    "bannerTitle": "Dty reihyn preevaidys",
+    "bannerDescription": "Ta cookieyn bunneydagh keeping Watch slan as gobbraghey. Lesh dty choardail, oddys cookie reiht gyn eigney ve cooinaghtyn toiggalyn eddyr shellaneyn dy yannoo recommendalyn ny s'persoonagh. Bee recommendalyn çhymmyltagh ry-gheddyn ayns dagh aght.",
+    "acceptAll": "Gow ooilley-rish",
+    "essentialOnly": "Bunneydagh ny lomarcan",
+    "manageChoices": "Reirey reihyn",
+    "savingChoice": "Sauail dty reiht cookie",
+    "settings": "Soadeyryn cookie",
+    "settingsDescription": "Reih my oddys Watch toiggalyn recommendal y chadley eddyr shellaneyn. Oddys oo caghlaa shoh ec traa erbee.",
+    "essentialCookies": "Cookieyn bunneydagh",
+    "essentialDescription": "Saucheyrys, cloie er ash, reihyn preevaidys, as attribioon arragh recommendal.",
+    "alwaysActive": "Jannoo obbyr dy kinjagh",
+    "personalization": "Persoonaghey",
+    "personalizationDescription": "Cooinee toiggalyn soilshit eddyr shellaneyn. My chuirys oo shoh ass, bee recommendalyn çhymmyltagh foast ry-gheddyn.",
+    "erasurePending": "Ta leihmagh dty hroailt er-feie. Ta recommendalyn çhymmyltagh currit er bun hannah.",
+    "cancel": "Cur ass",
+    "saveChoices": "Sauail reihyn",
+    "saving": "Sauail…",
+    "loadError": "Cha dod dty reiht ve lhiassaghey. Foddyms foast reih sheese.",
+    "grantError": "Cha dod persoonaghey ve currit er bun. Ta bunneydagh ny lomarcan foast ry-gheddyn.",
+    "saveError": "Cha dod dty reiht ve sauailt. Jean ymmyd jeh reesht, my saillt."
   }
 }

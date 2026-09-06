@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lenga àudio",
     "selectLanguageVersion": "Seleccionar una version lingüistica",
     "watchSelectedVersion": "Veire la version seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opcions de cookies",
+    "bannerTitle": "Vòstras opcions de confidencialitat",
+    "bannerDescription": "Las cookies essencialas mantenon Watch segur e foncional. Amb vòstra permission, una cookie opcionala del site pòt se remembrar dels interèsses d’una visita a l’autra per personalizar las recomandacions. Las recomandacions contextualas demòran disponiblas dins totes los cases.",
+    "acceptAll": "Tot acceptar",
+    "essentialOnly": "Essencialas solament",
+    "manageChoices": "Gerir las opcions",
+    "savingChoice": "Enregistrament de l’opcion de cookies",
+    "settings": "Paramètres de cookies",
+    "settingsDescription": "Causissètz se Watch pòt memorizar vòstres interèsses de recomandacion d’una visita a l’autra. Podètz cambiar aquò a tot moment.",
+    "essentialCookies": "Cookies essencialas",
+    "essentialDescription": "Seguretat, lectura, opcions de confidencialitat e atribucion de las demandas de recomandacion.",
+    "alwaysActive": "Totjorn activas",
+    "personalization": "Personalizacion",
+    "personalizationDescription": "Memorizar d’interèsses limitats d’una visita a l’autra. Se desactivatz aquò, las recomandacions contextualas demoraràn disponiblas.",
+    "erasurePending": "L’escafament del perfil es en espèra. Las recomandacions contextualas son ja activas.",
+    "cancel": "Anullar",
+    "saveChoices": "Enregistrar las opcions",
+    "saving": "Enregistrament…",
+    "loadError": "Impossible de cargar vòstra causida. Podètz totjorn causir çai-jos.",
+    "grantError": "Impossible d’activar la personalizacion. L’opcion essenciala solament demòra disponibla.",
+    "saveError": "Impossible d’enregistrar vòstra causida. Tornatz ensajar."
   }
 }

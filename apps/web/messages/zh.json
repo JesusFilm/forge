@@ -722,5 +722,28 @@
     "start": "全部下载",
     "downloadAgain": "再次下载",
     "retryFailed": "重试失败的项目"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 选项",
+    "bannerTitle": "您的隐私选择",
+    "bannerDescription": "必要 Cookie 可保障 Watch 的安全与正常运行。经您同意，一个可选的第一方 Cookie 可在您多次访问时记住您的兴趣，以提供个性化推荐。无论您是否同意，情境推荐始终可用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "仅必要项",
+    "manageChoices": "管理选项",
+    "savingChoice": "正在保存 Cookie 选择",
+    "settings": "Cookie 设置",
+    "settingsDescription": "选择是否允许 Watch 在您多次访问时记住推荐兴趣。您可以随时更改。",
+    "essentialCookies": "必要 Cookie",
+    "essentialDescription": "用于安全、播放、隐私选择和推荐请求归因。",
+    "alwaysActive": "始终启用",
+    "personalization": "个性化",
+    "personalizationDescription": "在您多次访问时记住有限的兴趣。关闭后，情境推荐仍然可用。",
+    "erasurePending": "个人资料删除正在处理中。情境推荐已启用。",
+    "cancel": "取消",
+    "saveChoices": "保存选项",
+    "saving": "正在保存…",
+    "loadError": "无法加载您的选择。您仍可在下方进行选择。",
+    "grantError": "无法启用个性化。您仍可使用仅必要项。",
+    "saveError": "无法保存您的选择。请重试。"
   }
 }

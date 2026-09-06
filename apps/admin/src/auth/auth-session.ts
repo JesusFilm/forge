@@ -16,12 +16,18 @@ const accessRequestMaxAgeSeconds = 60 * 60 * 24
 
 type AdminOAuthSessionPayload = Principal & {
   scopes: string[]
+  iat?: number
 }
 
 export type AdminOAuthAccessRequestPayload = {
   subject: string
   email?: string
   name?: string
+}
+
+export type AdminOAuthSessionDetails = {
+  principal: Principal
+  authenticatedAt: Date | null
 }
 
 export function createAdminOAuthSessionCookie(
@@ -34,6 +40,7 @@ export function createAdminOAuthSessionCookie(
     scopes,
   })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime(`${maxAgeSeconds}s`)
     .sign(getSigningKey())
 }
@@ -50,6 +57,12 @@ export function createAdminOAuthAccessRequestCookie(
 export async function readAdminOAuthSessionCookie(
   value?: string,
 ): Promise<Principal | null> {
+  return (await readAdminOAuthSessionDetails(value))?.principal ?? null
+}
+
+export async function readAdminOAuthSessionDetails(
+  value?: string,
+): Promise<AdminOAuthSessionDetails | null> {
   if (!value) return null
 
   const payload = await verifyPayload(value)
@@ -58,8 +71,9 @@ export async function readAdminOAuthSessionCookie(
   }
 
   return {
-    id: payload.id,
-    role: payload.role,
+    principal: { id: payload.id, role: payload.role },
+    authenticatedAt:
+      typeof payload.iat === "number" ? new Date(payload.iat * 1_000) : null,
   }
 }
 

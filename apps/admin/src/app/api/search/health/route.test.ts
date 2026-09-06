@@ -5,7 +5,7 @@ vi.mock("@/auth/rate-limit", () => ({
 }))
 
 vi.mock("@/services/embeddings.service", () => ({
-  generateExperienceEmbedding: vi.fn(),
+  generateCurrentContentQueryEmbedding: vi.fn(),
 }))
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
@@ -28,7 +28,7 @@ vi.mock("@/services/search-trace-retention.service", () => ({
 }))
 
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 import { __resetSearchHealthForTest } from "@/services/hybrid-search-health"
 import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
 import { GET } from "./route"
@@ -69,7 +69,8 @@ afterEach(() => {
 
 describe("GET /api/search/health", () => {
   it("returns 200 + status=ok when embedding succeeds", async () => {
-    vi.mocked(generateExperienceEmbedding).mockResolvedValue({
+    vi.mocked(generateCurrentContentQueryEmbedding).mockResolvedValue({
+      contractId: "semantic-transcript-pgvector-v1",
       model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
       dimensions: 2048,
       embedding: new Array(2048).fill(0.1),
@@ -90,7 +91,7 @@ describe("GET /api/search/health", () => {
   })
 
   it("returns 200 + status=degraded when embedding throws", async () => {
-    vi.mocked(generateExperienceEmbedding).mockRejectedValue(
+    vi.mocked(generateCurrentContentQueryEmbedding).mockRejectedValue(
       new Error("provider down"),
     )
 
@@ -108,7 +109,8 @@ describe("GET /api/search/health", () => {
   })
 
   it("returns status=degraded when trace retention is unhealthy", async () => {
-    vi.mocked(generateExperienceEmbedding).mockResolvedValue({
+    vi.mocked(generateCurrentContentQueryEmbedding).mockResolvedValue({
+      contractId: "semantic-transcript-pgvector-v1",
       model: "text-embedding-3-small",
       dimensions: 1536,
       embedding: new Array(1536).fill(0.1),

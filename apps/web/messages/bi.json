@@ -722,5 +722,28 @@
     "languageVersionLabel": "Odio lanwis",
     "selectLanguageVersion": "Jusum wan lanwis vesen",
     "watchSelectedVersion": "Lukluk vesen we yu jusum"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ol joes blong cookie",
+    "bannerTitle": "Ol joes blong praevasi blong yu",
+    "bannerDescription": "Ol impoten cookie oli mekem Watch i stap sef mo i wok gud. Sipos yu agri, wan opsenel fas-pati cookie i save tingbaot ol intres blong yu long plante visit blong mekem ol rekomendesen oli stret moa long yu. Ol rekomendesen we oli folem konteks bambae oli stap yet nomata wanem joes yu mekem.",
+    "acceptAll": "Agri long olgeta",
+    "essentialOnly": "Ol impoten nomo",
+    "manageChoices": "Manejim ol joes",
+    "savingChoice": "Stap sevem joes blong cookie",
+    "settings": "Ol seting blong cookie",
+    "settingsDescription": "Jusum sipos Watch i save tingbaot ol intres blong rekomendesen blong yu long plante visit. Yu save jenisim hem eni taem.",
+    "essentialCookies": "Ol impoten cookie",
+    "essentialDescription": "Sikuriti, plebak, ol joes blong praevasi, mo atribusen blong ol rikwest blong rekomendesen.",
+    "alwaysActive": "I stap aktif oltaem",
+    "personalization": "Mekem i stret long yu",
+    "personalizationDescription": "Tingbaot ol intres we oli makem finis long plante visit. Sipos yu tanem hem i of, ol rekomendesen we oli folem konteks bambae oli stap yet.",
+    "erasurePending": "Stap wet blong klinim profail. Ol rekomendesen we oli folem konteks oli stap aktif finis.",
+    "cancel": "Kensel",
+    "saveChoices": "Sevem ol joes",
+    "saving": "Stap sevem…",
+    "loadError": "No save lodem joes blong yu. Be yu save jusum yet long daonbilo.",
+    "grantError": "No save mekem personalization i wok. Opsen blong ol impoten nomo i stap yet.",
+    "saveError": "No save sevem joes blong yu. Plis traem bakegen."
   }
 }

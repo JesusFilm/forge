@@ -33,8 +33,10 @@ import {
   isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
@@ -257,7 +259,17 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   return { kind: "redirect", pathname: canonicalPublicPath }
 }
 
-function classifyRewrite(pathname: string): RewriteDecision {
+/**
+ * Classify a canonical public path into an internal rewrite target. The
+ * manifest only influences one decision: whether an ambiguous `.html`
+ * segment is an audio-language slug (`isWatchAudioLanguageSlug`). Admission
+ * of the classified route against the manifest happens afterwards in
+ * `classifyManifestAdmission`.
+ */
+function classifyRewrite(
+  pathname: string,
+  manifest: WatchRouteManifest | null,
+): RewriteDecision {
   if (shouldBypassLocaleRewrite(pathname)) return { kind: "pass" }
   if (pathname === "/" || pathname === "") {
     return {
@@ -272,7 +284,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "history" || segment === "languages") {
+    if (
+      segment === "history" ||
+      segment === "languages" ||
+      segment === "whats-new"
+    ) {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -307,7 +323,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
       if (!rawLanguageSlug) return { kind: "not-found" }
-      if (!isPublicWatchLanguageSlug(rawLanguageSlug)) {
+      if (!isWatchAudioLanguageSlug(rawLanguageSlug, manifest)) {
         return { kind: "not-found" }
       }
       return {
@@ -327,7 +343,9 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!slug) return { kind: "not-found" }
     const rawAudioSlug = stripSafeSlug(localeSegment)
     if (!rawAudioSlug) return { kind: "not-found" }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) {
+    // Not a known audio language (compiled corpus OR live manifest): read the
+    // second segment as an implicit-English episode slug instead.
+    if (!isWatchAudioLanguageSlug(rawAudioSlug, manifest)) {
       const defaultAudioLanguageSlug =
         publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
       if (!defaultAudioLanguageSlug) return { kind: "not-found" }
@@ -379,7 +397,9 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!seriesSlug || !episodeSlug || !rawAudioSlug) {
       return { kind: "not-found" }
     }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    if (!isWatchAudioLanguageSlug(rawAudioSlug, manifest)) {
+      return { kind: "not-found" }
+    }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     const internalEpisodeSlug =
       resolveLegacyWatchEpisodeAlias(seriesSlug, episodeSlug) ?? episodeSlug
@@ -407,6 +427,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
 function rewriteToInternal(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null = null,
 ): NextResponse {
   const url = request.nextUrl.clone()
   // HTTPS reverse proxies (including Tailscale Serve) can leave Next's dev
@@ -418,7 +439,11 @@ function rewriteToInternal(
   ) {
     url.protocol = "http:"
   }
-  const subtitleLanguageSlug = subtitleIntentForRewrite(request, decision)
+  const subtitleLanguageSlug = subtitleIntentForRewrite(
+    request,
+    decision,
+    manifest,
+  )
   url.pathname = internalRewritePathname(decision, subtitleLanguageSlug)
   const requestHeaders = new Headers(request.headers)
   // This is an admission claim, not a trusted boolean. If the rewritten URL
@@ -454,9 +479,11 @@ function internalRewritePathname(
 function subtitleIntentForRewrite(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): ReturnType<typeof tryAsLocaleSlug> {
   const finalRoute = classifyRewrite(
     decision.internalPathname ?? decision.pathname,
+    manifest,
   )
   if (
     finalRoute.kind !== "rewrite" ||
@@ -473,11 +500,30 @@ function subtitleIntentForRewrite(
   const subtitleLanguageSlug = tryAsLocaleSlug(values[0] ?? "")
   if (
     !subtitleLanguageSlug ||
-    !isPublicWatchLanguageSlug(subtitleLanguageSlug)
+    !isWatchAudioLanguageSlug(subtitleLanguageSlug, manifest)
   ) {
     return null
   }
   return subtitleLanguageSlug
+}
+
+/**
+ * The two-segment grammar has no delimiter, so an unknown second segment is
+ * read as an implicit-English episode. When that episode is then rejected,
+ * the URL may really have carried a language slug the compiled corpus and
+ * the manifest both lack — surface that as a distinguishable signal instead
+ * of a bare 404 (FGE-81 was invisible in logs for three months).
+ */
+function logImplicitEnglishEpisodeRejected(
+  route: Extract<WatchRouteManifestRoute, { kind: "episode" }>,
+  manifestAvailable: boolean,
+): void {
+  logWatchServerEvent("watch_route.implicit_english_episode.rejected", {
+    parentSlug: route.parentSlug,
+    childSlug: route.childSlug,
+    manifestAvailable,
+    hint: "second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode",
+  })
 }
 
 function buildNotFound(
@@ -507,10 +553,9 @@ function buildUnavailableLanguageNotFound(
 
 async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): Promise<ManifestAdmissionDecision> {
-  let manifest: WatchRouteManifest | null = null
   if (decision.languageHomeSlug) {
-    manifest = await getWatchRouteManifest()
     const manifestAvailability = manifest?.homepageLocales
       ? manifest.homepageLocales.includes(decision.locale)
       : null
@@ -533,9 +578,11 @@ async function classifyManifestAdmission(
 
   if (!decision.manifestRoute) return { kind: "admit" }
 
-  manifest ??= await getWatchRouteManifest()
   if (!manifest) {
     if (decision.requiresExactEpisodeAdmission) {
+      if (decision.manifestRoute.kind === "episode") {
+        logImplicitEnglishEpisodeRejected(decision.manifestRoute, false)
+      }
       return { kind: "not-found" }
     }
     if (
@@ -597,8 +644,12 @@ async function classifyManifestAdmission(
     if (
       decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
     ) {
+      logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
       return { kind: "not-found" }
     }
+    // Otherwise fall through: the child may still be an admitted standalone
+    // video (301 below), which is a rescue, not a rejection — log only at
+    // the terminal not-found.
   } else if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
     return { kind: "admit" }
   }
@@ -642,6 +693,12 @@ async function classifyManifestAdmission(
     return { kind: "known-content-language-gap" }
   }
 
+  if (
+    decision.requiresExactEpisodeAdmission &&
+    decision.manifestRoute.kind === "episode"
+  ) {
+    logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
+  }
   return { kind: "not-found" }
 }
 
@@ -666,9 +723,10 @@ async function isAdmittedInternalRewrite(
     return false
   }
 
-  const rewrite = classifyRewrite(claimedPublicPathname)
+  const manifest = await getWatchRouteManifest()
+  const rewrite = classifyRewrite(claimedPublicPathname, manifest)
   if (rewrite.kind !== "rewrite") return false
-  const admission = await classifyManifestAdmission(rewrite)
+  const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "known-content-language-gap") {
     if (request.headers.get(WATCH_SUBTITLE_INTENT_REWRITE_HEADER) != null) {
       return false
@@ -677,7 +735,9 @@ async function isAdmittedInternalRewrite(
       ...rewrite,
       internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
     }
-    if (subtitleIntentForRewrite(request, unavailableRewrite) != null) {
+    if (
+      subtitleIntentForRewrite(request, unavailableRewrite, manifest) != null
+    ) {
       return false
     }
     return internalRewritePathname(unavailableRewrite) === pathname
@@ -691,6 +751,7 @@ async function isAdmittedInternalRewrite(
   const subtitleLanguageSlug = subtitleIntentForRewrite(
     request,
     admittedRewrite,
+    manifest,
   )
   const claimedSubtitleLanguageSlug = request.headers.get(
     WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
@@ -750,10 +811,13 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   if (pathname === "/search") return redirectDeprecatedSearch(request)
 
-  const rewrite = classifyRewrite(pathname)
+  // Fetch once (60s in-process cache) and share it between shape
+  // classification and admission so both read the same snapshot.
+  const manifest = await getWatchRouteManifest()
+  const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") return buildNotFound(request)
-  const admission = await classifyManifestAdmission(rewrite)
+  const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
     return buildNotFound(request, rewrite)
   }
@@ -765,10 +829,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(request, {
-    ...rewrite,
-    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-  })
+  return rewriteToInternal(
+    request,
+    {
+      ...rewrite,
+      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+    },
+    manifest,
+  )
 }
 
 export const config = {

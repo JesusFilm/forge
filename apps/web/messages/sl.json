@@ -722,5 +722,28 @@
     "languageVersionLabel": "Jezik zvoka",
     "selectLanguageVersion": "Izberite jezikovno različico",
     "watchSelectedVersion": "Oglejte si izbrano različico"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Izbire piškotkov",
+    "bannerTitle": "Vaše izbire zasebnosti",
+    "bannerDescription": "Nujni piškotki zagotavljajo varnost in delovanje Watch. Z vašim dovoljenjem lahko izbirni lastni piškotek med obiski shrani vaše interese za prilagojena priporočila. Kontekstualna priporočila so na voljo v vsakem primeru.",
+    "acceptAll": "Sprejmi vse",
+    "essentialOnly": "Samo nujni",
+    "manageChoices": "Upravljaj izbire",
+    "savingChoice": "Shranjevanje izbire piškotkov",
+    "settings": "Nastavitve piškotkov",
+    "settingsDescription": "Izberite, ali lahko Watch med obiski shrani vaše interese za priporočila. To lahko kadar koli spremenite.",
+    "essentialCookies": "Nujni piškotki",
+    "essentialDescription": "Varnost, predvajanje, izbire zasebnosti in pripis zahtev za priporočila.",
+    "alwaysActive": "Vedno aktivno",
+    "personalization": "Prilagajanje",
+    "personalizationDescription": "Zapomni si omejene interese med obiski. Če to izklopite, bodo kontekstualna priporočila še vedno na voljo.",
+    "erasurePending": "Izbris profila je v teku. Kontekstualna priporočila so že aktivna.",
+    "cancel": "Prekliči",
+    "saveChoices": "Shrani izbire",
+    "saving": "Shranjevanje…",
+    "loadError": "Vaše izbire ni bilo mogoče naložiti. Še vedno lahko izberete spodaj.",
+    "grantError": "Prilagajanja ni bilo mogoče omogočiti. Možnost samo nujnih ostaja na voljo.",
+    "saveError": "Vaše izbire ni bilo mogoče shraniti. Poskusite znova."
   }
 }

@@ -31,7 +31,6 @@ export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
   id: string
   title: string
-  description: string | null
   label: string
   href: string | null
   posterUrl: string | null
@@ -471,64 +470,88 @@ export function buildWatchHomeVideoQueue({
     playedIds ?? (useStoredProgress ? readWatchHomeTvPlayedIds(now) : []),
   )
   let poolIndex = Math.max(0, startPoolIndex)
-  let attempts = 0
-  const maxAttempts = Math.max(pools.length * 4, targetVideoCount * 6)
+  const isEligibleUnseen = (video: WatchHomeTvCarouselVideoSlide) =>
+    Boolean(video.src) && !excluded.has(video.id) && !seen.has(video.id)
+  const eligibleUnseenIds = new Set(
+    pools.flatMap((pool) =>
+      pool.videos.filter(isEligibleUnseen).map((video) => video.id),
+    ),
+  )
+  let remainingEligibleCount = eligibleUnseenIds.size
 
-  while (videos.length < targetVideoCount && attempts < maxAttempts) {
-    const pool = pools[poolIndex % pools.length]
-    attempts += 1
+  const fillQueue = (ignoreProgress: boolean) => {
+    const respectPlayedProgress = !ignoreProgress
+    const respectStoredProgress = useStoredProgress && !ignoreProgress
+    let poolsWithoutSelection = 0
 
-    if (
-      !pool ||
-      (useStoredProgress &&
-        isWatchHomePoolExhausted(pool.id, pool.videos.length))
+    while (
+      videos.length < targetVideoCount &&
+      poolsWithoutSelection < pools.length &&
+      remainingEligibleCount > 0
     ) {
-      poolIndex += 1
-      continue
-    }
+      const pool = pools[poolIndex % pools.length]
 
-    const poolPlayed = new Set(
-      useStoredProgress ? readWatchHomePoolPlayedIds(pool.id) : [],
-    )
-    const candidates = pool.videos.filter(
-      (video) =>
-        Boolean(video.src) &&
-        !excluded.has(video.id) &&
-        !seen.has(video.id) &&
-        !persistentPlayed.has(video.id) &&
-        !poolPlayed.has(video.id),
-    )
-
-    if (candidates.length === 0) {
-      if (useStoredProgress) {
-        markWatchHomePoolFailure(pool.id, pool.videos.length)
+      if (
+        !pool ||
+        (respectStoredProgress &&
+          isWatchHomePoolExhausted(pool.id, pool.videos.length))
+      ) {
+        poolIndex += 1
+        poolsWithoutSelection += 1
+        continue
       }
-      poolIndex += 1
-      continue
-    }
 
-    const offset = randomSource
-      ? boundedRandomIndex(candidates.length, randomSource)
-      : getWatchHomeDeterministicOffset(pool.id, candidates.length, {
-          now,
+      const poolPlayed = new Set(
+        respectStoredProgress ? readWatchHomePoolPlayedIds(pool.id) : [],
+      )
+      const candidates = pool.videos.filter(
+        (video) =>
+          isEligibleUnseen(video) &&
+          (!respectPlayedProgress || !persistentPlayed.has(video.id)) &&
+          !poolPlayed.has(video.id),
+      )
+
+      if (candidates.length === 0) {
+        if (respectStoredProgress) {
+          markWatchHomePoolFailure(pool.id, pool.videos.length)
+        }
+        poolIndex += 1
+        poolsWithoutSelection += 1
+        continue
+      }
+
+      const offset = randomSource
+        ? boundedRandomIndex(candidates.length, randomSource)
+        : getWatchHomeDeterministicOffset(pool.id, candidates.length, {
+            now,
+            poolIndex,
+            totalVideosLoaded: videos.length,
+          })
+      const candidate = candidates[offset]
+      if (candidate) {
+        const video = {
+          ...candidate,
+          poolId: pool.id,
           poolIndex,
-          totalVideosLoaded: videos.length,
-        })
-    const candidate = candidates[offset]
-    if (candidate) {
-      const video = {
-        ...candidate,
-        poolId: pool.id,
-        poolIndex,
+        }
+        videos.push(video)
+        seen.add(video.id)
+        remainingEligibleCount -= 1
+        if (respectStoredProgress) {
+          resetWatchHomePoolFailures(pool.id)
+        }
+        poolsWithoutSelection = 0
+      } else {
+        poolsWithoutSelection += 1
       }
-      videos.push(video)
-      seen.add(video.id)
-      if (useStoredProgress) {
-        resetWatchHomePoolFailures(pool.id)
-      }
-    }
 
-    poolIndex += 1
+      poolIndex += 1
+    }
+  }
+
+  fillQueue(false)
+  if (videos.length < targetVideoCount && remainingEligibleCount > 0) {
+    fillQueue(true)
   }
 
   return { videos, nextPoolIndex: poolIndex }

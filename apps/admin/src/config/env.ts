@@ -199,6 +199,13 @@ export const workflowStartupTransientAttemptsEnvSchema = z.coerce
   .optional()
   .default(12)
 
+export const recommendationRecoveryMaxAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(12)
+
 export const workflowStartupTransientDelayMsEnvSchema = z.coerce
   .number()
   .int()
@@ -382,6 +389,29 @@ export const env = createEnv({
     // Opt-in transactional integration test for DEFAULT and MODERN Watch
     // subtitle/audio selection SQL. Test-only; production never branches on it.
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
+    RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
+    // Required mode selector for the complete delivery database benchmark.
+    // Production release proof must say production_snapshot explicitly; CI
+    // fixtures cannot silently stand in for restored corpus evidence.
+    RECOMMENDATION_DELIVERY_DB_FIXTURE: z
+      .enum(["production_snapshot", "deterministic"])
+      .optional(),
+    // Deterministic pgvector catalog fixture for recommendation profile CI.
+    // Omit to run the same proof against an approved production snapshot.
+    RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
+    // Opt-in real-Redis proof for feat-368 atomic delivery admission.
+    RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
+    // Fail-closed startup ceiling. The shared Postgres serving-control row is
+    // the replica-wide runtime switch; this flag can only narrow it.
+    RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // JSON HMAC keyring parsed only by recommendation token.service so invalid
+    // material disables attributed serving without breaking unrelated Admin
+    // routes. Never log this value or surface it in validation errors.
+    RECOMMENDATION_CAPABILITY_KEYRING: z.string().min(1).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
@@ -453,6 +483,8 @@ export const env = createEnv({
       .default("false"),
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS:
       workflowStartupTransientAttemptsEnvSchema,
+    RECOMMENDATION_RECOVERY_MAX_ATTEMPTS:
+      recommendationRecoveryMaxAttemptsEnvSchema,
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS:
       workflowStartupTransientDelayMsEnvSchema,
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
@@ -835,6 +867,24 @@ export const env = createEnv({
       process.env.VIDEO_MAPPER_CATALOG_DB_TEST,
     ),
     WATCH_SEARCH_DB_TEST: emptyToUndefined(process.env.WATCH_SEARCH_DB_TEST),
+    RECOMMENDATION_DB_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_DB_TEST,
+    ),
+    RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
+      process.env.RECOMMENDATION_DELIVERY_DB_FIXTURE,
+    ),
+    RECOMMENDATION_PROFILE_DB_FIXTURE: emptyToUndefined(
+      process.env.RECOMMENDATION_PROFILE_DB_FIXTURE,
+    ),
+    RECOMMENDATION_REDIS_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_REDIS_TEST,
+    ),
+    RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
+    ),
+    RECOMMENDATION_CAPABILITY_KEYRING: emptyToUndefined(
+      process.env.RECOMMENDATION_CAPABILITY_KEYRING,
+    ),
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
@@ -890,6 +940,9 @@ export const env = createEnv({
     ),
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: emptyToUndefined(
       process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS,
+    ),
+    RECOMMENDATION_RECOVERY_MAX_ATTEMPTS: emptyToUndefined(
+      process.env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS,
     ),
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: emptyToUndefined(
       process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS,

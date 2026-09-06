@@ -722,5 +722,28 @@
     "languageVersionLabel": "Monɔkɔ ya mongongo",
     "selectLanguageVersion": "Poná libongoli ya monɔkɔ",
     "watchSelectedVersion": "Talá libongoli oyo oponi"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Maponi ya cookie",
+    "bannerTitle": "Maponi na yo ya bomoi ya sekele",
+    "bannerDescription": "Ba cookie ya ntina esalaka ete Watch ezala na bokengi mpe esala malamu. Soki opesi ndingisa, cookie moko ya kopona ekoki kobatela makambo oyo osepelaka na yango na botali ekeseni mpo na kopesa yo makanisi oyo ebongi na yo. Makanisi oyo etali makambo ozali kotala ezali kaka kozala mpo na yo ata ndenge nini.",
+    "acceptAll": "Ndima nyonso",
+    "essentialOnly": "Ya ntina kaka",
+    "manageChoices": "Bongisa maponi",
+    "savingChoice": "Kobomba liponi ya cookie",
+    "settings": "Paramɛtrɛ ya cookie",
+    "settingsDescription": "Pona soki Watch ekoki kobatela makambo ya maponi ya makanisi na botali ekeseni. Okoki kobongola yango tango nyonso.",
+    "essentialCookies": "Ba cookie ya ntina",
+    "essentialDescription": "Bokengi, kotala vidéo, maponi ya bomoi ya sekele, mpe kopesa elembo na bosengi ya makanisi.",
+    "alwaysActive": "Esalaka ntango nyonso",
+    "personalization": "Kobongisa mpo na yo",
+    "personalizationDescription": "Kobatela makambo ya moke oyo osepelaka na yango na botali ekeseni. Soki okangi yango, makanisi oyo etali makambo ozali kotala ekotikala kaka kozala.",
+    "erasurePending": "Bolongoli ya profil ezali naino kozela. Makanisi oyo etali makambo ozali kotala esili kozala kosala.",
+    "cancel": "Tika",
+    "saveChoices": "Bomba maponi",
+    "saving": "Kobomba…",
+    "loadError": "Liponi na yo ekokaki komonisama te. Kasi okoki kaka kopona awa na nse.",
+    "grantError": "Kobongisa mpo na yo ekokaki kofungolama te. Ya ntina kaka ezali naino kozala.",
+    "saveError": "Liponi na yo ekokaki kobombama te. Meka lisusu."
   }
 }

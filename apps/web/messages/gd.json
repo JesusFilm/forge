@@ -722,5 +722,28 @@
     "languageVersionLabel": "Cànan fuaime",
     "selectLanguageVersion": "Tagh tionndadh cànain",
     "watchSelectedVersion": "Coimhead air an tionndadh a thagh thu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Roghainnean bhriosgaidean",
+    "bannerTitle": "Na roghainnean prìobhaideachd agad",
+    "bannerDescription": "Cumaidh briosgaidean riatanach Watch tèarainte agus ag obair. Le do chead, faodaidh briosgaid roghainneil ciad-phàrtaidh ùidhean a chuimhneachadh eadar tursan gus molaidhean a phearsanachadh. Bidh molaidhean co-theacsail rim faighinn ge bith dè an roghainn a nì thu.",
+    "acceptAll": "Gabh ris na h-uile",
+    "essentialOnly": "Riatanach a-mhàin",
+    "manageChoices": "Stiùirich na roghainnean",
+    "savingChoice": "A’ sàbhaladh roghainn nam briosgaidean",
+    "settings": "Roghainnean bhriosgaidean",
+    "settingsDescription": "Tagh am faod Watch ùidhean mholaidhean a chuimhneachadh eadar tursan. Faodaidh tu seo atharrachadh uair sam bith.",
+    "essentialCookies": "Briosgaidean riatanach",
+    "essentialDescription": "Tèarainteachd, cluich, roghainnean prìobhaideachd agus sònrachadh iarrtasan mholaidhean.",
+    "alwaysActive": "An-còmhnaidh gnìomhach",
+    "personalization": "Pearsanachadh",
+    "personalizationDescription": "Cuimhnich ùidhean cuibhrichte eadar tursan. Ma chuireas tu seo dheth, bidh molaidhean co-theacsail fhathast rim faighinn.",
+    "erasurePending": "Tha sguabadh às a’ phròifil ri dhèanamh fhathast. Tha molaidhean co-theacsail gnìomhach mu thràth.",
+    "cancel": "Sguir dheth",
+    "saveChoices": "Sàbhail na roghainnean",
+    "saving": "A’ sàbhaladh…",
+    "loadError": "Cha b’ urrainn dhuinn an roghainn agad a luchdadh. Faodaidh tu fhathast taghadh gu h-ìosal.",
+    "grantError": "Cha b’ urrainn dhuinn pearsanachadh a chur an comas. Tha an roghainn riatanach a-mhàin fhathast ri fhaighinn.",
+    "saveError": "Cha b’ urrainn dhuinn an roghainn agad a shàbhaladh. Feuch ris a-rithist."
   }
 }

@@ -722,5 +722,28 @@
     "languageVersionLabel": "Lydsprog",
     "selectLanguageVersion": "Vælg en sprogversion",
     "watchSelectedVersion": "Se den valgte version"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookievalg",
+    "bannerTitle": "Dine valg om privatliv",
+    "bannerDescription": "Nødvendige cookies holder Watch sikker og velfungerende. Med din tilladelse kan en valgfri førstepartscookie huske interesser på tværs af besøg for at tilpasse anbefalinger. Kontekstuelle anbefalinger er tilgængelige uanset hvad.",
+    "acceptAll": "Acceptér alle",
+    "essentialOnly": "Kun nødvendige",
+    "manageChoices": "Administrer valg",
+    "savingChoice": "Gemmer cookievalg",
+    "settings": "Cookieindstillinger",
+    "settingsDescription": "Vælg, om Watch må huske anbefalingsinteresser på tværs af besøg. Du kan ændre dette når som helst.",
+    "essentialCookies": "Nødvendige cookies",
+    "essentialDescription": "Sikkerhed, afspilning, privatlivsvalg og tilskrivning af anmodninger om anbefalinger.",
+    "alwaysActive": "Altid aktiv",
+    "personalization": "Personalisering",
+    "personalizationDescription": "Husk afgrænsede interesser på tværs af besøg. Hvis dette slås fra, er kontekstuelle anbefalinger stadig tilgængelige.",
+    "erasurePending": "Sletning af profilen afventer. Kontekstuelle anbefalinger er allerede aktive.",
+    "cancel": "Annuller",
+    "saveChoices": "Gem valg",
+    "saving": "Gemmer…",
+    "loadError": "Dine valg kunne ikke indlæses. Du kan stadig vælge nedenfor.",
+    "grantError": "Personalisering kunne ikke aktiveres. Kun nødvendige er stadig tilgængelige.",
+    "saveError": "Dine valg kunne ikke gemmes. Prøv igen."
   }
 }

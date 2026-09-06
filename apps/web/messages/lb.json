@@ -722,5 +722,28 @@
     "languageVersionLabel": "Audiosprooch",
     "selectLanguageVersion": "Eng Sproochversioun auswielen",
     "watchSelectedVersion": "Ausgewielte Versioun kucken"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Astellungen",
+    "bannerTitle": "Är Privatsphär-Astellungen",
+    "bannerDescription": "Néideg Cookies halen Watch sécher a funktiounsfäeg. Mat Ärer Zoustëmmung kann en optionale First-Party-Cookie Är Interessen iwwer méi Visitte späicheren, fir Recommandatiounen ze personaliséieren. Kontextuell Recommandatioune bleiwen esou oder esou verfügbar.",
+    "acceptAll": "Alles akzeptéieren",
+    "essentialOnly": "Nëmmen dat Néidegst",
+    "manageChoices": "Astellungen verwalten",
+    "savingChoice": "Cookie-Astellung gëtt gespäichert",
+    "settings": "Cookie-Astellungen",
+    "settingsDescription": "Wielt, ob Watch Recommandatiounsinteressen iwwer méi Visitte späichere kann. Dir kënnt dat zu all Moment änneren.",
+    "essentialCookies": "Néideg Cookies",
+    "essentialDescription": "Sécherheet, Ofspillen, Privatsphär-Astellungen an Zouuerdnung vu Recommandatiounsufroen.",
+    "alwaysActive": "Ëmmer aktiv",
+    "personalization": "Personaliséierung",
+    "personalizationDescription": "Späichert begrenzten Interessen iwwer méi Visitten. Wann dat ausgeschalt ass, bleiwen kontextuell Recommandatioune verfügbar.",
+    "erasurePending": "D'Läsche vum Profil ass nach amgaang. Kontextuell Recommandatioune si schonn aktiv.",
+    "cancel": "Ofbriechen",
+    "saveChoices": "Astellunge späicheren",
+    "saving": "Gëtt gespäichert…",
+    "loadError": "Är Astellung konnt net geluede ginn. Dir kënnt awer hei ënnendrënner nach wielen.",
+    "grantError": "Personaliséierung konnt net aktivéiert ginn. Nëmmen dat Néidegst bleift verfügbar.",
+    "saveError": "Är Astellung konnt net gespäichert ginn. Probéiert w.e.g. nach eng Kéier."
   }
 }

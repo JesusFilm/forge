@@ -45,7 +45,7 @@ export function WatchHomePromo() {
       <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="flex flex-col gap-14">
           <div className="max-w-3xl space-y-4">
-            <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
+            <p className="text-sm sm:text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
               {t("eyebrow")}
             </p>
             <h2 className="text-3xl leading-tight font-semibold tracking-normal text-white sm:text-4xl lg:text-5xl">
@@ -71,7 +71,7 @@ export function WatchHomePromo() {
                   <h3 className="mt-6 text-xl font-semibold text-white">
                     {t(point.titleKey)}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  <p className="mt-3 text-base sm:text-sm leading-relaxed text-white/70">
                     {t(point.descriptionKey)}
                   </p>
                 </article>
@@ -92,7 +92,7 @@ export function WatchHomePromo() {
                   <h3 className="text-lg font-semibold text-white">
                     {t(highlight.titleKey)}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  <p className="mt-3 text-base sm:text-sm leading-relaxed text-white/70">
                     {t(highlight.descriptionKey)}
                   </p>
                 </article>
@@ -101,7 +101,7 @@ export function WatchHomePromo() {
           </div>
 
           <div className="mt-12 mb-16 text-center">
-            <p className="mb-4 text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
+            <p className="mb-4 text-sm sm:text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
               {t("invitationEyebrow")}
             </p>
             <h3 className="mb-4 text-3xl font-semibold text-white">

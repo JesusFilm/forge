@@ -722,5 +722,28 @@
     "languageVersionLabel": "Gagana leo",
     "selectLanguageVersion": "Filifili se lomiga o le gagana",
     "watchSelectedVersion": "Matamata i le lomiga ua filifilia"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Filifiliga kuki",
+    "bannerTitle": "Au filifiliga mo le puipuiga o lou faalilolilo",
+    "bannerDescription": "E fesoasoani kuki tāua e tausi ai le saogalemu o Watch ma galue lelei. A e faataga mai, e mafai e se kuki tuu i le upega tafailagi lava ia ona manatua mea e te fiafia i ai i asiasiga eseese ina ia fetuunai ai fautuaga mo oe. E tumau pea fautuaga e tusa ma le mataupu i so o se tulaga.",
+    "acceptAll": "Talia uma",
+    "essentialOnly": "Na o mea tāua",
+    "manageChoices": "Pulea filifiliga",
+    "savingChoice": "O loo sefe le filifiliga o kuki",
+    "settings": "Seti kuki",
+    "settingsDescription": "Filifili pe mafai e Watch ona manatua mea e te fiafia i ai mo fautuaga i asiasiga eseese. E mafai ona e suia lenei mea i soo se taimi.",
+    "essentialCookies": "Kuki tāua",
+    "essentialDescription": "Saogalemu, taina o le ata, filifiliga o le faalilolilo, ma le iloa o le puna o talosaga mo fautuaga.",
+    "alwaysActive": "Galue i taimi uma",
+    "personalization": "Faapatinoina mo oe",
+    "personalizationDescription": "Manatua mea e te fiafia i ai i asiasiga eseese. Afai e tape lenei mea, e tumau pea fautuaga e tusa ma le mataupu.",
+    "erasurePending": "O loo faatali le tapeina o lau talaaga. Ua uma ona faagaoioi fautuaga e tusa ma le mataupu.",
+    "cancel": "Faaleaoga",
+    "saveChoices": "Sefe filifiliga",
+    "saving": "O loo sefe…",
+    "loadError": "Le mafai ona utaina lau filifiliga. E mafai pea ona e filifili i lalo.",
+    "grantError": "Le mafai ona ki le faapatinoina mo oe. E avanoa pea na o mea tāua.",
+    "saveError": "Le mafai ona sefe lau filifiliga. Faamolemole toe taumafai."
   }
 }

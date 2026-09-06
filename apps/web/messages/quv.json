@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ruch'ab'äl k'oxom",
     "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
     "watchSelectedVersion": "Tatz'eta' ri ruwäch xacha'"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Rucha'oj cookie",
+    "bannerTitle": "Acha'oj richin awichinil",
+    "bannerDescription": "Ri cookie k'atzinel yec'uje' Watch jikïl chuqa' nisamäj ütz. We ya'on q'ij, jun cookie chawe at k'o wi nitikïr nunataj ri nawajo' pa ronojel b'ey atsolin richin nuya' aján chawe. Ri recomendaciones pa contexto e k'o na chi ke ri' junam.",
+    "acceptAll": "Tac'ulu' ronojel",
+    "essentialOnly": "Xa xe ri k'atzinel",
+    "manageChoices": "Tanuk'saj ri acha'oj",
+    "savingChoice": "Niyak ri acha'oj richin cookie",
+    "settings": "Runuk'ulem cookie",
+    "settingsDescription": "Tacha'oj we Watch nitikïr nunataj ri nawajo' richin recomendaciones pa ronojel b'ey atsolin. Yatikïr najäl re' xab'achike q'ij.",
+    "essentialCookies": "Cookie k'atzinel",
+    "essentialDescription": "Jikomal, tzijonem, acha'oj richin awichinil, chuqa' rujachik ruwi' k'utunem richin recomendaciones.",
+    "alwaysActive": "Jumul tzijon",
+    "personalization": "Nimaläx wachib'enïk chawe",
+    "personalizationDescription": "Nunataj ri jub'a' nawajo' pa ronojel b'ey atsolin. We nachup, ri recomendaciones pa contexto e k'o na.",
+    "erasurePending": "Noyob'ëx na ruyujik ri perfil. Ri recomendaciones pa contexto e tzijon chic.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Tiyak ri acha'oj",
+    "saving": "Niyak…",
+    "loadError": "Man xutikïr ta xsamajib'ëx ri acha'oj. K'a yatikïr nicha'oj qa panïm.",
+    "grantError": "Man xutikïr ta xtzij ri personalization. Xa xe ri k'atzinel e k'o wi.",
+    "saveError": "Man xutikïr ta xyak ri acha'oj. Tatojtob'ej chik."
   }
 }

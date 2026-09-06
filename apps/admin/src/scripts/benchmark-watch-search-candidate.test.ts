@@ -32,9 +32,11 @@ const allSlices = [
 
 const identity: CandidateBenchmarkIdentity = {
   generationId: "generation-a",
-  applicationRevision: "revision-a",
-  rankingRevision: "title-and-brand-v1",
+  indexContractRevision: "revision-a",
+  rankingRevision: "title-and-brand-v2",
   transcriptCollection: "watch_search_transcripts_1",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
   transcriptProjectionRevision: "7",
   qrelsRevision: "qrels-1",
   currentBindings: {
@@ -70,8 +72,13 @@ function successResponse(
     diagnostics: {
       profile,
       generationId: profile === "CANDIDATE" ? "generation-a" : null,
-      applicationRevision: profile === "CANDIDATE" ? "revision-a" : null,
+      indexContractRevision: profile === "CANDIDATE" ? "revision-a" : null,
+      contentEmbeddingContractId:
+        profile === "CANDIDATE" ? identity.contentEmbeddingContractId : null,
+      transcriptChunkingVersion:
+        profile === "CANDIDATE" ? identity.transcriptChunkingVersion : null,
       transcriptProjectionRevision: profile === "CANDIDATE" ? "7" : null,
+      activeTranscriptProjectionRevision: profile === "CANDIDATE" ? "7" : null,
       binding:
         profile === "CANDIDATE"
           ? identity.candidateBindings
@@ -90,7 +97,7 @@ function successResponse(
       hydratedRecords: 1,
       rankingImplementation:
         profile === "CANDIDATE"
-          ? ("title-and-brand-v1" as const)
+          ? ("title-and-brand-v2" as const)
           : ("legacy-rrf" as const),
       rankingMode: "SEMANTIC" as const,
     },
@@ -127,8 +134,17 @@ function successfulAttempt(
     diagnostics: {
       profile: candidate ? "CANDIDATE" : "CURRENT",
       generationId: candidate ? identity.generationId : null,
-      applicationRevision: candidate ? identity.applicationRevision : null,
+      indexContractRevision: candidate ? identity.indexContractRevision : null,
+      contentEmbeddingContractId: candidate
+        ? identity.contentEmbeddingContractId
+        : null,
+      transcriptChunkingVersion: candidate
+        ? identity.transcriptChunkingVersion
+        : null,
       transcriptProjectionRevision: candidate
+        ? identity.transcriptProjectionRevision
+        : null,
+      activeTranscriptProjectionRevision: candidate
         ? identity.transcriptProjectionRevision
         : null,
       binding: candidate
@@ -146,7 +162,7 @@ function successfulAttempt(
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
-      rankingImplementation: candidate ? "title-and-brand-v1" : "legacy-rrf",
+      rankingImplementation: candidate ? "title-and-brand-v2" : "legacy-rrf",
       rankingMode: "SEMANTIC",
       ...diagnostics,
     },
@@ -552,8 +568,28 @@ describe("paired candidate qualification benchmark", () => {
 
   it("allowlists benchmark diagnostics and excludes query-derived ranking evidence", () => {
     const normalized = normalizeCandidateBenchmarkDiagnostics({
-      ...successfulAttempt("candidate").diagnostics!,
+      profile: "CANDIDATE",
+      generationId: identity.generationId,
+      indexContractRevision: identity.indexContractRevision,
+      contentEmbeddingContractId: identity.contentEmbeddingContractId,
+      transcriptChunkingVersion: identity.transcriptChunkingVersion,
       transcriptProjectionRevision: 7n,
+      activeTranscriptProjectionRevision: 8n,
+      binding: identity.candidateBindings,
+      retrievalCalls: 2,
+      logicalSubsearches: 6,
+      queryFieldCount: 8,
+      queryByBytes: 120,
+      requestBytes: 400,
+      parsedResponseBytes: 800,
+      typesenseSearchTimeMs: 10,
+      typesenseWallTimeMs: 20,
+      retryCount: 0,
+      groupedHits: 3,
+      candidates: 10,
+      hydratedRecords: 1,
+      rankingImplementation: "title-and-brand-v2",
+      rankingMode: "SEMANTIC",
       rankingAnchor: {
         normalized: "private sentinel query",
         core: "private sentinel query",

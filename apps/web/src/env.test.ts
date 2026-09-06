@@ -18,6 +18,7 @@ function useBaseEnv() {
   delete process.env.NEXT_PUBLIC_DATADOG_ENV
   delete process.env.NEXT_PUBLIC_DATADOG_VERSION
   delete process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID
+  delete process.env.NEXT_PUBLIC_CANONICAL_ORIGIN
   delete process.env.RAILWAY_ENVIRONMENT_NAME
   delete process.env.RAILWAY_GIT_COMMIT_SHA
   delete process.env.VERCEL_ENV
@@ -26,6 +27,49 @@ function useBaseEnv() {
   delete process.env.WATCH_SEARCH_PRIMARY_MODE
   delete process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED
 }
+
+describe("web env — canonical origin", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("defaults production builds to the public Watch origin", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_CANONICAL_ORIGIN).toBe("https://www.jesusfilm.org")
+  })
+
+  it("keeps the loopback default outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_CANONICAL_ORIGIN).toBe("http://localhost:3000")
+  })
+
+  it("preserves an explicit deployment origin", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv(
+      "NEXT_PUBLIC_CANONICAL_ORIGIN",
+      "https://watch-preview.railway.app",
+    )
+
+    const { env } = await import("./env")
+
+    expect(env.NEXT_PUBLIC_CANONICAL_ORIGIN).toBe(
+      "https://watch-preview.railway.app",
+    )
+  })
+})
 
 describe("web env — Datadog RUM config", () => {
   beforeEach(() => {

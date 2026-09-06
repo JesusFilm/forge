@@ -722,5 +722,28 @@
     "languageVersionLabel": "오디오 언어",
     "selectLanguageVersion": "언어 버전 선택",
     "watchSelectedVersion": "선택한 버전 시청"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "쿠키 선택",
+    "bannerTitle": "개인정보 선택",
+    "bannerDescription": "필수 쿠키는 Watch를 안전하게 유지하고 정상적으로 작동하게 합니다. 동의하시면 선택적 자사 쿠키가 방문 간 관심사를 기억해 맞춤 추천을 제공할 수 있습니다. 어느 경우에도 문맥 기반 추천은 계속 이용할 수 있습니다.",
+    "acceptAll": "모두 허용",
+    "essentialOnly": "필수만 허용",
+    "manageChoices": "선택 관리",
+    "savingChoice": "쿠키 선택 저장 중",
+    "settings": "쿠키 설정",
+    "settingsDescription": "Watch가 방문 간 추천 관심사를 기억할지 선택하세요. 이 설정은 언제든지 변경할 수 있습니다.",
+    "essentialCookies": "필수 쿠키",
+    "essentialDescription": "보안, 재생, 개인정보 선택, 추천 요청 출처 확인에 사용됩니다.",
+    "alwaysActive": "항상 활성화됨",
+    "personalization": "개인화",
+    "personalizationDescription": "방문 간 제한된 관심사를 기억합니다. 이 기능을 끄면 문맥 기반 추천은 계속 이용할 수 있습니다.",
+    "erasurePending": "프로필 삭제가 처리 대기 중입니다. 문맥 기반 추천은 이미 활성화되어 있습니다.",
+    "cancel": "취소",
+    "saveChoices": "선택 저장",
+    "saving": "저장 중…",
+    "loadError": "선택 내용을 불러올 수 없습니다. 아래에서 계속 선택할 수 있습니다.",
+    "grantError": "개인화를 사용할 수 없습니다. 필수만 허용은 계속 이용할 수 있습니다.",
+    "saveError": "선택 내용을 저장할 수 없습니다. 다시 시도해 주세요."
   }
 }

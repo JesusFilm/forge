@@ -28,7 +28,8 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 - `src/lib/fragments/watch-experience.ts` — re-exports `adminWatchExperienceFragment` from `@forge/admin-graphql/fragments` (the root composition over admin's 17 block fragments).
 - `src/lib/fragments/watch-video.ts` — local `WatchVideo` fragment + the two query operations on admin's `Video` with field aliases bridging vocab (`documentId: id`, `variants: dubs`, `value: text`).
 - `src/lib/{search,recommendations,demo-search,enrichment,experience-metadata}.ts` — all read from admin.
-- `src/lib/watch-search-client.ts` is the one deliberate browser-direct exception: the global search modal calls the public GraphQL gateway without an Admin bearer. Its handwritten operation and mapping must stay aligned with `src/lib/search.ts` via colocated parity tests; this exception is not precedent for other clients.
+- `src/lib/watch-search-client.ts` is a deliberate browser-direct exception: the global search modal calls the public GraphQL gateway without an Admin bearer. Its handwritten operation and mapping must stay aligned with `src/lib/search.ts` via colocated parity tests; this exception is not precedent for other clients.
+- `src/lib/whats-new-votes.ts` is the second, narrower browser-direct exception: anonymous sticker voting on `/watch/whats-new` reads `whatsNewFeatureVoteTallies` and writes `castWhatsNewFeatureVote` / `retractWhatsNewFeatureVote` with no Admin bearer. It qualifies for the same reasons search does — the fields are `public: true`, the page is statically cached so a server hop buys nothing, and nothing sent is trusted (Admin validates every id and caps what one ballot holds). Two rules keep it honest: the document TEXT is what goes on the wire and the `adminGraphql(...)` node beside it exists only to typecheck that text against Admin's SDL (posting the node sends `[object Object]`), and a write refusal arrives as `accepted: false` DATA that must never be retried, while a thrown transport error must be. Neither exception is precedent for a third client.
 
 Production floating Watch search calls Admin directly from the browser through
 `src/lib/watch-search-client.ts` to avoid a Web server hop. The client omits mode
@@ -63,6 +64,41 @@ the `watch-dynamic-collections` cache tag. `STRAPI_PREVIEW_SECRET` remains
 required for the `/api/preview` Next draft-mode entry token (Strapi-era surface
 that hasn't migrated yet; out of data-layer scope).
 
+## Watch semantic recommendations
+
+Eligible Watch routes include exactly one route-owned semantic recommendation
+slot immediately after `WatchBody`. The lazy client boundary calls the
+same-origin, dynamic, private/no-store `/watch/api/recommendations*` routes only
+after the player shell is available. Do not turn recommendation delivery or
+telemetry into an RSC/static-page dependency, authored-block override, player
+startup dependency, or precedent for direct browser-to-Admin GraphQL.
+
+The pinned browser contracts are `semantic-recommendation-v1`,
+`recommendation-evidence-v1`, and `watch-below-player-v1`. The Web Route
+Handlers alone hold `WEB_ADMIN_API_KEYS` and the 24-hour host-only HttpOnly
+recommendation session cookie. Delivery and episode capabilities remain in
+memory and request bodies only; no capability may enter a URL, referrer, SSR
+HTML, DOM field, JavaScript-readable persistent storage, log, analytics event,
+or retained browser artifact. The one sessionStorage value is a non-secret tab
+correlation/claim nonce and is never authorization.
+
+An eligible impression means at least 50% of a card was continuously visible
+for one second while the document was visible. Selection is single-flight,
+body-POSTed, and navigates to Admin's stored-item-derived target; its short
+deadline fails open to the already-rendered token-free href. The target player
+claims the one-use handoff asynchronously and records best-effort bounded facts
+without changing the legacy `WatchEventRecorder`. Delivery, evidence, claim,
+or Admin failure must preserve source and target player availability.
+
+For a local proof, Admin `WATCH_CANONICAL_ORIGIN` and Web
+`NEXT_PUBLIC_CANONICAL_ORIGIN` must use the same scheme and host, and Web's
+first consumer bearer must be accepted by Admin. Non-production recommendation
+routes accept a same-host loopback origin when a local preview proxy changes
+only the port; production still requires the exact canonical origin. Follow
+`docs/operations/semantic-recommendation-tracer.md`; retain only redacted URL
+path, status, timing, and request ID evidence, and delete raw Playwright traces
+before a PR.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.
@@ -86,6 +122,8 @@ click browser behavior, keep pending state scoped to the source video/language,
 and derive the visual active card from that pending payload so it self-invalidates
 when the route commits. See
 `docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
+
+Public Watch language namespace: `src/lib/language-bcp47-map.ts` (slug → BCP-47, drives `<html lang>` and the UI-catalog fallback) and `packages/watch-url-policy/src/public-watch-language-slugs.ts` (slug-only corpus for URL-grammar disambiguation and the client-side pickers/parsers) are BOTH generated from admin's public `languages` query by `pnpm --filter @forge/web generate:language-bcp47-map`; `check:language-bcp47-map` reports drift and the scheduled `watch-language-corpus-drift` workflow opens a refresh PR when admin publishes new languages. The corpus is a fallback, not the route authority: `src/proxy.ts` and the catch-all page decide whether an ambiguous `.html` segment is a language through `isWatchAudioLanguageSlug` (compiled corpus OR the live route manifest), so a language admin published after the last regeneration still routes and plays — it only degrades to English chrome and `<html lang="en">` until the corpus is refreshed. Never re-introduce a bare `isPublicWatchLanguageSlug` check in either classifier: that frozen-snapshot veto is what 404'd 58 newly published languages as fake implicit-English episodes (Linear FGE-81). Keep the page's manifest await lazy (only when the corpus misses) so content resolution never serializes behind the manifest request.
 
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 

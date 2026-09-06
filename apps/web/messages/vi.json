@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ngôn ngữ âm thanh",
     "selectLanguageVersion": "Chọn phiên bản ngôn ngữ",
     "watchSelectedVersion": "Xem phiên bản đã chọn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Lựa chọn cookie",
+    "bannerTitle": "Lựa chọn quyền riêng tư của bạn",
+    "bannerDescription": "Cookie thiết yếu giúp Watch an toàn và hoạt động ổn định. Khi có sự cho phép của bạn, một cookie tùy chọn của bên thứ nhất có thể ghi nhớ sở thích giữa các lần truy cập để cá nhân hóa đề xuất. Dù bạn chọn thế nào, các đề xuất theo ngữ cảnh vẫn luôn khả dụng.",
+    "acceptAll": "Chấp nhận tất cả",
+    "essentialOnly": "Chỉ cookie thiết yếu",
+    "manageChoices": "Quản lý lựa chọn",
+    "savingChoice": "Đang lưu lựa chọn cookie",
+    "settings": "Cài đặt cookie",
+    "settingsDescription": "Chọn xem Watch có thể ghi nhớ sở thích đề xuất giữa các lần truy cập hay không. Bạn có thể thay đổi điều này bất cứ lúc nào.",
+    "essentialCookies": "Cookie thiết yếu",
+    "essentialDescription": "Bảo mật, phát video, lựa chọn quyền riêng tư và ghi nhận nguồn yêu cầu đề xuất.",
+    "alwaysActive": "Luôn hoạt động",
+    "personalization": "Cá nhân hóa",
+    "personalizationDescription": "Ghi nhớ các sở thích giới hạn giữa các lần truy cập. Tắt tính năng này vẫn cho phép nhận các đề xuất theo ngữ cảnh.",
+    "erasurePending": "Việc xóa hồ sơ đang chờ xử lý. Các đề xuất theo ngữ cảnh đã được bật.",
+    "cancel": "Hủy",
+    "saveChoices": "Lưu lựa chọn",
+    "saving": "Đang lưu…",
+    "loadError": "Không thể tải lựa chọn của bạn. Bạn vẫn có thể chọn ở bên dưới.",
+    "grantError": "Không thể bật cá nhân hóa. Tùy chọn chỉ dùng cookie thiết yếu vẫn khả dụng.",
+    "saveError": "Không thể lưu lựa chọn của bạn. Vui lòng thử lại."
   }
 }

@@ -70,6 +70,20 @@ corrections plus that cap pin. One correction was load-bearing: the
 accepted-`Cf`-false-positive decision cited the (now absent) U2 mirror as one
 of its grounds. No mastra runtime behaviour changed.
 
+**Post-U1 fix — the generator's output cap was inert (2026-08-28,
+[#2092](https://github.com/JesusFilm/forge/pull/2092)):** U1 passed `FOLLOW_UPS_MAX_OUTPUT_TOKENS` (300) as a
+top-level `maxOutputTokens` option to the generator's `generate()` call, a slot
+`@mastra/core` 1.55.0 never reads — the runtime forwards only `modelSettings`
+to the model call, so the cap was a silent no-op (verified against the
+installed dist). Impact was paid-token spend only: the call's real bounds were
+the 2.5s abort budget and the downstream projection caps, so rendered chips
+never changed. Fixed by moving the cap to
+`modelSettings: { maxOutputTokens: ... }`, dropping the unread slot from
+`FollowUpsAgentLike` (declaring `modelSettings` instead, so this bug class is
+now a compile error), and pinning with a captured-options test plus a
+source-text pin. The same top-level idiom exists in five other `apps/mastra`
+modules — deliberately untouched in that PR.
+
 **Remaining:** U3 (managed-prompt closing-question softening via the
 experiments ledger). The full `## Resolution` replaces this section when the
 arc's final PR flips status to complete.

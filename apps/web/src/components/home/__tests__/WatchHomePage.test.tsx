@@ -9,6 +9,7 @@ import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import {
+  addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,
   readWatchHomeTvPlayedIds,
   readWatchHomeVerticalVideoIds,
@@ -18,19 +19,46 @@ import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
+import {
+  WATCH_HERO_PRIMARY_ACTION_CLASS,
+  WATCH_HERO_TITLE_CLASS,
+} from "@/components/watch/WatchHeroOverlay"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
+import {
+  fitWatchHomeHeroHeight,
+  WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX,
+  WATCH_HOME_HERO_RESERVE_BELOW_PX,
+} from "@/lib/watch-home-hero-fit"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
 vi.mock("next/image", () => ({
   default: ({
     alt,
     className,
+    loading,
+    priority,
+    sizes,
     src,
   }: {
     alt: string
     className?: string
+    loading?: "eager" | "lazy"
+    priority?: boolean
+    sizes?: string
     src: string
   }) => (
-    <span role="img" aria-label={alt} className={className} data-src={src} />
+    <span
+      role="img"
+      aria-label={alt}
+      className={className}
+      data-loading={priority ? "eager" : (loading ?? "lazy")}
+      data-priority={priority === true ? "true" : "false"}
+      data-sizes={sizes}
+      data-src={src}
+    />
   ),
 }))
 
@@ -139,7 +167,6 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     sourceId: "1_jf-0-0",
     coreId: "1_jf-0-0",
     title: "Jesus",
-    description: "The story of Jesus",
     label: "Feature film",
     metaLabel: "2:03",
     href: "/jesus.html/english.html",
@@ -191,7 +218,6 @@ function makeCarouselSlide(
     kind: "video",
     id: "queued-1",
     title: "Queued One",
-    description: "Queued from the playlist pool",
     label: "Short film",
     href: "/queued-one.html/english.html",
     posterUrl: "https://cdn.example/queued-one.jpg",
@@ -272,6 +298,21 @@ describe("WatchHomePage", () => {
     expect(carousel?.getAttribute("aria-label")).toBe("Jesus")
     expect(activeTitle?.tagName).toBe("P")
     expect(activeTitle?.textContent).toBe("Jesus")
+    // Structural guard for the removed secondary paragraph. The hero copy is
+    // the shared WatchHeroOverlay now, so the whole block is one level: an
+    // eyebrow span, the title, and the shared overlay's metadata/actions shell.
+    // The stable action row sits beside this rotating copy so slide changes do
+    // not remount focused controls.
+    const overlayRoot = activeTitle?.parentElement
+    expect(
+      Array.from(overlayRoot?.children ?? []).map((el) => el.tagName),
+    ).toEqual(["SPAN", "P", "DIV"])
+    expect(overlayRoot?.querySelectorAll("p")).toHaveLength(1)
+    expect(overlayRoot?.textContent).toBe("FeaturedJesus")
+    expect(
+      carousel?.querySelector('[data-testid="watch-home-tv-actions"]')
+        ?.textContent,
+    ).toContain("Watch Now")
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
@@ -363,16 +404,25 @@ describe("WatchHomePage", () => {
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("class"),
     ).not.toContain("--watch-home-rail-height")
+    // Muted default reserves room for the categories rail on mobile too;
+    // `h-[66svh]` is the unmuted value.
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
-    ).toContain("h-[66svh]")
+    ).toContain(
+      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+    )
+    // Desktop starts muted, so the height is the one that reserves room for
+    // the categories rail; the bare `min(100svh,56.25vw)` is the unmuted value
+    // and is pinned in the muted/unmuted pairing case below.
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
-    ).toContain("md:h-[min(100svh,56.25vw)]")
+    ).toContain(
+      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+    )
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
     ).toBeNull()
@@ -383,7 +433,6 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
     expect(container.textContent).toContain("Jesus")
-    expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
     const sectionCta = Array.from(container.querySelectorAll("a")).find(
       (link) => link.textContent?.trim() === "Watch",
@@ -406,14 +455,31 @@ describe("WatchHomePage", () => {
       container.querySelector('[data-testid="watch-home-tv-video"]'),
     ).not.toBeNull()
     expect(
-      container.querySelectorAll('button[aria-label="Next video"]'),
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
     ).toHaveLength(2)
     expect(
-      container.querySelectorAll('[data-testid="watch-home-next-progress"]'),
+      container.querySelectorAll('[data-testid="watch-home-current-progress"]'),
     ).toHaveLength(2)
+    const muteButton = container.querySelector(
+      'button[aria-label="Unmute preview"]',
+    )
+    const watchNowLink = container.querySelector(
+      "a[href='/jesus.html/english.html?autoplay=1']",
+    )
     expect(
       container.querySelectorAll('button[aria-label="Unmute preview"]'),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
+    expect(muteButton?.parentElement).toBe(watchNowLink?.parentElement)
+    const actionChildren = Array.from(
+      watchNowLink?.parentElement?.children ?? [],
+    )
+    expect(actionChildren.slice(0, 2)).toEqual([watchNowLink, muteButton])
+    expect(actionChildren).toHaveLength(3)
+    expect(
+      actionChildren[2]?.querySelector(
+        '[data-testid="watch-home-video-timeline"][data-size="compact"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
     ).toHaveLength(3)
@@ -522,7 +588,9 @@ describe("WatchHomePage", () => {
         '[data-testid="watch-home-hero-thumbnail-frame"]',
       ),
     ).toBeNull()
-    for (const fallback of container.querySelectorAll('[aria-label="Jesus"]')) {
+    for (const fallback of container.querySelectorAll(
+      'div[aria-label="Jesus"]',
+    )) {
       expect(fallback.className).not.toContain("group")
       expect(fallback.className).not.toContain("focus-visible:outline-none")
       expect(fallback.className).not.toContain("hover:shadow")
@@ -827,7 +895,31 @@ describe("WatchHomePage", () => {
                       id: "queued-2",
                       title: "Queued Two",
                       href: "/queued-two.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-two-thumb.jpg",
                       src: "https://stream.example/queued-two.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-3",
+                      title: "Queued Three",
+                      href: "/queued-three.html/english.html",
+                      thumbnailUrl:
+                        "https://cdn.example/queued-three-thumb.jpg",
+                      src: "https://stream.example/queued-three.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-4",
+                      title: "Queued Four",
+                      href: "/queued-four.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-four-thumb.jpg",
+                      src: "https://stream.example/queued-four.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "queued-5",
+                      title: "Queued Five",
+                      href: "/queued-five.html/english.html",
+                      posterUrl: "https://cdn.example/queued-five-poster.jpg",
+                      thumbnailUrl: "",
+                      src: "https://stream.example/queued-five.m3u8",
                     }),
                   ],
                 },
@@ -870,12 +962,121 @@ describe("WatchHomePage", () => {
     expect(heroVideo.getAttribute("src")).toBe(
       "https://stream.example/queued-one.m3u8",
     )
+    const timelines = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+    )
+    expect(timelines).toHaveLength(2)
+    const desktopTimeline = timelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "large",
+    )
+    const mobileTimeline = timelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "compact",
+    )
+    expect(desktopTimeline).toBeDefined()
+    expect(mobileTimeline).toBeDefined()
+    const actionRow = container.querySelector(
+      '[data-testid="watch-home-tv-actions"]',
+    )
+    expect(actionRow?.contains(mobileTimeline!)).toBe(true)
+    expect(actionRow?.contains(desktopTimeline!)).toBe(false)
+    const desktopCircles = Array.from(
+      desktopTimeline!.querySelectorAll(
+        '[data-testid="watch-home-video-circle"]',
+      ),
+    )
+    const mobileCircles = Array.from(
+      mobileTimeline!.querySelectorAll(
+        '[data-testid="watch-home-video-circle"]',
+      ),
+    )
+    expect(
+      desktopCircles.map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1", "2", "3"])
+    expect(
+      mobileCircles.map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1"])
+    expect(
+      desktopCircles.map((circle) =>
+        circle.querySelector('[role="img"]')?.getAttribute("data-src"),
+      ),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+      "https://cdn.example/queued-four-thumb.jpg",
+    ])
+    expect(
+      mobileCircles.map((circle) =>
+        circle.querySelector('[role="img"]')?.getAttribute("data-src"),
+      ),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+    ])
+    for (const timeline of timelines) {
+      const circles = Array.from(
+        timeline.querySelectorAll('[data-testid="watch-home-video-circle"]'),
+      )
+      expect(
+        circles.every(
+          (circle) =>
+            circle
+              .querySelector('[role="img"]')
+              ?.getAttribute("data-loading") === "lazy",
+        ),
+      ).toBe(true)
+      expect(
+        circles.every(
+          (circle) =>
+            circle
+              .querySelector('[role="img"]')
+              ?.getAttribute("data-priority") === "false",
+        ),
+      ).toBe(true)
+      const currentCircle = timeline.querySelector('[data-offset="0"]')
+      expect(
+        currentCircle?.querySelector("button")?.getAttribute("aria-label"),
+      ).toBe("Queued One")
+      expect(
+        currentCircle
+          ?.querySelector('[aria-current="true"] [role="img"]')
+          ?.getAttribute("data-src"),
+      ).toBe("https://cdn.example/queued-one-thumb.jpg")
+      expect(
+        currentCircle?.querySelectorAll(
+          '[data-testid="watch-home-current-progress"]',
+        ),
+      ).toHaveLength(1)
+    }
+    expect(
+      desktopTimeline!
+        .querySelector('[role="img"]')
+        ?.getAttribute("data-sizes"),
+    ).toBe("48px")
+    expect(
+      mobileTimeline!.querySelector('[role="img"]')?.getAttribute("data-sizes"),
+    ).toBe("36px")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-overlay"]')
+        ?.getAttribute("class"),
+    ).toContain("pb-4 sm:pb-8 compact-landscape:pb-4")
+
+    const queuedTwoButton = container.querySelector(
+      'button[aria-label="Show Queued Two"]',
+    ) as HTMLButtonElement
+    queuedTwoButton.focus()
+    expect(document.activeElement).toBe(queuedTwoButton)
 
     await act(async () => {
-      container
-        .querySelector('button[aria-label="Next video"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      queuedTwoButton.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
+
+    expect(document.activeElement).toBe(queuedTwoButton)
+    expect(queuedTwoButton.getAttribute("aria-label")).toBe("Queued Two")
+    expect(queuedTwoButton.getAttribute("aria-current")).toBe("true")
+    expect(queuedTwoButton.getAttribute("aria-disabled")).toBe("true")
+    expect(queuedTwoButton.disabled).toBe(false)
 
     const carousel = container.querySelector(
       '[data-testid="watch-home-tv-carousel"]',
@@ -894,9 +1095,74 @@ describe("WatchHomePage", () => {
         ) as HTMLVideoElement
       ).getAttribute("src"),
     ).toBe("https://stream.example/queued-two.m3u8")
+    const advancedTimelines = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+    )
+    const advancedDesktopTimeline = advancedTimelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "large",
+    )
+    const advancedMobileTimeline = advancedTimelines.find(
+      (timeline) => timeline.getAttribute("data-size") === "compact",
+    )
     expect(
-      container.querySelector('button[aria-label="Next video"]'),
-    ).not.toBeNull()
+      Array.from(
+        advancedDesktopTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"]',
+        ),
+      ).map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["-1", "0", "1", "2", "3"])
+    expect(
+      Array.from(
+        advancedMobileTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"]',
+        ),
+      ).map((circle) => circle.getAttribute("data-offset")),
+    ).toEqual(["0", "1"])
+    for (const timeline of advancedTimelines) {
+      expect(
+        timeline
+          .querySelector('[data-offset="0"] [aria-current="true"] [role="img"]')
+          ?.getAttribute("data-src"),
+      ).toBe("https://cdn.example/queued-two-thumb.jpg")
+    }
+    expect(
+      Array.from(
+        advancedDesktopTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"] [role="img"]',
+        ),
+      ).map((image) => image.getAttribute("data-src")),
+    ).toEqual([
+      "https://cdn.example/queued-one-thumb.jpg",
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+      "https://cdn.example/queued-four-thumb.jpg",
+      "https://cdn.example/queued-five-poster.jpg",
+    ])
+    expect(
+      Array.from(
+        advancedMobileTimeline!.querySelectorAll(
+          '[data-testid="watch-home-video-circle"] [role="img"]',
+        ),
+      ).map((image) => image.getAttribute("data-src")),
+    ).toEqual([
+      "https://cdn.example/queued-two-thumb.jpg",
+      "https://cdn.example/queued-three-thumb.jpg",
+    ])
+
+    // R2: with the secondary paragraph gone, the rotating copy stagger runs
+    // eyebrow -> title with no dead beat where the paragraph used to animate.
+    // The action row is deliberately stable so carousel advances cannot steal
+    // focus from Watch Now or mute/unmute.
+    // These two classes are applied only to the staggered overlay items, so
+    // querying the carousel pins both the delays and the item count without
+    // depending on how deeply the overlay nests them.
+    const delaysFor = (className: string) =>
+      Array.from(carousel?.querySelectorAll(`.${className}`) ?? []).map((el) =>
+        (el as HTMLElement).style.getPropertyValue("--watch-home-copy-delay"),
+      )
+    // Entering runs offset by 430ms while the outgoing copy clears: 430+0/70.
+    expect(delaysFor("watch-home-copy-enter")).toEqual(["430ms", "500ms"])
+    expect(delaysFor("watch-home-copy-exit")).toEqual(["0ms", "35ms"])
 
     // The hero reveals the shell chrome on mount; it never hides it now that
     // there is no full-player takeover.
@@ -973,6 +1239,293 @@ describe("WatchHomePage", () => {
         .some((className) => className.includes("px-4 sm:px-6 lg:px-8")),
     ).toBe(false)
   })
+
+  it("moves focus to the current circle when autoplay removes the focused past circle", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    const numberWords = ["One", "Two", "Three", "Four", "Five"]
+
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: numberWords.map((word, index) =>
+                    makeCarouselSlide({
+                      id: `queued-${index + 1}`,
+                      title: `Queued ${word}`,
+                      href: `/queued-${index + 1}.html/english.html`,
+                      src: `https://stream.example/queued-${index + 1}.m3u8`,
+                    }),
+                  ),
+                },
+              ],
+            },
+          })}
+        />,
+      )
+    })
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Show Queued Two"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    const pastButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"] [data-offset="-1"] button',
+    ) as HTMLButtonElement
+    pastButton.focus()
+    expect(document.activeElement).toBe(pastButton)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    const currentButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
+    ) as HTMLButtonElement
+    expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
+    expect(document.activeElement).toBe(currentButton)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    const repeatedlyRecoveredCurrentButton = container.querySelector(
+      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
+    ) as HTMLButtonElement
+    expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
+      "Queued Five",
+    )
+    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
+  })
+
+  it("resets a completed playback ring when a timeline video is selected", async () => {
+    vi.useFakeTimers()
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              carousel: {
+                pools: [
+                  {
+                    id: "pool-a",
+                    collectionIds: ["pool-a"],
+                    videos: [
+                      makeCarouselSlide(),
+                      makeCarouselSlide({
+                        id: "queued-2",
+                        title: "Queued Two",
+                      }),
+                      makeCarouselSlide({
+                        id: "queued-3",
+                        title: "Queued Three",
+                      }),
+                      makeCarouselSlide({
+                        id: "queued-4",
+                        title: "Queued Four",
+                      }),
+                    ],
+                  },
+                ],
+              },
+            })}
+          />,
+        )
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(9_420)
+      })
+
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued Two"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-progress-reset"]'),
+      ).toHaveLength(2)
+
+      await act(async () => {
+        vi.advanceTimersByTime(950)
+      })
+
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-progress-reset"]'),
+      ).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("prefetches three future timeline videos near the queue tail", async () => {
+    // Queue extension is intentionally stable per New York business date.
+    // Pin that date so this expected order does not change at midnight.
+    vi.useFakeTimers({ now: new Date("2026-09-04T12:00:00.000Z") })
+
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      const videos = Array.from({ length: 10 }, (_, index) => {
+        const number = index + 1
+        return makeCarouselSlide({
+          id: `queued-${number}`,
+          title: `Queued ${number}`,
+          href: `/queued-${number}.html/english.html`,
+          thumbnailUrl: `https://cdn.example/queued-${number}-thumb.jpg`,
+          src: `https://stream.example/queued-${number}.m3u8`,
+        })
+      })
+
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              carousel: {
+                pools: [{ id: "pool-a", collectionIds: ["pool-a"], videos }],
+              },
+            })}
+          />,
+        )
+      })
+
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued 4"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+      await act(async () => {
+        container
+          .querySelector('button[aria-label="Show Queued 7"]')
+          ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(0)
+      })
+
+      const timelines = Array.from(
+        container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
+      )
+      const desktopTimeline = timelines.find(
+        (timeline) => timeline.getAttribute("data-size") === "large",
+      )
+      const mobileTimeline = timelines.find(
+        (timeline) => timeline.getAttribute("data-size") === "compact",
+      )
+      const circleLabels = (timeline: Element) =>
+        Array.from(
+          timeline.querySelectorAll('[data-testid="watch-home-video-circle"]'),
+        ).map((circle) =>
+          circle.querySelector("button")?.getAttribute("aria-label"),
+        )
+      expect(circleLabels(desktopTimeline!)).toEqual([
+        "Show Queued 6",
+        "Queued 7",
+        "Show Queued 9",
+        "Show Queued 10",
+        "Show Queued 8",
+      ])
+      expect(circleLabels(mobileTimeline!)).toEqual([
+        "Queued 7",
+        "Show Queued 9",
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("continues autoplay after the final unplayed pooled video ends", async () => {
+    vi.useFakeTimers()
+
+    try {
+      addWatchHomeTvPlayedId("queued-1")
+      addWatchHomeTvPlayedId("queued-2")
+      vi.spyOn(Math, "random").mockReturnValue(0)
+
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )
+      const finalUnplayedVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const finalUnplayedSrc = finalUnplayedVideo.getAttribute("src")
+
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
+      expect(finalUnplayedSrc).toBe("https://stream.example/queued-three.m3u8")
+
+      const muteButton = container.querySelector(
+        'button[aria-label="Unmute preview"]',
+      ) as HTMLButtonElement
+      muteButton.focus()
+      expect(document.activeElement).toBe(muteButton)
+
+      await act(async () => {
+        finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      const replacementVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const replacementPlay = vi.fn(() => Promise.resolve())
+      replacementVideo.play =
+        replacementPlay as unknown as HTMLVideoElement["play"]
+
+      expect(replacementVideo).not.toBe(finalUnplayedVideo)
+      expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
+      expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
+      expect(
+        container.querySelector('button[aria-label="Unmute preview"]'),
+      ).toBe(muteButton)
+      expect(document.activeElement).toBe(muteButton)
+
+      await act(async () => {
+        replacementVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+        vi.advanceTimersByTime(1_500)
+        await Promise.resolve()
+      })
+
+      expect(replacementPlay).toHaveBeenCalledTimes(1)
+
+      const watchNow = container.querySelector(
+        '[data-testid="watch-home-tv-actions"] a',
+      ) as HTMLAnchorElement
+      watchNow.focus()
+      expect(document.activeElement).toBe(watchNow)
+
+      await act(async () => {
+        replacementVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-actions"] a'),
+      ).toBe(watchNow)
+      expect(document.activeElement).toBe(watchNow)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("keeps the server-rendered opening slide independent of the random draw", () => {
     const model = makeSequencedModel()
     const markup = [0, 0.99].map((value) => {
@@ -1204,7 +1757,7 @@ describe("WatchHomePage", () => {
 
     await act(async () => {
       container
-        .querySelector('button[aria-label="Next video"]')
+        .querySelector('button[aria-label="Show Portrait Two"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
     expect(label()).toBe("Portrait Two")
@@ -1312,5 +1865,591 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
     ).toBeNull()
+  })
+  // jsdom has no layout engine, so these two cases can only pin the classes
+  // and inline background that produce the geometry — the rendered geometry
+  // itself (full-bleed media, 1920px copy rail, visible dim) was verified in a
+  // real browser against the watch-page hero it is matching.
+  it("dims the muted intro with the watch-page hero scrim and drops it on unmute", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="watch-home-tv-muted-backdrop"]',
+    ) as HTMLElement
+    const unmutedScrims = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="watch-home-tv-unmuted-scrim"]',
+        ),
+      )
+
+    // Same constant HeroPlayer paints over its own muted preview — the whole
+    // point of the change is that the two surfaces cannot drift apart.
+    expect(backdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
+    expect(backdrop.className).toContain(
+      "[background:var(--watch-player-muted-backdrop)]",
+    )
+    expect(backdrop.className).toContain("opacity-100")
+    expect(backdrop.className).not.toContain("opacity-0")
+    expect(unmutedScrims()).toHaveLength(2)
+    for (const scrim of unmutedScrims()) {
+      expect(scrim.className).toContain("opacity-0")
+    }
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Unmute preview"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(backdrop.className).toContain("opacity-0")
+    expect(backdrop.className).not.toContain("opacity-100")
+    for (const scrim of unmutedScrims()) {
+      expect(scrim.className).toContain("opacity-100")
+    }
+  })
+
+  it("reserves room for the categories rail while muted and expands on unmute", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const heroFrame = (
+      container.querySelector(
+        '[data-testid="watch-home-tv-media-frame"]',
+      ) as HTMLElement
+    ).parentElement as HTMLElement
+
+    // Pre-hydration height reserves room for the categories rail at both
+    // breakpoints, using the same constants the measured fit falls back to.
+    // Tailwind cannot interpolate, so the literals in the class are pinned
+    // against the constants here.
+    expect(heroFrame.className).toContain(
+      `h-[max(34svh,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_MOBILE_PX}px))]`,
+    )
+    expect(heroFrame.className).toContain(
+      `md:h-[max(34svh,min(56.25vw,calc(100svh_-_${WATCH_HOME_HERO_RESERVE_BELOW_PX}px)))]`,
+    )
+    expect(heroFrame.className).not.toContain("md:h-[min(100svh,56.25vw)]")
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Unmute preview"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(heroFrame.className).toContain("md:h-[min(100svh,56.25vw)]")
+    expect(heroFrame.className).toContain("h-[66svh]")
+    // Unmuting drops both the reservation and any measured fit: the viewer is
+    // watching, so the intro takes its full height.
+    expect(heroFrame.className).not.toContain("100svh_-_")
+    expect(heroFrame.style.height).toBe("")
+  })
+
+  it("shrinks the muted intro to the measured height of the rail below it", async () => {
+    // WatchHomePage has no categories rail of its own (that block belongs to
+    // the Experience page), and jsdom reports 0 for every rect — so both the
+    // rail and its height are stood in for here. What this pins is the rule:
+    // the measured height reaches the element as an inline height, beating the
+    // pre-hydration class, and leaves the rail inside the viewport.
+    const railHeight = 425
+    const rail = document.createElement("div")
+    rail.dataset.testid = "watch-home-category-rail"
+    // The fit reserves the span from the body zone's top to the rail's BOTTOM,
+    // so an authored block between them is counted too — a height-only stub
+    // would leave that span NaN.
+    rail.getBoundingClientRect = () =>
+      ({ top: 0, bottom: railHeight, height: railHeight }) as DOMRect
+    document.body.appendChild(rail)
+    const originalMatchMedia = window.matchMedia
+    // jsdom's window is shared across this file: leaving these overridden
+    // leaks a fake viewport into every later test.
+    const originalInnerHeight = window.innerHeight
+    const originalInnerWidth = window.innerWidth
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(min-width: 768px)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 1202,
+    })
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 2001,
+    })
+
+    try {
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      // The first measurement is scheduled on a frame, not run synchronously
+      // in the effect body (which would cascade a render).
+      await act(async () => {
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => resolve(null)),
+        )
+      })
+
+      const heroFrame = (
+        container.querySelector(
+          '[data-testid="watch-home-tv-media-frame"]',
+        ) as HTMLElement
+      ).parentElement as HTMLElement
+
+      const expected = fitWatchHomeHeroHeight({
+        viewportHeight: 1202,
+        aspectHeight: Math.min(1202, 2001 * 0.5625),
+        reservedBelow: railHeight,
+      })
+      expect(heroFrame.style.height).toBe(`${expected}px`)
+      // The whole point: the rail fits under it. Before this rule the intro
+      // was 864px tall here and the rail ran 87px past the fold.
+      expect(expected + railHeight).toBeLessThanOrEqual(1202)
+      expect(expected).toBeLessThan(864)
+    } finally {
+      window.matchMedia = originalMatchMedia
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      rail.remove()
+    }
+  })
+
+  it("posters the intro from the Mux frame, not the mobile-sized authored image", async () => {
+    // makeModel() has no carousel pools, so the component builds its slides
+    // through `watchHomeHeroSlidesToTvCarouselSlides` — the path under test.
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const poster = (
+      container.querySelector(
+        '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+      ) as HTMLElement
+    ).dataset.src
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+
+    // The admin library stores mobile derivatives for these videos — measured
+    // 640x300 — which this full-bleed surface upscales about fourfold. The Mux
+    // frame is 1280x720 from the derivative the watch hero already warms.
+    expect(poster).toBe(resolveMuxHeroPosterUrlAtMaxWidth("mux-1"))
+    expect(poster).not.toContain("cdn.example")
+    expect(video.getAttribute("poster")).toBe(poster)
+  })
+
+  it.each([
+    [
+      "no playback id, authored image present",
+      { playbackId: null },
+      "https://cdn.example/jesus.jpg",
+    ],
+    [
+      "playback id present, authored image blank",
+      { imageUrl: "" },
+      "https://image.mux.com/",
+    ],
+  ])(
+    "falls the intro poster through to the next tier — %s",
+    async (_label, overrides, expectedPrefix) => {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                { ...makeCard(), eyebrow: "Featured", ...overrides },
+              ],
+            })}
+          />,
+        )
+      })
+
+      const poster = (
+        container.querySelector(
+          '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+        ) as HTMLElement
+      ).dataset.src
+
+      // A blank authored image must neither win its tier NOR suppress the Mux
+      // tier below it — `??` would do both.
+      expect(poster).toContain(expectedPrefix)
+    },
+  )
+
+  it("renders no poster at all when every tier is blank or absent", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              {
+                ...makeCard(),
+                eyebrow: "Featured",
+                playbackId: null,
+                imageUrl: "",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    // The gradient placeholder, never an <img src="">.
+    expect(
+      container.querySelector(
+        '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("re-pauses a slide that starts playing while the body already covers it", async () => {
+    // The carousel advances on a wall-clock timer and starts the new <video> a
+    // beat later. If that lands while the hero is covered, the fresh element is
+    // momentarily paused, so the covered branch must not read it as "someone
+    // else paused this" and walk away — the video would then play, unseen and
+    // audible, behind the panel until the next coverage change.
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const media = container.querySelector(
+      '[data-testid="watch-home-tv-media-frame"]',
+    ) as HTMLElement
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    ) as HTMLElement
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const frame = media.parentElement as HTMLElement
+    frame.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 500, height: 500 }) as DOMRect
+
+    const pause = vi.fn(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+    video.pause = pause
+    video.play = (() => Promise.resolve()) as HTMLVideoElement["play"]
+
+    // Covered, and the fresh slide has not started yet.
+    Object.defineProperty(video, "paused", { configurable: true, value: true })
+    bodyZone.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 100, height: 0 }) as DOMRect
+    await act(async () => {
+      window.dispatchEvent(new Event("scroll"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+    expect(pause).not.toHaveBeenCalled()
+
+    // The carousel now starts it. Coverage has not changed, so only the
+    // element's own `play` can re-open the check.
+    Object.defineProperty(video, "paused", { configurable: true, value: false })
+    await act(async () => {
+      video.dispatchEvent(new Event("play"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+    expect(pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps pause ownership honest across a StrictMode remount", async () => {
+    // StrictMode remounts the SAME hook instance, so pausedByScrollRef survives
+    // the cleanup. A stale `true` carried into the new mount would resume a
+    // video the viewer had paused themselves. This suite is the repo's only
+    // deterministic detector for that shape.
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <WatchHomePage model={makeSequencedModel()} />
+        </StrictMode>,
+      )
+    })
+
+    const media = container.querySelector(
+      '[data-testid="watch-home-tv-media-frame"]',
+    ) as HTMLElement
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    ) as HTMLElement
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const frame = media.parentElement as HTMLElement
+    frame.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 500, height: 500 }) as DOMRect
+
+    const play = vi.fn(() => Promise.resolve())
+    video.play = play as unknown as HTMLVideoElement["play"]
+    video.pause = vi.fn()
+    // The viewer paused it themselves, uncovered.
+    Object.defineProperty(video, "paused", { configurable: true, value: true })
+    bodyZone.getBoundingClientRect = () =>
+      ({ top: 500, bottom: 500, height: 0 }) as DOMRect
+
+    await act(async () => {
+      window.dispatchEvent(new Event("scroll"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+
+    // Nothing here paused it, so nothing here may start it.
+    expect(play).not.toHaveBeenCalled()
+  })
+
+  it("does not pin an intro that is rendered unpinned", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    // The home shell always pins; the unpinned path is the authored hero block
+    // placed mid-page, covered in WatchHomeExperiencePage.test.tsx.
+    const carousel = container.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    ) as HTMLElement
+    expect(carousel.dataset.pinned).toBe("true")
+    expect(carousel.className).toContain("sticky")
+  })
+
+  it("dresses the intro copy in the watch page's own hero overlay", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const title = container.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
+    ) as HTMLElement
+    const action = container.querySelector(
+      '[data-testid="watch-home-tv-actions"] a',
+    ) as HTMLAnchorElement
+
+    // Both surfaces render WatchHeroOverlay, so the title and the primary
+    // action carry its classes rather than a home-only copy of them.
+    for (const token of WATCH_HERO_TITLE_CLASS.split(" ")) {
+      expect(title.className).toContain(token)
+    }
+    for (const token of WATCH_HERO_PRIMARY_ACTION_CLASS.split(" ")) {
+      expect(action.className).toContain(token)
+    }
+    // The bespoke sizing the home hero used to carry is gone.
+    expect(title.className).not.toContain("font-extrabold")
+    expect(title.className).not.toContain("text-3xl")
+    expect(action.className).not.toContain(
+      "shadow-[0_14px_32px_rgba(0,0,0,0.34)]",
+    )
+  })
+
+  it("gives the hero eyebrow the shared Watch section eyebrow styling", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const eyebrow = (
+      container.querySelector(
+        '[data-testid="watch-home-tv-active-title"]',
+      ) as HTMLElement
+    ).previousElementSibling as HTMLElement
+
+    expect(eyebrow.textContent).toBe("Short Film")
+    // The same class every other Watch section eyebrow uses ("BROWSE THE
+    // LIBRARY" and friends) rather than a bespoke amber one.
+    for (const token of WATCH_SECTION_EYEBROW_CLASS.split(" ")) {
+      expect(eyebrow.className).toContain(token)
+    }
+    expect(eyebrow.className).not.toContain("text-amber-300")
+    expect(eyebrow.className).not.toContain("tracking-[0.24em]")
+  })
+
+  it("runs the muted video on below the frame, behind the panel covering it", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const media = container.querySelector(
+      '[data-testid="watch-home-tv-media-frame"]',
+    ) as HTMLElement
+
+    // Same length a watch page's body rides up over its hero by — there the
+    // body carries the negative margin, here the media reaches down instead.
+    expect(media.getAttribute("style")).toContain(WATCH_HERO_BODY_OVERLAP_CSS)
+    expect(media.className).toContain(
+      "bottom-[calc(-1_*_var(--watch-hero-body-overlap))]",
+    )
+    expect(media.className).toContain("top-0")
+    expect(media.className).not.toContain("inset-y-0")
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Unmute preview"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    // Unmuting pulls it back to the frame, the way revealing a hero's chrome
+    // drops its overlap to zero.
+    expect(media.className).toContain("bottom-0")
+    expect(media.className).not.toContain("var(--watch-hero-body-overlap)")
+  })
+
+  it("pins the intro and lets the body zone scroll over it", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const hero = container.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    ) as HTMLElement
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    ) as HTMLElement
+
+    expect(hero.className).toContain("sticky")
+    expect(hero.className).toContain("top-0")
+    // The zone that covers the hero must not contain it, or it would scroll
+    // with it and never cover anything.
+    expect(bodyZone.contains(hero)).toBe(false)
+    expect(hero.nextElementSibling).toBe(bodyZone)
+    // Same glass panel the watch page's body zone uses, and full-bleed for the
+    // same reason the media is: a 1920px panel leaves the pinned video showing
+    // down both sides of a wider screen.
+    expect(bodyZone.className).toContain("watch-body-backdrop")
+    expect(bodyZone.className).toContain("backdrop-blur-2xl")
+    expect(bodyZone.className).toContain("w-screen")
+    expect(bodyZone.className).toContain("z-10")
+  })
+
+  it("pauses the pinned intro once the body covers it, and resumes on the way back", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const hero = container.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    ) as HTMLElement
+    const bodyZone = container.querySelector(
+      '[data-testid="watch-home-body-zone"]',
+    ) as HTMLElement
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const media = container.querySelector(
+      '[data-testid="watch-home-tv-media-frame"]',
+    ) as HTMLElement
+
+    // jsdom has no layout and no media pipeline: every rect is 0 and `paused`
+    // is permanently true, so the geometry and the play state are both stood
+    // in for here. The real pin/cover/pause sequence was driven in a browser.
+    const pause = vi.fn(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+    const play = vi.fn(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: false,
+      })
+      return Promise.resolve()
+    })
+    video.pause = pause
+    video.play = play as unknown as HTMLVideoElement["play"]
+    Object.defineProperty(video, "paused", { configurable: true, value: false })
+
+    const setBodyTop = (top: number) => {
+      bodyZone.getBoundingClientRect = () =>
+        ({ top, bottom: top, height: 0 }) as DOMRect
+    }
+    // The hero is pinned at the viewport top and 500px tall, so the body has
+    // to climb above 200px (60% covered) before the video pauses.
+    //
+    // Only the sized FRAME carries that rect. The media layer deliberately
+    // reaches lower while muted, and measuring it would move the crossover —
+    // so it is stubbed taller here on purpose, and every assertion below is
+    // against the 500px frame.
+    const frame = media.parentElement as HTMLElement
+    frame.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 500, height: 500 }) as DOMRect
+    media.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 838, height: 838 }) as DOMRect
+    hero.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 500, height: 500 }) as DOMRect
+
+    setBodyTop(300)
+    await act(async () => {
+      window.dispatchEvent(new Event("scroll"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+    expect(pause).not.toHaveBeenCalled()
+
+    setBodyTop(150)
+    await act(async () => {
+      window.dispatchEvent(new Event("scroll"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+    expect(pause).toHaveBeenCalledTimes(1)
+
+    setBodyTop(500)
+    await act(async () => {
+      window.dispatchEvent(new Event("scroll"))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    })
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
+  it("bleeds the intro media past the content rail without clipping ancestors", async () => {
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+
+    const mediaFrame = container.querySelector(
+      '[data-testid="watch-home-tv-media-frame"]',
+    ) as HTMLElement
+    expect(mediaFrame.className).toContain("w-screen")
+    expect(mediaFrame.className).toContain("-translate-x-1/2")
+    expect(mediaFrame.className).toContain("max-w-none")
+
+    // The bleed is only visible while every ancestor up to <main> leaves it
+    // unclipped; an `overflow-hidden`/`overflow-x-clip` re-added anywhere on
+    // this chain silently snaps the hero back to the 1920px rail.
+    const clippingAncestors: string[] = []
+    for (
+      let node = mediaFrame.parentElement;
+      node && node !== container;
+      node = node.parentElement
+    ) {
+      if (/overflow-(hidden|x-clip|x-hidden)/.test(node.className)) {
+        clippingAncestors.push(node.className)
+      }
+    }
+    expect(clippingAncestors).toEqual([
+      // <main> keeps its clip so the 100vw span never adds page scroll.
+      // Clip, not hidden: hidden would make <main> a scroll container and
+      // break the sticky hero.
+      "min-h-screen overflow-x-clip bg-black text-white",
+    ])
+
+    // The copy stays on the 1920px rail the rest of the page uses.
+    const railFrame = mediaFrame.parentElement as HTMLElement
+    expect(railFrame.className).toContain("max-w-[1920px]")
+    expect(
+      railFrame.querySelector('[data-testid="watch-home-tv-active-title"]'),
+    ).not.toBeNull()
   })
 })

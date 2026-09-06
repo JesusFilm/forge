@@ -722,5 +722,28 @@
     "languageVersionLabel": "Ɗemngal nanngo",
     "selectLanguageVersion": "Suɓo jame ɗemngal",
     "watchSelectedVersion": "Yiy jame nde cuɓaa"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cuɓoraaɗi kukiije",
+    "bannerTitle": "Cuɓoraaɗi maa sirriinde",
+    "bannerDescription": "Kukiije ceertuɗe waɗata ko Watch woni kisal e moƴƴi e gollugol. So a yardii, kukii suɓaandu gomɗinal waɗaaɗo e dow ngal lowre ina waawi siftorde jiɗɗe maa e yillitaare ɗee ngam heɓde saŋtine kisɗine mawɗe. Saŋtine kisɗine dow ngonngol ina heddii woodi koo no feewi.",
+    "acceptAll": "Jaɓu fof",
+    "essentialOnly": "Ceertuɗe tan",
+    "manageChoices": "Toppito cuɓoraaɗi",
+    "savingChoice": "Danndugol cuɓol kukiije",
+    "settings": "Teelte kukiije",
+    "settingsDescription": "Suɓo so Watch ina waawi siftorde jiɗɗe saŋtine maa e yillitaare ɗee. Aɗa waawi waylude ɗum kala sahaa.",
+    "essentialCookies": "Kukiije ceertuɗe",
+    "essentialDescription": "Kisal, tarol widewoo, cuɓoraaɗi sirriinde, e hollitol ɗaɓɓitannde saŋtine.",
+    "alwaysActive": "Ina hurmi sahaa fof",
+    "personalization": "Keɓagol kisal maa",
+    "personalizationDescription": "Siftor jiɗɗe maa ɗe waɗɗi e yillitaare ɗee. So a udditii ɗum, saŋtine kisɗine dow ngonngol maa heddii woodi.",
+    "erasurePending": "Momtugol profayil maa woni e laawol. Saŋtine kisɗine dow ngonngol ko ɗi hurmi jooni.",
+    "cancel": "Haaytu",
+    "saveChoices": "Danndu cuɓoraaɗi",
+    "saving": "Danndugol…",
+    "loadError": "Cuɓol maa horiima loowaade. Aɗa waawi suɓaade ka les.",
+    "grantError": "Daaɓugol keɓagol kisal maa horiima hurminde. Ceertuɗe tan maa heddii woodi.",
+    "saveError": "Cuɓol maa horiima danndee. Tiiɗno fuɗɗito kadi."
   }
 }
