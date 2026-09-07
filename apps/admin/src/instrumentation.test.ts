@@ -15,6 +15,8 @@ const mockEnv = vi.hoisted(() => ({
       | "true"
       | "false"
       | undefined,
+    TYPESENSE_HOST: undefined as string | undefined,
+    TYPESENSE_OPERATOR_API_KEY: undefined as string | undefined,
   },
   resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
     (value?: unknown) =>
@@ -130,6 +132,8 @@ describe("workflow instrumentation", () => {
     mockEnv.env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS = 12
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 10_000
     mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "false"
+    mockEnv.env.TYPESENSE_HOST = undefined
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = undefined
   })
 
   afterEach(() => {
@@ -180,6 +184,40 @@ describe("workflow instrumentation", () => {
       ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).not.toHaveBeenCalled()
     expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("fails before workflow side effects when transcript publication lacks Typesense configuration", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("fails before workflow side effects when the publisher host is not HTTP(S)", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.TYPESENSE_HOST = "file:///tmp/typesense"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
   })
 
   it("starts watch search embedding prewarm only once per process", async () => {

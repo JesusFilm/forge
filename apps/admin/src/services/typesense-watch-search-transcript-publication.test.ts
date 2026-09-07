@@ -199,6 +199,39 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     expect(_internals.publicationRetryDelayMs(100)).toBe(300_000)
   })
 
+  it("fingerprints numeric fields at Typesense float storage width", async () => {
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
+    const canonical = {
+      id: "chunk-1",
+      documentKind: "transcript" as const,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      canonicalVideoId: "core:video-1",
+      language: "en",
+      publiclyVisible: true,
+      text: "Hope and fellowship",
+      startSeconds: 12.3456789,
+      embedding: [0.123456789, -0.987654321],
+    }
+    const typesenseReadback = {
+      ...canonical,
+      startSeconds: Math.fround(canonical.startSeconds),
+      embedding: canonical.embedding.map(Math.fround),
+    }
+
+    expect(_internals.normalizeTranscriptDocument(canonical)).toEqual(
+      _internals.normalizeTranscriptDocument(typesenseReadback),
+    )
+    expect(
+      _internals.sha256(_internals.normalizeTranscriptDocument(canonical)),
+    ).toBe(
+      _internals.sha256(
+        _internals.normalizeTranscriptDocument(typesenseReadback),
+      ),
+    )
+  })
+
   it("bounds per-document readback concurrency", async () => {
     const { _internals } =
       await import("./typesense-watch-search-transcript-publication")

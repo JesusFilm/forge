@@ -256,6 +256,13 @@ modest. Each import batch still needs exact response-line count and success
 validation, followed by independent document and normalized-vector readback
 over the complete chunk set.
 
+Fingerprint numeric fields at the storage width of the serving schema.
+Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
+values enter JavaScript as 64-bit numbers. Normalize both the canonical input
+and independent readback with `Math.fround` before hashing so ordinary
+Typesense storage rounding does not leave a correct publication retrying
+forever; reject values that overflow to a non-finite float.
+
 The current alias is another mutable trust boundary. Freeze it to an exact
 physical transcript collection before writing, then resolve it again after
 readback and before durable completion. The PostgreSQL advisory lock serializes

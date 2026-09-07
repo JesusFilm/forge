@@ -154,6 +154,24 @@ export function assertWatchSearchTranscriptPublicationRuntime(): void {
       "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires WORKFLOW_RUNNER_ENABLED=true and WORKFLOW_TARGET_WORLD=@workflow/world-postgres",
     )
   }
+  if (!env.TYPESENSE_HOST || !env.TYPESENSE_OPERATOR_API_KEY?.trim()) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST and TYPESENSE_OPERATOR_API_KEY",
+    )
+  }
+  let typesenseProtocol: string
+  try {
+    typesenseProtocol = new URL(env.TYPESENSE_HOST).protocol
+  } catch {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
+  if (typesenseProtocol !== "http:" && typesenseProtocol !== "https:") {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
 }
 
 async function startWorkflowWorld(): Promise<void> {

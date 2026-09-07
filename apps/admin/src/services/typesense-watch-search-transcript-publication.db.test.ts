@@ -420,7 +420,23 @@ class ControlledTypesenseServer {
       const lines = body.split("\n").filter(Boolean)
       for (const line of lines) {
         const document = JSON.parse(line) as Record<string, unknown>
-        collection.documents.set(String(document.id), document)
+        // Typesense `float` and `float[]` fields store IEEE-754 single
+        // precision values. Model that boundary so publication fingerprint
+        // tests cannot accidentally depend on JavaScript's wider numbers.
+        const storedDocument = {
+          ...document,
+          ...(typeof document.startSeconds === "number"
+            ? { startSeconds: Math.fround(document.startSeconds) }
+            : {}),
+          ...(Array.isArray(document.embedding)
+            ? {
+                embedding: document.embedding.map((value) =>
+                  Math.fround(Number(value)),
+                ),
+              }
+            : {}),
+        }
+        collection.documents.set(String(storedDocument.id), storedDocument)
       }
       this.text(
         response,
@@ -487,7 +503,7 @@ suite("current transcript publication into Watch Search", () => {
     .slice(2)}`
   const databaseUrl = databaseUrlForDatabase(baseDatabaseUrl!, databaseName)
   const typesenseServer = new ControlledTypesenseServer()
-  const embedding = makeEmbedding()
+  const embedding = makeEmbedding(0.123456789)
   let prisma: PrismaClient
   let pgClient: Client
   let typesense: TypesenseClient
@@ -784,8 +800,8 @@ suite("current transcript publication into Watch Search", () => {
         chunkId: `chunk-${index}`,
         text: chunk.text,
         tokenCount: chunk.tokenCount,
-        startSeconds: index * 10,
-        endSeconds: index * 10 + 5,
+        startSeconds: index * 10 + 0.123456789,
+        endSeconds: index * 10 + 5.123456789,
         feltNeeds: [],
         bibleVerses: [],
         demographics: [],
@@ -1031,7 +1047,7 @@ suite("current transcript publication into Watch Search", () => {
       embedding: number[]
     }>(published.transcriptCollection, currentEvent.currentDocumentIds[0]!)
     expect(currentDoc?.id).toBe(currentEvent.currentDocumentIds[0])
-    expect(currentDoc?.embedding).toEqual(embedding)
+    expect(currentDoc?.embedding).toEqual(embedding.map(Math.fround))
     const staleDoc = await typesense.getDocument(
       published.transcriptCollection,
       currentEvent.staleDocumentIds[0]!,

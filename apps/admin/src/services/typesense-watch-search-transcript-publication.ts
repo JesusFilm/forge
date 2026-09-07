@@ -203,7 +203,23 @@ function normalizeEmbedding(value: unknown): number[] {
       "transcript embedding readback is malformed",
     )
   }
-  return array
+  const normalized = array.map(Math.fround)
+  if (normalized.some((entry) => !Number.isFinite(entry))) {
+    throw new WatchSearchTranscriptPublicationError(
+      "transcript embedding readback exceeds Typesense float storage",
+    )
+  }
+  return normalized
+}
+
+function normalizeTypesenseFloat(value: number): number {
+  const normalized = Math.fround(value)
+  if (!Number.isFinite(normalized)) {
+    throw new WatchSearchTranscriptPublicationError(
+      "transcript numeric readback exceeds Typesense float storage",
+    )
+  }
+  return normalized
 }
 
 function normalizeTranscriptDocument(
@@ -221,7 +237,9 @@ function normalizeTranscriptDocument(
     publiclyVisible: document.publiclyVisible,
     text: document.text,
     startSeconds:
-      document.startSeconds == null ? null : Number(document.startSeconds),
+      document.startSeconds == null
+        ? null
+        : normalizeTypesenseFloat(Number(document.startSeconds)),
     embedding: document.embedding ? normalizeEmbedding(document.embedding) : [],
   }
 }
