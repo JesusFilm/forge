@@ -59,5 +59,61 @@ mark the roadmap complete only with evidence, and commit locally without pushing
   provider runtime. admin-graphql's test script reports no test files, exit 0.
 - Prisma/Pothos, Admin SDL and gql.tada introspection generated with package scripts.
 
-Independent Standards/Spec review and final commit are the remaining completion
-steps. The ticket remains in-progress until those finish.
+## Review
+
+Standards: two minor deviations (direct test environment access and untyped test
+errors) were fixed, together with duplicated render eligibility checks. Follow-up
+review reports no remaining findings. Spec: no actionable findings or scope creep.
+Final focused verification after these fixes passes all 147 Studio/permissions tests.
+Generated SDL/introspection are reproducible with no diff. The Prisma current
+revision relation explicitly maps the migration's deferred foreign-key name.
+
+## Reproduction commands
+
+Run from the repository root. The database URL below authorizes only the disposable
+local cluster initialized for this work; the test refuses other hosts/database names.
+The cluster was initialized from scratch and all 81 migrations applied using:
+
+```sh
+DATABASE_URL=postgresql://tataihono@127.0.0.1:55454/forge_studio_454_test pnpm --filter @forge/admin exec prisma migrate deploy
+STUDIO_TEST_DATABASE_URL=postgresql://tataihono@127.0.0.1:55454/forge_studio_454_test pnpm --filter @forge/admin exec vitest run src/services/studio-authoring/commands.db.test.ts src/auth/permissions.test.ts
+pnpm --filter @forge/studio-contracts test
+pnpm --filter @forge/manager test
+pnpm --filter @forge/admin test
+pnpm --filter @forge/admin exec vitest run src/services/seo-experiment.service.test.ts src/auth/rate-limit.test.ts --maxWorkers=1
+unshare --user --map-root-user --net pnpm --filter @forge/admin exec vitest run src/auth/rate-limit.test.ts
+pnpm --filter @forge/studio-contracts typecheck
+pnpm --filter @forge/admin typecheck
+pnpm --filter @forge/manager typecheck
+pnpm --filter @forge/admin-graphql typecheck
+pnpm --filter @forge/admin db:generate
+CI=1 pnpm --filter @forge/admin schema:print
+pnpm --filter @forge/admin-graphql generate
+pnpm --filter @forge/admin exec prisma validate
+pnpm --filter @forge/admin exec eslint src/config/env.ts src/services/studio-authoring src/graphql/types/studio.ts src/auth/permissions.ts
+pnpm --filter @forge/manager exec eslint src/backend/studio-client.ts src/backend/studio-client.test.ts src/backend/admin-client.ts
+pnpm --filter @forge/studio-contracts lint
+CI=1 pnpm --filter @forge/manager build
+pnpm format:check
+```
+
+## Public module surfaces and downstream boundaries
+
+- `@forge/studio-contracts` exports its Zod schemas and inferred types from `.`:
+  actor/lifecycle, durable assets, components, source selection, transforms, speech,
+  timeline/tracks/documents, operations, command envelopes/results, requests,
+  starts/completions, attempts, approvals, project summaries and revision history.
+- Admin's `src/services/studio-authoring/index.ts` exports `StudioAuthoringService`
+  and `StudioCommandError`. Its public command/read methods share the same guards.
+- Manager's `src/backend/studio-client.ts` exports `createStudioAdminAdapter`;
+  `AdminGraphqlClient.studio` uses the existing authenticated Admin transport.
+- Generated tracked artifacts: `apps/admin/schema.graphql` and
+  `packages/admin-graphql/src/admin-graphql-env.d.ts`. Prisma/Pothos generated
+  outputs are regenerated locally using the existing ignored-output convention.
+- `publication.ts` is an internal required-verifier transaction seam, with no
+  public publish operation. Asset registry resolution (455), human UI/agent
+  transport (456/457), provider orchestration, catalog checks and production
+  rendering/publication (460) remain assigned to subsequent tickets.
+
+No feat-454 gaps remain. No push, deployment, production migration or generation
+provider call was performed.

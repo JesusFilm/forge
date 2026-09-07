@@ -9,7 +9,6 @@ import {
   studioCompleteSchema,
   studioAttemptSchema,
   studioApproveSchema,
-  studioAttemptResultSchema,
   studioCommandBaseSchema,
   studioStartSchema,
   studioListSchema,
@@ -31,7 +30,7 @@ import {
   receipt,
   saveReceipt,
   scriptHash,
-  publicationHash,
+  publicationDependencyHash,
 } from "./state"
 import { applyOperations } from "./operations"
 export { StudioCommandError } from "./errors"
@@ -306,24 +305,11 @@ export class StudioAuthoringService {
       if (input.kind === "PUBLICATION") {
         if (!input.renderAttemptId)
           throw new StudioCommandError("APPROVAL_REQUIRED")
-        const attempt = await tx.studioAttempt.findUnique({
-          where: { id: input.renderAttemptId },
-        })
-        if (
-          !attempt ||
-          attempt.projectId !== project.id ||
-          attempt.baseRevision !== project.currentRevision ||
-          attempt.kind !== "RENDER" ||
-          attempt.status !== "SUCCEEDED"
-        )
-          throw new StudioCommandError("APPROVAL_REQUIRED")
-        const render = studioAttemptResultSchema.parse(attempt.result)
-        if (!render.manifest) throw new StudioCommandError("APPROVAL_REQUIRED")
-        dependencyHash = publicationHash(
+        dependencyHash = await publicationDependencyHash(
+          tx,
+          project,
           document,
-          project.currentRevision,
-          attempt.inputHash,
-          render.manifest,
+          input.renderAttemptId,
         )
       }
       const approval = await tx.studioApproval.create({

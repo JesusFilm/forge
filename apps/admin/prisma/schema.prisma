@@ -4159,7 +4159,7 @@ model StudioProject {
   firstPublishedAt      DateTime?               @map("first_published_at")
   unpublishedAt         DateTime?               @map("unpublished_at")
   createdAt             DateTime                @default(now()) @map("created_at")
-  currentRevisionRecord StudioProjectRevision   @relation("CurrentStudioRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction)
+  currentRevisionRecord StudioProjectRevision   @relation("CurrentStudioRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "studio_current_revision_fk")
   revisions             StudioProjectRevision[] @relation("StudioProjectHistory")
   commands              StudioCommand[]
 

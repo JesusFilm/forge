@@ -6,7 +6,6 @@ import {
   studioCommandBaseSchema,
   studioIdSchema,
   studioDocumentSchema,
-  studioAttemptResultSchema,
   type StudioDocument,
 } from "@forge/studio-contracts"
 import type { Principal } from "@/auth/principal"
@@ -20,7 +19,7 @@ import {
   studioHash,
 } from "./state"
 import { StudioCommandError } from "./errors"
-import { publicationHash } from "./state"
+import { publicationDependencyHash } from "./state"
 
 const commitSchema = studioCommandBaseSchema.extend({
   approvalId: studioIdSchema,
@@ -63,42 +62,29 @@ export async function publishStudioProject(
       },
     })
     const document = studioDocumentSchema.parse(revision.document)
-    const attempt = await tx.studioAttempt.findUnique({
-      where: { id: input.renderAttemptId },
-    })
+    const dependencyHash = await publicationDependencyHash(
+      tx,
+      project,
+      document,
+      input.renderAttemptId,
+    )
     const approval = await tx.studioApproval.findUnique({
       where: { id: input.approvalId },
     })
     if (
-      !attempt ||
-      attempt.projectId !== project.id ||
-      attempt.baseRevision !== project.currentRevision ||
-      attempt.kind !== "RENDER" ||
-      attempt.status !== "SUCCEEDED"
-    )
-      throw new StudioCommandError("APPROVAL_REQUIRED")
-    const render = studioAttemptResultSchema.parse(attempt.result)
-    if (
-      !render.manifest ||
       !approval ||
       approval.projectId !== project.id ||
       approval.revision !== project.currentRevision ||
       approval.kind !== "PUBLICATION" ||
-      approval.renderAttemptId !== attempt.id ||
-      approval.dependencyHash !==
-        publicationHash(
-          document,
-          project.currentRevision,
-          attempt.inputHash,
-          render.manifest,
-        )
+      approval.renderAttemptId !== input.renderAttemptId ||
+      approval.dependencyHash !== dependencyHash
     )
       throw new StudioCommandError("APPROVAL_REQUIRED")
     await verify(tx, {
       projectId: project.id,
       revision: project.currentRevision,
       document,
-      renderAttemptId: attempt.id,
+      renderAttemptId: input.renderAttemptId,
     })
     await tx.studioProject.update({
       where: { id: project.id },

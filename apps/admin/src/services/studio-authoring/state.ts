@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import type { Prisma, StudioProject } from "@prisma/client"
 import {
   studioActorSchema,
+  studioAttemptResultSchema,
   studioCommandResultSchema,
   type StudioActor,
   type StudioCommandResult,
@@ -109,4 +110,32 @@ export function publicationHash(
   manifest: StudioAssetReference,
 ) {
   return studioHash({ document, revision, inputHash, manifest })
+}
+
+// Approval and publication must bind to the same successful, current render.
+export async function publicationDependencyHash(
+  tx: Prisma.TransactionClient,
+  project: StudioProject,
+  document: StudioDocument,
+  renderAttemptId: string,
+) {
+  const attempt = await tx.studioAttempt.findUnique({
+    where: { id: renderAttemptId },
+  })
+  if (
+    !attempt ||
+    attempt.projectId !== project.id ||
+    attempt.baseRevision !== project.currentRevision ||
+    attempt.kind !== "RENDER" ||
+    attempt.status !== "SUCCEEDED"
+  )
+    throw new StudioCommandError("APPROVAL_REQUIRED")
+  const render = studioAttemptResultSchema.parse(attempt.result)
+  if (!render.manifest) throw new StudioCommandError("APPROVAL_REQUIRED")
+  return publicationHash(
+    document,
+    project.currentRevision,
+    attempt.inputHash,
+    render.manifest,
+  )
 }

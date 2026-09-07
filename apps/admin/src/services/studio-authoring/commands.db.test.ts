@@ -10,7 +10,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { StudioAuthoringService } from "./index"
 import { publishStudioProject } from "./publication"
 
-const url = process.env.STUDIO_TEST_DATABASE_URL
+import { env } from "@/config/env"
+
+class StudioTestHarnessError extends Error {}
+
+const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
 const user = { id: "studio-test-operator", role: "ADMIN" as const }
 const document = {
@@ -37,7 +41,7 @@ suite("Studio command seam against disposable Postgres", () => {
       parsed.hostname !== "127.0.0.1" ||
       !parsed.pathname.startsWith("/forge_studio_454_test")
     )
-      throw new Error(
+      throw new StudioTestHarnessError(
         "Only the dedicated loopback Studio test database is allowed",
       )
     db = new PrismaClient({ datasources: { db: { url } } })
@@ -642,7 +646,7 @@ suite("Studio command seam against disposable Postgres", () => {
     }
     await expect(
       publishStudioProject(db, user, input, async () => {
-        throw new Error("Catalog not ready")
+        throw new StudioTestHarnessError("Catalog not ready")
       }),
     ).rejects.toThrow("Catalog not ready")
     expect(await service.read(user, projectId)).toMatchObject({

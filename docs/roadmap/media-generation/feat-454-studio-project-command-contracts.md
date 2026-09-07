@@ -3,7 +3,7 @@ id: "feat-454"
 title: "Studio projects and revision-checked commands"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-07"
 duration: 4
 depends_on:
@@ -57,3 +57,13 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Real database tests prove stale revisions reject, retries do not duplicate attempts, and concurrent publication/edit serialize correctly.
 - Tests cover stale job attachment and immutable published/unpublished content across all command variants.
 - Run schema generation and touched consumer typechecks; verify neutral imports and format.
+
+## Completion evidence
+
+Implemented with real PostgreSQL command-seam TDD, additive migration, generated
+GraphQL contracts and independent Standards/Spec reviews. See
+[execution evidence](../../plans/2026-09-07-feat-454-command-contracts.md) for exact
+commands, test counts, environment-related full-suite reruns, public exports and
+downstream boundaries; see
+[durable design notes](../../solutions/database-issues/studio-command-revisions-and-publication-latch.md)
+for publication immutability and late operational completion.
