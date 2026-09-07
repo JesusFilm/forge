@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Generated video catalog identities and provenance"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-07"
 duration: 4
 depends_on:
@@ -55,3 +55,10 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Database/schema tests create generated content without fake Core identifiers and preserve Core uniqueness/required identity invariants.
 - Run schema/client generation plus consumer typechecks and affected builds.
 - Test idempotent ingest, source derivation and unchanged Core sync behavior.
+
+## Completion evidence
+
+See `docs/plans/2026-09-07-feat-459-catalog-identities.md` for the fixed-base reviews,
+clean migration and full-suite/build evidence. The durable implementation and
+feat-460 publication handoff are recorded in
+`docs/solutions/database-issues/studio-generated-catalog-identity.md`.
