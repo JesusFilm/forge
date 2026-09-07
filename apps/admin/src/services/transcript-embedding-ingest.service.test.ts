@@ -325,6 +325,39 @@ describe("ingestTranscriptEmbeddings", () => {
     )
   })
 
+  it("normalizes chunking-version identity before canonical and outbox writes", async () => {
+    const prisma = buildPrisma()
+
+    const result = await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        chunking: {
+          type: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          version: "  mastra-v1  ",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("created")
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        provenance: expect.objectContaining({
+          chunkingVersion: "mastra-v1",
+        }),
+      }),
+    )
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        transcriptChunkingVersion: "mastra-v1",
+      }),
+    })
+  })
+
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {
     const prisma = buildPrisma()
     const body = payload({

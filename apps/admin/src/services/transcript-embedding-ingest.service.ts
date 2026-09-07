@@ -120,7 +120,7 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         type: z.enum(["segment-aware", "plain-text"]),
         maxChunkTokens: z.number().int().positive(),
         overlapTokens: z.number().int().nonnegative(),
-        version: z.string().min(1).optional(),
+        version: z.string().trim().min(1).optional(),
       })
       .strict(),
     generation: z

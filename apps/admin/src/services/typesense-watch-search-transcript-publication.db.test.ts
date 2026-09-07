@@ -905,6 +905,44 @@ suite("current transcript publication into Watch Search", () => {
     })
   })
 
+  it("normalizes chunking-version identity so accepted work remains publishable", async () => {
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma,
+        payload({
+          mode: "idempotent",
+          mastraRunId: "normalized-chunking-version-run",
+          chunkingVersion: "  mastra-v1  ",
+        }),
+      ),
+    ).resolves.toMatchObject({ status: "created" })
+
+    await expect(
+      prisma.videoTranscript.findFirstOrThrow({
+        select: { chunkingVersion: true },
+      }),
+    ).resolves.toEqual({ chunkingVersion: "mastra-v1" })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        select: { transcriptChunkingVersion: true },
+      }),
+    ).resolves.toEqual({ transcriptChunkingVersion: "mastra-v1" })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+  }, 180_000)
+
   it("publishes the latest canonical transcript into current Watch Search and makes it retrievable afterward", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
