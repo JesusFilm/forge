@@ -18,10 +18,12 @@ connection, schema usage, and table selection.
   evaluation and dashboard logins are required.
 
 The command removes `TEMPORARY` on the RAG database and `CREATE` on its `public`
-schema from `PUBLIC`. PostgreSQL grants are additive, so those database-wide
-revocations are required: revoking them only from the new login would not
-override privileges inherited by every login through `PUBLIC`. The database
-owner retains its inherent ownership rights.
+schema from `PUBLIC`. It also removes `PUBLIC` execution of PostgreSQL's
+persistent large-object mutators and grants it explicitly to the provisioning
+owner. PostgreSQL grants are additive, so these shared revocations are required:
+revoking them only from the new login would not override privileges inherited
+by every login through `PUBLIC`. The database owner retains its ownership and
+explicit large-object rights.
 
 The login is created without superuser, database creation, role creation,
 replication, or row-security-bypass attributes and defaults each transaction to
@@ -51,14 +53,17 @@ database and schema creation, object ownership, DML grants, writable sequences,
 and unexpected memberships. It proves a table read succeeds and proves
 persistent DDL, temporary DDL, `INSERT`, `UPDATE`, and `DELETE` are denied. Each
 negative probe is transaction-wrapped and rolls back if it unexpectedly
-succeeds.
+succeeds. The catalog and active probes also reject large-object ownership or
+execution of built-in large-object mutators.
 
 The PostgreSQL integration test provisions the reader and then reconnects with
 the original owner credential. It proves that the owner can still create and
 drop a persistent table, create a temporary table, and insert, update, and
-delete both a probe row and a real `sources` row. The test asserts that neither
-the source row nor persistent table remains. Run that proof together with the
-existing adapter and raw-document-promotion write suites:
+delete both a probe row and a real `sources` row. It also proves the owner can
+create and remove a PostgreSQL large object. The reader then selects from the
+new table, proving the future-table default grant, before cleanup. The test
+asserts that neither the source row nor persistent table remains. Run that proof
+together with the existing adapter and raw-document-promotion write suites:
 
 ```sh
 DATABASE_URL=postgresql://forge:forge@localhost:5435/forge_rag \
@@ -79,8 +84,10 @@ or rotate a database login.
    service, and its immutable identifiers. Confirm the owner URL targets that
    database and retain a tested rollback credential.
 2. Inventory existing non-owner logins before removing the database's
-   `PUBLIC` temporary-object grant and the `public` schema's `PUBLIC` creation
-   grant. Stop if another workload depends on either privilege.
+   `PUBLIC` temporary-object grant, the `public` schema's `PUBLIC` creation
+   grant, and `PUBLIC` execution of PostgreSQL large-object mutators. Explicitly
+   grant the required function execution to every approved writer before it
+   runs again. Stop if an affected workload has not been identified and handled.
 3. Generate a 32-byte random password as 64 lowercase hexadecimal characters
    outside the transcript. Put it temporarily in the approved secret receiver
    as `JFRAG_READONLY_PASSWORD`; never pass it as a command argument.
@@ -97,7 +104,9 @@ or rotate a database login.
    database name, new username, and generated password. Store it only as
    `JFRAG_POSTGRESQL_READONLY_DB_URL` in Doppler `forge-rag/prd`. Do not replace
    the Railway service's owner `DATABASE_URL`; Prisma pre-deploy migrations
-   still require ownership.
+   still require ownership. Evaluation and dashboard startup reject the URL
+   unless its username exactly matches `JFRAG_READONLY_ROLE_NAME`, which defaults
+   to `forge_rag_evaluator`.
 6. Run `env:check production-read`, then
    `db:verify-readonly --production`, through the same Doppler target. Record
    only target identity, role name, aggregate privilege counts, and pass/fail.

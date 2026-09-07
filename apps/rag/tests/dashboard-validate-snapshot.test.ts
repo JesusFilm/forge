@@ -33,7 +33,7 @@ describe("dashboard production snapshot validation", () => {
 describe("dashboard production target", () => {
   const env = {
     JFRAG_POSTGRESQL_READONLY_DB_URL:
-      "postgresql://reader:redacted@prod.example/rag",
+      "postgresql://forge_rag_evaluator:redacted@prod.example/rag",
     JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
   }
 
@@ -53,5 +53,15 @@ describe("dashboard production target", () => {
         JFRAG_EXPECTED_POSTGRES_HOST: "other.example",
       }),
     ).toThrow(/approved host/)
+  })
+
+  it("rejects an owner credential stored in the read-only variable", () => {
+    expect(() =>
+      requireProductionDashboardTarget(["--target", "production-read"], {
+        ...env,
+        JFRAG_POSTGRESQL_READONLY_DB_URL:
+          "postgresql://owner:redacted@prod.example/rag",
+      }),
+    ).toThrow(/username must match/)
   })
 })

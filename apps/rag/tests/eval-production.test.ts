@@ -7,7 +7,7 @@ import {
 
 const production = {
   JFRAG_POSTGRESQL_READONLY_DB_URL:
-    "postgresql://reader:secret@prod.example/rag",
+    "postgresql://forge_rag_evaluator:secret@prod.example/rag",
   JFRAG_OPENROUTER_API_KEY: "provider-secret",
   JFRAG_OPENROUTER_EMBED_MODEL_ID: "model",
   JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
@@ -57,6 +57,16 @@ describe("production eval target", () => {
         JFRAG_EXPECTED_POSTGRES_HOST: "other.example",
       }),
     ).toThrow(/host/i)
+  })
+
+  it("rejects an owner credential stored in the read-only variable", () => {
+    expect(() =>
+      installProductionReadEnvironment(["--target", "production-read"], {
+        ...production,
+        JFRAG_POSTGRESQL_READONLY_DB_URL:
+          "postgresql://owner:secret@prod.example/rag",
+      }),
+    ).toThrow(/username must match/)
   })
 
   it("reports safe argument errors but redacts runtime validation failures", () => {

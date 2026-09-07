@@ -205,7 +205,7 @@ test("production resolution is explicit and write operations need a second signa
     JFRAG_POSTGRESQL_DB_URL:
       "postgresql://prod:password@prod.example.test:5432/rag",
     JFRAG_POSTGRESQL_READONLY_DB_URL:
-      "postgresql://reader:password@prod.example.test:5432/rag",
+      "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
     JFRAG_OPENROUTER_API_KEY: "prod-openrouter-key",
     JFRAG_OPENROUTER_EMBED_MODEL_ID: "prod-model",
   }
@@ -228,7 +228,20 @@ test("production resolution rejects generic database and model fallbacks", () =>
       resolveProductionEnv(
         {
           JFRAG_POSTGRESQL_READONLY_DB_URL:
-            "postgresql://reader:password@prod.example.test:5432/rag",
+            "postgresql://prod:password@prod.example.test:5432/rag",
+          JFRAG_OPENROUTER_API_KEY: "namespaced-key",
+        },
+        { expectHost: "prod.example.test" },
+      ),
+    /username must match/,
+  )
+
+  assert.throws(
+    () =>
+      resolveProductionEnv(
+        {
+          JFRAG_POSTGRESQL_READONLY_DB_URL:
+            "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
           OPENROUTER_API_KEY: "generic-key",
         },
         { expectHost: "prod.example.test" },
@@ -253,7 +266,7 @@ test("production resolution rejects generic database and model fallbacks", () =>
     {
       DATABASE_URL: runtimeEnv.DATABASE_URL,
       JFRAG_POSTGRESQL_READONLY_DB_URL:
-        "postgresql://reader:password@prod.example.test:5432/rag",
+        "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
       OPENROUTER_API_KEY: "generic-key",
       JFRAG_OPENROUTER_API_KEY: "namespaced-key",
       EMBED_MODEL_ID: "generic-model",
@@ -264,7 +277,7 @@ test("production resolution rejects generic database and model fallbacks", () =>
 
   assert.equal(
     resolved.DATABASE_URL,
-    "postgresql://reader:password@prod.example.test:5432/rag",
+    "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
   )
   assert.equal(resolved.EMBED_MODEL_ID, "namespaced-model")
   assert.equal(resolved.OPENROUTER_API_KEY, "namespaced-key")
@@ -321,17 +334,25 @@ test("dashboard production reads fail closed on generic database fallbacks", () 
   assert.deepEqual(
     resolveDashboardDatabase({
       JFRAG_POSTGRESQL_READONLY_DB_URL:
-        "postgresql://reader:password@prod.example.test:5432/rag",
+        "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
       DATABASE_URL: runtimeEnv.DATABASE_URL,
     }),
     {
-      url: "postgresql://reader:password@prod.example.test:5432/rag",
+      url: "postgresql://forge_rag_evaluator:password@prod.example.test:5432/rag",
       source: "JFRAG_POSTGRESQL_READONLY_DB_URL",
     },
   )
   assert.throws(
     () => resolveDashboardDatabase({ DATABASE_URL: runtimeEnv.DATABASE_URL }),
     /Refusing.*DATABASE_URL/s,
+  )
+  assert.throws(
+    () =>
+      resolveDashboardDatabase({
+        JFRAG_POSTGRESQL_READONLY_DB_URL:
+          "postgresql://prod:password@prod.example.test:5432/rag",
+      }),
+    /username must match/,
   )
 })
 

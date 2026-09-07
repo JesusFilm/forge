@@ -1,4 +1,5 @@
 import { PrismaClient } from "../src/generated/prisma/index.js"
+import { requireReadonlyDatabaseUrl } from "../src/config/database-url.js"
 import {
   assertReadonlyPrivileges,
   privilegeSummarySql,
@@ -49,7 +50,8 @@ export async function verifyReadonlyRole(
   loginRole: string,
 ): Promise<void> {
   const role = requireRoleName(loginRole)
-  const client = new PrismaClient({ datasourceUrl: databaseUrl })
+  const validatedUrl = requireReadonlyDatabaseUrl(databaseUrl, role)
+  const client = new PrismaClient({ datasourceUrl: validatedUrl })
   try {
     const [identity] = await client.$queryRaw<
       Array<{ current_user: string; transaction_read_only: boolean }>
@@ -83,6 +85,7 @@ export async function verifyReadonlyRole(
       ],
       ["UPDATE", "UPDATE sources SET name = name WHERE false"],
       ["DELETE", "DELETE FROM sources WHERE false"],
+      ["large-object creation", "SELECT pg_catalog.lo_create(0)"],
     ] as const
     for (const [label, statement] of probes)
       await expectDenied(client, label, statement)
@@ -118,7 +121,7 @@ async function main(): Promise<void> {
   const role = requireRoleName(process.env.JFRAG_READONLY_ROLE_NAME)
   await verifyReadonlyRole(databaseUrl, role)
   console.log(
-    "read-only database verification passed: SELECT allowed; DDL and DML denied",
+    "read-only database verification passed: SELECT allowed; DDL, DML, and large-object writes denied",
   )
 }
 

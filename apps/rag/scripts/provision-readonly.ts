@@ -1,6 +1,7 @@
 import { PrismaClient } from "../src/generated/prisma/index.js"
 import {
   databaseUrlForRole,
+  LARGE_OBJECT_MUTATOR_SQL,
   quoteIdentifier,
   quotePassword,
   READONLY_GROUP_ROLE,
@@ -64,9 +65,16 @@ export async function provisionReadonlyRole(
     `
     if (existing.length) {
       const [{ count: ownedObjects }] = await client.$queryRaw<CountRow[]>`
-        SELECT
-          (SELECT count(*) FROM pg_namespace WHERE nspowner = ${role}::regrole) +
-          (SELECT count(*) FROM pg_class WHERE relowner = ${role}::regrole) AS count
+        SELECT count(*) AS count
+        FROM pg_shdepend dependency
+        WHERE dependency.refclassid = 'pg_authid'::regclass
+          AND dependency.refobjid = ${role}::regrole
+          AND dependency.deptype = 'o'
+          AND (
+            dependency.dbid = 0 OR dependency.dbid = (
+              SELECT oid FROM pg_database WHERE datname = current_database()
+            )
+          )
       `
       const [{ count: unexpectedMemberships }] = await client.$queryRaw<
         CountRow[]
@@ -143,6 +151,9 @@ export async function provisionReadonlyRole(
         `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${login}`,
       )
       await tx.$executeRawUnsafe(
+        `ALTER DEFAULT PRIVILEGES FOR ROLE ${owner} IN SCHEMA public GRANT SELECT ON TABLES TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+      )
+      await tx.$executeRawUnsafe(
         `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
       )
       await tx.$executeRawUnsafe(
@@ -152,7 +163,10 @@ export async function provisionReadonlyRole(
         `REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${login}`,
       )
       await tx.$executeRawUnsafe(
-        `ALTER DEFAULT PRIVILEGES FOR ROLE ${owner} IN SCHEMA public GRANT SELECT ON TABLES TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        `REVOKE EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} FROM PUBLIC, ${quoteIdentifier(READONLY_GROUP_ROLE)}, ${login}`,
+      )
+      await tx.$executeRawUnsafe(
+        `GRANT EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} TO ${owner}`,
       )
       await tx.$executeRawUnsafe(
         `GRANT ${quoteIdentifier(READONLY_GROUP_ROLE)} TO ${login}`,

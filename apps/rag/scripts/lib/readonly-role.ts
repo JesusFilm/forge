@@ -1,17 +1,32 @@
-export const READONLY_GROUP_ROLE = "forge_rag_readonly"
-export const DEFAULT_READONLY_LOGIN_ROLE = "forge_rag_evaluator"
+import {
+  DEFAULT_READONLY_LOGIN_ROLE,
+  READONLY_GROUP_ROLE,
+  requireReadonlyRoleName,
+} from "../../src/config/database-url.js"
+
+export { DEFAULT_READONLY_LOGIN_ROLE, READONLY_GROUP_ROLE }
 
 const ROLE_NAME = /^[a-z][a-z0-9_]{0,62}$/
 const GENERATED_PASSWORD = /^[a-f0-9]{64}$/
-const RESERVED_ROLES = new Set([READONLY_GROUP_ROLE, "postgres", "forge"])
+
+export const LARGE_OBJECT_MUTATOR_FUNCTIONS = [
+  "pg_catalog.lo_creat(integer)",
+  "pg_catalog.lo_create(oid)",
+  "pg_catalog.lo_from_bytea(oid,bytea)",
+  "pg_catalog.lo_import(text)",
+  "pg_catalog.lo_import(text,oid)",
+  "pg_catalog.lowrite(integer,bytea)",
+  "pg_catalog.lo_truncate(integer,integer)",
+  "pg_catalog.lo_truncate64(integer,bigint)",
+  "pg_catalog.lo_put(oid,bigint,bytea)",
+  "pg_catalog.lo_unlink(oid)",
+] as const
+
+export const LARGE_OBJECT_MUTATOR_SQL =
+  LARGE_OBJECT_MUTATOR_FUNCTIONS.join(", ")
 
 export function requireRoleName(value: string | undefined): string {
-  const role = value?.trim() || DEFAULT_READONLY_LOGIN_ROLE
-  if (!ROLE_NAME.test(role) || RESERVED_ROLES.has(role))
-    throw new Error(
-      "read-only role provisioning refused: login role must be a distinct lowercase PostgreSQL identifier",
-    )
-  return role
+  return requireReadonlyRoleName(value)
 }
 
 export function requireGeneratedPassword(value: string | undefined): string {
@@ -42,6 +57,8 @@ export type ReadonlyPrivilegeSummary = {
   writable_relations: bigint
   owned_relations: bigint
   writable_sequences: bigint
+  owned_large_objects: bigint
+  executable_large_object_mutators: bigint
   executable_security_definer_functions: bigint
   unexpected_memberships: bigint
 }
@@ -66,19 +83,30 @@ SELECT
   (SELECT count(*) FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
-      AND n.nspname = 'public'
+      AND n.nspname NOT LIKE 'pg_%'
+      AND n.nspname <> 'information_schema'
       AND (has_table_privilege(${roleLiteral}, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
         OR pg_has_role(${roleLiteral}, c.relowner, 'USAGE'))) AS writable_relations,
   (SELECT count(*) FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f')
-      AND n.nspname = 'public'
+      AND n.nspname NOT LIKE 'pg_%'
+      AND n.nspname <> 'information_schema'
       AND pg_has_role(${roleLiteral}, c.relowner, 'USAGE')) AS owned_relations,
   (SELECT count(*) FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND CASE WHEN c.relkind = 'S'
+    WHERE n.nspname NOT LIKE 'pg_%'
+      AND n.nspname <> 'information_schema'
+      AND CASE WHEN c.relkind = 'S'
       THEN has_sequence_privilege(${roleLiteral}, c.oid, 'USAGE,UPDATE')
       ELSE false END) AS writable_sequences,
+  (SELECT count(*) FROM pg_largeobject_metadata object
+    JOIN pg_roles owner ON owner.oid = object.lomowner
+    WHERE pg_has_role(${roleLiteral}, owner.oid, 'USAGE')) AS owned_large_objects,
+  (SELECT count(*) FROM (VALUES
+    ${LARGE_OBJECT_MUTATOR_FUNCTIONS.map((signature) => `('${signature}')`).join(",\n    ")}
+  ) AS mutator(signature)
+    WHERE has_function_privilege(${roleLiteral}, signature, 'EXECUTE')) AS executable_large_object_mutators,
   (SELECT count(*) FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')

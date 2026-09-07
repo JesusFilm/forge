@@ -80,6 +80,8 @@ describe("read-only privilege contract", () => {
     expect(sql).toContain("has_schema_privilege")
     expect(sql).toContain("has_table_privilege")
     expect(sql).toContain("has_sequence_privilege")
+    expect(sql).toContain("lo_create")
+    expect(sql).toContain("pg_largeobject_metadata")
     expect(sql).toContain("prosecdef")
     expect(sql).toContain("pg_has_role")
   })
@@ -95,6 +97,8 @@ describe("read-only privilege contract", () => {
       writable_relations: 0n,
       owned_relations: 0n,
       writable_sequences: 0n,
+      owned_large_objects: 0n,
+      executable_large_object_mutators: 0n,
       executable_security_definer_functions: 0n,
       unexpected_memberships: 0n,
     }

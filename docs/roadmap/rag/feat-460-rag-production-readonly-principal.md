@@ -86,3 +86,8 @@ After provisioning, the original owner also retained persistent and temporary
 DDL and `INSERT`, `UPDATE`, and `DELETE` access to both a probe table and the
 application `sources` table. The focused adapter and raw-document-promotion
 integration suites continued to pass against the provisioned database.
+The production-read URL guard also requires the configured reader username, and
+the role verifier denies PostgreSQL large-object creation after explicitly
+removing inherited execution of large-object mutators. The original owner
+retains those function rights, and the integration proof confirms that a table
+created after provisioning is immediately selectable by the reader.

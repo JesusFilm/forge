@@ -9,6 +9,11 @@ import {
   type EnvironmentTarget,
 } from "./environment-error.js"
 import { bearerTokenConfigSchema } from "../contracts/index.js"
+import {
+  requireReadonlyDatabaseUrl,
+  resolveDashboardDatabase,
+  type DashboardDatabase,
+} from "./database-url.js"
 
 export { ENVIRONMENT_TARGETS, type EnvironmentTarget }
 
@@ -262,6 +267,11 @@ export function resolveProductionEnv(
     )
   }
   const parsedDatabaseUrl = postgresUrl.parse(databaseUrl)
+  if (!options.write)
+    requireReadonlyDatabaseUrl(
+      parsedDatabaseUrl,
+      input.JFRAG_READONLY_ROLE_NAME,
+    )
   if (!openrouterKey) {
     throw environmentConfigurationError(
       "production_openrouter_key_required",
@@ -289,37 +299,5 @@ export function resolveProductionEnv(
   }
 }
 
-export type DashboardDatabase = {
-  url: string
-  source: "JFRAG_POSTGRESQL_READONLY_DB_URL" | "DATABASE_URL"
-}
-
-export function resolveDashboardDatabase(
-  input: EnvironmentInput,
-  options: { allowDev?: boolean } = {},
-): DashboardDatabase {
-  const namespaced = input.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
-  if (namespaced) {
-    return {
-      url: postgresUrl.parse(namespaced),
-      source: "JFRAG_POSTGRESQL_READONLY_DB_URL",
-    }
-  }
-
-  const generic = input.DATABASE_URL?.trim()
-  if (!generic) {
-    throw environmentConfigurationError(
-      "dashboard_database_required",
-      "JFRAG_POSTGRESQL_READONLY_DB_URL is required for a dashboard read",
-      "dashboard",
-    )
-  }
-  if (!options.allowDev) {
-    throw environmentConfigurationError(
-      "dashboard_generic_database_refused",
-      "Refusing a production dashboard snapshot from DATABASE_URL; use the explicit namespaced production credential",
-      "dashboard",
-    )
-  }
-  return { url: postgresUrl.parse(generic), source: "DATABASE_URL" }
-}
+export { resolveDashboardDatabase }
+export type { DashboardDatabase }
