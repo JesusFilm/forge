@@ -381,6 +381,35 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(stale.db.leases.size).toBe(1)
   })
 
+  it("starts a new lease only after admission wins the publication lock", async () => {
+    await ready()
+    const admittedAt = new Date("2026-08-10T00:00:15.000Z")
+    db.prisma.$queryRaw.mockImplementationOnce(async () => {
+      setNow(admittedAt)
+      return [{ acquired: true }]
+    })
+
+    await expect(
+      service.acquireLease({
+        resourceKey: "watch-search-candidate-comparison",
+        kind: "COMPARISON",
+        holderToken: "holder-a",
+        ttlMs: 30_000,
+        generationId: "candidate-1",
+        indexContractRevision: "admin-app-sha-1",
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 17n,
+        currentBindings,
+      }),
+    ).resolves.toMatchObject({
+      acquiredAt: admittedAt,
+      renewedAt: admittedAt,
+      expiresAt: new Date("2026-08-10T00:00:45.000Z"),
+    })
+  })
+
   it("refuses lease renewal while current publication owns the lock", async () => {
     await ready()
     const lease = {

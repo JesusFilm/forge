@@ -1092,8 +1092,6 @@ export class TypesenseWatchSearchCandidateGenerationService {
     const resourceKey = requiredString(input.resourceKey, "lease resource key")
     const holderToken = requiredString(input.holderToken, "lease holder token")
     const currentBindings = normalizedBindings(input.currentBindings)
-    const now = this.now()
-    const expiry = expiresAt(now, input.ttlMs)
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -1103,6 +1101,12 @@ export class TypesenseWatchSearchCandidateGenerationService {
           ) AS acquired
         `
         if (lock[0]?.acquired !== true) return null
+        // The lease begins when admission wins the publication lock, not when
+        // the caller entered this method. Prisma may wait for a pool slot or
+        // transaction start long enough for a pre-lock timestamp to shorten or
+        // even immediately expire the lease while evaluation is still active.
+        const now = this.now()
+        const expiry = expiresAt(now, input.ttlMs)
         const generation = await tx.watchSearchCandidateGeneration.findUnique({
           where: { id: input.generationId },
         })
