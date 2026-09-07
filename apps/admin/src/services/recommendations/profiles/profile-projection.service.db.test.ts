@@ -23,7 +23,7 @@ const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 75 && name.includes("recommendation")
+    return ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")
   })
   .sort()
   .map((name) =>
@@ -329,15 +329,17 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           id, source_type, source_key, outcome_id, policy_version, revision,
           is_current, actor_class, state, reason_codes, eligible_scopes,
           contribution_weight, contribution_ordinal, distinct_support,
-          identity_concentration, decided_at, expires_at
+          identity_concentration, input_digest, evidence_watermark,
+          decided_at, expires_at
         ) VALUES (
           'profile-learning-eligibility', 'playback_outcome',
           'profile-learning-outcome:recommendation-integrity-v1',
           'profile-learning-outcome', 'recommendation-integrity-v1', 1,
           true, 'human_anonymous', 'eligible', ARRAY['qualified_view'],
-          ARRAY['profile'], 0.8, 1, 1, 1, $1, $2
+          ARRAY['profile'], 0.8, 1, 1, 1, $3::char(64),
+          $1::timestamptz, $1::timestamptz, $2::timestamptz
         )`,
-        [eventAt, expiresAt],
+        [eventAt, expiresAt, "2".repeat(64)],
       )
 
       const projectionService =
@@ -432,24 +434,166 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         /profileTokenDigest|sessionDigest|vectorText/,
       )
 
-      const replayAt = new Date(projectAt.getTime() + 2_000)
       await admin.query(
-        `UPDATE recommendation_profile_session_link
-         SET expires_at = $1
-         WHERE profile_id = $2 AND privacy_generation = $3`,
-        [new Date(projectAt.getTime() + 1_000), grant.profileId, 1],
+        `UPDATE recommendation_playback_episode
+         SET conflict_count = 1
+         WHERE id = 'profile-learning-episode'`,
       )
+      await expect(
+        getLiveProfileCandidates(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          context: {
+            surface: "watch-below-player-v1",
+            purpose: "watch",
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId: "profile-learning-seed",
+            manifestId: "semantic-profile-hybrid-v1",
+          },
+          now: projectAt,
+        }),
+      ).rejects.toMatchObject({ code: "profile_lineage_ineligible" })
+      await admin.query(
+        `UPDATE recommendation_playback_episode
+         SET conflict_count = 0, next_fact_sequence = 2
+         WHERE id = 'profile-learning-episode'`,
+      )
+      await expect(
+        getLiveProfileCandidates(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          context: {
+            surface: "watch-below-player-v1",
+            purpose: "watch",
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId: "profile-learning-seed",
+            manifestId: "semantic-profile-hybrid-v1",
+          },
+          now: projectAt,
+        }),
+      ).rejects.toMatchObject({ code: "profile_lineage_ineligible" })
+      await admin.query(
+        `UPDATE recommendation_playback_episode
+         SET next_fact_sequence = 1
+         WHERE id = 'profile-learning-episode'`,
+      )
+
+      await admin.query(
+        `UPDATE recommendation_eligibility_decision
+         SET is_current = false
+         WHERE id = 'profile-learning-eligibility'`,
+      )
+      await admin.query(
+        `INSERT INTO recommendation_eligibility_decision (
+          id, source_type, source_key, outcome_id, policy_version, revision,
+          is_current, actor_class, state, reason_codes, eligible_scopes,
+          contribution_weight, contribution_ordinal, distinct_support,
+          identity_concentration, input_digest, evidence_watermark,
+          decided_at, expires_at
+        ) VALUES (
+          'profile-learning-eligibility-rev-2', 'playback_outcome',
+          'profile-learning-outcome:recommendation-integrity-v1',
+          'profile-learning-outcome', 'recommendation-integrity-v1', 2,
+          true, 'human_anonymous', 'excluded', ARRAY['promotion_rollback'],
+          ARRAY[]::text[], 0, 1, 1, 1, $3::char(64),
+          $1::timestamptz, $1::timestamptz, $2::timestamptz
+        )`,
+        [projectAt, expiresAt, "3".repeat(64)],
+      )
+
+      await expect(
+        getLiveProfileCandidates(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          context: {
+            surface: "watch-below-player-v1",
+            purpose: "watch",
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId: "profile-learning-seed",
+            manifestId: "semantic-profile-hybrid-v1",
+          },
+          now: projectAt,
+        }),
+      ).rejects.toMatchObject({ code: "profile_lineage_ineligible" })
+
+      const reconcileAt = new Date(projectAt.getTime() + 1_000)
+      const replacement = await projectionService.project({
+        sessionDigest,
+        profileId: grant.profileId,
+        privacyGeneration: grant.privacyGeneration,
+        now: reconcileAt,
+      })
+      expect(replacement).toMatchObject({
+        status: "published",
+        generation: 2,
+        replay: false,
+      })
+      await expect(
+        prisma.recommendationProfileProjectionContribution.count({
+          where: { generationId: replacement.generationId },
+        }),
+      ).resolves.toBe(0)
+      await expect(
+        prisma.recommendationProfileProjectionPointer.findFirstOrThrow({
+          where: {
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration!,
+          },
+        }),
+      ).resolves.toMatchObject({
+        generationId: replacement.generationId,
+        pointerGeneration: 2,
+      })
+
       await expect(
         projectionService.project({
           sessionDigest,
           profileId: grant.profileId,
           privacyGeneration: grant.privacyGeneration,
-          now: replayAt,
+          now: reconcileAt,
+          expectedPointer: {
+            generationId: receipt.generationId,
+            pointerGeneration: 1,
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: "profile_projection_pointer_fenced",
+      })
+
+      await expect(
+        projectionService.project({
+          sessionDigest,
+          profileId: grant.profileId,
+          privacyGeneration: grant.privacyGeneration,
+          now: reconcileAt,
         }),
       ).resolves.toMatchObject({
-        generationId: receipt.generationId,
-        generation: 1,
+        generationId: replacement.generationId,
+        generation: 2,
         replay: true,
+      })
+    })
+
+    it("fences a stale first publisher after another run creates the pointer", async () => {
+      const projectionService =
+        createDatabaseRecommendationProfileProjectionService(prisma)
+      const input = {
+        sessionDigest: "d".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: new Date(),
+        expectedPointer: { generationId: null, pointerGeneration: 0 },
+      } as const
+
+      await expect(projectionService.project(input)).resolves.toMatchObject({
+        status: "published",
+        generation: 1,
+      })
+      await expect(projectionService.project(input)).rejects.toMatchObject({
+        code: "profile_projection_pointer_fenced",
       })
     })
   },

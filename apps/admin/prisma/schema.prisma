@@ -2790,6 +2790,7 @@ enum RecommendationContentActionActorClass {
 enum RecommendationEligibilitySourceType {
   PLAYBACK_OUTCOME @map("playback_outcome")
   CONTENT_ACTION   @map("content_action")
+  SELECTION        @map("selection")
 }
 
 enum RecommendationEligibilityState {
@@ -3765,6 +3766,7 @@ model RecommendationSelection {
   expiresAt             DateTime                 @map("expires_at")
 
   episode                        RecommendationPlaybackEpisode?                @relation("RecommendationPlaybackEpisodeSelection")
+  eligibilityDecisions           RecommendationEligibilityDecision[]           @relation("RecommendationEligibilitySelection")
   profileProjectionContributions RecommendationProfileProjectionContribution[]
 
   @@unique([capabilityJti, eventId], map: "recommendation_selection_event_key")
@@ -3812,11 +3814,12 @@ model RecommendationPlaybackEpisode {
   createdAt            DateTime                   @default(now()) @map("created_at")
   expiresAt            DateTime                   @map("expires_at")
 
-  facts             RecommendationPlaybackFact[]               @relation("RecommendationPlaybackFactEpisode")
-  outcomes          RecommendationOutcomeRevision[]            @relation("RecommendationOutcomeRevisionEpisode")
-  contentActions    RecommendationContentAction[]              @relation("RecommendationContentActionEpisode")
-  submissionBudgets RecommendationCapabilitySubmissionBudget[] @relation("RecommendationCapabilitySubmissionEpisode")
-  traceAccessAudits RecommendationTraceAccessAudit[]           @relation("RecommendationTraceAccessEpisode")
+  facts                   RecommendationPlaybackFact[]                   @relation("RecommendationPlaybackFactEpisode")
+  outcomes                RecommendationOutcomeRevision[]                @relation("RecommendationOutcomeRevisionEpisode")
+  contentActions          RecommendationContentAction[]                  @relation("RecommendationContentActionEpisode")
+  submissionBudgets       RecommendationCapabilitySubmissionBudget[]     @relation("RecommendationCapabilitySubmissionEpisode")
+  transportReplayReceipts RecommendationPlaybackTransportReplayReceipt[] @relation("RecommendationPlaybackTransportReplayEpisode")
+  traceAccessAudits       RecommendationTraceAccessAudit[]               @relation("RecommendationTraceAccessEpisode")
 
   @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
   @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
@@ -3991,6 +3994,8 @@ model RecommendationEligibilityDecision {
   outcome               RecommendationOutcomeRevision?        @relation("RecommendationEligibilityOutcome", fields: [outcomeId], references: [id], onDelete: Cascade)
   contentActionId       String?                               @map("content_action_id")
   contentAction         RecommendationContentAction?          @relation("RecommendationEligibilityContentAction", fields: [contentActionId], references: [id], onDelete: Cascade)
+  selectionId           String?                               @map("selection_id")
+  selection             RecommendationSelection?              @relation("RecommendationEligibilitySelection", fields: [selectionId], references: [id], onDelete: Cascade, map: "recommendation_eligibility_selection_id_fkey")
   policyVersion         String                                @map("policy_version") @db.VarChar(64)
   revision              Int
   isCurrent             Boolean                               @default(true) @map("is_current")
@@ -4002,14 +4007,40 @@ model RecommendationEligibilityDecision {
   contributionOrdinal   Int                                   @map("contribution_ordinal")
   distinctSupport       Int                                   @map("distinct_support")
   identityConcentration Float                                 @map("identity_concentration")
+  inputDigest           String                                @map("input_digest") @db.Char(64)
+  evidenceWatermark     DateTime?                             @map("evidence_watermark")
   decidedAt             DateTime                              @default(now()) @map("decided_at")
   expiresAt             DateTime                              @map("expires_at")
 
+  profileProjectionContributions RecommendationProfileProjectionContribution[]
+
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
+  // Current-source lookup indexes are migration-owned partial indexes.
   @@index([state, decidedAt], map: "recommendation_eligibility_state_decided_idx")
   @@index([actorClass, state, decidedAt], map: "recommendation_eligibility_actor_state_idx")
   @@index([expiresAt], map: "recommendation_eligibility_expiry_idx")
   @@map("recommendation_eligibility_decision")
+}
+
+/// Private append-only proof that an already accepted playback fact was sent
+/// again with the exact payload. It is bounded by the episode capability
+/// submission budget and cascades with the episode retention root. It is used
+/// only by integrity classification and aggregate reconciliation evidence.
+model RecommendationPlaybackTransportReplayReceipt {
+  id            String                        @id @default(cuid())
+  episodeId     String                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackTransportReplayEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_transport_replay_episode_fkey")
+  capabilityJti String                        @map("capability_jti") @db.VarChar(191)
+  eventId       String                        @map("event_id") @db.VarChar(191)
+  payloadDigest String                        @map("payload_digest") @db.Char(64)
+  replayOrdinal Int                           @map("replay_ordinal")
+  observedAt    DateTime                      @default(now()) @map("observed_at")
+  expiresAt     DateTime                      @map("expires_at")
+
+  @@unique([episodeId, eventId, replayOrdinal], map: "recommendation_transport_replay_episode_event_ordinal_key")
+  @@index([episodeId, observedAt], map: "recommendation_transport_replay_episode_observed_idx")
+  @@index([expiresAt], map: "recommendation_transport_replay_expiry_idx")
+  @@map("recommendation_playback_transport_replay_receipt")
 }
 
 /// Immutable, aggregate-only semantic-control readiness proof. It contains no
@@ -4215,31 +4246,37 @@ model RecommendationProfileProjectionPointer {
 /// Durable workflow claim state. It is private operational truth and is
 /// created before dispatch so a failed dispatch remains visible and replayable.
 model RecommendationProfileProjectionRun {
-  id                String                                     @id @default(cuid())
-  scope             RecommendationProfileProjectionScope
-  profileId         String?                                    @map("profile_id")
-  profile           RecommendationProfile?                     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  privacyGeneration Int?                                       @map("privacy_generation")
-  sessionDigest     String?                                    @map("session_digest") @db.Char(64)
-  state             RecommendationProfileProjectionRunState    @default(PENDING)
-  generation        Int                                        @default(1)
-  claimId           String?                                    @map("claim_id") @db.Uuid
-  claimedAt         DateTime?                                  @map("claimed_at")
-  heartbeatAt       DateTime?                                  @map("heartbeat_at")
-  workflowRunId     String?                                    @map("workflow_run_id") @db.VarChar(191)
-  projectionId      String?                                    @map("projection_id")
-  projection        RecommendationProfileProjectionGeneration? @relation(fields: [projectionId], references: [id], onDelete: SetNull)
-  failureReason     String?                                    @map("failure_reason") @db.VarChar(64)
-  purpose           String                                     @default("profile_projection_workflow") @db.VarChar(64)
-  identityClass     String                                     @default("private_pseudonymous_workflow") @map("identity_class") @db.VarChar(64)
-  accessClass       String                                     @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
-  deletionBehavior  String                                     @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
-  fallbackBehavior  String                                     @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
-  createdAt         DateTime                                   @default(now()) @map("created_at")
-  completedAt       DateTime?                                  @map("completed_at")
-  expiresAt         DateTime                                   @map("expires_at")
+  id                        String                                     @id @default(cuid())
+  scope                     RecommendationProfileProjectionScope
+  profileId                 String?                                    @map("profile_id")
+  profile                   RecommendationProfile?                     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration         Int?                                       @map("privacy_generation")
+  sessionDigest             String?                                    @map("session_digest") @db.Char(64)
+  state                     RecommendationProfileProjectionRunState    @default(PENDING)
+  generation                Int                                        @default(1)
+  attemptCount              Int                                        @default(0) @map("attempt_count")
+  claimId                   String?                                    @map("claim_id") @db.Uuid
+  claimedAt                 DateTime?                                  @map("claimed_at")
+  heartbeatAt               DateTime?                                  @map("heartbeat_at")
+  leaseExpiresAt            DateTime?                                  @map("lease_expires_at")
+  workflowRunId             String?                                    @map("workflow_run_id") @db.VarChar(191)
+  projectionId              String?                                    @map("projection_id")
+  projection                RecommendationProfileProjectionGeneration? @relation(fields: [projectionId], references: [id], onDelete: SetNull)
+  failureReason             String?                                    @map("failure_reason") @db.VarChar(64)
+  lastTransitionReason      String?                                    @map("last_transition_reason") @db.VarChar(64)
+  reconciliationCause       String                                     @default("projection_request") @map("reconciliation_cause") @db.VarChar(64)
+  expectedPointerGeneration Int?                                       @map("expected_pointer_generation")
+  expectedGenerationId      String?                                    @map("expected_generation_id")
+  purpose                   String                                     @default("profile_projection_workflow") @db.VarChar(64)
+  identityClass             String                                     @default("private_pseudonymous_workflow") @map("identity_class") @db.VarChar(64)
+  accessClass               String                                     @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
+  deletionBehavior          String                                     @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior          String                                     @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  createdAt                 DateTime                                   @default(now()) @map("created_at")
+  completedAt               DateTime?                                  @map("completed_at")
+  expiresAt                 DateTime                                   @map("expires_at")
 
-  @@index([state, heartbeatAt], map: "recommendation_profile_projection_run_claim_idx")
+  @@index([state, leaseExpiresAt, attemptCount], map: "recommendation_profile_projection_run_lease_idx")
   @@index([profileId, privacyGeneration, state], map: "recommendation_profile_projection_run_profile_idx")
   @@index([sessionDigest, state], map: "recommendation_profile_projection_run_session_idx")
   @@index([expiresAt], map: "recommendation_profile_projection_run_expiry_idx")
@@ -4272,28 +4309,32 @@ model RecommendationProfileInterest {
 /// Exact ticket-local contribution lineage for replay, revision, integrity
 /// reversal, and erasure. Membership is private and cascades with generation.
 model RecommendationProfileProjectionContribution {
-  id                       String                                    @id @default(cuid())
-  generationId             String                                    @map("generation_id")
-  generation               RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
-  kind                     RecommendationProfileContributionKind
-  sourceIdDigest           String                                    @map("source_id_digest") @db.Char(64)
-  sourceOutcomeId          String?                                   @map("source_outcome_id")
-  sourceOutcome            RecommendationOutcomeRevision?            @relation(fields: [sourceOutcomeId], references: [id], onDelete: SetNull)
-  sourceSelectionId        String?                                   @map("source_selection_id")
-  sourceSelection          RecommendationSelection?                  @relation(fields: [sourceSelectionId], references: [id], onDelete: Cascade)
-  targetMediaId            String                                    @map("target_media_id") @db.VarChar(191)
-  interestOrdinal          Int?                                      @map("interest_ordinal")
-  weight                   Float
-  eligibilityPolicyVersion String?                                   @map("eligibility_policy_version") @db.VarChar(64)
-  outcomeClassifierVersion String?                                   @map("outcome_classifier_version") @db.VarChar(64)
-  privacyGeneration        Int?                                      @map("privacy_generation")
-  occurredAt               DateTime                                  @map("occurred_at")
-  createdAt                DateTime                                  @default(now()) @map("created_at")
-  expiresAt                DateTime                                  @map("expires_at")
+  id                          String                                    @id @default(cuid())
+  generationId                String                                    @map("generation_id")
+  generation                  RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  kind                        RecommendationProfileContributionKind
+  sourceIdDigest              String                                    @map("source_id_digest") @db.Char(64)
+  sourceOutcomeId             String?                                   @map("source_outcome_id")
+  sourceOutcome               RecommendationOutcomeRevision?            @relation(fields: [sourceOutcomeId], references: [id], onDelete: SetNull)
+  sourceSelectionId           String?                                   @map("source_selection_id")
+  sourceSelection             RecommendationSelection?                  @relation(fields: [sourceSelectionId], references: [id], onDelete: Cascade)
+  sourceEligibilityDecisionId String?                                   @map("source_eligibility_decision_id")
+  sourceEligibilityDecision   RecommendationEligibilityDecision?        @relation(fields: [sourceEligibilityDecisionId], references: [id], onDelete: SetNull, map: "recommendation_profile_contribution_eligibility_fkey")
+  sourceEligibilityRevision   Int?                                      @map("source_eligibility_revision")
+  targetMediaId               String                                    @map("target_media_id") @db.VarChar(191)
+  interestOrdinal             Int?                                      @map("interest_ordinal")
+  weight                      Float
+  eligibilityPolicyVersion    String?                                   @map("eligibility_policy_version") @db.VarChar(64)
+  outcomeClassifierVersion    String?                                   @map("outcome_classifier_version") @db.VarChar(64)
+  privacyGeneration           Int?                                      @map("privacy_generation")
+  occurredAt                  DateTime                                  @map("occurred_at")
+  createdAt                   DateTime                                  @default(now()) @map("created_at")
+  expiresAt                   DateTime                                  @map("expires_at")
 
   @@unique([generationId, kind, sourceIdDigest], map: "recommendation_profile_contribution_generation_source_key")
   @@index([sourceOutcomeId], map: "recommendation_profile_contribution_outcome_idx")
   @@index([sourceSelectionId], map: "recommendation_profile_contribution_selection_idx")
+  @@index([sourceEligibilityDecisionId, sourceEligibilityRevision], map: "recommendation_profile_contribution_eligibility_idx")
   @@index([expiresAt], map: "recommendation_profile_contribution_expiry_idx")
   @@map("recommendation_profile_projection_contribution")
 }

@@ -17,15 +17,15 @@ or create a database.
 
 ## Contract by operation
 
-| Target                      | Required names                                                                   | Notes                                                                                                                             |
-| --------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| local / CI                  | `DATABASE_URL`, `OPENROUTER_API_KEY`                                             | CI uses non-secret placeholders and no network.                                                                                   |
-| Railway service             | local/CI names plus `SERVE_BEARER_TOKENS`; Railway injects `PORT`                | Bearer JSON maps one token per consumer to source keys; `["*"]` means all.                                                        |
-| gateway-primary embedding   | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                | `EMBED_MODEL_ID` remains the canonical row identity.                                                                              |
-| Firecrawl source            | `FIRECRAWL_API_KEY`                                                              | Required only when that source selects Firecrawl.                                                                                 |
-| smoke                       | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                         | The token goes only in the Authorization header.                                                                                  |
-| dashboard production read   | `JFRAG_POSTGRESQL_DB_URL`                                                        | Generic `DATABASE_URL` is rejected unless a developer explicitly requests a dev preview.                                          |
-| production maintenance/eval | `JFRAG_POSTGRESQL_DB_URL`, `JFRAG_OPENROUTER_API_KEY`, optional namespaced model | A write also requires exact `JFRAG_ALLOW_PROD_WRITE=1` and `JFRAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
+| Target                               | Required names                                                                            | Notes                                                                                                                             |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                      | CI uses non-secret placeholders and no network.                                                                                   |
+| Railway service                      | local/CI names plus `SERVE_BEARER_TOKENS`; Railway injects `PORT`                         | Bearer JSON maps one token per consumer to source keys; `["*"]` means all.                                                        |
+| gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                         | `EMBED_MODEL_ID` remains the canonical row identity.                                                                              |
+| Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                       | Required only when that source selects Firecrawl.                                                                                 |
+| smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                  | The token goes only in the Authorization header.                                                                                  |
+| dashboard/evaluation production read | `JFRAG_POSTGRESQL_READONLY_DB_URL`, `JFRAG_OPENROUTER_API_KEY`, optional namespaced model | The database URL must authenticate as the provisioned least-privilege reader. Generic and owner URLs are rejected.                |
+| production maintenance/write         | `JFRAG_POSTGRESQL_DB_URL`, `JFRAG_OPENROUTER_API_KEY`, optional namespaced model          | A write also requires exact `JFRAG_ALLOW_PROD_WRITE=1` and `JFRAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
 
 The only automatic namespaced fallback is
 `JFRAG_OPENROUTER_API_KEY` → `OPENROUTER_API_KEY`. Do not add automatic
@@ -57,9 +57,12 @@ preflight. A valid check prints only target and status.
 2. Generate a distinct random bearer per consumer outside the agent session.
    Record the owner, allowed source keys, creation date, rotation due date, and
    revocation state without recording the bearer.
-3. Add namespaced values to Doppler `forge-rag/prd`. Keep gateway values under
-   their plain names because they are environment-agnostic. Never add plain
-   `DATABASE_URL` or `EMBED_MODEL_ID` to this Doppler config.
+3. Add namespaced values to Doppler `forge-rag/prd`. Provision the production
+   read-only database login through
+   [`readonly-database.md`](./readonly-database.md), then store its URL as
+   `JFRAG_POSTGRESQL_READONLY_DB_URL`. Keep gateway values under their plain
+   names because they are environment-agnostic. Never add plain `DATABASE_URL`
+   or `EMBED_MODEL_ID` to this Doppler config.
 4. Provision Railway `forge/production/@forge/rag` as the receiver with its
    database, provider, gateway (if enabled), Firecrawl (if needed), and bearer
    registry names. Do not trigger a deployment from the local checkout.

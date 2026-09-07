@@ -3,6 +3,7 @@ import { readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
 import { PrismaClient } from "../src/generated/prisma/index.js"
+import { requireReadonlyDatabaseUrl } from "../src/config/database-url.js"
 import { fetchProdStatus } from "./lib/dashboard/query.js"
 import { prodStatusDataSchema } from "./lib/dashboard/types.js"
 
@@ -20,13 +21,17 @@ export function requireProductionDashboardTarget(
     throw new Error(
       "dashboard snapshot refused: --target production-read is required",
     )
-  const raw = env.JFRAG_POSTGRESQL_DB_URL
+  const raw = env.JFRAG_POSTGRESQL_READONLY_DB_URL
   const expected = env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
   if (!raw || !expected)
     throw new Error(
       "dashboard snapshot refused: namespaced production-read environment is incomplete",
     )
-  const url = new URL(raw)
+  const validated = requireReadonlyDatabaseUrl(
+    raw,
+    env.JFRAG_READONLY_ROLE_NAME,
+  )
+  const url = new URL(validated)
   if (
     !["postgres:", "postgresql:"].includes(url.protocol) ||
     url.hostname !== expected
@@ -34,7 +39,7 @@ export function requireProductionDashboardTarget(
     throw new Error(
       "dashboard snapshot refused: database target does not match the approved host",
     )
-  return raw
+  return validated
 }
 
 async function main(): Promise<void> {

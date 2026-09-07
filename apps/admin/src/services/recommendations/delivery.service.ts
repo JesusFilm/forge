@@ -230,7 +230,10 @@ export class RecommendationDeliveryService {
               failureReason:
                 error instanceof RecommendationRetrievalTimeoutError
                   ? ("profile_retrieval_timeout" as const)
-                  : ("profile_projection_unavailable" as const),
+                  : error instanceof RecommendationInternalStateError &&
+                      error.code === "profile_lineage_ineligible"
+                    ? ("profile_lineage_ineligible" as const)
+                    : ("profile_projection_unavailable" as const),
               latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
             }
           }
@@ -936,6 +939,7 @@ function hybridFallbackReason(error: unknown) {
   switch (error.code) {
     case "profile_retrieval_timeout":
     case "profile_candidates_sparse":
+    case "profile_lineage_ineligible":
     case "semantic_candidates_unavailable":
     case "hybrid_candidate_platform_unavailable":
     case "hybrid_slate_empty":

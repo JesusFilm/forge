@@ -7,7 +7,8 @@ describe("production maintenance target", () => {
     expect(() =>
       installProductionEnvironment(
         {
-          JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+          JFRAG_POSTGRESQL_READONLY_DB_URL:
+            "postgresql://forge_rag_evaluator:p@prod.example/rag",
           JFRAG_OPENROUTER_API_KEY: "key",
         },
         false,
@@ -17,7 +18,8 @@ describe("production maintenance target", () => {
 
   it("rejects host mismatch before installing DATABASE_URL", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@wrong.example/rag",
+      JFRAG_POSTGRESQL_READONLY_DB_URL:
+        "postgresql://forge_rag_evaluator:p@wrong.example/rag",
       JFRAG_OPENROUTER_API_KEY: "key",
       JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }
@@ -27,7 +29,7 @@ describe("production maintenance target", () => {
 
   it("requires the explicit production write signal", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+      JFRAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
       JFRAG_OPENROUTER_API_KEY: "key",
       JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }
@@ -39,14 +41,14 @@ describe("production maintenance target", () => {
 
   it("installs production values only when both write guards match", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+      JFRAG_POSTGRESQL_DB_URL: "postgresql://owner:p@prod.example/rag",
       JFRAG_OPENROUTER_API_KEY: "key",
       JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
       JFRAG_ALLOW_PROD_WRITE: "1",
     }
     installProductionEnvironment(env, true)
     expect(env).toMatchObject({
-      DATABASE_URL: "postgresql://u:p@prod.example/rag",
+      DATABASE_URL: "postgresql://owner:p@prod.example/rag",
       OPENROUTER_API_KEY: "key",
     })
   })

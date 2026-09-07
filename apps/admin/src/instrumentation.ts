@@ -170,6 +170,8 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/retention/job")
   const { ensureRecommendationControlReadinessSchedulerStarted } =
     await import("@/services/recommendations/control-readiness/job")
+  const { ensureRecommendationProfileReconciliationSchedulerStarted } =
+    await import("@/services/recommendations/profiles/reconciliation.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
   const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
@@ -182,6 +184,7 @@ async function startWorkflowWorld(): Promise<void> {
   await ensureSearchTraceRetentionSchedulerStarted()
   await ensureRecommendationRetentionSchedulerStarted()
   await ensureRecommendationControlReadinessSchedulerStarted()
+  await ensureRecommendationProfileReconciliationSchedulerStarted()
   const { prisma } = await import("@/db/client")
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
