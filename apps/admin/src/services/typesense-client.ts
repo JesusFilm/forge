@@ -143,6 +143,10 @@ export class TypesenseClient {
           "x-typesense-api-key": this.apiKey,
           ...init.headers,
         },
+        // Typesense requests carry a privileged API key. Refuse redirects so a
+        // misconfigured or compromised endpoint cannot forward that credential
+        // to a different origin.
+        redirect: "error",
         signal: controller.signal,
       })
       if (!response.ok && !acceptedStatuses.includes(response.status)) {

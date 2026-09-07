@@ -29,6 +29,7 @@ describe("TypesenseClient", () => {
       "http://localhost:8108/aliases/watch",
       expect.objectContaining({
         method: "PUT",
+        redirect: "error",
         headers: expect.objectContaining({
           "x-typesense-api-key": "test-key",
           "content-type": "application/json",
