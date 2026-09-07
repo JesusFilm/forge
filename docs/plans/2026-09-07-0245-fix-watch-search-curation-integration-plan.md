@@ -150,7 +150,7 @@ The Rescue Project intro disappeared from Watch Search because its relevant Core
 - KTD4. Bump the centralized candidate application contract from `watch-search-candidate/v3` to `watch-search-candidate/v4`. Include canonical curations in the snapshot digest and qualification schema so v3 generations cannot serve. Implements R7, R10.
 - KTD5. Carry Typesense's `curated` marker through the current generic `GroupState` fusion model. Apply the first-page guarantee after `rankWatchSearchGroups` and before hydration and page slicing. Implements R2, R3.
 - KTD6. Abort publication when any enabled curation produces no searchable documents. Allow individual aliases with no locale-specific document to be skipped only with explicit counters and logs, and require the seeded production canary to report zero skipped aliases. Implements R11, R12.
-- KTD7. Port the source patch semantically onto current `origin/main`. Use migration `0076_watch_search_curations` and the next available roadmap identifier, currently `feat-460`; preserve the existing `feat-337` blocker on `feat-334`. Implements all requirements without reverting newer search behavior.
+- KTD7. Port the source patch semantically onto current `origin/main`. Use migration `0079_watch_search_curations` and roadmap identifier `feat-461`; preserve the existing `feat-337` blocker on `feat-334`. Implements all requirements without reverting newer search behavior.
 
 ### High-Level Technical Design
 
@@ -234,7 +234,7 @@ sequenceDiagram
 
 **Requirements:** R6, R8, R9; KTD1, KTD3, KTD7.
 
-**Files:** `apps/admin/prisma/schema.prisma`, `apps/admin/prisma/migrations/0076_watch_search_curations/migration.sql`, `apps/admin/src/data/watch-search-curations.json`, `apps/admin/src/services/watch-search-curation-manifest.ts`, `apps/admin/src/scripts/export-watch-search-curations.ts`, `apps/admin/package.json`, and adjacent tests.
+**Files:** `apps/admin/prisma/schema.prisma`, `apps/admin/prisma/migrations/0079_watch_search_curations/migration.sql`, `apps/admin/src/data/watch-search-curations.json`, `apps/admin/src/services/watch-search-curation-manifest.ts`, `apps/admin/src/scripts/export-watch-search-curations.ts`, `apps/admin/package.json`, and adjacent tests.
 
 **Approach:** Semantically port the schema and seed from `9519bfd78`, preserve current-main models, make all ordering explicit, and expose export and check commands. Seed the Rescue target, English alias, and localized aliases with provenance.
 
@@ -335,7 +335,7 @@ sequenceDiagram
 
 **Requirements:** R8, R9, R14; KTD7.
 
-**Files:** `docs/roadmap/README.md`, `docs/roadmap/content-discovery/feat-334-watch-search-typesense-parallel-backend.md`, `docs/roadmap/content-discovery/feat-460-watch-search-editorial-curations.md`, and Watch Search operational documentation.
+**Files:** `docs/roadmap/README.md`, `docs/roadmap/content-discovery/feat-334-watch-search-typesense-parallel-backend.md`, `docs/roadmap/content-discovery/feat-461-watch-search-editorial-curations.md`, and Watch Search operational documentation.
 
 **Approach:** Add the next collision-free roadmap ticket, append its blocker without removing `feat-337`, and document manifest recovery, alias provenance, native-review follow-up, curation permissions, build order, canaries, and rollback.
 
