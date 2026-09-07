@@ -301,6 +301,16 @@ fence, and do not delete the documents; a rolled-back claim becomes retryable
 after lease expiry, while a committed terminal event must never lose the only
 documents that no pending work remains to restore.
 
+Apply the same rule when a deliberate full transcript rebuild hands its new
+alias binding to the durable projection row. Read the prior projection before
+the final write and reconcile the exact expected next revision if that write
+throws. A proven rollback may restore the old aliases; a proven commit is
+success. If reconciliation is unavailable or observes neither exact state,
+preserve the new aliases and collections and surface an indeterminate error.
+Blind rollback in that state can delete the collection named by a successfully
+committed projection, which is harder to recover than temporarily retaining
+both physical generations.
+
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate
 eviction after rejection (`apps/admin/src/services/index.ts:101-133`). The

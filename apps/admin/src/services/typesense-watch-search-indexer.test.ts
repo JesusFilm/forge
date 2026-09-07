@@ -487,6 +487,7 @@ describe("Typesense Watch Search indexer", () => {
       },
       $queryRaw: queryRaw,
       watchSearchCurrentTranscriptProjection: {
+        findUnique: vi.fn(async () => null),
         upsert: vi.fn(async ({ create }) => create),
       },
     } as unknown as PrismaClient
@@ -866,6 +867,7 @@ describe("Typesense Watch Search indexer", () => {
           transcriptCompatibilityQueryResult(query) ?? [],
       ),
       watchSearchCurrentTranscriptProjection: {
+        findUnique: vi.fn(async () => null),
         upsert: vi.fn(async ({ create }) => create),
       },
     } as unknown as PrismaClient

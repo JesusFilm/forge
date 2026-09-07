@@ -31,7 +31,10 @@ import {
   TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
   withTypesenseWatchSearchIndexLock,
 } from "./typesense-watch-search-publication-lock"
-import { rebuildTypesenseWatchSearchIndex } from "./typesense-watch-search-indexer"
+import {
+  rebuildTypesenseWatchSearchIndex,
+  TypesenseWatchSearchProjectionCommitIndeterminateError,
+} from "./typesense-watch-search-indexer"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -886,6 +889,51 @@ suite("current transcript publication into Watch Search", () => {
     })
   }
 
+  function prismaWithLostRebuildProjectionAcknowledgement(input?: {
+    reconciliationFails?: boolean
+  }): PrismaClient {
+    let acknowledgementLost = false
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "watchSearchCurrentTranscriptProjection") {
+          const delegate = target.watchSearchCurrentTranscriptProjection
+          return new Proxy(delegate, {
+            get(delegateTarget, delegateProperty, receiver) {
+              if (delegateProperty === "upsert" && !acknowledgementLost) {
+                return async (...args: unknown[]) => {
+                  await Reflect.apply(delegate.upsert, delegate, args)
+                  acknowledgementLost = true
+                  throw new Error(
+                    "simulated lost rebuild projection acknowledgement",
+                  )
+                }
+              }
+              if (
+                delegateProperty === "findUnique" &&
+                acknowledgementLost &&
+                input?.reconciliationFails
+              ) {
+                return async () => {
+                  throw new Error("simulated projection reconciliation outage")
+                }
+              }
+              const value = Reflect.get(
+                delegateTarget,
+                delegateProperty,
+                receiver,
+              )
+              return typeof value === "function"
+                ? value.bind(delegateTarget)
+                : value
+            },
+          })
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   it("keeps publication constraint and index names stable below PostgreSQL's identifier limit", async () => {
     const rows = await prisma.$queryRaw<Array<{ name: string }>>`
       SELECT conname::text AS name
@@ -1481,6 +1529,83 @@ suite("current transcript publication into Watch Search", () => {
       await typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
     ).toMatchObject({
       collection_name: "watch_search_transcripts_rebuild-2",
+    })
+  }, 180_000)
+
+  it("reconciles a lost rebuild projection acknowledgement without restoring old aliases", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    const rebuild = await withTypesenseWatchSearchIndexLock(
+      () =>
+        rebuildTypesenseWatchSearchIndex({
+          prisma: prismaWithLostRebuildProjectionAcknowledgement(),
+          typesense,
+          buildId: "rebuild-lost-ack",
+          transcriptStrategy: "rebuild",
+        }),
+      { databaseUrl },
+    )
+
+    expect(rebuild.transcriptCollection).toBe(
+      "watch_search_transcripts_rebuild-lost-ack",
+    )
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+        select: {
+          transcriptCollection: true,
+          projectionRevision: true,
+        },
+      }),
+    ).resolves.toEqual({
+      transcriptCollection: "watch_search_transcripts_rebuild-lost-ack",
+      projectionRevision: 1n,
+    })
+    await expect(
+      typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
+    ).resolves.toMatchObject({
+      collection_name: "watch_search_transcripts_rebuild-lost-ack",
+    })
+  }, 180_000)
+
+  it("preserves rebuilt aliases when projection reconciliation is unavailable", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+
+    await expect(
+      withTypesenseWatchSearchIndexLock(
+        () =>
+          rebuildTypesenseWatchSearchIndex({
+            prisma: prismaWithLostRebuildProjectionAcknowledgement({
+              reconciliationFails: true,
+            }),
+            typesense,
+            buildId: "rebuild-indeterminate",
+            transcriptStrategy: "rebuild",
+          }),
+        { databaseUrl },
+      ),
+    ).rejects.toBeInstanceOf(
+      TypesenseWatchSearchProjectionCommitIndeterminateError,
+    )
+
+    await expect(
+      typesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
+    ).resolves.toMatchObject({
+      collection_name: "watch_search_transcripts_rebuild-indeterminate",
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+        select: { transcriptCollection: true },
+      }),
+    ).resolves.toEqual({
+      transcriptCollection: "watch_search_transcripts_rebuild-indeterminate",
     })
   }, 180_000)
 
