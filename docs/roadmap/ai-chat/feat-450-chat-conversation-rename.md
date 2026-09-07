@@ -19,11 +19,7 @@ tags:
 
 ## Resolution
 
-<!-- PR 2 checkpoint: PR 1 merged as #2179. Replace `PR2-NUMBER`
-(here and in README.md) with the real number when PR 2 is opened, reconcile
-its shipped date, and remove this comment before landing. -->
-
-**Shipped:** 2026-09-07 via [PR #2179](https://github.com/JesusFilm/forge/pull/2179) (`feat(mastra): rename saved chat conversations without changing recency`) and [PR #PR2-NUMBER](https://github.com/JesusFilm/forge/pull/PR2-NUMBER) (`feat(chat): rename conversations without changing recency`). Mastra first, chat second, per the plan's cross-app ordering (KTD1).
+**Shipped:** 2026-09-07 via [PR #2179](https://github.com/JesusFilm/forge/pull/2179) (`feat(mastra): rename saved chat conversations without changing recency`) and [PR #2181](https://github.com/JesusFilm/forge/pull/2181) (`feat(chat): rename conversations without changing recency`). Mastra first, chat second, per the plan's cross-app ordering (KTD1).
 
 **What landed.** PR 1: `POST /forge-ai-chat-history-rename` on the ai-chat lane — a guarded direct-SQL `UPDATE … SET title` that omits `updatedAt` (so a rename neither reorders the rail nor extends retention), ownership-resolved over the persisted store, refusing with 503 `writes_disabled` when the memory backend is not Postgres. PR 2: the chat proxy `POST /api/history/rename` (the read proxies' deny ladder plus `invalid_title`; a reasonless 404 from a not-yet-deployed route is a retryable `unavailable`), the session's pessimistic `renameConversation` with a per-id in-flight slot and a per-id rename fence that keeps a committed title from being reverted by a page fetch that was already in flight, and the sidebar's per-row pencil plus inline editor (Enter commits, Escape cancels, blur cancels; controls only on gate-granted shells; the drawer's Escape listener ignores the editor by target). The client normalizer mirrors the Mastra clamp's character class byte-for-byte, pinned by a test that reads the Mastra source. The one deliberate divergence from the read contract: a rename `access` failure shows an inline notice instead of silently reverting the sidebar to client-only.
 
