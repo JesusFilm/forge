@@ -68,13 +68,32 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       metadata_zh: ["耶稣的一生"],
     },
   ],
+  curations: [
+    {
+      id: "rescue-project-intro",
+      targetVideoCoreId: "core-1",
+      scope: "PUBLISHED_LOCALES",
+      position: 1,
+      enabled: true,
+      aliases: [
+        {
+          id: "rescue-project-intro-en",
+          query: "rescue project",
+          normalizedQuery: "rescue project",
+          locale: null,
+          active: true,
+        },
+      ],
+    },
+  ],
   tokenizerLocales: ["en", "zh"],
   counts: { catalog: 1, availability: 0, lexical: 2 },
   digests: {
     catalog: `sha256:${"a".repeat(64)}`,
     availability: `sha256:${"b".repeat(64)}`,
     lexical: `sha256:${"c".repeat(64)}`,
-    combined: `sha256:${"d".repeat(64)}`,
+    curations: `sha256:${"d".repeat(64)}`,
+    combined: `sha256:${"e".repeat(64)}`,
   },
   lexicalMemory: {
     searchableBytes: 64,
@@ -224,9 +243,11 @@ function typesenseDouble() {
     ],
   ])
   const documents = new Map<string, unknown[]>()
+  const curationSets = new Map<string, unknown>()
   return {
     schemas,
     documents,
+    curationSets,
     client: {
       getCollectionSchema: vi.fn(async (name: string) => {
         const schema = schemas.get(name)
@@ -239,6 +260,13 @@ function typesenseDouble() {
           return schema
         },
       ),
+      upsertCurationSet: vi.fn(async (name: string, set: unknown) => {
+        curationSets.set(name, set)
+        return set
+      }),
+      deleteCurationSet: vi.fn(async (name: string) => {
+        curationSets.delete(name)
+      }),
       importDocuments: vi.fn(
         async (collection: string, batch: unknown[], action: string) => {
           expect(action).toBe("upsert")
@@ -322,6 +350,26 @@ describe("Typesense Watch candidate index CLI", () => {
       "watch_search_candidate_generation_01_availability",
       "watch_search_candidate_generation_01_lexical",
     ])
+    expect(typesense.client.upsertCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            rule: expect.objectContaining({ query: "rescue project" }),
+          }),
+        ],
+      }),
+    )
+    expect(
+      typesense.client.upsertCurationSet.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      typesense.client.createCollection.mock.invocationCallOrder[0]!,
+    )
+    expect(
+      typesense.schemas.get("watch_search_candidate_generation_01_lexical"),
+    ).toMatchObject({
+      curation_sets: ["watch_search_candidate_generation_01_curations"],
+    })
     expect(
       generation.lifecycle.createBuildingGeneration.mock.invocationCallOrder[0],
     ).toBeLessThan(
@@ -540,6 +588,8 @@ describe("Typesense Watch candidate index CLI", () => {
     ).rejects.toThrow("failpoint")
 
     expect(generation.row).toMatchObject({ state: "BUILDING" })
+    expect(typesense.client.upsertCurationSet).toHaveBeenCalledTimes(1)
+    expect(typesense.client.deleteCurationSet).not.toHaveBeenCalled()
     expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
     expect(
       generation.lifecycle.publishEvaluationGeneration,
@@ -610,6 +660,9 @@ describe("Typesense Watch candidate index CLI", () => {
     expect(
       deleted.filter((name) => name.endsWith("_availability")),
     ).toHaveLength(2)
+    expect(typesense.client.deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+    )
     expect(generation.lifecycle.beginRetirement).toHaveBeenCalledWith(
       generation.generationId,
     )

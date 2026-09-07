@@ -5,10 +5,12 @@ import {
   candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CANDIDATE_PREFIX,
+  TYPESENSE_WATCH_CURATION_SET_PREFIX,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
   watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
+  watchCurationSetName,
   watchLexicalCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
@@ -35,6 +37,9 @@ describe("Typesense Watch Search schemas", () => {
     expect(schemas.lexical.name).toBe(
       `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_lexical`,
     )
+    expect(schemas.lexical.curation_sets).toEqual([
+      `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_curations`,
+    ])
     expect(schemas.lexical.fields).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "title_en", locale: "en" }),
@@ -111,9 +116,16 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("defines locale-aware lexical fields and faceted canonical identity", () => {
-    const schema = watchLexicalCollectionSchema("build", ["mi", "th", "zh"])
+    const schema = watchLexicalCollectionSchema(
+      "build",
+      ["mi", "th", "zh"],
+      [watchCurationSetName("build")],
+    )
 
     expect(schema.name).toBe(`${TYPESENSE_WATCH_LEXICAL_ALIAS}_build`)
+    expect(schema.curation_sets).toEqual([
+      `${TYPESENSE_WATCH_CURATION_SET_PREFIX}_build`,
+    ])
     expect(schema.fields).toEqual(
       expect.arrayContaining([
         { name: "videoId", type: "string", facet: true },

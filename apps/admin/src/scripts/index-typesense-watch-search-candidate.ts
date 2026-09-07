@@ -18,11 +18,13 @@ import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
 } from "@/services/typesense-watch-search-indexer"
+import { buildTypesenseWatchCurationProjection } from "@/services/typesense-watch-search-curation"
 import {
   TYPESENSE_WATCH_EXACT_TITLE_KEY_BYTES,
   TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
 } from "@/services/typesense-watch-search-exact-title"
 import {
+  candidateWatchCurationSetName,
   candidateWatchCollectionNames,
   candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -99,10 +101,13 @@ type CandidateTypesense = Pick<
   | "multiSearch"
   | "getAlias"
   | "deleteCollection"
+  | "upsertCurationSet"
+  | "deleteCurationSet"
 >
 
 type PublicationStep =
   | "owner:created"
+  | "curations:upserted"
   | "catalog:created"
   | "catalog:imported"
   | "availability:created"
@@ -117,6 +122,7 @@ type RetirementStep =
   | "catalog:deleted"
   | "availability:deleted"
   | "lexical:deleted"
+  | "curations:deleted"
 
 export class CandidateProjectionSafetyError extends Error {
   constructor(message: string) {
@@ -263,7 +269,14 @@ async function ensureCollection(
   schema: TypesenseCollectionSchema,
 ): Promise<void> {
   try {
-    await typesense.getCollectionSchema(schema.name)
+    const existing = await typesense.getCollectionSchema(schema.name)
+    const expectedCurationSets = schema.curation_sets ?? []
+    const actualCurationSets = existing.curation_sets ?? []
+    if (!jsonEqual(actualCurationSets, expectedCurationSets)) {
+      throw new CandidateProjectionSafetyError(
+        `candidate collection ${schema.name} has unexpected curation sets`,
+      )
+    }
   } catch (error) {
     if (!isMissingCollection(error)) throw error
     await typesense.createCollection(schema)
@@ -437,6 +450,12 @@ export async function publishTypesenseWatchSearchCandidate({
     snapshot.tokenizerLocales,
   )
   const probe = exactTitleProbe(snapshot)
+  const curationSetName = candidateWatchCurationSetName(generationId)
+  const curationProjection = buildTypesenseWatchCurationProjection({
+    setName: curationSetName,
+    curations: snapshot.curations,
+    lexicalDocuments: snapshot.lexical,
+  })
   const transcriptSchema = await typesense.getCollectionSchema(
     transcript.collection,
   )
@@ -459,6 +478,12 @@ export async function publishTypesenseWatchSearchCandidate({
     assertExistingOwner(generation, ownerInput)
   }
   await failpoint?.("owner:created")
+
+  await typesense.upsertCurationSet(
+    curationProjection.name,
+    curationProjection.set,
+  )
+  await failpoint?.("curations:upserted")
 
   if (generation.state === "BUILDING") {
     const members = [
@@ -529,6 +554,12 @@ export async function publishTypesenseWatchSearchCandidate({
     transcriptChunkingVersion: transcript.chunkingVersion,
     transcriptProjectionRevision: transcript.projectionRevision,
     transcriptReused: true,
+    curationSet: curationProjection.name,
+    curationItems: curationProjection.set.items.length,
+    skippedCurationAliases: curationProjection.coverage.reduce(
+      (total, entry) => total + entry.skippedAliasIds.length,
+      0,
+    ),
   }
 }
 
@@ -627,6 +658,9 @@ export async function retireTypesenseWatchSearchCandidate({
       deletedCollections: [...deleted],
     })
   }
+
+  await typesense.deleteCurationSet(candidateWatchCurationSetName(generationId))
+  await failpoint?.("curations:deleted")
 
   return generations.transitionGeneration({
     generationId,

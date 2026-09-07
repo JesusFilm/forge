@@ -382,6 +382,18 @@ enum WatchRouteAlertLifecycle {
   RECOVERED @map("recovered")
 }
 
+/// Locales in which an editorial Watch Search curation may be projected.
+enum WatchSearchCurationScope {
+  PUBLISHED_LOCALES @map("published_locales")
+  ALL_LANGUAGES     @map("all_languages")
+}
+
+/// Provenance for an exact Watch Search curation alias.
+enum WatchSearchCurationAliasSource {
+  EDITORIAL @map("editorial")
+  MACHINE   @map("machine")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -1664,6 +1676,49 @@ model ContentEmbeddingContractPointer {
   updatedAt        DateTime                 @updatedAt @map("updated_at")
 
   @@map("content_embedding_contract_pointer")
+}
+
+/// Admin-owned editorial rule compiled into a generation-specific Typesense
+/// curation set. The stable Core ID deliberately remains a logical reference:
+/// Core-sourced Video rows may be absent during sync or disaster recovery.
+model WatchSearchCuration {
+  id                String                   @id @default(cuid())
+  key               String                   @unique
+  targetVideoCoreId String                   @map("target_video_core_id")
+  scope             WatchSearchCurationScope @default(PUBLISHED_LOCALES)
+  position          Int                      @default(1)
+  enabled           Boolean                  @default(true)
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  aliases WatchSearchCurationAlias[]
+
+  @@index([enabled])
+  @@index([targetVideoCoreId])
+  @@map("watch_search_curation")
+}
+
+/// Exact query text for a Watch Search curation. A null locale applies the
+/// alias to every published localization of the target video; localized
+/// aliases apply only to target documents carrying that BCP-47 locale.
+model WatchSearchCurationAlias {
+  id               String                         @id @default(cuid())
+  curationId       String                         @map("curation_id")
+  curation         WatchSearchCuration            @relation(fields: [curationId], references: [id], onDelete: Cascade)
+  query            String
+  normalizedQuery  String                         @map("normalized_query")
+  locale           String?
+  source           WatchSearchCurationAliasSource @default(EDITORIAL)
+  translationModel String?                        @map("translation_model")
+  sourceTextDigest String?                        @map("source_text_digest")
+  generatedAt      DateTime?                      @map("generated_at")
+  active           Boolean                        @default(true)
+  createdAt        DateTime                       @default(now()) @map("created_at")
+  updatedAt        DateTime                       @updatedAt @map("updated_at")
+
+  @@index([curationId, active])
+  @@index([locale])
+  @@map("watch_search_curation_alias")
 }
 
 /// A localized display name for a language. Synced from Core.
