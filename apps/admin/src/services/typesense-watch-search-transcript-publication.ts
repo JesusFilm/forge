@@ -28,7 +28,8 @@ const LEASE_PER_DOCUMENT_MS = 250
 const READBACK_CONCURRENCY = 16
 const UPSERT_BATCH_SIZE = 100
 const STALE_DELETE_BATCH_SIZE = 100
-const RETRY_DELAY_MS = 5_000
+const BASE_RETRY_DELAY_MS = 5_000
+const MAX_RETRY_DELAY_MS = 5 * 60_000
 const POLL_MS = 5_000
 
 export const WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID =
@@ -47,6 +48,7 @@ type ClaimablePublicationRow = {
   currentDocumentIds: string[]
   staleDocumentIds: string[]
   leaseGeneration: number
+  attemptCount: number
   createdAt: Date
 }
 
@@ -63,6 +65,7 @@ type ClaimedPublicationBatch = {
   currentDocumentIds: string[]
   staleDocumentIds: string[]
   leaseGeneration: number
+  attemptCount: number
   leaseToken: string
   leaseExpiresAt: Date
 }
@@ -173,6 +176,14 @@ function publicationLeaseMs(input: {
   return Math.min(
     MAX_LEASE_MS,
     BASE_LEASE_MS + totalDocuments * LEASE_PER_DOCUMENT_MS,
+  )
+}
+
+function publicationRetryDelayMs(attemptCount: number): number {
+  const normalizedAttemptCount = Math.max(1, Math.floor(attemptCount))
+  return Math.min(
+    MAX_RETRY_DELAY_MS,
+    BASE_RETRY_DELAY_MS * 2 ** Math.min(normalizedAttemptCount - 1, 6),
   )
 }
 
@@ -352,6 +363,7 @@ async function claimNextTranscriptPublicationBatch(
         current_document_ids AS "currentDocumentIds",
         stale_document_ids AS "staleDocumentIds",
         lease_generation AS "leaseGeneration",
+        attempt_count AS "attemptCount",
         created_at AS "createdAt"
       FROM watch_search_current_transcript_publication_event
       WHERE transcript_id = ${transcriptId}
@@ -382,6 +394,8 @@ async function claimNextTranscriptPublicationBatch(
     ]
     const leaseGeneration =
       rows.reduce((max, row) => Math.max(max, row.leaseGeneration), 0) + 1
+    const attemptCount =
+      rows.reduce((max, row) => Math.max(max, row.attemptCount), 0) + 1
     const leaseToken = randomUUID()
     const leaseTokenHash = createHash("sha256").update(leaseToken).digest("hex")
     const leaseExpiresAt = new Date(
@@ -421,6 +435,7 @@ async function claimNextTranscriptPublicationBatch(
       currentDocumentIds: latest.currentDocumentIds,
       staleDocumentIds,
       leaseGeneration,
+      attemptCount,
       leaseToken,
       leaseExpiresAt,
     }
@@ -723,7 +738,12 @@ async function releaseTranscriptPublicationBatch(
       status: "PENDING",
       leaseTokenHash: null,
       leaseExpiresAt: null,
-      nextAttemptAt: new Date(now.getTime() + RETRY_DELAY_MS),
+      // Back off a poison transcript long enough for later healthy events to
+      // become the oldest eligible work instead of letting one permanent
+      // projection error monopolize every worker tick.
+      nextAttemptAt: new Date(
+        now.getTime() + publicationRetryDelayMs(batch.attemptCount),
+      ),
       lastErrorCode: errorCode,
       updatedAt: now,
     },
@@ -943,6 +963,7 @@ export const _internals = {
   normalizeEmbedding,
   normalizeTranscriptDocument,
   publicationLeaseMs,
+  publicationRetryDelayMs,
   sha256,
   upsertCurrentTranscriptDocuments,
 }

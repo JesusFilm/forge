@@ -172,6 +172,17 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     ).toBe(300_000)
   })
 
+  it("backs off repeated publication failures so one poison transcript cannot starve the queue", async () => {
+    const { _internals } =
+      await import("./typesense-watch-search-transcript-publication")
+
+    expect(_internals.publicationRetryDelayMs(1)).toBe(5_000)
+    expect(_internals.publicationRetryDelayMs(2)).toBe(10_000)
+    expect(_internals.publicationRetryDelayMs(3)).toBe(20_000)
+    expect(_internals.publicationRetryDelayMs(7)).toBe(300_000)
+    expect(_internals.publicationRetryDelayMs(100)).toBe(300_000)
+  })
+
   it("bounds per-document readback concurrency", async () => {
     const { _internals } =
       await import("./typesense-watch-search-transcript-publication")

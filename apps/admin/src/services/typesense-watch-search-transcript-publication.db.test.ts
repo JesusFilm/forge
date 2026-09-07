@@ -1126,6 +1126,7 @@ suite("current transcript publication into Watch Search", () => {
       driftedSchema.name,
     )
 
+    const firstFailureStartedAt = Date.now()
     await expect(
       publishOneCurrentTranscriptToWatchSearch({
         prisma,
@@ -1152,13 +1153,49 @@ suite("current transcript publication into Watch Search", () => {
       await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
         {
           where: { id: pendingEvent.id },
-          select: { status: true, lastErrorCode: true },
+          select: {
+            status: true,
+            lastErrorCode: true,
+            attemptCount: true,
+            nextAttemptAt: true,
+          },
         },
       ),
-    ).toEqual({
+    ).toMatchObject({
       status: "PENDING",
       lastErrorCode: "WatchSearchTranscriptPublicationError",
+      attemptCount: 1,
     })
+    const firstFailureEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        { where: { id: pendingEvent.id } },
+      )
+    expect(firstFailureEvent.nextAttemptAt?.getTime()).toBeGreaterThanOrEqual(
+      firstFailureStartedAt + 5_000,
+    )
+
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.update({
+      where: { id: pendingEvent.id },
+      data: { nextAttemptAt: new Date(0) },
+    })
+    const secondFailureStartedAt = Date.now()
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/full transcript rebuild/i)
+    const secondFailureEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        { where: { id: pendingEvent.id } },
+      )
+    expect(secondFailureEvent.attemptCount).toBe(2)
+    expect(secondFailureEvent.nextAttemptAt?.getTime()).toBeGreaterThanOrEqual(
+      secondFailureStartedAt + 10_000,
+    )
     await expect(
       typesense.getDocument(
         driftedSchema.name,
