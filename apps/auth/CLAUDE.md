@@ -206,11 +206,19 @@ surfaced on the first device sign-in after #2176):
   why the #2176 verification passed. The plugin's `after` hook on
   `/oauth2/authorize`, `/oauth2/consent`, and `/oauth2/continue` re-plants
   the cookie only when the redirect targets THIS server's `/callback/jfp`
-  with a `state`, using the same cookie factory `generateState` uses. The
+  with a `state` AND a `code`, using the same cookie factory
+  `generateState` uses. An error redirect does not plant: the callback
+  routes an error from the DB row's `errorURL` without the cookie. The
   cookie lands only on the browser that received the code, so the
-  login-CSRF binding the check exists for is unchanged. Verify any
-  self-RP change with a PROVIDER button on the hosted page, not only the
-  password form. See
+  login-CSRF binding the check exists for is unchanged; that argument rests
+  on the cookie being `SameSite=Lax`, on PKCE binding the code to the row,
+  and on the database `storeStateStrategy` — re-review the hook if any of
+  the three moves. The hook covers the browser GET to `/oauth2/authorize`
+  that `handleSocialSignIn` preserves by deleting `oauth_query`; the
+  vendor's in-response continuation would drop the planted cookie, so keep
+  the wrapper stripping it, or widen the hook and move the plugin after
+  `oauthProvider()` together. Verify any self-RP change with a PROVIDER
+  button on the hosted page, not only the password form. See
   `docs/solutions/integration-issues/better-auth-1-7-nested-oauth-consumes-self-rp-state-cookie.md`.
 
 One packaging rule rides with those six. **`@better-auth/utils` is pinned

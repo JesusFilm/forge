@@ -41,20 +41,25 @@ export function selfRpStateCookiePlugin() {
               ctx.context.returned,
             )
             if (!target) return
+            // A throw here is not an APIError, so it would 500 every OAuth
+            // client on these endpoints; parse both URLs behind one guard.
             let url: URL
+            let base: URL
             try {
               url = new URL(target)
+              base = new URL(ctx.context.baseURL)
             } catch {
               return
             }
-            const base = new URL(ctx.context.baseURL)
             const isSelfRpCallback =
               url.origin === base.origin &&
               url.pathname ===
                 `${base.pathname}/callback/${JFP_MOBILE_PROVIDER_ID}`
             if (!isSelfRpCallback) return
             const state = url.searchParams.get("state")
-            if (!state) return
+            // Only a code redirect: an error redirect is routed by the DB row
+            // without the cookie, and a code is issued only to a live session.
+            if (!state || !url.searchParams.has("code")) return
             // Same cookie generateState plants; the callback's parseState
             // compares it to the `state` query and then expires it.
             const stateCookie = ctx.context.createAuthCookie("state", {

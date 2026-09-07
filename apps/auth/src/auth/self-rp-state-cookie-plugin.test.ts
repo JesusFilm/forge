@@ -1,3 +1,4 @@
+import { parseGenericState } from "better-auth"
 import { createAuthEndpoint, dispatchAuthEndpoint } from "better-auth/api"
 import { createCookieGetter } from "better-auth/cookies"
 import { describe, expect, it, vi } from "vitest"
@@ -79,13 +80,30 @@ describe("selfRpStateCookiePlugin", () => {
     expect(headers?.get("set-cookie")).toMatch(/better-auth\.state=state-456\./)
   })
 
-  // An error redirect still runs the callback's state parse, which needs the
-  // cookie to route the error back to the app scheme instead of a web page.
-  it("plants it on an error redirect to the self-RP callback too", async () => {
+  // An error redirect needs no cookie: parseGenericState loads the DB row
+  // before the cookie compare and routes the error to the row's errorURL.
+  // Refusing it also keeps a pre-session error redirect from planting.
+  it("does not plant on an error redirect to the self-RP callback", async () => {
     const headers = await run("/oauth2/authorize", {
       location: `${SELF_RP_CALLBACK}?error=access_denied&state=state-789`,
     })
-    expect(headers?.get("set-cookie")).toMatch(/better-auth\.state=state-789\./)
+    expect(headers?.get("set-cookie")).toBeNull()
+  })
+
+  it("does not plant on a self-RP redirect that carries no code", async () => {
+    const headers = await run("/oauth2/authorize", {
+      location: `${SELF_RP_CALLBACK}?state=state-789`,
+    })
+    expect(headers?.get("set-cookie")).toBeNull()
+  })
+
+  it("does not plant when the base URL cannot be parsed", async () => {
+    const headers = await run(
+      "/oauth2/authorize",
+      { location: `${SELF_RP_CALLBACK}?code=abc&state=state-1` },
+      "not a url",
+    )
+    expect(headers?.get("set-cookie")).toBeNull()
   })
 
   it("leaves every other redirect target alone", async () => {
@@ -234,5 +252,58 @@ describe("selfRpStateCookiePlugin through Better Auth's dispatch pipeline", () =
 
     expect(response.status).toBe(302)
     expect(response.headers.getSetCookie()).toEqual([])
+  })
+
+  // The prefix assertion above pins OUR choice of name. This feeds the planted
+  // cookie back into the vendor READER that /callback/jfp runs, so a cookie
+  // name, prefix, or signing change on a Better Auth bump goes red here.
+  it("plants a cookie the vendor's parseGenericState accepts, and rejects its absence", async () => {
+    const state = "state-round-trip"
+    const planted = await dispatch(async (ctx) => {
+      throw ctx.redirect(`${SELF_RP_CALLBACK}?code=abc&state=${state}`)
+    })
+    const stateCookie = planted.headers
+      .getSetCookie()
+      .find((cookie) => cookie.includes("better-auth.state="))
+    expect(stateCookie).toBeDefined()
+    const requestCookie = stateCookie!.split(";")[0]!
+
+    // The database strategy the jfp provider uses: the row must exist and
+    // the signed cookie must equal the `state` query.
+    const row = {
+      value: JSON.stringify({
+        callbackURL: "forgemobile:///",
+        codeVerifier: "verifier",
+        expiresAt: Date.now() + 600_000,
+        oauthState: state,
+      }),
+    }
+    const context = {
+      ...authContext(),
+      oauthConfig: { storeStateStrategy: "database" },
+      internalAdapter: {
+        findVerificationValue: async () => row,
+        deleteVerificationByIdentifier: async () => undefined,
+      },
+    }
+    const readState = (cookie?: string) => {
+      const callback = createAuthEndpoint(
+        "/callback/jfp",
+        { method: "GET" },
+        (async (ctx: unknown) =>
+          parseGenericState(ctx as never, state)) as never,
+      )
+      return dispatchAuthEndpoint(callback, {
+        context,
+        method: "GET",
+        headers: new Headers(cookie ? { cookie } : {}),
+        asResponse: false,
+      } as never)
+    }
+
+    await expect(readState(requestCookie)).resolves.toMatchObject({
+      oauthState: state,
+    })
+    await expect(readState()).rejects.toThrow("State not persisted correctly")
   })
 })

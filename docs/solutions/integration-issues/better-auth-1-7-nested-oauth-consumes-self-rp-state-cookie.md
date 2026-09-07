@@ -78,16 +78,32 @@ self-RP not exercised."
 hook on the oauth-provider endpoints that can hand a browser an
 authorization code (`/oauth2/authorize`, `/oauth2/consent`,
 `/oauth2/continue`). When the response redirects to THIS server's own
-`/callback/jfp` with a `state` value, the hook plants the signed
-`better-auth.state` cookie again with that value. It uses the same cookie
-factory and the same `maxAge` as `generateGenericState`, so the name,
-prefix, and attributes match what `parseGenericState` reads. The plugin is
-registered in `config.ts` next to `mobileAwareExpoPlugin`.
+`/callback/jfp` with a `state` value AND an authorization `code`, the hook
+plants the signed `better-auth.state` cookie again with that value. It
+uses the same cookie factory and the same `maxAge` as
+`generateGenericState`, so the name, prefix, and attributes match what
+`parseGenericState` reads. The plugin is registered in `config.ts` next to
+`mobileAwareExpoPlugin`.
 
 The hook reads the redirect from the `location` header. It also reads the
 `{ redirect: true, url }` body the provider returns to a `fetch` caller
 instead of a 302, so a hosted page that continues the flow with `fetch`
 gets the cookie on that response.
+
+An error redirect (`?error=access_denied&state=…`) does not plant.
+`parseGenericState` loads the verification row before it compares the
+cookie and attaches the row's `errorURL` to the mismatch error, so a
+cookie-less error redirect already returns to `forgemobile:///`; the
+production log for this incident shows exactly that. Requiring `code` also
+keeps a pre-session error redirect from planting a cookie at all.
+
+The hook covers the browser GET to `/oauth2/authorize` that the route
+wrapper's `handleSocialSignIn` preserves by deleting `oauth_query` from
+every sign-in body. The vendor's own continuation re-dispatches
+`/oauth2/authorize` inside the `/callback/<provider>` response with
+`returnHeaders: false`, which would drop the planted cookie on the JSON
+shape. Keep the wrapper stripping `oauth_query`, or widen the hook and move
+the plugin after `oauthProvider()` in the same change.
 
 ### Why this keeps the login-CSRF protection
 
@@ -100,16 +116,30 @@ cookie for that state and is still refused. The browser proxy already
 plants a state cookie for any authorize URL it admits, so this hook adds no
 binding weaker than the one the flow already had.
 
+Three vendor facts carry this argument. The cookie is `SameSite=Lax`, so a
+cross-site fetch response cannot store it. The authorization code is bound
+to the client and to the PKCE verifier in the verification row. The
+generic-oauth provider uses the database `storeStateStrategy`, so the row
+must exist and match. A change to any of the three needs a fresh review of
+this hook. The Tier-2 review of this change filed and then rejected a
+login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
+
 ## Verification
 
 - `apps/auth/src/auth/self-rp-state-cookie-plugin.test.ts`: the hook plants
   the cookie for a 302 and for the JSON redirect shape, ignores every other
   target (another provider's callback, a third-party redirect URI, the
   self-RP path on another origin, the login page, the callback path outside
-  the base path), and ignores a redirect with no `state`. A second block
-  dispatches a redirecting endpoint through Better Auth's own hook runner
+  the base path), and refuses a redirect with no `state`, no `code`, an
+  `error`, or an unparseable base URL. A second block dispatches a
+  redirecting endpoint through Better Auth's own hook runner
   (`dispatchAuthEndpoint`) with the real cookie factory, so the
   `__Secure-better-auth.state` name and the header merge are the vendor's.
+  The last case there is a round trip: the planted `Set-Cookie` goes back
+  in as a request `cookie` to a second dispatch that calls the vendor's
+  `parseGenericState`, which accepts it, and rejects the same request with
+  no cookie. A cookie name or signing change on a Better Auth bump goes red
+  there.
 - Falsified once: with the matcher neutered, the planting cases go red.
 - `config.test.ts` pins the plugin's registration.
 - `pnpm --filter @forge/auth test`, `typecheck`, and `lint` are clean.
@@ -125,12 +155,17 @@ binding weaker than the one the flow already had.
   OAuth flow inside the first. Any verification of the self-RP must exercise
   at least one provider button, not only the password form. The recipe in
   `docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`
-  can replay the loss with curl: run hop 2, then plant a different state
-  cookie value, then run hops 6 and 7.
+  defines only its Hop 1 to Hop 3 (sign-in, proxy, callback). To replay
+  this break with curl, run the recipe's Hop 1 and Hop 2, then overwrite
+  the `state` cookie with a different value to stand in for the inner
+  provider flow, then send the cookie jar through rows 6 and 7 of the table
+  in this doc's Root cause section (the authorize continuation and the
+  `/callback/jfp` request).
 - Any Better Auth bump must re-read `better-auth/dist/state.mjs`. A change
   to the cookie name, the `maxAge`, or the compare in `parseGenericState`
-  changes what this hook must plant. The dispatch-pipeline test fails on a
-  changed cookie prefix but not on a changed cookie NAME, so read the source.
+  changes what this hook must plant. The round-trip test goes red on a
+  cookie name or signing change; a `maxAge` change does not fail a test, so
+  read the source.
 - A quiet cancel hides every server-side callback failure from the user.
   Production auth's deploy log is the first place to look when the sheet
   closes and nothing changes: grep for `Failed to parse state`.
