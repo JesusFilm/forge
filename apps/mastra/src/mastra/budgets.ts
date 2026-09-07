@@ -175,8 +175,9 @@ export const TIME_BUDGET_MS = {
   /** Background auto-enrich agent's full run on one experience locale. */
   backgroundAutoEnrich: 300_000,
   /**
-   * ai-chat history reads (feat-241): per-request wall-clock cap for the
-   * listing/replay route handlers. These are millisecond-class store queries —
+   * ai-chat history reads (feat-241) and the rename write (feat-450):
+   * per-request wall-clock cap for the listing/replay/rename route handlers.
+   * These are millisecond-class store queries —
    * they must NOT inherit the 90s chatTurn envelope (a slow-not-down Postgres
    * would otherwise hang a sidebar fetch for minutes). Held strictly BELOW the
    * chat proxy's read window (clamped to [9s, 10s] in history-proxy.ts) per

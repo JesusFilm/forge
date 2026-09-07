@@ -13,9 +13,9 @@ from the main DS Year 1 roadmap.
 
 ## Status (September 2, 2026)
 
-- **Total tickets:** 63
+- **Total tickets:** 64
 - ✅ **Complete:** 53
-- 🟡 **In progress:** 1
+- 🟡 **In progress:** 2
 - 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
@@ -44,7 +44,7 @@ from the main DS Year 1 roadmap.
 | [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)                        | Replace the chat seeker LaunchDarkly gate with an env-var email allowlist    | jian wei | P1       | 2026-07-08 | 1    | ✅ complete    | [#1498](https://github.com/JesusFilm/forge/pull/1498)                                                        |
 | [feat-240](feat-240-chat-sign-out-force-login.md)                             | Chat sign-out force-login marker (no silent re-auth)                         | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1539](https://github.com/JesusFilm/forge/pull/1539)                                                        |
 | [feat-241](feat-241-chat-server-history-sidebar.md)                           | Chat server-side conversation history + sidebar hydration                    | jian wei | P2       | 2026-07-20 | 3    | ✅ complete    | [#1552](https://github.com/JesusFilm/forge/pull/1552)                                                        |
-| [feat-247](feat-247-chat-history-management.md)                               | Chat conversation history management (delete/rename) — stub                  | jian wei | P2       | 2026-09-08 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-247](feat-247-chat-history-management.md)                               | Chat conversation delete — stub                                              | jian wei | P2       | 2026-09-08 | 2    | 🔵 not-started | —                                                                                                            |
 | [feat-248](feat-248-chat-anon-thread-migration.md)                            | Anonymous-to-account conversation migration — stub, future consideration     | jian wei | P2       | 2026-09-15 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-250](feat-250-seeker-route-lane-key-migration.md)                       | Migrate /forge-seeker onto the ai-chat lane service key                      | jian wei | P2       | 2026-08-03 | 1    | ✅ complete    | [#1554](https://github.com/JesusFilm/forge/pull/1554)                                                        |
 | [feat-267](feat-267-chat-ui-quick-wins.md)                                    | Chat UI quick wins: cursor, focus ring, tab identity, mobile hint            | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1617](https://github.com/JesusFilm/forge/pull/1617)                                                        |
@@ -86,3 +86,4 @@ from the main DS Year 1 roadmap.
 | [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | ✅ complete    | [#2088](https://github.com/JesusFilm/forge/pull/2088)                                                        |
 | [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | ✅ complete    | [#2089](https://github.com/JesusFilm/forge/pull/2089)                                                        |
 | [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | ✅ complete    | [#2115](https://github.com/JesusFilm/forge/pull/2115)                                                        |
+| [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | 🟡 in-progress | —                                                                                                            |
