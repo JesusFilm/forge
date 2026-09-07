@@ -1,0 +1,46 @@
+(node:1793272) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.cache/forge-studio-460-publication-base/apps/admin
+
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts (6 tests | 2 failed) 2502ms
+   ✓ internal publication transaction hook > uses the same transaction for consumption and mandatory verification; exact accepted retries skip both after unpublish 212ms
+   ✓ internal publication transaction hook > rolls back durable consumption when the final verifier rejects; retains no accepted receipt 47ms
+   ✓ internal publication transaction hook > fails closed for a missing verifier, mismatched server envelope, or delivery outside the immutable UTC window 47ms
+   ✓ internal publication transaction hook > validates the full scheduled release and readiness envelope even for an incorrectly typed trusted caller 34ms
+   × internal publication transaction hook > rolls back consumption and verifier writes when the hook waits beyond the authorized window 1085ms
+     → promise resolved "{ …(3) }" instead of rejecting
+   × internal publication transaction hook > rolls back consumption and verifier writes when the verifier waits beyond the authorized window 1069ms
+     → promise resolved "{ …(3) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/publication-hook.db.test.ts > internal publication transaction hook > rolls back consumption and verifier writes when the hook waits beyond the authorized window
+ FAIL  src/services/studio-authoring/publication-hook.db.test.ts > internal publication transaction hook > rolls back consumption and verifier writes when the verifier waits beyond the authorized window
+AssertionError: promise resolved "{ …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "outcome": "ACCEPTED",
++   "projectId": "5fdfc83f-15d8-40a1-b620-ed4b79f33bf7",
++   "revision": 1,
+  }
+
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts:339:27
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 4 passed (6)
+   Start at  08:43:43
+   Duration  3.52s (transform 307ms, setup 15ms, collect 614ms, tests 2.50s, environment 0ms, prepare 87ms)
+
+undefined
+/home/tataihono/.cache/forge-studio-460-publication-base/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/publication-hook.db.test.ts

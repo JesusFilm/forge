@@ -1,0 +1,52 @@
+(node:1772941) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.cache/forge-studio-460-publication-base/apps/admin
+
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts (2 tests | 2 failed) 234ms
+   × internal publication transaction hook > uses the same transaction for consumption and mandatory verification; exact accepted retries skip both after unpublish 173ms
+     → Publication verifier and human authority required
+   × internal publication transaction hook > rolls back durable consumption when the final verifier rejects; retains no accepted receipt 54ms
+     → expected ForbiddenError: Publication verifier and … to match object { code: 'UNREADY' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/publication-hook.db.test.ts > internal publication transaction hook > uses the same transaction for consumption and mandatory verification; exact accepted retries skip both after unpublish
+ForbiddenError: Publication verifier and human authority required
+ ❯ publishStudioProject src/services/studio-authoring/publication.ts:49:11
+     47|   const actor = studioActor(user)
+     48|   if (!canReviewStudio(user) || typeof verify !== "function")
+     49|     throw new ForbiddenError(
+       |           ^
+     50|       "Publication verifier and human authority required",
+     51|     )
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts:61:28
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/services/studio-authoring/publication-hook.db.test.ts > internal publication transaction hook > rolls back durable consumption when the final verifier rejects; retains no accepted receipt
+AssertionError: expected ForbiddenError: Publication verifier and … to match object { code: 'UNREADY' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "UNREADY",
++ ForbiddenError {
++   "message": "Publication verifier and human authority required",
++   "name": "ForbiddenError",
+  }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  08:37:01
+   Duration  1.37s (transform 367ms, setup 15ms, collect 684ms, tests 234ms, environment 0ms, prepare 94ms)
+
+undefined
+/home/tataihono/.cache/forge-studio-460-publication-base/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/publication-hook.db.test.ts

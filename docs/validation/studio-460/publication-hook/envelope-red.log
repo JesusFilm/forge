@@ -1,0 +1,47 @@
+(node:1780135) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.cache/forge-studio-460-publication-base/apps/admin
+
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts (4 tests | 1 failed) 397ms
+   ✓ internal publication transaction hook > uses the same transaction for consumption and mandatory verification; exact accepted retries skip both after unpublish 213ms
+   ✓ internal publication transaction hook > rolls back durable consumption when the final verifier rejects; retains no accepted receipt 49ms
+   ✓ internal publication transaction hook > fails closed for a missing verifier, mismatched server envelope, or delivery outside the immutable UTC window 51ms
+   × internal publication transaction hook > validates the full scheduled release and readiness envelope even for an incorrectly typed trusted caller 78ms
+     → promise resolved "{ …(3) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/publication-hook.db.test.ts > internal publication transaction hook > validates the full scheduled release and readiness envelope even for an incorrectly typed trusted caller
+AssertionError: promise resolved "{ …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "outcome": "ACCEPTED",
++   "projectId": "de8a31fb-313e-4098-acf3-8d8d7870cdef",
++   "revision": 1,
+  }
+
+ ❯ src/services/studio-authoring/publication-hook.db.test.ts:100:146
+     98|     const f = await fixture()
+     99|     const missing = { ...f.input, releaseId: undefined, readinessId: u…
+    100|     await expect(Reflect.apply(publishStudioProject, null, [db, schedu…
+       |                                                                                                                                                  ^
+    101|     expect(await f.commands.read(f.user, f.input.projectId)).toMatchOb…
+    102|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  08:38:51
+   Duration  2.12s (transform 556ms, setup 24ms, collect 993ms, tests 397ms, environment 0ms, prepare 107ms)
+
+undefined
+/home/tataihono/.cache/forge-studio-460-publication-base/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/publication-hook.db.test.ts

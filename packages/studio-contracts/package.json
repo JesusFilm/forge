@@ -14,7 +14,8 @@
     "./preview": "./src/preview.ts",
     "./agent": "./src/agent.ts",
     "./production": "./src/production.ts",
-    "./generation": "./src/generation.ts"
+    "./generation": "./src/generation.ts",
+    "./publication": "./src/publication.ts"
   },
   "scripts": {
     "test": "vitest run",
