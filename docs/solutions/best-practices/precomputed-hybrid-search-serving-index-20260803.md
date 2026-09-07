@@ -327,6 +327,14 @@ Blind rollback in that state can delete the collection named by a successfully
 committed projection, which is harder to recover than temporarily retaining
 both physical generations.
 
+Pin a full rebuild to one compatibility tuple as well. Resolve the active
+contract and chunking version before reading transcript pages, filter every
+page by the exact contract id instead of the mutable active pointer, and
+re-resolve compatibility before moving aliases. Otherwise a pointer rotation
+during a long vector import can mix two contracts in one physical collection
+and then certify the mixture with whichever contract happens to be active at
+completion.
+
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate
 eviction after rejection (`apps/admin/src/services/index.ts:101-133`). The

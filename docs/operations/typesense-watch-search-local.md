@@ -108,6 +108,13 @@ TYPESENSE_OPERATOR_API_KEY=forge-typesense-local-key \
 The CLI rejects unknown or misspelled arguments instead of silently falling
 back to transcript reuse.
 
+An explicit transcript rebuild resolves one active embedding-contract and
+chunking-version tuple before it reads the first page. Every page is filtered
+by that exact contract id, and the tuple is checked again before any alias
+moves. If compatibility changes during the build, the new collections are
+discarded and the active aliases remain unchanged; rerun after the contract
+rotation is complete.
+
 If the final JSON reports `hybridReady: false`, the active alias still points at
 a legacy vector-only schema. Admin retains its bounded compatibility path, but
 the grouped semantic lane is not release-ready. Run one deliberate

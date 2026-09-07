@@ -8,8 +8,11 @@ import {
   SERIES_SHAPED_LABELS,
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
-import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
+import {
+  resolveCurrentWatchSearchTranscriptCompatibility,
+  type WatchSearchTranscriptCompatibilityIdentity,
+} from "./typesense-watch-search-transcript-compatibility"
 import {
   advanceCurrentWatchSearchTranscriptProjection,
   initialCurrentWatchSearchTranscriptProjectionRevision,
@@ -821,6 +824,7 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
 
 async function loadTranscriptBatch(
   prisma: PrismaClient,
+  contentEmbeddingContractId: string,
   afterId: string | null,
   limit: number,
 ): Promise<TranscriptIndexRow[]> {
@@ -856,7 +860,8 @@ async function loadTranscriptBatch(
     JOIN video v
       ON v.id = vt.video_id
     WHERE vtc.embedding IS NOT NULL
-      ${activeTranscriptContentEmbeddingWhere({
+      ${transcriptContentEmbeddingWhereForContractId({
+        contractId: contentEmbeddingContractId,
         transcriptAlias: "vt",
         chunkAlias: "vtc",
       })}
@@ -933,6 +938,15 @@ export async function rebuildTypesenseWatchSearchIndex({
   const hybridReady = transcriptReused
     ? isHybridTranscriptCollection(reusedTranscriptCollection)
     : true
+  // A rebuild must project one immutable vector contract. Resolving the active
+  // pointer inside every page can silently mix contracts if an operator rotates
+  // it while the build is running, then certify that mixture as the final
+  // contract. Pin the compatibility tuple before the first transcript read and
+  // require it to remain current before any alias moves.
+  const rebuiltTranscriptCompatibility: WatchSearchTranscriptCompatibilityIdentity | null =
+    transcriptReused
+      ? null
+      : await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
   const catalog = await buildCatalogDocuments(prisma)
   const availability = buildAvailabilityDocuments(catalog)
   const lexical = buildTypesenseWatchLexicalDocuments(catalog)
@@ -1026,9 +1040,19 @@ export async function rebuildTypesenseWatchSearchIndex({
     }
 
     if (!transcriptReused) {
+      if (!rebuiltTranscriptCompatibility) {
+        throw new TypesenseWatchSearchIndexError(
+          "Watch Search transcript rebuild compatibility is missing",
+        )
+      }
       let afterId: string | null = null
       for (;;) {
-        const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
+        const rows = await loadTranscriptBatch(
+          prisma,
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId,
+          afterId,
+          batchSize,
+        )
         if (rows.length === 0) break
         const documents: TypesenseWatchTranscriptDocument[] = rows.map(
           (row) => ({
@@ -1065,6 +1089,21 @@ export async function rebuildTypesenseWatchSearchIndex({
       }
     }
 
+    if (rebuiltTranscriptCompatibility) {
+      const currentCompatibility =
+        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+      if (
+        currentCompatibility.contentEmbeddingContractId !==
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId ||
+        currentCompatibility.transcriptChunkingVersion !==
+          rebuiltTranscriptCompatibility.transcriptChunkingVersion
+      ) {
+        throw new TypesenseWatchSearchIndexError(
+          "Watch Search transcript compatibility changed during rebuild",
+        )
+      }
+    }
+
     await typesense.upsertAlias(
       TYPESENSE_WATCH_AVAILABILITY_ALIAS,
       availabilitySchema.name,
@@ -1087,13 +1126,13 @@ export async function rebuildTypesenseWatchSearchIndex({
       catalogSchema.name,
     )
     catalogAliasUpdated = true
-    if (!transcriptReused) {
-      const compatibility =
-        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+    if (rebuiltTranscriptCompatibility) {
       await advanceRebuiltTranscriptProjection(prisma, {
         transcriptCollection,
-        contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
-        transcriptChunkingVersion: compatibility.transcriptChunkingVersion,
+        contentEmbeddingContractId:
+          rebuiltTranscriptCompatibility.contentEmbeddingContractId,
+        transcriptChunkingVersion:
+          rebuiltTranscriptCompatibility.transcriptChunkingVersion,
       })
     }
   } catch (error) {
