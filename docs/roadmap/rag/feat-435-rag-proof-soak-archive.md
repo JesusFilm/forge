@@ -3,7 +3,7 @@ id: "feat-435"
 title: "Prove RAG maintenance, soak, and archive jfrag"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-04"
 duration: 7
 depends_on: ["feat-434", "feat-452", "feat-460"]
@@ -31,6 +31,28 @@ Forge ownership is not proven until a new small source completes the full pipeli
 ## What To Build
 
 Run one small source through acquire → stage → normalize → chunk → embed → index → retrieve → dashboard/eval, complete soak, take the final snapshot, and archive jfrag with a Forge pointer.
+
+## Operator Decision — September 8, 2026
+
+The operator accepts the fresh production baseline as the starting point for
+new-source acquisition and ingestion under this proof. Capturing the recall,
+coverage, and language-label concerns in
+[feat-463](./feat-463-rag-baseline-concerns-investigation.md) is the agreed
+compromise: investigation and any potential fixes may proceed separately and
+are not prerequisites for acquisition or ingestion.
+
+This decision supersedes the quality-based `no-go` recommendation in the
+September 7 baseline assessment in
+[PR #2186](https://github.com/JesusFilm/forge/pull/2186), including its
+`production-eval-baseline.json` receipt. The measured results remain unchanged;
+acceptance does not turn an observed shortfall into a passing comparison or a
+confirmed defect. No compatible historical evaluation receipt establishes a
+migration regression.
+
+GO for the bounded new-source acquisition/ingestion proof with these concerns
+tracked. Continue the documented target, credential, health, migration, and
+source-scope checks and retain before/after evaluation evidence. Feat-435 and
+issue #168 remain incomplete; soak and retirement have their own criteria.
 
 ## Constraints
 
