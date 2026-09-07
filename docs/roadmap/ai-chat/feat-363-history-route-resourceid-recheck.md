@@ -3,7 +3,7 @@ id: "feat-363"
 title: "Chat history read path: client-side re-check of the resourceId filter"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-24"
 duration: 1
 depends_on: []
@@ -12,6 +12,20 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Local implementation (2026-09-07)
+
+Implemented on `codex/feat-363-history-ownership`; status remains in progress
+until the code PR records its Resolution. The listing drops rows whose
+`resourceId` does not exactly match the caller's resource, logs one mismatch
+count, and preserves the wire projection and store pagination without extra
+queries. The skip-and-count disposition is recorded in the linked learning.
+
+Regression evidence: five rejection cases failed before the handler change;
+all 48 history-route tests passed afterward, including the existing real-Memory
+integration checks. The full Mastra suite passed: 253 files, 3,112 tests
+(7 files / 32 tests skipped by their existing gates). Mastra typecheck, lint,
+and touched-file formatting passed.
 
 ## Problem
 
