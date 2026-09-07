@@ -423,7 +423,7 @@ class ControlledTypesenseServer {
         // Typesense `float` and `float[]` fields store IEEE-754 single
         // precision values. Model that boundary so publication fingerprint
         // tests cannot accidentally depend on JavaScript's wider numbers.
-        const storedDocument = {
+        const storedDocument: Record<string, unknown> = {
           ...document,
           ...(typeof document.startSeconds === "number"
             ? { startSeconds: Math.fround(document.startSeconds) }
