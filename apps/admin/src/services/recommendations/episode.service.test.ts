@@ -411,6 +411,7 @@ describe("RecommendationEpisodeService", () => {
       ),
     }
     const dispatchProfileFeedback = vi.fn(async () => undefined)
+    const classifySelection = vi.fn(async () => undefined)
     const service = new RecommendationEpisodeService({
       prisma: prisma as never,
       tokenService: {
@@ -428,6 +429,7 @@ describe("RecommendationEpisodeService", () => {
       })(),
       newClaimNonce: () => "direct-fresh-claim-nonce",
       dispatchProfileFeedback,
+      classifySelection,
     })
 
     await expect(
@@ -444,6 +446,9 @@ describe("RecommendationEpisodeService", () => {
       }),
     ).resolves.toMatchObject({ status: "accepted" })
 
+    await vi.waitFor(() => expect(dispatchProfileFeedback).toHaveBeenCalled())
+    expect(classifySelection).toHaveBeenCalledWith("direct-id-2")
+    expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
     expect(dispatchProfileFeedback).toHaveBeenCalledWith({
       sessionDigest: "a".repeat(64),
       profileId: "profile-direct",

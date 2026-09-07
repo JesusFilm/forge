@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
+import { RecommendationInternalStateError } from "./errors"
 
 import {
   candidate,
@@ -523,6 +524,24 @@ describe("RecommendationDeliveryService", () => {
         lane: "semantic_fallback",
         executionMode: "semantic_fallback",
         reason: "profile_projection_unavailable",
+      },
+    })
+  })
+
+  it("records lineage fencing as source-local semantic degradation", async () => {
+    const harness = makeHarness()
+    harness.retrieveProfile.mockRejectedValueOnce(
+      new RecommendationInternalStateError("profile_lineage_ineligible"),
+    )
+
+    await expect(
+      harness.service.deliver(personalizedInput("profile-lineage-fenced")),
+    ).resolves.toMatchObject({
+      result: "fallback",
+      personalization: {
+        lane: "semantic_fallback",
+        executionMode: "semantic_fallback",
+        reason: "profile_lineage_ineligible",
       },
     })
   })

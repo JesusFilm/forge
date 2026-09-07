@@ -23,6 +23,7 @@ function episode() {
     activeUntil: new Date("2026-08-19T07:00:00.000Z"),
     hardUntil: new Date("2026-08-19T09:00:00.000Z"),
     nextFactSequence: 1,
+    transportReplayCount: 0,
     generation: 3,
     claimedAt: new Date("2026-08-19T03:00:00.000Z"),
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
@@ -82,6 +83,13 @@ function harness(options: { current?: EpisodeFixture } = {}) {
     },
     recommendationEvidenceAudit: {
       create: vi.fn(async () => ({})),
+      createMany: vi.fn(
+        async ({ data }: { data: Array<Record<string, unknown>> }) => ({
+          count: data.length,
+        }),
+      ),
+    },
+    recommendationPlaybackTransportReplayReceipt: {
       createMany: vi.fn(
         async ({ data }: { data: Array<Record<string, unknown>> }) => ({
           count: data.length,
@@ -332,6 +340,18 @@ describe("RecommendationPlaybackService", () => {
         data: [expect.objectContaining({ kind: "REPLAY" })],
       },
     )
+    expect(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          episodeId: "episode-1",
+          eventId: replay.eventId,
+          payloadDigest: await service.digest(replay),
+          replayOrdinal: 1,
+        }),
+      ],
+    })
     expect(tx.recommendationPlaybackFact.createMany).toHaveBeenCalledOnce()
     expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenNthCalledWith(
       2,
@@ -586,6 +606,18 @@ describe("RecommendationPlaybackService", () => {
         expect.objectContaining({
           kind: "REPLAY",
           reasonCode: "playback_transport_replay",
+        }),
+      ],
+    })
+    expect(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          episodeId: "episode-1",
+          eventId: "start-1",
+          payloadDigest: digest,
+          replayOrdinal: 1,
         }),
       ],
     })

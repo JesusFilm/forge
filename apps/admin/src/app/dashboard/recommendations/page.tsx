@@ -31,6 +31,7 @@ import {
 import {
   ExperimentEvaluation,
   ProfileShadowEvaluation,
+  ProfileEligibilityReconciliation,
   PromotionDecision,
 } from "./recommendation-evaluation-sections"
 
@@ -142,6 +143,7 @@ export default async function RecommendationsPage({
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />
       <ExperimentEvaluation overview={overview} />
       <ProfileShadowEvaluation overview={overview} />
+      <ProfileEligibilityReconciliation overview={overview} />
       <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
       <OperationalTruth overview={overview} />

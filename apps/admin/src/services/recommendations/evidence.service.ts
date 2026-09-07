@@ -69,6 +69,7 @@ type EvidenceDependencies = {
     privacyGeneration: number
     evidenceWatermark: Date
   }) => Promise<unknown>
+  classifySelection?: (selectionId: string) => Promise<unknown>
 }
 
 export type RecommendationEvidenceReceipt = {
@@ -392,25 +393,45 @@ export class RecommendationEvidenceService {
       return { receipts, reconciledSelection }
     })
     if (result.reconciledSelection) {
-      const activeProfile = await resolveActiveRecommendationProfileLink(
-        this.deps.prisma,
-        { sessionDigest: item.request.sessionDigest, now },
-      )
-      if (activeProfile) {
-        void this.deps
-          .dispatchProfileFeedback?.({
-            sessionDigest: item.request.sessionDigest,
-            profileId: activeProfile.profileId,
-            privacyGeneration: activeProfile.privacyGeneration,
-            evidenceWatermark: now,
-          })
-          .catch(() => {
-            // Evidence acknowledgement and navigation remain fail-open when
-            // the independently durable projection workflow is unavailable.
-          })
-      }
+      void this.classifyAndDispatchSelectionFeedback({
+        itemId: item.id,
+        sessionDigest: item.request.sessionDigest,
+        evidenceWatermark: now,
+      })
     }
     return result.receipts
+  }
+
+  private async classifyAndDispatchSelectionFeedback(input: {
+    itemId: string
+    sessionDigest: string
+    evidenceWatermark: Date
+  }): Promise<void> {
+    try {
+      if (this.deps.classifySelection) {
+        const selection =
+          await this.deps.prisma.recommendationSelection.findUnique({
+            where: { itemId: input.itemId },
+            select: { id: true },
+          })
+        if (!selection) return
+        await this.deps.classifySelection(selection.id)
+      }
+      const activeProfile = await resolveActiveRecommendationProfileLink(
+        this.deps.prisma,
+        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
+      )
+      if (!activeProfile) return
+      await this.deps.dispatchProfileFeedback?.({
+        sessionDigest: input.sessionDigest,
+        profileId: activeProfile.profileId,
+        privacyGeneration: activeProfile.privacyGeneration,
+        evidenceWatermark: input.evidenceWatermark,
+      })
+    } catch {
+      // Evidence acknowledgement remains fail-open. Durable reconciliation
+      // will retry classification and replacement projection.
+    }
   }
 
   private async recordCommittedRejection(
@@ -441,6 +462,13 @@ export function createRecommendationEvidenceService(
       const { dispatchRecommendationProfileFeedback } =
         await import("./profiles/job")
       return dispatchRecommendationProfileFeedback(input)
+    },
+    classifySelection: async (selectionId) => {
+      const { createRecommendationIntegrityService } =
+        await import("./integrity.service")
+      return createRecommendationIntegrityService(prisma).classifySelection(
+        selectionId,
+      )
     },
   })
 }
