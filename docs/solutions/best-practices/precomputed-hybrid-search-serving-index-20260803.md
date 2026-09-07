@@ -233,6 +233,15 @@ collection-write and deletion authority out of the public traffic service. A
 dedicated worker may hold the key while publication remains disabled so the
 rollout control stays independent from credential provisioning.
 
+Railway project-level variables can inject reader credentials into the worker
+even when they were intended only for traffic-serving replicas. Strip
+`TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` from the dedicated worker's
+build, migration, and start commands before any Admin module loads; retain only
+`TYPESENSE_OPERATOR_API_KEY` there. Otherwise a legacy shared reader/operator
+value trips the fail-closed disjointness assertion during build or
+instrumentation loading, and the disabled-by-default publisher prevents the
+worker service from deploying at all.
+
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after
 candidate profile resolution but before lease acquisition reaches PostgreSQL;

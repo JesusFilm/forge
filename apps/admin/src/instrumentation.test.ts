@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
@@ -486,5 +488,32 @@ describe("workflow instrumentation", () => {
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
+  })
+})
+
+describe("Admin worker Railway credential isolation", () => {
+  it("removes inherited Typesense reader credentials from every worker phase", () => {
+    const config = readFileSync(
+      fileURLToPath(new URL("../railway.worker.toml", import.meta.url)),
+      "utf8",
+    )
+
+    for (const command of [
+      "buildCommand",
+      "preDeployCommand",
+      "startCommand",
+    ]) {
+      const value = config.match(
+        new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
+      )?.[1]
+
+      expect(value, `${command} must exist`).toBeDefined()
+      expect(value).toMatch(
+        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && /,
+      )
+      expect(value).not.toMatch(
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+      )
+    }
   })
 })

@@ -8,6 +8,9 @@
 # Keep WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=false until incremental
 # publication is ready to roll out. TYPESENSE_OPERATOR_API_KEY belongs on this
 # worker service only and must never be shared with admin web replicas.
+# Railway project variables can still inject the reader credentials into every
+# service. Remove them from every worker command before Admin loads its
+# fail-closed reader/operator disjointness check.
 #
 # Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
 # service variables are present during Railpack/mise build setup, before
@@ -15,7 +18,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
+buildCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && pnpm --filter @forge/admin datadog:sourcemaps"
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
@@ -26,8 +29,8 @@ watchPatterns = [
 ]
 
 [deploy]
-preDeployCommand = "pnpm --filter @forge/admin db:migrate:deploy"
-startCommand = "cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
+preDeployCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && pnpm --filter @forge/admin db:migrate:deploy"
+startCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

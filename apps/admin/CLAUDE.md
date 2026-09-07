@@ -1223,7 +1223,11 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   operator key; the legacy key is never publication authority. Production
   Admin web startup rejects an injected operator key; the credential is valid
   only on the dedicated Postgres worker, even while incremental publication is
-  still disabled for a staged rollout.
+  still disabled for a staged rollout. Railway project-level variables may
+  inject reader keys into every service, so `railway.worker.toml` explicitly
+  unsets `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` before the worker's
+  build, migration, and runtime commands load Admin's fail-closed credential
+  checks. The operator key remains available to the worker.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
