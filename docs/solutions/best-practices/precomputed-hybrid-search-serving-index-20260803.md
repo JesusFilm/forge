@@ -273,6 +273,16 @@ cooperating publishers and rebuilds, but it cannot prevent an out-of-band
 Typesense operator from moving an alias during the external write. If the alias
 changed, leave the event pending and do not advance the projection revision.
 
+An external JSONL mutation may apply some or all documents before its response
+or the later database completion fails. Once the first upsert begins, treat any
+subsequent error as potentially visible partial publication. While still
+holding the publication lock, delete the union of the event's current and stale
+document ids and independently verify their absence before releasing the event
+for retry. This deliberately prefers a temporary transcript-search gap over a
+fail-open `publiclyVisible` document when canonical publication state drifted
+during readback. If compensating cleanup also fails, surface both failures and
+never advance the durable projection or complete the event.
+
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate
 eviction after rejection (`apps/admin/src/services/index.ts:101-133`). The

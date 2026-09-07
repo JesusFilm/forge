@@ -826,77 +826,113 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
       const batch = await claimNextTranscriptPublicationBatch(prisma, now)
       if (!batch) return { status: "idle" as const }
       claimedBatch = batch
-      if (input.generations) {
-        await input.generations.assertCurrentPublicationAllowed({
-          rebuildTranscripts: false,
-        })
-      }
-      const profile = await freezeCurrentWatchSearchProfile(input.typesense)
-      const transcriptCollection = profile.binding.transcript
-      assertIncrementalPublicationIdentity(
-        await loadCurrentWatchSearchTranscriptProjection(prisma),
-        {
-          transcriptCollection,
-          contentEmbeddingContractId: batch.contentEmbeddingContractId,
-          transcriptChunkingVersion: batch.transcriptChunkingVersion,
-        },
-      )
-      const canonical = await loadCanonicalTranscriptSnapshot(prisma, batch)
-      await upsertCurrentTranscriptDocuments(
-        input.typesense,
-        transcriptCollection,
-        canonical.documents,
-      )
-      await deleteStaleTranscriptDocuments(
-        input.typesense,
-        transcriptCollection,
-        batch.staleDocumentIds,
-      )
-      const projected = await readBackTranscriptDocuments(
-        input.typesense,
-        transcriptCollection,
-        canonical.documents.map((document) => document.id),
-      )
-      await assertStaleDocumentsRemoved(
-        input.typesense,
-        transcriptCollection,
-        batch.staleDocumentIds,
-      )
-      const verifiedProfile = await freezeCurrentWatchSearchProfile(
-        input.typesense,
-      )
-      if (verifiedProfile.binding.transcript !== transcriptCollection) {
-        throw new WatchSearchTranscriptPublicationError(
-          "current transcript alias changed during publication",
+      let transcriptCollection: string | null = null
+      let typesenseMutationStarted = false
+      try {
+        if (input.generations) {
+          await input.generations.assertCurrentPublicationAllowed({
+            rebuildTranscripts: false,
+          })
+        }
+        const profile = await freezeCurrentWatchSearchProfile(input.typesense)
+        transcriptCollection = profile.binding.transcript
+        assertIncrementalPublicationIdentity(
+          await loadCurrentWatchSearchTranscriptProjection(prisma),
+          {
+            transcriptCollection,
+            contentEmbeddingContractId: batch.contentEmbeddingContractId,
+            transcriptChunkingVersion: batch.transcriptChunkingVersion,
+          },
         )
-      }
-      const canonicalFingerprint = sha256(
-        canonical.documents.map(normalizeTranscriptDocument),
-      )
-      const projectedFingerprint = sha256(projected)
-      if (canonicalFingerprint !== projectedFingerprint) {
-        throw new WatchSearchTranscriptPublicationError(
-          "canonical transcript fingerprint does not match Typesense readback",
-        )
-      }
-      const projection = await completeTranscriptPublicationBatch(
-        prisma,
-        batch,
-        {
+        const canonical = await loadCanonicalTranscriptSnapshot(prisma, batch)
+        // Import endpoints may apply a prefix of a JSONL request before
+        // returning an error. From this point onward, every failure must
+        // therefore fail closed by removing the complete affected transcript
+        // set while the shared publication lock is still held.
+        typesenseMutationStarted = true
+        await upsertCurrentTranscriptDocuments(
+          input.typesense,
           transcriptCollection,
-          contentEmbeddingContractId: batch.contentEmbeddingContractId,
-          transcriptChunkingVersion: batch.transcriptChunkingVersion,
-          projectedFingerprint,
-        },
-        new Date(),
-      )
-      return {
-        status: "published" as const,
-        transcriptId: batch.transcriptId,
-        sourceGeneration: canonical.sourceGeneration,
-        projectionRevision: projection.projectionRevision,
-        transcriptCollection,
-        documentCount: canonical.documents.length,
+          canonical.documents,
+        )
+        await deleteStaleTranscriptDocuments(
+          input.typesense,
+          transcriptCollection,
+          batch.staleDocumentIds,
+        )
+        const projected = await readBackTranscriptDocuments(
+          input.typesense,
+          transcriptCollection,
+          canonical.documents.map((document) => document.id),
+        )
+        await assertStaleDocumentsRemoved(
+          input.typesense,
+          transcriptCollection,
+          batch.staleDocumentIds,
+        )
+        const verifiedProfile = await freezeCurrentWatchSearchProfile(
+          input.typesense,
+        )
+        if (verifiedProfile.binding.transcript !== transcriptCollection) {
+          throw new WatchSearchTranscriptPublicationError(
+            "current transcript alias changed during publication",
+          )
+        }
+        const canonicalFingerprint = sha256(
+          canonical.documents.map(normalizeTranscriptDocument),
+        )
+        const projectedFingerprint = sha256(projected)
+        if (canonicalFingerprint !== projectedFingerprint) {
+          throw new WatchSearchTranscriptPublicationError(
+            "canonical transcript fingerprint does not match Typesense readback",
+          )
+        }
+        const projection = await completeTranscriptPublicationBatch(
+          prisma,
+          batch,
+          {
+            transcriptCollection,
+            contentEmbeddingContractId: batch.contentEmbeddingContractId,
+            transcriptChunkingVersion: batch.transcriptChunkingVersion,
+            projectedFingerprint,
+          },
+          new Date(),
+        )
+        return {
+          status: "published" as const,
+          transcriptId: batch.transcriptId,
+          sourceGeneration: canonical.sourceGeneration,
+          projectionRevision: projection.projectionRevision,
+          transcriptCollection,
+          documentCount: canonical.documents.length,
+        }
+      } catch (error) {
+        if (typesenseMutationStarted && transcriptCollection) {
+          const affectedDocumentIds = [
+            ...new Set([
+              ...batch.currentDocumentIds,
+              ...batch.staleDocumentIds,
+            ]),
+          ]
+          try {
+            await deleteStaleTranscriptDocuments(
+              input.typesense,
+              transcriptCollection,
+              affectedDocumentIds,
+            )
+            await assertStaleDocumentsRemoved(
+              input.typesense,
+              transcriptCollection,
+              affectedDocumentIds,
+            )
+          } catch (cleanupError) {
+            throw new AggregateError(
+              [error, cleanupError],
+              "transcript publication failed and fail-closed Typesense cleanup did not complete",
+            )
+          }
+        }
+        throw error
       }
     })
     return result

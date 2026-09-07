@@ -1949,6 +1949,25 @@ suite("current transcript publication into Watch Search", () => {
         where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
       }),
     ).toBeNull()
+    const afterFailure = await searchService.search({
+      query: "hope fellowship",
+      targetLanguageSlug: "english",
+      queryLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      limit: 5,
+    })
+    expect(afterFailure.results).toEqual([])
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { select: { currentDocumentIds: true } },
+      )
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
   }, 180_000)
 
   it("does not claim an event when the caller's publication lock database is busy", async () => {
