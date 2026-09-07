@@ -215,6 +215,15 @@ candidate leases or a serving candidate
 Candidate runtime, comparison, and qualification require a dedicated search
 key, while publication and deletion use a separate operator key.
 
+Treat winning the advisory lock as the start of lease admission, not merely as
+permission to persist a profile resolved earlier. Publication can finish after
+candidate profile resolution but before lease acquisition reaches PostgreSQL;
+after acquiring the lock, re-freeze the current aliases and re-read the durable
+transcript projection before inserting the lease. Lease renewal must likewise
+read the current time only after it acquires the lock. Otherwise a request that
+entered before its deadline can resurrect an expired lease after publication
+has already advanced the projection.
+
 For a durable outbox publisher, acquire that session advisory lock before
 claiming an event and retain it through external write, independent readback,
 and fenced database completion. Otherwise a replica that loses the global lock

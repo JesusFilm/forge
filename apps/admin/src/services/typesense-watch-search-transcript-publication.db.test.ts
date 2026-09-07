@@ -20,7 +20,10 @@ import {
   ingestTranscriptEmbeddings,
 } from "./transcript-embedding-ingest.service"
 import { TypesenseClient } from "./typesense-client"
-import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
+import {
+  CandidateGenerationCompatibilityError,
+  TypesenseWatchSearchCandidateGenerationService,
+} from "./typesense-watch-search-candidate-generation"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import {
   publishOneCurrentTranscriptToWatchSearch,
@@ -535,6 +538,7 @@ suite("current transcript publication into Watch Search", () => {
         watch_search_current_transcript_projection,
         watch_search_candidate_pointer,
         watch_search_candidate_lease,
+        watch_search_candidate_generation,
         video_transcript_chunk,
         video_transcript,
         video_dub,
@@ -1030,6 +1034,101 @@ suite("current transcript publication into Watch Search", () => {
       leaseExpiresAt: null,
       completedAt: expect.any(Date),
     })
+  }, 180_000)
+
+  it("refuses a stale candidate lease when publication wins the lock after profile resolution", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const firstPublication = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(firstPublication).toMatchObject({
+      status: "published",
+      projectionRevision: 1n,
+    })
+
+    const catalogSchema = watchCatalogCollectionSchema("fixture")
+    const availabilitySchema = watchAvailabilityCollectionSchema("fixture")
+    const lexicalSchema = watchLexicalCollectionSchema("fixture")
+    const transcriptSchema = watchTranscriptCollectionSchema("fixture")
+    await prisma.watchSearchCandidateGeneration.create({
+      data: {
+        id: "candidate-before-publication-race",
+        state: "READY",
+        version: 1,
+        indexContractRevision: "watch-search-index-v1",
+        contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 1n,
+        sourceEpoch: "fixture-source",
+        sourceDigests: { catalog: "sha256:fixture" },
+        catalogCollection: catalogSchema.name,
+        availabilityCollection: availabilitySchema.name,
+        lexicalCollection: lexicalSchema.name,
+        transcriptCollection: transcriptSchema.name,
+        catalogFields: catalogSchema.fields,
+        availabilityFields: availabilitySchema.fields,
+        lexicalFields: lexicalSchema.fields,
+        transcriptFields: transcriptSchema.fields,
+        ownedCollections: [
+          catalogSchema.name,
+          availabilitySchema.name,
+          lexicalSchema.name,
+        ],
+        sharedCollections: [transcriptSchema.name],
+        validatedAt: new Date(),
+      },
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "replacement-run",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [{ text: "Hope after publication", embedding, tokenCount: 3 }],
+      }),
+    )
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      projectionRevision: 2n,
+    })
+
+    await expect(
+      generations.acquireLease({
+        resourceKey: "candidate-publication-race",
+        kind: "EVALUATION",
+        holderToken: "stale-profile-holder",
+        ttlMs: 30_000,
+        generationId: "candidate-before-publication-race",
+        indexContractRevision: "watch-search-index-v1",
+        transcriptCollection: transcriptSchema.name,
+        contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 1n,
+        currentBindings: [
+          catalogSchema.name,
+          availabilitySchema.name,
+          lexicalSchema.name,
+          transcriptSchema.name,
+        ],
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(await prisma.watchSearchCandidateLease.count()).toBe(0)
   }, 180_000)
 
   it("advances the stored transcript projection when a rebuild rotates the active transcript collection", async () => {

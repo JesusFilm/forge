@@ -583,6 +583,26 @@ export class TypesenseWatchSearchCandidateGenerationService {
     private readonly resolveCurrentTranscriptProjection: CurrentTranscriptProjectionResolver = resolveCurrentWatchSearchTranscriptProjection,
   ) {}
 
+  private async loadCurrentTranscriptProjection(
+    prisma: Pick<
+      PrismaClient,
+      "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+    >,
+    currentProfile?: Awaited<
+      ReturnType<typeof freezeCurrentWatchSearchProfile>
+    >,
+  ) {
+    return this.resolveCurrentTranscriptProjection ===
+      resolveCurrentWatchSearchTranscriptProjection
+      ? resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+          prisma,
+          ...(currentProfile
+            ? { currentProfile }
+            : { typesense: this.typesense }),
+        })
+      : this.resolveCurrentTranscriptProjection(prisma)
+  }
+
   private async assertExactCurrentTranscriptProjection(input: {
     generation: StoredGeneration
     currentBindings?: readonly string[]
@@ -601,22 +621,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
       )
     }
 
-    const currentProjection =
-      this.resolveCurrentTranscriptProjection ===
-      resolveCurrentWatchSearchTranscriptProjection
-        ? await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
-            prisma: (input.prisma ?? this.prisma) as Pick<
-              PrismaClient,
-              "watchSearchCurrentTranscriptProjection" | "$queryRaw"
-            >,
-            currentProfile,
-          })
-        : await this.resolveCurrentTranscriptProjection(
-            (input.prisma ?? this.prisma) as Pick<
-              PrismaClient,
-              "watchSearchCurrentTranscriptProjection"
-            >,
-          )
+    const currentProjection = await this.loadCurrentTranscriptProjection(
+      (input.prisma ?? this.prisma) as Pick<
+        PrismaClient,
+        "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+      >,
+      currentProfile,
+    )
     if (
       input.generation.transcriptCollection !==
         currentProfile.binding.transcript ||
@@ -1108,6 +1119,15 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
+        // Profile resolution happens before lease admission. Publication may
+        // complete after that read but before this transaction wins the shared
+        // advisory lock, so re-freeze the aliases and durable projection while
+        // the lock is held before binding evaluation evidence to the generation.
+        await this.assertExactCurrentTranscriptProjection({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
 
         const data = {
           kind: input.kind,
@@ -1153,7 +1173,6 @@ export class TypesenseWatchSearchCandidateGenerationService {
     holderToken: string
     ttlMs: number
   }): Promise<boolean> {
-    const now = this.now()
     const resourceKey = requiredString(input.resourceKey, "lease resource key")
     const holderToken = requiredString(input.holderToken, "lease holder token")
     return this.prisma.$transaction(
@@ -1164,6 +1183,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
           ) AS acquired
         `
         if (lock[0]?.acquired !== true) return false
+        // Read time only after winning the publication lock. A renewal may
+        // have entered this transaction before its old deadline while a
+        // publisher completed after that deadline; using the earlier time
+        // would resurrect a lease over the newly published projection.
+        const now = this.now()
         const update = await tx.watchSearchCandidateLease.updateMany({
           where: {
             resourceKey,

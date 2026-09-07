@@ -281,10 +281,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
       transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
-      currentBindings: [
-        "watch_catalog_current",
-        "watch_search_transcripts_active",
-      ],
+      currentBindings,
     }
 
     await expect(service.acquireLease(identity)).resolves.toMatchObject({
@@ -342,10 +339,37 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
         transcriptChunkingVersion: "mastra-v1",
         transcriptProjectionRevision: 17n,
-        currentBindings: ["watch_catalog_current"],
+        currentBindings,
       }),
     ).resolves.toBeNull()
     expect(db.leases.size).toBe(0)
+  })
+
+  it("refuses lease admission when publication advanced after profile resolution", async () => {
+    const stale = createCandidateGenerationTestHarness({
+      currentTranscriptProjection: {
+        ...currentTranscriptProjection,
+        projectionRevision: 18n,
+      },
+    })
+    await stale.ready()
+
+    await expect(
+      stale.service.acquireLease({
+        resourceKey: "watch-search-candidate-comparison",
+        kind: "COMPARISON",
+        holderToken: "holder-a",
+        ttlMs: 30_000,
+        generationId: "candidate-1",
+        indexContractRevision: "admin-app-sha-1",
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 17n,
+        currentBindings,
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+    expect(stale.db.leases.size).toBe(0)
   })
 
   it("refuses lease renewal while current publication owns the lock", async () => {
@@ -361,7 +385,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
       transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: 17n,
-      currentBindings: ["watch_catalog_current"],
+      currentBindings,
     }
     await service.acquireLease(lease)
     const expiresAtBefore = db.leases.get(lease.resourceKey)?.expiresAt
@@ -375,6 +399,40 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       }),
     ).resolves.toBe(false)
     expect(db.leases.get(lease.resourceKey)?.expiresAt).toEqual(expiresAtBefore)
+  })
+
+  it("does not resurrect a lease that expires before renewal wins the publication lock", async () => {
+    await ready()
+    const lease = {
+      resourceKey: "watch-search-candidate-comparison",
+      kind: "COMPARISON" as const,
+      holderToken: "holder-a",
+      ttlMs: 30_000,
+      generationId: "candidate-1",
+      indexContractRevision: "admin-app-sha-1",
+      transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 17n,
+      currentBindings,
+    }
+    await service.acquireLease(lease)
+    setNow(new Date("2026-08-10T00:00:29.000Z"))
+    db.prisma.$queryRaw.mockImplementationOnce(async () => {
+      setNow(new Date("2026-08-10T00:00:31.000Z"))
+      return [{ acquired: true }]
+    })
+
+    await expect(
+      service.renewLease({
+        resourceKey: lease.resourceKey,
+        holderToken: lease.holderToken,
+        ttlMs: 60_000,
+      }),
+    ).resolves.toBe(false)
+    expect(db.leases.get(lease.resourceKey)?.expiresAt).toEqual(
+      new Date("2026-08-10T00:00:30.000Z"),
+    )
   })
 
   it("blocks current publication for live leases until they expire", async () => {
