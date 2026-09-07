@@ -742,6 +742,7 @@ async function loadTranscriptBatch(
       (
         v.deleted_at IS NULL
         AND v.no_index = false
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
         AND EXISTS (
           SELECT 1 FROM video_locale vl
           WHERE vl.video_id = v.id

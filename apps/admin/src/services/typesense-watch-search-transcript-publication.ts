@@ -529,6 +529,7 @@ async function loadCanonicalTranscriptSnapshot(
         (
           v.deleted_at IS NULL
           AND v.no_index = FALSE
+          AND NOT ('watch' = ANY(v.restrict_view_platforms))
           AND EXISTS (
             SELECT 1
             FROM video_locale vl

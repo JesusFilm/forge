@@ -1162,6 +1162,56 @@ suite("current transcript publication into Watch Search", () => {
     })
   }, 180_000)
 
+  it("keeps a newly published transcript hidden when Watch restriction changes ahead of the catalog projection", async () => {
+    // The controlled Typesense catalog document was published in beforeEach.
+    // Leave it in place to model catalog/transcript projection skew, then make
+    // PostgreSQL's current visibility decision more restrictive before ingest.
+    await prisma.video.update({
+      where: { id: "video-1" },
+      data: { restrictViewPlatforms: ["watch"] },
+    })
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "restricted-create-run" }),
+    )
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+    })
+    if (published.status !== "published") {
+      throw new Error("expected a published transcript batch")
+    }
+
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { select: { currentDocumentIds: true } },
+      )
+    await expect(
+      typesense.getDocument<{ publiclyVisible: boolean }>(
+        published.transcriptCollection,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toMatchObject({ publiclyVisible: false })
+
+    const result = await searchService.search({
+      query: "hope fellowship",
+      targetLanguageSlug: "english",
+      queryLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      limit: 5,
+    })
+    expect(result.results).toEqual([])
+  }, 180_000)
+
   it("reconciles a lost PostgreSQL completion acknowledgement without deleting the committed publication", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

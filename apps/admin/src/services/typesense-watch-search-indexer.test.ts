@@ -513,6 +513,9 @@ describe("Typesense Watch Search indexer", () => {
     )
     expect(transcriptSql).toBeDefined()
     expect(transcriptSql).toContain('AS "publiclyVisible"')
+    expect(transcriptSql).toContain(
+      "AND NOT ('watch' = ANY(v.restrict_view_platforms))",
+    )
     expect(transcriptSql).not.toMatch(
       /JOIN video v\s+ON v\.id = vt\.video_id\s+AND v\.deleted_at/,
     )

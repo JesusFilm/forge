@@ -1,7 +1,7 @@
 ---
 title: A new shared visibility predicate must be audited against every duplicate hand-rolled block, not just the call sites the PR already touched
 date: 2026-08-10
-last_updated: 2026-08-13
+last_updated: 2026-09-07
 problem_type: best_practice
 category: best-practices
 component: apps_admin
@@ -155,6 +155,25 @@ The instance extends the law beyond shared predicates: any repeated FIX
 (a prop, a style, a guard) applied to some instances of a structural shape
 leaves the untouched siblings silently stale — grep the shape before
 claiming the area covered.
+
+## Worked instance (2026-09-07): incremental transcript visibility
+
+The gap recurred in Watch Search's transcript projection. Catalog indexing
+correctly excluded videos whose `restrict_view_platforms` contained `watch`,
+but both the full transcript loader and the new incremental transcript
+publisher independently computed a `publiclyVisible` boolean from deletion,
+`no_index`, and published locale state without restating the Watch restriction.
+The incremental path made the omission observable: a restriction could change
+after the catalog alias was built, leaving a stale catalog document that a new
+public transcript hit could still hydrate into a result.
+
+The fix added the raw-SQL restriction to both transcript projection paths. Its
+real-PostgreSQL seam test deliberately keeps the old Typesense catalog document
+while changing the canonical video restriction before ingest, then proves the
+published transcript document is private and the real Watch Search reader
+returns no result. This extends the audit rule across asynchronously refreshed
+projections: never assume another projection's older visibility decision will
+contain a newly published row.
 
 ## Cross-references
 
