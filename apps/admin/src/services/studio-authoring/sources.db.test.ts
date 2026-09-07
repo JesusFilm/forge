@@ -41,8 +41,12 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
     const parsed = new URL(url!)
     if (
       parsed.hostname !== "127.0.0.1" ||
-      parsed.port !== "55455" ||
-      parsed.pathname !== "/forge_studio_455_test"
+      !(
+        (parsed.port === "55455" &&
+          parsed.pathname === "/forge_studio_455_test") ||
+        (parsed.port === "55459" &&
+          parsed.pathname === "/forge_studio_459_test")
+      )
     )
       throw new SourceHarnessError("Only feat-455 DB allowed")
     db = new PrismaClient({ datasources: { db: { url } } })

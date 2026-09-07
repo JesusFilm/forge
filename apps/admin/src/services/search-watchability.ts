@@ -10,7 +10,11 @@ import { isEditorOrAdmin } from "@/auth/principal"
 // all three." EDITOR/ADMIN callers always bypass this — the dashboard needs
 // to keep showing restricted videos so editors can review/manage them.
 export function notRestrictedFromWatchWhere(): Prisma.VideoWhereInput {
-  return { NOT: { restrictViewPlatforms: { has: "watch" } } }
+  // Catalog registration is staging only. Feat-460 owns admitting a release.
+  return {
+    NOT: { restrictViewPlatforms: { has: "watch" } },
+    studioRelease: null,
+  }
 }
 
 export function watchVisibilityWhere(

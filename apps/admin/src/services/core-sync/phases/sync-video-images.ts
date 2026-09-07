@@ -69,7 +69,11 @@ export async function syncVideoImages({
   const videos = await prisma.video.findMany({
     select: { id: true, coreId: true },
   })
-  const videoMap = new Map(videos.map((video) => [video.coreId, video.id]))
+  const videoMap = new Map(
+    videos.flatMap((video) =>
+      video.coreId == null ? [] : [[video.coreId, video.id] as const],
+    ),
+  )
 
   let offset = 0
   let firstPageWasEmpty = false

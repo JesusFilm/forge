@@ -75,7 +75,7 @@ type ExistingVideoRelation = {
   childId: string
   order: number | null
   child?: {
-    coreId: string
+    coreId: string | null
     slug: string
   }
 }
@@ -147,7 +147,7 @@ export type ExtraAdminRelation = {
   parentCoreId: string
   parentSlug: string
   childId: string
-  childCoreId: string
+  childCoreId: string | null
   childSlug: string
   oldOrder: number | null
 }
@@ -359,7 +359,7 @@ export async function selectAdminParentVideos(
   args: BackfillVideoRelationOrderArgs,
 ): Promise<AdminVideoTarget[]> {
   const explicitTarget = args.slug != null || args.coreId != null
-  return prisma.video.findMany({
+  const rows = await prisma.video.findMany({
     where: {
       source: "CORE",
       deletedAt: null,
@@ -371,6 +371,9 @@ export async function selectAdminParentVideos(
     orderBy: { updatedAt: "desc" },
     take: args.fullCatalog ? undefined : (args.limit ?? 1),
   })
+  return rows.flatMap((row) =>
+    row.coreId == null ? [] : [{ ...row, coreId: row.coreId }],
+  )
 }
 
 async function fetchCoreRelationOrders(
@@ -582,7 +585,12 @@ export function buildRelationOrderPlan({
     const parent = parentById.get(relation.parentId)
     if (!parent || !relation.child) continue
     const coreChildIds = coreChildIdsByParentCoreId.get(parent.coreId)
-    if (!coreChildIds || coreChildIds.has(relation.child.coreId)) continue
+    if (
+      !coreChildIds ||
+      (relation.child.coreId !== null &&
+        coreChildIds.has(relation.child.coreId))
+    )
+      continue
     plan.extraAdminRelations.push({
       relationId: relation.id,
       parentId: parent.id,
@@ -636,7 +644,9 @@ async function resolveBatchPlan(
   return buildRelationOrderPlan({
     selectedParents,
     coreVideos,
-    adminChildren,
+    adminChildren: adminChildren.flatMap((row) =>
+      row.coreId == null ? [] : [{ ...row, coreId: row.coreId }],
+    ),
     existingRelations,
   })
 }

@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Generated video catalog identities and provenance"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-07"
 duration: 4
 depends_on:

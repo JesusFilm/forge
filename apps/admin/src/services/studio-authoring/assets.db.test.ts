@@ -27,8 +27,12 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     const parsed = new URL(url!)
     if (
       parsed.hostname !== "127.0.0.1" ||
-      parsed.port !== "55455" ||
-      parsed.pathname !== "/forge_studio_455_test"
+      !(
+        (parsed.port === "55455" &&
+          parsed.pathname === "/forge_studio_455_test") ||
+        (parsed.port === "55459" &&
+          parsed.pathname === "/forge_studio_459_test")
+      )
     )
       throw new AssetHarnessError(
         "Only feat-455's disposable database is allowed",

@@ -589,3 +589,26 @@ describe("resolveWatchHome", () => {
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("es")
   })
 })
+
+it("keeps a generated child card's Forge identity without inventing a Core ID", async () => {
+  const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+  const model = buildWatchHomeModelFromVideos({
+    locale: "en",
+    videos: [
+      makeVideo({
+        coreId: "11_Advent",
+        children: [
+          {
+            child: makeChild({
+              coreId: null,
+              documentId: "generated-child",
+              slug: "generated-child",
+            }),
+          },
+        ],
+      }),
+    ],
+  })
+  const cards = model.sections.flatMap((section) => section.cards)
+  expect(cards.find((card) => card.id === "generated-child")?.coreId).toBeNull()
+})

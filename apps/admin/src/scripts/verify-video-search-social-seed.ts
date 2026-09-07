@@ -16,7 +16,7 @@ type Candidate = {
   searchTitle: string | null
   searchDescription: string | null
   socialImageAssetId: string | null
-  video: { coreId: string; slug: string }
+  video: { coreId: string | null; slug: string }
 }
 
 export function verifyJesusSearchSocialSeed(candidates: readonly Candidate[]) {

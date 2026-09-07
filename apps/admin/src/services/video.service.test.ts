@@ -496,7 +496,10 @@ describe("VideoService", () => {
       expect(call.where).toEqual({
         AND: [
           { deletedAt: null },
-          { NOT: { restrictViewPlatforms: { has: "watch" } } },
+          {
+            NOT: { restrictViewPlatforms: { has: "watch" } },
+            studioRelease: null,
+          },
         ],
       })
     })
@@ -1497,6 +1500,7 @@ describe("VideoService", () => {
         id: "v-1",
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
+        studioRelease: null,
       })
     })
   })
@@ -1519,6 +1523,7 @@ describe("VideoService", () => {
         slug: "jf",
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
+        studioRelease: null,
       })
     })
   })
@@ -1551,6 +1556,7 @@ describe("VideoService", () => {
       expect(where.video).toEqual({
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
+        studioRelease: null,
       })
     })
 
@@ -2060,6 +2066,7 @@ describe("VideoService", () => {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
           NOT: { restrictViewPlatforms: { has: "watch" } },
+          studioRelease: null,
         },
       })
     })
@@ -2090,6 +2097,7 @@ describe("VideoService", () => {
           coreId: { in: ["core-1"] },
           deletedAt: null,
           NOT: { restrictViewPlatforms: { has: "watch" } },
+          studioRelease: null,
         },
       })
     })
@@ -2482,6 +2490,7 @@ describe("VideoService", () => {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
         NOT: { restrictViewPlatforms: { has: "watch" } },
+        studioRelease: null,
       })
     })
 
@@ -2571,6 +2580,7 @@ describe("VideoService", () => {
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
             NOT: { restrictViewPlatforms: { has: "watch" } },
+            studioRelease: null,
           },
         },
         distinct: ["videoId"],

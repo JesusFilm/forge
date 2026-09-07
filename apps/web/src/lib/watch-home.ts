@@ -94,7 +94,7 @@ export type WatchHomeMissingData = {
 export type WatchHomeCard = {
   id: string
   sourceId: string
-  coreId: string
+  coreId: string | null
   title: string
   label: string
   metaLabel: string | null
@@ -372,7 +372,7 @@ function normalizeCard(args: {
   languageSlug: string
   parent?: AdminHomeVideo | null
 }): WatchHomeCard | null {
-  if (!args.video.documentId || !args.video.coreId) return null
+  if (!args.video.documentId) return null
   const locale = args.video.locales?.[0] ?? null
   const selectedVariant =
     "preferredVariant" in args.video
@@ -388,13 +388,18 @@ function normalizeCard(args: {
   const dominantColor = adminImage?.dominantColor ?? null
   const imageUrl = sourceImageUrl
   const blurDataUrl =
-    imageBlurDataUrl ?? localWatchHomeBlurDataUrl(args.video.coreId)
+    imageBlurDataUrl ??
+    (args.video.coreId ? localWatchHomeBlurDataUrl(args.video.coreId) : null)
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
       : 0
-  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const title =
+    locale?.title ??
+    args.video.slug ??
+    args.video.coreId ??
+    args.video.documentId
   const href = buildHref({
     slug: args.video.slug ?? null,
     parentSlug: args.parent?.slug ?? null,
@@ -445,7 +450,7 @@ function normalizeCard(args: {
   return {
     id: args.video.documentId,
     sourceId: args.sourceId,
-    coreId: args.video.coreId,
+    coreId: args.video.coreId ?? null,
     title,
     label,
     metaLabel: buildMetaLabel({
@@ -631,11 +636,12 @@ function cardToCarouselSlide(
   card: WatchHomeCard,
 ): WatchHomeTvCarouselVideoSlide | null {
   if (!card.hls) return null
-  if (WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId)) return null
+  if (card.coreId && WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId))
+    return null
 
   return {
     kind: "video",
-    id: card.coreId,
+    id: card.coreId ?? card.id,
     title: card.title,
     label: card.label,
     href: card.href,

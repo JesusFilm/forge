@@ -89,9 +89,9 @@ async function bulkUpsertVideoEditions(
       "synced_at"  = EXCLUDED."synced_at",
       "updated_at" = EXCLUDED."updated_at",
       "deleted_at" = NULL
-    WHERE
+    WHERE "video_edition"."source" = 'core' AND (
       "video_edition"."deleted_at" IS NOT NULL
-      OR "video_edition"."name" IS DISTINCT FROM EXCLUDED."name"
+      OR "video_edition"."name" IS DISTINCT FROM EXCLUDED."name")
   `
 }
 

@@ -2099,7 +2099,7 @@ async function loadVideoRowSlice({
       key: video.id,
       title,
       description: localeRow?.description?.trim() || null,
-      id: video.coreId,
+      id: video.coreId ?? video.id,
       slug: video.slug,
       label: video.label ?? null,
       labelLabel: localizedVideoLabel(video.label ?? null, locale),

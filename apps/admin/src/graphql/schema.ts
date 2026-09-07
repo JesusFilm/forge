@@ -43,3 +43,5 @@ import "@/graphql/queries/sync-status"
 import "@/graphql/types/watch-setting"
 
 export const schema = builder.toSchema()
+
+import "./types/studio-catalog"

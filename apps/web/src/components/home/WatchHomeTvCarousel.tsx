@@ -98,7 +98,7 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
 
     return {
       kind: "video",
-      id: slide.coreId,
+      id: slide.coreId ?? slide.id,
       title: slide.title,
       label: slide.eyebrow || slide.label,
       href: slide.href,

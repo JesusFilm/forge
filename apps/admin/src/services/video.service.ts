@@ -160,7 +160,7 @@ export type WatchLanguageInventoryLanguage = {
 
 export type WatchLanguageInventoryItem = {
   id: string
-  coreId: string
+  coreId: string | null
   slug: string
   title: string
   description: string | null
@@ -213,7 +213,7 @@ export type WatchCollectionFeedPageInfo = {
 
 export type WatchCollectionFeedItem = {
   id: string
-  coreId: string
+  coreId: string | null
   title: string
   videoSlug: string
   languageSlug: string | null
@@ -243,7 +243,7 @@ type WatchCollectionFeedRow = {
   parentTitle: string
   parentDescription: string | null
   itemId: string
-  itemCoreId: string
+  itemCoreId: string | null
   itemSlug: string
   itemTitle: string
   itemLabel: string | null
@@ -1990,8 +1990,7 @@ export class VideoService {
     const pageSize = normalizeMapperCatalogPageSize(first)
     const afterId = decodeMapperCatalogCursor(after)
     await this.assertMapperCatalogCursorExists(afterId)
-    const cursorFilter =
-      afterId == null ? Prisma.empty : Prisma.sql`WHERE d.id > ${afterId}::text`
+    const cursorFilter = Prisma.sql`WHERE d.core_id IS NOT NULL AND EXISTS (SELECT 1 FROM video mapper_video WHERE mapper_video.id=d.video_id AND mapper_video.core_id IS NOT NULL) ${afterId == null ? Prisma.empty : Prisma.sql`AND d.id > ${afterId}::text`}`
     const rows = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL)
