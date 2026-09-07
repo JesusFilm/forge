@@ -3,7 +3,7 @@ id: "feat-460"
 title: "Provision a least-privilege RAG production reader"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-07"
 duration: 2
 depends_on: ["feat-425", "feat-432"]
@@ -72,3 +72,13 @@ create, and modify database objects and corpus rows, so a command selecting the
   `UPDATE`, and `DELETE` are rejected and leave no probe data or objects.
 - Run focused environment, provisioning, evaluation, dashboard, schema, lint,
   typecheck, dependency, and formatting checks.
+
+## Resolution
+
+Completed in [Forge PR #2180](https://github.com/JesusFilm/forge/pull/2180).
+
+Forge now provisions and verifies a dedicated PostgreSQL read group and login,
+requires its separate URL for production evaluation and dashboard reads, and
+keeps production role creation as a guarded manual Railway database operation.
+The local PostgreSQL 18 proof allowed `SELECT` and denied persistent and
+temporary DDL plus corpus `INSERT`, `UPDATE`, and `DELETE` without residue.
