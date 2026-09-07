@@ -1,7 +1,8 @@
-import { expo } from "@better-auth/expo"
+import { refuseUnverifiedConsumerLink } from "@/auth/account-linking-guard"
+import { mobileAwareExpoPlugin } from "@/auth/mobile-expo-plugin"
 import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { oauthProvider } from "@better-auth/oauth-provider"
-import { betterAuth } from "better-auth"
+import { betterAuth, type BetterAuthOptions } from "better-auth"
 import { APIError } from "better-auth/api"
 import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
@@ -158,18 +159,19 @@ const socialProviders = {
     : {}),
 }
 
-// Mobile's hosted-page sign-in (the only mobile login since feat-349): Auth
-// acts as OAuth client toward its own oauth-provider (self-RP), so any
-// hosted sign-in method ends in a real Better Auth session the Expo plugin
-// can hand back to the app.
+// Mobile's hosted-page sign-in (feat-349) makes Auth the OAuth client of its own
+// oauth-provider (self-RP), so every hosted method ends in a real session the
+// Expo plugin hands back. One expression for the provider AND the browser proxy.
+const mobileSelfRpClientId =
+  process.env.NODE_ENV === "production"
+    ? MOBILE_PRODUCTION_CLIENT_ID
+    : MOBILE_LOCAL_CLIENT_ID
+
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
   discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,
   requireIdTokenVerification: true,
-  clientId:
-    process.env.NODE_ENV === "production"
-      ? MOBILE_PRODUCTION_CLIENT_ID
-      : MOBILE_LOCAL_CLIENT_ID,
+  clientId: mobileSelfRpClientId,
   scopes: [...MOBILE_DEFAULT_SCOPES],
   redirectURI: `${getAuthBaseUrl()}/api/auth/callback/${JFP_MOBILE_PROVIDER_ID}`,
   pkce: true,
@@ -217,6 +219,41 @@ function firstPartyUserClaims(user: {
   }
 }
 
+// Typed explicitly: a second inline hook changed betterAuth's options
+// inference and broke the oauth-provider plugin's `init` return type.
+const databaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> = {
+  account: {
+    create: {
+      // Keeps 1.7's consumer-link guard that requireLocalEmailVerified
+      // switches off (account-linking-guard.ts). No endpoint context means
+      // no browser OAuth link is in flight, so nothing to refuse.
+      before: async (account, ctx) => {
+        const adapter = ctx?.context.internalAdapter
+        if (!adapter) return
+        await refuseUnverifiedConsumerLink(
+          { providerId: account.providerId, userId: account.userId },
+          {
+            consumerProviders: new Set(Object.keys(socialProviders)),
+            findUser: (userId) => adapter.findUserById(userId),
+            findAccounts: (userId) => adapter.findAccounts(userId),
+          },
+        )
+      },
+    },
+  },
+  session: {
+    create: {
+      before: async (session, ctx) => {
+        const clientKind = resolveSessionClientKind(
+          (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
+        )
+        if (!clientKind) return
+        return { data: { ...session, clientKind } }
+      },
+    },
+  },
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -232,6 +269,10 @@ export const auth = betterAuth({
       // okta and the jfp self-RP are internal identity assertions — jfp's
       // userinfo email IS the matched user row's own (unique) email.
       trustedProviders: ["okta", JFP_MOBILE_PROVIDER_ID],
+      // 1.7 defaults this to true: no provider links to a user whose LOCAL
+      // email is unverified, and no verification email exists here, so every
+      // first jfp sign-in failed. The account hook keeps the consumer guard.
+      requireLocalEmailVerified: false,
     },
   },
   user: {
@@ -255,21 +296,12 @@ export const auth = betterAuth({
       beforeDelete: accountDeletionHooks.beforeDelete,
     },
   },
-  databaseHooks: {
-    session: {
-      create: {
-        before: async (session, ctx) => {
-          const clientKind = resolveSessionClientKind(
-            (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
-          )
-          if (!clientKind) return
-          return { data: { ...session, clientKind } }
-        },
-      },
-    },
-  },
+  databaseHooks,
   plugins: [
-    expo(),
+    // The upstream expo plugin with its browser proxy re-opened for the jfp
+    // self-RP authorize URL (mobile-expo-plugin.ts). A bare expo() here
+    // turns every mobile sign-in into a 400 inside the sheet.
+    mobileAwareExpoPlugin({ selfRpClientId: mobileSelfRpClientId }),
     // Lean payload + short expiry: sign-out revokes the session but an
     // already-minted JWT lives to its exp — 15m bounds that window (KTD1).
     jwt({
