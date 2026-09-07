@@ -11,6 +11,7 @@ import { TypesenseClient } from "./typesense-client"
 import {
   advanceCurrentWatchSearchTranscriptProjection,
   initialCurrentWatchSearchTranscriptProjectionRevision,
+  resolveCurrentWatchSearchTranscriptProjectionWithFallback,
   WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID,
 } from "./typesense-watch-search-current-transcript-projection"
 import {
@@ -113,7 +114,11 @@ type CanonicalTranscriptSnapshotReader = Pick<
 
 type TypesenseTranscriptPublisher = Pick<
   TypesenseClient,
-  "deleteDocumentsByFilter" | "getDocument" | "getAlias" | "importDocuments"
+  | "deleteDocumentsByFilter"
+  | "getCollectionSchema"
+  | "getDocument"
+  | "getAlias"
+  | "importDocuments"
 >
 
 type IndexLockRunner = <T>(run: () => Promise<T>) => Promise<T>
@@ -882,6 +887,57 @@ export async function loadCurrentWatchSearchTranscriptProjection(
   }
 }
 
+async function loadIncrementalPublicationProjectionState(input: {
+  prisma: PrismaClient
+  typesense: Pick<
+    TypesenseTranscriptPublisher,
+    "getCollectionSchema" | "getDocument"
+  >
+  transcriptCollection: string
+  affectedDocumentIds: readonly string[]
+}): Promise<ProjectionState> {
+  const stored = await loadCurrentWatchSearchTranscriptProjection(input.prisma)
+  const hasNoStoredIdentity =
+    stored.transcriptCollection == null &&
+    stored.contentEmbeddingContractId == null &&
+    stored.transcriptChunkingVersion == null
+  if (!hasNoStoredIdentity) return stored
+
+  const collection = await input.typesense.getCollectionSchema(
+    input.transcriptCollection,
+  )
+  // An empty collection has no existing corpus identity to preserve, so its
+  // first verified event may establish the durable projection.
+  if (collection.num_documents === 0) return stored
+
+  // A failed first attempt can leave only this batch's documents behind when
+  // fail-closed cleanup is itself unavailable. The lease-fenced retry will
+  // overwrite or delete that entire corpus, so it remains safe to bootstrap.
+  // A populated pre-migration collection is different: one changed transcript
+  // cannot certify the compatibility of documents outside its affected set.
+  if (collection.num_documents != null) {
+    const affectedDocumentIds = [...new Set(input.affectedDocumentIds)]
+    const existingAffectedDocuments = await mapWithConcurrency(
+      affectedDocumentIds,
+      READBACK_CONCURRENCY,
+      (id) => input.typesense.getDocument(input.transcriptCollection, id),
+    )
+    if (
+      existingAffectedDocuments.filter((document) => document != null)
+        .length === collection.num_documents
+    ) {
+      return stored
+    }
+  }
+
+  return resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+    prisma: input.prisma,
+    currentProfile: {
+      binding: { transcript: input.transcriptCollection },
+    },
+  })
+}
+
 export async function publishOneCurrentTranscriptToWatchSearch(input: {
   prisma: PrismaClient
   typesense: TypesenseTranscriptPublisher
@@ -929,7 +985,15 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         const profile = await freezeCurrentWatchSearchProfile(input.typesense)
         transcriptCollection = profile.binding.transcript
         assertIncrementalPublicationIdentity(
-          await loadCurrentWatchSearchTranscriptProjection(prisma),
+          await loadIncrementalPublicationProjectionState({
+            prisma,
+            typesense: input.typesense,
+            transcriptCollection,
+            affectedDocumentIds: [
+              ...batch.currentDocumentIds,
+              ...batch.staleDocumentIds,
+            ],
+          }),
           {
             transcriptCollection,
             contentEmbeddingContractId: batch.contentEmbeddingContractId,

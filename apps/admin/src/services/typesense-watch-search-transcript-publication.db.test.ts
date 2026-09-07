@@ -978,6 +978,66 @@ suite("current transcript publication into Watch Search", () => {
     })
   })
 
+  it("does not let one event certify a populated transcript collection without legacy projection evidence", async () => {
+    const preexistingDocument = {
+      id: "preexisting-transcript-document",
+      documentKind: "transcript" as const,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      canonicalVideoId: "core-video-1",
+      language: "en",
+      publiclyVisible: true,
+      text: "Existing active transcript corpus",
+      startSeconds: 0,
+      embedding,
+    }
+    await typesense.importDocuments(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      [preexistingDocument],
+      "upsert",
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "bootstrap-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/projection revision is missing/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).resolves.toBeNull()
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING" })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        preexistingDocument.id,
+      ),
+    ).resolves.toMatchObject({ id: preexistingDocument.id })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
   it("rolls back failed publication-event writes, increments source generation on replacement, and keeps unchanged ingest event-free", async () => {
     await expect(
       ingestTranscriptEmbeddings(
@@ -1744,6 +1804,9 @@ suite("current transcript publication into Watch Search", () => {
     const racingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => typesense.importDocuments(...args),
@@ -1764,7 +1827,11 @@ suite("current transcript publication into Watch Search", () => {
       },
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2016,6 +2083,9 @@ suite("current transcript publication into Watch Search", () => {
     const failingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: async () => {
         throw new Error("simulated publication failure")
       },
@@ -2026,7 +2096,11 @@ suite("current transcript publication into Watch Search", () => {
         typesense.getDocument(...args),
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2109,6 +2183,9 @@ suite("current transcript publication into Watch Search", () => {
     const failingCleanupTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: async (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => {
@@ -2122,7 +2199,11 @@ suite("current transcript publication into Watch Search", () => {
         typesense.getDocument(...args),
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2323,6 +2404,9 @@ suite("current transcript publication into Watch Search", () => {
     const racingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => typesense.importDocuments(...args),
@@ -2347,7 +2431,11 @@ suite("current transcript publication into Watch Search", () => {
       },
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(

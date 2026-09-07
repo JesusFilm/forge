@@ -289,6 +289,13 @@ cooperating publishers and rebuilds, but it cannot prevent an out-of-band
 Typesense operator from moving an alias during the external write. If the alias
 changed, leave the event pending and do not advance the projection revision.
 
+Do not let the first incremental event invent the compatibility identity of an
+already populated active collection. An empty collection can bootstrap from
+the event, and a lease-fenced retry can do so when every existing document is
+inside that event's overwrite-or-delete set. Any other populated collection
+must supply the legacy projection revision and compatibility evidence; one
+changed transcript cannot certify the identity of the untouched corpus.
+
 An external JSONL mutation may apply some or all documents before its response
 or the later database completion fails. Once the first upsert begins, treat any
 subsequent definite failure as potentially visible partial publication. While
