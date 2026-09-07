@@ -16,6 +16,11 @@ const mockEnv = vi.hoisted(() => ({
       | "false"
       | undefined,
   },
+  resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
+    (value?: unknown) =>
+      (value ?? mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED) ===
+      "true",
+  ),
 }))
 
 const worldStart = vi.hoisted(() => vi.fn())
@@ -149,6 +154,22 @@ describe("workflow instrumentation", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledWith({ prisma })
+  })
+
+  it("fails startup when transcript publication is enabled outside the dedicated Postgres worker", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+    expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
   })
 
   it("starts watch search embedding prewarm only once per process", async () => {

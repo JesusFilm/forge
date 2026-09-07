@@ -1,4 +1,7 @@
-import { env } from "@/config/env"
+import {
+  env,
+  resolveWatchSearchTranscriptPublicationEnabled,
+} from "@/config/env"
 
 type WorkflowStartupState = {
   retryTimer?: ReturnType<typeof setTimeout>
@@ -134,6 +137,25 @@ export function shouldStartWorkflowWorld(): boolean {
   )
 }
 
+export class WorkflowStartupConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WorkflowStartupConfigurationError"
+  }
+}
+
+export function assertWatchSearchTranscriptPublicationRuntime(): void {
+  if (!resolveWatchSearchTranscriptPublicationEnabled()) return
+  if (
+    env.WORKFLOW_RUNNER_ENABLED !== "true" ||
+    env.WORKFLOW_TARGET_WORLD !== "@workflow/world-postgres"
+  ) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires WORKFLOW_RUNNER_ENABLED=true and WORKFLOW_TARGET_WORLD=@workflow/world-postgres",
+    )
+  }
+}
+
 async function startWorkflowWorld(): Promise<void> {
   const { getWorld } = await import("workflow/runtime")
   const { startWorkflowWorkerHeartbeat } =
@@ -238,6 +260,7 @@ async function startWorkflowWorldWithTransientRetry(
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    assertWatchSearchTranscriptPublicationRuntime()
     const { configureDatadog } = await import("@/observability/datadog")
     configureDatadog()
     startWatchSearchPrewarm()

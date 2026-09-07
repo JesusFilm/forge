@@ -1198,7 +1198,8 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
   `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
   `TYPESENSE_OPERATOR_API_KEY`. Missing Typesense operator configuration is a
-  startup error when publication is explicitly enabled. Incremental publication
+  startup error when publication is explicitly enabled, as is enabling the
+  publisher without the Postgres Workflow runner settings above. Incremental publication
   waits for active evaluation leases but remains compatible with an already
   qualified serving candidate that shares the same transcript collection,
   embedding contract, and chunking version; a routine projection-revision
