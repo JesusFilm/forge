@@ -797,6 +797,32 @@ suite("current transcript publication into Watch Search", () => {
     return value
   }
 
+  it("keeps publication constraint and index names stable below PostgreSQL's identifier limit", async () => {
+    const rows = await prisma.$queryRaw<Array<{ name: string }>>`
+      SELECT conname::text AS name
+      FROM pg_constraint
+      WHERE conrelid = 'watch_search_current_transcript_publication_event'::regclass
+        AND conname LIKE 'watch_search_transcript_pub_%'
+      UNION ALL
+      SELECT indexname::text AS name
+      FROM pg_indexes
+      WHERE schemaname = current_schema()
+        AND tablename = 'watch_search_current_transcript_publication_event'
+        AND indexname LIKE 'watch_search_transcript_pub_%'
+      ORDER BY name
+    `
+
+    expect(rows.map((row) => row.name)).toEqual([
+      "watch_search_transcript_pub_status_retry_created_idx",
+      "watch_search_transcript_pub_transcript_generation_key",
+      "watch_search_transcript_pub_transcript_id_fkey",
+      "watch_search_transcript_pub_transcript_status_created_idx",
+    ])
+    expect(rows.every((row) => Buffer.byteLength(row.name, "utf8") <= 63)).toBe(
+      true,
+    )
+  })
+
   it("rolls back failed publication-event writes, increments source generation on replacement, and keeps unchanged ingest event-free", async () => {
     await expect(
       ingestTranscriptEmbeddings(
