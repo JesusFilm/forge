@@ -19,16 +19,85 @@ proven migration regressions. The run completed 416 cases with a working
 read-only production credential. No compatible historical evaluation receipt
 exists to establish regression or causation.
 
-| Concern         | Observation                                                                                                                                                                                                                | What requires validation                                                                                                                                                                                                    |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Recall          | Recall@10 was `0.949519` (395/416); 21 cases had no relevant match, versus the documented provisional `0.980` floor.                                                                                                       | Validate case expectations, eligible documents, language filtering, and ranking for the misses; establish whether the historical floor is applicable to this fresh baseline.                                                |
-| Coverage        | Mean per-case coverage was `0.803193`, versus the documented provisional `0.86926` floor; source-specific coverage also varied.                                                                                            | Determine whether relevant-set size, top-k limits, cross-source alternatives, duplicate suppression, or retrieval behavior explains incomplete coverage. A passing case may return a relevant document from another source. |
-| Language labels | Aggregate inspection found declared-source/stored-label differences, including 20/20 Nepali-source documents labelled `hi`, 14/14 Tigrinya-source documents labelled `am`, and 47/52 Malay-source documents labelled `id`. | Validate actual document language, golden-case language, and filter eligibility before calling a label incorrect or proposing changes. Source declarations alone do not establish document language.                        |
+### 1. Recall: 21 cases found no relevant document
 
-All 21 complete misses were in translated multilingual cases. This is a useful
-investigation lead, not proof that language metadata explains every miss.
-The corpus reported 77,160 embeddings under `qwen/qwen3-embedding-8b`, matching
-the evaluation model identity; that alone does not prove semantic equivalence.
+Recall@10 was **94.95% (395/416)** against the documented provisional **98%**
+floor. Of all cases, 290 first matched at rank 1, 381 within the top 3, and
+14 first matched at ranks 4–10. All 21 complete misses were translated
+multilingual cases; the language/source breakdown appears below.
+
+**Investigation task:** account for each miss by checking whether its expected
+relevant documents exist, have embeddings, pass the case's language filter,
+and reach the top 10 above the score floor. Separate excluded documents from
+ranking misses and incorrect golden expectations. The Russian case
+`esru-newcomer-krest` is a useful separate check: all 95 documents in its source
+were labelled Russian, so a source-wide language mismatch does not explain it.
+Record a specific cause and potential correction for each validated concern.
+
+### 2. Coverage: relevant documents are not consistently represented
+
+Mean per-case coverage was **80.32%**, against the provisional **86.93%** floor.
+259 cases returned their entire relevant set, 136 returned only part, and
+21 returned none. English found at least one relevant document in all 78 cases,
+but its mean coverage was only **52.67%**. Global recall can therefore look good
+while relevant documents from particular sources are absent.
+
+These source-level diagnostics count only cases where that source has a golden
+relevant document. Cases can appear in multiple rows. Source recall means at
+least one relevant document from that source appeared; coverage is the average
+fraction of that source's relevant set returned.
+
+| Source key           | Cases | Source recall@10 | Source coverage |
+| -------------------- | ----: | ---------------: | --------------: |
+| `starting-with-god`  |    24 |           37.50% |          27.78% |
+| `everystudent`       |    22 |           54.55% |          46.59% |
+| `jesusfilm-org`      |    30 |           56.67% |          44.61% |
+| `sightline-ministry` |    46 |           65.22% |          38.44% |
+| `cru`                |    36 |           75.00% |          47.31% |
+
+**Investigation task:** start with these five sources and the partially covered
+cases. Check whether top-k=10, relevant-set size, cross-source alternatives,
+duplicate suppression, filtering, or ranking explains the missing documents.
+Determine whether a retrieval change or a reviewed expectation change is
+justified; do not assume every absent relevant document represents a defect.
+
+### 3. Language labels: stored metadata can exclude expected documents
+
+The September 7 read-only review observed the following distributions. The
+source keys below use the `everystudent-` prefix, followed by the shown suffix.
+Miss counts are from the 416-case evaluation, not counts of missing documents.
+
+| Source language (suffix) | Documents under a different stored label | Documents under the declared label | Evaluation misses / cases |
+| ------------------------ | ---------------------------------------- | ---------------------------------: | ------------------------: |
+| Nepali (`ne`)            | 20/20 labelled Hindi (`hi`)              |                                  0 |                       4/4 |
+| Tigrinya (`ti`)          | 14/14 labelled Amharic (`am`)            |                                  0 |                       4/4 |
+| Malay (`ms`)             | 47/52 labelled Indonesian (`id`)         |                                  5 |                       5/6 |
+| Croatian (`hr`)          | 30/41 labelled Serbian (`sr`)            |                                 11 |                       2/5 |
+| Albanian (`sq`)          | 37/76 labelled Dutch (`nl`)              |                                 39 |                      2/10 |
+| Persian (`fa`)           | 26/75 labelled Arabic (`ar`)             |                                 49 |                      2/10 |
+| Slovenian (`sl`)         | 6/23 labelled Serbian (`sr`)             |                                 17 |                       1/4 |
+| Russian (`ru`)           | 0/95 under a different label             |                                 95 |                      1/10 |
+
+The evaluation filters on the case's expected language. No documents anywhere
+in the inspected corpus were labelled `ne` or `ti`, so those filtered searches
+had no eligible documents. Other rows suggest similar exclusion risks, but
+aggregate counts alone do not establish the cause of each missed case or the
+actual language of a document. The existing Tigrinya source note already warns
+that tinyld lacks a Tigrinya model and can classify its script as Amharic.
+
+**Investigation task:** verify actual document language and expected-case
+language for the affected records. Where a stored label is confirmed wrong,
+propose a scoped metadata correction and address the detector/decision behavior
+that would reproduce it on future ingestion. Where the stored label is correct,
+investigate the source declaration or golden expectation instead. Do not blindly
+replace document labels with the source's declared language.
+
+The affected source documents and their embeddings exist. Corpus-wide inspection
+reported 77,160 embeddings under `qwen/qwen3-embedding-8b`, matching the evaluation
+model identity. This rules out a mixed stored-model-ID explanation in that
+inspection, but does not prove semantic quality or that every expected golden
+document was present. All observations above describe September 7, not a new
+production check made when this ticket was written.
 
 ## Operator Decision — September 8, 2026
 
