@@ -223,8 +223,10 @@ qualification or promotion
 Candidate runtime, comparison, and qualification require a dedicated search
 key, while publication and deletion use a separate operator key. Enforce that
 boundary in every mutating entry point, including the current full-rebuild
-command; retaining a legacy combined key there defeats least-privilege
-deployment even when runtime readers are configured correctly.
+command, and reject any configured legacy reader key that equals the operator
+key even when a newer search key takes precedence. Retaining a legacy combined
+key defeats least-privilege deployment because old benchmark and fallback
+paths can still receive it even when runtime readers are configured correctly.
 
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after

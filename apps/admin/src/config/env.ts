@@ -1217,11 +1217,16 @@ export function assertTypesenseCredentialsDisjoint(input: {
   legacyKey?: string
   operatorKey?: string
 }): void {
-  const effectiveSearchKey = (input.searchKey ?? input.legacyKey)?.trim()
   const operatorKey = input.operatorKey?.trim()
-  if (effectiveSearchKey && operatorKey && effectiveSearchKey === operatorKey) {
+  const readerCredentials = [input.searchKey, input.legacyKey]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+  if (
+    operatorKey &&
+    readerCredentials.some((credential) => credential === operatorKey)
+  ) {
     throw new Error(
-      "The effective Typesense search credential and TYPESENSE_OPERATOR_API_KEY must be disjoint",
+      "Typesense reader credentials and TYPESENSE_OPERATOR_API_KEY must be disjoint",
     )
   }
 }

@@ -631,7 +631,7 @@ describe("env", () => {
       ).toThrow(/must be disjoint/)
     })
 
-    it("keeps the legacy search fallback disjoint from the operator credential", () => {
+    it("keeps every configured legacy reader credential disjoint from the operator credential", () => {
       expect(() =>
         assertTypesenseCredentialsDisjoint({
           legacyKey: "shared",
@@ -642,6 +642,13 @@ describe("env", () => {
         assertTypesenseCredentialsDisjoint({
           searchKey: "search-only",
           legacyKey: "operator-only",
+          operatorKey: "operator-only",
+        }),
+      ).toThrow(/must be disjoint/)
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "search-only",
+          legacyKey: "legacy-reader-only",
           operatorKey: "operator-only",
         }),
       ).not.toThrow()
