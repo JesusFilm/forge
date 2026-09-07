@@ -29,8 +29,9 @@
  * pg pool arithmetic for this service: the ai-chat storage pool is capped at
  * 5; the service's other pools (runtime store 20, experience-chat storage 5,
  * experience-chat vector 2 — see `./memory.ts`; title-repair sweep 2,
- * run-scoped — see `./workflows/title-repair.ts`) bring the total to ~34
- * potential connections. Keep new pools small.
+ * run-scoped — see `./workflows/title-repair.ts`; ai-chat rename route 2,
+ * module-scoped and lazy — see `./ai-chat-history-write-route.ts`) bring the
+ * total to ~36 potential connections. Keep new pools small.
  *
  * Mirrors the lazy-singleton + `__reset*ForTesting` SHAPE of
  * `apps/admin/src/mastra/memory.ts`. Admin is a reference to copy from,

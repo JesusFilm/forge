@@ -101,6 +101,8 @@ export type WatchVideoRecord = {
   muxPlaybackId: string | null
   duration: number | null
   primaryLanguageBcp47: string | null
+  /** The unique language identity. bcp47 tags collide across languages. */
+  primaryLanguageCoreId: string | null
   /** The SERIES-labelled parent this video is an episode of; null for a standalone
    *  video, a COLLECTION member, or an orphan. */
   parentSeries: { documentId: string; slug: string; title: string } | null
@@ -372,6 +374,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     muxPlaybackId: firstPlayable?.muxVideo?.playbackId ?? null,
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
+    primaryLanguageCoreId: raw.primaryLanguage?.coreId ?? null,
     parentSeries,
     siblings,
     variants,

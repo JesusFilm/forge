@@ -31,13 +31,14 @@ In this shape:
 - Auth owns identity, global membership, app registrations, grants, and scopes.
 - Admin owns its local session, role mapping, GraphQL permission checks, and
   domain ABAC.
-- `ADMIN_AUTH_MODE=embedded` keeps the old embedded auth path available until
-  Auth is deployed and seeded.
-- `ADMIN_AUTH_MODE=oauth` switches admin login/session resolution to OAuth
-  without reading Auth-domain cookies.
+- The `ADMIN_AUTH_MODE=embedded|oauth` toggle was a migration-era bridge and
+  is now REMOVED (2026-09-07 refresh: zero hits in `apps/admin/src`) — admin
+  is unconditionally OAuth-only.
 - Auth operator surfaces must have their own explicit access policy. Active
-  membership alone is too broad; use `AUTH_OPERATOR_EMAILS` in production until
-  operator-specific grants are modeled.
+  membership alone is too broad. The shipped gate is `canAccessAuthOperator`
+  (`apps/auth/src/auth/operator.ts`): a blanket non-production disable until
+  operator-specific grants are modeled. (An earlier `AUTH_OPERATOR_EMAILS`
+  allowlist idea never shipped.)
 - Upstream SSO provider credentials belong on the Auth service once Auth owns
   login. Copy existing admin provider envs to Auth and verify provider buttons
   from the live login page without printing client secrets.
@@ -66,12 +67,16 @@ SSO "work"; that recreates the same coupling the Auth extraction is removing.
 When smoke-testing the deployed OAuth path, verify the whole unauthenticated
 redirect chain:
 
-1. `https://admin.jesusfilm.org/dashboard` redirects to `/login`.
-2. `https://admin.jesusfilm.org/login` redirects to `/api/auth/login`.
-3. `/api/auth/login` sets `forge_admin_oauth_state`,
-   `forge_admin_oauth_verifier`, and `forge_admin_oauth_callback` as host-only
-   Admin cookies and redirects to Auth's OAuth authorize endpoint.
-4. Auth's authorize endpoint redirects unauthenticated users to the Auth login
+1. `https://admin.jesusfilm.org/dashboard` redirects unauthenticated
+   requests straight to `/api/auth/login?returnTo=/dashboard`
+   (`apps/admin/src/auth/session.ts` — the interim `/login` page was later
+   removed; there is no admin login page).
+2. `/api/auth/login` sets the host-only OAuth cookies (prefix from
+   `AUTH_COOKIE_PREFIX`, default `forge_admin`: `_oauth_state`,
+   `_oauth_verifier`, `_oauth_return_to`, `_oauth_access_request` — see
+   `apps/admin/src/auth/auth-session.ts`) and redirects to Auth's OAuth
+   authorize endpoint.
+3. Auth's authorize endpoint redirects unauthenticated users to the Auth login
    page while preserving the OAuth request parameters.
 
 This catches the production failure mode where local tests passed but the
@@ -100,7 +105,6 @@ Better Auth JWKS model is absent from the generated Prisma client or database.
 - `apps/admin/src/auth/auth-session.ts`
 - `apps/admin/src/auth/session.ts`
 - `apps/admin/src/app/api/auth/login/route.ts`
-- `apps/admin/src/app/login/page.tsx`
 - `apps/auth/src/auth/operator.ts`
 - `apps/auth/src/app/login/login-page-client.tsx`
 - `.dockerignore`

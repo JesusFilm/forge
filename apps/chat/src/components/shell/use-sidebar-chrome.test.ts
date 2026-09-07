@@ -111,6 +111,31 @@ describe("useSidebarChrome", () => {
     expect(onCloseMobile).toHaveBeenCalledTimes(1)
   })
 
+  // KTD10 (feat-450): the rename editor owns Escape; the drawer listener
+  // returns early by TARGET (it shares `document` with React's delegated
+  // handler). Dispatched on the input with bubbling, or it could not fail.
+  it("ignores an Escape whose target is inside a data-escape-owner element while open; a plain target still closes (AE8, jsdom half)", () => {
+    const onCloseMobile = vi.fn()
+    setup({ ...base, mobileOpen: true, onCloseMobile })
+    const owner = document.createElement("div")
+    owner.setAttribute("data-escape-owner", "rename")
+    const input = document.createElement("input")
+    owner.appendChild(input)
+    document.body.appendChild(owner)
+    const plain = document.createElement("input")
+    document.body.appendChild(plain)
+    try {
+      fireEvent.keyDown(input, { key: "Escape", bubbles: true })
+      expect(onCloseMobile).not.toHaveBeenCalled()
+      // Discriminating pair: the same event on an unmarked element closes.
+      fireEvent.keyDown(plain, { key: "Escape", bubbles: true })
+      expect(onCloseMobile).toHaveBeenCalledTimes(1)
+    } finally {
+      owner.remove()
+      plain.remove()
+    }
+  })
+
   it("focuses the close button when the mobile drawer opens", () => {
     const { result, rerender } = setup({ ...base, mobileOpen: false })
 

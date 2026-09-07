@@ -50,6 +50,8 @@ src/
       history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared transport (lib/server/mastra-upstream: hostAllowed, fetch shape, signal composition, failure classifier, readJsonCapped), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (the 2/8 MiB cap sizes stay here), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs; since feat-209 the deep-link GET /c/<id> is the one deliberate exception — address bar + Cloudflare/Railway access logs, accepted residual, see that route's docstring)
+      history/write-proxy.ts     feat-450: the testable core of the ONE history WRITE proxy — the read proxies' deny ladder (session→resource, gate surface "history", lane bearer, egress pin via its own env-pinned builder, status-before-body, byte-capped read at 4 KiB) extended for the rename: body `{ threadId, title }` only (raw title ≤1,024 units; the resource comes from the session alone), failure vocabulary = the read spellings + `invalid_title`; 400/403/404 relay their reason ONLY when the upstream body carries it, and a reasonless 404 (route not yet deployed) or 503 `writes_disabled` is a retryable 502 `unavailable`
+      history/rename/route.ts    POST → Mastra /forge-ai-chat-history-rename (thin wrapper over write-proxy; force-dynamic)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
       auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie + consume the feat-240 force-login marker (success only), 302 return_to; single catch → non-PII log + ?signin=failed (marker kept armed)
       auth/logout/route.ts   POST → clear session cookie + set the 30-day single-use force-login marker (feat-240), 303 home (POST so it isn't prefetchable)
@@ -70,14 +72,14 @@ src/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text); feat-209: mounts the URL-sync hook on granted shells, swaps <Chat> for the denial pane (deniedScreen, the deep-link row's not_available escalation, or feat-399's deepLinkUnresolvable — the last two are GRANTED shells, so the rail stays live and the pane releases on the first rail row / New / traverse), and announces popstate-driven conversation changes via a polite live region
       sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, visible-row policy in sidebar-projection (applied here at render, feat-281 Ruling 4b), sub-rows in the sidebar-* components
-      use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
+      use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener (since feat-450 it returns early when the event's TARGET sits inside a data-escape-owner element — the rename editor — because React's delegated handler and this listener both live on document, so stopPropagation could never separate them), drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
       sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav/account/signIn/signOut/…); signIn is deliberately NOT newButton (differs by md:mx-auto + md:hover:border-transparent)
       sidebar-header.tsx           Brand mark + wordmark + the three mutually-exclusive controls (desktop collapse toggle / collapsed expand affordance / mobile close X); presentational
       sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
-      sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
+      sidebar-conversation-list.tsx 'use client' since feat-450 — conversation history nav: each <li> is a flex row holding the select button (aria-current, title-named) and, on a granted shell, a pencil button named "Rename <title>" that swaps the row for the inline rename editor (Enter commits, Escape cancels, blur-before-submit cancels; read-only + Saving pulse while the pessimistic write is in flight; a role="alert" notice on access / invalid_title / unavailable; not_available closes it). Editor view state is component-local, one row at a time; focus hand-offs ride latches armed inside the handlers; the input carries data-escape-owner. Pencil reveal = group-hover / group-focus-within, always visible on coarse pointers and below md (the drawer)
       sidebar-projection.ts        feat-281 (Ruling 4b): the sidebar-facing projection module — listConversations (the visible-row filter + ordering the rail renders; sidebar.tsx applies it) + the HistoryListUi type (the session snapshot's history field satisfies it structurally)
       sidebar-account.tsx          Rail-foot account control (feat-207): signed-out "Sign in" anchor / signed-in identity (name→email→label, avatar→initials→icon) + "Sign out" POST form + R12 notice; presentational, three-presentation coverage; hidden when auth unconfigured
-      icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
+      icons.tsx          Inline line-icon components (panel/compose/pencil/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational); a ResizeObserver on the composer band re-pins a bottom-pinned reader on auto-grow (never a scrolled-up one) and keeps the scroller's scroll-padding sized to the band (feat-270)
       message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist). feat-329: the sources disclosure renders when a turn is a seeker turn OR carries sources, so a replayed turn (no engine tag, by R21) still shows them; the grounded badge stays gated on the engine tag alone. feat-366: the FollowUps sibling block after the sources disclosure, on the conversation's LAST turn only and never on the streaming or failed branch — the list derives that id once and hands every other turn a shared empty array (memo-stable)
@@ -100,10 +102,10 @@ src/
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     deep-link-entry.ts   feat-209: pure KTD5 entry resolver for /c/<id> — unavailable / sign_in / granted precedence (malformed id and unconfigured auth deny before the identity branch; gate-denied denies after it) + feat-399's granted_unresolvable kind (malformed id + FULL grant) and deepLinkShell, the one kind → AppShell-props mapping. The grant is ONE expression both granted kinds read, and only those two carry seekerEnabled — the route holds no conditional of its own
     conversation-id.ts   feat-209: one home for the conversation-id (UUID) shape + lowercase canonicalization (isConversationId / toConversationId); tighten-only covenant — isValidAnonId (the anon-cookie trust gate) is a security-critical consumer of UUID_PATTERN
-    conversations.ts     Message (+ optional sources/grounded/engine/error/video/followUps) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
-    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set. feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open. feat-366: applies the same toFollowUps payload bound to the replay wire that the live frame uses (mastra owns content validation)
-    conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
-    use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
+    conversations.ts     Message (+ optional sources/grounded/engine/error/video/followUps) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle. feat-450: normalizeConversationTitle + TITLE_STRIP_PATTERN + CONVERSATION_TITLE_MAX_UNITS — a byte-for-byte MIRROR of apps/mastra's ai-chat-title-clamp (apps cannot cross-import); conversations.test.ts reads the Mastra source and pins the regex literal, so drift on either side goes red
+    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set; feat-450 adds renameHistoryThread ({ threadId, title } → { ok, title } with the ECHOED clamped title, or the read set + invalid_title — the read fetchers fold that member back to unavailable so their union never widens). feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open. feat-366: applies the same toFollowUps payload bound to the replay wire that the live frame uses (mastra owns content validation)
+    conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests. feat-450: renameConversation(id, draft) — pessimistic (the title changes only on the server's echo; client-only rows commit locally), one AbortController slot per id released in a finally on EVERY settlement path (renamingIds snapshots the keys; deactivate() aborts + clears them), plus the per-id rename FENCE: a monotonic counter captured at every page fetch's START and stamped on commit, so mergeServerThreads skips the page's stale title for ids renamed after the fetch began (the fence survives deactivate(): settled state, not an in-flight product). A rename `access` failure returns its reason for the inline notice and never invokes revertToClientOnly()
+    use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the 19-field UseConversations shape (the pre-extraction 17 plus feat-450's renamingIds + renameConversation; conversations = the full unprojected list since PR 2)
     use-conversation-url.ts feat-209: the URL-sync hook — shallow pushState/replaceState via Next's patched history API, popstate adopt-or-refuse, pageshow bfcache reload guard (R9); inert unless the shell is gate-granted and not a denial shell
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
@@ -522,11 +524,31 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   inflation of the 8,192 UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
   ≡ tampered), 403 `gate_denied` / `thread_forbidden`, 404 `thread_not_found`
   (only when the upstream body carries the reason — a reasonless 404 is
-  `unavailable`, so config outages never read as data loss), 502/504.
+  `unavailable`, so config outages never read as data loss), 502/504. The
+  feat-450 write proxy adds 400 `invalid_title` (relayed only when the
+  upstream body carries it) and treats 503 `writes_disabled` as 502
+  `unavailable`.
 - **Client mapping** (`lib/history-client.ts`): `access` (401/gate_denied) →
   silent fall-back to the client-only sidebar, no nudge (R16; the sign-in
   nudge is deferred to feat-236); `not_available` → the "no longer available"
-  state; `unavailable` → error state with retry.
+  state; `unavailable` → error state with retry. On the rename path (below)
+  the same reasons route to the row's inline notice instead — `access`
+  deliberately does NOT revert the sidebar there.
+- **Rename (feat-450):** a per-row pencil on gate-granted shells opens an
+  inline editor; the session's `renameConversation` posts `{ threadId,
+title }` to `/api/history/rename` → Mastra `/forge-ai-chat-history-rename`,
+  which sets `title` ONLY (never `updatedAt`, so the row keeps its rail
+  position and its retention clock). Pessimistic: the title changes on the
+  server's echoed clamp (120 UTF-16 units, control/format chars stripped —
+  the client normalizer mirrors the class byte-for-byte). Empty, unchanged,
+  or invisible-only submits cancel quietly with no request. A per-id rename
+  fence keeps a committed title from being reverted by a page fetch that was
+  already in flight. An `unavailable` outcome (504/500 on the write leg) is
+  INDETERMINATE — Mastra's budget races without aborting the UPDATE, so the
+  kept client title is not proof the old one survived: the next hydration
+  shows what the server holds, and a retry is always safe (the UPDATE is
+  idempotent; see `apps/mastra/CLAUDE.md` "Write-leg indeterminacy"). Plan:
+  `docs/plans/2026-09-02-0245-feat-chat-conversation-rename-plan.md`.
 - **Session semantics** (`lib/conversation-session.ts`, feat-281 — reached via
   the `use-conversations` adapter): hydration fires once on activation when
   `seekerEnabled` (= full gate grant — anonymous/denied users
@@ -690,8 +712,8 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   sidebar history + replay/resume back from it (see "Server-side conversation
   history"). Per-conversation URLs / deep-link restore shipped with feat-209
   (gate-granted conversations only — `/c/<id>`; anonymous chat keeps the root
-  URL). Still absent: thread delete/rename (feat-247), and anonymous
-  ephemerality stays deliberate — the anon continuity cookie never becomes a
+  URL). Rename shipped with feat-450. Still absent: thread delete (feat-247),
+  and anonymous ephemerality stays deliberate — the anon continuity cookie never becomes a
   history-reading credential
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
@@ -711,12 +733,14 @@ login page instead of silently re-authenticating via the SSO session.
 
 - Server Components by default. Client components are the ones holding hooks:
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
-  `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
+  `shell/sidebar-conversation-list.tsx` (since feat-450 — the inline rename
+  editor's view state and focus latches), `chat/chat.tsx`,
+  `chat/composer.tsx`, and `chat/empty-state.tsx`.
   `chat/message-list.tsx`, `chat/assistant-markdown.tsx`,
   `chat/untrusted-link.tsx`, `chat/sources-list.tsx`, `chat/video-card.tsx`
   (feat-328 — presentational plus a class error boundary; its `next/dynamic`
   `ssr:false` call is legal only because it inherits a client context), and the
-  `shell/sidebar-{header,new-conversation,conversation-list,account}.tsx`
+  `shell/sidebar-{header,new-conversation,account}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
