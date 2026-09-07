@@ -26,6 +26,16 @@ Registering a Dynamic MCP Client identifies the client but grants no application
 
 A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
 
+## Studio authoring
+
+### Content Pack
+
+A reusable set of source material and editorial guidance used to plan or generate
+content. A Content Pack can guide an individual project or a period of calendar
+planning; it is distinct from a viewer-facing video collection.
+
+_Avoid_: Source Collection, Preacher Pack.
+
 ## Devotional generation
 
 ### Devotional Workspace
