@@ -3,7 +3,7 @@ id: "feat-334"
 title: "Chat render-boundary + clamp-guard consolidation"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-14"
 duration: 2
 depends_on:
@@ -17,8 +17,8 @@ tags:
 
 ## Resolution
 
-**Delivery:** Implemented and verified locally; awaiting the feature PR. Status
-stays in progress until the code PR records its delivery link.
+**Shipped:** Pending merge via [PR #2190](https://github.com/JesusFilm/forge/pull/2190)
+(`fix(chat): explain recovery when the video player fails to load`).
 
 **What changed.** (a) Kept the video and markdown boundaries separate because
 their fallbacks and async failure handling differ; the reason is recorded in
