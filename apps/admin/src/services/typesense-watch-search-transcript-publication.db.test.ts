@@ -19,7 +19,7 @@ import {
   _internals as transcriptEmbeddingIngestInternals,
   ingestTranscriptEmbeddings,
 } from "./transcript-embedding-ingest.service"
-import { TypesenseClient } from "./typesense-client"
+import { TypesenseClient, TypesenseRequestError } from "./typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import {
@@ -52,6 +52,8 @@ const hasRealDatabaseUrl =
   !!baseDatabaseUrl && baseDatabaseUrl !== DEFAULT_VITEST_DATABASE_URL
 const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID =
   "semantic-transcript-pgvector-v2"
+const TYPESENSE_OPERATOR_KEY = "test-operator-key"
+const TYPESENSE_SEARCH_KEY = "test-search-key"
 
 function databaseUrlForDatabase(baseUrl: string, database: string): string {
   const url = new URL(baseUrl)
@@ -323,6 +325,18 @@ class ControlledTypesenseServer {
   ): Promise<void> {
     const url = new URL(request.url ?? "/", "http://127.0.0.1")
     const pathname = url.pathname
+    const presentedKey = request.headers["x-typesense-api-key"]
+    const isRead =
+      request.method === "GET" ||
+      (request.method === "POST" && pathname === "/multi_search")
+    const authorized = isRead
+      ? presentedKey === TYPESENSE_OPERATOR_KEY ||
+        presentedKey === TYPESENSE_SEARCH_KEY
+      : presentedKey === TYPESENSE_OPERATOR_KEY
+    if (!authorized) {
+      this.json(response, { message: "unauthorized" }, 401)
+      return
+    }
 
     if (request.method === "POST" && pathname === "/collections") {
       const schema = JSON.parse(
@@ -507,6 +521,7 @@ suite("current transcript publication into Watch Search", () => {
   let prisma: PrismaClient
   let pgClient: Client
   let typesense: TypesenseClient
+  let searchTypesense: TypesenseClient
   let searchService: TypesenseWatchSearchService
   let generations: TypesenseWatchSearchCandidateGenerationService
   let databaseCreated = false
@@ -529,14 +544,19 @@ suite("current transcript publication into Watch Search", () => {
     await typesenseServer.start()
     typesense = new TypesenseClient({
       host: typesenseServer.url,
-      apiKey: "test-key",
+      apiKey: TYPESENSE_OPERATOR_KEY,
+      timeoutMs: 30_000,
+    })
+    searchTypesense = new TypesenseClient({
+      host: typesenseServer.url,
+      apiKey: TYPESENSE_SEARCH_KEY,
       timeoutMs: 30_000,
     })
     generations = new TypesenseWatchSearchCandidateGenerationService(
       prisma,
       typesense,
     )
-    searchService = new TypesenseWatchSearchService(prisma, typesense, {
+    searchService = new TypesenseWatchSearchService(prisma, searchTypesense, {
       embedder: async () => embedding,
     })
     databaseReady = true
@@ -837,6 +857,24 @@ suite("current transcript publication into Watch Search", () => {
     expect(rows.every((row) => Buffer.byteLength(row.name, "utf8") <= 63)).toBe(
       true,
     )
+  })
+
+  it("keeps the Watch Search reader credential read-only", async () => {
+    await expect(
+      searchTypesense.getAlias(TYPESENSE_WATCH_TRANSCRIPT_ALIAS),
+    ).resolves.toMatchObject({
+      name: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+    })
+    await expect(
+      searchTypesense.importDocuments(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        [{ id: "reader-must-not-publish" }],
+        "upsert",
+      ),
+    ).rejects.toMatchObject({
+      name: TypesenseRequestError.name,
+      status: 401,
+    })
   })
 
   it("rolls back failed publication-event writes, increments source generation on replacement, and keeps unchanged ingest event-free", async () => {
