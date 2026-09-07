@@ -25,6 +25,7 @@ import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import {
   publishOneCurrentTranscriptToWatchSearch,
   WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
+  WatchSearchTranscriptPublicationCompletionIndeterminateError,
 } from "./typesense-watch-search-transcript-publication"
 import {
   TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID,
@@ -833,6 +834,58 @@ suite("current transcript publication into Watch Search", () => {
     return value
   }
 
+  function prismaWithLostCompletionAcknowledgement(input?: {
+    reconciliationFails?: boolean
+  }): PrismaClient {
+    let transactionCount = 0
+    let completionAcknowledgementLost = false
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "$transaction") {
+          return async (...args: unknown[]) => {
+            const result = await Reflect.apply(
+              target.$transaction,
+              target,
+              args,
+            )
+            transactionCount += 1
+            if (transactionCount === 2) {
+              completionAcknowledgementLost = true
+              throw new Error(
+                "simulated lost PostgreSQL commit acknowledgement",
+              )
+            }
+            return result
+          }
+        }
+        if (
+          property === "watchSearchCurrentTranscriptPublicationEvent" &&
+          completionAcknowledgementLost &&
+          input?.reconciliationFails
+        ) {
+          return new Proxy(
+            target.watchSearchCurrentTranscriptPublicationEvent,
+            {
+              get(delegate, delegateProperty, receiver) {
+                if (delegateProperty === "findMany") {
+                  return async () => {
+                    throw new Error("simulated reconciliation outage")
+                  }
+                }
+                const value = Reflect.get(delegate, delegateProperty, receiver)
+                return typeof value === "function"
+                  ? value.bind(delegate)
+                  : value
+              },
+            },
+          )
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   it("keeps publication constraint and index names stable below PostgreSQL's identifier limit", async () => {
     const rows = await prisma.$queryRaw<Array<{ name: string }>>`
       SELECT conname::text AS name
@@ -1107,6 +1160,77 @@ suite("current transcript publication into Watch Search", () => {
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
     })
+  }, 180_000)
+
+  it("reconciles a lost PostgreSQL completion acknowledgement without deleting the committed publication", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    const published = await publishOneCurrentTranscriptToWatchSearch({
+      prisma: prismaWithLostCompletionAcknowledgement(),
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+
+    expect(published).toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true },
+      }),
+    ).resolves.toEqual({ status: "COMPLETED" })
+    await expect(
+      typesense.getDocument(
+        published.status === "published" ? published.transcriptCollection : "",
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toMatchObject({ id: event.currentDocumentIds[0] })
+  }, 180_000)
+
+  it("does not destructively compensate when a lost completion acknowledgement cannot be reconciled", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma: prismaWithLostCompletionAcknowledgement({
+          reconciliationFails: true,
+        }),
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toBeInstanceOf(
+      WatchSearchTranscriptPublicationCompletionIndeterminateError,
+    )
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true },
+      }),
+    ).resolves.toEqual({ status: "COMPLETED" })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toMatchObject({ id: event.currentDocumentIds[0] })
   }, 180_000)
 
   it("completes while holding the publication lock even when the claim lease deadline has elapsed", async () => {

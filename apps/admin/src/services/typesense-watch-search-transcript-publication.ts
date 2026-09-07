@@ -133,6 +133,18 @@ export class WatchSearchTranscriptPublicationError extends Error {
   }
 }
 
+export class WatchSearchTranscriptPublicationCompletionIndeterminateError extends Error {
+  constructor(
+    readonly completionError: unknown,
+    readonly reconciliationError: unknown,
+  ) {
+    super("transcript publication completion outcome could not be reconciled", {
+      cause: reconciliationError,
+    })
+    this.name = "WatchSearchTranscriptPublicationCompletionIndeterminateError"
+  }
+}
+
 function workerGlobal(): WorkerGlobal {
   return globalThis as WorkerGlobal
 }
@@ -668,72 +680,150 @@ async function completeTranscriptPublicationBatch(
   const leaseTokenHash = createHash("sha256")
     .update(batch.leaseToken)
     .digest("hex")
-  return prisma.$transaction(
-    async (tx) => {
-      const canonical = await loadCanonicalTranscriptSnapshot(tx, batch)
-      const latestCanonicalFingerprint = sha256(
-        canonical.documents.map(normalizeTranscriptDocument),
-      )
-      if (latestCanonicalFingerprint !== input.projectedFingerprint) {
-        throw new WatchSearchTranscriptPublicationError(
-          "canonical transcript projection changed before publication completion",
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const canonical = await loadCanonicalTranscriptSnapshot(tx, batch)
+        const latestCanonicalFingerprint = sha256(
+          canonical.documents.map(normalizeTranscriptDocument),
         )
-      }
+        if (latestCanonicalFingerprint !== input.projectedFingerprint) {
+          throw new WatchSearchTranscriptPublicationError(
+            "canonical transcript projection changed before publication completion",
+          )
+        }
 
-      const projection = await advanceCurrentWatchSearchTranscriptProjection(
-        tx,
-        {
-          transcriptCollection: input.transcriptCollection,
-          contentEmbeddingContractId: input.contentEmbeddingContractId,
-          transcriptChunkingVersion: input.transcriptChunkingVersion,
-        },
-      )
-      const completion = {
-        status: "COMPLETED" as const,
-        leaseTokenHash: null,
-        leaseExpiresAt: null,
-        nextAttemptAt: null,
-        lastErrorCode: null,
-        completedAt: now,
-        updatedAt: now,
-      }
-      const completed =
+        const projection = await advanceCurrentWatchSearchTranscriptProjection(
+          tx,
+          {
+            transcriptCollection: input.transcriptCollection,
+            contentEmbeddingContractId: input.contentEmbeddingContractId,
+            transcriptChunkingVersion: input.transcriptChunkingVersion,
+          },
+        )
+        const completion = {
+          status: "COMPLETED" as const,
+          leaseTokenHash: null,
+          leaseExpiresAt: null,
+          nextAttemptAt: null,
+          lastErrorCode: null,
+          completedAt: now,
+          updatedAt: now,
+        }
+        const completed =
+          await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
+            where: {
+              id: { in: batch.eventIds },
+              status: "CLAIMED",
+              leaseGeneration: batch.leaseGeneration,
+              leaseTokenHash,
+            },
+            data: completion,
+          })
+        if (completed.count !== batch.eventIds.length) {
+          throw new WatchSearchTranscriptPublicationError(
+            "transcript publication batch fence was lost before completion",
+          )
+        }
+        // An older generation can still own an unexpired event lease while this
+        // batch claims and publishes the latest generation. The shared Typesense
+        // index lock guarantees that older worker cannot publish concurrently.
+        // Complete those now-superseded events in the same transaction so they
+        // cannot later retry forever against the newer canonical generation.
         await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
           where: {
-            id: { in: batch.eventIds },
-            status: "CLAIMED",
-            leaseGeneration: batch.leaseGeneration,
-            leaseTokenHash,
+            transcriptId: batch.transcriptId,
+            sourceGeneration: { lt: batch.sourceGeneration },
+            status: { not: "COMPLETED" },
           },
           data: completion,
         })
-      if (completed.count !== batch.eventIds.length) {
+        return {
+          transcriptCollection: projection.transcriptCollection,
+          contentEmbeddingContractId: projection.contentEmbeddingContractId,
+          transcriptChunkingVersion: projection.transcriptChunkingVersion,
+          projectionRevision: projection.projectionRevision,
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  } catch (completionError) {
+    // PostgreSQL can commit a transaction and then lose the acknowledgement
+    // while returning it to the client. Treating every thrown commit as a
+    // rollback would delete the verified Typesense documents even though the
+    // event is already durably complete, leaving no pending work to restore
+    // them. Re-read the atomic completion evidence before compensation.
+    try {
+      const events =
+        await prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+          where: { id: { in: batch.eventIds } },
+          select: {
+            id: true,
+            status: true,
+            completedAt: true,
+            leaseGeneration: true,
+            leaseTokenHash: true,
+          },
+        })
+      const completeEvents = events.filter(
+        (event) => event.status === "COMPLETED",
+      )
+      if (completeEvents.length > 0) {
+        if (
+          events.length !== batch.eventIds.length ||
+          completeEvents.length !== batch.eventIds.length ||
+          completeEvents.some(
+            (event) => event.completedAt?.getTime() !== now.getTime(),
+          )
+        ) {
+          throw new WatchSearchTranscriptPublicationError(
+            "transcript publication completion was superseded by another attempt",
+          )
+        }
+        const projection =
+          await prisma.watchSearchCurrentTranscriptProjection.findUnique({
+            where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+          })
+        if (
+          projection?.transcriptCollection === input.transcriptCollection &&
+          projection.contentEmbeddingContractId ===
+            input.contentEmbeddingContractId &&
+          projection.transcriptChunkingVersion ===
+            input.transcriptChunkingVersion &&
+          projection.projectionRevision >= 1n
+        ) {
+          return {
+            transcriptCollection: projection.transcriptCollection,
+            contentEmbeddingContractId: projection.contentEmbeddingContractId,
+            transcriptChunkingVersion: projection.transcriptChunkingVersion,
+            projectionRevision: projection.projectionRevision,
+          }
+        }
         throw new WatchSearchTranscriptPublicationError(
-          "transcript publication batch fence was lost before completion",
+          "completed transcript publication has mismatched projection state",
         )
       }
-      // An older generation can still own an unexpired event lease while this
-      // batch claims and publishes the latest generation. The shared Typesense
-      // index lock guarantees that older worker cannot publish concurrently.
-      // Complete those now-superseded events in the same transaction so they
-      // cannot later retry forever against the newer canonical generation.
-      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
-        where: {
-          transcriptId: batch.transcriptId,
-          sourceGeneration: { lt: batch.sourceGeneration },
-          status: { not: "COMPLETED" },
-        },
-        data: completion,
-      })
-      return {
-        transcriptCollection: projection.transcriptCollection,
-        contentEmbeddingContractId: projection.contentEmbeddingContractId,
-        transcriptChunkingVersion: projection.transcriptChunkingVersion,
-        projectionRevision: projection.projectionRevision,
+      const stillOwned =
+        events.length === batch.eventIds.length &&
+        events.every(
+          (event) =>
+            event.status === "CLAIMED" &&
+            event.leaseGeneration === batch.leaseGeneration &&
+            event.leaseTokenHash === leaseTokenHash,
+        )
+      if (events.length !== 0 && !stillOwned) {
+        throw new WatchSearchTranscriptPublicationError(
+          "transcript publication claim changed while completion was indeterminate",
+        )
       }
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-  )
+    } catch (reconciliationError) {
+      throw new WatchSearchTranscriptPublicationCompletionIndeterminateError(
+        completionError,
+        reconciliationError,
+      )
+    }
+    throw completionError
+  }
 }
 
 async function releaseTranscriptPublicationBatch(
@@ -908,6 +998,17 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
           documentCount: canonical.documents.length,
         }
       } catch (error) {
+        if (
+          error instanceof
+          WatchSearchTranscriptPublicationCompletionIndeterminateError
+        ) {
+          // Do not compensate an indeterminate commit. The transaction may be
+          // durably complete, in which case deleting the documents would make
+          // that terminal event unrecoverable. If it rolled back, the preserved
+          // claim expires and the normal idempotent retry reconciles the work.
+          releaseClaimedBatchOnFailure = false
+          throw error
+        }
         if (typesenseMutationStarted && transcriptCollection) {
           const affectedDocumentIds = [
             ...new Set([

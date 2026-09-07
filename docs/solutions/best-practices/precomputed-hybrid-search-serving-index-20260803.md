@@ -277,13 +277,24 @@ changed, leave the event pending and do not advance the projection revision.
 
 An external JSONL mutation may apply some or all documents before its response
 or the later database completion fails. Once the first upsert begins, treat any
-subsequent error as potentially visible partial publication. While still
-holding the publication lock, delete the union of the event's current and stale
-document ids and independently verify their absence before releasing the event
-for retry. This deliberately prefers a temporary transcript-search gap over a
-fail-open `publiclyVisible` document when canonical publication state drifted
-during readback. If compensating cleanup also fails, surface both failures and
-never advance the durable projection or complete the event.
+subsequent definite failure as potentially visible partial publication. While
+still holding the publication lock, delete the union of the event's current and
+stale document ids and independently verify their absence before releasing the
+event for retry. This deliberately prefers a temporary transcript-search gap
+over a fail-open `publiclyVisible` document when canonical publication state
+drifted during readback. If compensating cleanup also fails, surface both
+failures and never advance the durable projection or complete the event.
+
+A thrown PostgreSQL commit is not always a definite failure: the server can
+commit the atomic projection/event transaction and lose its acknowledgement on
+the way back to the client. Before compensating that final step, independently
+re-read every claimed event plus the projection identity. If they show the
+atomic completion committed, return success and keep the verified Typesense
+documents. If the durable read proves it rolled back, compensate normally. If
+the read itself fails, classify the outcome as indeterminate, retain the claim
+fence, and do not delete the documents; a rolled-back claim becomes retryable
+after lease expiry, while a committed terminal event must never lose the only
+documents that no pending work remains to restore.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate

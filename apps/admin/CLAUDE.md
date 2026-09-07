@@ -1194,10 +1194,16 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   transcript collection, independently reads the documents and normalized
   vectors back, removes stale ids, and atomically completes the event while
   advancing one durable projection revision. Once an external mutation starts,
-  any later validation or completion failure removes and verifies absence of
-  the affected current and stale document ids under the same publication lock
-  before the event is released for retry; an incomplete attempt must not leave
-  a newly public transcript searchable. Enable it only on the Admin worker
+  any later definite validation or completion failure removes and verifies
+  absence of the affected current and stale document ids under the same
+  publication lock before the event is released for retry; an incomplete
+  attempt must not leave a newly public transcript searchable. A thrown final
+  PostgreSQL commit is reconciled from the durable event and projection rows
+  before compensation because the commit acknowledgement may be lost after a
+  successful commit; an unavailable reconciliation preserves the claim and
+  documents until retry rather than deleting a potentially completed
+  publication that has no pending event left to restore it. Enable it only on
+  the Admin worker
   with `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=true`; the default is
   `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
   `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
