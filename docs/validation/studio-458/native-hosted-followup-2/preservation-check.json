@@ -1,0 +1,14 @@
+{
+  "existingEvidenceManifestEntriesVerified": 235,
+  "closedLiveLedgerClaims": [
+    [
+      "COMPLETED",
+      8
+    ]
+  ],
+  "closedLiveLedgerSHA256": "9db5ff8e8f8dd07082c8f97a5af2d09fe29ab9f1fd721f44e081078803c89b9a",
+  "proposedLiveLedgerExists": false,
+  "providerRequests": 0,
+  "nativeMutations": 0,
+  "projectPackAssetMutations": 0
+}

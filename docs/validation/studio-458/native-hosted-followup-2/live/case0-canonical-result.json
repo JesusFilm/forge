@@ -1,0 +1,25 @@
+{
+  "attemptId": "cmtrjqmoy000d2ctl7r3x44m0",
+  "projectId": "000458-native-ch19-seq102",
+  "revision": 1,
+  "status": "SUCCEEDED",
+  "instructions": [
+    {
+      "digest": "9afe8339baaac0b7b458d17a73f43da8f6edb59c47154e4a132cbc1b7e0a521b",
+      "agentDigest": "bda39c132d881151c66319dda9bbb8ad3987fa805ec07ba45dba82731169222d",
+      "blockDigest": "fd99eae985d0eede5f64bf6b64f7332de21f0d97bd29f16e7e3b9a6cb616d8df",
+      "agentVersionId": "0dbac07a-9c33-4f02-906f-01065e57c36f",
+      "blockVersionId": "b0afa872-cfb6-4ece-a01e-ee66f3557e6a"
+    }
+  ],
+  "manifest": {
+    "assetId": "df06f64e-868f-4c86-a15a-0d9efa2332d7",
+    "versionId": "cmtrjrjt3000h2ctl69pt8swm",
+    "digest": "210b282758d442b08cf7f25eeaa5a372d0da709dd23881b65ecc13a59747a8f7"
+  },
+  "text": "I proposed a revised 3-part English script and composition for ch19-seq102, but the studio asset tool rejected the edit package after validation on the previous attempt. So I can only report the intended canonical revision, not a completed accepted edit.\n\nProposed spoken script\n- reflection: “Three times, this event is carried into the Gospels, and that repetition tells us not to skim past it. It asks for more than interest; it asks for heed. When the storm of wind comes down on the lake, and the boat begins to fill with water, even true disciples can become fearful. They are not unbelievers for that moment, but they are humbled by sight, sense, and feeling. Their cry is urgent: Master, Master, we are going to perish! That is a warning to watch our own hearts, and also to be moderate in what we expect from other Christians. Even strong believers may be overwhelmed, and yet still be believers.”\n- bridge: “That is why the Lord’s question matters so much: Where is your faith? He is not denying that faith exists; He is asking whether it is ready for use when the wind rises. There is a difference between trusting Christ in sunshine and trusting Him in storm. Many receive Him for time and eternity, and still find their faith failing when the unexpected comes. The lesson is practical and searching: we need a stock of faith at a moment’s notice, so that we are not found unprepared when trouble arrives.”\n- settle: “Take a quiet breath. Let that stay with you.”\n\nTiming proposal\n- reflection: 1050 frames\n- bridge: 960 frames\n- settle: 690 frames\n- Total: 2700 frames\n\nCoverage\n- reflection: present\n- bridge: present\n- settle: present\n- video: not_checked\n- subtitle: not_checked\n\nFindings\n- coherence: pass\n- depth: pass\n- fidelity: pass\n- voice: pass\n- command_vs_appeal: pass\n- third_party_address: pass\n- self_echo: pass\n- opening_recap: pass\n- scripture_echo: not_checked\n\nIf you want, I can try a tighter re-proposal with different wording or a more conservative tone.",
+  "diagnostics": [],
+  "proposalCount": 0,
+  "proposalIndex": 0,
+  "previews": []
+}

@@ -1,0 +1,44 @@
+{
+  "checks": [
+    {
+      "projectId": "000458-native-ch19-seq102",
+      "revision": 1,
+      "packId": "cmtrhwiqz00052cvbh0106f4h"
+    },
+    {
+      "projectId": "000458-native-ch31-seq104",
+      "revision": 1,
+      "packId": "cmtrhx33900052c76b6yea7vj"
+    }
+  ],
+  "assets": [
+    {
+      "reference": {
+        "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+        "versionId": "cmtretxe100042ctenx3jrmih",
+        "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a"
+      },
+      "bytes": 16526,
+      "sha256": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a"
+    },
+    {
+      "reference": {
+        "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+        "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+        "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+      },
+      "bytes": 3377,
+      "sha256": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+    },
+    {
+      "reference": {
+        "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+        "versionId": "cmtrhx33100032c767cd2d68v",
+        "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+      },
+      "bytes": 8388,
+      "sha256": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+    }
+  ],
+  "mutations": 0
+}

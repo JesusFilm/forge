@@ -1,0 +1,302 @@
+[
+  {
+    "type": "target-event",
+    "projectId": "000458-native-ch31-seq104",
+    "event": {
+      "type": "proposal",
+      "proposal": {
+        "summary": "Revise ch31-seq104 into a 3-part English script that follows the recovered Good Samaritan excerpt: a developed reflection on the rarity of true charity, a causal bridge to the viewer’s response, and a brief settle. Keep canonical roles separate and preserve the excerpt’s qualifiers and concrete anchors without inventing source footage or subtitles.",
+        "command": {
+          "projectId": "000458-native-ch31-seq104",
+          "expectedRevision": 1,
+          "idempotencyKey": "f1b4e5e7-a8d9-426d-b50f-7f3611947c14",
+          "operations": [
+            {
+              "kind": "set-text",
+              "itemId": "reflection",
+              "text": "The parable begins with a lawyer’s question, “Who is my neighbour?” and that question matters, because it sets the drift of the whole story. Jesus does not answer with an allegory hunt or a clever detour. He shows a wounded traveler, then a priest and a Levite who see him and pass by on the other side. That is a plain picture of how rare true brotherly love is. Much charity is easy to admire when it costs little. But the love this parable commends is different: it notices real distress, refuses excuses, and will not measure a person’s worthiness before helping."
+            },
+            {
+              "kind": "set-speech",
+              "itemId": "reflection",
+              "speech": {
+                "text": "The parable begins with a lawyer’s question, “Who is my neighbour?” and that question matters, because it sets the drift of the whole story. Jesus does not answer with an allegory hunt or a clever detour. He shows a wounded traveler, then a priest and a Levite who see him and pass by on the other side. That is a plain picture of how rare true brotherly love is. Much charity is easy to admire when it costs little. But the love this parable commends is different: it notices real distress, refuses excuses, and will not measure a person’s worthiness before helping.",
+                "role": "reflection",
+                "suppressed": false,
+                "voice": {
+                  "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+                  "versionId": "cmtretxe100042ctenx3jrmih",
+                  "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a"
+                },
+                "provider": "elevenlabs",
+                "model": "eleven_multilingual_v2",
+                "settings": {
+                  "speed": 1,
+                  "style": 0,
+                  "stability": 0.5,
+                  "similarity_boost": 0.75,
+                  "use_speaker_boost": true
+                },
+                "pronunciation": null
+              }
+            },
+            {
+              "kind": "set-text",
+              "itemId": "bridge",
+              "text": "And that is why the Samaritan changes the point of the story. He does not ask whether the man belongs to his circle, and he does not wait for a safer moment. He draws near, gives aid, and turns compassion into action. If that is the lesson, then the question cannot stay abstract. It presses on conscience: what is real charity, who counts as a neighbour, and whether we will do good when it costs time, trouble, and care."
+            },
+            {
+              "kind": "set-speech",
+              "itemId": "bridge",
+              "speech": {
+                "text": "And that is why the Samaritan changes the point of the story. He does not ask whether the man belongs to his circle, and he does not wait for a safer moment. He draws near, gives aid, and turns compassion into action. If that is the lesson, then the question cannot stay abstract. It presses on conscience: what is real charity, who counts as a neighbour, and whether we will do good when it costs time, trouble, and care.",
+                "role": "bridge",
+                "suppressed": false,
+                "voice": {
+                  "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+                  "versionId": "cmtretxe100042ctenx3jrmih",
+                  "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a"
+                },
+                "provider": "elevenlabs",
+                "model": "eleven_multilingual_v2",
+                "settings": {
+                  "speed": 1,
+                  "style": 0,
+                  "stability": 0.5,
+                  "similarity_boost": 0.75,
+                  "use_speaker_boost": true
+                },
+                "pronunciation": null
+              }
+            },
+            {
+              "kind": "set-text",
+              "itemId": "settle",
+              "text": "Take a quiet breath. Let that question stay."
+            },
+            {
+              "kind": "set-speech",
+              "itemId": "settle",
+              "speech": {
+                "text": "Take a quiet breath. Let that question stay.",
+                "role": "settle",
+                "suppressed": false,
+                "voice": {
+                  "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+                  "versionId": "cmtretxe100042ctenx3jrmih",
+                  "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a"
+                },
+                "provider": "elevenlabs",
+                "model": "eleven_multilingual_v2",
+                "settings": {
+                  "speed": 1,
+                  "style": 0,
+                  "stability": 0.5,
+                  "similarity_boost": 0.75,
+                  "use_speaker_boost": true
+                },
+                "pronunciation": null
+              }
+            },
+            {
+              "kind": "set-metadata",
+              "title": "ch31-seq104 — good Samaritan reflection",
+              "language": "en",
+              "durationInFrames": 2700
+            }
+          ]
+        },
+        "quality": {
+          "coverage": [
+            {
+              "role": "reflection",
+              "status": "present",
+              "itemIds": [
+                "reflection"
+              ]
+            },
+            {
+              "role": "bridge",
+              "status": "present",
+              "itemIds": [
+                "bridge"
+              ]
+            },
+            {
+              "role": "settle",
+              "status": "present",
+              "itemIds": [
+                "settle"
+              ]
+            },
+            {
+              "role": "recap",
+              "status": "absent",
+              "itemIds": []
+            },
+            {
+              "role": "question",
+              "status": "absent",
+              "itemIds": []
+            },
+            {
+              "role": "prayer",
+              "status": "absent",
+              "itemIds": []
+            }
+          ],
+          "findings": [
+            {
+              "criterion": "coherence",
+              "status": "pass",
+              "reason": "The script moves from the lawyer’s question to the rarity of true brotherly love, then causally to the Samaritan’s corrective example, and ends with a short settle that leaves the listener with the conscience question rather than a repeat summary.",
+              "itemIds": [
+                "reflection",
+                "bridge",
+                "settle"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "depth",
+              "status": "pass",
+              "reason": "The adaptation retains the excerpt’s developed reasoning: the parable is not treated as an allegory hunt, charity is contrasted with easier low-cost benevolence, and the Samaritan’s action is presented as a practical correction that presses on conscience.",
+              "itemIds": [
+                "reflection",
+                "bridge"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "fidelity",
+              "status": "pass",
+              "reason": "No invented footage, citations, or source-subtitle claims were added. The script preserves the recovered excerpt’s core anchors: the lawyer’s question, the wounded traveler, the priest and Levite passing by, and the Samaritan’s active compassion.",
+              "itemIds": [
+                "reflection",
+                "bridge"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "voice",
+              "status": "pass",
+              "reason": "The tone stays reflective and direct rather than preachy. It uses a curiosity-led opening and avoids a generic recap opening, third-party drift at the ending, or self-echo within the reflection.",
+              "itemIds": [
+                "reflection",
+                "bridge",
+                "settle"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "command_vs_appeal",
+              "status": "pass",
+              "reason": "The script does not issue forceful audience commands; its only directive is the short settle invitation, which functions as a soft reflective appeal.",
+              "itemIds": [
+                "settle"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "third_party_address",
+              "status": "pass",
+              "reason": "The ending addresses the viewer’s own conscience and question, not a stranger’s prospects.",
+              "itemIds": [
+                "bridge",
+                "settle"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "self_echo",
+              "status": "pass",
+              "reason": "No phrase or proposition is repeated within the reflection in a way that adds no development.",
+              "itemIds": [
+                "reflection"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "opening_recap",
+              "status": "pass",
+              "reason": "The reflection opens with the lawyer’s question and its significance, not with a scene recap that delays the argument.",
+              "itemIds": [
+                "reflection"
+              ],
+              "sources": [
+                {
+                  "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+                  "versionId": "cmtrhx33100032c767cd2d68v",
+                  "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+                }
+              ]
+            },
+            {
+              "criterion": "scripture_echo",
+              "status": "not_checked",
+              "reason": "No canonical verse-card text or exact source dialogue for this project clip was supplied, and the pack explicitly says it does not supply canonical source footage/subtitles. Redundant echo against delivered scripture/source dialogue therefore cannot be verified.",
+              "itemIds": [
+                "reflection",
+                "bridge"
+              ],
+              "sources": []
+            },
+            {
+              "criterion": "canonical_video_subtitle_evidence",
+              "status": "not_checked",
+              "reason": "The pack does not supply canonical source footage or subtitles, so exact clip-level verification remains unavailable.",
+              "itemIds": [
+                "reflection",
+                "bridge",
+                "settle"
+              ],
+              "sources": []
+            }
+          ]
+        }
+      }
+    }
+  }
+]

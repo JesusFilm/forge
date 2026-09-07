@@ -1,0 +1,8 @@
+import {existsSync,writeFileSync} from 'node:fs';
+export const withBatchStop=(path,dispatch)=>async(...args)=>{
+ if(existsSync(path))throw new Error('Batch stopped; no further dispatch permitted');
+ try{return await dispatch(...args)}catch(error){
+  try{writeFileSync(path,JSON.stringify({reason:error instanceof Error?error.message:'Unknown dispatch failure',stoppedAt:new Date().toISOString()}),{flag:'wx'})}catch(e){if(e.code!=='EEXIST')throw e}
+  throw error;
+ }
+};

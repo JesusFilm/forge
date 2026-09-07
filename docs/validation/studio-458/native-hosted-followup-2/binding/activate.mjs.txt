@@ -1,0 +1,19 @@
+import {request} from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const dir='/tmp/forge-studio-458-prep/creative-followup-2',out=dir+'/binding';
+const raw=await readFile(dir+'/proposal.body');if(createHash('sha256').update(raw).digest('hex')!=='acc28d6896a79578906d57a299895dc20e3dd3952d992b306af861def4578719')throw Error('Proposal changed');
+const p=JSON.parse(raw),ctx=await request.newContext(),origin='http://studio458.localhost:3588';
+const log=[];
+async function command(command){const r=await ctx.post(origin+'/api/studio/agent',{headers:{origin},data:{kind:'instructions',input:{action:'instructions',command}},maxRetries:0});const body=await r.json();log.push({command:command.action,http:r.status(),body});await writeFile(out+'/activation-evidence.json',JSON.stringify(log,null,2));if(!r.ok())throw Error('Instruction command failed; inspect retained evidence before any retry');return body.result;}
+try{
+ const login=await ctx.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});if(login.status()!==302)throw Error('Fixture login failed');
+ const initial=await command({action:'inspect'});if(initial.activeVersionId!==p.instructionPreparation.previous.agentVersionId)throw Error('Active version drift');
+ await writeFile(out+'/mutation-intent.json',JSON.stringify({scope:'isolated local native store only',expectedLatest:initial.latest.id,expectedActive:initial.activeVersionId,proposedAgentDigest:p.frozenNativeInstructions.agentDigest},null,2),{flag:'wx'});
+ const saved=await command({action:'save',expectedVersionId:initial.latest.id,content:await readFile(dir+'/proposed-agent.body','utf8')});
+ if(saved.activeVersionId!==initial.activeVersionId||saved.latest.content!==await readFile(dir+'/proposed-agent.body','utf8'))throw Error('Draft bytes or inactive-save invariant failed');
+ const compared=await command({action:'compare',from:initial.activeVersionId,to:saved.latest.id});if(compared.to.content!==saved.latest.content)throw Error('Comparison mismatch');
+ const active=await command({action:'activate',versionId:saved.latest.id,expectedActiveVersionId:initial.activeVersionId});if(active.activeVersionId!==saved.latest.id)throw Error('Activation mismatch');
+ await writeFile(out+'/native-version-selection.json',JSON.stringify({previousActiveVersionId:initial.activeVersionId,previousLatestVersionId:initial.latest.id,agentVersionId:saved.latest.id,draftSavePreservedActive:true,comparePassed:true,explicitActivationPassed:true},null,2),{flag:'wx'});
+ console.log(JSON.stringify({agentVersionId:saved.latest.id,draftSavePreservedActive:true,comparePassed:true,activated:true,providerCalls:0}));
+}finally{await ctx.dispose()}

@@ -1,0 +1,68 @@
+{
+  "providerCalls": 0,
+  "applied": false,
+  "mutations": 0,
+  "exactCanonicalError": {
+    "name": "ZodError",
+    "message": "[\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"fontSize\"\n    ],\n    \"message\": \"Invalid input: expected number, received string\"\n  }\n]",
+    "issues": [
+      {
+        "expected": "number",
+        "code": "invalid_type",
+        "path": [
+          "fontSize"
+        ],
+        "message": "Invalid input: expected number, received string"
+      }
+    ],
+    "feedback": null
+  },
+  "propertyChecks": [
+    {
+      "itemId": "reflection",
+      "validation": {
+        "success": false,
+        "error": {
+          "name": "ZodError",
+          "message": "[\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"fontSize\"\n    ],\n    \"message\": \"Invalid input: expected number, received string\"\n  }\n]"
+        }
+      }
+    },
+    {
+      "itemId": "bridge",
+      "validation": {
+        "success": false,
+        "error": {
+          "name": "ZodError",
+          "message": "[\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"fontSize\"\n    ],\n    \"message\": \"Invalid input: expected number, received string\"\n  }\n]"
+        }
+      }
+    },
+    {
+      "itemId": "settle",
+      "validation": {
+        "success": false,
+        "error": {
+          "name": "ZodError",
+          "message": "[\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"fontSize\"\n    ],\n    \"message\": \"Invalid input: expected number, received string\"\n  }\n]"
+        }
+      }
+    }
+  ],
+  "roleError": {
+    "message": "Unchecked coverage cannot assert item identities",
+    "feedback": {
+      "code": "ROLE_COVERAGE_UNCHECKED_IDS",
+      "role": "video",
+      "expectedItemCount": 0,
+      "expectedItemIds": [],
+      "expectedItemIdsComplete": true,
+      "observedRoles": [
+        "bridge",
+        "reflection",
+        "settle"
+      ],
+      "observedRolesComplete": true
+    }
+  }
+}

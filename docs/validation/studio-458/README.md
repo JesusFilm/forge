@@ -141,3 +141,14 @@ Outstanding acceptance: creative-quality acceptance after the preserved failed c
 authorized actual narration/music/voice audition with verified billing facts. The
 ticket stays in progress. Typed role-feedback regression and editable rubric
 calibration are unpaid corrections; they do not relabel the failed paid outputs.
+
+## Closed corrected-instruction follow-up
+
+`native-hosted-followup-2/live/comparison.md` records the subsequent explicitly
+authorized two-case run with corrected native instructions: seven requests,
+USD 0.0791718 provider-reported cost, no retry, zero page errors and no apply.
+ch31 produced a retained proposal/preview but has fidelity/depth/recap concerns;
+ch19’s text improved while malformed properties prevented canonical acceptance.
+The exact separate schema, property-type and coverage failures are preserved.
+This batch is closed; no further paid requests are authorized. Same-case results
+do not establish blind generalization or full creative/ElevenLabs acceptance.

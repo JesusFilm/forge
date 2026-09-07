@@ -1,0 +1,10 @@
+import {PostgresStore} from '@mastra/pg'
+import {writeFile} from 'node:fs/promises'
+import {StudioInstructions} from '../src/services/studio-authoring/instructions'
+const storage=new PostgresStore({id:'studio458-readonly-freeze',connectionString:'postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test',schemaName:'mastra_studio_authoring'})
+async function main(){
+ const frozen=await new StudioInstructions(storage).freeze({mode:'active'},{language:'en'})
+ await writeFile('/tmp/forge-studio-458-prep/creative-followup-2/current-active-frozen.json',JSON.stringify(frozen,null,2))
+ console.log(JSON.stringify({agentVersionId:frozen.agentVersionId,blockVersionId:frozen.blockVersionId,digest:frozen.digest,bytes:Buffer.byteLength(frozen.effective)}));process.exit(0)
+}
+main().catch(e=>{console.error(e.message);process.exit(1)})

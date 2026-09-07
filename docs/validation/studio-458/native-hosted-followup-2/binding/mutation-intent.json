@@ -1,0 +1,6 @@
+{
+  "scope": "isolated local native store only",
+  "expectedLatest": "fe4a08bb-6626-413e-bd5d-71f88e8e0727",
+  "expectedActive": "fe4a08bb-6626-413e-bd5d-71f88e8e0727",
+  "proposedAgentDigest": "bda39c132d881151c66319dda9bbb8ad3987fa805ec07ba45dba82731169222d"
+}
