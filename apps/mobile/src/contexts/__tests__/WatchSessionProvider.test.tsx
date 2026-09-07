@@ -100,6 +100,7 @@ function record(
     muxPlaybackId: null,
     duration: null,
     primaryLanguageBcp47: "en",
+    primaryLanguageCoreId: "lang-en",
     parentSeries: null,
     siblings: [],
     variants,
