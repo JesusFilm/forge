@@ -1,0 +1,11 @@
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"
+    at /tmp/forge-studio-458-prep/model-capability-comparison/binding/live-adapter/live/inspect-retained.mjs:17:22 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.20.0

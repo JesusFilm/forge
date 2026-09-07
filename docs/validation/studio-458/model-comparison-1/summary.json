@@ -1,0 +1,23 @@
+{
+  "closed": true,
+  "attemptedRuns": 4,
+  "unstartedSlots": [
+    4,
+    5
+  ],
+  "consumedClaims": 14,
+  "completeClaims": 13,
+  "ambiguousClaims": 1,
+  "knownReportedUSD": 0.39004885,
+  "ambiguousReservedUSD": 0.56144,
+  "actualTotalUSD": null,
+  "ceilingUSD": 9,
+  "stopReason": "upstream abort during candidate ch19 fourth request; native aggregate90s strongly supported, exact abort source not originally tagged",
+  "noRetryContractViolation": "three identical serialized inputs in slot3 ordinals1/2/3; framework empty-tool-call continuation bypassed SDK maxRetries0 safeguard",
+  "comparability": "only held-out pair completed; ch19 control budget-limited, candidate replay/deadline-invalid; ch31 not run",
+  "validProposals": 3,
+  "applied": false,
+  "mediaGenerated": false,
+  "previewVisualAccepted": false,
+  "previewLimitation": "authenticated preparation429; local preview8session quota; canonical preview documents retained"
+}

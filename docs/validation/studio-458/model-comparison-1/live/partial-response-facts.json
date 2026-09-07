@@ -1,0 +1,17 @@
+{
+  "bytes": 128858,
+  "requestIds": [
+    "gen-1788807986-VXaKA1Im0u9o3qMZzwSa"
+  ],
+  "models": [
+    "openai/gpt-5.4"
+  ],
+  "providers": [
+    "OpenAI"
+  ],
+  "usageObjects": [],
+  "donePresent": false,
+  "actualCostUSD": null,
+  "claimedState": "AMBIGUOUS",
+  "doNotReplay": true
+}

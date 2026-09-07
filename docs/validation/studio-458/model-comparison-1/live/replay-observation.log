@@ -1,0 +1,16 @@
+{"boundaryInvocations":3,"hashes":["a730b5eb261b2b1f6f62f33167cc9dbc0e8fd4b921dafb175394e746560ae364","ad861de87e883df0010e2fbf458c0fde14d5d45f06cd969049fc166d2a81d2da","ad861de87e883df0010e2fbf458c0fde14d5d45f06cd969049fc166d2a81d2da"],"externalRequests":0,"toolActions":["pack"]}
+Error in agent stream {
+  error: Error: DIAGNOSTIC_BOUNDARY_THIRD_INVOCATION_NO_NETWORK
+      at fetch (/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra/.tmp/model-comparison-replay-observe.ts:13:20)
+      at postToApi (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@ai-sdk+provider-utils@4.0.27_zod@4.3.6/node_modules/@ai-sdk/provider-utils/src/post-to-api.ts:98:28)
+      at postJsonToApi (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@ai-sdk+provider-utils@4.0.27_zod@4.3.6/node_modules/@ai-sdk/provider-utils/src/post-to-api.ts:31:3)
+      at OpenAIChatLanguageModel.doStream (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@ai-sdk+openai@3.0.63_zod@4.3.6/node_modules/@ai-sdk/openai/src/chat/openai-chat-language-model.ts:417:56)
+      at async AISDKV6LanguageModel.doStream (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/@mastra/core/src/llm/model/aisdk/v6/model.ts:80:12)
+      at async default.retries (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/@mastra/core/dist/agent-0y2cApTZ.js:24683:13)
+      at async Module.pRetry (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/p-retry@7.1.1/node_modules/p-retry/index.js:197:19)
+      at async createStream (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/@mastra/core/dist/agent-0y2cApTZ.js:24682:12)
+      at async Object.start (/home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/@mastra/core/src/stream/base/input.ts:67:26),
+  runId: '0f48c77d-1a18-4485-acd8-6776c7f20a47',
+  provider: 'openai.chat',
+  modelId: 'openai/gpt-5.4'
+}

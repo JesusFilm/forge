@@ -1,0 +1,72 @@
+{
+  "sourceSHA256": "5c707ac2a9c6e8fa5b912fd746454c03ee79bbc11541dbf4064ca09599c159a5",
+  "unchangedExtractedStreamingFunction": true,
+  "tests": [
+    {
+      "scenario": "native-deadline",
+      "events": [
+        {
+          "kind": "native-timer-created",
+          "at": 0,
+          "delay": 90000
+        },
+        {
+          "kind": "SDK-abortSignal-received",
+          "at": 0
+        },
+        {
+          "kind": "fourth-request-start-fixture",
+          "at": 75000
+        },
+        {
+          "kind": "explicit-native-timer-fired",
+          "at": 90000
+        },
+        {
+          "kind": "SDK-upstream-abort",
+          "at": 90000,
+          "name": "AbortError"
+        },
+        {
+          "kind": "native-finish",
+          "at": 90000,
+          "status": "failed"
+        }
+      ],
+      "body": "{\"type\":\"error\",\"message\":\"Studio generation failed. No proposed changes were applied.\"}\n",
+      "syntheticClock": true,
+      "externalRequests": 0
+    },
+    {
+      "scenario": "caller-cancel",
+      "events": [
+        {
+          "kind": "native-timer-created",
+          "at": 0,
+          "delay": 90000
+        },
+        {
+          "kind": "SDK-abortSignal-received",
+          "at": 0
+        },
+        {
+          "kind": "fourth-request-start-fixture",
+          "at": 75000
+        },
+        {
+          "kind": "SDK-upstream-abort",
+          "at": 80000,
+          "name": "AbortError"
+        },
+        {
+          "kind": "native-finish",
+          "at": 80000,
+          "status": "failed"
+        }
+      ],
+      "body": "",
+      "syntheticClock": true,
+      "externalRequests": 0
+    }
+  ]
+}

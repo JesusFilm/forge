@@ -1,0 +1,45 @@
+{
+  "http": 200,
+  "completeStream": true,
+  "model": "openai/gpt-5.4",
+  "provider": "OpenAI",
+  "usage": {
+    "prompt_tokens": 27829,
+    "completion_tokens": 4096,
+    "total_tokens": 31925,
+    "cost": 0.0745645,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 25088,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.0745645,
+      "upstream_inference_prompt_cost": 0.0131245,
+      "upstream_inference_completions_cost": 0.06144
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 3106,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "actualCostUSD": 0.0745645,
+  "requestIds": [
+    "gen-1788807918-A1QDv2D2PxFvynKzIEIx"
+  ],
+  "elapsedMs": 34813.17753800002,
+  "responseHeaders": {
+    "content-type": "text/event-stream",
+    "x-request-id": null
+  },
+  "requestDigest": "b59f76a3ce08e39c48c1ebb5c3e505518596cc5f7b2c71d306436f719211ca57",
+  "requestBytes": 140620,
+  "reservedUSD": 0.56144,
+  "transport": "live",
+  "networkDispatched": true,
+  "state": "AWAITING_SETTLEMENT",
+  "requestedState": "COMPLETED"
+}

@@ -1,0 +1,147 @@
+{
+  "status": "PROPOSAL_ONLY_NO_PAID_OR_CONFIGURATION_AUTHORIZATION",
+  "title": "Paired model capability comparison before further prompt tuning",
+  "codeBase": {
+    "local": "a319a068fc2d79684c1ad1824387c2b8a45ca0dc",
+    "rootEquivalent": "44e3d36e"
+  },
+  "question": "Does changing only the model improve strict valid proposals and evidence-grounded creative QA on the same corrected tool boundary?",
+  "models": [
+    {
+      "arm": "mini-control",
+      "slug": "openai/gpt-5.4-mini",
+      "providerOnly": [
+        "openai"
+      ],
+      "promptUSDPerMillion": 0.75,
+      "outputUSDPerMillion": 4.5
+    },
+    {
+      "arm": "gpt54-candidate",
+      "slug": "openai/gpt-5.4",
+      "providerOnly": [
+        "openai"
+      ],
+      "promptUSDPerMillion": 2.5,
+      "outputUSDPerMillion": 15
+    }
+  ],
+  "settings": {
+    "reasoning": {
+      "effort": "low"
+    },
+    "max_tokens": 4096,
+    "temperature": "omitted",
+    "allow_fallbacks": false,
+    "maxRetries": 0,
+    "timeoutMs": 90000,
+    "inputConservativeBound": 200000,
+    "inputBoundRule": "Every complete serialized outgoing provider JSON UTF-8 byte count +4096 framing <=200000; all dynamic turns, no input/output truncation. This is a conservative local allowance, not provider-certified token count.",
+    "maximumNativeRuns": 6,
+    "maximumDispatchesPerRun": 4,
+    "maximumDispatchesTotal": 24,
+    "nativeInternalMaxSteps": 5,
+    "evaluationGuardRule": "Guard stops before fifth network dispatch even if native step cap would permit it. Four requests is a declared evaluation budget, not product change. Failure to finish within it is reported budget-limited, not proof of incapability. No request budget transfers."
+  },
+  "cost": {
+    "currency": "USD",
+    "proposedCeilingUSD": 9,
+    "standardWorstCaseUsageUSD": 8.758464,
+    "mini12RequestsUSD": 2.021184,
+    "gpt54_12RequestsUSD": 6.73728,
+    "formula": "12*(200000*0.75+4096*4.5)/1e6 + 12*(200000*2.5+4096*15)/1e6",
+    "actualCostUSD": null,
+    "excludes": "No media/search/cache-write/BYOK/priority/regional processing requested. No cache discounts assumed. Catalog route prices must remain <=fixed max_price; normal OpenRouter credit usage, no top-up transaction. Any charge category not bounded stops preparation/dispatch.",
+    "currentReadOnlyKeyRemaining": 9.8049199,
+    "keyCaveat": "Remaining key limit is not account wallet balance or reservation. Recheck immediately before dispatch; denial/insufficient credit consumes its claim with no top-up/retry. No subscription/credential changes."
+  },
+  "instructions": {
+    "reuseExact": true,
+    "agentVersionId": "0dbac07a-9c33-4f02-906f-01065e57c36f",
+    "blockVersionId": "b0afa872-cfb6-4ece-a01e-ee66f3557e6a",
+    "agentDigest": "bda39c132d881151c66319dda9bbb8ad3987fa805ec07ba45dba82731169222d",
+    "blockDigest": "fd99eae985d0eede5f64bf6b64f7332de21f0d97bd29f16e7e3b9a6cb616d8df",
+    "effectiveDigest": "9afe8339baaac0b7b458d17a73f43da8f6edb59c47154e4a132cbc1b7e0a521b",
+    "effectiveBytes": 9113,
+    "plan": "No prompt edits or activation now. Future approved isolated preparation re-freezes pinned native IDs, compares exact bytes, binds each new canonical attempt/project/pack/message. Runtime model is dependency-injected in reviewed createStudioRuntime; record and guard arm/model identity separately from frozen instruction identity, not falsely as a changed native prompt version."
+  },
+  "caseFiles": [
+    "regression-cases.body",
+    "heldout-case-draft.body"
+  ],
+  "runOrder": [
+    {
+      "slot": 0,
+      "case": "ch33-seq0-ep2",
+      "arm": "gpt54-candidate"
+    },
+    {
+      "slot": 1,
+      "case": "ch33-seq0-ep2",
+      "arm": "mini-control"
+    },
+    {
+      "slot": 2,
+      "case": "ch19-seq102",
+      "arm": "mini-control"
+    },
+    {
+      "slot": 3,
+      "case": "ch19-seq102",
+      "arm": "gpt54-candidate"
+    },
+    {
+      "slot": 4,
+      "case": "ch31-seq104",
+      "arm": "gpt54-candidate"
+    },
+    {
+      "slot": 5,
+      "case": "ch31-seq104",
+      "arm": "mini-control"
+    }
+  ],
+  "sourcePlan": "Exact prior r1 projects/messages/packs for ch19/ch31; inert same-layout held-out project draft using exact recovered Matthew Henry sourceExcerpt only. No saved generated answer sent. All canonical Video/Dub/Edition/subtitles unavailable: not_checked. Scripture in editorial excerpt is not canonical footage. No source capture or invented clip.",
+  "guard": {
+    "dryLedger": "/tmp/forge-studio-458-runtime/native-paid-guard/model-comparison-1-dry.sqlite",
+    "liveLedger": "/tmp/forge-studio-458-runtime/native-paid-guard/model-comparison-1-live.sqlite",
+    "created": false,
+    "requiredUnpaidPreparation": "Reviewed guard design requires explicit six-slot/two-model manifest adaptation and fresh tests/dry run; not implemented or passed yet. Admission keyed by (slot,arm,case,attempt), never first matching duplicate message. Persist model,provider,limits and proposal hash with each reservation. Fail cross-arm/revision/message mismatches before network.",
+    "semantics": "One shared durable LIVE cap across both arm adapters, separate DRY ledger. Persist owner/reservation/bytes/digest before network. Never reset. Failed/interrupted/ambiguous/incomplete consumes claim, stops run; no replay/replacement. Protocol/settings/rates/identity bound violation stops whole batch. Unknown costs reserve worst-case allowance; do not infer charge from ceiling.",
+    "toolAllowlist": [
+      "assets",
+      "packs",
+      "pack",
+      "source-preview",
+      "search",
+      "asset",
+      "validate-proposal"
+    ],
+    "executionBoundary": "readProject is admitted immutable read; proposeEdits validates/emits only. Shipped dynamic schema registry preserved. Reject capture/upload/registerComponent/registration/edit/apply/approve/media/provider/render/publish actions before forwarding. Provider search tools disabled.",
+    "capture": "Exact outgoing and streamed bytes/tool envelopes; request IDs, model/provider, elapsed, returned usage/cost, valid complete stream marker; all accepted/rejected proposals and non-applied previews retained. No invalid stream COMPLETED."
+  },
+  "evaluationFile": "evaluation.md",
+  "closedReferences": [
+    "../creative-followup-2/live/STOP.json",
+    "docs/validation/studio-458/llm-summary.json",
+    "docs/validation/studio-458/native-hosted-live/summary.json",
+    "docs/validation/studio-458/native-hosted-followup-2/live/summary.json"
+  ],
+  "pending": [
+    "Root review of proposal; this is not authorization",
+    "Approved isolated held-out asset/pack/project preparation and exact generated-ID binding (no media creation)",
+    "Fresh guarded native DRY run against reviewed built code, production Manager path; each arm output/routing/identity and restart tests",
+    "Fresh read-only key/rate checks and preserved fixture-byte preflight",
+    "Explicit root paid release for immutable bound manifest"
+  ],
+  "prohibited": [
+    "Paid requests now",
+    "Account/model configuration changes now",
+    "Further prompt tuning",
+    "Automatic retries",
+    "New media or voice registration",
+    "Applying proposals",
+    "Human approval impersonation",
+    "Rendering/publication"
+  ]
+}

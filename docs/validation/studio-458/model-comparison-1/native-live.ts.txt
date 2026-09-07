@@ -1,0 +1,45 @@
+import {createComparisonTransport} from '/tmp/forge-studio-458-prep/model-capability-comparison/binding/live-adapter/transport.mjs'
+import {createHash} from 'node:crypto'
+import { createServer } from 'node:http'
+import { restrictToolFetch } from '/tmp/forge-studio-458-prep/model-capability-comparison/binding/dry-verified/tool-boundary.mjs'
+import { readFileSync, appendFileSync, existsSync } from 'node:fs'
+import { PostgresStore } from '@mastra/pg'
+import { Pool } from 'pg'
+import { createOpenAI } from '@ai-sdk/openai'
+import { execFileSync } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
+import { createStudioRuntime } from '../src/services/studio-authoring/runtime'
+const db='postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test'
+const keys=JSON.parse(readFileSync('/tmp/forge-studio-458-runtime/local-runtime.json','utf8'))
+const pool=new Pool({connectionString:db})
+const storage=new PostgresStore({id:'studio458-browser',connectionString:db,schemaName:'mastra_studio_authoring'})
+const proposalPath='/tmp/forge-studio-458-prep/model-capability-comparison/binding/verified-bound-proposal.body'
+if(createHash('sha256').update(readFileSync(proposalPath)).digest('hex')!=='f1aac2780903fdd16ccfb9aad7af0de7a6de7ee7036534253a8c320ba0e947c4')throw new Error('Immutable bound manifest changed');
+const proposal=JSON.parse(readFileSync(proposalPath,'utf8'))
+const guardDir='/tmp/forge-studio-458-prep/model-capability-comparison/binding/live-adapter/live'; const networkMode=process.env.STUDIO_MODEL_COMPARISON_TRANSPORT??'disabled'; const transport=createComparisonTransport({mode:networkMode,evidenceDir:guardDir})
+globalThis.fetch=restrictToolFetch(globalThis.fetch,(event:any)=>appendFileSync(guardDir+'/tool-boundary.jsonl',JSON.stringify(event)+'\n'))
+const admitted=new Map<number,any>()
+const ordinals=new Map<number,number>(); const attemptSlots=new Map<string,number>(); let activeSlot:number|null=null
+const modelFor=(arm:string)=>createOpenAI({apiKey:'unused-dry-fixture',baseURL:'https://openrouter.ai/api/v1',fetch:async(url,init)=>{
+ if(String(url)!=='https://openrouter.ai/api/v1/chat/completions')throw new Error('Unexpected model endpoint')
+ const body=JSON.parse(String(init?.body))
+ body.provider=proposal.boundModelRouting[arm];body.reasoning=proposal.settings.reasoning
+ const slot=activeSlot;if(slot===null||proposal.runOrder[slot].arm!==arm)throw new Error('Arm/slot mismatch'); const selected=proposal.runOrder[slot]; const currentCase=proposal.cases.find((c:any)=>c.case===selected.case)
+ const run=admitted.get(slot);if(!run)throw new Error('Missing native run admission')
+ const attempt=(await pool.query('SELECT instructions,project_id,base_revision FROM studio_attempt WHERE id=$1',[run.attemptId])).rows[0]
+ const provenance=attempt.instructions[0]
+ const expected=JSON.parse(execFileSync('python3',['/tmp/forge-studio-458-prep/model-capability-comparison/binding/dry-verified/expected.py',proposalPath,String(slot),run.attemptId],{encoding:'utf8'}));
+ const admission={...expected,projectId:run.project.projectId,revision:run.project.revision,document:run.project.document,message:run.message,agentVersionId:provenance.agentVersionId,blockVersionId:provenance.blockVersionId,effectiveDigest:provenance.digest}
+ if(attempt.project_id!==admission.projectId||attempt.base_revision!==admission.revision)throw new Error('Canonical admission mismatch')
+ const ordinal=ordinals.get(slot)??0,raw=JSON.stringify(body)
+ return transport(String(url),{slot,ordinal,attempt:run.attemptId,admission,raw},init?.signal).then(response=>{ordinals.set(slot,ordinal+1);return response;});
+}}).chat(proposal.models.find((m:any)=>m.arm===arm).slug)
+async function main(){
+ if(networkMode!=='live'){console.log('Live native adapter disabled; no ledger opened or network dispatch');process.exit(0)}
+ if(existsSync('/tmp/forge-studio-458-runtime/native-paid-guard/model-comparison-1-live.sqlite'))throw new Error('Existing LIVE ledger: restart/replay prohibited');
+ if(!existsSync('/tmp/forge-studio-458-prep/model-capability-comparison/binding/live-adapter/authorization.json'))throw new Error('Explicit live release missing');
+ await storage.init()
+ const handlerFor=(arm:string)=>createStudioRuntime(storage,{publicKeys:JSON.stringify({studio458:keys.publicKey}),environment:'local',admissionSecret:keys.serviceKey,model:modelFor(arm),adminUrl:'http://127.0.0.1:3587',serialize:async work=>{ const c=await pool.connect();try {await c.query('SELECT pg_advisory_lock(457)');return await work()}finally{try{await c.query('SELECT pg_advisory_unlock(457)')}catch(e){c.release(true);throw e}c.release()}},claim:async(id,digest)=>(await pool.query('INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id',[id,digest])).rowCount===1,finish:async(id,status)=>{await pool.query('UPDATE studio_agent_execution SET status=$2 WHERE id=$1',[id,status])}})
+ createServer(async(req,res)=>{try{const chunks=[];for await(const c of req)chunks.push(c);const parsed=JSON.parse(Buffer.concat(chunks).toString());if(parsed.action==='run'){let slot=attemptSlots.get(parsed.attemptId);if(slot===undefined){slot=attemptSlots.size;if(slot>=6)throw new Error('Six runs exhausted');const selected=proposal.runOrder[slot],c=proposal.cases.find((c:any)=>c.case===selected.case);if(c.project.projectId!==parsed.project?.projectId||c.message!==parsed.message)throw new Error('Scheduled case mismatch');attemptSlots.set(parsed.attemptId,slot);admitted.set(slot,parsed)}activeSlot=slot}const arm=activeSlot===null?proposal.models[0].arm:proposal.runOrder[activeSlot].arm;const response=await handlerFor(arm)(new Request('http://127.0.0.1:4188/forge-studio',{method:'POST',headers:req.headers as Record<string,string>,body:Buffer.concat(chunks)}));res.writeHead(response.status,Object.fromEntries(response.headers));if(response.body){const r=response.body.getReader();while(true){const v=await r.read();if(v.done)break;res.write(v.value)}}res.end()}catch{res.writeHead(500).end()}}).listen(4189,'127.0.0.1',()=>console.log('Guarded explicitly authorized native Studio live runtime ready'))
+}
+main()

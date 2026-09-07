@@ -1,0 +1,205 @@
+Studio
+ALPHA
+Video editor
+Standalone projects
+Report
+Jobs
+4
+Smart Crop
+Video editor
+SEO
+Agents
+Toggle sidebar
+Studio
+Video editor
+Project
+ch33-seq0-ep2 — held-out source adaptation
+1080 × 1920 · 30 fps
+Assistant
+Generate scripts
+Speech and production
+History
+Saved · r1
+Save
+Source Library
+Add text card
+Timing source
+en · 3 sec
+Colour and sound — local source fixture
+en · 3 sec
+Colour and sound — local source fixture
+en · 3 sec
+Canvas
+Select & move
+At the market, Mira stops to listen
+0.00 / 90.00s
+Project
+Title
+Width
+Height
+Duration (seconds)
+
+Select a canvas element or timeline clip to inspect it.
+
+Cards & elements
+At the market, Mira stops to listen before answering.
+0.0s · 30.0s
+That pause changes how she hears her neighbour.
+30.0s · 30.0s
+Let the quiet moment stay.
+60.0s · 30.0s
+Timeline
+3 items · 30 fps
+Track
+Zoom
+Tracks
+Visual 1
+Audio 2
+0.0s
+3.3s
+6.7s
+10.0s
+13.3s
+16.7s
+20.0s
+23.3s
+26.7s
+30.0s
+33.3s
+36.7s
+40.0s
+43.3s
+46.7s
+50.0s
+53.3s
+56.7s
+60.0s
+63.3s
+66.7s
+70.0s
+73.3s
+76.7s
+80.0s
+83.3s
+86.7s
+At the market, Mira stops to listen before answering.
+That pause changes how she hears her neighbour.
+Let the quiet moment stay.
+Generate scripts and compositions
+Close generation
+
+Select one project or an explicit batch of up to eight. Each freezes its own instruction versions and revision. Review and apply proposals before approving speech.
+
+Production targets
+Native generation fixture · revision 4 · 000458-browser-1
+Studio production fixture 2 · revision 2 · 000458-browser-2
+A morning conversation — edition 1 · revision 1 · 000458-catalog-001
+Market-day memories — edition 1 · revision 1 · 000458-catalog-002
+The harbour at sunset — edition 1 · revision 1 · 000458-catalog-003
+A shared meal — edition 1 · revision 1 · 000458-catalog-004
+Learning a new craft — edition 1 · revision 1 · 000458-catalog-005
+An unexpected welcome — edition 1 · revision 1 · 000458-catalog-006
+Quiet paths through the city — edition 1 · revision 1 · 000458-catalog-007
+Listening across generations — edition 1 · revision 1 · 000458-catalog-008
+A garden after the rain — edition 1 · revision 1 · 000458-catalog-009
+The journey home — edition 1 · revision 1 · 000458-catalog-010
+A morning conversation — edition 2 · revision 1 · 000458-catalog-011
+Market-day memories — edition 2 · revision 1 · 000458-catalog-012
+The harbour at sunset — edition 2 · revision 1 · 000458-catalog-013
+A shared meal — edition 2 · revision 1 · 000458-catalog-014
+Learning a new craft — edition 2 · revision 1 · 000458-catalog-015
+An unexpected welcome — edition 2 · revision 1 · 000458-catalog-016
+Quiet paths through the city — edition 2 · revision 1 · 000458-catalog-017
+Listening across generations — edition 2 · revision 1 · 000458-catalog-018
+A garden after the rain — edition 2 · revision 1 · 000458-catalog-019
+The journey home — edition 2 · revision 1 · 000458-catalog-020
+A morning conversation — edition 3 · revision 1 · 000458-catalog-021
+Market-day memories — edition 3 · revision 1 · 000458-catalog-022
+The harbour at sunset — edition 3 · revision 1 · 000458-catalog-023
+A shared meal — edition 3 · revision 1 · 000458-catalog-024
+Learning a new craft — edition 3 · revision 1 · 000458-catalog-025
+An unexpected welcome — edition 3 · revision 1 · 000458-catalog-026
+Quiet paths through the city — edition 3 · revision 1 · 000458-catalog-027
+Listening across generations — edition 3 · revision 1 · 000458-catalog-028
+A garden after the rain — edition 3 · revision 1 · 000458-catalog-029
+The journey home — edition 3 · revision 1 · 000458-catalog-030
+A morning conversation — edition 4 · revision 1 · 000458-catalog-031
+Market-day memories — edition 4 · revision 1 · 000458-catalog-032
+The harbour at sunset — edition 4 · revision 1 · 000458-catalog-033
+A shared meal — edition 4 · revision 1 · 000458-catalog-034
+Learning a new craft — edition 4 · revision 1 · 000458-catalog-035
+An unexpected welcome — edition 4 · revision 1 · 000458-catalog-036
+Quiet paths through the city — edition 4 · revision 1 · 000458-catalog-037
+Listening across generations — edition 4 · revision 1 · 000458-catalog-038
+A garden after the rain — edition 4 · revision 1 · 000458-catalog-039
+The journey home — edition 4 · revision 1 · 000458-catalog-040
+A morning conversation — edition 5 · revision 1 · 000458-catalog-041
+Market-day memories — edition 5 · revision 1 · 000458-catalog-042
+The harbour at sunset — edition 5 · revision 1 · 000458-catalog-043
+A shared meal — edition 5 · revision 1 · 000458-catalog-044
+Learning a new craft — edition 5 · revision 1 · 000458-catalog-045
+An unexpected welcome — edition 5 · revision 1 · 000458-catalog-046
+Quiet paths through the city — edition 5 · revision 1 · 000458-catalog-047
+Listening across generations — edition 5 · revision 1 · 000458-catalog-048
+A garden after the rain — edition 5 · revision 1 · 000458-catalog-049
+The journey home — edition 5 · revision 1 · 000458-catalog-050
+A morning conversation — edition 6 · revision 1 · 000458-catalog-051
+Market-day memories — edition 6 · revision 1 · 000458-catalog-052
+The harbour at sunset — edition 6 · revision 1 · 000458-catalog-053
+A shared meal — edition 6 · revision 1 · 000458-catalog-054
+Learning a new craft — edition 6 · revision 1 · 000458-catalog-055
+An unexpected welcome — edition 6 · revision 1 · 000458-catalog-056
+Quiet paths through the city — edition 6 · revision 1 · 000458-catalog-057
+Listening across generations — edition 6 · revision 1 · 000458-catalog-058
+A garden after the rain — edition 6 · revision 1 · 000458-catalog-059
+The journey home — edition 6 · revision 1 · 000458-catalog-060
+A morning conversation — edition 7 · revision 1 · 000458-catalog-061
+Market-day memories — edition 7 · revision 1 · 000458-catalog-062
+The harbour at sunset — edition 7 · revision 1 · 000458-catalog-063
+A shared meal — edition 7 · revision 1 · 000458-catalog-064
+Learning a new craft — edition 7 · revision 1 · 000458-catalog-065
+An unexpected welcome — edition 7 · revision 1 · 000458-catalog-066
+Quiet paths through the city — edition 7 · revision 1 · 000458-catalog-067
+Listening across generations — edition 7 · revision 1 · 000458-catalog-068
+A garden after the rain — edition 7 · revision 1 · 000458-catalog-069
+The journey home — edition 7 · revision 1 · 000458-catalog-070
+A morning conversation — edition 8 · revision 1 · 000458-catalog-071
+Market-day memories — edition 8 · revision 1 · 000458-catalog-072
+The harbour at sunset — edition 8 · revision 1 · 000458-catalog-073
+A shared meal — edition 8 · revision 1 · 000458-catalog-074
+Learning a new craft — edition 8 · revision 1 · 000458-catalog-075
+An unexpected welcome — edition 8 · revision 1 · 000458-catalog-076
+Quiet paths through the city — edition 8 · revision 1 · 000458-catalog-077
+Listening across generations — edition 8 · revision 1 · 000458-catalog-078
+A garden after the rain — edition 8 · revision 1 · 000458-catalog-079
+The journey home — edition 8 · revision 1 · 000458-catalog-080
+A morning conversation — edition 9 · revision 1 · 000458-catalog-081
+Market-day memories — edition 9 · revision 1 · 000458-catalog-082
+The harbour at sunset — edition 9 · revision 1 · 000458-catalog-083
+A shared meal — edition 9 · revision 1 · 000458-catalog-084
+Learning a new craft — edition 9 · revision 1 · 000458-catalog-085
+An unexpected welcome — edition 9 · revision 1 · 000458-catalog-086
+Quiet paths through the city — edition 9 · revision 1 · 000458-catalog-087
+Listening across generations — edition 9 · revision 1 · 000458-catalog-088
+A garden after the rain — edition 9 · revision 1 · 000458-catalog-089
+The journey home — edition 9 · revision 1 · 000458-catalog-090
+A morning conversation — edition 10 · revision 1 · 000458-catalog-091
+Market-day memories — edition 10 · revision 1 · 000458-catalog-092
+The harbour at sunset — edition 10 · revision 1 · 000458-catalog-093
+A shared meal — edition 10 · revision 1 · 000458-catalog-094
+Learning a new craft — edition 10 · revision 1 · 000458-catalog-095
+An unexpected welcome — edition 10 · revision 1 · 000458-catalog-096
+Quiet paths through the city — edition 10 · revision 1 · 000458-catalog-097
+Listening across generations — edition 10 · revision 1 · 000458-catalog-098
+ch33-seq0-ep2 — held-out source adaptation · revision 1 · 000458-model-compare-ch33-ep2
+Load more projects
+Generation direction
+Explicitly generate these 1 projects using the active native instructions.
+
+Selected (1/8): ch33-seq0-ep2 — held-out source adaptation
+
+Generation requires an active native instruction version. Open the assistant’s Instructions tab to review and activate it.
+
+Review or activate instructionsGenerate script, composition and source previewLoad retained generation attempts
+Attempt
+Choose an attempt

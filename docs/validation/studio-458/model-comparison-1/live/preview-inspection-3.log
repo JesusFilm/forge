@@ -1,0 +1,14 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.selectOption: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByLabel('Attempt', { exact: true })[22m
+
+    at /tmp/forge-studio-458-prep/model-capability-comparison/binding/live-adapter/live/inspect-retained-v3.mjs:20:49 {
+  log: [ "  - waiting for getByLabel('Attempt', { exact: true })" ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.20.0

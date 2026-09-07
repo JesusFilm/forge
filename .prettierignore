@@ -53,3 +53,9 @@ apps/mobile/design-mockups
 # Studio validation JSON is byte-verified provider/fixture/measurement evidence.
 # Keep exact recorded bytes; human-authored Markdown remains format-checked.
 docs/validation/studio-458/**/*.json
+
+# Closed paid comparison: exact adapters, harnesses and preregistered rubric bytes.
+docs/validation/studio-458/model-comparison-1/**/*.mjs
+docs/validation/studio-458/model-comparison-1/evaluation.md
+docs/validation/studio-458/model-comparison-1/content-overlap-findings.md
+docs/validation/studio-458/model-comparison-1/live/editorial-blinded/evaluation.md

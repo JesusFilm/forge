@@ -1,0 +1,55 @@
+# Independent editorial assessment: Birch, Dune, Flint
+
+Reviewed only the supplied `evaluation.md`, `Birch.json`, `Dune.json`, and `Flint.json`. Model labels were hidden; no model identity was inferred. The assessment compares the exact supplied source with the actual speech, not the output's self-ratings. This is an assistant editorial review, not a human acceptance decision. Prior task context includes the case criteria; this is label-blinded, not a fully naive or case-blind assessment.
+
+None of these excerpts establishes complete creative acceptance. Dune has a demonstrably unsupported depth pass; Flint's bridge blurs a key source distinction; Birch lacks the required development of Henry's three distinctions and has no QA record.
+
+## Birch — ch33
+
+**Fidelity: concern.** The narrative anchors are present: the source says Zacchaeus sought to see Jesus, was short, climbed the tree, received Jesus joyfully, promised giving/restoration, and heard salvation declared. The speech uses these anchors recognizably. However, “his effort is real, but it is not enough to bring Jesus near on its own” is an interpretive theological inference, not an argument established by the supplied tree detail. Likewise, “the scene stops being about status and becomes about salvation” is a narrator's framing; the scene does not itself declare that binary transition. These should not be treated as verified source facts. The text does not claim that Zacchaeus was proven innocent or that repentance is irrelevant.
+
+**Depth against the selected Henry argument: fail.** The source explicitly separates collective reputation from individual guilt (“did not therefore follow that they were all so”), past conduct from possible present repentance (“Christ might know his present frame to be good”), and Christ's beneficial visit even to a present sinner (“whither should the physician go but to the sick?”). Birch instead develops the movement from Zacchaeus's effort to Christ's initiative. “They treat the visit as if grace should wait for a better candidate” approximates the objection, and Christ changing “what he loves, what he gives, and what he restores” gestures toward change. Neither develops the first two distinctions; the physician rationale is absent. This is a coherent alternate angle, but it does not meet the preregistered source-specific test.
+
+**Coherence/bridge: concern.** “That is why the crowd's murmuring matters” carries initiative into criticism and salvation, so the bridge performs real connective work. Its force depends partly on the unestablished effort/initiative premise, while much of the bridge carries the main argument that the reflection has not yet supplied. This is not a failure merely because reasoning occurs in an item labeled bridge.
+
+**Settle: pass in text.** “Take a quiet breath. Let that mercy settle” is distinct from the narrative and functions as an invitation.
+
+**Voice: concern.** The opening spends substantial space retelling the tree episode before reaching its interpretation, conflicting with the selected preference for an opening beyond recap. “Chief among the publicans and rich besides” and “the surprising movement” sound more written than conversational. There is no clear coercive appeal, judgment of an unrelated stranger, or material repeated proposition without development. The quotation-like crowd complaint is present in the editorial source; redundancy with actual footage is **not_checked**.
+
+**QA truthfulness: missing.** `quality` is null. No false pass is fabricated here, but there is also no evidence of completed QA. Empty `sources` does not independently establish provenance.
+
+## Dune — ch33
+
+**Fidelity to supplied excerpt: pass at the level of concise propositions.** The curse, Bethany journey, tree, and crowd are in this historic excerpt. “Common fame is not righteous judgment” condenses its warning about reputation. “A sinful past does not prove a sinful present” preserves the source's uncertainty and does not assert innocence. “The physician goes where the sick may yet be healed” preserves beneficial visitation without requiring the person's prior innocence. The first line interprets the source's explicit contrast between the city's curse and Christ honoring it. These are supported editorial adaptations, not independent historical verification of Henry's itinerary. Canonical fidelity remains **not_checked**.
+
+**Depth: concern; claimed depth pass: fail.** The bridge names three relevant reasons but largely presents them as aphorisms. It does not explain why reputation fails to establish individual guilt, how possible repentance changes the crowd's inference, or why visiting a present sinner can benefit rather than contaminate. The three distinctions are substantially more recognizable here than in Birch, but recognizable compression is not developed reasoning.
+
+The self-assessment specifically claims the speech preserves “the Bethany/Lazarus journey,” “Zacchaeus's small stature,” “the murmuring crowd,” and “condemnation 'in the lump.'” Actual speech mentions Bethany but not Lazarus; it contains neither small stature nor murmuring, and it gives no group-versus-individual explanation. These details exist in the source, not in the actual speech. That is concrete evidence of overstated QA, regardless of any reasonable disagreement over how much depth the short format needs.
+
+**Coherence/bridge: concern.** The movement from the crowd's summary judgment to three counterclaims is understandable. The bridge provides reasons pertinent to that judgment, but links between its short sentences are implicit. The curse/Bethany opening is weakly integrated with those reasons. Calling the whole sequence causally developed overstates what is spoken.
+
+**Settle and voice: pass in text, with a style concern.** The distinct breathing invitation is gentle. No third-party condemnation or material self-echo is evident. The first line makes an interpretive claim rather than only recounting events, so its opening claim is reasonably supported. “Common fame” and the compressed bridge may sound literary or slogan-like; that is an editorial concern, not an automatic ban on short sentences. Canonical scripture-echo correctly remains **not_checked**.
+
+**QA truthfulness overall: fail.** Coverage accurately identifies the supplied three explicit roles, and the canonical-evidence caveats are appropriately cautious. Those strengths do not cure the demonstrably unsupported depth pass.
+
+## Flint — ch19
+
+**Fidelity: concern with a material bridge qualification problem.** The reflection preserves the source's repeated Gospel witness, frightened true disciples, remembered care, moderation toward other believers, and readiness for use. “Men may be believers, and still be overwhelmed with fears” captures the source's explicit protection against treating weakness as proof of absent faith.
+
+The bridge then says, “if trusting Christ is real, then it has to be ready before the wind rises, not improvised after the boat is filling.” The source instead insists: “To have true saving faith is one thing. To have that faith always ready for use, is quite another thing,” including genuine believers whose faith fails unexpectedly. The bridge's unqualified conditional makes readiness sound like a necessary test of real trust, in tension with both source and preceding reflection. “Not improvised” is an added rhetorical inference, not source wording. The source supports a call to preparation; it does not support denying reality to trust exercised after danger starts. This exact bridge prevents a clean fidelity pass, even though the larger reflection retains the distinction.
+
+**Depth: pass for the reflection; bridge concern.** The speech actually develops fear → forgotten care → humility/moderation → active faith. It is more than a jump from fear to readiness. The bridge mostly restates readiness already expressed by “it must be kept active enough for the storm,” then adds the problematic conditional. The absence of more examples is not itself a failure.
+
+**Coherence: concern.** The argumentative sequence is readable, but “And that is the causal step” announces explanatory machinery and does not resolve the saving-faith/readiness tension. The conclusion about seeing the invisible returns to a supplied source image.
+
+**Settle: pass in text; composition concern.** “Take a quiet breath. Let that question remain” gives a distinct reflective release, though its question refers back past the bridge to “Where is your faith?” The supplied frame intervals overlap: reflection 0–1080 with bridge 900–1860; bridge 900–1860 with settle 1800–2460. That warrants checking the intended composition and speech sequencing. It is not proof of simultaneous audio, and no universal overlap prohibition is imposed.
+
+**Voice: concern.** The repeated-witness opening supplies a reason for attention, so it is more than scene recap. “Highest style of Christian,” “poor theologians,” and “causal step” retain a formal register. “We need to watch and pray” and “faith … must be kept active” are exhortative, though not necessarily coercive; QA's absolute claim to avoid directive pressure is stronger than the evidence. No unrelated stranger's prospects are judged. The reflection's first two sentences repeat the three-witness point with little additional development; the bridge also repeats readiness. The blanket self-echo pass merits concern. Canonical scripture-echo remains **not_checked**, correctly.
+
+**QA truthfulness: concern; unqualified fidelity pass unsupported.** The depth rationale largely describes words genuinely present. The fidelity pass misses the material bridge tension; coherence and self-echo passes omit identifiable concerns. Its fidelity rationale is expressly about the excerpt and should not be reinterpreted as a canonical-footage claim, but canonical fidelity is still **not_checked** in this independent review.
+
+## Limits and comparison
+
+Birch is more expansive but develops an alternate argument; Dune better retains the Henry distinctions but compresses their reasoning and credits itself with absent details. Neither clears the ch33 criteria as supplied. Flint provides substantial source-grounded development while introducing a significant qualification concern in the bridge. These are output-level observations, not model-level conclusions.
+
+Only three selected valid proposals are represented. Rejected operations, repair history, costs, model assignments, other outputs, pack-specific layout instructions, and rendered previews were not inspected. No inference about success rates, broader superiority, or missing runs is justified. Missing hook/question/prayer metadata alone is not an editorial failure: the reviewed materials do not establish that each was requested here. Frame counts do not establish pacing without frame rate, actual narration, and playback behavior. No canonical clips/subtitles, audio, or music were supplied, so corresponding verification stays not_checked. No source or model payload was changed.

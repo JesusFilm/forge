@@ -1,0 +1,185 @@
+{
+  "label": "Dune",
+  "case": "ch33-seq0-ep2",
+  "source": "1 And Jesus entered and passed through Jericho. 2 And, behold, there was a man named Zacchæus, which was the chief among the publicans, and he was rich. 3 And he sought to see Jesus who he was; and could not for the press, because he was little of stature. 4 And he ran before, and climbed up into a sycomore tree to see him: for he was to pass that way. 5 And when Jesus came to the place, he looked up, and saw him, and said unto him, Zacchæus, make haste, and come down; for to day I must abide at thy house. 6 And he made haste, and came down, and received him joyfully. 7 And when they saw it, they all murmured, saying, That he was gone to be guest with a man that is a sinner. 8 And Zacchæus stood, and said unto the Lord; Behold, Lord, the half of my goods I give to the poor; and if I have taken any thing from any man by false accusation, I restore him fourfold. 9 And Jesus said unto him, This day is salvation come to this house, forsomuch as he also is a son of Abraham. 10 For the Son of man is come to seek and to save that which was lost.\n\nMany, no doubt, were converted to the faith of Christ of whom no account is kept in the gospels; but the conversion of some, whose case had something in it extraordinary, is recorded, as this of Zaccheus. Christ passed through Jericho, v. 1 . This city was build under a curse, yet Christ honoured it with his presence, for the gospel takes away the curse. Though it ought not to have been built, yet it was not therefore a sin to live in it when it was built. Christ was now going from the other side Jordan to Bethany near Jerusalem, to raise Lazarus to life; when he was going to do one good work he contrived to do many by the way. He did good both to the souls and to the bodies of people; we have here an instance of the former. Observe,\n\nIV. The offence which the people took at this kind greeting between Christ and Zaccheus. Those narrow-souled censorious Jews murmured, saying that he was gone to be a guest with a man that is a sinner, para hamartolo andri — with a sinful man; and were not they themselves sinful men? Was it not Christ's errand into the world to seek and save men that are sinners? But Zaccheus they think to be a sinner above all men that dwelt in Jericho, such a sinner as was not fit to be conversed with. Now this was very unjust to blame Christ for going to his house; for, 1. Though he was a publican, and many of the publicans were bad men, it did not therefore follow that they were all so. We must take heed of condemning men in the lump, or by common fame, for at God's bar every man will be judged as he is. 2. Though he had been a sinner, it did not therefore follow that he was now as bad as he had been; though they knew his past life to be bad, Christ might know his present frame to be good. God allows room for repentance, and so must we. 3. Though he was now a sinner, they ought not to blame Christ for going to him, because he was in no danger of getting hurt by a sinner, but in great hopes of doing good to a sinner; whither should the physician go but to the sick? Yet see how that which is well done may be ill construed",
+  "speech": [
+    {
+      "id": "reflection",
+      "role": "reflection",
+      "text": "Jesus does not pass through Jericho as though its old curse makes it beneath his notice.\n\nOn his way toward Bethany, he still stops beneath Zacchaeus's sycomore tree.\n\nGrace sees the man the crowd had already summed up.",
+      "startFrame": 0,
+      "durationInFrames": 1380
+    },
+    {
+      "id": "bridge",
+      "role": "bridge",
+      "text": "Common fame is not righteous judgment.\n\nA sinful past does not prove a sinful present.\n\nThe physician goes where the sick may yet be healed.",
+      "startFrame": 1380,
+      "durationInFrames": 1020
+    },
+    {
+      "id": "settle",
+      "role": "settle",
+      "text": "Take a quiet breath.\nLet that mercy settle.",
+      "startFrame": 2400,
+      "durationInFrames": 300
+    }
+  ],
+  "quality": {
+    "coverage": [
+      {
+        "role": "reflection",
+        "status": "present",
+        "itemIds": [
+          "reflection"
+        ]
+      },
+      {
+        "role": "bridge",
+        "status": "present",
+        "itemIds": [
+          "bridge"
+        ]
+      },
+      {
+        "role": "settle",
+        "status": "present",
+        "itemIds": [
+          "settle"
+        ]
+      },
+      {
+        "role": "hook",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "conclusion",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "question",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "prayer",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "quotation",
+        "status": "absent",
+        "itemIds": []
+      }
+    ],
+    "findings": [
+      {
+        "criterion": "coherence",
+        "status": "pass",
+        "reason": "The revised sequence carries one argument from start to finish: Jesus deliberately stops in Jericho for Zacchaeus, the crowd's complaint is then answered by three source-grounded reasons, and the settle line closes on the same mercy without repeating the bridge verbatim. The opening starts with a claim rather than a recap-only retelling, and the bridge causally follows from the reflection's scandal of grace.",
+        "itemIds": [
+          "reflection",
+          "bridge",
+          "settle"
+        ],
+        "sources": [
+          {
+            "assetId": "381ec520-6f36-45f4-9bb3-6e4bfb48b0c9",
+            "versionId": "cmtrkvcml00032ckj0hr3w28o",
+            "digest": "c2bb9fefb171e2af88ab2f2269bdf6a8645585ebf94e8481120f44b4a29d4127"
+          }
+        ]
+      },
+      {
+        "criterion": "depth",
+        "status": "pass",
+        "reason": "The adaptation keeps developed reasoning and concrete anchors from the supplied excerpt instead of reducing it to a generic moral. It preserves Jericho's old curse, the Bethany/Lazarus journey, the sycomore tree, Zacchaeus's small stature, the murmuring crowd, condemnation 'in the lump,' the distinction between sinful past and present, and the physician-to-the-sick rationale.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "381ec520-6f36-45f4-9bb3-6e4bfb48b0c9",
+            "versionId": "cmtrkvcml00032ckj0hr3w28o",
+            "digest": "c2bb9fefb171e2af88ab2f2269bdf6a8645585ebf94e8481120f44b4a29d4127"
+          }
+        ]
+      },
+      {
+        "criterion": "fidelity",
+        "status": "not_checked",
+        "reason": "The proposed claims were drafted to stay within the recovered pack excerpt, but the pack explicitly says canonical source footage/subtitles are not supplied and historic canonical-source provenance is unverified. Because exact canonical video/subtitle evidence is missing, full fidelity to canonical source cannot be confirmed.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "381ec520-6f36-45f4-9bb3-6e4bfb48b0c9",
+            "versionId": "cmtrkvcml00032ckj0hr3w28o",
+            "digest": "c2bb9fefb171e2af88ab2f2269bdf6a8645585ebf94e8481120f44b4a29d4127"
+          }
+        ]
+      },
+      {
+        "criterion": "voice_command_vs_appeal",
+        "status": "pass",
+        "reason": "The script avoids audience pressure and direct imperatives about conduct. 'Take a quiet breath. Let that mercy settle.' functions as a gentle settle invitation rather than a controlling command, and the rest of the sequence explains the passage instead of ordering the listener.",
+        "itemIds": [
+          "settle"
+        ],
+        "sources": []
+      },
+      {
+        "criterion": "voice_third_party_address",
+        "status": "pass",
+        "reason": "The ending does not drift into judging a stranger's prospects. It keeps the focus on Christ's mercy in this scene and ends with a short inward-facing settle rather than commentary about what 'those people' should do.",
+        "itemIds": [
+          "bridge",
+          "settle"
+        ],
+        "sources": []
+      },
+      {
+        "criterion": "voice_self_echo",
+        "status": "pass",
+        "reason": "No phrase or proposition is repeated within the reflection without development. The reflection advances from Jericho, to Bethany, to the sycomore tree, to the crowd's summed-up judgment; the bridge then adds new reasoning rather than restating the same claim.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": []
+      },
+      {
+        "criterion": "voice_opening_on_recap",
+        "status": "pass",
+        "reason": "The opening line presents an interpretive claim—'Jesus does not pass through Jericho as though its old curse makes it beneath his notice'—instead of delaying the main point with scene retelling alone.",
+        "itemIds": [
+          "reflection"
+        ],
+        "sources": []
+      },
+      {
+        "criterion": "voice_scripture_echo",
+        "status": "not_checked",
+        "reason": "This check cannot be completed from the admitted evidence. The pack supplies a recovered excerpt but no canonical verse-card or canonical source-dialogue subtitle track for direct redundancy comparison, so scripture echo should remain not_checked rather than assumed pass or fail.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "381ec520-6f36-45f4-9bb3-6e4bfb48b0c9",
+            "versionId": "cmtrkvcml00032ckj0hr3w28o",
+            "digest": "c2bb9fefb171e2af88ab2f2269bdf6a8645585ebf94e8481120f44b4a29d4127"
+          }
+        ]
+      }
+    ]
+  },
+  "sources": [],
+  "notes": "Model/arm hidden for editorial read; valid retained proposal only; canonical footage/subtitles absent."
+}
