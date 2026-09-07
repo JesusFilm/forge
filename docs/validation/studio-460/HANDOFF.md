@@ -10,7 +10,7 @@ The implementation adds a private contained renderer, durable lease/partial-outp
 
 ## Exact calendar consumer surface
 
-- `@forge/studio-contracts/publication-state`: `studioApprovedReleaseSchema`, `studioScheduledPublicationPreparationSchema`, `studioPublicationCandidateSchema`.
+- `@forge/studio-contracts/publication`: `studioApprovedReleaseSchema`, `studioScheduledPublicationPreparationSchema`, `studioPublicationCandidateSchema`.
 - Admin `src/services/studio-authoring/scheduled-publication-adapter.ts`: `prepareScheduledStudioPublication(raw, signal?)` and `StudioPublicationPreparationError` (`submission: "not-submitted"`). The adapter calls authenticated Manager `/api/admin-trigger/studio-publication` and only observes an existing asset.
 - Admin `src/services/studio-authoring/scheduled-publication-adapter.ts`: `publishPreparedStudioProject(db, servicePrincipal, exactEnvelope, consume)` injects the mandatory real catalog verifier into the same canonical command as manual publication.
 - The prior human binding contains exact project/revision/approval/render/release, excluding readiness ID. Fresh preparation never substitutes a release or source. Calendar persists the complete returned envelope before submission; accepted/ambiguous retries use that exact envelope and bypass preparation, even after later unpublish.
