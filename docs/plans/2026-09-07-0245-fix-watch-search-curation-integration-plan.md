@@ -25,6 +25,16 @@ execution: code
 
 **Tail ownership:** The shipping workflow owns the PR, CI, rollout evidence, and authorized merge. Keep the previous candidate collection and curation set available through the rollback window.
 
+### Production-path scope correction (2026-09-07)
+
+Production verification after PR #2184 showed that the active PostgreSQL Watch
+Search path still omitted the intro. The user clarified that FGE-125 is a bug
+fix and must not depend on activating the experimental Typesense search. The
+existing exact-title PostgreSQL retrieval now consumes the same exact curation
+aliases, preserves organic ranking when the target is already present, and
+guarantees a playable curated target on the default first page. Typesense
+candidate promotion remains outside the completion path for this ticket.
+
 ---
 
 ## Product Contract
