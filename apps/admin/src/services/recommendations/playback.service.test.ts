@@ -143,6 +143,35 @@ const baseInput = {
 }
 
 describe("RecommendationPlaybackService", () => {
+  it("logs a safe reason when the playback session binding is invalid", async () => {
+    const { service } = harness()
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    await expect(
+      service.record({
+        ...baseInput,
+        sessionDigest: "b".repeat(64),
+        events: [
+          {
+            eventId: "wrong-session",
+            kind: "playback_attempt",
+            occurredAt: now.toISOString(),
+            payload: { initiation: "manual" },
+          },
+        ],
+      }),
+    ).rejects.toThrow("Recommendation playback binding is invalid")
+    expect(warning).toHaveBeenCalledWith(
+      "[recommendations] event=playback_binding_rejected reason=session_mismatch",
+    )
+    expect(warning.mock.calls.flat().join(" ")).not.toMatch(
+      /episode-1|media-1|b{16}/,
+    )
+    warning.mockRestore()
+  })
+
   it("records playback independently after a personalized assignment is fenced", async () => {
     const current = episode()
     Object.assign(current.request, {
@@ -352,6 +381,12 @@ describe("RecommendationPlaybackService", () => {
         }),
       ],
     })
+    expect(
+      tx.recommendationPlaybackEpisode.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany.mock
+        .invocationCallOrder[0]!,
+    )
     expect(tx.recommendationPlaybackFact.createMany).toHaveBeenCalledOnce()
     expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenNthCalledWith(
       2,

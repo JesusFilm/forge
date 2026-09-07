@@ -59,6 +59,9 @@ function clearWorkflowStartupState() {
     __forgeAdminRecommendationRecovery?: {
       retryTimer?: ReturnType<typeof setTimeout>
     }
+    __forgeAdminProfileReconciliationRecovery?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
   }
   if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
     clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
@@ -69,6 +72,12 @@ function clearWorkflowStartupState() {
     clearTimeout(workflowGlobal.__forgeAdminRecommendationRecovery.retryTimer)
   }
   delete workflowGlobal.__forgeAdminRecommendationRecovery
+  if (workflowGlobal.__forgeAdminProfileReconciliationRecovery?.retryTimer) {
+    clearTimeout(
+      workflowGlobal.__forgeAdminProfileReconciliationRecovery.retryTimer,
+    )
+  }
+  delete workflowGlobal.__forgeAdminProfileReconciliationRecovery
 }
 
 vi.mock("@/config/env", () => mockEnv)
@@ -354,6 +363,24 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledTimes(1)
   })
 
+  it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {
+    vi.useFakeTimers()
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register } = await import("./instrumentation")
+
+    await register()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).toHaveBeenCalledTimes(2)
+  })
+
   it("does not block worker startup when recommendation recovery fails", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     ensureRecommendationEpisodeFinalizationRecovery.mockRejectedValueOnce(
@@ -423,7 +450,7 @@ describe("workflow instrumentation", () => {
     await expect(register()).resolves.toBeUndefined()
     await Promise.resolve()
     await vi.advanceTimersByTimeAsync(10)
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(10)
 
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,

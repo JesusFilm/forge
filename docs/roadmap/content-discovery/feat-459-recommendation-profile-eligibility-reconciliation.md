@@ -82,3 +82,10 @@ The ticket is not complete until these results are visible and reconcilable in t
 - Run affected checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/web test`, `pnpm --filter @forge/admin lint`, `pnpm --filter @forge/web lint`, and both application typechecks.
 - Run real PostgreSQL concurrency and publication-fence tests, then complete a local browser Watch-to-Admin lifecycle proof.
 - Run `pnpm --filter roadmap generate:readme` and `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## Closeout Status — 2026-09-07
+
+- PR #2182 shipped immutable eligibility revisions, read-time lineage fencing, deterministic replacement generations, bounded stale-run recovery, and the authorized aggregate Admin evidence surface.
+- The first day production audit found that the initial reconciliation scheduler run lost a deployment registration race and terminated with `WorkflowNotRegisteredError`. It also exposed the playback replay-receipt and session-binding failures addressed by the closeout hotfix.
+- The closeout hotfix adds a five-minute scheduler watchdog that reconciles terminal runtime state and restarts under the existing advisory lock. Regression coverage proves recovery when a runtime fails after `start()` has already returned.
+- This ticket remains `in-progress` until the hotfix is deployed, reconciliation converges, and a fresh authorized Admin audit reports zero current pointers with ineligible lineage, as required by the Admin Evidence Gate. No pre-deploy result is being represented as production closure.

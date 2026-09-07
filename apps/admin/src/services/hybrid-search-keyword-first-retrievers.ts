@@ -26,6 +26,7 @@ import {
   recordSearchDbTiming,
   type SearchTimingRecorder,
 } from "./hybrid-search-timing"
+import { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -83,7 +84,12 @@ export type KeywordWeightedResult = VideoKeywordRowShape & { rank: number }
  * via `DISTINCT ON (v.id)`, keeping the higher-similarity row.
  */
 export type TrigramResult = VideoKeywordRowShape & { similarity: number }
-export type ExactTitleResult = VideoKeywordRowShape & { titleLength: number }
+export type ExactTitleResult = VideoKeywordRowShape & {
+  titleLength: number
+  titleMatched: boolean
+  curated: boolean
+  curationPosition: number | null
+}
 
 export type KeywordFirstVideoLexicalResults = {
   keywordWeighted: KeywordWeightedResult[]
@@ -120,6 +126,9 @@ type ExactTitleRow = {
   video_title: string | null
   description: string | null
   title_length: number
+  title_matched?: boolean
+  curated?: boolean
+  curation_position?: number | null
 }
 
 type QueryRawClient = Pick<PrismaClient, "$queryRaw">
@@ -330,10 +339,11 @@ export async function searchByTrigram(
 }
 
 /**
- * Exact-token-in-title retriever.
+ * Exact-token-in-title retriever plus exact editorial curation lookup.
  *
  * Returns videos whose title contains EVERY query token (case-
- * insensitive, punctuation-stripped). Ranked shortest-title first —
+ * insensitive, punctuation-stripped), plus published targets whose active
+ * editorial alias equals the normalized query. Ranked shortest-title first —
  * the shorter the title, the tighter the match (a 3-word title that
  * contains all 3 tokens wins over a 12-word title that contains all 3
  * plus 9 unrelated words).
@@ -347,9 +357,11 @@ export async function searchByTrigram(
  * `tokenizeForExactTitle`. Empty / whitespace-only / all-punctuation
  * queries short-circuit to `[]`.
  *
- * Dynamic AND-chain composed via `Prisma.join` so the bound parameter
- * count exactly matches the token count. Postgres rejects unbound
- * placeholders at parse time, which is the safe failure mode.
+ * Dynamic AND-chain composed via `Prisma.join` so the bound parameter count
+ * exactly matches the token count. The curation lookup shares this query and
+ * database connection, so unrelated searches do not add another round trip.
+ * Postgres rejects unbound placeholders at parse time, which is the safe
+ * failure mode.
  */
 export async function searchByExactTitle(
   prisma: QueryRawClient,
@@ -360,6 +372,7 @@ export async function searchByExactTitle(
   if (tokens.length === 0) return []
 
   const { locale, limit } = params
+  const normalizedQuery = normalizeWatchSearchCurationQuery(params.query)
 
   // One ILIKE per token, ANDed. Each bound to its own parameter via
   // `Prisma.sql` template fragment; `Prisma.join` composes them.
@@ -372,14 +385,17 @@ export async function searchByExactTitle(
     timing,
     "exact-title-video.query",
     () => prisma.$queryRaw<ExactTitleRow[]>`
-      SELECT * FROM (
-        SELECT DISTINCT ON (v.id)
+      WITH candidate_sources AS (
+        SELECT
           v.id            AS video_id,
           v.core_id       AS video_core_id,
           v.slug          AS video_slug,
           vl.title        AS video_title,
           vl.description  AS description,
-          LENGTH(vl.title) AS title_length
+          LENGTH(vl.title) AS title_length,
+          TRUE             AS title_matched,
+          FALSE            AS curated,
+          NULL::integer    AS curation_position
         FROM video_locale vl
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
@@ -388,9 +404,52 @@ export async function searchByExactTitle(
           AND vl.locale = ${locale}
           AND vl.status = 'published'
           AND vl.deleted_at IS NULL
-        ORDER BY v.id, title_length ASC
-      ) sub
-      ORDER BY sub.title_length ASC
+        UNION ALL
+        SELECT
+          v.id             AS video_id,
+          v.core_id        AS video_core_id,
+          v.slug           AS video_slug,
+          vl.title         AS video_title,
+          vl.description   AS description,
+          LENGTH(vl.title)  AS title_length,
+          FALSE             AS title_matched,
+          TRUE              AS curated,
+          curation.position AS curation_position
+        FROM watch_search_curation_alias alias
+        JOIN watch_search_curation curation
+          ON curation.id = alias.curation_id
+         AND curation.enabled = TRUE
+        JOIN video v
+          ON v.core_id = curation.target_video_core_id
+         AND v.deleted_at IS NULL
+         AND v.no_index = FALSE
+        JOIN video_locale vl
+          ON vl.video_id = v.id
+         AND vl.locale = ${locale}
+         AND vl.status = 'published'
+         AND vl.deleted_at IS NULL
+        WHERE alias.active = TRUE
+          AND alias.normalized_query = ${normalizedQuery}
+      ), deduped AS (
+        SELECT DISTINCT ON (video_id)
+          video_id,
+          video_core_id,
+          video_slug,
+          video_title,
+          description,
+          title_length,
+          BOOL_OR(title_matched) OVER (PARTITION BY video_id) AS title_matched,
+          BOOL_OR(curated) OVER (PARTITION BY video_id) AS curated,
+          MIN(curation_position) FILTER (WHERE curated)
+            OVER (PARTITION BY video_id) AS curation_position
+        FROM candidate_sources
+        ORDER BY video_id, title_matched DESC, curated DESC, title_length ASC
+      )
+      SELECT *
+      FROM deduped
+      ORDER BY curated DESC,
+               curation_position ASC NULLS LAST,
+               title_length ASC
       LIMIT ${limit}
     `,
   )
@@ -404,6 +463,10 @@ export async function searchByExactTitle(
     imageUrl: null,
     description: row.description,
     titleLength: Number(row.title_length),
+    titleMatched: row.title_matched ?? true,
+    curated: row.curated ?? false,
+    curationPosition:
+      row.curation_position == null ? null : Number(row.curation_position),
   }))
 }
 

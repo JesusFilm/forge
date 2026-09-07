@@ -2,6 +2,7 @@ import { GraphQLError } from "graphql"
 import { ZodError } from "zod"
 import {
   RecommendationAuthenticationError,
+  RecommendationBindingError,
   RecommendationCapabilityUnavailableError,
   RecommendationConflictError,
   RecommendationServiceError,
@@ -34,7 +35,14 @@ function toRecommendationGraphQLError(error: unknown): GraphQLError {
         : error instanceof RecommendationConflictError
           ? "CONFLICT"
           : "BAD_USER_INPUT"
-    return new GraphQLError(message, { extensions: { code } })
+    return new GraphQLError(message, {
+      extensions: {
+        code,
+        ...(error instanceof RecommendationBindingError
+          ? { recommendationCode: error.code }
+          : {}),
+      },
+    })
   }
   throw error
 }

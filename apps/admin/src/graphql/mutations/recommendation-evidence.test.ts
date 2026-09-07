@@ -288,7 +288,10 @@ describe("semantic recommendation evidence resolvers", () => {
         {} as never,
       ),
     ).rejects.toMatchObject({
-      extensions: { code: "BAD_USER_INPUT" },
+      extensions: {
+        code: "BAD_USER_INPUT",
+        recommendationCode: "invalid_binding",
+      },
     })
 
     playbackMock.mockRejectedValueOnce(

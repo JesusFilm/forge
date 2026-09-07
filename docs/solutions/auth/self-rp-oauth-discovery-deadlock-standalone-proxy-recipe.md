@@ -43,9 +43,10 @@ The route that serves that URL imports the same `auth` instance
 the auth instance fetches its own discovery URL. The route awaits the same
 initializing instance. This is a circular await: the first request that touches
 auth hangs with no logged error. The gitignored local ticket
-`todos/026-pending-p1-auth-self-rp-discovery-deadlock-at-cold-start.md` records
-that the deadlock reproduces in BOTH `next dev` and the standalone production
-build run bare — which is why this doc, not the ticket, must carry the recipe.
+`todos/026-pending-p1-auth-self-rp-discovery-deadlock-at-cold-start.md`
+(local only, and absent from some machines) recorded that the deadlock
+reproduces in BOTH `next dev` and the standalone production build run bare —
+which is why this doc, not the ticket, must carry the recipe.
 
 Three approaches failed before the recipe below:
 
@@ -165,7 +166,7 @@ node local-auth-proxy.mjs
 ### 6. Prepare the local database (`forge_auth`)
 
 The production-mode standalone resolves the PRODUCTION self-RP client id: the
-`NODE_ENV === "production"` conditional at `apps/auth/src/auth/config.ts:165-168`
+`NODE_ENV === "production"` conditional at `apps/auth/src/auth/config.ts:166-169`
 selects `MOBILE_PRODUCTION_CLIENT_ID`, which is `"jfp_mobile_production"`
 (`apps/auth/src/domain/apps.ts:23`). Two writes are needed:
 
@@ -272,6 +273,10 @@ once.
   browser login through the simulator sheet.
 - 2026-09-07: the recipe was reconstructed and re-verified on the tree that
   became PR #2176 (the curl probes in step 7 are the re-verified set).
+- 2026-09-08: step 8 replayed the nested-provider state-cookie loss on the
+  tree that became PR #2187, with and without the re-planted cookie, before
+  that PR merged. A device sign-in through Google/Okta confirmed the same fix
+  in production the same day.
 - The proxy source in step 5 is the reconstructed, verified copy — keep it in
   this doc, not in `/tmp`.
 
@@ -280,9 +285,13 @@ once.
 - `docs/solutions/integration-issues/better-auth-1-7-upgrade-broke-mobile-self-rp-sign-in.md`
   — the incident whose verification used this recipe; its Verification section
   names the proxy without documenting it.
+- `docs/solutions/integration-issues/better-auth-1-7-nested-oauth-consumes-self-rp-state-cookie.md`
+  — the break step 8 replays, and the fix (`selfRpStateCookiePlugin`, PR
+  #2187) that replay verifies.
 - `todos/026-pending-p1-auth-self-rp-discovery-deadlock-at-cold-start.md`
-  (gitignored, local only) — the origin ticket; its production-side fix (serve
-  discovery without awaiting init, or add a startup probe) remains open.
+  (gitignored, local only, and absent from some machines) — the origin ticket;
+  its production-side fix (serve discovery without awaiting init, or add a
+  startup probe) remains open.
 - `docs/solutions/best-practices/nextjs-hmr-reload-breaks-stateful-browser-verification.md`
   — the general rule that `next dev` is the wrong substrate for a class of
   verification; this doc is another instance with a different mechanism.
