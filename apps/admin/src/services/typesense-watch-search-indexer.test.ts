@@ -4,7 +4,10 @@ import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED,
   CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
 } from "./content-embedding-contract"
-import type { TypesenseClient } from "./typesense-client"
+import type {
+  TypesenseClient,
+  TypesenseCollectionSchema,
+} from "./typesense-client"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
@@ -347,6 +350,9 @@ describe("Typesense Watch Search indexer", () => {
             }),
           },
           $queryRaw: vi.fn(async () => []),
+          watchSearchCuration: {
+            findMany: vi.fn(async () => []),
+          },
         }
         expect(options).toEqual({
           isolationLevel: "RepeatableRead",
@@ -423,6 +429,112 @@ describe("Typesense Watch Search indexer", () => {
     ).rejects.toThrow("batch size must be a positive integer")
   })
 
+  it("publishes PostgreSQL curations before linking the new lexical collection", async () => {
+    const prisma = {
+      video: {
+        findMany: vi.fn(async () => [
+          {
+            ...viewerSafeVideo("Visual Vernacular Intro"),
+            coreId: "13_0-RPGospelIntro",
+          },
+        ]),
+      },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+    const upsertCurationSet = vi.fn(async () => ({ items: [] }))
+    const createCollection = vi.fn(
+      async (_schema: TypesenseCollectionSchema) => ({}),
+    )
+    const deleteCurationSet = vi.fn(async () => undefined)
+    const typesense = {
+      listCollections: vi.fn(async () => [
+        {
+          name: "watch_search_lexical_previous",
+          fields: [],
+          curation_sets: ["watch_search_curations_previous"],
+        },
+        {
+          name: "watch_search_transcripts_active",
+          fields: [{ name: "videoEditionId", type: "string" }],
+        },
+      ]),
+      getAlias: vi.fn(async (alias: string) => ({
+        name: alias,
+        collection_name:
+          alias === TYPESENSE_WATCH_TRANSCRIPT_ALIAS
+            ? "watch_search_transcripts_active"
+            : `${alias}_previous`,
+      })),
+      createCollection,
+      importDocuments: vi.fn(async () => undefined),
+      multiSearch: vi.fn(async () => [
+        { found: 1, out_of: 1, page: 1, search_time_ms: 1, hits: [] },
+        { found: 1, out_of: 1, page: 1, search_time_ms: 1, hits: [] },
+      ]),
+      upsertCurationSet,
+      deleteCurationSet,
+      upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
+    } as unknown as TypesenseClient
+
+    const stats = await rebuildTypesenseWatchSearchIndex({
+      prisma,
+      typesense,
+      buildId: "curated-build",
+      loadCurations: async () => [
+        {
+          id: "rescue-project-visual-vernacular-intro",
+          targetVideoCoreId: "13_0-RPGospelIntro",
+          scope: "PUBLISHED_LOCALES",
+          position: 1,
+          enabled: true,
+          aliases: [
+            {
+              id: "rescue-project-en",
+              query: "Rescue Project",
+              normalizedQuery: "rescue project",
+              locale: null,
+              active: true,
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(upsertCurationSet).toHaveBeenCalledWith(
+      "watch_search_curations_curated-build",
+      {
+        items: [
+          expect.objectContaining({
+            rule: expect.objectContaining({
+              query: "rescue project",
+              match: "exact",
+            }),
+            includes: [{ id: "video-1:slug:english", position: 1 }],
+            filter_curated_hits: true,
+          }),
+        ],
+      },
+    )
+    expect(createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "watch_search_lexical_curated-build",
+        curation_sets: ["watch_search_curations_curated-build"],
+      }),
+    )
+    expect(upsertCurationSet.mock.invocationCallOrder[0]).toBeLessThan(
+      createCollection.mock.invocationCallOrder.find(
+        (_order, index) =>
+          createCollection.mock.calls[index]?.[0]?.name ===
+          "watch_search_lexical_curated-build",
+      ) ?? Number.POSITIVE_INFINITY,
+    )
+    expect(deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_curations_previous",
+    )
+    expect(stats.curationSet).toBe("watch_search_curations_curated-build")
+  })
+
   it("indexes the broad transcript corpus with per-record public visibility", async () => {
     const embeddingText = `[${new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS)
       .fill("0")
@@ -495,6 +607,8 @@ describe("Typesense Watch Search indexer", () => {
       listCollections: vi.fn(async () => []),
       getAlias: vi.fn(async () => undefined),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async () => ({})),
     } as unknown as TypesenseClient
@@ -503,6 +617,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "broad-corpus-test",
+      loadCurations: async () => [],
     })
 
     // Matched by content, not call index: buildCatalogDocuments issues several
@@ -580,6 +695,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       multiSearch: vi.fn(async () => [
         {
@@ -605,6 +722,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "metadata-only-test",
+      loadCurations: async () => [],
     })
 
     expect(typesense.createCollection).toHaveBeenCalledTimes(3)
@@ -687,6 +805,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
     } as unknown as TypesenseClient
 
     await expect(
@@ -694,6 +814,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "missing-edition-id",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("rerun with --rebuild-transcripts")
     expect(typesense.createCollection).not.toHaveBeenCalled()
@@ -724,6 +845,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 0),
       updateDocumentsByFilter: vi.fn(async () => 0),
@@ -763,6 +886,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "metadata-hybrid-test",
+      loadCurations: async () => [],
     })
 
     expect(typesense.multiSearch).toHaveBeenCalledWith([
@@ -838,6 +962,8 @@ describe("Typesense Watch Search indexer", () => {
         { found: 1, out_of: 2, page: 1, search_time_ms: 1, hits: [] },
       ]),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 0),
       updateDocumentsByFilter: vi.fn(async () => 1),
@@ -849,6 +975,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "title-rename",
+      loadCurations: async () => [],
     })
 
     expect(typesense.importDocuments).toHaveBeenCalledWith(
@@ -882,6 +1009,8 @@ describe("Typesense Watch Search indexer", () => {
         collection_name: `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async () => ({})),
       deleteCollection: vi.fn(async () => undefined),
@@ -891,6 +1020,7 @@ describe("Typesense Watch Search indexer", () => {
       prisma,
       typesense,
       buildId: "manual-full-test",
+      loadCurations: async () => [],
       transcriptStrategy: "rebuild",
     })
 
@@ -952,6 +1082,8 @@ describe("Typesense Watch Search indexer", () => {
         },
       ]),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       deleteDocumentsByFilter: vi.fn(async () => 1),
       updateDocumentsByFilter: vi.fn(async () => 1),
@@ -961,6 +1093,12 @@ describe("Typesense Watch Search indexer", () => {
           collection !== `${TYPESENSE_WATCH_CATALOG_ALIAS}_previous`
         ) {
           throw new Error("catalog alias failed")
+        }
+        if (
+          alias === TYPESENSE_WATCH_LEXICAL_ALIAS &&
+          collection === `${TYPESENSE_WATCH_LEXICAL_ALIAS}_previous`
+        ) {
+          throw new Error("lexical alias rollback failed")
         }
       }),
       deleteAlias: vi.fn(async () => undefined),
@@ -972,6 +1110,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "failed-hybrid-refresh",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("catalog alias failed")
 
@@ -986,6 +1125,10 @@ describe("Typesense Watch Search indexer", () => {
     )
     expect(typesense.deleteDocumentsByFilter).not.toHaveBeenCalled()
     expect(typesense.updateDocumentsByFilter).not.toHaveBeenCalled()
+    expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
+      "watch_search_lexical_failed-hybrid-refresh",
+    )
+    expect(typesense.deleteCurationSet).not.toHaveBeenCalled()
   })
 
   it("rolls back metadata aliases without touching a reused transcript alias", async () => {
@@ -1008,6 +1151,8 @@ describe("Typesense Watch Search indexer", () => {
             : `${alias}_previous`,
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       multiSearch: vi.fn(async () => [
         {
@@ -1042,6 +1187,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "metadata-rollback-test",
+        loadCurations: async () => [],
       }),
     ).rejects.toThrow("catalog alias failed")
 
@@ -1074,6 +1220,8 @@ describe("Typesense Watch Search indexer", () => {
                 : "catalog_previous",
       })),
       createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
       importDocuments: vi.fn(async () => undefined),
       upsertAlias: vi.fn(async (alias: string, collection: string) => {
         if (
@@ -1092,6 +1240,7 @@ describe("Typesense Watch Search indexer", () => {
         prisma,
         typesense,
         buildId: "rollback-test",
+        loadCurations: async () => [],
         transcriptStrategy: "rebuild",
       }),
     ).rejects.toThrow("catalog alias failed")

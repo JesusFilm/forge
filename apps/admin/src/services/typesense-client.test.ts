@@ -52,6 +52,52 @@ describe("TypesenseClient", () => {
     await expect(client.getAlias("missing")).resolves.toBeUndefined()
   })
 
+  it("owns versioned curation sets through the Typesense v30 API", async () => {
+    const set = {
+      items: [
+        {
+          id: "rescue-project",
+          rule: { query: "rescue project", match: "exact" as const },
+          includes: [{ id: "intro:slug:english", position: 1 }],
+        },
+      ],
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(set))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "operator-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.upsertCurationSet("watch_search_curations_build-7", set),
+    ).resolves.toEqual(set)
+    await expect(
+      client.deleteCurationSet("watch_search_curations_retired"),
+    ).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:8108/curation_sets/watch_search_curations_build-7",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "content-type": "application/json",
+          "x-typesense-api-key": "operator-key",
+        }),
+        body: JSON.stringify(set),
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:8108/curation_sets/watch_search_curations_retired",
+      expect.objectContaining({ method: "DELETE" }),
+    )
+  })
+
   it("lists physical collections for release cleanup", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse([
