@@ -91,8 +91,9 @@ export async function provisionReadonlyRole(
         )
     }
 
-    await client.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`
+    await client.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(`
         DO $role$
         BEGIN
           IF NOT EXISTS (
@@ -103,78 +104,80 @@ export async function provisionReadonlyRole(
         END
         $role$
       `)
-      await tx.$executeRawUnsafe(
-        `ALTER ROLE ${quoteIdentifier(READONLY_GROUP_ROLE)} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
-      )
-      const [groupMemberships] = await tx.$queryRaw<CountRow[]>`
+        await tx.$executeRawUnsafe(
+          `ALTER ROLE ${quoteIdentifier(READONLY_GROUP_ROLE)} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+        )
+        const [groupMemberships] = await tx.$queryRaw<CountRow[]>`
         SELECT count(*) AS count
         FROM pg_auth_members member
         WHERE member.member = ${READONLY_GROUP_ROLE}::regrole
       `
-      if (groupMemberships?.count !== 0n)
-        throw new Error(
-          "read-only role provisioning refused: read-only group has unexpected memberships",
-        )
-      if (!existing.length) {
+        if (groupMemberships?.count !== 0n)
+          throw new Error(
+            "read-only role provisioning refused: read-only group has unexpected memberships",
+          )
+        if (!existing.length) {
+          await tx.$executeRawUnsafe(
+            `CREATE ROLE ${login} LOGIN PASSWORD ${passwordLiteral} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT`,
+          )
+        } else {
+          await tx.$executeRawUnsafe(
+            `ALTER ROLE ${login} LOGIN PASSWORD ${passwordLiteral} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT`,
+          )
+        }
         await tx.$executeRawUnsafe(
-          `CREATE ROLE ${login} LOGIN PASSWORD ${passwordLiteral} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT`,
+          `REVOKE TEMPORARY ON DATABASE ${database} FROM PUBLIC`,
         )
-      } else {
+        await tx.$executeRawUnsafe(`REVOKE CREATE ON SCHEMA public FROM PUBLIC`)
         await tx.$executeRawUnsafe(
-          `ALTER ROLE ${login} LOGIN PASSWORD ${passwordLiteral} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT`,
+          `REVOKE ALL ON DATABASE ${database} FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
         )
-      }
-      await tx.$executeRawUnsafe(
-        `REVOKE TEMPORARY ON DATABASE ${database} FROM PUBLIC`,
-      )
-      await tx.$executeRawUnsafe(`REVOKE CREATE ON SCHEMA public FROM PUBLIC`)
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON DATABASE ${database} FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON DATABASE ${database} FROM ${login}`,
-      )
-      await tx.$executeRawUnsafe(
-        `GRANT CONNECT ON DATABASE ${database} TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(`REVOKE ALL ON SCHEMA public FROM ${login}`)
-      await tx.$executeRawUnsafe(
-        `GRANT USAGE ON SCHEMA public TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${login}`,
-      )
-      await tx.$executeRawUnsafe(
-        `ALTER DEFAULT PRIVILEGES FOR ROLE ${owner} IN SCHEMA public GRANT SELECT ON TABLES TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${login}`,
-      )
-      await tx.$executeRawUnsafe(
-        `REVOKE EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} FROM PUBLIC, ${quoteIdentifier(READONLY_GROUP_ROLE)}, ${login}`,
-      )
-      await tx.$executeRawUnsafe(
-        `GRANT EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} TO ${owner}`,
-      )
-      await tx.$executeRawUnsafe(
-        `GRANT ${quoteIdentifier(READONLY_GROUP_ROLE)} TO ${login}`,
-      )
-      await tx.$executeRawUnsafe(
-        `ALTER ROLE ${login} SET default_transaction_read_only = on`,
-      )
-    })
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON DATABASE ${database} FROM ${login}`,
+        )
+        await tx.$executeRawUnsafe(
+          `GRANT CONNECT ON DATABASE ${database} TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(`REVOKE ALL ON SCHEMA public FROM ${login}`)
+        await tx.$executeRawUnsafe(
+          `GRANT USAGE ON SCHEMA public TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${login}`,
+        )
+        await tx.$executeRawUnsafe(
+          `ALTER DEFAULT PRIVILEGES FOR ROLE ${owner} IN SCHEMA public GRANT SELECT ON TABLES TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${quoteIdentifier(READONLY_GROUP_ROLE)}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${login}`,
+        )
+        await tx.$executeRawUnsafe(
+          `REVOKE EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} FROM PUBLIC, ${quoteIdentifier(READONLY_GROUP_ROLE)}, ${login}`,
+        )
+        await tx.$executeRawUnsafe(
+          `GRANT EXECUTE ON FUNCTION ${LARGE_OBJECT_MUTATOR_SQL} TO ${owner}`,
+        )
+        await tx.$executeRawUnsafe(
+          `GRANT ${quoteIdentifier(READONLY_GROUP_ROLE)} TO ${login}`,
+        )
+        await tx.$executeRawUnsafe(
+          `ALTER ROLE ${login} SET default_transaction_read_only = on`,
+        )
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    )
     return databaseUrlForRole(adminUrl, role, secret)
   } finally {
     await client.$disconnect()
