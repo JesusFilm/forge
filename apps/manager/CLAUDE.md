@@ -525,3 +525,12 @@ retention job, while run totals, report state, and proposal references remain.
 The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` and `apps/manager/public` into `apps/manager/.next/standalone/apps/manager/public` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate, and without the copied public assets regional images 404 in standalone mode.
 
 Production Manager may still be governed by Railway dashboard-level overrides instead of `apps/manager/railway.toml`; verify the effective Railway config before assuming this file is honored. The shell brand assets `/jesusfilm-sign.svg` and `/favicon.svg` are also served by app route handlers so the login shell keeps rendering if the runtime image omits `apps/manager/public`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.

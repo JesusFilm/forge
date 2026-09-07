@@ -2778,3 +2778,12 @@ seed:first-party-apps` (updates the `scope` table + stored client scopes),
 - Next.js App Router route handlers cannot directly export the Yoga instance:
   type signatures mismatch. Wrap in a `(request, context) => yoga.handle(...)`
   function and export that as `GET`/`POST`/`OPTIONS`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.

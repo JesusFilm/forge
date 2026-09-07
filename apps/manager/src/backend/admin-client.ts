@@ -1,3 +1,4 @@
+import { createStudioAdminAdapter } from "./studio-client"
 import type {
   MockCoverageSnapshot,
   MockLanguageGeo,
@@ -629,6 +630,10 @@ export class AdminGraphqlClient {
     this.apiKey = options.apiKey
     this.fetchImpl = options.fetchImpl ?? fetch
   }
+
+  readonly studio = createStudioAdminAdapter((query, variables) =>
+    this.request(query, variables),
+  )
 
   private async request<T>(
     query: string,

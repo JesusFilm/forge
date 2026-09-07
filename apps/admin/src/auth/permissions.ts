@@ -517,3 +517,22 @@ export function canWriteDerived(user: Principal | null): boolean {
   const role = principalRole(user)
   return role === "SYSTEM" || role === "ADMIN"
 }
+
+/** Studio is a shared operator workspace; all verified operators can author it. */
+export function canReviewStudio(user: Principal | null): boolean {
+  return Boolean(
+    user?.id &&
+    user.role !== "SYSTEM" &&
+    user.role !== "MANAGER_BACKEND" &&
+    (user.role === "ADMIN" || user.managerRole === "OPERATOR"),
+  )
+}
+
+/** Service principals can manage attempts/edits but cannot manufacture review. */
+export function canAuthorStudio(user: Principal | null): boolean {
+  return (
+    canReviewStudio(user) ||
+    user?.role === "SYSTEM" ||
+    user?.role === "MANAGER_BACKEND"
+  )
+}

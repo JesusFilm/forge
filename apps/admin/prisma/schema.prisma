@@ -4149,3 +4149,84 @@ model WhatsNewFeatureVote {
   @@index([ballotId, retractedAt], map: "whats_new_feature_vote_ballot_idx")
   @@map("whats_new_feature_vote")
 }
+
+// Studio authoring is independent of Manager render jobs and catalog lifecycle.
+model StudioProject {
+  id                    String                  @id @db.VarChar(128)
+  currentRevision       Int                     @map("current_revision")
+  ownerId               String                  @map("owner_id") @db.VarChar(128)
+  lifecycle             String                  @default("DRAFT") @db.VarChar(16)
+  firstPublishedAt      DateTime?               @map("first_published_at")
+  unpublishedAt         DateTime?               @map("unpublished_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  currentRevisionRecord StudioProjectRevision   @relation("CurrentStudioRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction)
+  revisions             StudioProjectRevision[] @relation("StudioProjectHistory")
+  commands              StudioCommand[]
+
+  @@map("studio_project")
+}
+
+model StudioProjectRevision {
+  currentFor StudioProject[]  @relation("CurrentStudioRevision")
+  approvals  StudioApproval[]
+  attempts   StudioAttempt[]
+  projectId  String           @map("project_id") @db.VarChar(128)
+  number     Int
+  document   Json
+  actor      Json
+  createdAt  DateTime         @default(now()) @map("created_at")
+  project    StudioProject    @relation("StudioProjectHistory", fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, number])
+  @@map("studio_project_revision")
+}
+
+model StudioCommand {
+  projectId      String        @map("project_id") @db.VarChar(128)
+  idempotencyKey String        @map("idempotency_key") @db.VarChar(128)
+  inputHash      String        @map("input_hash") @db.VarChar(64)
+  actor          Json
+  result         Json
+  createdAt      DateTime      @default(now()) @map("created_at")
+  project        StudioProject @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, idempotencyKey])
+  @@map("studio_command")
+}
+
+model StudioAttempt {
+  publicationApprovals StudioApproval[]
+  id                   String                @id @default(cuid()) @db.VarChar(128)
+  projectId            String                @map("project_id") @db.VarChar(128)
+  baseRevision         Int                   @map("base_revision")
+  kind                 String                @db.VarChar(16)
+  status               String                @default("QUEUED") @db.VarChar(16)
+  inputHash            String                @map("input_hash") @db.VarChar(64)
+  actor                Json
+  instructions         Json
+  result               Json?
+  jobReference         String?               @map("job_reference") @db.VarChar(128)
+  completedBy          Json?                 @map("completed_by")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  revision             StudioProjectRevision @relation(fields: [projectId, baseRevision], references: [projectId, number], onDelete: Restrict)
+
+  @@index([projectId, createdAt])
+  @@map("studio_attempt")
+}
+
+model StudioApproval {
+  id              String                @id @default(cuid()) @db.VarChar(128)
+  projectId       String                @map("project_id") @db.VarChar(128)
+  revision        Int
+  kind            String                @db.VarChar(16)
+  dependencyHash  String                @map("dependency_hash") @db.VarChar(64)
+  actor           Json
+  renderAttemptId String?               @map("render_attempt_id") @db.VarChar(128)
+  renderAttempt   StudioAttempt?        @relation(fields: [renderAttemptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdAt       DateTime              @default(now()) @map("created_at")
+  snapshot        StudioProjectRevision @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict)
+
+  @@index([projectId, kind, dependencyHash])
+  @@map("studio_approval")
+}
