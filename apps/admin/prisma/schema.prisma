@@ -1942,6 +1942,7 @@ model Video {
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
   watchProgress  WatchProgress[]
+  editorialMoments VideoMomentEditorial[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -1951,6 +1952,43 @@ model Video {
   // the `videos` list query's ORDER BY. Not expressed here because Prisma
   // doesn't model partial-index `WHERE` clauses cleanly across providers.
   @@map("video")
+}
+
+/// Human-reviewed story beats for the TV Explore panel (`Video.moments`).
+///
+/// EDITORIAL content, deliberately outside the machine lifecycle: the
+/// transcript-embedding pipeline prunes/re-chunks and bulk-overwrites
+/// `video_transcript_chunk` rows, so reviewed prose must never live there
+/// (see docs/plans/2026-08-17-001-feat-jesus-film-story-beat-explore-
+/// enrichment-plan.md, Storage Decision). No pipeline writes this table —
+/// only the guarded `apply-video-moment-sheet` operator script. When rows
+/// exist for (video, language) the moments read serves them EXCLUSIVELY;
+/// the chunk projection remains the fallback for un-enriched films.
+///
+/// `languageSlug` is BCP-47 ("en"), matching `video_transcript.language` —
+/// NOT the "english" family slug some other surfaces use.
+model VideoMomentEditorial {
+  id                 String    @id @default(cuid())
+  videoId            String    @map("video_id")
+  video              Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageSlug       String    @map("language_slug")
+  beatIndex          Int       @map("beat_index")
+  startSeconds       Float     @map("start_seconds")
+  endSeconds         Float?    @map("end_seconds")
+  summary            String
+  bibleVerses        String[]  @default([]) @map("bible_verses")
+  /// Loaded with phase 1; exposed on the GraphQL type and rendered by TV in
+  /// phase 2 (plan R3).
+  question           String?
+  reviewedBy         String    @map("reviewed_by")
+  reviewedAt         DateTime  @map("reviewed_at")
+  sourceModel        String?   @map("source_model")
+  sourceTranscriptId String?   @map("source_transcript_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@unique([videoId, languageSlug, beatIndex])
+  @@index([videoId, languageSlug])
+  @@map("video_moment_editorial")
 }
 
 /// Latest per-consumer playback position for resume/progress UI.
