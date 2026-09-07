@@ -816,6 +816,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
   const withIndexLock =
     input.withIndexLock ?? ((run) => withTypesenseWatchSearchIndexLock(run))
   let claimedBatch: ClaimedPublicationBatch | null = null
+  let releaseClaimedBatchOnFailure = true
 
   try {
     const result = await withIndexLock(async () => {
@@ -926,6 +927,12 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
               affectedDocumentIds,
             )
           } catch (cleanupError) {
+            // Preserve the claim fence when compensating cleanup cannot be
+            // verified. Clearing it here would advertise the event as safely
+            // retryable even though this attempt may still have visible
+            // documents in Typesense. A later worker can reclaim the event
+            // after its lease expires and repeat the full idempotent publish.
+            releaseClaimedBatchOnFailure = false
             throw new AggregateError(
               [error, cleanupError],
               "transcript publication failed and fail-closed Typesense cleanup did not complete",
@@ -937,7 +944,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
     })
     return result
   } catch (error) {
-    if (claimedBatch) {
+    if (claimedBatch && releaseClaimedBatchOnFailure) {
       await releaseTranscriptPublicationBatch(
         prisma,
         claimedBatch,

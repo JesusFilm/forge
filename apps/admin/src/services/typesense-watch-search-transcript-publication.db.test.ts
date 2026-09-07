@@ -1760,6 +1760,105 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toEqual({ status: "idle" })
   }, 180_000)
 
+  it("preserves the claim fence when fail-closed cleanup fails and recovers after lease expiry", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+    const failingCleanupTypesense = {
+      getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
+        typesense.getAlias(...args),
+      importDocuments: async (
+        ...args: Parameters<TypesenseClient["importDocuments"]>
+      ) => {
+        await typesense.importDocuments(...args)
+        throw new Error("simulated response failure after import")
+      },
+      deleteDocumentsByFilter: async () => {
+        throw new Error("simulated cleanup failure")
+      },
+      getDocument: (...args: Parameters<TypesenseClient["getDocument"]>) =>
+        typesense.getDocument(...args),
+    } satisfies Pick<
+      TypesenseClient,
+      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+    >
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense: failingCleanupTypesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/fail-closed Typesense cleanup did not complete/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        {
+          where: { id: pendingEvent.id },
+          select: {
+            status: true,
+            attemptCount: true,
+            leaseTokenHash: true,
+            leaseExpiresAt: true,
+            nextAttemptAt: true,
+            completedAt: true,
+          },
+        },
+      ),
+    ).toMatchObject({
+      status: "CLAIMED",
+      attemptCount: 1,
+      leaseTokenHash: expect.any(String),
+      leaseExpiresAt: expect.any(Date),
+      nextAttemptAt: null,
+      completedAt: null,
+    })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        pendingEvent.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeDefined()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:00:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: pendingEvent.id },
+        select: {
+          status: true,
+          leaseTokenHash: true,
+          leaseExpiresAt: true,
+          completedAt: true,
+        },
+      }),
+    ).resolves.toMatchObject({
+      status: "COMPLETED",
+      leaseTokenHash: null,
+      leaseExpiresAt: null,
+      completedAt: expect.any(Date),
+    })
+  }, 180_000)
+
   it("completes an older actively claimed event when a newer generation wins publication", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
