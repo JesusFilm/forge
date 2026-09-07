@@ -38,6 +38,16 @@ const migrations = [
   "0062_recommendation_multi_interest_profile_shadow",
   "0063_recommendation_live_profile_pilot",
   "0064_recommendation_governance_review_guards",
+  "0065_recommendation_strategy_manifest_immutability",
+  "0066_recommendation_playback_finalization_repair",
+  "0067_recommendation_episode_submission_budget_repair",
+  "0068_recommendation_trace_actor_digest_repair",
+  "0069_recommendation_hybrid_composition",
+  "0070_recommendation_consent_receipts",
+  "0071_recommendation_assignment_generation_key",
+  "0072_recommendation_source_neutral_playback_episodes",
+  "0075_recommendation_selection_attribution_eligibility",
+  "0076_recommendation_profile_eligibility_reconciliation",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -50,6 +60,86 @@ const migrations = [
 
 function deterministicVector(first: number, second: number): string {
   return `[${[first, second, ...Array<number>(1534).fill(0)].join(",")}]`
+}
+
+async function insertEligibleProjectionSource(
+  client: Client,
+  input: { ordinal: number; mediaId: string },
+): Promise<void> {
+  const suffix = String(input.ordinal)
+  await client.query(
+    `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, finalized_at,
+      created_at, expires_at
+    ) VALUES ($1, $2, $3, 'finalized', $4, 'test-kid', $5, $6, 1,
+      $7, $7, $7, '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-episode-${suffix}`,
+      input.mediaId,
+      "e".repeat(64),
+      `u19-snapshot-episode-jti-${suffix}`,
+      new Date("2026-08-26T13:00:00.000Z"),
+      new Date("2026-08-26T14:00:00.000Z"),
+      new Date("2026-08-26T11:00:00.000Z"),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_outcome_revision (
+      id, episode_id, classifier_version, fact_watermark, input_digest,
+      revision, qualified_view, view_quality_weight,
+      view_quality_weight_reason, active_playback_milliseconds,
+      duration_seconds, duration_cohort, active_coverage, generation,
+      created_at, expires_at
+    ) VALUES ($1, $2, 'active-watch-proxy-v1', 0, $3, 1, true, 1,
+      'active_fraction_of_duration', 60000, 120, 'medium', 'complete', 1,
+      '2026-08-26T11:00:00.000Z', '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-outcome-${suffix}`,
+      `u19-snapshot-episode-${suffix}`,
+      suffix.repeat(64),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_eligibility_decision (
+      id, source_type, source_key, outcome_id, policy_version, revision,
+      actor_class, state, reason_codes, eligible_scopes,
+      contribution_weight, contribution_ordinal, distinct_support,
+      identity_concentration, input_digest, evidence_watermark,
+      decided_at, expires_at
+    ) VALUES ($1, 'playback_outcome', $2, $3,
+      'recommendation-integrity-v1', 1, 'human_anonymous', 'eligible',
+      ARRAY['qualified_view'], ARRAY['profile'], 1, $4, 1, 1, $5,
+      '2026-08-26T11:00:00.000Z', '2026-08-26T11:00:00.000Z',
+      '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-decision-${suffix}`,
+      `playback_outcome:u19-snapshot-outcome-${suffix}`,
+      `u19-snapshot-outcome-${suffix}`,
+      input.ordinal + 1,
+      (input.ordinal + 3).toString().repeat(64),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_profile_projection_contribution (
+      id, generation_id, kind, source_id_digest, source_outcome_id,
+      target_media_id, interest_ordinal, weight,
+      eligibility_policy_version, outcome_classifier_version,
+      source_eligibility_decision_id, source_eligibility_revision,
+      privacy_generation, occurred_at, expires_at
+    ) VALUES ($1, 'u19-snapshot-projection', 'qualified_outcome', $2, $3,
+      $4, $5, 1, 'recommendation-integrity-v1', 'active-watch-proxy-v1',
+      $6, 1, 1, '2026-08-26T11:00:00.000Z',
+      '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-contribution-${suffix}`,
+      (input.ordinal + 5).toString().repeat(64),
+      `u19-snapshot-outcome-${suffix}`,
+      input.mediaId,
+      input.ordinal,
+      `u19-snapshot-decision-${suffix}`,
+    ],
+  )
 }
 
 async function installContentEmbeddingContractAuthority(
@@ -333,10 +423,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
       await admin.query(
         `INSERT INTO recommendation_profile (
-          id, token_digest, privacy_generation, choice, state, expires_at, updated_at
+          id, token_digest, privacy_generation, choice, state, expires_at,
+          created_at, updated_at
         ) VALUES (
           'u19-snapshot-profile', $1, 1, 'durable_allowed', 'active',
-          '2027-02-20T00:00:00.000Z', $2
+          '2027-02-20T00:00:00.000Z', '2026-08-25T00:00:00.000Z', $2
         )`,
         ["a".repeat(64), now],
       )
@@ -392,6 +483,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         GROUP BY transcript.video_id`,
         [secondaryProjectionMediaId, "f".repeat(64)],
       )
+      await insertEligibleProjectionSource(admin, {
+        ordinal: 0,
+        mediaId: projectionMediaId,
+      })
+      await insertEligibleProjectionSource(admin, {
+        ordinal: 1,
+        mediaId: secondaryProjectionMediaId,
+      })
       await admin.query(
         `INSERT INTO recommendation_profile_projection_pointer (
           scope_digest, scope, profile_id, privacy_generation, generation_id,

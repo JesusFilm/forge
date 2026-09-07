@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (September 6, 2026)
+## Status (September 7, 2026)
 
 - **Total tickets:** 631
 - **Complete:** 473
-- **In progress:** 46
-- **Not started:** 38
+- **In progress:** 47
+- **Not started:** 37
 - **Blocked:** 74
 - **Overdue and not complete:** 115
 
@@ -31,7 +31,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-384](content-discovery/feat-384-recommendation-experiment-spine.md)                                      | Recommendation experiment spine                                                                 | nisal      | P0       | —          | 7    | —          | complete    |
 | [feat-385](content-discovery/feat-385-hybrid-recommendation-promotion-rollback.md)                             | Hybrid recommendation promotion and rollback                                                    | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-447](content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md)                         | Live anonymous-profile hybrid personalization rollout                                           | nisal      | P0       | —          | 8    | —          | blocked     |
-| [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | not-started |
+| [feat-459](content-discovery/feat-459-recommendation-profile-eligibility-reconciliation.md)                    | Recommendation profile eligibility reconciliation                                               | nisal      | P0       | —          | 6    | —          | in-progress |
 | [feat-009](content-discovery/feat-009-pgvector-embedding-indexing.md)                                          | pgvector Setup and Embedding Indexing                                                           | nisal      | P0       | 2026-04-07 | 14   | 2026-04-20 | complete    |
 | [feat-010](content-discovery/feat-010-semantic-search-api.md)                                                  | Semantic Search API                                                                             | nisal      | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |
 | [feat-011](content-discovery/feat-011-search-ui-web.md)                                                        | Search UI — Web                                                                                 | urim       | P0       | 2026-04-14 | 21   | 2026-05-04 | complete    |

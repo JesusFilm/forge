@@ -60,6 +60,7 @@ const recommendationMigrationSql = [
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
   "0075_recommendation_selection_attribution_eligibility",
+  "0076_recommendation_profile_eligibility_reconciliation",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -200,6 +201,61 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       AND chunk.embedding IS NOT NULL
     GROUP BY transcript.video_id`,
     [projectionMediaId, "8".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, finalized_at,
+      created_at, expires_at
+    ) VALUES ('delivery-benchmark-episode', $1, $2, 'finalized',
+      'delivery-benchmark-episode-jti', 'test-kid',
+      '2026-08-27T02:00:00.000Z', '2026-08-27T03:00:00.000Z', 1,
+      '2026-08-27T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    [projectionMediaId, BENCHMARK_SESSION_DIGEST],
+  )
+  await client.query(
+    `INSERT INTO recommendation_outcome_revision (
+      id, episode_id, classifier_version, fact_watermark, input_digest,
+      revision, qualified_view, view_quality_weight,
+      view_quality_weight_reason, active_playback_milliseconds,
+      duration_seconds, duration_cohort, active_coverage, generation,
+      created_at, expires_at
+    ) VALUES ('delivery-benchmark-outcome', 'delivery-benchmark-episode',
+      'active-watch-proxy-v1', 0, $1, 1, true, 1,
+      'active_fraction_of_duration', 60000, 120, 'medium', 'complete', 1,
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["1".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_eligibility_decision (
+      id, source_type, source_key, outcome_id, policy_version, revision,
+      actor_class, state, reason_codes, eligible_scopes,
+      contribution_weight, contribution_ordinal, distinct_support,
+      identity_concentration, input_digest, evidence_watermark,
+      decided_at, expires_at
+    ) VALUES ('delivery-benchmark-decision', 'playback_outcome',
+      'playback_outcome:delivery-benchmark-outcome',
+      'delivery-benchmark-outcome', 'recommendation-integrity-v1', 1,
+      'human_anonymous', 'eligible', ARRAY['qualified_view'], ARRAY['profile'],
+      1, 1, 1, 1, $1, '2026-08-27T00:00:00.000Z',
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["2".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_profile_projection_contribution (
+      id, generation_id, kind, source_id_digest, source_outcome_id,
+      target_media_id, interest_ordinal, weight,
+      eligibility_policy_version, outcome_classifier_version,
+      source_eligibility_decision_id, source_eligibility_revision,
+      privacy_generation, occurred_at, expires_at
+    ) VALUES ('delivery-benchmark-contribution',
+      'delivery-benchmark-projection', 'qualified_outcome', $1,
+      'delivery-benchmark-outcome', $2, 0, 1,
+      'recommendation-integrity-v1', 'active-watch-proxy-v1',
+      'delivery-benchmark-decision', 1, 1,
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["3".repeat(64), projectionMediaId],
   )
   await client.query(
     `INSERT INTO recommendation_profile_projection_pointer (

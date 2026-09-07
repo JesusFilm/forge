@@ -24,6 +24,9 @@ const ensureRecommendationRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
   vi.fn(),
 )
+const ensureRecommendationProfileReconciliationSchedulerStarted = vi.hoisted(
+  () => vi.fn(),
+)
 const ensureRecommendationEpisodeFinalizationRecovery = vi.hoisted(() =>
   vi.fn(),
 )
@@ -71,6 +74,9 @@ vi.mock("@/services/recommendations/retention/job", () => ({
 vi.mock("@/services/recommendations/control-readiness/job", () => ({
   ensureRecommendationControlReadinessSchedulerStarted,
 }))
+vi.mock("@/services/recommendations/profiles/reconciliation.job", () => ({
+  ensureRecommendationProfileReconciliationSchedulerStarted,
+}))
 vi.mock("@/services/recommendations/finalization/job", () => ({
   ensureRecommendationEpisodeFinalizationRecovery,
 }))
@@ -92,6 +98,7 @@ describe("workflow instrumentation", () => {
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     ensureRecommendationRetentionSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
+    ensureRecommendationProfileReconciliationSchedulerStarted.mockReset()
     ensureRecommendationEpisodeFinalizationRecovery.mockReset()
     prewarmWatchSearchQueryEmbeddings.mockReset()
     prewarmWatchSearchQueryEmbeddings.mockResolvedValue(undefined)
@@ -127,6 +134,9 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).not.toHaveBeenCalled()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledWith({ prisma })
@@ -161,6 +171,9 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not start a world in the edge runtime", async () => {
@@ -182,6 +195,9 @@ describe("workflow instrumentation", () => {
     expect(ensureRecommendationRetentionSchedulerStarted).not.toHaveBeenCalled()
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
     ).not.toHaveBeenCalled()
   })
 
@@ -205,6 +221,9 @@ describe("workflow instrumentation", () => {
     )
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
@@ -322,6 +341,9 @@ describe("workflow instrumentation", () => {
     )
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,

@@ -19,6 +19,10 @@ import {
   loadPromotionState,
   recommendationPromotionOverview,
 } from "./overview-profile-promotion"
+import {
+  loadRecommendationProfileReconciliationOverview,
+  type RecommendationProfileReconciliationOverview,
+} from "./profile-reconciliation.service"
 
 type AggregateRow = Readonly<{
   preparedRequests: bigint | number
@@ -131,6 +135,7 @@ export type RecommendationOverviewData = Readonly<{
   experimentEvaluation: RecommendationExperimentEvaluationData | null
   promotion: RecommendationPromotionOverviewData | null
   profileShadow: RecommendationProfileShadowOverviewData | null
+  profileReconciliation: RecommendationProfileReconciliationOverview | null
 }>
 
 export type RecommendationProfileShadowOverviewData = Readonly<{
@@ -330,6 +335,7 @@ export async function loadRecommendationOverview(
       experimentEvaluation,
       promotionState,
       profileShadow,
+      profileReconciliation,
     ] = await Promise.all([
       prisma.$queryRaw<AggregateRow[]>(Prisma.sql`
         WITH active_roots AS (
@@ -652,6 +658,11 @@ export async function loadRecommendationOverview(
       }) ?? Promise.resolve(null),
       loadPromotionState(prisma, now),
       loadProfileShadowOverview(prisma, window, now),
+      loadRecommendationProfileReconciliationOverview(
+        prisma,
+        window,
+        now,
+      ).catch(() => null),
     ])
     const row = rows[0]
     if (!row) {
@@ -846,6 +857,7 @@ export async function loadRecommendationOverview(
           })
         : null,
       profileShadow,
+      profileReconciliation,
     }
   } catch {
     console.warn(
@@ -869,6 +881,7 @@ export async function loadRecommendationOverview(
       experimentEvaluation: null,
       promotion: null,
       profileShadow: null,
+      profileReconciliation: null,
     }
   }
 }
