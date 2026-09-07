@@ -567,7 +567,7 @@ describe("Typesense Watch candidate index CLI", () => {
     ).not.toHaveBeenCalled()
   })
 
-  it("leaves a durable BUILDING owner when external publication fails", async () => {
+  it("leaves a durable BUILDING owner and removes pre-promotion curations when external publication fails", async () => {
     const generation = lifecycleDouble()
     const typesense = typesenseDouble()
 
@@ -589,11 +589,37 @@ describe("Typesense Watch candidate index CLI", () => {
 
     expect(generation.row).toMatchObject({ state: "BUILDING" })
     expect(typesense.client.upsertCurationSet).toHaveBeenCalledTimes(1)
-    expect(typesense.client.deleteCurationSet).not.toHaveBeenCalled()
+    expect(typesense.client.deleteCurationSet).toHaveBeenCalledWith(
+      "watch_search_candidate_generation_01_curations",
+    )
     expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
     expect(
       generation.lifecycle.publishEvaluationGeneration,
     ).not.toHaveBeenCalled()
+  })
+
+  it("retains curations when evaluation publication may have committed", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    generation.lifecycle.publishEvaluationGeneration.mockRejectedValueOnce(
+      new Error("publication outcome unknown"),
+    )
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        indexContractRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: { ...transcriptIdentity },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow("publication outcome unknown")
+
+    expect(generation.row).toMatchObject({ state: "READY" })
+    expect(typesense.client.deleteCurationSet).not.toHaveBeenCalled()
   })
 
   it("retires exact owned members resumably and never deletes current or transcript state", async () => {

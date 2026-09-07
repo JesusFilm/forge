@@ -470,8 +470,10 @@ export async function publishTypesenseWatchSearchCandidate({
   })
 
   let generation: CandidateGenerationRecord
+  let ownerCreated = false
   try {
     generation = await generations.createBuildingGeneration(ownerInput)
+    ownerCreated = true
   } catch (error) {
     if (!isUniqueConflict(error)) throw error
     generation = await generations.getGeneration(generationId)
@@ -479,87 +481,108 @@ export async function publishTypesenseWatchSearchCandidate({
   }
   await failpoint?.("owner:created")
 
-  await typesense.upsertCurationSet(
-    curationProjection.name,
-    curationProjection.set,
-  )
-  await failpoint?.("curations:upserted")
+  let evaluationPublicationMayHaveCommitted = false
+  try {
+    await typesense.upsertCurationSet(
+      curationProjection.name,
+      curationProjection.set,
+    )
+    await failpoint?.("curations:upserted")
 
-  if (generation.state === "BUILDING") {
-    const members = [
-      ["catalog", schemas.catalog, snapshot.catalog],
-      ["availability", schemas.availability, snapshot.availability],
-      ["lexical", schemas.lexical, snapshot.lexical],
-    ] as const
-    for (const [name, schema, documents] of members) {
-      await ensureCollection(typesense, schema)
-      await failpoint?.(`${name}:created`)
-      await importProjection(typesense, schema.name, documents, batchSize)
-      await failpoint?.(`${name}:imported`)
+    if (generation.state === "BUILDING") {
+      const members = [
+        ["catalog", schemas.catalog, snapshot.catalog],
+        ["availability", schemas.availability, snapshot.availability],
+        ["lexical", schemas.lexical, snapshot.lexical],
+      ] as const
+      for (const [name, schema, documents] of members) {
+        await ensureCollection(typesense, schema)
+        await failpoint?.(`${name}:created`)
+        await importProjection(typesense, schema.name, documents, batchSize)
+        await failpoint?.(`${name}:imported`)
+      }
+
+      await validateDocumentCounts(typesense, schemas, snapshot)
+      await validateExactTitleRead(typesense, schemas.lexical.name, probe)
+      const [transcriptCount] = await typesense.multiSearch([
+        {
+          collection: transcript.collection,
+          q: "*",
+          per_page: 1,
+          exclude_fields: "embedding,text",
+        },
+      ])
+      await runCurrentCanary()
+      await failpoint?.("projection:validated")
+      generation = await generations.validateAndMarkReady({
+        generationId,
+        expectedVersion: generation.version,
+        documentCounts: {
+          ...snapshot.counts,
+          transcript: transcriptCount?.found ?? 0,
+        },
+        capacityEvidence: {
+          preBuildRssBytes,
+          postBuildRssBytes: process.memoryUsage().rss,
+          lexicalSearchableBytes: snapshot.lexicalMemory.searchableBytes,
+          estimatedKeywordMemoryLowBytes:
+            snapshot.lexicalMemory.estimatedRamLowBytes,
+          estimatedKeywordMemoryHighBytes:
+            snapshot.lexicalMemory.estimatedRamHighBytes,
+          exactTitleKeyBytes: snapshot.lexicalMemory.exactTitleKeyBytes,
+          transcriptReused: true,
+        },
+      })
+      await failpoint?.("generation:ready")
     }
 
-    await validateDocumentCounts(typesense, schemas, snapshot)
-    await validateExactTitleRead(typesense, schemas.lexical.name, probe)
-    const [transcriptCount] = await typesense.multiSearch([
-      {
-        collection: transcript.collection,
-        q: "*",
-        per_page: 1,
-        exclude_fields: "embedding,text",
-      },
-    ])
-    await runCurrentCanary()
-    await failpoint?.("projection:validated")
-    generation = await generations.validateAndMarkReady({
-      generationId,
-      expectedVersion: generation.version,
-      documentCounts: {
-        ...snapshot.counts,
-        transcript: transcriptCount?.found ?? 0,
-      },
-      capacityEvidence: {
-        preBuildRssBytes,
-        postBuildRssBytes: process.memoryUsage().rss,
-        lexicalSearchableBytes: snapshot.lexicalMemory.searchableBytes,
-        estimatedKeywordMemoryLowBytes:
-          snapshot.lexicalMemory.estimatedRamLowBytes,
-        estimatedKeywordMemoryHighBytes:
-          snapshot.lexicalMemory.estimatedRamHighBytes,
-        exactTitleKeyBytes: snapshot.lexicalMemory.exactTitleKeyBytes,
-        transcriptReused: true,
-      },
-    })
-    await failpoint?.("generation:ready")
-  }
+    const pointer = await generations.getPointer("EVALUATION")
+    evaluationPublicationMayHaveCommitted =
+      pointer.generationId === generationId
+    if (!evaluationPublicationMayHaveCommitted) {
+      // The CAS may commit remotely before its result reaches this process.
+      // Retain the set once publication starts so an uncertain outcome cannot
+      // leave the evaluation pointer attached to a broken lexical collection.
+      evaluationPublicationMayHaveCommitted = true
+      await generations.publishEvaluationGeneration({
+        generationId,
+        expectedPointerVersion: pointer.version,
+      })
+    }
+    await failpoint?.("pointer:published")
 
-  const pointer = await generations.getPointer("EVALUATION")
-  if (pointer.generationId !== generationId) {
-    await generations.publishEvaluationGeneration({
+    return {
       generationId,
-      expectedPointerVersion: pointer.version,
-    })
-  }
-  await failpoint?.("pointer:published")
-
-  return {
-    generationId,
-    state: generation.state,
-    counts: snapshot.counts,
-    digests: snapshot.digests,
-    collections: {
-      ...candidateWatchCollectionNames(generationId),
-      transcript: transcript.collection,
-    },
-    contentEmbeddingContractId: transcript.contentEmbeddingContractId,
-    transcriptChunkingVersion: transcript.chunkingVersion,
-    transcriptProjectionRevision: transcript.projectionRevision,
-    transcriptReused: true,
-    curationSet: curationProjection.name,
-    curationItems: curationProjection.set.items.length,
-    skippedCurationAliases: curationProjection.coverage.reduce(
-      (total, entry) => total + entry.skippedAliasIds.length,
-      0,
-    ),
+      state: generation.state,
+      counts: snapshot.counts,
+      digests: snapshot.digests,
+      collections: {
+        ...candidateWatchCollectionNames(generationId),
+        transcript: transcript.collection,
+      },
+      contentEmbeddingContractId: transcript.contentEmbeddingContractId,
+      transcriptChunkingVersion: transcript.chunkingVersion,
+      transcriptProjectionRevision: transcript.projectionRevision,
+      transcriptReused: true,
+      curationSet: curationProjection.name,
+      curationItems: curationProjection.set.items.length,
+      skippedCurationAliases: curationProjection.coverage.reduce(
+        (total, entry) => total + entry.skippedAliasIds.length,
+        0,
+      ),
+    }
+  } catch (error) {
+    if (ownerCreated && !evaluationPublicationMayHaveCommitted) {
+      try {
+        await typesense.deleteCurationSet(curationProjection.name)
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          `candidate generation ${generationId} failed before evaluation publication and curation-set cleanup also failed`,
+        )
+      }
+    }
+    throw error
   }
 }
 
