@@ -130,8 +130,9 @@ document the dashboard as canonical.
 `apps/mobile` signs in through the `jfp` generic-oauth provider: Auth is
 the OAuth CLIENT of its own OAuth provider (a self-RP), so the hosted login
 page ends in a real Better Auth session that the Expo plugin hands back to
-the app. Five things hold that flow together, and the 1.6.2 → 1.7.1
-upgrade (#1978) broke every one of them for the shipped app:
+the app. Six things hold that flow together, and the 1.6.2 → 1.7.1
+upgrade (#1978) broke every one of them for the shipped app (the sixth
+surfaced on the first device sign-in after #2176):
 
 - **The mobile client version is pinned in LOCKSTEP with this app.** 1.7
   removed the generic-oauth plugin's own endpoints (`/sign-in/oauth2`,
@@ -192,8 +193,27 @@ upgrade (#1978) broke every one of them for the shipped app:
   no `clientKind`, the minted JWT carried no mobile claim, and admin's
   progress operations had nothing to accept (local DB: 2 `mobile` sessions
   before 2026-08-24, none after).
+- **`selfRpStateCookiePlugin` (config.ts) plants the self-RP `state` cookie
+  again when the provider hands the browser its code.** 1.7 binds every
+  OAuth callback to ONE signed `better-auth.state` cookie and EXPIRES it on
+  a successful callback (`better-auth/dist/state.mjs`). A Google or Okta
+  sign-in on the hosted page is a second OAuth flow inside the self-RP
+  flow, in the same browser sheet: it overwrites the self-RP cookie, then
+  `/callback/google` expires it, so `/callback/jfp` fails
+  `state_security_mismatch` and redirects to
+  `forgemobile:///?error=state_mismatch` — the sheet closes and the app
+  reads a quiet cancel. The password form starts no second flow, which is
+  why the #2176 verification passed. The plugin's `after` hook on
+  `/oauth2/authorize`, `/oauth2/consent`, and `/oauth2/continue` re-plants
+  the cookie only when the redirect targets THIS server's `/callback/jfp`
+  with a `state`, using the same cookie factory `generateState` uses. The
+  cookie lands only on the browser that received the code, so the
+  login-CSRF binding the check exists for is unchanged. Verify any
+  self-RP change with a PROVIDER button on the hosted page, not only the
+  password form. See
+  `docs/solutions/integration-issues/better-auth-1-7-nested-oauth-consumes-self-rp-state-cookie.md`.
 
-One packaging rule rides with those five. **`@better-auth/utils` is pinned
+One packaging rule rides with those six. **`@better-auth/utils` is pinned
 to `0.4.2` in BOTH manifests.** `@better-auth/core`, `oauth-provider`, and
 `prisma-adapter` take it as an EXACT peer, while `better-call` depends on
 `^0.5.0`. Once mobile carried `core` too, pnpm's cross-importer peer dedupe
