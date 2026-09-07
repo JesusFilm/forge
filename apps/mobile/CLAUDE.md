@@ -376,16 +376,25 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   Bump the two apps together, in one PR; auth's
   `mobile-expo-plugin.guard.test.ts` pins the installed `@better-auth/expo`
   dist and fails on every bump until the mirrored proxy is re-verified.
-  Four auth-side pieces the same flow depends on:
+  Five auth-side pieces the same flow depends on:
   the route wrapper must pass a `forgemobile://` callback through
   (`resolveMobileCallbackURL`); `mobileAwareExpoPlugin` must re-admit the
   self-RP authorize URL in the 1.7 browser proxy — a bare `expo()` there ends
   every sign-in on `{"message":"Invalid authorizationURL"}` inside the sheet;
   `accountLinking.requireLocalEmailVerified` must stay `false`, or a user
   without a `jfp` account row (every hosted sign-up) ends on
-  `error=account_not_linked` and the app reads a quiet cancel; and the
+  `error=account_not_linked` and the app reads a quiet cancel; the
   session stamp must read `params.id` (the 1.7 core callback is
-  `/callback/:id`), or the JWT carries no mobile claim for progress writes.
+  `/callback/:id`), or the JWT carries no mobile claim for progress writes;
+  and `selfRpStateCookiePlugin` must plant the self-RP `state` cookie again
+  when `/oauth2/authorize` hands the browser its code — a Google or Okta
+  sign-in on the hosted page is a second OAuth flow in the same sheet that
+  consumes the ONE `state` cookie 1.7 checks, so without it every provider
+  sign-in ended on `forgemobile:///?error=state_mismatch` and the app read a
+  quiet cancel (build 1.0.0 (5), 2026-09-07; the password form never
+  triggers it, which is why the #2176 verification passed). A quiet cancel
+  hides every one of these from the user: when the sheet closes and the
+  Profile tab still says Sign in, read production auth's deploy log first.
   `@better-auth/utils` rides the same lockstep: it is `@better-auth/core`'s
   EXACT peer, and with both apps carrying `core`, pnpm resolved auth's peers
   against `better-call`'s `^0.5.0` walk, split `core` into two lockfile

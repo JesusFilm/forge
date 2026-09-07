@@ -175,8 +175,22 @@ step needs a signed build. See the gitignored local ticket
   test at X's layer, not a constraint that holds itself. The upgrade PR's
   own test suite could not have seen any of the four breaks.
 
+## Sixth break, found on the first device sign-in (2026-09-07)
+
+Build 1.0.0 (5) shipped this fix and still could not sign in through Google
+or Okta: the sheet closed and the Profile tab kept saying Sign in. 1.7 binds
+every OAuth callback to ONE signed `state` cookie and expires it on a
+successful callback. A provider sign-in on the hosted page is a second
+OAuth flow inside the self-RP flow, in the same browser, so it consumed the
+self-RP cookie and `/callback/jfp` failed `state_security_mismatch`. The
+verification above used the password form, which starts no second flow.
+The fix and the full request trace are in
+`docs/solutions/integration-issues/better-auth-1-7-nested-oauth-consumes-self-rp-state-cookie.md`.
+
 ## Related
 
+- `docs/solutions/integration-issues/better-auth-1-7-nested-oauth-consumes-self-rp-state-cookie.md`
+  — the sixth break and its fix (`selfRpStateCookiePlugin`).
 - `docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`
   — the local verification recipe (standalone build behind a static-discovery
   proxy) this doc's Verification section used.
