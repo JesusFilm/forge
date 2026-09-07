@@ -3,7 +3,7 @@ id: "feat-435"
 title: "Prove RAG maintenance, soak, and archive jfrag"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-04"
 duration: 7
 depends_on: ["feat-434", "feat-452", "feat-460"]
@@ -41,3 +41,16 @@ Run one small source through acquire → stage → normalize → chunk → embed
 
 - End-to-end evidence covers every pipeline stage without corpus text in reports.
 - Seeker and NanoClaw pass soak; jfrag README points to `apps/rag/AGENTS.md` and the migration record.
+
+## Post-Migration Evaluation Baseline
+
+The fresh read-only Forge production baseline is recorded in
+[`evidence/feat-435/production-eval-baseline.json`](./evidence/feat-435/production-eval-baseline.json).
+It is a valid 416-case baseline, but recall@10 `0.949519` and coverage
+`0.803193` are below the documented provisional floors. No durable
+identity-matched historical receipt exists, so no historical regression is
+claimed. New-source acquisition and indexing remain a no-go until the observed
+quality is investigated or this baseline is explicitly accepted.
+
+This receipt does not complete feat-435. New-source selection, acquisition,
+indexing, soak, rollback expiry, and archival remain pending.
