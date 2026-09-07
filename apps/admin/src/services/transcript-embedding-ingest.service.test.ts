@@ -358,6 +358,35 @@ describe("ingestTranscriptEmbeddings", () => {
     })
   })
 
+  it("rejects missing or unpersistable chunking-version identity before writing", async () => {
+    const prisma = buildPrisma()
+    const missingVersion = payload()
+    delete (missingVersion.chunking as { version?: string }).version
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, missingVersion),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          chunking: {
+            type: "segment-aware",
+            maxChunkTokens: 500,
+            overlapTokens: 100,
+            version: "v".repeat(129),
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).not.toHaveBeenCalled()
+  })
+
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {
     const prisma = buildPrisma()
     const body = payload({

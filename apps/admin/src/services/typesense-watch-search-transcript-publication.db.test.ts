@@ -1038,13 +1038,13 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toBeUndefined()
   }, 180_000)
 
-  it("rolls back failed publication-event writes, increments source generation on replacement, and keeps unchanged ingest event-free", async () => {
+  it("rejects missing publication identity before writing, rolls back failed event writes, increments source generation, and keeps unchanged ingest event-free", async () => {
     await expect(
       ingestTranscriptEmbeddings(
         prisma,
         payload({ chunkingVersion: "", mastraRunId: "invalid-run" }),
       ),
-    ).rejects.toMatchObject({ code: "write_failed" })
+    ).rejects.toMatchObject({ code: "payload_invalid" })
     expect(await prisma.videoTranscript.count()).toBe(0)
     expect(
       await prisma.watchSearchCurrentTranscriptPublicationEvent.count(),
@@ -1068,6 +1068,56 @@ suite("current transcript publication into Watch Search", () => {
     expect(firstEvent.sourceGeneration).toBe(1n)
     expect(firstEvent.currentDocumentIds).toHaveLength(2)
     expect(firstEvent.staleDocumentIds).toEqual([])
+
+    // Force the outbox insert to fail after the canonical replacement work.
+    // The conflicting row is committed independently, so PostgreSQL must roll
+    // back the attempted generation-2 parent and chunk changes while leaving
+    // the previously accepted generation intact.
+    const firstChunkIds = firstEvent.currentDocumentIds
+    const conflictingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.create({
+        data: {
+          transcriptId: firstTranscript.id,
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          language: "en",
+          contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+          transcriptChunkingVersion: "mastra-v1",
+          sourceGeneration: 2n,
+          sourceContentHash: "sha256:conflicting-event",
+          currentDocumentIds: ["conflicting-document"],
+          staleDocumentIds: [],
+        },
+      })
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma,
+        payload({
+          mode: "force",
+          mastraRunId: "failed-event-write-run",
+          generatedAt: "2026-09-03T00:05:00.000Z",
+          chunks: [
+            { text: "Uncommitted replacement", embedding, tokenCount: 2 },
+          ],
+        }),
+      ),
+    ).rejects.toThrow()
+    await expect(
+      prisma.videoTranscript.findUniqueOrThrow({
+        where: { id: firstTranscript.id },
+        select: { sourceGeneration: true },
+      }),
+    ).resolves.toEqual({ sourceGeneration: 1n })
+    await expect(
+      prisma.videoTranscriptChunk.findMany({
+        where: { transcriptId: firstTranscript.id },
+        orderBy: { chunkIndex: "asc" },
+        select: { id: true },
+      }),
+    ).resolves.toEqual(firstChunkIds.map((id) => ({ id })))
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.delete({
+      where: { id: conflictingEvent.id },
+    })
 
     const replaced = await ingestTranscriptEmbeddings(
       prisma,

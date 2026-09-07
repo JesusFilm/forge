@@ -120,7 +120,11 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         type: z.enum(["segment-aware", "plain-text"]),
         maxChunkTokens: z.number().int().positive(),
         overlapTokens: z.number().int().nonnegative(),
-        version: z.string().trim().min(1).optional(),
+        // Publication identity is persisted in a varchar(128) outbox column.
+        // Reject missing or permanently-unpersistable identities at the
+        // authenticated request boundary instead of surfacing a retryable 502
+        // after the canonical vector write has already started.
+        version: z.string().trim().min(1).max(128),
       })
       .strict(),
     generation: z
@@ -681,20 +685,6 @@ async function writePayload(
   }
 }
 
-function requiredTranscriptEventIdentity(
-  value: string | undefined,
-  name: string,
-): string {
-  const normalized = value?.trim()
-  if (!normalized) {
-    throw new TranscriptEmbeddingIngestError(
-      "write_failed",
-      `transcript publication ${name} is required`,
-    )
-  }
-  return normalized
-}
-
 async function lockTranscriptTarget(
   tx: Prisma.TransactionClient,
   target: ResolvedTarget,
@@ -832,10 +822,7 @@ export async function ingestTranscriptEmbeddings(
               videoEditionId: target.videoEditionId,
               language: payload.language,
               contentEmbeddingContractId: contract.id,
-              transcriptChunkingVersion: requiredTranscriptEventIdentity(
-                payload.chunking.version,
-                "chunking version",
-              ),
+              transcriptChunkingVersion: payload.chunking.version,
               sourceGeneration: nextSourceGeneration,
               sourceContentHash: hash,
               currentDocumentIds: writeResult.currentDocumentIds,
