@@ -351,7 +351,7 @@ turn. Plan: `docs/plans/2026-08-02-001-feat-seeker-video-featuring-plan.md`
   the boundary never lands half-encoded. Do not add a display utility beside
   `line-clamp-2`: any of them silently unclamps it (browser-caught in
   feat-269), which is why both this suite and `sources-list.test.tsx` carry the
-  same 13-name denylist — keep the two in step.
+  same test-only `display-utility-denylist.ts` constant.
 - **No URL is ever trusted from the wire.** `watchUrl` is built client-side as
   `https://www.jesusfilm.org/watch` + `buildCanonicalWatchVideoPath(slug,
 languageSlug)` from `@forge/watch-url-policy/routes`; a `watchUrl` on the
@@ -371,12 +371,23 @@ languageSlug)` from `@forge/watch-url-policy/routes`; a `watchUrl` on the
   reserved 16:9 box collapses with the player rather than framing the
   fallback. A CHUNK-load failure is NOT per-turn and is NOT retryable at the
   import layer: it degrades every video turn in the session until a page reload
-  (caption links stay live), and there is deliberately no user-facing reload
-  affordance today — feat-334 owns that seam. See
+  (caption links stay live). Since feat-334, a rejected player import adds
+  "Refresh the page to try loading videos again." to the fallback. The import
+  rejection is tagged at its source; ordinary render/playback errors keep the
+  plain fallback. Reload is manual and may discard an unsent draft or an
+  ephemeral conversation; no automatic reload or import retry runs. See
   `docs/solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md`
   for the two-cache-layer mechanism, the bundler-scope caveat and the
   verification commands; re-verify THERE on any Next/bundler change, not here.
   Do not restate the containment claim without this carve-out.
+- **Boundary separation (feat-334):** keep `VideoRenderBoundary` and
+  `MarkdownRenderBoundary` separate. Video owns async playback failures and
+  import-failure guidance; markdown falls back to the original message text.
+  A shared class would couple those distinct contracts for little benefit.
+  Keep the current poster and label calls inline; their simple, throw-free
+  derivations do not warrant extraction. The render callback is not a protected
+  subtree, so future label/poster logic must remain throw-free there or move
+  above the boundary.
 - **No egress or CSP change (plan E11):** the browser talks to
   `stream.mux.com` / `image.mux.com` directly; `SEEKER_MASTRA_ALLOWED_HOSTS`
   covers only chat-server→Mastra. No new env var exists for this feature.
@@ -794,7 +805,11 @@ login page instead of silently re-authenticating via the SSO session.
   `chat/message-list.video.test.tsx` keep the REAL `next/dynamic` boundary and
   mock only the leaf `@forge/video-player/mux-video` — the ssr:false lazy
   resolves asynchronously under jsdom, so those assertions use `findBy*`
-  (mocking `@mux/mux-video-react` itself is not an option: pnpm strict
+  (`vitest.config.ts` aliases `next/dynamic` to Next's real App Router
+  implementation; the package default uses the Pages Router loader and does
+  not throw rejected imports into error boundaries). The load-failure suite
+  rejects only the leaf import to exercise the full failure chain.
+  (Mocking `@mux/mux-video-react` itself is not an option: pnpm strict
   resolution leaves it unresolvable from `apps/chat`). Note for the
   behavioral suite: the reply lands via `setTimeout`, so it runs on fake timers
   with `userEvent.setup({ advanceTimers, ... })` under

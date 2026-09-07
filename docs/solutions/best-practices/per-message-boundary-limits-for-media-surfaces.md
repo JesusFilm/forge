@@ -207,6 +207,22 @@ The three failure classes, and what actually contains each:
 | Async playback `error` event      | Not by default                         | `onError` → the same fallback    |
 | Chunk load rejected               | **No — whole session**                 | None at the import layer; reload |
 
+## App Router test runtime (feat-334, 2026-09-07)
+
+Vitest resolves `next/dynamic` to the package's Pages Router loader by default,
+while Next's App Router build aliases it to `app-dynamic`. The Pages loader
+renders a loading fallback on import rejection; the App loader uses React.lazy
+and throws into the nearest error boundary. A rejected-import test therefore
+needs the same runtime alias as the deployed app. Chat's `vitest.config.ts`
+now resolves the real `next/dist/shared/lib/app-dynamic.js`; only the player
+leaf is mocked. Verified against Next 16.2.4's `createAppRouterApiAliases` and
+by aborting the player chunk in a production browser build.
+
+The import catch in `video-card.tsx` tags load failures with a private error
+class. This distinguishes refresh guidance from ordinary render/playback
+fallbacks without depending on bundler-specific error names or reflecting error
+messages. Refresh remains manual; it can discard unsent or ephemeral content.
+
 ## Related
 
 - `docs/solutions/best-practices/react-markdown-untrusted-nesting-crash-freeze-guard.md`

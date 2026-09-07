@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 64
 - ✅ **Complete:** 55
-- 🟡 **In progress:** 1
-- 🔵 **Not started:** 8
+- 🟡 **In progress:** 2
+- 🔵 **Not started:** 7
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -71,7 +71,7 @@ from the main DS Year 1 roadmap.
 | [feat-328](feat-328-chat-inline-video-rendering.md)                           | Chat inline video rendering from the result frame                            | jian wei | P1       | 2026-08-07 | 2    | ✅ complete    | [#1832](https://github.com/JesusFilm/forge/pull/1832)                                                        |
 | [feat-329](feat-329-chat-video-sources-replay-persistence.md)                 | Replay persistence: featured video + sources survive thread reload           | jian wei | P1       | 2026-08-10 | 2    | ✅ complete    | [#1836](https://github.com/JesusFilm/forge/pull/1836)                                                        |
 | [feat-330](feat-330-seeker-video-prompt-langfuse.md)                          | Durable video-featuring guidance in the Langfuse seeker prompt               | jian wei | P1       | 2026-08-10 | 1    | ✅ complete    | [#1875](https://github.com/JesusFilm/forge/pull/1875)                                                        |
-| [feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md)        | Chat render-boundary + clamp-guard consolidation                             | jian wei | P2       | 2026-08-14 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-334](feat-334-chat-render-boundary-clamp-guard-consolidation.md)        | Chat render-boundary + clamp-guard consolidation                             | jian wei | P2       | 2026-08-14 | 1    | 🟡 in-progress | —                                                                                                            |
 | [feat-336](feat-336-langfuse-trace-retention-job.md)                          | Langfuse trace retention job (flat 25-day sweep)                             | jian wei | P2       | 2026-08-10 | 2    | ✅ complete    | [#1904](https://github.com/JesusFilm/forge/pull/1904), [#1911](https://github.com/JesusFilm/forge/pull/1911) |
 | [feat-337](feat-337-per-user-erasure-capability.md)                           | Per-user erasure across Langfuse traces and ai_chat Postgres                 | jian wei | P2       | 2026-08-10 | 3    | ✅ complete    | [#1946](https://github.com/JesusFilm/forge/pull/1946), [#1951](https://github.com/JesusFilm/forge/pull/1951) |
 | [feat-338](feat-338-seeker-eval-whole-prompt-alignment-audit.md)              | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |
