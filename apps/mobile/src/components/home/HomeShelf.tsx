@@ -1,7 +1,8 @@
 /**
  * One curated Home section as a horizontal shelf. Both `layout: "rail" | "grid"`
  * render as shelves; `orientation === "vertical"` selects portrait (3:4) cards,
- * else landscape (16:9). Header is eyebrow + title only.
+ * else landscape (16:9). Header is the section title only — the model still
+ * carries `eyebrow`, it is just not drawn here.
  */
 import { memo, useCallback } from "react"
 import {
@@ -14,13 +15,7 @@ import {
 
 import type { WatchHomeCard, WatchHomeSection } from "../../lib/watchHome/model"
 import { useTypography } from "../../hooks/useTypography"
-import {
-  carousel,
-  layout,
-  text,
-  CARD_GAP,
-  HORIZONTAL_PADDING,
-} from "../../styles/shared"
+import { carousel, layout, text, CARD_GAP } from "../../styles/shared"
 import { HomeCard, homeCardWidth, type HomeCardVariant } from "./HomeCard"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -51,13 +46,8 @@ export const HomeShelf = memo(function HomeShelf({ section }: HomeShelfProps) {
 
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
-      {section.eyebrow.length > 0 && (
-        <Text style={[text.eyebrow, styles.eyebrow, typography.caption]}>
-          {section.eyebrow.toUpperCase()}
-        </Text>
-      )}
       <Text
-        style={[text.sectionHeadingPadded, typography.heading]}
+        style={[text.sectionHeadingPadded, typography.titleSmall]}
         accessibilityRole="header"
       >
         {section.title}
@@ -83,9 +73,5 @@ export const HomeShelf = memo(function HomeShelf({ section }: HomeShelfProps) {
 const styles = StyleSheet.create({
   localContainer: {
     paddingVertical: 8,
-  },
-  eyebrow: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 4,
   },
 })
