@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (September 2, 2026)
+## Status (September 7, 2026)
 
 - **Total tickets:** 64
-- ✅ **Complete:** 53
-- 🟡 **In progress:** 2
+- ✅ **Complete:** 54
+- 🟡 **In progress:** 1
 - 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
@@ -86,4 +86,4 @@ from the main DS Year 1 roadmap.
 | [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | ✅ complete    | [#2088](https://github.com/JesusFilm/forge/pull/2088)                                                        |
 | [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | ✅ complete    | [#2089](https://github.com/JesusFilm/forge/pull/2089)                                                        |
 | [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | ✅ complete    | [#2115](https://github.com/JesusFilm/forge/pull/2115)                                                        |
-| [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | 🟡 in-progress | —                                                                                                            |
+| [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2179](https://github.com/JesusFilm/forge/pull/2179), [#2181](https://github.com/JesusFilm/forge/pull/2181) |
