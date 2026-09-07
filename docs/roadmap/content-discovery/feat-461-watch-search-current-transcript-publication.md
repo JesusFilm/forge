@@ -1,5 +1,5 @@
 ---
-id: "feat-460"
+id: "feat-461"
 title: "Watch search current transcript publication"
 owner: "codex"
 priority: "P1"
@@ -30,7 +30,7 @@ larger rebuild or candidate flow runs.
 2. `apps/admin/src/services/transcript-embedding.service.ts` — transcript replacement write path, stable chunk ids, and stale-chunk detection.
 3. `apps/admin/src/services/typesense-watch-search-transcript-publication.ts` — claim, publish, read back, fingerprint, and projection advancement flow.
 4. `apps/admin/src/services/typesense-watch-search.service.ts` — real Watch Search reader that must see the published transcript afterward.
-5. `apps/admin/prisma/migrations/0076_watch_search_current_transcript_publication/migration.sql` and `apps/admin/prisma/schema.prisma` — `source_generation`, projection state, and publication event schema.
+5. `apps/admin/prisma/migrations/0077_watch_search_current_transcript_publication/migration.sql` and `apps/admin/prisma/schema.prisma` — `source_generation`, projection state, and publication event schema.
 6. `apps/admin/src/services/typesense-watch-search-transcript-publication.db.test.ts` — real Postgres plus controlled Typesense seam coverage for ingest-to-search behavior.
 
 ## Grep These
@@ -75,5 +75,5 @@ WATCH_SEARCH_DB_TEST=1 pnpm --filter @forge/admin test -- src/services/typesense
 pnpm --filter @forge/admin test -- src/services/typesense-client.test.ts src/instrumentation.test.ts
 pnpm --filter @forge/admin typecheck
 pnpm --filter @forge/admin db:migrate:deploy
-pnpm prettier --check docs/roadmap/content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md docs/roadmap/content-discovery/feat-460-watch-search-current-transcript-publication.md
+pnpm prettier --check docs/roadmap/content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md docs/roadmap/content-discovery/feat-461-watch-search-current-transcript-publication.md
 ```
