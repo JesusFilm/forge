@@ -1,0 +1,4 @@
+
+> @forge/admin@0.0.1 typecheck /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+> tsc --noEmit
+

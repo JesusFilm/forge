@@ -1,0 +1,8 @@
+{
+  "stoppedOwnedAdminPid": 1681010,
+  "port": 3587,
+  "reason": "Build only affected Admin without serving mixed artifacts",
+  "previousBuild": "v5kjg3BH4qqhvI9lvbRK6",
+  "restart": "same isolated built Admin wrapper after build",
+  "sharedServicesTouched": false
+}

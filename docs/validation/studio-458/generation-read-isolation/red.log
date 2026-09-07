@@ -1,0 +1,85 @@
+(node:1723556) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ❯ src/services/studio-authoring/generation.read.test.ts (1 test | 1 failed) 65ms
+   × read must preserve original command while producing retained canonical final document 64ms
+     → expected { …(4) } to deeply equal { …(4) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/generation.read.test.ts > read must preserve original command while producing retained canonical final document
+AssertionError: expected { …(4) } to deeply equal { …(4) }
+
+- Expected
++ Received
+
+@@ -22,11 +22,15 @@
+            "stability": 0.5,
+            "style": 0,
+            "use_speaker_boost": true,
+          },
+          "suppressed": false,
+-         "text": "Jesus does not pass through Jericho as though its old curse makes it beneath his notice. On his way toward Bethany, where he will raise Lazarus, he still contrives to do good by the way. So he stops at the very place where Zacchaeus has climbed a sycomore tree, hidden above the crowd because he is little of stature and eager to see who Jesus is. When Jesus calls him down and chooses his house, the scandal is not only that a rich chief publican is noticed. It is that grace sees a man the crowd had already summed up, and receives him before the murmuring around him is finished.",
++         "text": "Jesus does not pass through Jericho as though its old curse makes it beneath his notice.
++
++ On his way toward Bethany, he still stops beneath Zacchaeus's sycomore tree.
++
++ Grace sees the man the crowd had already summed up.",
+          "voice": {
+            "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+            "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a",
+            "versionId": "cmtretxe100042ctenx3jrmih",
+          },
+@@ -74,11 +78,15 @@
+            "stability": 0.5,
+            "style": 0,
+            "use_speaker_boost": true,
+          },
+          "suppressed": false,
+-         "text": "That is why the complaint fails. Common fame is not righteous judgment: a publican is not condemned in the lump, a sinful past does not prove a sinful present, and the physician loses nothing by going where the sick may yet be healed. Christ goes to Zacchaeus not to share his wrong, but to seek and to save the lost.",
++         "text": "Common fame is not righteous judgment.
++
++ A sinful past does not prove a sinful present.
++
++ The physician goes where the sick may yet be healed.",
+          "voice": {
+            "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+            "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a",
+            "versionId": "cmtretxe100042ctenx3jrmih",
+          },
+@@ -126,11 +134,12 @@
+            "stability": 0.5,
+            "style": 0,
+            "use_speaker_boost": true,
+          },
+          "suppressed": false,
+-         "text": "Take a quiet breath. Let that mercy settle.",
++         "text": "Take a quiet breath.
++ Let that mercy settle.",
+          "voice": {
+            "assetId": "fbad58bb-cefa-4c27-a01e-0ef0fa93ba92",
+            "digest": "f88fcf65aa78e5c9cd5e9babe48ed2f6838b80fface62d77b3930cf8d11a5b2a",
+            "versionId": "cmtretxe100042ctenx3jrmih",
+          },
+
+ ❯ src/services/studio-authoring/generation.read.test.ts:28:46
+     26|  const again = await service.read({id:'operator',role:'ADMIN',studioAu…
+     27|  expect(again).toEqual(result)
+     28|  expect(result.previews[0].proposal.command).toEqual(command)
+       |                                              ^
+     29|  expect(studioHash(result.previews[0].proposal.command.operations)).to…
+     30| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  08:24:38
+   Duration  1.03s (transform 319ms, setup 16ms, collect 623ms, tests 65ms, environment 0ms, prepare 88ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/generation.read.test.ts

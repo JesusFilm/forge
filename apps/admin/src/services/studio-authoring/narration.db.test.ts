@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import {
   studioDocumentSchema,
+  studioAttemptResultSchema,
   studioOperationSchema,
 } from "@forge/studio-contracts"
 import { studioHash } from "./state"
@@ -9,7 +10,7 @@ import { StudioSourceService } from "./sources"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { StudioAssetService } from "./assets"
+import { StudioAssetService, readVerifiedStudioAsset } from "./assets"
 import { StudioAuthoringService } from "./index"
 import { StudioNarrationService } from "./narration"
 import { StudioGenerationService } from "./generation"
@@ -429,7 +430,7 @@ class FixtureError extends Error {}
   })
 
   it("retains hosted generation output and frozen provenance without applying it over newer edits", async () => {
-    const { commands, projectId } = await fixture()
+    const { commands, projectId, speech } = await fixture()
     const attempt = await commands.request(human, {
       projectId,
       expectedRevision: 1,
@@ -448,7 +449,19 @@ class FixtureError extends Error {}
             projectId,
             expectedRevision: 1,
             idempotencyKey: randomUUID(),
-            operations: [{ kind: "set-metadata", title: "Proposed" }],
+            operations: [
+              { kind: "set-metadata", title: "Proposed" },
+              {
+                kind: "set-speech",
+                itemId: "settle",
+                speech: { ...speech, text: "  Original retained speech\n" },
+              },
+              {
+                kind: "set-text",
+                itemId: "settle",
+                text: "  Final visible speech\n",
+              },
+            ],
           },
         },
       ],
@@ -476,7 +489,36 @@ class FixtureError extends Error {}
       outcome: "STALE",
       revision: 2,
     })
+    const beforeRead = await commands.read(human, projectId)
+    const attemptBefore = await db.studioAttempt.findUniqueOrThrow({
+      where: { id: attempt.attemptId },
+    })
+    const manifest = studioAttemptResultSchema.parse(
+      attemptBefore.result,
+    ).manifest
+    if (!manifest) throw new FixtureError("Missing generation manifest")
+    const bytesBefore = await readVerifiedStudioAsset(db, manifest, 262144)
+    expect(JSON.parse(bytesBefore.toString())).toEqual(output)
     const retained = await service.read(human, { attemptId: attempt.attemptId })
+    expect(retained.previews[0].proposal.command).toEqual(
+      output.proposals[0].command,
+    )
+    expect(
+      retained.previews[0].document.items.find((item) => item.id === "settle")
+        ?.speech?.text,
+    ).toBe("  Final visible speech\n")
+    expect(await service.read(human, { attemptId: attempt.attemptId })).toEqual(
+      retained,
+    )
+    expect(await readVerifiedStudioAsset(db, manifest, 262144)).toEqual(
+      bytesBefore,
+    )
+    expect(await commands.read(human, projectId)).toEqual(beforeRead)
+    expect(
+      await db.studioAttempt.findUniqueOrThrow({
+        where: { id: attempt.attemptId },
+      }),
+    ).toEqual(attemptBefore)
     expect(retained.previews[0].document.title).toBe("Proposed")
     expect((await commands.read(human, projectId)).document.title).toBe(
       "Newer human edit",

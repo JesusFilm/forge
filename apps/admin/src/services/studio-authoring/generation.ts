@@ -102,7 +102,7 @@ export class StudioGenerationService {
         throw new StudioCommandError("INVALID")
       const document = applyOperations(
         base.document,
-        proposal.command.operations,
+        structuredClone(proposal.command.operations),
       )
       if (proposal.quality)
         validateStudioRoleCoverage(document, proposal.quality.coverage)

@@ -1,0 +1,26 @@
+(node:1753513) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[redis] event=redis.error message=connect ENETUNREACH 127.0.0.1:6379 - Local (0.0.0.0:0) service=forge-admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[ratelimit] event=rate_limit.redis_unavailable keyPrefix=sign-in/email error=redis_not_ready_reconnecting
+
+stderr | src/auth/rate-limit.test.ts > incrementFixedWindow (redis path) > waits for a connecting Redis client before evaluating the window
+[redis] event=redis.error message=connect ENETUNREACH 127.0.0.1:6379 - Local (0.0.0.0:0) service=forge-admin
+
+ ✓ src/auth/rate-limit.test.ts (8 tests) 350ms
+ ✓ src/app/api/auth/login/route.test.ts (2 tests) 360ms
+   ✓ admin OAuth login route > sets PKCE cookies from a route handler and redirects to Auth authorize  356ms
+ ✓ src/app/api/auth/callback/route.test.ts (6 tests) 300ms
+ ✓ src/config/env.test.ts (64 tests) 82ms
+ ✓ src/app/api/auth/logout/route.test.ts (2 tests) 9ms
+
+ Test Files  5 passed (5)
+      Tests  82 passed (82)
+   Start at  08:30:10
+   Duration  3.28s (transform 341ms, setup 22ms, collect 562ms, tests 1.10s, environment 1ms, prepare 433ms)
+

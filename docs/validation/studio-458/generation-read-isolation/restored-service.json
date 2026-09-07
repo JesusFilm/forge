@@ -1,0 +1,8 @@
+{
+  "buildId": "oF4LlkYOCzn2-iTPEFzZ6",
+  "restoredPort": 3587,
+  "probe": "GET /api/auth/login (no provider action)",
+  "probeResult": "redirect-target-unavailable",
+  "managerBuildUnchanged": true,
+  "previousPerformanceConclusion": "inconclusive; unchanged"
+}

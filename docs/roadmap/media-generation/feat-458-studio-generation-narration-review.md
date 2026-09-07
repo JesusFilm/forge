@@ -70,3 +70,7 @@ Closed paired model comparison and the independently reviewed replay/deadline co
 ### Canonical effective-speech feedback checkpoint
 
 The narrow correction returns complete bounded canonical speech (or explicit unavailability) after ordered proposal validation, binds original operations before clone-isolated projection, and clarifies existing set-text/set-speech tool semantics. See `docs/solutions/integration-issues/studio-effective-speech-feedback.md` and `docs/validation/studio-458/effective-speech-feedback/README.md`. Closed paid artifacts remain unchanged. New tool description bytes require fresh admission for any future paid evaluation. The bounded interleaved frontend comparison is recorded as inconclusive, not a no-regression pass. Creative and ElevenLabs acceptance remain incomplete; ticket stays in progress.
+
+### Retained generation-command isolation checkpoint
+
+`generation.read` now clones the selected operations only for projection, preserving original response command provenance alongside the unchanged final document. See `docs/solutions/integration-issues/studio-generation-read-command-isolation.md` and `docs/validation/studio-458/generation-read-isolation/README.md`. Existing 680 evidence entries, closed paid batches, tool/prompt bytes and the inconclusive performance limitation remain unchanged. Full creative/ElevenLabs acceptance remains open.
