@@ -1,5 +1,5 @@
 /**
- * Discovery crawl (docs/architecture.md §3 fetch policy, FOLLOW-UP F) — turn a
+ * Discovery crawl (docs/architecture.md §3 Acquisition) — turn a
  * source's sitemap(s) into the set of content-article URLs to acquire, without
  * hand-listing them. Fetches each sitemap through the injected Fetcher, parses
  * it with node-html-parser, recurses a <sitemapindex> into its child <sitemap>s,
@@ -7,6 +7,8 @@
  * filters and clear `block`. Pure orchestration over the Fetcher port: no
  * normalize/chunk/embed, no adapter construction (§5). Output is just URLs —
  * acquireSource fetches + extracts them exactly as it does hand-listed seeds.
+ * FOLLOW-UP F was the standalone implementation trail for this now-shipped
+ * mechanism.
  */
 import { parse } from "node-html-parser"
 import type { Fetcher } from "../contracts/index.js"

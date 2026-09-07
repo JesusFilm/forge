@@ -106,6 +106,7 @@ describe("seeker agent route isolation", () => {
       "/forge-seeker",
       "/forge-ai-chat-history-list",
       "/forge-ai-chat-history-replay",
+      "/forge-ai-chat-history-rename",
     ]
     for (const route of laneRoutes) {
       const start = region.indexOf(`"${route}"`)
@@ -113,8 +114,12 @@ describe("seeker agent route isolation", () => {
       const next = region.indexOf("registerApiRoute(", start)
       const block =
         next === -1 ? region.slice(start) : region.slice(start, next)
+      // feat-450 widened the seam set: the rename write route also carries
+      // `getBackend` / `getMemory` / `getPool` test seams, and any of them at
+      // a registration would re-point the backend gate, the ownership store,
+      // or the pool with every other test green.
       expect(block).not.toMatch(
-        /\bserviceKeys\b|\bgetServiceKeys\b|\bgetEnabled\b/,
+        /\bserviceKeys\b|\bgetServiceKeys\b|\bgetEnabled\b|\bgetBackend\b|\bgetMemory\b|\bgetPool\b/,
       )
     }
     // Anti-vacuous companion: a pool-keyed route's block DOES carry the pool
@@ -134,7 +139,9 @@ describe("seeker agent route isolation", () => {
     // the laneRoutes list above learns the new route. Only the seam tokens
     // can be pinned source-wide: the pool `serviceKeys` binding stays
     // legitimate for every non-lane route.
-    expect(indexSource).not.toMatch(/\bgetServiceKeys\b|\bgetEnabled\b/)
+    expect(indexSource).not.toMatch(
+      /\bgetServiceKeys\b|\bgetEnabled\b|\bgetBackend\b|\bgetMemory\b|\bgetPool\b/,
+    )
   })
 
   it("does NOT reference seekerAgent inside any custom apiRoute", () => {

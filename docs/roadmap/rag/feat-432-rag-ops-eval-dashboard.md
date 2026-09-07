@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-23"
 duration: 5
 depends_on: ["feat-431"]
-blocks: ["feat-433", "feat-434"]
+blocks: ["feat-433", "feat-434", "feat-452"]
 tags: ["rag", "evaluation", "operations"]
 ---
 
@@ -51,3 +51,8 @@ skills, deterministic dashboard build and verification, and retrieval-only
 evaluation. The production-backed dashboard refresh remains an explicit
 operator-run workflow; CI validates the prepared artifacts without treating
 lifecycle files as deployment evidence.
+
+`feat-452` repairs the lifecycle files and referential-integrity checks omitted
+from this delivery and reconciles the publication receipt with the deployment
+that subsequently occurred. It does not invent the still-missing historical
+evaluation comparison.
