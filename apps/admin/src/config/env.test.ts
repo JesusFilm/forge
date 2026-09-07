@@ -12,6 +12,7 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
+  resolveWatchSearchTranscriptPublicationEnabled,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
   watchSearchDefaultShadowEnabledEnvSchema,
@@ -19,6 +20,7 @@ import {
   watchSearchPrimaryModeEnvSchema,
   watchSearchTypesenseProfileEnvSchema,
   watchSearchCandidateComparisonEnabledEnvSchema,
+  watchSearchTranscriptPublicationEnabledEnvSchema,
   watchSearchTranscriptProjectionRevisionEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
@@ -28,7 +30,9 @@ import {
 
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
-    expect(env.DATABASE_URL).toContain("forge_admin")
+    const url = new URL(env.DATABASE_URL)
+    expect(url.protocol).toBe("postgresql:")
+    expect(url.pathname).toMatch(/^\/.+/)
   })
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
@@ -139,8 +143,12 @@ describe("env", () => {
         watchSearchCandidateComparisonEnabledEnvSchema.parse(undefined),
       ).toBe(false)
       expect(
+        watchSearchTranscriptPublicationEnabledEnvSchema.parse(undefined),
+      ).toBe(false)
+      expect(
         watchSearchTranscriptProjectionRevisionEnvSchema.parse(undefined),
       ).toBeUndefined()
+      expect(resolveWatchSearchTranscriptPublicationEnabled()).toBe(false)
     })
 
     it("accepts one exact candidate pin and rejects malformed selectors", () => {
@@ -161,6 +169,17 @@ describe("env", () => {
           watchSearchTypesenseProfileEnvSchema.parse(value),
         ).toThrow()
       }
+    })
+
+    it("normalizes the transcript publication flag from raw runtime values", () => {
+      expect(resolveWatchSearchTranscriptPublicationEnabled("true")).toBe(true)
+      expect(resolveWatchSearchTranscriptPublicationEnabled("false")).toBe(
+        false,
+      )
+      expect(resolveWatchSearchTranscriptPublicationEnabled(true)).toBe(true)
+      expect(resolveWatchSearchTranscriptPublicationEnabled("invalid")).toBe(
+        false,
+      )
     })
   })
 
@@ -612,6 +631,29 @@ describe("env", () => {
       ).toThrow(/must be disjoint/)
     })
 
+    it("keeps every configured legacy reader credential disjoint from the operator credential", () => {
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          legacyKey: "shared",
+          operatorKey: "shared",
+        }),
+      ).toThrow(/must be disjoint/)
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "search-only",
+          legacyKey: "operator-only",
+          operatorKey: "operator-only",
+        }),
+      ).toThrow(/must be disjoint/)
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "search-only",
+          legacyKey: "legacy-reader-only",
+          operatorKey: "operator-only",
+        }),
+      ).not.toThrow()
+    })
+
     it("keeps candidate evaluation credentials disjoint from sampling", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
@@ -678,6 +720,8 @@ describe("env", () => {
       expect(source).not.toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
       // Positive control: the deprecation warn exists.
       expect(source).toMatch(/event=search_api_keys_env_var_retired/)
+      expect(source).toMatch(/assertTypesenseCredentialsDisjoint\s*\(\s*\{/)
+      expect(source).toMatch(/legacyKey:\s*env\.TYPESENSE_API_KEY/)
     })
 
     it("does not expose removed Admin search-eval harness env keys", async () => {

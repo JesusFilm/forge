@@ -1,4 +1,7 @@
-import { env } from "@/config/env"
+import {
+  env,
+  resolveWatchSearchTranscriptPublicationEnabled,
+} from "@/config/env"
 
 type WorkflowStartupState = {
   retryTimer?: ReturnType<typeof setTimeout>
@@ -134,6 +137,53 @@ export function shouldStartWorkflowWorld(): boolean {
   )
 }
 
+export class WorkflowStartupConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WorkflowStartupConfigurationError"
+  }
+}
+
+export function assertWatchSearchTranscriptPublicationRuntime(): void {
+  const publicationEnabled = resolveWatchSearchTranscriptPublicationEnabled()
+  const isDedicatedPostgresWorker =
+    env.WORKFLOW_RUNNER_ENABLED === "true" &&
+    env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+  if (
+    env.NODE_ENV === "production" &&
+    env.TYPESENSE_OPERATOR_API_KEY?.trim() &&
+    !isDedicatedPostgresWorker
+  ) {
+    throw new WorkflowStartupConfigurationError(
+      "TYPESENSE_OPERATOR_API_KEY is restricted to the dedicated Postgres worker in production",
+    )
+  }
+  if (!publicationEnabled) return
+  if (!isDedicatedPostgresWorker) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires WORKFLOW_RUNNER_ENABLED=true and WORKFLOW_TARGET_WORLD=@workflow/world-postgres",
+    )
+  }
+  if (!env.TYPESENSE_HOST || !env.TYPESENSE_OPERATOR_API_KEY?.trim()) {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST and TYPESENSE_OPERATOR_API_KEY",
+    )
+  }
+  let typesenseProtocol: string
+  try {
+    typesenseProtocol = new URL(env.TYPESENSE_HOST).protocol
+  } catch {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
+  if (typesenseProtocol !== "http:" && typesenseProtocol !== "https:") {
+    throw new WorkflowStartupConfigurationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST to be an HTTP(S) URL",
+    )
+  }
+}
+
 async function startWorkflowWorld(): Promise<void> {
   const { getWorld } = await import("workflow/runtime")
   const { startWorkflowWorkerHeartbeat } =
@@ -148,8 +198,12 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/retention/job")
   const { ensureRecommendationControlReadinessSchedulerStarted } =
     await import("@/services/recommendations/control-readiness/job")
+  const { ensureRecommendationProfileReconciliationSchedulerStarted } =
+    await import("@/services/recommendations/profiles/reconciliation.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
+  const { ensureWatchSearchTranscriptPublicationWorkerStarted } =
+    await import("@/services/typesense-watch-search-transcript-publication")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
@@ -158,6 +212,9 @@ async function startWorkflowWorld(): Promise<void> {
   await ensureSearchTraceRetentionSchedulerStarted()
   await ensureRecommendationRetentionSchedulerStarted()
   await ensureRecommendationControlReadinessSchedulerStarted()
+  await ensureRecommendationProfileReconciliationSchedulerStarted()
+  const { prisma } = await import("@/db/client")
+  await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
   )
@@ -234,6 +291,7 @@ async function startWorkflowWorldWithTransientRetry(
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    assertWatchSearchTranscriptPublicationRuntime()
     const { configureDatadog } = await import("@/observability/datadog")
     configureDatadog()
     startWatchSearchPrewarm()

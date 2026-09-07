@@ -21,6 +21,7 @@ export type EnvironmentConfigurationErrorCode =
   | "production_database_host_mismatch"
   | "production_database_required"
   | "production_openrouter_key_required"
+  | "production_read_host_required"
   | "production_write_host_required"
   | "production_write_opt_in_required"
   | "railway_bearer_tokens_required"

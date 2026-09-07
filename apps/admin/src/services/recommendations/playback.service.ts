@@ -233,6 +233,8 @@ export class RecommendationPlaybackService {
             )
             const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
               []
+            const replayReceipts: Prisma.RecommendationPlaybackTransportReplayReceiptCreateManyInput[] =
+              []
             let replayCount = 0
             let conflictCount = 0
             for (const event of parsed.events) {
@@ -244,6 +246,16 @@ export class RecommendationPlaybackService {
               }
               if (existing.payloadDigest === digest) {
                 replayCount += 1
+                replayReceipts.push({
+                  id: newId(),
+                  episodeId: locked.id,
+                  capabilityJti: locked.capabilityJti!,
+                  eventId: event.eventId,
+                  payloadDigest: digest,
+                  replayOrdinal: locked.transportReplayCount + replayCount,
+                  observedAt: now,
+                  expiresAt: locked.expiresAt,
+                })
                 if (locked.requestId) {
                   replayAudits.push({
                     requestId: locked.requestId,
@@ -279,6 +291,11 @@ export class RecommendationPlaybackService {
             if (replayAudits.length > 0) {
               await tx.recommendationEvidenceAudit.createMany({
                 data: replayAudits,
+              })
+            }
+            if (replayReceipts.length > 0) {
+              await tx.recommendationPlaybackTransportReplayReceipt.createMany({
+                data: replayReceipts,
               })
             }
 

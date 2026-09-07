@@ -118,6 +118,7 @@ export type TranscriptEmbeddingProvenance = {
   sourceContentHash?: string
   sourceProvider?: string
   sourceGeneratedAt?: string
+  sourceGeneration?: bigint
   generationMode?: TranscriptEmbeddingGenerationMode
   mastraRunId?: string
   chunkingVersion?: string
@@ -200,6 +201,7 @@ export type TranscriptEmbeddingPayloadInput = {
 }
 
 export type IndexEditionTranscriptResult = {
+  transcriptId: string | null
   editionId: string
   language: string
   chunksIndexed: number
@@ -207,6 +209,10 @@ export type IndexEditionTranscriptResult = {
   chunksPruned: number
   model: string
   dimensions: number
+  currentDocumentIds: string[]
+  staleDocumentIds: string[]
+  sourceGeneration: bigint
+  sourceContentHash: string | null
 }
 
 export type WriteTranscriptEmbeddingPayloadResult = IndexEditionTranscriptResult
@@ -408,6 +414,7 @@ export async function indexEditionTranscript(
 
   if (artifact.chunks.length === 0) {
     return {
+      transcriptId: null,
       editionId: input.editionId,
       language: input.language,
       chunksIndexed: 0,
@@ -415,6 +422,10 @@ export async function indexEditionTranscript(
       chunksPruned: 0,
       model: artifact.model,
       dimensions: artifact.dimensions,
+      currentDocumentIds: [],
+      staleDocumentIds: [],
+      sourceGeneration: input.provenance?.sourceGeneration ?? 0n,
+      sourceContentHash: input.provenance?.sourceContentHash ?? null,
     }
   }
 
@@ -428,6 +439,9 @@ export async function indexEditionTranscript(
   const incomingIndexes = artifact.chunks.map((_, i) => i)
   let embeddingsWritten = 0
   let chunksPruned = 0
+  let transcriptId: string | null = null
+  let currentDocumentIds: string[] = []
+  let staleDocumentIds: string[] = []
 
   try {
     await prisma.$transaction(
@@ -503,6 +517,7 @@ export async function indexEditionTranscript(
                   ),
                 }
               : {}),
+            sourceGeneration: input.provenance?.sourceGeneration ?? 0n,
             ...(input.provenance?.generationMode
               ? { generationMode: input.provenance.generationMode }
               : {}),
@@ -544,12 +559,25 @@ export async function indexEditionTranscript(
             sourceGeneratedAt: input.provenance?.sourceGeneratedAt
               ? new Date(input.provenance.sourceGeneratedAt)
               : null,
+            sourceGeneration: input.provenance?.sourceGeneration ?? 0n,
             generationMode: input.provenance?.generationMode ?? null,
             mastraRunId: input.provenance?.mastraRunId ?? null,
             chunkingVersion: input.provenance?.chunkingVersion ?? null,
           },
           select: { id: true },
         })
+        transcriptId = transcript.id
+
+        staleDocumentIds = (
+          await tx.videoTranscriptChunk.findMany({
+            where: {
+              transcriptId: transcript.id,
+              chunkIndex: { notIn: incomingIndexes },
+            },
+            orderBy: { chunkIndex: "asc" },
+            select: { id: true },
+          })
+        ).map((row) => row.id)
 
         // Prune orphan chunks from any previous run with more chunks.
         // Bounded to this transcript's children; other transcripts
@@ -749,6 +777,13 @@ export async function indexEditionTranscript(
             updated_at    = NOW()
         `
         embeddingsWritten = Number(writeAffected)
+        currentDocumentIds = (
+          await tx.videoTranscriptChunk.findMany({
+            where: { transcriptId: transcript.id },
+            orderBy: { chunkIndex: "asc" },
+            select: { id: true },
+          })
+        ).map((row) => row.id)
       },
       { timeout: TRANSACTION_TIMEOUT_MS },
     )
@@ -783,6 +818,7 @@ export async function indexEditionTranscript(
   }
 
   return {
+    transcriptId,
     editionId: input.editionId,
     language: input.language,
     chunksIndexed: artifact.chunks.length,
@@ -790,5 +826,9 @@ export async function indexEditionTranscript(
     chunksPruned,
     model: artifact.model,
     dimensions: artifact.dimensions,
+    currentDocumentIds,
+    staleDocumentIds,
+    sourceGeneration: input.provenance?.sourceGeneration ?? 0n,
+    sourceContentHash: input.provenance?.sourceContentHash ?? null,
   }
 }

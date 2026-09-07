@@ -3,7 +3,7 @@ id: "feat-459"
 title: "Recommendation profile eligibility reconciliation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: ""
 duration: 6
 depends_on:

@@ -19,7 +19,7 @@ export type RecommendationEligibilityScope =
   | "experiment"
 
 export type RecommendationIntegrityInput = Readonly<{
-  sourceType: "playback_outcome" | "content_action"
+  sourceType: "playback_outcome" | "content_action" | "selection"
   actorClass:
     | "human_anonymous"
     | "human_signed_in"

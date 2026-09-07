@@ -7,10 +7,12 @@ import {
   type CandidatePresentation,
 } from "../candidate"
 import { buildSemanticCandidateMuxThumbnailUrl } from "../delivery-retriever"
+import { RecommendationInternalStateError } from "../errors"
 import {
   PROFILE_CLUSTERING_VERSION,
   PROFILE_PROJECTION_VERSION,
 } from "../profiles/projection"
+import { profileLineageEligibleSql } from "../profiles/profile-lineage"
 import type {
   ShadowGenerator,
   ShadowGeneratorContext,
@@ -88,6 +90,7 @@ type ProfileGeneratorDependencies = Readonly<{
 export const PROFILE_SOURCE_ABSENCE_REASONS = [
   "profile_projection_unavailable",
   "profile_candidates_sparse",
+  "profile_lineage_ineligible",
 ] as const
 export type ProfileSourceAbsenceReason =
   (typeof PROFILE_SOURCE_ABSENCE_REASONS)[number]
@@ -201,6 +204,7 @@ export function createDatabaseProfileSourceNominationGenerator(
               AND profile.expires_at > ${now()}
             )
           )
+          AND ${profileLineageEligibleSql(Prisma.sql`generation.id`, now())}
         ORDER BY
           CASE interest.kind WHEN 'session' THEN 0 ELSE 1 END,
           interest.interest_ordinal
@@ -252,9 +256,10 @@ export async function getLiveProfileCandidates(
       expiresAt: Date
       cohortQuality: number
       sessionIntentPresent: boolean
-      ordinal: number
-      kind: "durable" | "session"
-      vectorText: string
+      lineageEligible: boolean
+      ordinal: number | null
+      kind: "durable" | "session" | null
+      vectorText: string | null
     }>
   >(Prisma.sql`
     WITH selected_generation AS MATERIALIZED (
@@ -293,6 +298,14 @@ export async function getLiveProfileCandidates(
       ORDER BY priority
       LIMIT 1
     )
+    , validated_generation AS MATERIALIZED (
+      SELECT
+        selected.id,
+        ${profileLineageEligibleSql(Prisma.sql`generation.id`, input.now)} AS lineage_eligible
+      FROM selected_generation selected
+      JOIN recommendation_profile_projection_generation generation
+        ON generation.id = selected.id
+    )
     SELECT
       generation.id,
       generation.scope::text AS scope,
@@ -303,15 +316,17 @@ export async function getLiveProfileCandidates(
       generation.expires_at AS "expiresAt",
       generation.cohort_quality AS "cohortQuality",
       generation.session_intent_present AS "sessionIntentPresent",
+      selected.lineage_eligible AS "lineageEligible",
       interest.interest_ordinal AS ordinal,
       interest.kind::text AS kind,
       interest.embedding::text AS "vectorText"
-    FROM selected_generation selected
+    FROM validated_generation selected
     JOIN recommendation_profile_projection_generation generation
       ON generation.id = selected.id
-    JOIN recommendation_profile_interest interest
+    LEFT JOIN recommendation_profile_interest interest
       ON interest.generation_id = generation.id
       AND interest.expires_at > ${input.now}
+      AND selected.lineage_eligible = true
     ORDER BY
       CASE interest.kind WHEN 'session' THEN 0 ELSE 1 END,
       interest.interest_ordinal
@@ -319,6 +334,12 @@ export async function getLiveProfileCandidates(
   `)
   const first = rows[0]
   if (!first) return null
+  if (!first.lineageEligible) {
+    throw new RecommendationInternalStateError("profile_lineage_ineligible")
+  }
+  if (first.ordinal == null || first.kind == null || first.vectorText == null) {
+    return null
+  }
   const projection: PublishedProfileProjection = {
     id: first.id,
     scope: first.scope,
@@ -330,9 +351,9 @@ export async function getLiveProfileCandidates(
     cohortQuality: Number(first.cohortQuality),
     sessionIntentPresent: first.sessionIntentPresent,
     interests: rows.map((row) => ({
-      ordinal: row.ordinal,
-      kind: row.kind,
-      vectorText: row.vectorText,
+      ordinal: row.ordinal!,
+      kind: row.kind!,
+      vectorText: row.vectorText!,
     })),
   }
   const context: ShadowGeneratorContext = {
