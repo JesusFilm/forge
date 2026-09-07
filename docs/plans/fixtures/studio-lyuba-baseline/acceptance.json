@@ -1,0 +1,810 @@
+{
+  "schemaVersion": 1,
+  "hashEncoding": "SHA-256 of UTF-8 JSON.stringify([{id,text}]); ordered, no whitespace/newline; effective speech only, NOT a complete provider cache key",
+  "cases": [
+    {
+      "id": "ch19-seq102",
+      "sourceSha256": "d566512e608bedb618ca51ca7038dd56e009648e898031b7045e96070d8915e8",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "Even true disciples can be overwhelmed by fear when the storm is real enough.",
+        "The disciples had Jesus right there in the boat with them, yet when the water started coming in they were sure they were going to die.",
+        "They forgot his care for them.",
+        "They forgot that as long as they were with him they had to be safe, whatever happened.",
+        "Sight and sense and feeling make us poor theologians.",
+        "That's humbling, but it's also instructive.",
+        "It teaches us what to watch for in our own hearts, and what to expect in other believers.",
+        "We have to be moderate in our expectations.",
+        "A person can have real faith and still show great weakness sometimes.",
+        "Even Peter, James, and John cried out 'Master, we're going to perish!'",
+        "When the storm had passed, Jesus asked them, 'Where is your faith?'",
+        "That's the question.",
+        "Having true saving faith is one thing.",
+        "Having that faith ready for use when something unexpected happens is another.",
+        "Many people receive Christ as their Savior and commit their souls to him for time and eternity, yet their faith fails them when they're suddenly tried.",
+        "The faith that carries you through a storm is the faith that sees him who is invisible.",
+        "It finds Jesus near you in the darkest hour, and blue sky behind the blackest cloud."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "For anyone who knows Jesus but still feels the panic rising. Let's slow down and give Scripture our attention."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 8:24. They came to him, and awoke him, saying, “Master, master, we are dying!” He awoke, and rebuked the wind and the raging of the water, and they ceased, and it was calm. Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. Even true disciples can be overwhelmed by fear when the storm is real enough.",
+          "display": "Even true disciples can be overwhelmed by fear when the storm is real enough."
+        },
+        {
+          "id": "reflection-2",
+          "text": "The disciples had Jesus right there in the boat with them, yet when the water started coming in they were sure they were going to die.",
+          "display": "The disciples had Jesus right there in the boat with them, yet when the water started coming in they were sure they were going to die."
+        },
+        {
+          "id": "reflection-3",
+          "text": "They forgot his care for them.",
+          "display": "They forgot his care for them."
+        },
+        {
+          "id": "reflection-4",
+          "text": "They forgot that as long as they were with him they had to be safe, whatever happened.",
+          "display": "They forgot that as long as they were with him they had to be safe, whatever happened."
+        },
+        {
+          "id": "reflection-5",
+          "text": "Sight and sense and feeling make us poor theologians.",
+          "display": "Sight and sense and feeling make us poor theologians."
+        },
+        {
+          "id": "reflection-6",
+          "text": "That's humbling, but it's also instructive.",
+          "display": "That's humbling, but it's also instructive."
+        },
+        {
+          "id": "reflection-7",
+          "text": "It teaches us what to watch for in our own hearts, and what to expect in other believers.",
+          "display": "It teaches us what to watch for in our own hearts, and what to expect in other believers."
+        },
+        {
+          "id": "reflection-8",
+          "text": "We have to be moderate in our expectations.",
+          "display": "We have to be moderate in our expectations."
+        },
+        {
+          "id": "reflection-9",
+          "text": "A person can have real faith and still show great weakness sometimes.",
+          "display": "A person can have real faith and still show great weakness sometimes."
+        },
+        {
+          "id": "reflection-10",
+          "text": "Even Peter, James, and John cried out 'Master, we're going to perish!'",
+          "display": "Even Peter, James, and John cried out 'Master, we're going to perish!'"
+        },
+        {
+          "id": "reflection-11",
+          "text": "When the storm had passed, Jesus asked them, 'Where is your faith?'",
+          "display": "When the storm had passed, Jesus asked them, 'Where is your faith?'"
+        },
+        {
+          "id": "reflection-12",
+          "text": "That's the question.",
+          "display": "That's the question."
+        },
+        {
+          "id": "reflection-13",
+          "text": "Having true saving faith is one thing.",
+          "display": "Having true saving faith is one thing."
+        },
+        {
+          "id": "reflection-14",
+          "text": "Having that faith ready for use when something unexpected happens is another.",
+          "display": "Having that faith ready for use when something unexpected happens is another."
+        },
+        {
+          "id": "reflection-15",
+          "text": "Many people receive Christ as their Savior and commit their souls to him for time and eternity, yet their faith fails them when they're suddenly tried.",
+          "display": "Many people receive Christ as their Savior and commit their souls to him for time and eternity, yet their faith fails them when they're suddenly tried."
+        },
+        {
+          "id": "reflection-16",
+          "text": "The faith that carries you through a storm is the faith that sees him who is invisible.",
+          "display": "The faith that carries you through a storm is the faith that sees him who is invisible."
+        },
+        {
+          "id": "reflection-17",
+          "text": "It finds Jesus near you in the darkest hour, and blue sky behind the blackest cloud.",
+          "display": "It finds Jesus near you in the darkest hour, and blue sky behind the blackest cloud."
+        },
+        {
+          "id": "conclusion",
+          "text": "Even when the storm rages, his presence ensures you're never truly alone."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhen fear takes over, what would change if you remembered he's still in the boat with you?\n\nBring your fear to Jesus right now and ask him to calm what feels out of control."
+        }
+      ],
+      "spokenSha256": "c21a66bdf7781653fe8d7053eadc5c1c9c3af8210e93956c3e9d3f4c0fc7ecbf",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "56a04ffcd1dacef09617c42c6fbcaa4d53e6e4650726b249988d262cad51d79a"
+    },
+    {
+      "id": "ch31-seq104",
+      "sourceSha256": "e347f37daca941e02f1c392c599ef2a2e41b14611339dabcff06a8f3ac5a866b",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "True brotherly love is rare.",
+        "Jesus tells us about a man beaten by thieves and left half dead on the road.",
+        "A priest came by and saw him.",
+        "Then a Levite came by and saw him.",
+        "Both were religious men who should have been ready to help someone in distress.",
+        "But both were too selfish or too unfeeling to offer any help.",
+        "They probably told themselves they didn't know this man, that he'd maybe gotten into trouble through his own fault, that they had no time to stop, that they had enough to do minding their own business without troubling themselves with strangers.",
+        "So one after the other, they both passed by on the other side.",
+        "This is an exact picture of what goes on constantly in the world.",
+        "Selfishness is the leading trait of most people.",
+        "That cheap charity which costs nothing more than a small donation is common enough.",
+        "But that self-sacrificing kindness which doesn't care what trouble it takes, as long as good can be done, is a grace rarely met with.",
+        "The only person who helped the wounded traveler was a Samaritan, a man from a nation that had no dealings with the Jews.",
+        "He saw a man stripped and lying half dead.",
+        "He asked no questions but at once had compassion.",
+        "He made no excuses but at once gave aid.",
+        "And Jesus says to us, 'Go and do likewise.'",
+        "The Samaritan's compassion wasn't confined to feelings.",
+        "He took real trouble to give help.",
+        "He acted as well as felt.",
+        "He went to him, bound up his wounds, set him on his own donkey, brought him to an inn, and took care of him.",
+        "The next day he gave the innkeeper money, saying, 'Take care of him, and whatever more you spend, I'll repay you when I come back.'",
+        "The kindness of a Christian toward others should not be in word only but in deed and in truth.",
+        "It should be a practical love, a love which costs something in money and time and trouble."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "Why did the religious men walk past someone dying? Let's slow down together before the day takes over."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 10:37. He said, “He who showed mercy on him.” Then Jesus said to him, “Go and do likewise.” Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. True brotherly love is rare.",
+          "display": "True brotherly love is rare."
+        },
+        {
+          "id": "reflection-2",
+          "text": "Jesus tells us about a man beaten by thieves and left half dead on the road.",
+          "display": "Jesus tells us about a man beaten by thieves and left half dead on the road."
+        },
+        {
+          "id": "reflection-3",
+          "text": "A priest came by and saw him.",
+          "display": "A priest came by and saw him."
+        },
+        {
+          "id": "reflection-4",
+          "text": "Then a Levite came by and saw him.",
+          "display": "Then a Levite came by and saw him."
+        },
+        {
+          "id": "reflection-5",
+          "text": "Both were religious men who should have been ready to help someone in distress.",
+          "display": "Both were religious men who should have been ready to help someone in distress."
+        },
+        {
+          "id": "reflection-6",
+          "text": "But both were too selfish or too unfeeling to offer any help.",
+          "display": "But both were too selfish or too unfeeling to offer any help."
+        },
+        {
+          "id": "reflection-7",
+          "text": "They probably told themselves they didn't know this man, that he'd maybe gotten into trouble through his own fault, that they had no time to stop, that they had enough to do minding their own business without troubling themselves with strangers.",
+          "display": "They probably told themselves they didn't know this man, that he'd maybe gotten into trouble through his own fault, that they had no time to stop, that they had enough to do minding their own business without troubling themselves with strangers."
+        },
+        {
+          "id": "reflection-8",
+          "text": "So one after the other, they both passed by on the other side.",
+          "display": "So one after the other, they both passed by on the other side."
+        },
+        {
+          "id": "reflection-9",
+          "text": "This is an exact picture of what goes on constantly in the world.",
+          "display": "This is an exact picture of what goes on constantly in the world."
+        },
+        {
+          "id": "reflection-10",
+          "text": "Selfishness is the leading trait of most people.",
+          "display": "Selfishness is the leading trait of most people."
+        },
+        {
+          "id": "reflection-11",
+          "text": "That cheap charity which costs nothing more than a small donation is common enough.",
+          "display": "That cheap charity which costs nothing more than a small donation is common enough."
+        },
+        {
+          "id": "reflection-12",
+          "text": "But that self-sacrificing kindness which doesn't care what trouble it takes, as long as good can be done, is a grace rarely met with.",
+          "display": "But that self-sacrificing kindness which doesn't care what trouble it takes, as long as good can be done, is a grace rarely met with."
+        },
+        {
+          "id": "reflection-13",
+          "text": "The only person who helped the wounded traveler was a Samaritan, a man from a nation that had no dealings with the Jews.",
+          "display": "The only person who helped the wounded traveler was a Samaritan, a man from a nation that had no dealings with the Jews."
+        },
+        {
+          "id": "reflection-14",
+          "text": "He saw a man stripped and lying half dead.",
+          "display": "He saw a man stripped and lying half dead."
+        },
+        {
+          "id": "reflection-15",
+          "text": "He asked no questions but at once had compassion.",
+          "display": "He asked no questions but at once had compassion."
+        },
+        {
+          "id": "reflection-16",
+          "text": "He made no excuses but at once gave aid.",
+          "display": "He made no excuses but at once gave aid."
+        },
+        {
+          "id": "reflection-17",
+          "text": "And Jesus says to us, 'Go and do likewise.'",
+          "display": "And Jesus says to us, 'Go and do likewise.'"
+        },
+        {
+          "id": "reflection-18",
+          "text": "The Samaritan's compassion wasn't confined to feelings.",
+          "display": "The Samaritan's compassion wasn't confined to feelings."
+        },
+        {
+          "id": "reflection-19",
+          "text": "He took real trouble to give help.",
+          "display": "He took real trouble to give help."
+        },
+        {
+          "id": "reflection-20",
+          "text": "He acted as well as felt.",
+          "display": "He acted as well as felt."
+        },
+        {
+          "id": "reflection-21",
+          "text": "He went to him, bound up his wounds, set him on his own donkey, brought him to an inn, and took care of him.",
+          "display": "He went to him, bound up his wounds, set him on his own donkey, brought him to an inn, and took care of him."
+        },
+        {
+          "id": "reflection-22",
+          "text": "The next day he gave the innkeeper money, saying, 'Take care of him, and whatever more you spend, I'll repay you when I come back.'",
+          "display": "The next day he gave the innkeeper money, saying, 'Take care of him, and whatever more you spend, I'll repay you when I come back.'"
+        },
+        {
+          "id": "reflection-23",
+          "text": "The kindness of a Christian toward others should not be in word only but in deed and in truth.",
+          "display": "The kindness of a Christian toward others should not be in word only but in deed and in truth."
+        },
+        {
+          "id": "reflection-24",
+          "text": "It should be a practical love, a love which costs something in money and time and trouble.",
+          "display": "It should be a practical love, a love which costs something in money and time and trouble."
+        },
+        {
+          "id": "conclusion",
+          "text": "True compassion moves beyond words to tangible acts of love."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhere is God calling you to stop and help when it would be easier to keep walking?\n\nAsk God to show you one person today who needs the kind of love that costs you something."
+        }
+      ],
+      "spokenSha256": "169dd8022e717b41f8ef4c7d07fde0453db911498d851bb0d046fb6515dc59f7",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "55bd5d43a5d314aed34f97746f0c2f6afcb19b931cdce0459cad7793ed0bc504"
+    },
+    {
+      "id": "ch33-seq0-ep1",
+      "sourceSha256": "f4f457367ebd6c932d1dc63345334609f55e72278862c5e9e383a2ab01b62e0b",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "Zacchaeus was the chief of the publicans, the head tax collector, a man with real authority and a considerable estate.",
+        "When Jesus came through Jericho, this wealthy, powerful man forgot his dignity entirely.",
+        "He ran ahead through the crowd like a boy and climbed a tree just to catch a glimpse of Jesus.",
+        "That eagerness mattered.",
+        "When Jesus reached the spot, he looked up, saw him, and called him by name: 'Zacchaeus, hurry and come down.",
+        "Today I must stay at your house.'",
+        "Grace met him right where his hunger had brought him.",
+        "The crowd murmured immediately.",
+        "They saw Zacchaeus as a sinner, someone Christ had no business associating with.",
+        "But their judgment was unfair on every count.",
+        "Just because many tax collectors were corrupt didn't mean all of them were.",
+        "Just because Zacchaeus had lived badly in the past didn't mean his heart was still the same now.",
+        "And even if he was still a sinner, that was exactly why Christ came to him.",
+        "A physician goes to the sick, not to the healthy.",
+        "Christ was in no danger of being corrupted by Zacchaeus.",
+        "He was there to do good, and Zacchaeus received him joyfully.",
+        "That day, salvation came to his house.",
+        "What looks scandalous to a narrow soul is often grace doing exactly what it came to do."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "For anyone who feels too compromised to approach Jesus boldly. Let's slow down and give Scripture our attention."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:5. When Jesus came to the place, he looked up and saw him, and said to him, “Zacchaeus, hurry and come down, for today I must stay at your house.” Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. Zacchaeus was the chief of the publicans, the head tax collector, a man with real authority and a considerable estate.",
+          "display": "Zacchaeus was the chief of the publicans, the head tax collector, a man with real authority and a considerable estate."
+        },
+        {
+          "id": "reflection-2",
+          "text": "When Jesus came through Jericho, this wealthy, powerful man forgot his dignity entirely.",
+          "display": "When Jesus came through Jericho, this wealthy, powerful man forgot his dignity entirely."
+        },
+        {
+          "id": "reflection-3",
+          "text": "He ran ahead through the crowd like a boy and climbed a tree just to catch a glimpse of Jesus.",
+          "display": "He ran ahead through the crowd like a boy and climbed a tree just to catch a glimpse of Jesus."
+        },
+        {
+          "id": "reflection-4",
+          "text": "That eagerness mattered.",
+          "display": "That eagerness mattered."
+        },
+        {
+          "id": "reflection-5",
+          "text": "When Jesus reached the spot, he looked up, saw him, and called him by name: 'Zacchaeus, hurry and come down.",
+          "display": "When Jesus reached the spot, he looked up, saw him, and called him by name: 'Zacchaeus, hurry and come down."
+        },
+        {
+          "id": "reflection-6",
+          "text": "Today I must stay at your house.'",
+          "display": "Today I must stay at your house.'"
+        },
+        {
+          "id": "reflection-7",
+          "text": "Grace met him right where his hunger had brought him.",
+          "display": "Grace met him right where his hunger had brought him."
+        },
+        {
+          "id": "reflection-8",
+          "text": "The crowd murmured immediately.",
+          "display": "The crowd murmured immediately."
+        },
+        {
+          "id": "reflection-9",
+          "text": "They saw Zacchaeus as a sinner, someone Christ had no business associating with.",
+          "display": "They saw Zacchaeus as a sinner, someone Christ had no business associating with."
+        },
+        {
+          "id": "reflection-10",
+          "text": "But their judgment was unfair on every count.",
+          "display": "But their judgment was unfair on every count."
+        },
+        {
+          "id": "reflection-11",
+          "text": "Just because many tax collectors were corrupt didn't mean all of them were.",
+          "display": "Just because many tax collectors were corrupt didn't mean all of them were."
+        },
+        {
+          "id": "reflection-12",
+          "text": "Just because Zacchaeus had lived badly in the past didn't mean his heart was still the same now.",
+          "display": "Just because Zacchaeus had lived badly in the past didn't mean his heart was still the same now."
+        },
+        {
+          "id": "reflection-13",
+          "text": "And even if he was still a sinner, that was exactly why Christ came to him.",
+          "display": "And even if he was still a sinner, that was exactly why Christ came to him."
+        },
+        {
+          "id": "reflection-14",
+          "text": "A physician goes to the sick, not to the healthy.",
+          "display": "A physician goes to the sick, not to the healthy."
+        },
+        {
+          "id": "reflection-15",
+          "text": "Christ was in no danger of being corrupted by Zacchaeus.",
+          "display": "Christ was in no danger of being corrupted by Zacchaeus."
+        },
+        {
+          "id": "reflection-16",
+          "text": "He was there to do good, and Zacchaeus received him joyfully.",
+          "display": "He was there to do good, and Zacchaeus received him joyfully."
+        },
+        {
+          "id": "reflection-17",
+          "text": "That day, salvation came to his house.",
+          "display": "That day, salvation came to his house."
+        },
+        {
+          "id": "reflection-18",
+          "text": "What looks scandalous to a narrow soul is often grace doing exactly what it came to do.",
+          "display": "What looks scandalous to a narrow soul is often grace doing exactly what it came to do."
+        },
+        {
+          "id": "conclusion",
+          "text": "Grace finds you right where your hunger leads you."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhat part of your past are you still letting whisper that you don't belong in his presence?\n\nAsk Jesus to show you one place where shame is keeping you at a distance, and let him call you by name today."
+        }
+      ],
+      "spokenSha256": "7811773bf9c2b794d7ae1572c636805d915ae6f45356b2ac330f5a31a615a93b",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "45648da7eca35ee06a54f1f9f15895d1938ae75dc12310591b5e22cfff6b6157"
+    },
+    {
+      "id": "ch33-seq0-ep2",
+      "sourceSha256": "bb27903c9d65a95d4950715d6b9ea6c124b7358715f2075c7e9709bfc65f703c",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "When Jesus declared that salvation had come to Zacchaeus's house, the crowd murmured.",
+        "They saw him as a sinner, someone Christ should not be associating with.",
+        "But their judgment was wrong on every count.",
+        "First, just because Zacchaeus was a tax collector, and many tax collectors were corrupt, did not mean he was.",
+        "We have to be careful about condemning people based on reputation or what group they belong to, because God judges each person as they actually are.",
+        "Second, even if Zacchaeus had been a sinner before, that did not mean he was the same man now.",
+        "The crowd knew his past, but Christ knew his present heart.",
+        "God makes room for repentance, and so should we.",
+        "Third, even if he was still a sinner, they had no business blaming Christ for going to him.",
+        "Christ was in no danger of being corrupted by a sinner.",
+        "He was there to do good for a sinner.",
+        "Where else should the physician go but to the sick?",
+        "Yet this is how it goes: what is done well can be completely misunderstood.",
+        "The very thing that revealed Christ's mission, seeking and saving the lost, looked to them like a scandal.",
+        "They saw association with a sinner as compromise.",
+        "Christ saw it as the whole point."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "For anyone who's been written off because of who you used to be. Let's slow down and give Scripture our attention."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:9. Jesus said to him, Today, salvation has come to this house, because he also is a son of Abraham. Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. When Jesus declared that salvation had come to Zacchaeus's house, the crowd murmured.",
+          "display": "When Jesus declared that salvation had come to Zacchaeus's house, the crowd murmured."
+        },
+        {
+          "id": "reflection-2",
+          "text": "They saw him as a sinner, someone Christ should not be associating with.",
+          "display": "They saw him as a sinner, someone Christ should not be associating with."
+        },
+        {
+          "id": "reflection-3",
+          "text": "But their judgment was wrong on every count.",
+          "display": "But their judgment was wrong on every count."
+        },
+        {
+          "id": "reflection-4",
+          "text": "First, just because Zacchaeus was a tax collector, and many tax collectors were corrupt, did not mean he was.",
+          "display": "First, just because Zacchaeus was a tax collector, and many tax collectors were corrupt, did not mean he was."
+        },
+        {
+          "id": "reflection-5",
+          "text": "We have to be careful about condemning people based on reputation or what group they belong to, because God judges each person as they actually are.",
+          "display": "We have to be careful about condemning people based on reputation or what group they belong to, because God judges each person as they actually are."
+        },
+        {
+          "id": "reflection-6",
+          "text": "Second, even if Zacchaeus had been a sinner before, that did not mean he was the same man now.",
+          "display": "Second, even if Zacchaeus had been a sinner before, that did not mean he was the same man now."
+        },
+        {
+          "id": "reflection-7",
+          "text": "The crowd knew his past, but Christ knew his present heart.",
+          "display": "The crowd knew his past, but Christ knew his present heart."
+        },
+        {
+          "id": "reflection-8",
+          "text": "God makes room for repentance, and so should we.",
+          "display": "God makes room for repentance, and so should we."
+        },
+        {
+          "id": "reflection-9",
+          "text": "Third, even if he was still a sinner, they had no business blaming Christ for going to him.",
+          "display": "Third, even if he was still a sinner, they had no business blaming Christ for going to him."
+        },
+        {
+          "id": "reflection-10",
+          "text": "Christ was in no danger of being corrupted by a sinner.",
+          "display": "Christ was in no danger of being corrupted by a sinner."
+        },
+        {
+          "id": "reflection-11",
+          "text": "He was there to do good for a sinner.",
+          "display": "He was there to do good for a sinner."
+        },
+        {
+          "id": "reflection-12",
+          "text": "Where else should the physician go but to the sick?",
+          "display": "Where else should the physician go but to the sick?"
+        },
+        {
+          "id": "reflection-13",
+          "text": "Yet this is how it goes: what is done well can be completely misunderstood.",
+          "display": "Yet this is how it goes: what is done well can be completely misunderstood."
+        },
+        {
+          "id": "reflection-14",
+          "text": "The very thing that revealed Christ's mission, seeking and saving the lost, looked to them like a scandal.",
+          "display": "The very thing that revealed Christ's mission, seeking and saving the lost, looked to them like a scandal."
+        },
+        {
+          "id": "reflection-15",
+          "text": "They saw association with a sinner as compromise.",
+          "display": "They saw association with a sinner as compromise."
+        },
+        {
+          "id": "reflection-16",
+          "text": "Christ saw it as the whole point.",
+          "display": "Christ saw it as the whole point."
+        },
+        {
+          "id": "conclusion",
+          "text": "God's grace transforms reputations and rewrites stories, no matter who you used to be."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhere in your life are you still letting past labels define you instead of letting Christ's declaration over you be final?\n\nAsk Jesus to help you see yourself the way he does now, not the way others remember you from before."
+        }
+      ],
+      "spokenSha256": "1f1bc83685eda44c7597bca8827d321d45984bc7e7d2a06e7299fc80d97c817a",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "6c1783d7dd847a748775fcd968d0bbf0752c26985add3cd2c3995c8e777fefc8"
+    },
+    {
+      "id": "ch33-seq0",
+      "sourceSha256": "acc467a76bd2cd1ba9737b958d6468c87ef1673c66e82d326d3ed4e11a3e37a2",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "Jesus came to seek and save the lost, and no one is too far gone for his grace.",
+        "Look at Zacchaeus.",
+        "Jesus stopped and spoke to him without being asked.",
+        "He invited himself to the house of a tax collector, and that very day he sent his renewing grace into Zacchaeus's heart and made him a child of God.",
+        "If ever there was a soul sought and saved without having done anything to deserve it, it was Zacchaeus.",
+        "That's the shape his grace takes: it moves first, before we're worthy of it, before we've done anything to earn it.",
+        "When Zacchaeus met Jesus, something real happened.",
+        "He promised to give half his possessions to the poor and repay anyone he'd cheated four times over.",
+        "That's not just words.",
+        "When a wealthy person begins to give away his riches and someone who cheated others starts making restitution, you know something has changed.",
+        "Old things have passed away, and all things become new.",
+        "Freely pardoned and raised from death to life, Zacchaeus felt he couldn't wait to show whose he was.",
+        "A faith that doesn't purify your heart and life isn't saving faith at all.",
+        "The heart that has truly tasted Christ's grace will instinctively hate sin and want to live differently.",
+        "That's the evidence that matters."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "Jesus stopped for the man everyone despised. Let's slow down and give Scripture our attention."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:10. For the Son of Man came to seek and to save that which was lost.” Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. Jesus came to seek and save the lost, and no one is too far gone for his grace.",
+          "display": "Jesus came to seek and save the lost, and no one is too far gone for his grace."
+        },
+        {
+          "id": "reflection-2",
+          "text": "Look at Zacchaeus.",
+          "display": "Look at Zacchaeus."
+        },
+        {
+          "id": "reflection-3",
+          "text": "Jesus stopped and spoke to him without being asked.",
+          "display": "Jesus stopped and spoke to him without being asked."
+        },
+        {
+          "id": "reflection-4",
+          "text": "He invited himself to the house of a tax collector, and that very day he sent his renewing grace into Zacchaeus's heart and made him a child of God.",
+          "display": "He invited himself to the house of a tax collector, and that very day he sent his renewing grace into Zacchaeus's heart and made him a child of God."
+        },
+        {
+          "id": "reflection-5",
+          "text": "If ever there was a soul sought and saved without having done anything to deserve it, it was Zacchaeus.",
+          "display": "If ever there was a soul sought and saved without having done anything to deserve it, it was Zacchaeus."
+        },
+        {
+          "id": "reflection-6",
+          "text": "That's the shape his grace takes: it moves first, before we're worthy of it, before we've done anything to earn it.",
+          "display": "That's the shape his grace takes: it moves first, before we're worthy of it, before we've done anything to earn it."
+        },
+        {
+          "id": "reflection-7",
+          "text": "When Zacchaeus met Jesus, something real happened.",
+          "display": "When Zacchaeus met Jesus, something real happened."
+        },
+        {
+          "id": "reflection-8",
+          "text": "He promised to give half his possessions to the poor and repay anyone he'd cheated four times over.",
+          "display": "He promised to give half his possessions to the poor and repay anyone he'd cheated four times over."
+        },
+        {
+          "id": "reflection-9",
+          "text": "That's not just words.",
+          "display": "That's not just words."
+        },
+        {
+          "id": "reflection-10",
+          "text": "When a wealthy person begins to give away his riches and someone who cheated others starts making restitution, you know something has changed.",
+          "display": "When a wealthy person begins to give away his riches and someone who cheated others starts making restitution, you know something has changed."
+        },
+        {
+          "id": "reflection-11",
+          "text": "Old things have passed away, and all things become new.",
+          "display": "Old things have passed away, and all things become new."
+        },
+        {
+          "id": "reflection-12",
+          "text": "Freely pardoned and raised from death to life, Zacchaeus felt he couldn't wait to show whose he was.",
+          "display": "Freely pardoned and raised from death to life, Zacchaeus felt he couldn't wait to show whose he was."
+        },
+        {
+          "id": "reflection-13",
+          "text": "A faith that doesn't purify your heart and life isn't saving faith at all.",
+          "display": "A faith that doesn't purify your heart and life isn't saving faith at all."
+        },
+        {
+          "id": "reflection-14",
+          "text": "The heart that has truly tasted Christ's grace will instinctively hate sin and want to live differently.",
+          "display": "The heart that has truly tasted Christ's grace will instinctively hate sin and want to live differently."
+        },
+        {
+          "id": "reflection-15",
+          "text": "That's the evidence that matters.",
+          "display": "That's the evidence that matters."
+        },
+        {
+          "id": "conclusion",
+          "text": "Grace that finds you is grace that will not leave you the same."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nIs there a place in your life where his grace has been received, but hasn't shown itself yet?\n\nAsk God to show you where his grace is asking for more than words from you."
+        }
+      ],
+      "spokenSha256": "2909bd7982b13077546deb2637fe1877c46c43454be9e07dbe15e608b6bc4c6e",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "e7ac7246191334ae977447c3b6f759492b788e8579bb4621643def6a2baf8a60"
+    },
+    {
+      "id": "ch33-seq1",
+      "sourceSha256": "207da3b5200f29a97478247074e547b68eacaab4dd9015cb18d8bcb2fb589b52",
+      "options": {
+        "suppressOccasion": true
+      },
+      "reflectionCards": [
+        "Jesus came to seek and save the lost, and no one is too far gone for his grace.",
+        "Look at Zacchaeus.",
+        "Jesus stopped and spoke to him without being asked.",
+        "He offered himself as a guest in a sinner's house without being invited.",
+        "He sent his renewing grace into a tax collector's heart that very day and made him a child of God.",
+        "If ever there was a soul sought and saved without having done anything to deserve it, that soul was Zacchaeus.",
+        "This shows us that there is in Christ an infinite readiness to receive sinners and an infinite ability to save them.",
+        "Salvation is not of works, but of grace.",
+        "Freely pardoned and raised from death to life, Zacchaeus felt he could not begin too soon to show whose he was and whom he served.",
+        "He gave half his possessions to the poor and promised to repay anyone he had cheated four times over.",
+        "That is real conversion.",
+        "A heart that has truly tasted the grace of Christ will instinctively turn from sin.",
+        "A faith that does not change the heart and life is not saving faith at all.",
+        "Grace that has really been tasted shows up somewhere, in what a person does with money, with grudges, with the people they used to walk past."
+      ],
+      "spoken": [
+        {
+          "id": "cover",
+          "text": "You know the weight of being written off by everyone. Let's take a moment and sit with today's passage."
+        },
+        {
+          "id": "scripture",
+          "text": "Here's where we're reading today. Luke 19:10. For the Son of Man came to seek and to save that which was lost.” Let's watch."
+        },
+        {
+          "id": "reflection-1",
+          "text": "Reflect on this. Jesus came to seek and save the lost, and no one is too far gone for his grace.",
+          "display": "Jesus came to seek and save the lost, and no one is too far gone for his grace."
+        },
+        {
+          "id": "reflection-2",
+          "text": "Look at Zacchaeus.",
+          "display": "Look at Zacchaeus."
+        },
+        {
+          "id": "reflection-3",
+          "text": "Jesus stopped and spoke to him without being asked.",
+          "display": "Jesus stopped and spoke to him without being asked."
+        },
+        {
+          "id": "reflection-4",
+          "text": "He offered himself as a guest in a sinner's house without being invited.",
+          "display": "He offered himself as a guest in a sinner's house without being invited."
+        },
+        {
+          "id": "reflection-5",
+          "text": "He sent his renewing grace into a tax collector's heart that very day and made him a child of God.",
+          "display": "He sent his renewing grace into a tax collector's heart that very day and made him a child of God."
+        },
+        {
+          "id": "reflection-6",
+          "text": "If ever there was a soul sought and saved without having done anything to deserve it, that soul was Zacchaeus.",
+          "display": "If ever there was a soul sought and saved without having done anything to deserve it, that soul was Zacchaeus."
+        },
+        {
+          "id": "reflection-7",
+          "text": "This shows us that there is in Christ an infinite readiness to receive sinners and an infinite ability to save them.",
+          "display": "This shows us that there is in Christ an infinite readiness to receive sinners and an infinite ability to save them."
+        },
+        {
+          "id": "reflection-8",
+          "text": "Salvation is not of works, but of grace.",
+          "display": "Salvation is not of works, but of grace."
+        },
+        {
+          "id": "reflection-9",
+          "text": "Freely pardoned and raised from death to life, Zacchaeus felt he could not begin too soon to show whose he was and whom he served.",
+          "display": "Freely pardoned and raised from death to life, Zacchaeus felt he could not begin too soon to show whose he was and whom he served."
+        },
+        {
+          "id": "reflection-10",
+          "text": "He gave half his possessions to the poor and promised to repay anyone he had cheated four times over.",
+          "display": "He gave half his possessions to the poor and promised to repay anyone he had cheated four times over."
+        },
+        {
+          "id": "reflection-11",
+          "text": "That is real conversion.",
+          "display": "That is real conversion."
+        },
+        {
+          "id": "reflection-12",
+          "text": "A heart that has truly tasted the grace of Christ will instinctively turn from sin.",
+          "display": "A heart that has truly tasted the grace of Christ will instinctively turn from sin."
+        },
+        {
+          "id": "reflection-13",
+          "text": "A faith that does not change the heart and life is not saving faith at all.",
+          "display": "A faith that does not change the heart and life is not saving faith at all."
+        },
+        {
+          "id": "reflection-14",
+          "text": "Grace that has really been tasted shows up somewhere, in what a person does with money, with grudges, with the people they used to walk past.",
+          "display": "Grace that has really been tasted shows up somewhere, in what a person does with money, with grudges, with the people they used to walk past."
+        },
+        {
+          "id": "conclusion",
+          "text": "Grace transforms the heart, making our lives a testament to the Savior's love."
+        },
+        {
+          "id": "questions",
+          "text": "Here's something to sit with.\n\nWhere in your life right now is Jesus inviting you to show whose you are by how you live?\n\nAsk God to show you one concrete way your gratitude for his grace can overflow into how you treat others today."
+        }
+      ],
+      "spokenSha256": "22008180e5bce9f5748d71f9fd10f9b2770d941b6a8cbdfe4534ba97879e5a42",
+      "changedSettleLine": "Take a quiet breath.",
+      "changedSpokenSha256": "c48f0b92cf686bd5952abafea87626929e34fb3d1cd3b659fcc8a1cab3da608a"
+    }
+  ]
+}

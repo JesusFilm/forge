@@ -3,7 +3,7 @@ id: "feat-452"
 title: "Preserve Lyuba devotional baseline"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-07"
 duration: 2
 depends_on:
@@ -51,3 +51,18 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Demonstrate the complete baseline is recoverable and identify missing dependencies/assets explicitly.
 - Run the recovered baseline focused tests in isolation; distinguish historical test claims from tests actually run.
 - Save fixture hashes and a reproducibility note alongside the implementation plan.
+
+## Recovery evidence
+
+[Recovery report](../../plans/2026-09-07-feat-452-lyuba-baseline-recovery.md)
+records full ancestry, verified bundle, all 132 file hashes, provenance gaps,
+six saved-script fixtures, and reproducibility commands. Original paid bytes
+are preserved outside the worktree; no production pipeline code was ported.
+
+Executed: recovered devotional suite 477 tests / 56 files; recovered full Mastra
+suite 954 tests / 110 files; recovered composition suite 59 tests / 6 files;
+both recovered typechecks; 10 acceptance checks. One historical test required
+an explicitly recorded corpus-path adaptation. Dependencies were borrowed from
+the installed current checkout, not installed from the historical lockfile.
+No render or runtime-preview verification is claimed; missing source media,
+MP4/full manifest, and provenance remain documented gaps for later scoped work.

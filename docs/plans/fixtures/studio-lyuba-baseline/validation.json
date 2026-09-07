@@ -1,0 +1,52 @@
+{
+  "runDate": "2026-09-07",
+  "node": "24.20.0",
+  "pnpm": "9.12.3",
+  "dependencies": "Borrowed installed dependencies from /home/tataihono/Developer/forge; not an installation of the historical lockfile",
+  "versions": {
+    "vitest": "3.2.4",
+    "typescript": "5.9.3",
+    "@mastra/core": "1.55.0",
+    "@mastra/editor": "0.13.9",
+    "zod": "4.3.6"
+  },
+  "historicalLockSha256": "1f940aed12abc2aff13d9d03a04f6f24706791583ba7bcc19dfd40320dd328da",
+  "installedCheckoutLockSha256": "fc4f008f324340640dc0d8af1a2b0746c94511107b5aac40a99f0d0bf0763d6f",
+  "commands": [
+    {
+      "cwd": "recovered/apps/mastra",
+      "command": "vitest run src/services/devotional --maxWorkers=2",
+      "result": "Initial run: 54 files / 470 tests passed, 2 files / 7 tests failed due to missing machine-local corpus",
+      "logSha256": "239b4f35c7f3239dd3ee102eb5e34abe5df6bd7338d5d049cc50e1f4c9774f2f"
+    },
+    {
+      "cwd": "recovered/apps/mastra",
+      "command": "LYUBA_BASELINE_DATA_DIR=<preserve>/originals vitest run src/services/devotional --maxWorkers=2",
+      "result": "After documented test-path adaptation: 56 files / 477 tests passed",
+      "logSha256": "8755292e99374bd369754b92879cae890c74663fa1bd2a1f3531841bac017f50"
+    },
+    {
+      "cwd": "recovered/apps/mastra",
+      "command": "LYUBA_BASELINE_DATA_DIR=<preserve>/originals vitest run --maxWorkers=2",
+      "result": "110 files / 954 tests passed",
+      "logSha256": "961b88faf7f9c72358babaac2c4dfedd059558e01c5d5bc4a5a0a93c89cc1ce9"
+    },
+    {
+      "cwd": "recovered/packages/shorts-compositions",
+      "command": "vitest run --maxWorkers=2",
+      "result": "6 files / 59 tests passed",
+      "logSha256": "f7d5c8a8f3634239f05b189850372c6fca388ac890a62e4ccf5b8121dea572be"
+    },
+    {
+      "cwd": "recovered/apps/mastra and recovered/packages/shorts-compositions",
+      "command": "tsc --noEmit",
+      "result": "Both exit 0; empty output"
+    },
+    {
+      "cwd": "current checkout",
+      "command": "tsx docs/plans/fixtures/studio-lyuba-baseline/verify-fixtures.mjs <recovered>",
+      "result": "10 tests passed; pure functions and extracted background arithmetic, no browser or render proof",
+      "logSha256": "fe1c23a2b53a2eb08895d6f065a1b077b34e9b113fd016fe662a964888f67110"
+    }
+  ]
+}
