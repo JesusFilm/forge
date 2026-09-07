@@ -163,6 +163,45 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     await expect(
       assets.narrationIdentity(user, "english", {
         ...speech,
+        pronunciation: voice.reference,
+      }),
+    ).rejects.toThrow("INVALID")
+    await expect(
+      assets.register(
+        user,
+        {
+          idempotencyKey: randomUUID(),
+          filename: "invalid-dictionary.json",
+          mimeType: "application/json",
+          role: "voice",
+          provenance: { status: "recorded", recorded: {} },
+          voice: { ...preset, pronunciation: voice.reference },
+        },
+        Buffer.from("invalid"),
+        "LOCAL",
+      ),
+    ).rejects.toThrow("INVALID")
+    const dictionary = await assets.register(
+      user,
+      {
+        idempotencyKey: randomUUID(),
+        filename: "dictionary.json",
+        mimeType: "application/json",
+        role: "pronunciation",
+        provenance: { status: "recorded", recorded: {} },
+      },
+      Buffer.from("{}"),
+      "LOCAL",
+    )
+    expect(
+      await assets.narrationIdentity(user, "english", {
+        ...speech,
+        pronunciation: dictionary.reference,
+      }),
+    ).toMatchObject({ pronunciation: dictionary.reference })
+    await expect(
+      assets.narrationIdentity(user, "english", {
+        ...speech,
         provider: "other",
       }),
     ).rejects.toThrow("INVALID")
@@ -347,6 +386,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       model: "model",
       language: "english",
       prompt: "Quiet strings",
+      settings: { durationSeconds: 30, instrumental: true },
       candidateCount: 2,
       estimate: {
         currency: "USD",
@@ -363,6 +403,9 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     await expect(
       experiments.request({ role: "SYSTEM", id: null }, request),
     ).rejects.toThrow("human")
+    await expect(
+      experiments.request(user, { ...request, settings: undefined }),
+    ).rejects.toThrow()
     const admitted = await experiments.request(user, request)
     expect((await experiments.request(user, request)).id).toBe(admitted.id)
     expect((await experiments.read(user, admitted.id)).candidates).toEqual([])
@@ -381,6 +424,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
             model: request.model,
             prompt: request.prompt,
             language: request.language,
+            settings: request.settings,
           },
         },
       },
@@ -397,6 +441,42 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
         actualCostMicros: 1200,
       },
     )
+    for (const settings of [undefined, { durationSeconds: 90 }]) {
+      const mismatched = await assets.register(
+        user,
+        {
+          filename: "invalid-music.mp3",
+          mimeType: "audio/mpeg",
+          role: "music",
+          idempotencyKey: randomUUID(),
+          provenance: {
+            status: "recorded",
+            recorded: {
+              experimentId: admitted.id,
+              provider: request.provider,
+              model: request.model,
+              prompt: request.prompt,
+              language: request.language,
+              ...(settings ? { settings } : {}),
+            },
+          },
+        },
+        Buffer.from("mismatched"),
+        "LOCAL",
+      )
+      await expect(
+        experiments.addCandidate(
+          { role: "SYSTEM", id: null },
+          {
+            experimentId: admitted.id,
+            candidateKey: randomUUID(),
+            asset: mismatched.reference,
+            providerRequestId: null,
+            actualCostMicros: 0,
+          },
+        ),
+      ).rejects.toThrow("INVALID")
+    }
     expect((await experiments.read(user, admitted.id)).candidates).toHaveLength(
       1,
     )
@@ -408,6 +488,26 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
         })
       ).some((u) => u.resourceType === "STUDIO_EXPERIMENT_CANDIDATE"),
     ).toBe(true)
+    for (let i = 0; i < 2; i++)
+      await experiments.addCandidate(
+        { role: "SYSTEM", id: null },
+        {
+          experimentId: admitted.id,
+          candidateKey: randomUUID(),
+          asset: candidate.reference,
+          providerRequestId: "provider-output-" + i,
+          actualCostMicros: 1200,
+        },
+      )
+    const retained = await experiments.read(user, admitted.id)
+    expect(retained.candidates).toHaveLength(3)
+    expect(retained.outcome).toEqual({
+      status: "OVERRUN",
+      actualCostMicros: "3600",
+      candidateCount: 3,
+      costExceeded: true,
+      countExceeded: true,
+    })
   })
   it("imports all 132 preserved originals without inventing narration identity or Studio approval", async () => {
     const inventory = JSON.parse(

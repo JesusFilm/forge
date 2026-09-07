@@ -1,28 +1,15 @@
 import { randomBytes } from "node:crypto"
 import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
-import {
-  studioAssetReferenceSchema,
-  studioDigestSchema,
-} from "@forge/studio-contracts"
-import { studioRegisterAssetSchema } from "@forge/studio-contracts/assets"
+import { studioAssetReferenceSchema } from "@forge/studio-contracts"
+import { studioAssetUploadSchema as studioUploadSchema } from "@forge/studio-contracts/assets"
 import type { Principal } from "@/auth/principal"
 import { studioActor } from "./state"
-import {
-  byteDigest,
-  StudioAssetService,
-  STUDIO_MAX_ASSET_BYTES,
-} from "./assets"
+import { byteDigest, StudioAssetService } from "./assets"
 import { ForbiddenError } from "../errors"
 import { StudioCommandError } from "./errors"
 
-export const studioUploadSchema = z
-  .object({
-    metadata: studioRegisterAssetSchema,
-    digest: studioDigestSchema,
-    byteSize: z.number().int().positive().max(STUDIO_MAX_ASSET_BYTES),
-  })
-  .strict()
+export { studioAssetUploadSchema as studioUploadSchema } from "@forge/studio-contracts/assets"
 const principalSchema = z.object({
   id: z.string().nullable(),
   role: z.enum([

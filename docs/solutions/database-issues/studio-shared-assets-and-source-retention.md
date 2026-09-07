@@ -32,10 +32,16 @@ Admin GraphQL exposes `studioAssets` (role/search/cursor/limit), `studioAsset`,
 `attachStudioExperimentCandidate`. JSON inputs are validated by the portable
 schemas. Author permissions apply to selection and capabilities; experiment
 admission requires a human and candidate attachment/materialization requires a
-trusted service. No operation dispatches paid work on admission or a cache miss.
+trusted service. No operation dispatches paid work on admission or a cache miss. Experiment admission
+includes bounded effective settings; candidates must retain matching settings.
+Completed outputs retain their experiment association even if actual cost/count
+exceeds admission. `studioExperiment.outcome` reports `OVERRUN`, cost/count flags
+and the exact total microcost as a decimal string. Feat-458 enforces dispatch
+budgets before execution.
 
 Read/upload capabilities are random, five-minute, version/payload-specific tokens;
-only their hashes are stored. PUT verifies exact admitted length and SHA-256 before
+only their hashes are stored. Portable `studioAssetUploadSchema` carries the
+registration metadata, expected byte size and digest. PUT verifies exact admitted length and SHA-256 before
 registration. Read responses are private/no-store. Generic anonymous previews
 require both READY and PUBLIC; authenticated authorized previews remain available.
 The upload maximum is 256 MiB, and there is no provider execution here.
@@ -46,7 +52,8 @@ New recorded narration must include effective text, role, language, provider, mo
 provider voice ID, settings, and pronunciation reference or explicit `null`.
 `narrationIdentity` resolves the exact voice preset version from foundation
 `speech.voice`; its provider voice ID is used, not the asset family ID. Speech
-settings and dictionary choice are explicit. Lookup compares the complete canonical
+settings and dictionary choice are explicit; non-null dictionaries must have the
+`pronunciation` asset role. Lookup compares the complete canonical
 identity. Unknown historic narration has no reusable identity and cannot match.
 `importStudioBaseline` uses normal registration and preserves all inventoried
 original bytes, source paths and available metadata. Missing voice/settings or music
@@ -117,3 +124,17 @@ reconnect, exact identity misses, explicit dictionary absence, GraphQL authoriza
 scoped transfers, generic guards, revision/attempt/component/pack/publication edges,
 capture races, wrong source selections, literal cue timings, descriptor rejection,
 low-resolution export rejection, and changed current restrictions.
+
+Final validation evidence: all 87 migrations passed on a freshly created dedicated
+database; all 24 Studio database/GraphQL cases passed. Admin full suite: 6,123 passed,
+with Redis-fallback and SEO-timeout failures both passing isolated reruns (8 and 30
+cases respectively). Admin, Manager, admin-graphql and studio-contracts typechecks
+passed; neutral suite has three passing cases. SDL/introspection regeneration has
+zero drift. Scoped ESLint and lint-staged passed. The media inspector change only
+adds static usage labels; it adds no fetch, hydration or initialization work.
+
+Independent Standards review identified classification tags, historical source
+query bounds and pronunciation-role checks; all were fixed. Independent Spec
+review identified explicit experiment settings and completed-overrun retention;
+both were fixed with acceptance tests. No outstanding review findings remain after
+re-review. The implementation and final evidence are local commits only.

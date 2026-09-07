@@ -9,6 +9,7 @@ import type { StudioAssetVersion } from "@forge/studio-contracts/assets"
 import type { StudioSourceSnapshot } from "@forge/studio-contracts/sources"
 import type { ContentPackRevision } from "@prisma/client"
 
+/** @classification abac-gated */
 const reference = builder
   .objectRef<StudioAssetReference>("StudioAssetReference")
   .implement({
@@ -76,6 +77,7 @@ const source = builder
       exportHeight: t.exposeInt("exportHeight", { nullable: true }),
     }),
   })
+/** @classification abac-gated */
 const transfer = builder
   .objectRef<{
     path: string

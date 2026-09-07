@@ -3,6 +3,7 @@ import {
   studioAssetReferenceSchema,
   studioActorSchema,
   studioIdSchema,
+  studioDigestSchema,
   studioPropertiesSchema,
 } from "./index"
 
@@ -100,3 +101,12 @@ export const studioAssetVersionSchema = z.object({
   actor: studioActorSchema,
 })
 export type StudioAssetVersion = z.infer<typeof studioAssetVersionSchema>
+
+export const STUDIO_MAX_ASSET_BYTES = 256 * 1024 * 1024
+export const studioAssetUploadSchema = z
+  .object({
+    metadata: studioRegisterAssetSchema,
+    digest: studioDigestSchema,
+    byteSize: z.number().int().positive().max(STUDIO_MAX_ASSET_BYTES),
+  })
+  .strict()

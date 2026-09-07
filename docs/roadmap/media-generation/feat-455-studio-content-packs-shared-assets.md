@@ -3,7 +3,7 @@ id: "feat-455"
 title: "Content Packs and shared authoring assets"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-07"
 duration: 4
 depends_on:
@@ -65,3 +65,9 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Verify source text versus instructions are distinguishable and usage references survive project edits.
 
 - Verify generic asset deletion/replacement cannot remove referenced Studio bytes, including after publication and unpublication.
+
+## Implementation evidence
+
+See `docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`
+for public module/GraphQL contracts, descriptor/materialization boundaries,
+transactional retention, isolated database/storage verification and review fixes.

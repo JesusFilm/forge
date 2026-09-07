@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client"
 import {
   studioExperimentRequestSchema,
   studioExperimentCandidateSchema,
+  studioExperimentOutcomeSchema,
 } from "@forge/studio-contracts/experiments"
 import type { Principal } from "@/auth/principal"
 import { studioActor, studioHash } from "./state"
@@ -78,11 +79,8 @@ export class StudioExperimentService {
         recorded.model !== request.model ||
         recorded.prompt !== request.prompt ||
         recorded.language !== request.language ||
-        experiment.candidates.length >= request.candidateCount ||
-        experiment.candidates.reduce(
-          (n, c) => n + Number(c.actualCostMicros),
-          input.actualCostMicros,
-        ) > request.maxCostMicros
+        recorded.settings === undefined ||
+        studioHash(recorded.settings) !== studioHash(request.settings)
       )
         throw new StudioCommandError("INVALID")
       return tx.studioExperimentCandidate.create({
@@ -101,8 +99,22 @@ export class StudioExperimentService {
       include: { candidates: true },
     })
     if (!row) throw new NotFoundError("StudioExperiment")
+    const request = studioExperimentRequestSchema.parse(row.request)
+    const actualCost = row.candidates.reduce(
+      (sum, c) => sum + c.actualCostMicros,
+      0n,
+    )
+    const costExceeded = actualCost > BigInt(request.maxCostMicros)
+    const countExceeded = row.candidates.length > request.candidateCount
     return {
       ...row,
+      outcome: studioExperimentOutcomeSchema.parse({
+        status: costExceeded || countExceeded ? "OVERRUN" : "WITHIN_LIMITS",
+        actualCostMicros: actualCost.toString(),
+        candidateCount: row.candidates.length,
+        costExceeded,
+        countExceeded,
+      }),
       candidates: row.candidates.map((c) => ({
         ...c,
         actualCostMicros: Number(c.actualCostMicros),

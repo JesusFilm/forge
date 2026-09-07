@@ -9,6 +9,7 @@ import {
   type StudioAssetReference,
 } from "@forge/studio-contracts"
 import {
+  STUDIO_MAX_ASSET_BYTES,
   studioRegisterAssetSchema,
   studioAssetRoleSchema,
   studioAssetVersionSchema,
@@ -27,7 +28,7 @@ import { NotFoundError } from "../errors"
 import { studioActor, studioHash } from "./state"
 import { StudioCommandError } from "./errors"
 
-export const STUDIO_MAX_ASSET_BYTES = 256 * 1024 * 1024
+export { STUDIO_MAX_ASSET_BYTES } from "@forge/studio-contracts/assets"
 export const byteDigest = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex")
 
@@ -96,6 +97,17 @@ export class StudioAssetService {
       if (prior.requestHash !== requestHash)
         throw new StudioCommandError("CONFLICT")
       return present(prior)
+    }
+    for (const pronunciation of [
+      input.narration?.pronunciation,
+      input.voice?.pronunciation,
+    ]) {
+      if (
+        pronunciation &&
+        (await resolveAssetVersion(this.db, pronunciation)).role !==
+          "pronunciation"
+      )
+        throw new StudioCommandError("INVALID")
     }
     if (input.replaces) await resolveAssetVersion(this.db, input.replaces)
     const storageId = randomUUID()
@@ -220,7 +232,11 @@ export class StudioAssetService {
       preset.voice.model !== speech.model
     )
       throw new StudioCommandError("INVALID")
-    if (speech.pronunciation) await this.read(user, speech.pronunciation)
+    if (
+      speech.pronunciation &&
+      (await this.read(user, speech.pronunciation)).role !== "pronunciation"
+    )
+      throw new StudioCommandError("INVALID")
     return studioNarrationIdentitySchema.parse({
       text: speech.text,
       role: speech.role,

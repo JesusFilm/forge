@@ -180,21 +180,22 @@ export async function resolveStudioDocumentSources(
   for (const item of document.items) {
     if (item.kind !== "video") continue
     const s = item.source
-    const candidates = await tx.studioSourceSnapshot.findMany({
+    const row = await tx.studioSourceSnapshot.findFirst({
       where: {
         videoId: s.videoId,
         dubId: s.dubId,
         editionId: s.editionId,
         trackId: s.subtitle.trackId,
+        AND: [
+          { snapshot: { path: ["source", "language"], equals: s.language } },
+          { snapshot: { path: ["source", "subtitle"], equals: s.subtitle } },
+          { snapshot: { path: ["source", "preview"], equals: s.preview } },
+          { snapshot: { path: ["source", "export"], equals: s.export } },
+        ],
       },
+      orderBy: { id: "asc" },
     })
-    const snapshot = candidates
-      .map((r) => studioSourceSnapshotSchema.parse(r.snapshot))
-      .find(
-        (p) =>
-          studioHash({ ...p.source, startMs: 0, endMs: 0 }) ===
-          studioHash({ ...s, startMs: 0, endMs: 0 }),
-      )
+    const snapshot = row ? studioSourceSnapshotSchema.parse(row.snapshot) : null
     if (
       !snapshot ||
       s.startMs < 0 ||
