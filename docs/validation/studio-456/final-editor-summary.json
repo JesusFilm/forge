@@ -1,0 +1,108 @@
+{
+  "conditions": "Three cold/warm pairs, unthrottled loopback, warm servers. Cold fresh context + cleared cache; warm second same-context navigation. Editor readiness requires Add text card + visible editable inspector + Undo. Decode readiness verifies real HLS video frames. Times include automation overhead. Editor-only; no legacy editor media baseline exists. Request sizes retain encoded body sizes and are not asserted equivalent to network transfer for cached responses.",
+  "fixture": "Real source, text, custom component, image, audio and Content Pack; editor-only measurement, not comparable to legacy list. Normal navigation cleanup occurs after measured windows.",
+  "samples": [
+    {
+      "run": 1,
+      "cache": "cold",
+      "usableControlsUpperBoundMs": 570.9000000059605,
+      "decodedReadyUpperBoundMs": 2284.699999988079,
+      "parentLongTaskMs": 50,
+      "runtimeLongTaskMs": 306,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 256283,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "run": 1,
+      "cache": "warm",
+      "usableControlsUpperBoundMs": 246.69999998807907,
+      "decodedReadyUpperBoundMs": 1714.9000000059605,
+      "parentLongTaskMs": 0,
+      "runtimeLongTaskMs": 244,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 0,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "run": 2,
+      "cache": "cold",
+      "usableControlsUpperBoundMs": 503.2000000178814,
+      "decodedReadyUpperBoundMs": 2061.4000000059605,
+      "parentLongTaskMs": 53,
+      "runtimeLongTaskMs": 269,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 256283,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "run": 2,
+      "cache": "warm",
+      "usableControlsUpperBoundMs": 271.09999999403954,
+      "decodedReadyUpperBoundMs": 1814.5999999940395,
+      "parentLongTaskMs": 0,
+      "runtimeLongTaskMs": 205,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 0,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "run": 3,
+      "cache": "cold",
+      "usableControlsUpperBoundMs": 537.0999999940395,
+      "decodedReadyUpperBoundMs": 2205.9000000059605,
+      "parentLongTaskMs": 58,
+      "runtimeLongTaskMs": 264,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 256283,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "run": 3,
+      "cache": "warm",
+      "usableControlsUpperBoundMs": 302.5,
+      "decodedReadyUpperBoundMs": 1948.5,
+      "parentLongTaskMs": 0,
+      "runtimeLongTaskMs": 294,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "parentJsTransfer": 0,
+      "runtimeEncodedResponseBytes": [417668],
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    }
+  ]
+}

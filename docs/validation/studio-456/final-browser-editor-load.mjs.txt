@@ -1,0 +1,29 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/5dd0/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+const {url}=JSON.parse(await readFile('/tmp/forge-studio-456-prep/final-browser-project.json','utf8'));
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const samples=[];let currentPage;
+try{for(let repetition=1;repetition<=3;repetition++){
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});
+ await context.request.get('http://studio456.localhost:3458/local-fixture-login',{maxRedirects:0});
+ await context.addInitScript(()=>{window.__studioPerf={tasks:[],shifts:[]};new PerformanceObserver(list=>window.__studioPerf.tasks.push(...list.getEntries().map(e=>({startTime:e.startTime,duration:e.duration})))).observe({type:'longtask',buffered:true});new PerformanceObserver(list=>window.__studioPerf.shifts.push(...list.getEntries().filter(e=>!e.hadRecentInput).map(e=>e.value))).observe({type:'layout-shift',buffered:true})});
+ const page=await context.newPage();currentPage=page;const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');await cdp.send('Network.clearBrowserCache');
+ let waterfall=[],pending=[];page.on('requestfinished',req=>{const task=(async()=>{const response=await req.response();waterfall.push({url:req.url().replace(/\/s\/[a-f0-9]{64}\//g,'/s/<session>/'),type:req.resourceType(),status:response?.status(),timing:req.timing(),sizes:await req.sizes().catch(()=>null)})})();pending.push(task)});
+ for(const cache of ['cold','warm']){
+  console.log('navigation',repetition,cache);waterfall=[];pending=[];await page.goto(url,{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Add text card',exact:true}).click();await page.getByRole('textbox',{name:'Text',exact:true}).waitFor();const controls=await page.evaluate(()=>performance.now());await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.nle-preview')?.getAttribute('data-preview-ready')==='true',{},{timeout:45000});
+  const frame=page.frames().find(f=>f.url().startsWith('http://127.0.0.1:3460/'));await frame.waitForFunction(()=>{const v=document.querySelector('video');return v&&v.readyState>=2&&v.getVideoPlaybackQuality().totalVideoFrames>0},{},{timeout:30000});
+  const decodedControlsUpperBoundMs=await page.evaluate(()=>performance.now());await page.waitForTimeout(1000);await Promise.all(pending);
+  const parent=await page.evaluate(()=>({navigation:performance.getEntriesByType('navigation')[0].toJSON(),resources:performance.getEntriesByType('resource').map(e=>e.toJSON()),...window.__studioPerf}));
+  const runtime=await frame.evaluate(()=>({resources:performance.getEntriesByType('resource').map(e=>e.toJSON()),...window.__studioPerf,media:{width:document.querySelector('video').videoWidth,height:document.querySelector('video').videoHeight,time:document.querySelector('video').currentTime}}));
+  samples.push({repetition,cache,usableEditorControlsUpperBoundMs:controls,decodedControlsUpperBoundMs,parent,runtime,waterfall});
+  await page.screenshot({path:`/tmp/forge-studio-456-final/editor-${cache}.png`});
+ }
+ const released=page.waitForResponse(r=>r.url().endsWith('/api/studio/preview')&&r.request().method()==='DELETE'&&r.status()===204,{timeout:15000});
+ await page.getByTitle('Back to projects',{exact:true}).click();await released;
+ await context.close();
+}
+ await writeFile('/tmp/forge-studio-456-final/editor-load.json',JSON.stringify({browser:browser.version(),viewport:{width:1440,height:1000},conditions:'Three cold/warm pairs, unthrottled loopback, warm servers. Cold fresh context + cleared cache; warm second same-context navigation. Editor readiness requires Add text card + visible editable inspector + Undo. Decode readiness verifies real HLS video frames. Times include automation overhead. Editor-only; no legacy editor media baseline exists. Request sizes retain encoded body sizes and are not asserted equivalent to network transfer for cached responses.',samples},null,2).replace(/\/s\/[a-f0-9]{64}\//g,'/s/<session>/'));
+ console.log(samples.map(s=>({repetition:s.repetition,cache:s.cache,controls:s.usableEditorControlsUpperBoundMs,decoded:s.decodedControlsUpperBoundMs,media:s.runtime.media})));
+}catch(e){console.error(e);if(currentPage){console.error(await currentPage.locator('body').innerText());await currentPage.screenshot({path:'/tmp/forge-studio-456-final/editor-failure.png'})}process.exitCode=1}finally{await browser.close()}

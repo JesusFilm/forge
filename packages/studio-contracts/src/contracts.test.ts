@@ -117,3 +117,17 @@ describe("portable Studio composition", () => {
     ).toBe(false)
   })
 })
+
+it("validates canonical subtitle markup for the selected range without altering retained bytes", async () => {
+  const { parseStudioVtt } = await import("./sources")
+  const bytes = new TextEncoder().encode(
+    "WEBVTT\n\n00:28.000 --> 00:31.000\nSelected words\n\n08:01.670 --> 08:07.060\n<b>Later words</b>\n\n1:00:00.130 --> 1:00:03.000\nOne hour later\n",
+  )
+  expect(parseStudioVtt(bytes, { startMs: 28600, endMs: 30600 })).toEqual([
+    { startMs: 28000, endMs: 31000, text: "Selected words" },
+  ])
+  expect(() =>
+    parseStudioVtt(bytes, { startMs: 481670, endMs: 487060 }),
+  ).toThrow("Unsupported subtitle cue")
+  expect(() => parseStudioVtt(bytes)).toThrow("Unsupported subtitle cue")
+})

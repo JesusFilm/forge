@@ -1,0 +1,95 @@
+{
+  "conditions": "Three cold/warm pairs, unthrottled loopback, warm servers. Cold fresh context + cleared cache; warm second same-context navigation. Editor readiness requires Add text card + visible editable inspector + Undo. Decode readiness verifies real HLS video frames. Times include automation overhead. Editor-only; no legacy editor media baseline exists. Request sizes retain encoded body sizes and are not asserted equivalent to network transfer for cached responses.",
+  "samples": [
+    {
+      "repetition": 1,
+      "cache": "cold",
+      "usableEditorControlsUpperBoundMs": 557.5,
+      "decodedControlsUpperBoundMs": 2119.5999999940395,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 316,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "repetition": 1,
+      "cache": "warm",
+      "usableEditorControlsUpperBoundMs": 285.30000001192093,
+      "decodedControlsUpperBoundMs": 1545.800000011921,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 190,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "repetition": 2,
+      "cache": "cold",
+      "usableEditorControlsUpperBoundMs": 490.39999997615814,
+      "decodedControlsUpperBoundMs": 1790.5999999940395,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 202,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "repetition": 2,
+      "cache": "warm",
+      "usableEditorControlsUpperBoundMs": 252.09999999403954,
+      "decodedControlsUpperBoundMs": 1604.2999999821186,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 203,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "repetition": 3,
+      "cache": "cold",
+      "usableEditorControlsUpperBoundMs": 542.6999999880791,
+      "decodedControlsUpperBoundMs": 1936.5999999940395,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 201,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    },
+    {
+      "repetition": 3,
+      "cache": "warm",
+      "usableEditorControlsUpperBoundMs": 263.5,
+      "decodedControlsUpperBoundMs": 1546.5,
+      "mainThreadLongTaskMs": 0,
+      "runtimeLongTaskMs": 199,
+      "parentCls": 0,
+      "runtimeCls": 0,
+      "media": {
+        "width": 480,
+        "height": 270,
+        "time": 3.6
+      }
+    }
+  ]
+}

@@ -534,3 +534,33 @@ from the repository root. Admin owns the durable module; Manager uses
 `apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
 `@forge/studio-contracts`. The internal publication seam has no public publish
 mutation until feat-460 supplies its catalog/render/approval checks.
+
+## Standalone Studio editor (feat-456)
+
+`src/features/video-studio/` replaces the Shorts product at `/dashboard/shorts`.
+The authenticated command adapter is `src/backend/studio-interactive.ts`; the
+browser supplies commands and expected revisions, while the server signs the
+validated session user's identity. Admin checks current operator membership.
+Delegated OAuth attribution does not grant interactive review authority.
+
+The preview broker is `src/services/studio-broker.ts`; generated code executes in
+`apps/studio-preview`, in a sandboxed iframe on a different registrable site.
+Read `docs/solutions/security-issues/studio-standalone-editor-runtime.md` before
+changing preview isolation, source reuse, deployment configuration or save recovery.
+
+| Variable                       | Purpose                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| STUDIO_ENVIRONMENT             | Explicit local/preview/production assertion binding; use separate keys per environment |
+| STUDIO_INTERACTIVE_KEY_ID      | Active Manager Ed25519 signing key ID                                                  |
+| STUDIO_INTERACTIVE_PRIVATE_KEY | PKCS8 key; matching Admin `STUDIO_INTERACTIVE_PUBLIC_KEYS` JSON keyring                |
+| STUDIO_PREVIEW_ORIGIN          | Public, distinct-site HTTPS preview origin; loopback allowed for local verification    |
+| STUDIO_PREVIEW_SERVICE_URL     | Server-reachable preview service URL                                                   |
+| STUDIO_PREVIEW_API_KEY         | Dedicated random service credential, also authenticates retained broker codec proofs   |
+| STUDIO_FFMPEG_PATH             | Explicit provisioned FFmpeg 7.0.2 proof binary; never a generated-code executor        |
+| STUDIO_FFPROBE_PATH            | Explicit provisioned probe; local verification uses Remotion 4.0.475 bundled n7.1      |
+
+The existing root Nixpacks setup provisions FFmpeg generally. Studio's pinned
+7.0.2 binary must be supplied as a deployment artifact and selected explicitly;
+a system binary is not claimed to reproduce the pinned proof automatically.
+`ADMIN_MANAGER_API_KEY` authorizes trusted source materialization only; it is not
+used to attribute human commands. Production render execution remains feat-460.

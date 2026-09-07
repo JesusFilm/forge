@@ -82,7 +82,18 @@ export const studioMaterializeSourceSchema = z
   .strict()
 export type StudioSubtitleCue = { startMs: number; endMs: number; text: string }
 export class StudioSourceError extends Error {}
-export function parseStudioVtt(bytes: Uint8Array): StudioSubtitleCue[] {
+export function parseStudioVtt(
+  bytes: Uint8Array,
+  range?: { startMs: number; endMs: number },
+): StudioSubtitleCue[] {
+  if (
+    range &&
+    (!Number.isInteger(range.startMs) ||
+      !Number.isInteger(range.endMs) ||
+      range.startMs < 0 ||
+      range.endMs <= range.startMs)
+  )
+    throw new StudioSourceError("Invalid subtitle range")
   if (bytes.byteLength > 1048576)
     throw new StudioSourceError("Subtitle exceeds 1 MiB")
   const text = new TextDecoder("utf-8", { fatal: true })
@@ -92,7 +103,7 @@ export function parseStudioVtt(bytes: Uint8Array): StudioSubtitleCue[] {
   if (!/^WEBVTT(?:\s|$)/.test(text))
     throw new StudioSourceError("Canonical WEBVTT required")
   const timestamp = (s: string) => {
-    if (!/^(?:\d{2,}:)?[0-5]\d:[0-5]\d\.\d{3}$/.test(s))
+    if (!/^(?:\d+:)?[0-5]\d:[0-5]\d\.\d{3}$/.test(s))
       throw new StudioSourceError("Invalid subtitle timestamp")
     return Math.round(
       s.split(":").reduce((a, p) => a * 60 + Number(p), 0) * 1000,
@@ -114,7 +125,10 @@ export function parseStudioVtt(bytes: Uint8Array): StudioSubtitleCue[] {
         .slice(index + 1)
         .join("\n")
         .trim()
-      if (endMs <= startMs || !cueText || /[<>]/.test(cueText))
+      if (endMs <= startMs)
+        throw new StudioSourceError("Invalid subtitle timing")
+      if (range && (endMs <= range.startMs || startMs >= range.endMs)) return []
+      if (!cueText || /[<>]/.test(cueText))
         throw new StudioSourceError("Unsupported subtitle cue")
       return [{ startMs, endMs, text: cueText }]
     })

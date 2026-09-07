@@ -1,3 +1,4 @@
+import { canReviewStudio } from "@/auth/permissions"
 import type { PrismaClient } from "@prisma/client"
 import {
   studioExperimentRequestSchema,
@@ -16,7 +17,7 @@ export class StudioExperimentService {
   constructor(private readonly db: PrismaClient) {}
   async request(user: Principal | null, raw: unknown) {
     const actor = studioActor(user)
-    if (actor.kind !== "human")
+    if (!canReviewStudio(user))
       throw new ForbiddenError("Explicit human experiment admission required")
     const input = studioExperimentRequestSchema.parse(raw)
     const requestKey = studioHash({ actor, key: input.idempotencyKey }),

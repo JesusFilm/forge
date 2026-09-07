@@ -52,6 +52,26 @@ export async function resolveAssetVersion(
     throw new NotFoundError("Verified Studio asset version")
   return row
 }
+
+/** Internal canonical resolver: callers establish project/service authority first. */
+export async function readVerifiedStudioAsset(
+  db: Prisma.TransactionClient,
+  ref: StudioAssetReference,
+  maxBytes = STUDIO_MAX_ASSET_BYTES,
+) {
+  const row = await resolveAssetVersion(db, ref)
+  if (!row.mediaAsset.objectKey) throw new NotFoundError("Studio bytes")
+  if (Number(row.mediaAsset.byteSize) > maxBytes)
+    throw new StudioCommandError("INVALID")
+  const bytes = await readMediaObject({
+    key: row.mediaAsset.objectKey,
+    backend: row.mediaAsset.backend,
+  })
+  if (bytes.byteLength > maxBytes || byteDigest(bytes) !== ref.digest)
+    throw new StudioCommandError("INVALID")
+  return bytes
+}
+
 function present(row: Awaited<ReturnType<typeof resolveAssetVersion>>) {
   const metadata = studioRegisterAssetSchema.parse(row.metadata)
   return studioAssetVersionSchema.parse({
@@ -177,17 +197,12 @@ export class StudioAssetService {
   }
   async readBytes(user: Principal | null, raw: unknown) {
     studioActor(user)
-    const ref = studioAssetReferenceSchema.parse(raw)
-    const row = await resolveAssetVersion(this.db, ref)
-    if (!row.mediaAsset.objectKey) throw new NotFoundError("Studio bytes")
-    const bytes = await readMediaObject({
-      key: row.mediaAsset.objectKey,
-      backend: row.mediaAsset.backend,
-    })
-    if (byteDigest(bytes) !== ref.digest)
-      throw new StudioCommandError("INVALID")
-    return bytes
+    return readVerifiedStudioAsset(
+      this.db,
+      studioAssetReferenceSchema.parse(raw),
+    )
   }
+
   async list(user: Principal | null, raw: unknown = {}) {
     studioActor(user)
     const input = studioListSchema

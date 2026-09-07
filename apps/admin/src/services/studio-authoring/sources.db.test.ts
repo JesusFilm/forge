@@ -16,7 +16,11 @@ import {
 const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
 class SourceHarnessError extends Error {}
-const user = { id: "studio-455-operator", role: "ADMIN" as const }
+const user = {
+  id: "studio-455-operator",
+  role: "ADMIN" as const,
+  studioAuthority: "interactive" as const,
+}
 suite("exact catalog source capture with real HTTP and retained bytes", () => {
   let db: PrismaClient,
     server: Server,
@@ -45,10 +49,14 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
         (parsed.port === "55455" &&
           parsed.pathname === "/forge_studio_455_test") ||
         (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test")
+          parsed.pathname === "/forge_studio_459_test") ||
+        (parsed.port === "55456" &&
+          parsed.pathname === "/forge_studio_456_test")
       )
     )
-      throw new SourceHarnessError("Only feat-455 DB allowed")
+      throw new SourceHarnessError(
+        "Only isolated Studio test databases allowed",
+      )
     db = new PrismaClient({ datasources: { db: { url } } })
     server = createServer((req, res) => {
       res.end(req.url === "/track.vtt" ? vtt : "actual source fixture bytes")

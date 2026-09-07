@@ -1,0 +1,14 @@
+import { PrismaClient } from '@prisma/client'
+import { ContentPackService } from '../src/services/studio-authoring/packs'
+import { studioSourceSnapshotSchema } from '@forge/studio-contracts/sources'
+async function main(){
+ if(process.env.DATABASE_URL!=='postgresql://studio456@127.0.0.1:55456/forge_studio_456_browser')throw new TypeError('Own browser fixture required')
+ const db=new PrismaClient()
+ try {
+ const row=await db.studioSourceSnapshot.findFirstOrThrow()
+ const source=studioSourceSnapshotSchema.parse(row.snapshot)
+ const result=await new ContentPackService(db).write({id:'mock-manager-1',role:'ADMIN',studioAuthority:'interactive'},{packId:'studio456-browser-pack',expectedRevision:0,idempotencyKey:'studio456-browser-pack-v1',document:{title:'Opening source pack',guidance:'Local operator verification fixture.',sources:[{label:'JESUS opening track',asset:source.source.subtitle.asset,sourceSnapshotId:source.id,excerpt:'Retained public source passage at 28.6–30.6 seconds.'}]}})
+ console.log(JSON.stringify(result))
+ }finally{await db.$disconnect()}
+}
+main().catch(e=>{console.error(e);process.exitCode=1})

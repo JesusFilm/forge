@@ -273,7 +273,7 @@ const navItems: Array<{
   {
     key: "shorts",
     href: "/dashboard/shorts",
-    label: "Shorts",
+    label: "Video editor",
     icon: Clapperboard,
   },
   {
@@ -347,15 +347,15 @@ function getBreadcrumbs(pathname: string): string[] {
   }
 
   if (pathname.startsWith("/dashboard/shorts/new")) {
-    return ["Studio", "Shorts", "New short"]
+    return ["Studio", "Video editor", "New project"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/")) {
-    return ["Studio", "Shorts", "Short detail"]
+    return ["Studio", "Video editor", "Project"]
   }
 
   if (pathname.startsWith("/dashboard/shorts")) {
-    return ["Studio", "Shorts"]
+    return ["Studio", "Video editor"]
   }
 
   return ["Studio", "Coverage"]
@@ -840,7 +840,22 @@ export function ManagerDashboardShell({
             </div>
 
             <div className="design-system-sidebar-content">
-              <StudioReportSwitcher />
+              {pathname.startsWith("/dashboard/shorts") ? (
+                <Link
+                  href="/dashboard/shorts"
+                  className="design-system-workspace-button"
+                >
+                  <span className="design-system-avatar design-system-avatar--report">
+                    <Clapperboard size={18} />
+                  </span>
+                  <span className="design-system-workspace-copy">
+                    <strong>Video editor</strong>
+                    <small>Standalone projects</small>
+                  </span>
+                </Link>
+              ) : (
+                <StudioReportSwitcher />
+              )}
 
               <nav className="design-system-shell-nav" aria-label="Primary">
                 {navItems.map((item) => {

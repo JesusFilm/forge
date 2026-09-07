@@ -1,0 +1,38 @@
+[
+  {
+    "proof": {
+      "codec": "h264",
+      "width": 480,
+      "height": 270,
+      "playlist": {
+        "digest": "6351c2295eb00f43bc56aa52bd7d1bcb6e3f235e321510a67e48bcb57c05f06c",
+        "assetId": "2f14b914-12d7-4f4c-90ed-2ae3c3b92140",
+        "versionId": "cmtr8yv2a000v2cpmicf7pbgn"
+      },
+      "verification": "decoded-h264-v1",
+      "sourceStartMs": 25000,
+      "segmentDurations": [5, 5]
+    },
+    "digest": "9087bfbb6f87548898f1d3afe6fd4f14b9a09f68f48d2a6dcfdf38aaf928047c",
+    "assetId": "23eaa2bf-2ca8-404e-a942-667c928c940c",
+    "versionId": "cmtr8yvsn000z2cpmd5fggv8b"
+  },
+  {
+    "proof": {
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "playlist": {
+        "digest": "f516611cdd685696ec45cacc65a8e37b4fe5cf91637628acfc229dfe87ad634b",
+        "assetId": "6de46102-2d48-45ed-910a-e26482c8ab12",
+        "versionId": "cmtr8yz8z001b2cpm2jjojo9o"
+      },
+      "verification": "decoded-h264-v1",
+      "sourceStartMs": 25000,
+      "segmentDurations": [5, 5]
+    },
+    "digest": "08ee1e3a9e0e944987a9b3f9187fff8bef12b91c6bbbe8eac5ef625223ab8350",
+    "assetId": "e563407e-22cf-45fb-830f-88884448ced4",
+    "versionId": "cmtr8z06v001f2cpms5pc8uor"
+  }
+]

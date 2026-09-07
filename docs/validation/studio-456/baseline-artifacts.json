@@ -1,0 +1,42 @@
+[
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-baseline.mjs",
+    "bytes": 5711,
+    "sha256": "31045ec145f9b31b94c8a515d6455c67dbc41c611162f748ddeda279c8cb4d95"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-baseline.json",
+    "bytes": 743786,
+    "sha256": "e1acc3fbd53a5035d34551ae5a8f6b1ef7e9ecd3eb9ceb284fc2310f496f6842"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-baseline-summary.json",
+    "bytes": 4248,
+    "sha256": "8d8c53dea05bf54a1c6ca6386958a62402b414e697e95a1f5e569d5885276baa"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-baseline.md",
+    "bytes": 2496,
+    "sha256": "5e41d3952ec8b1c128cdd2632a02425ba8adb1d05a91547f9ceeb741dfbd6ec0"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-list-cold.png",
+    "bytes": 57867,
+    "sha256": "3412d29ca83cce8ba067ac08e5a7587c0da3e0e4c6f1a680e62ce0b460fad437"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-list-warm.png",
+    "bytes": 57867,
+    "sha256": "3412d29ca83cce8ba067ac08e5a7587c0da3e0e4c6f1a680e62ce0b460fad437"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-create-cold.png",
+    "bytes": 62953,
+    "sha256": "26cfd8ea728725f38090f0bb42b3ee0d37b0b784a691cd94836b0ae8177a0a82"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-create-warm.png",
+    "bytes": 62953,
+    "sha256": "26cfd8ea728725f38090f0bb42b3ee0d37b0b784a691cd94836b0ae8177a0a82"
+  }
+]

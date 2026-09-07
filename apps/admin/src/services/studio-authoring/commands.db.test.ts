@@ -18,7 +18,11 @@ class StudioTestHarnessError extends Error {}
 
 const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
-const user = { id: "studio-test-operator", role: "ADMIN" as const }
+const user = {
+  id: "studio-test-operator",
+  role: "ADMIN" as const,
+  studioAuthority: "interactive" as const,
+}
 const document = {
   version: 1,
   title: "Independent project",
@@ -46,6 +50,8 @@ suite("Studio command seam against disposable Postgres", () => {
         parsed.pathname.startsWith("/forge_studio_454_test") ||
         (parsed.port === "55459" &&
           parsed.pathname === "/forge_studio_459_test") ||
+        (parsed.port === "55456" &&
+          parsed.pathname === "/forge_studio_456_test") ||
         (parsed.port === "55455" &&
           parsed.pathname === "/forge_studio_455_test")
       )

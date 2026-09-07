@@ -19,7 +19,11 @@ import { StudioAuthoringService } from "./index"
 class AssetHarnessError extends Error {}
 const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
-const user = { id: "studio-455-operator", role: "ADMIN" as const }
+const user = {
+  id: "studio-455-operator",
+  role: "ADMIN" as const,
+  studioAuthority: "interactive" as const,
+}
 suite("Studio immutable asset service with real Postgres and bytes", () => {
   let db: PrismaClient
   let assets: StudioAssetService
@@ -31,12 +35,12 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
         (parsed.port === "55455" &&
           parsed.pathname === "/forge_studio_455_test") ||
         (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test")
+          parsed.pathname === "/forge_studio_459_test") ||
+        (parsed.port === "55456" &&
+          parsed.pathname === "/forge_studio_456_test")
       )
     )
-      throw new AssetHarnessError(
-        "Only feat-455's disposable database is allowed",
-      )
+      throw new AssetHarnessError("Only isolated Studio test databases allowed")
     db = new PrismaClient({ datasources: { db: { url } } })
     assets = new StudioAssetService(db)
   })

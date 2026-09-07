@@ -1,0 +1,16 @@
+{
+  "steps": [
+    "Selected canonical immutable Content Pack revision, inspected source passage, saved and reopened attached pack"
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "errors": []
+}

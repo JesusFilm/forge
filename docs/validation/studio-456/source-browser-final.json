@@ -1,0 +1,26 @@
+{
+  "url": "http://studio456.localhost:3456/dashboard/shorts/bb147869-4522-4aea-98d8-34cb6e1ebf4f",
+  "media": {
+    "currentTime": 3.6,
+    "width": 480,
+    "height": 270,
+    "readyState": 4
+  },
+  "events": [
+    {
+      "status": 200,
+      "transferredBytes": 596576,
+      "at": 1788785943777
+    },
+    {
+      "status": 204,
+      "at": 1788785944697
+    },
+    {
+      "status": 200,
+      "transferredBytes": 8581494,
+      "at": 1788785959319
+    }
+  ],
+  "errors": []
+}

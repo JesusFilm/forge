@@ -5,6 +5,17 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_INTERACTIVE_KEY_ID: z.string().optional(),
+    STUDIO_INTERACTIVE_PRIVATE_KEY: z.string().optional(),
+    STUDIO_PREVIEW_ORIGIN: z.string().url().optional(),
+    STUDIO_PREVIEW_SERVICE_URL: z.string().url().optional(),
+    STUDIO_PREVIEW_API_KEY: z.string().optional(),
+    STUDIO_FFMPEG_PATH: z.string().optional(),
+    STUDIO_FFPROBE_PATH: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -136,6 +147,15 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_INTERACTIVE_KEY_ID: process.env.STUDIO_INTERACTIVE_KEY_ID,
+    STUDIO_INTERACTIVE_PRIVATE_KEY: process.env.STUDIO_INTERACTIVE_PRIVATE_KEY,
+    STUDIO_PREVIEW_ORIGIN: process.env.STUDIO_PREVIEW_ORIGIN,
+    STUDIO_PREVIEW_SERVICE_URL: process.env.STUDIO_PREVIEW_SERVICE_URL,
+    STUDIO_PREVIEW_API_KEY: process.env.STUDIO_PREVIEW_API_KEY,
+    STUDIO_FFMPEG_PATH: process.env.STUDIO_FFMPEG_PATH,
+    STUDIO_FFPROBE_PATH: process.env.STUDIO_FFPROBE_PATH,
+
     NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "admin",
     MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,

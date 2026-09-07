@@ -1,0 +1,27 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/5dd0/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const {url}=JSON.parse(await readFile('/tmp/forge-studio-456-prep/browser-project.json','utf8'));
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.request.get('http://studio456.localhost:3458/local-fixture-login',{maxRedirects:0});const page=await context.newPage();
+const evidence={steps:[],requests:[],errors:[]};page.on('pageerror',e=>evidence.errors.push(e.message));page.on('response',async r=>{if(r.url().endsWith('/api/studio/preview')){evidence.requests.push({method:r.request().method(),status:r.status()})}});
+async function ready(){await page.waitForFunction(()=>document.querySelector('.nle-preview')?.getAttribute('data-preview-ready')==='true',{},{timeout:30000});return page.frames().find(f=>f.url().startsWith('http://127.0.0.1:3460/'))}
+try{
+ await page.goto(url);await ready();await page.getByRole('button',{name:'Source footage timeline item',exact:true}).click();
+ for(let i=0;i<12;i++){const field=page.getByLabel('Duration (frames)',{exact:true});await field.fill(String(40+i));await field.press('Tab')}
+ const frame=await ready();await frame.waitForFunction(()=>document.querySelector('video')?.readyState>=2,{},{timeout:30000});evidence.steps.push('12 rapid source range changes followed by successful real HLS preview');
+ await page.getByRole('button',{name:'custom',exact:true}).click();
+ const code=page.locator('.nle-library textarea').first();
+ await code.fill('import React from "react"; export default function Card({title,color}) { let isolated=false; try { window.parent.document.title; } catch { isolated=true; } return <div style={{position:"absolute",top:40,left:40,color,fontSize:80}} data-isolated={String(isolated)}>{title}</div>; }');
+ await page.getByRole('button',{name:'Add component',exact:true}).click();
+ await page.frameLocator('iframe[title="Live composition preview"]').locator('[data-isolated="true"]').waitFor({timeout:45000});let customFrame=await ready();
+ const control=page.locator('.nle-inspector input[type="text"]').first();await control.fill('Editable custom title');await customFrame.getByText('Editable custom title',{exact:true}).waitFor();
+ evidence.steps.push('Authenticated generated TSX rendered in distinct-site iframe, parent DOM denied, declared title control updated live');
+ await page.screenshot({path:'/tmp/forge-studio-456-prep/operator-custom.png'});
+ await page.getByRole('button',{name:'Save',exact:true}).click();await page.locator('.nle-save-status').filter({hasText:/Saved/}).waitFor();
+ await code.fill('export default function Loop(){while(true){} return null;}');await page.getByRole('button',{name:'Add component',exact:true}).click();
+ await page.getByText('Preview stopped responding. Your edits are safe.',{exact:true}).waitFor({timeout:15000});
+ await page.getByRole('button',{name:'Open user menu',exact:true}).click();await page.getByRole('menu').waitFor();await page.getByRole('button',{name:'Open user menu',exact:true}).click();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();customFrame=await ready();await customFrame.getByText('Editable custom title',{exact:true}).waitFor();evidence.steps.push('Infinite generated component removed by watchdog, Manager controls responsive, Undo restored live preview');
+ await writeFile('/tmp/forge-studio-456-prep/runtime-browser-evidence.json',JSON.stringify(evidence,null,2));console.log(evidence);
+}catch(e){console.error(e);console.log(await page.locator('body').innerText(),evidence);await page.screenshot({path:'/tmp/forge-studio-456-prep/runtime-failure.png'});process.exitCode=1}finally{await browser.close()}

@@ -1,0 +1,8 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const keys=JSON.parse(readFileSync('/tmp/forge-studio-456-reproduction/local-runtime.json','utf8'));
+const headers={authorization:`Bearer ${keys.previewKey}`,'content-type':'application/json'};
+const input={document:{version:1,title:'Capacity diagnostic',language:'english',runtimeVersion:'studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16',width:1920,height:1080,fps:30,durationInFrames:30,tracks:[],items:[],components:[],packRevisionIds:[]},media:{},code:{}};
+const urls=[],statuses=[],released=[];
+try{for(let i=0;i<9;i++){const r=await fetch('http://127.0.0.1:3460/sessions',{method:'POST',headers,body:JSON.stringify(input)});statuses.push(r.status);if(!r.ok)break;urls.push((await r.json()).url)}}finally{for(const url of urls)released.push((await fetch(url,{method:'DELETE',headers})).status)}
+const evidence={at:new Date().toISOString(),statuses,availableSlots:urls.length,released};writeFileSync('/tmp/forge-studio-456-final/capacity-after-navigation.json',JSON.stringify(evidence,null,2));console.log(evidence);
+if(urls.length!==8||statuses.at(-1)!==429||released.some(s=>s!==204))process.exitCode=1;

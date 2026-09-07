@@ -276,6 +276,11 @@ export const fleetSearchCeilingEnforceEnvSchema = z
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+
     // Unit 2 — Prisma / Postgres
     //
     // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
@@ -729,6 +734,9 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(

@@ -62,6 +62,8 @@ export type Role =
 export type Principal = {
   id: string | null
   role: Role
+  /** Set only by trusted Studio interactive transport; OAuth delegation is not review. */
+  studioAuthority?: "interactive" | "delegated"
   managerRole?: ManagerRole | null
   /**
    * Set on bearer principals that need rate-limit bucketing — the matched

@@ -3,7 +3,7 @@ id: "feat-456"
 title: "Standalone Studio video editor"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-07"
 duration: 5
 depends_on:
@@ -57,3 +57,20 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Browser test: create a standalone project, arrange multiple items, edit/trim/crop, undo, save, reopen and preview from real source media.
 - Two-client stale-save test prevents last-write-wins loss.
 - Production build plus cold/warm load, resource waterfall, usable-controls and seek measurements against a pre-change baseline.
+
+## Delivered operator checkpoint
+
+Existing `/dashboard/shorts` routes now expose standalone projects and the
+tracks/canvas/inspector editor. Canonical revision-checked edits, interactive
+transport authority, exact retained-source resolution, distinct-site live HLS
+runtime, declared component controls and bounded session recovery are implemented.
+
+Validation and exact harnesses: `docs/validation/studio-456/README.md`.
+Independent Standards and Spec reviews are clear; production build, browser
+operator workflow, decoded seeks, cold/warm measurements and relevant suites are
+recorded there. Deployment configuration and durable boundaries:
+`docs/solutions/security-issues/studio-standalone-editor-runtime.md`.
+
+This completes the standalone operator checkpoint. Agent transport/generation and
+production export/publication remain their dependent tickets, including 457,
+458 and 460; no publishing/calendar dependency was added to standalone creation.

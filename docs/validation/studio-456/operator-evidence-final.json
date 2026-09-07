@@ -1,0 +1,30 @@
+{
+  "steps": [
+    "Saved real source reopened and decoded",
+    "Arranged two tracks, trimmed source, cropped, undid/redid and saved",
+    "Reopen retained trim/crop",
+    "Two browsers: stale save denied, unseen third revision denied during reconciliation",
+    "Explicit review of latest version reconciled successfully"
+  ],
+  "seeks": [
+    {
+      "target": 15,
+      "elapsedMs": 60.39999999403949,
+      "mediaTime": 4.069,
+      "presentedFrames": 1
+    },
+    {
+      "target": 30,
+      "elapsedMs": 72.19999999403956,
+      "mediaTime": 4.5695,
+      "presentedFrames": 2
+    },
+    {
+      "target": 42,
+      "elapsedMs": 79.49999999403951,
+      "mediaTime": 4.986589,
+      "presentedFrames": 3
+    }
+  ],
+  "errors": []
+}

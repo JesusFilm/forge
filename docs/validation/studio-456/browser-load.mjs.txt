@@ -1,0 +1,59 @@
+import { chromium } from '/home/tataihono/.codex/worktrees/5dd0/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile} from 'node:fs/promises';
+const origin='http://studio456.localhost:3456';
+const out='/tmp/forge-studio-456-post';
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const results=[];
+try {
+ for (const route of ['/dashboard/shorts','/dashboard/shorts/new']) {
+  for(let repetition=1;repetition<=3;repetition++) {
+   const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+   const auth=await context.request.get('http://studio456.localhost:3458/local-fixture-login',{maxRedirects:0});
+   if(auth.status()!==302) throw new Error('Local fixture unavailable');
+   const page=await context.newPage();
+   await page.addInitScript(()=>{
+    window.__baseline={longTasks:[],shifts:[],lcp:[]};
+    new PerformanceObserver(list=>window.__baseline.longTasks.push(...list.getEntries().map(e=>({startTime:e.startTime,duration:e.duration})))).observe({type:'longtask',buffered:true});
+    new PerformanceObserver(list=>window.__baseline.shifts.push(...list.getEntries().filter(e=>!e.hadRecentInput).map(e=>e.value))).observe({type:'layout-shift',buffered:true});
+    new PerformanceObserver(list=>window.__baseline.lcp.push(...list.getEntries().map(e=>({startTime:e.startTime,size:e.size})))).observe({type:'largest-contentful-paint',buffered:true});
+   });
+   const cdp=await context.newCDPSession(page);
+   await cdp.send('Network.enable');
+   let requests=new Map();
+   cdp.on('Network.requestWillBeSent',e=>{const u=new URL(e.request.url);requests.set(e.requestId,{url:u.origin+u.pathname,start:e.timestamp,type:e.type});});
+   cdp.on('Network.responseReceived',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{status:e.response.status,fromDiskCache:e.response.fromDiskCache,fromServiceWorker:e.response.fromServiceWorker,mimeType:e.response.mimeType});});
+   cdp.on('Network.loadingFailed',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{failed:e.errorText});});
+   cdp.on('Network.loadingFinished',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{end:e.timestamp,encodedDataLength:e.encodedDataLength});});
+   await cdp.send('Network.clearBrowserCache');
+   for(const cache of ['cold','warm']) {
+    requests=new Map();
+    await page.goto(origin+route,{waitUntil:'domcontentloaded'});
+    const menuButton=page.getByRole('button',{name:'Open user menu',exact:true});
+    await menuButton.waitFor({state:'visible'});
+    const controlVisibleMs=await page.evaluate(()=>performance.now());
+    const clickStartMs=await page.evaluate(()=>performance.now());
+    await menuButton.click();
+    await page.getByRole('menu').waitFor({state:'visible'});
+    const usableControlsUpperBoundMs=await page.evaluate(()=>performance.now());
+    await menuButton.click();
+    if(route.endsWith('/new')) {
+     const title=page.getByRole('textbox',{name:'Project title',exact:true});
+     await title.fill('Local performance field check');
+     if(await title.inputValue()!=='Local performance field check')throw new Error('Create controls did not respond');
+    }
+    await page.waitForLoadState('load');
+    // Fixed observation window captures hydration/prefetch but precedes 5-second polling.
+    await page.waitForTimeout(1000);
+    const data=await page.evaluate(()=>({navigation:performance.getEntriesByType('navigation').map(e=>e.toJSON()),paints:performance.getEntriesByType('paint').map(e=>e.toJSON()),resources:performance.getEntriesByType('resource').map(e=>{const j=e.toJSON();const u=new URL(j.name);return {...j,name:u.origin+u.pathname};}),observations:window.__baseline,videoCount:document.querySelectorAll('video').length}));
+    const network=[...requests.values()];
+    const record={route,repetition,cache,controlVisibleMs,usableControlsUpperBoundMs,clickToMenuMs:usableControlsUpperBoundMs-clickStartMs,...data,network};
+    results.push(record);
+    if(repetition===1) await page.screenshot({path:`${out}/browser-${route.endsWith('/new')?'create':'list'}-${cache}.png`,fullPage:true});
+   }
+   await context.close();
+  }
+ }
+ const report={build:'feat-456 working tree, manager-build-3.log',browser:browser.version(),viewport:{width:1440,height:1000},conditions:'Isolated headless installed Google Chrome; loopback; no CPU/network throttling; fresh context and cleared HTTP cache for cold, same-context second document navigation for warm. Server already warm. Mock images.jesusfilm.org DNS disabled in isolated browser because seed URLs are placeholders; no request interception or cache-disabling routing. Three pairs per route. Auth issued by local fixture, no production credentials. Readiness is measured upper bound through an actual menu interaction, including automation overhead. 1000ms observation after interaction. List/create comparison only; editor/media measured separately. Create-field check now fills project title because the standalone creation flow replaced the source search.',samples:results};
+ await writeFile(`${out}/browser-load.json`,JSON.stringify(report,null,2));
+ console.log(JSON.stringify(results.map(r=>({route:r.route,run:r.repetition,cache:r.cache,dclMs:r.navigation[0].domContentLoadedEventEnd,loadMs:r.navigation[0].loadEventEnd,usableUpperBoundMs:r.usableControlsUpperBoundMs,menuClickMs:r.clickToMenuMs,resourceTransfer:r.resources.reduce((n,x)=>n+x.transferSize,0),jsTransfer:r.resources.filter(x=>x.name.endsWith('.js')).reduce((n,x)=>n+x.transferSize,0),jsDecoded:r.resources.filter(x=>x.name.endsWith('.js')).reduce((n,x)=>n+x.decodedBodySize,0),longTaskMs:r.observations.longTasks.reduce((n,x)=>n+x.duration,0),cls:r.observations.shifts.reduce((a,b)=>a+b,0),videos:r.videoCount})),null,2));
+}finally{await browser.close();}

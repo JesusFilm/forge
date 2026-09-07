@@ -1,3 +1,4 @@
+import { canReviewStudio } from "@/auth/permissions"
 import { resolveStudioPackSources } from "./packs"
 import { assertStudioRenderSources } from "./sources"
 // INTERNAL transaction seam for feat-460. Never export via GraphQL, MCP, or Manager.
@@ -44,7 +45,7 @@ export async function publishStudioProject(
   verify: StudioPublicationVerifier,
 ) {
   const actor = studioActor(user)
-  if (actor.kind !== "human" || typeof verify !== "function")
+  if (!canReviewStudio(user) || typeof verify !== "function")
     throw new ForbiddenError(
       "Publication verifier and human authority required",
     )

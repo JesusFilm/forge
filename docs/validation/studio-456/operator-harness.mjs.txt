@@ -1,0 +1,42 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/5dd0/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const {url}=JSON.parse(await readFile('/tmp/forge-studio-456-prep/browser-project.json','utf8'));
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const contexts=[];const evidence={steps:[],seeks:[],errors:[]};
+async function client(){const context=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(context);await context.request.get('http://studio456.localhost:3458/local-fixture-login',{maxRedirects:0});const page=await context.newPage();page.on('pageerror',e=>evidence.errors.push(e.message));await page.goto(url);await page.getByRole('button',{name:'Save',exact:true}).waitFor();return page}
+async function save(page){await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('status').filter({hasText:/Saved/}).waitFor({timeout:15000})}
+async function number(page,name,value){const field=page.getByLabel(name,{exact:true});await field.fill(String(value));await field.press('Tab')}
+async function ready(page){await page.waitForFunction(()=>document.querySelector('.nle-preview')?.getAttribute('data-preview-ready')==='true',{},{timeout:45000});const frame=page.frames().find(f=>f.url().startsWith('http://127.0.0.1:3460/'));await frame.waitForFunction(()=>{const v=document.querySelector('video');return v&&v.readyState>=2},{},{timeout:30000});return frame}
+let a;
+try{
+ a=await client();await ready(a);await a.getByRole('button',{name:'Source footage timeline item',exact:true}).click();await number(a,'Duration (frames)',60);await number(a,'Crop left (%)',0);await ready(a);await save(a);evidence.steps.push('Saved real source reopened and decoded');
+ await a.getByRole('button',{name:'A story in motion timeline item',exact:true}).click();
+ await a.locator('.nle-inspector select').last().selectOption({index:1});await number(a,'Start (frames)',15);await number(a,'Font size',100);
+ await a.getByRole('button',{name:'Source footage timeline item',exact:true}).click();
+ await number(a,'Duration (frames)',45);await number(a,'Crop left (%)',10);
+ await a.getByRole('button',{name:'Undo',exact:true}).click();assert.equal(await a.getByLabel('Crop left (%)',{exact:true}).inputValue(),'0');
+ await a.getByRole('button',{name:'Redo',exact:true}).click();assert.equal(await a.getByLabel('Crop left (%)',{exact:true}).inputValue(),'10');
+ await ready(a);await save(a);evidence.steps.push('Arranged two tracks, trimmed source, cropped, undid/redid and saved');
+ await a.reload();let frame=await ready(a);
+ await a.getByRole('button',{name:'Source footage timeline item',exact:true}).click();
+ assert.equal(await a.getByLabel('Duration (frames)',{exact:true}).inputValue(),'45');assert.equal(await a.getByLabel('Crop left (%)',{exact:true}).inputValue(),'10');
+ evidence.steps.push('Reopen retained trim/crop');
+ for(const target of [15,30,42]){
+  await frame.evaluate(()=>{const v=document.querySelector('video');window.seekProof={started:performance.now(),result:null};v.requestVideoFrameCallback((now,metadata)=>{window.seekProof.result={elapsedMs:now-window.seekProof.started,mediaTime:metadata.mediaTime,presentedFrames:metadata.presentedFrames}})});
+  await a.getByLabel('Playhead',{exact:true}).evaluate((input,target)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,String(target));input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))},target);
+  await frame.waitForFunction(()=>window.seekProof?.result,{},{timeout:10000});const measurement=await frame.evaluate(()=>window.seekProof.result);evidence.seeks.push({target,...measurement});assert.ok(Math.abs(measurement.mediaTime-(3.6+target/30))<0.12);
+ }
+ await a.screenshot({path:'/tmp/forge-studio-456-prep/operator-nle.png'});
+ // Return to project inspector without resetting the playhead.
+ await a.locator('.nle-track').last().click({position:{x:400,y:25}});
+ const b=await client();
+ await a.getByLabel('Title',{exact:true}).fill('First browser revision');await a.getByLabel('Title',{exact:true}).press('Tab');await save(a);
+ await b.getByLabel('Title',{exact:true}).fill('Second browser proposal');await b.getByLabel('Title',{exact:true}).press('Tab');await b.getByRole('button',{name:'Save',exact:true}).click();await b.getByText('Another session saved a newer version.',{exact:true}).waitFor();
+ await a.getByLabel('Title',{exact:true}).fill('Unseen third revision');await a.getByLabel('Title',{exact:true}).press('Tab');await save(a);
+ await b.getByRole('button',{name:'Replace with my reviewed version',exact:true}).click();await b.getByText(/Saved version: Unseen third revision/).waitFor();
+ assert.ok((await b.locator('.nle-save-status').innerText()).includes('conflict'));evidence.steps.push('Two browsers: stale save denied, unseen third revision denied during reconciliation');
+ await b.screenshot({path:'/tmp/forge-studio-456-prep/operator-conflict.png'});
+ await b.getByRole('button',{name:'Replace with my reviewed version',exact:true}).click();await b.getByRole('status').filter({hasText:/Saved/}).waitFor();evidence.steps.push('Explicit review of latest version reconciled successfully');
+ await writeFile('/tmp/forge-studio-456-prep/operator-evidence.json',JSON.stringify(evidence,null,2));console.log(evidence);
+}catch(e){console.error(e);if(a){console.log(await a.locator('body').innerText());await a.screenshot({path:'/tmp/forge-studio-456-prep/operator-failure.png'})}console.log(evidence);process.exitCode=1}finally{await browser.close()}

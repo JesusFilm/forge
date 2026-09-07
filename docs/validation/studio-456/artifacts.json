@@ -1,0 +1,307 @@
+[
+  {
+    "path": "/tmp/forge-studio-456-prep/manager-build-5.log",
+    "bytes": 3411,
+    "sha256": "d4b3b2093a209d909e32e2346fccf78a08a350fd4be8377b955169e42406278c"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/manager-full-tests-final.log",
+    "bytes": 133835,
+    "sha256": "0cdd0dbf1cc929a23ca346b5c79e641b87c054e1a35bf7e7e765831bb187db5f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/admin-full-tests.log",
+    "bytes": 184291,
+    "sha256": "2f65b9be536bb4eb63c8071735ad7fe8b378a55ac04e1e1f58798a1c78eb5af6"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/admin-isolated-regressions.log",
+    "bytes": 2744,
+    "sha256": "caabe2005afae74109205740962b602b617c8cf4d3e8e7851a25e91f2d7fd36e"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/admin-rate-limit-isolated-network.log",
+    "bytes": 1042,
+    "sha256": "eeb38c9bb38a1adf8b2b967011f5162778b430a3f20798046d085a2f0f956f99"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/studio-suite-1.log",
+    "bytes": 1447,
+    "sha256": "6fde2ea4557fbff2115a78a8bd96b859cb7c6ef7235e62bba52de6e86c9c71a1"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/admin-review-fixes-tests.log",
+    "bytes": 757,
+    "sha256": "6f20233abf286e7a75d1f746cb410d731f780e6c343a250c162329bd58737ac6"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/typechecks-review-final.log",
+    "bytes": 637,
+    "sha256": "6a33b77de716070eb05bc44b1181d2089c96ad56d757f1b02aa4ebbc347ded19"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/typecheck-last.log",
+    "bytes": 483,
+    "sha256": "6853bf9b051018442eb40041cad31f2cb639582b2862dc190f3e6b34f07db1be"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/preview-expiry-typecheck.log",
+    "bytes": 424,
+    "sha256": "5788cc8a69cf51a30309da3203bca40b8f08455cba119db88cff852078990194"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/preview-expiry-lint.log",
+    "bytes": 415,
+    "sha256": "90765c8785ee0405c799d4d0fbd69453a5768827836043d121feb338b8e929fb"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/lint-last.log",
+    "bytes": 533,
+    "sha256": "8c52e5fa9686e6ddf109ca360c88514d36b835ffe4ee906b3c7bf0c01538d337"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/admin-lint-final.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/contracts-preview-tests-final.log",
+    "bytes": 1458,
+    "sha256": "1ef9680d34d9017f9d8fbf228fa40c0ee560218ca88c09899e18213a0cfd375f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/preview-expiry-tests-final.log",
+    "bytes": 736,
+    "sha256": "a402039f70f29f4193762e80fe13d63fc4aebac4d8157295bbffcc3d137680ce"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/editor-tests-last.log",
+    "bytes": 697,
+    "sha256": "31311a43626063b34012651a4a7e6232df1ebd86791ad4ff77b9efc4f7467648"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-migrations.log",
+    "bytes": 11481,
+    "sha256": "a570601da600641c830f431c7c31458f9989f841a00e24e1025de5cc28ba22ad"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/save-flight-red.log",
+    "bytes": 1894,
+    "sha256": "3842eda6b4554449411e3e23c02111f71b002d677380236305241d5cf7eccbf9"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/save-flight-green.log",
+    "bytes": 628,
+    "sha256": "b210655acbc3cab5d1630d3857827534a3ccd6feb089739c582c5df2994c2f1e"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/component-signature-red.log",
+    "bytes": 2304,
+    "sha256": "aef19d125b85574e9137d6bb7def4ad907a90a06a85b712698740634a693d87e"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/component-signature-green.log",
+    "bytes": 622,
+    "sha256": "817afad8b857d96228a66bdeffb470bfc8d285f56fbf79306168f3612907846a"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-runtime.log",
+    "bytes": 927,
+    "sha256": "da991f214f83fe42202f0ad056b9b86e23d3a2a81bb08a670a77e41e214b4847"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-runtime-errors.log",
+    "bytes": 803,
+    "sha256": "e041de8505011363b3bc1cdd8d5829e8db936792dc880ff8a4cadefc68b33a92"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-runtime-delete-renew-final-2.log",
+    "bytes": 1462,
+    "sha256": "ffdafeb934008a51193c796a1ad20f46badef1056181ee97ae4356f53098b2f8"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-assets-green.log",
+    "bytes": 440,
+    "sha256": "4b074665830f58f60eb87ff9e918fe6e5bd42577c13cc6c802129164d04cc421"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-pack.log",
+    "bytes": 232,
+    "sha256": "0514d1ad02c1845b0f58b54c6dd199cec998cf571ca71b44dc8f62cfc08ecf27"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-operator-final-2.log",
+    "bytes": 709,
+    "sha256": "0c4c2efeb8a5dcbf6bf263a89426091c2874d09229c348409fca38d154ee76a2"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/browser-source-final.log",
+    "bytes": 444,
+    "sha256": "fa4c3c15bab59f6717794ff1e055bcc4379dced721c6721e76dbe21f1cb10b71"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/operator-nle-final.png",
+    "bytes": 312399,
+    "sha256": "100c10b32d5e6cafc12e6446d0321e0c9599754fdc667cc3f09b9c7e507fa576"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/operator-conflict-final.png",
+    "bytes": 105667,
+    "sha256": "b3d8c3c562d1cf9826e5bbfc4e0d6a057f1b520e77185cb07a8f3de25ba3b3fe"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/operator-custom.png",
+    "bytes": 304851,
+    "sha256": "5faafac1affde6ae9a40835d3599f335c1c2f5a5251edcf60d13891bad863cdc"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/operator-assets.png",
+    "bytes": 266349,
+    "sha256": "841cd14138b198af54d093344d9985332444949c6e1e01490a01f22c2eb9dcb8"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/editor-source-final.png",
+    "bytes": 288685,
+    "sha256": "8d6e3e155c4ae932ef536be89263a876e88b735e221f10f633178410e368f351"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/runtime-browser-evidence.json",
+    "bytes": 1232,
+    "sha256": "0be321fcf99f6336b7518c9226065df217de4295879e6b6e53b4bdf080b75b37"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/runtime-errors-evidence.json",
+    "bytes": 1002,
+    "sha256": "c98c851c880e8456838460b0c2488b7e1e015363350c9d2a0781128466332947"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/runtime-delete-renew-evidence.json",
+    "bytes": 1928,
+    "sha256": "8019d8623dedf4f142d4ea644c169927cc5020bf5fca7e83147443ec863e2751"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/assets-browser-evidence.json",
+    "bytes": 644,
+    "sha256": "13704b59920e4e649e2c5ddf9866cff6a1101c04679cf86660c3580a28a9e9d6"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/pack-browser-evidence.json",
+    "bytes": 287,
+    "sha256": "bb03ac0b8a2f5d75fca50b1fef1c7297f9363eb8d883c9fadee96e10afec82eb"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/operator-evidence-final.json",
+    "bytes": 738,
+    "sha256": "1f4e70957ade03f4eea213aef68db2ae3c39234ee1fe544a16651521cfd240d9"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/source-browser-final.json",
+    "bytes": 482,
+    "sha256": "dbe2ae90072fd1887a58ee42e8749cfd781ea46839534c9af6fd2c589352929c"
+  },
+  {
+    "path": "/tmp/forge-studio-456-prep/registered-codec-evidence.json",
+    "bytes": 1007,
+    "sha256": "b5b276ab85a9b9fd99c01cf25fa9fc19be18531c7f65d495873bd6ea6bff6ec4"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/capacity-after-navigation.json",
+    "bytes": 254,
+    "sha256": "abc5a93b0f7b8823d88c9a2c4c79d9f839384516d4b118ddc000d7e81c258614"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/probe-capacity.mjs",
+    "bytes": 1177,
+    "sha256": "fa9b4b478aaa7c16a96ed34ceebfa1845c9d8e0f0a7965b5a5fdf14a4552164f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-load.json",
+    "bytes": 539391,
+    "sha256": "d422d1e2b73da58f6a32ad7911d7c9b92817cd6cfe7588c7b0ca7951f74aa00f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-warm.png",
+    "bytes": 299070,
+    "sha256": "1d9860e18739ff7508d0346f71d42972fbe6a6e5f41e0b83d544c2c91bdc4c6f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-cold.png",
+    "bytes": 299070,
+    "sha256": "1d9860e18739ff7508d0346f71d42972fbe6a6e5f41e0b83d544c2c91bdc4c6f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-load-cleanup.log",
+    "bytes": 1066,
+    "sha256": "7bc68af164b8dbf90e6be8b247be05ed6a9800b94a658fce4de4df93e67f4641"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/quota-diagnostic.json",
+    "bytes": 46,
+    "sha256": "0a49155cc41a490e7247fc6eca789f033c89a47bebf9931d49662981b99f6f2e"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-failure.png",
+    "bytes": 96496,
+    "sha256": "9da64ebd6a4832581a079ebb7fcf37dc453a24f834751ff35f92b23cf9ad079f"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-load-diagnostic.log",
+    "bytes": 996,
+    "sha256": "a274a6c39f4a198946d89296c099bda52bd74631fe327b131f4da6ef8a537847"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/editor-load.log",
+    "bytes": 241,
+    "sha256": "bda0bf9a83b4768014d68115d202dbe52ca295f5626b4c618f08492294691607"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-load.json",
+    "bytes": 748209,
+    "sha256": "ec658b1aaeabaa11715f1781759047ea3b9fe153f6b41e8c0c293dc5e19ca725"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-create-warm.png",
+    "bytes": 58077,
+    "sha256": "0b75e078ffc7a27816adeb9e4ade69e704feb3066b71910ada9fc79f3a5e981a"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-create-cold.png",
+    "bytes": 58077,
+    "sha256": "0b75e078ffc7a27816adeb9e4ade69e704feb3066b71910ada9fc79f3a5e981a"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-list-warm.png",
+    "bytes": 56506,
+    "sha256": "de48a33a9c61f1388b92344c543680372fb2c04ea7d67170c3c18096cf509094"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-list-cold.png",
+    "bytes": 56506,
+    "sha256": "de48a33a9c61f1388b92344c543680372fb2c04ea7d67170c3c18096cf509094"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-load.log",
+    "bytes": 4188,
+    "sha256": "bac4b1453f0967f0a89e54770e86419365c898c3b0281f924acec6065c2d4e2e"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-editor-load.mjs",
+    "bytes": 4671,
+    "sha256": "b647e7300a4bb1fc516a26208557d7832ca4a77b30b43f934e75de8a59d731be"
+  },
+  {
+    "path": "/tmp/forge-studio-456-final/browser-load.mjs",
+    "bytes": 5897,
+    "sha256": "3291a6b37c70f1b9c36594448ce293079b6ba09abc8792350ea51722c2c1a542"
+  },
+  {
+    "path": "/tmp/forge-studio-456-post/browser-load.json",
+    "bytes": 1046340,
+    "sha256": "dfa737cbdaab950214b038d77c15b3919cb42a99951f7a922821f05a97be523d"
+  },
+  {
+    "path": "/tmp/forge-studio-456-post/editor-load.json",
+    "bytes": 516611,
+    "sha256": "74a28853238e0798028f51784d8d51239fbd5bc993f1297edbd0e79561fec833"
+  }
+]

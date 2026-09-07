@@ -1,0 +1,35 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/5dd0/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const {url}=JSON.parse(await readFile('/tmp/forge-studio-456-prep/final-browser-project.json','utf8'));
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.request.get('http://studio456.localhost:3458/local-fixture-login',{maxRedirects:0});const page=await context.newPage();
+const evidence={steps:[],requests:[],errors:[]};page.on('pageerror',e=>evidence.errors.push(e.message));page.on('response',async r=>{if(r.url().endsWith('/api/studio/preview')){evidence.requests.push({method:r.request().method(),status:r.status()})}});
+async function ready(){await page.waitForFunction(()=>document.querySelector('.nle-preview')?.getAttribute('data-preview-ready')==='true',{},{timeout:30000});return page.frames().find(f=>f.url().startsWith('http://127.0.0.1:3460/'))}
+try{
+ await page.goto(url);await ready();await page.getByRole('button',{name:'custom',exact:true}).click();
+ const code=page.locator('.nle-library textarea').first();
+ for (const [kind,source] of [['compile','export default function Broken( { return <div>bad</div>; }'],['top-level','throw new Error("intentional-top-level-fixture"); export default function Broken(){return null;}']]) {
+   await code.fill(source);await page.getByRole('button',{name:'Add component',exact:true}).click();
+   await page.locator('.nle-preview-message[role="alert"]').waitFor({timeout:45000});
+   const message=await page.locator('.nle-preview-message').innerText();
+   await page.getByRole('button',{name:'Delete item',exact:true}).click();await page.frameLocator('iframe[title="Live composition preview"]').locator('video').waitFor({timeout:30000});await ready();
+   await page.getByRole('button',{name:'Save',exact:true}).click();await page.locator('.nle-save-status').filter({hasText:/Saved/}).waitFor();
+   await page.reload();await ready();let f=await ready();await f.waitForFunction(()=>document.querySelector('video')?.readyState>=2,{},{timeout:30000});
+   evidence.steps.push({kind,message,recovery:'Deleted broken item, saved/reopened with unused immutable definition retained; real video/audio/image preview recovered'});
+   await page.getByRole('button',{name:'custom',exact:true}).click();
+ }
+ await code.fill('import React from "react"; export default function Card({title}) { return <div data-recovery="active" style={{fontSize:80,color:"white"}}>{title}</div>; }');
+ await page.getByRole('button',{name:'Add component',exact:true}).click();await page.frameLocator('iframe[title="Live composition preview"]').locator('[data-recovery="active"]').waitFor({timeout:30000});
+ await page.getByRole('button',{name:'Delete item',exact:true}).click();await page.frameLocator('iframe[title="Live composition preview"]').locator('video').waitFor({timeout:30000});await ready();
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await page.frameLocator('iframe[title="Live composition preview"]').locator('[data-recovery="active"]').waitFor({timeout:30000});
+ evidence.steps.push('Deleted valid component, restaged without code, Undo restored component through new preparation');
+ const live = await ready();await page.getByRole('button',{name:'Play',exact:true}).click();await live.waitForFunction(()=>[...document.querySelectorAll('audio')].some(a=>a.currentTime>=0.49),{},{timeout:15000});
+ evidence.steps.push({decodedAudioAfterPlay: await live.locator('audio').first().evaluate(a=>({time:a.currentTime,paused:a.paused,volume:a.volume}))});await page.getByRole('button',{name:'Pause',exact:true}).click();
+ await page.getByRole('button',{name:'Save',exact:true}).click();await page.locator('.nle-save-status').filter({hasText:/Saved/}).waitFor();
+ const frameBefore=(await ready()).url();
+ const renewed=page.waitForResponse(r=>r.url().endsWith('/api/studio/preview')&&r.request().method()==='PATCH');
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));assert.equal((await renewed).status(),204);assert.equal((await ready()).url(),frameBefore);
+ evidence.steps.push('Returning-visible event renews actual authenticated preview session without replacing frame');
+ await writeFile('/tmp/forge-studio-456-prep/runtime-delete-renew-evidence.json',JSON.stringify(evidence,null,2));console.log(evidence);
+}catch(e){console.error(e);console.log(await page.locator('body').innerText(),evidence);await page.screenshot({path:'/tmp/forge-studio-456-prep/runtime-delete-renew-failure.png'});process.exitCode=1}finally{await browser.close()}

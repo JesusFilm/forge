@@ -1,0 +1,98 @@
+{
+  "steps": [
+    {
+      "kind": "compile",
+      "message": "Unexpected token, expected \",\" (1:47)\n\nRetry preview",
+      "recovery": "Deleted broken item, saved/reopened with unused immutable definition retained; real video/audio/image preview recovered"
+    },
+    {
+      "kind": "top-level",
+      "message": "intentional-top-level-fixture\n\nRetry preview",
+      "recovery": "Deleted broken item, saved/reopened with unused immutable definition retained; real video/audio/image preview recovered"
+    },
+    "Deleted valid component, restaged without code, Undo restored component through new preparation",
+    {
+      "decodedAudioAfterPlay": {
+        "time": 0.508118,
+        "paused": false,
+        "volume": 0.25
+      }
+    },
+    "Returning-visible event renews actual authenticated preview session without replacing frame"
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "status": 204
+    }
+  ],
+  "errors": []
+}

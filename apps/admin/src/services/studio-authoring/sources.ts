@@ -17,6 +17,7 @@ import { StudioCommandError } from "./errors"
 import {
   StudioAssetService,
   resolveAssetVersion,
+  readVerifiedStudioAsset,
   STUDIO_MAX_ASSET_BYTES,
 } from "./assets"
 
@@ -177,6 +178,7 @@ export async function resolveStudioDocumentSources(
     startFrame: number
     eligibility: Awaited<ReturnType<typeof assertStudioSourceEligible>>
   }[] = []
+  const subtitleBytes = new Map<string, Uint8Array>()
   for (const item of document.items) {
     if (item.kind !== "video") continue
     const s = item.source
@@ -204,6 +206,12 @@ export async function resolveStudioDocumentSources(
     )
       throw new NotFoundError("Pinned source/range")
     const eligibility = await assertStudioSourceEligible(tx, snapshot)
+    let bytes = subtitleBytes.get(s.subtitle.asset.digest)
+    if (!bytes) {
+      bytes = await readVerifiedStudioAsset(tx, s.subtitle.asset, 1048576)
+      subtitleBytes.set(s.subtitle.asset.digest, bytes)
+    }
+    parseStudioVtt(bytes, { startMs: s.startMs, endMs: s.endMs })
     resolved.push({
       snapshot,
       eligibility,
@@ -241,8 +249,10 @@ export class StudioSourceService {
     if (input.startMs >= input.endMs || input.endMs > catalog.durationMs)
       throw new StudioCommandError("INVALID")
     const subtitleBytes = await this.download(catalog.subtitleUrl, 1048576)
-    if (!parseStudioVtt(subtitleBytes).length)
-      throw new StudioCommandError("INVALID")
+    parseStudioVtt(subtitleBytes, {
+      startMs: input.startMs,
+      endMs: input.endMs,
+    })
     const sourceBytes = input.retainOriginalBytes
       ? await this.download(catalog.downloadUrl, STUDIO_MAX_ASSET_BYTES)
       : Buffer.from(

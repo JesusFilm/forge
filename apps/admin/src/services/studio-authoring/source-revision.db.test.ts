@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { describe, it, expect } from "vitest"
 import { env } from "@/config/env"
-import { StudioSourceService } from "./sources"
+import { StudioSourceService, assertStudioRenderSources } from "./sources"
 import { ContentPackService } from "./packs"
 import { StudioAuthoringService } from "./index"
+import { studioDocumentSchema } from "@forge/studio-contracts"
+import { StudioAssetService, byteDigest } from "./assets"
 class SourceRevisionHarnessError extends Error {}
 const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
@@ -14,11 +16,15 @@ suite("retained source and pack revision INSERT", () => {
     const parsed = new URL(url!)
     if (
       parsed.hostname !== "127.0.0.1" ||
-      parsed.port !== "55459" ||
-      parsed.pathname !== "/forge_studio_459_test"
+      !(
+        (parsed.port === "55459" &&
+          parsed.pathname === "/forge_studio_459_test") ||
+        (parsed.port === "55456" &&
+          parsed.pathname === "/forge_studio_456_test")
+      )
     )
       throw new SourceRevisionHarnessError(
-        "Only isolated feat-459 database allowed",
+        "Only isolated Studio test databases allowed",
       )
     const db = new PrismaClient({ datasources: { db: { url } } })
     try {
@@ -85,7 +91,7 @@ suite("retained source and pack revision INSERT", () => {
         async (url) =>
           Buffer.from(
             url.endsWith(".vtt")
-              ? "WEBVTT\n\n00:01.000 --> 00:05.000\nSource words\n"
+              ? "WEBVTT\n\n00:01.000 --> 00:05.000\nSource words\n\n00:08.000 --> 00:09.000\n<b>Distant words</b>\n"
               : "source byte fixture",
           ),
         "LOCAL",
@@ -162,6 +168,41 @@ suite("retained source and pack revision INSERT", () => {
       const saved = await author.read(user, projectId)
       expect(saved.document.items).toEqual(document.items)
       expect(saved.document.packRevisionIds).toEqual([pack.id])
+      const canonicalBytes = await new StudioAssetService(db).readBytes(
+        user,
+        source.source.subtitle.asset,
+      )
+      expect(byteDigest(canonicalBytes)).toBe(
+        source.source.subtitle.asset.digest,
+      )
+      expect(new TextDecoder().decode(canonicalBytes)).toContain(
+        "<b>Distant words</b>",
+      )
+      const expanded = studioDocumentSchema.parse({
+        ...saved.document,
+        durationInFrames: 300,
+        items: saved.document.items.map((item) =>
+          item.kind === "video"
+            ? {
+                ...item,
+                durationInFrames: 240,
+                source: { ...item.source, endMs: 9000 },
+              }
+            : item,
+        ),
+      })
+      await expect(
+        author.apply(user, {
+          projectId,
+          expectedRevision: 1,
+          idempotencyKey: randomUUID(),
+          operations: [{ kind: "restore-document", document: expanded }],
+        }),
+      ).rejects.toThrow("Unsupported subtitle cue")
+      await expect(
+        db.$transaction((tx) => assertStudioRenderSources(tx, expanded)),
+      ).rejects.toThrow("Unsupported subtitle cue")
+      expect((await author.read(user, projectId)).revision).toBe(1)
       await expect(
         db.$transaction(async (tx) => {
           const invalid = {

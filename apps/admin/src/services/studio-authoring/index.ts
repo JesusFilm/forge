@@ -1,3 +1,4 @@
+import { canReviewStudio } from "@/auth/permissions"
 import { resolveStudioPackSources } from "./packs"
 import type { PrismaClient } from "@prisma/client"
 import {
@@ -297,7 +298,7 @@ export class StudioAuthoringService {
   }
   async approve(user: Principal | null, raw: unknown) {
     const actor = studioActor(user)
-    if (actor.kind !== "human")
+    if (!canReviewStudio(user))
       throw new ForbiddenError("Human review required")
     const input = studioApproveSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
@@ -357,7 +358,7 @@ export class StudioAuthoringService {
   }
   async unpublish(user: Principal | null, raw: unknown) {
     const actor = studioActor(user)
-    if (actor.kind !== "human")
+    if (!canReviewStudio(user))
       throw new ForbiddenError("Human authority required")
     const input = studioCommandBaseSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
@@ -447,6 +448,33 @@ export class StudioAuthoringService {
         lifecycle: row.lifecycle,
       }),
     )
+  }
+  async listSummaries(user: Principal | null, raw: unknown = {}) {
+    const rows = await this.list(user, raw)
+    if (!rows.length) return []
+    const revisions = await this.db.studioProjectRevision.findMany({
+      where: {
+        OR: rows.map((row) => ({
+          projectId: row.projectId,
+          number: row.revision,
+        })),
+      },
+      select: { projectId: true, document: true },
+    })
+    const documents = new Map(
+      revisions.map((row) => [row.projectId, row.document]),
+    )
+    return rows.map((row) => {
+      const document = studioDocumentSchema.parse(documents.get(row.projectId))
+      return {
+        ...row,
+        title: document.title,
+        width: document.width,
+        height: document.height,
+        durationInFrames: document.durationInFrames,
+        fps: document.fps,
+      }
+    })
   }
   async history(user: Principal | null, projectId: string, raw: unknown = {}) {
     studioActor(user)

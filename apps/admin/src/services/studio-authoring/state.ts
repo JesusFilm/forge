@@ -10,13 +10,13 @@ import {
   type StudioAssetReference,
 } from "@forge/studio-contracts"
 import type { Principal } from "@/auth/principal"
-import { canAuthorStudio, canReviewStudio } from "@/auth/permissions"
+import { canAuthorStudio, isStudioHuman } from "@/auth/permissions"
 import { ForbiddenError, NotFoundError } from "../errors"
 import { StudioCommandError } from "./errors"
 
 export function studioActor(user: Principal | null) {
   if (!canAuthorStudio(user)) throw new ForbiddenError()
-  if (canReviewStudio(user))
+  if (isStudioHuman(user))
     return studioActorSchema.parse({ kind: "human", id: user!.id })
   if (user?.role === "MANAGER_BACKEND" || user?.role === "SYSTEM")
     return studioActorSchema.parse({

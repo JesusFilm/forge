@@ -1,0 +1,122 @@
+[
+  {
+    "route": "/dashboard/shorts",
+    "run": 1,
+    "cache": "cold",
+    "loadMs": 242.10000002384186,
+    "usableUpperBoundMs": 482.7000000178814,
+    "jsTransfer": 243384,
+    "longTaskMs": 51,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts",
+    "run": 1,
+    "cache": "warm",
+    "loadMs": 56.099999994039536,
+    "usableUpperBoundMs": 272.59999999403954,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts",
+    "run": 2,
+    "cache": "cold",
+    "loadMs": 182,
+    "usableUpperBoundMs": 445.40000000596046,
+    "jsTransfer": 243384,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts",
+    "run": 2,
+    "cache": "warm",
+    "loadMs": 54.5,
+    "usableUpperBoundMs": 358.5,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts",
+    "run": 3,
+    "cache": "cold",
+    "loadMs": 187.39999997615814,
+    "usableUpperBoundMs": 475.39999997615814,
+    "jsTransfer": 243384,
+    "longTaskMs": 50,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts",
+    "run": 3,
+    "cache": "warm",
+    "loadMs": 53.30000001192093,
+    "usableUpperBoundMs": 261.80000001192093,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 1,
+    "cache": "cold",
+    "loadMs": 204.80000001192093,
+    "usableUpperBoundMs": 396.7000000178814,
+    "jsTransfer": 243384,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 1,
+    "cache": "warm",
+    "loadMs": 60.69999998807907,
+    "usableUpperBoundMs": 248.09999999403954,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 2,
+    "cache": "cold",
+    "loadMs": 176,
+    "usableUpperBoundMs": 377.89999997615814,
+    "jsTransfer": 243384,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 2,
+    "cache": "warm",
+    "loadMs": 76.90000000596046,
+    "usableUpperBoundMs": 286.59999999403954,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 3,
+    "cache": "cold",
+    "loadMs": 222.59999999403954,
+    "usableUpperBoundMs": 405.69999998807907,
+    "jsTransfer": 243384,
+    "longTaskMs": 119,
+    "cls": 0
+  },
+  {
+    "route": "/dashboard/shorts/new",
+    "run": 3,
+    "cache": "warm",
+    "loadMs": 54.5,
+    "usableUpperBoundMs": 244.2000000178814,
+    "jsTransfer": 0,
+    "longTaskMs": 0,
+    "cls": 0
+  }
+]
