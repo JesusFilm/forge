@@ -1,0 +1,60 @@
+(node:1626934) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/manager@0.0.1 build /home/tataihono/.codex/worktrees/8b33/forge/apps/manager
+> next build
+
+Discovering workflow directives 2005ms
+Created steps bundle 125ms
+Created intermediate workflow bundle 335ms
+Creating webhook route
+Creating manifest...
+Created manifest with 33 steps, 5 workflows, and 0 classes 273ms
+▲ Next.js 16.2.4 (Turbopack)
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 15.7s
+  Running TypeScript ...
+  Finished TypeScript in 23.7s ...
+  Collecting page data using 7 workers ...
+❌ Invalid environment variables: [
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'MUX_TOKEN_ID' ],
+    message: 'Invalid input: expected string, received undefined'
+  },
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'MUX_TOKEN_SECRET' ],
+    message: 'Invalid input: expected string, received undefined'
+  },
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'OPENROUTER_API_KEY' ],
+    message: 'Invalid input: expected string, received undefined'
+  }
+]
+Error: Invalid environment variables
+    at <unknown> (.next/server/chunks/[root-of-the-server]__0k_qowj._.js:1:8958)
+    at <unknown> (.next/server/chunks/[root-of-the-server]__0k_qowj._.js:1:9130)
+    at module evaluation (.next/server/chunks/[root-of-the-server]__0k_qowj._.js:1:9384)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (.next/server/chunks/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (.next/server/chunks/[turbopack]_runtime.js:281:20)
+    at module evaluation (.next/server/chunks/[root-of-the-server]__0k_qowj._.js:1:10366)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (.next/server/chunks/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (.next/server/chunks/[turbopack]_runtime.js:281:20)
+
+> Build error occurred
+Error: Failed to collect page data for /api/auth/logout
+    at ignore-listed frames {
+  type: 'Error'
+}
+/home/tataihono/.codex/worktrees/8b33/forge/apps/manager:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/manager@0.0.1 build: `next build`
+Exit status 1

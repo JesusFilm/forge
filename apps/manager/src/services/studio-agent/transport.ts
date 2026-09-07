@@ -1,4 +1,5 @@
 import { env } from "@/config/env"
+import { STUDIO_AGENT_LIMITS } from "@forge/studio-contracts/agent"
 import {
   signStudioRequest,
   readStudioBytes,
@@ -44,8 +45,15 @@ export async function studioServiceRequest(
       redirect: "error",
       cache: "no-store",
       signal: signal
-        ? AbortSignal.any([signal, AbortSignal.timeout(100000)])
-        : AbortSignal.timeout(100000),
+        ? AbortSignal.any([
+            signal,
+            AbortSignal.timeout(
+              target === "mastra" ? STUDIO_AGENT_LIMITS.managerMs : 100000,
+            ),
+          ])
+        : AbortSignal.timeout(
+            target === "mastra" ? STUDIO_AGENT_LIMITS.managerMs : 100000,
+          ),
     },
   )
   if (!response.ok) {

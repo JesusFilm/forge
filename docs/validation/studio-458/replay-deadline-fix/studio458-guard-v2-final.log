@@ -1,0 +1,12 @@
+test_ambiguous_unknown_charge_remains_consumed_after_restart (test_dispatch_guard_v2.ReplayFenceTests.test_ambiguous_unknown_charge_remains_consumed_after_restart) ... ok
+test_concurrent_identical_dispatch_has_one_reservation (test_dispatch_guard_v2.ReplayFenceTests.test_concurrent_identical_dispatch_has_one_reservation) ... ok
+test_duplicate_owner_cannot_stop_or_finish_the_winner (test_dispatch_guard_v2.ReplayFenceTests.test_duplicate_owner_cannot_stop_or_finish_the_winner) ... ok
+test_identical_bytes_in_a_distinct_authorized_run_are_not_a_replay (test_dispatch_guard_v2.ReplayFenceTests.test_identical_bytes_in_a_distinct_authorized_run_are_not_a_replay) ... ok
+test_old_manifest_is_refused_without_changing_existing_ledger (test_dispatch_guard_v2.ReplayFenceTests.test_old_manifest_is_refused_without_changing_existing_ledger) ... ok
+test_same_run_replay_is_rejected_before_a_second_reservation_after_restart (test_dispatch_guard_v2.ReplayFenceTests.test_same_run_replay_is_rejected_before_a_second_reservation_after_restart) ... ok
+test_unrelated_slot_violation_still_stops_batch (test_dispatch_guard_v2.ReplayFenceTests.test_unrelated_slot_violation_still_stops_batch) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.427s
+
+OK

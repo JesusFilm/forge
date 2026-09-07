@@ -326,6 +326,67 @@ test.skipIf(!url)(
       expect((await fetch(first, { method: "POST", body: "{}" })).status).toBe(
         403,
       )
+      let stalledCalls = 0
+      const stalledRuntime = await serve(
+        createStudioRuntime(b, {
+          ...config,
+          model: new MockLanguageModelV3({
+            doStream: async () => {
+              stalledCalls++
+              return {
+                stream: new ReadableStream({
+                  start(controller) {
+                    controller.enqueue({ type: "stream-start", warnings: [] })
+                    controller.enqueue({
+                      type: "finish",
+                      finishReason: {
+                        unified: "tool-calls",
+                        raw: "tool_calls",
+                      },
+                      usage: {
+                        inputTokens: {
+                          total: 1,
+                          noCache: 1,
+                          cacheRead: 0,
+                          cacheWrite: 0,
+                        },
+                        outputTokens: { total: 1, text: 1, reasoning: 0 },
+                      },
+                    })
+                    controller.close()
+                  },
+                }),
+              }
+            },
+          }),
+        }),
+      )
+      const stalledRun = {
+        ...run,
+        attemptId: `c${randomUUID().replaceAll("-", "")}`,
+        admission: frozen.admission,
+      }
+      const stalledBinding = await call(first, {
+        ...stalledRun,
+        action: "bind",
+      })
+      stalledRun.admission = (await stalledBinding.json()).result.admission
+      const stalledResponse = await call(stalledRuntime, stalledRun)
+      const stalledEvents = await stalledResponse.text()
+      expect(stalledEvents).toContain(
+        "Studio tool call was incomplete or malformed",
+      )
+      expect(stalledEvents).not.toContain('"type":"done"')
+      expect(stalledCalls).toBe(1)
+      expect(
+        (
+          await pool.query(
+            "SELECT status FROM studio_agent_execution WHERE id=$1",
+            [stalledRun.attemptId],
+          )
+        ).rows[0].status,
+      ).toBe("failed")
+      expect((await call(stalledRuntime, stalledRun)).status).toBe(409)
     } finally {
       await a.close()
       await b.close()

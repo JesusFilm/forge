@@ -1,0 +1,11 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+ ✓ src/services/studio-authoring/runtime.db.test.ts (1 test) 843ms
+   ✓ two native HTTP runtimes execute pinned bytes once despite active changes and reconstruction  841ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:21:00
+   Duration  2.50s (transform 256ms, setup 0ms, collect 1.32s, tests 843ms, environment 0ms, prepare 80ms)
+

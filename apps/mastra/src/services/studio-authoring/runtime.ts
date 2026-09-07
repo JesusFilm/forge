@@ -20,8 +20,14 @@ import {
   StudioInstructionError,
   type FrozenStudioInstructions,
 } from "./instructions"
-import { streamStudioAgent } from "./agent"
+import { streamStudioAgent, StudioToolProgressError } from "./agent"
 import { rejectStudioAssetTool } from "./tool-feedback"
+import {
+  StudioRunBudget,
+  StudioRunDeadlineError,
+  type StudioSettlement,
+  type StudioRunTelemetry,
+} from "./run-budget"
 
 type Config = {
   adminUrl?: string
@@ -30,7 +36,12 @@ type Config = {
   model: AgentConfig["model"]
   admissionSecret: string
   claim: (id: string, digest: string) => Promise<boolean>
-  finish: (id: string, status: "completed" | "failed") => Promise<void>
+  finish: (
+    id: string,
+    status: "completed" | "failed",
+    context: StudioSettlement,
+  ) => Promise<void>
+  report?: (event: StudioRunTelemetry & { attemptId?: string }) => void
   serialize: <T>(work: () => Promise<T>) => Promise<T>
 }
 /** Private hosted route; authentication precedes every native storage/model operation. */
@@ -301,90 +312,125 @@ function streaming(
   attemptId?: string,
   toolGrant?: { body: string; assertion: string },
 ) {
-  const abort = new AbortController(),
-    timer = setTimeout(() => abort.abort(), 90000)
-  const onAbort = () => abort.abort()
-  signal.addEventListener("abort", onAbort, { once: true })
+  const cancelled = new AbortController()
+  const budget = new StudioRunBudget(
+    AbortSignal.any([signal, cancelled.signal]),
+    (event) => {
+      config.report?.({ ...event, ...(attemptId ? { attemptId } : {}) })
+    },
+  )
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const emit = (event: StudioAgentEvent) => {
-        if (!abort.signal.aborted)
+        if (!budget.signal.aborted)
           controller.enqueue(
             new TextEncoder().encode(JSON.stringify(event) + "\n"),
           )
       }
-      void streamStudioAgent({
-        frozen,
-        project,
-        message,
-        model: config.model,
-        emit,
-        signal: abort.signal,
-        assetCall:
-          toolGrant && config.adminUrl
-            ? async (action, input) => {
-                const response = await fetch(
-                  new URL("/api/studio/tools", config.adminUrl),
-                  {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ grant: toolGrant, action, input }),
-                    redirect: "error",
-                    signal: abort.signal,
-                  },
-                )
-                if (!response.ok) await rejectStudioAssetTool(action, response)
-                const result = JSON.parse(await readStudioBytes(response)) as {
-                  result: unknown
-                }
-                if (action === "asset-upload") {
-                  const transfer = result.result as { path: string }
-                  if (
-                    !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(
-                      transfer.path,
-                    )
-                  )
-                    throw new StudioBoundaryError("Invalid transfer path")
-                  return {
-                    ...transfer,
-                    url: new URL(transfer.path, config.adminUrl).toString(),
-                  }
-                }
-                return result.result
-              }
-            : undefined,
-      })
-        .then(async () => {
-          if (attemptId) await config.finish(attemptId, "completed")
-          emit({ type: "done" })
-        })
-        .catch(async () => {
+      void (async () => {
+        let failure: unknown
+        let failed = false
+        try {
+          await budget.run(() =>
+            streamStudioAgent({
+              frozen,
+              project,
+              message,
+              model: config.model,
+              emit,
+              signal: budget.signal,
+              budget,
+              assetCall:
+                toolGrant && config.adminUrl
+                  ? async (action, input) => {
+                      const response = await fetch(
+                        new URL("/api/studio/tools", config.adminUrl),
+                        {
+                          method: "POST",
+                          headers: { "content-type": "application/json" },
+                          body: JSON.stringify({
+                            grant: toolGrant,
+                            action,
+                            input,
+                          }),
+                          redirect: "error",
+                          signal: budget.signal,
+                        },
+                      )
+                      if (!response.ok)
+                        await rejectStudioAssetTool(action, response)
+                      const result = JSON.parse(
+                        await readStudioBytes(response),
+                      ) as {
+                        result: unknown
+                      }
+                      if (action === "asset-upload") {
+                        const transfer = result.result as { path: string }
+                        if (
+                          !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(
+                            transfer.path,
+                          )
+                        )
+                          throw new StudioBoundaryError("Invalid transfer path")
+                        return {
+                          ...transfer,
+                          url: new URL(
+                            transfer.path,
+                            config.adminUrl,
+                          ).toString(),
+                        }
+                      }
+                      return result.result
+                    }
+                  : undefined,
+            }),
+          )
+        } catch (error) {
+          failed = true
+          failure = budget.reason ?? error
+        }
+        try {
           if (attemptId)
-            await config.finish(attemptId, "failed").catch(() => {})
-          if (!signal.aborted)
+            await budget.settle((context) =>
+              config.finish(
+                attemptId,
+                failed ? "failed" : "completed",
+                context,
+              ),
+            )
+        } catch (error) {
+          // A timed-out terminal write is ambiguous. Never retry it as failed.
+          failed = true
+          failure = error
+        }
+        try {
+          if (!failed) emit({ type: "done" })
+          else if (!signal.aborted && !cancelled.signal.aborted)
             controller.enqueue(
               new TextEncoder().encode(
                 JSON.stringify({
                   type: "error",
                   message:
-                    "Studio generation failed. No proposed changes were applied.",
+                    failure instanceof StudioToolProgressError ||
+                    failure instanceof StudioRunDeadlineError
+                      ? failure.message
+                      : "Studio generation failed. No proposed changes were applied.",
                 }) + "\n",
               ),
             )
-        })
-        .finally(() => {
-          clearTimeout(timer)
-          signal.removeEventListener("abort", onAbort)
+        } finally {
+          budget.close()
           try {
             controller.close()
           } catch {
             /* cancelled reader */
           }
-        })
+        }
+      })()
     },
     cancel() {
-      abort.abort()
-      clearTimeout(timer)
+      cancelled.abort()
+      budget.close()
     },
   })
   return new Response(stream, {

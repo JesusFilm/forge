@@ -4,6 +4,12 @@ import { studioIdSchema, studioApplySchema, studioProjectSchema } from "./index"
 
 export const STUDIO_AGENT_ID = "studio-authoring"
 export const STUDIO_BLOCK_ID = "studio-authoring-voice"
+export const STUDIO_AGENT_LIMITS = Object.freeze({
+  runMs: 180_000,
+  stepMs: 90_000,
+  persistenceMs: 5_000,
+  managerMs: 190_000,
+})
 export const studioInstructionSelectionSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("active") }).strict(),
   z

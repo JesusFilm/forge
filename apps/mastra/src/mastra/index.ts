@@ -1,4 +1,7 @@
-import { serializeStudioInstructions } from "../services/studio-authoring/execution"
+import {
+  serializeStudioInstructions,
+  finishStudioExecution,
+} from "../services/studio-authoring/execution"
 import { Pool } from "pg"
 import { createStudioRuntime } from "../services/studio-authoring/runtime"
 import { mkdirSync } from "node:fs"
@@ -1013,7 +1016,11 @@ if (env.NODE_ENV === "production") {
 let studioRuntime: ReturnType<typeof createStudioRuntime> | undefined
 function getStudioRuntime() {
   if (!studioRuntime) {
-    const pool = new Pool({ connectionString: getMastraDatabaseUrl(), max: 2 })
+    const pool = new Pool({
+      connectionString: getMastraDatabaseUrl(),
+      max: 2,
+      connectionTimeoutMillis: 5000,
+    })
     // Authoritative native instructions are never handed to the generic Editor.
     // Same Postgres provider/database, separate native schema; no body copy/fallback.
     const studioStorage = new PostgresStore({
@@ -1034,12 +1041,10 @@ function getStudioRuntime() {
         )
         return result.rowCount === 1
       },
-      finish: async (id, status) => {
-        await pool.query(
-          "UPDATE studio_agent_execution SET status=$2 WHERE id=$1",
-          [id, status],
-        )
-      },
+      finish: (id, status, context) =>
+        finishStudioExecution(pool, id, status, context),
+      report: (event) =>
+        mastra.getLogger().info("Studio native run timing", event),
       serialize: (work) => serializeStudioInstructions(pool, work),
     })
   }

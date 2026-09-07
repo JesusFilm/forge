@@ -1,0 +1,35 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+ ❯ src/services/studio-authoring/runtime.db.test.ts (1 test | 1 failed) 868ms
+   × two native HTTP runtimes execute pinned bytes once despite active changes and reconstruction 866ms
+     → expected '{"type":"error","message":"Studio gen…' to contain 'Studio tool call was incomplete or ma…'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/runtime.db.test.ts > two native HTTP runtimes execute pinned bytes once despite active changes and reconstruction
+AssertionError: expected '{"type":"error","message":"Studio gen…' to contain 'Studio tool call was incomplete or ma…'
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Studio tool call was incomplete or malformed[39m
+[31m+ {"type":"error","message":"Studio generation failed. No proposed changes were applied."}[39m
+[31m+[39m
+
+ ❯ src/services/studio-authoring/runtime.db.test.ts:365:29
+    363|       const stalledResponse = await call(stalledRuntime, stalledRun)
+    364|       const stalledEvents = await stalledResponse.text()
+    365|       expect(stalledEvents).toContain("Studio tool call was incomplete…
+       |                             ^
+    366|       expect(stalledEvents).not.toContain('"type":"done"')
+    367|       expect(stalledCalls).toBe(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  07:20:06
+   Duration  2.83s (transform 320ms, setup 0ms, collect 1.49s, tests 868ms, environment 0ms, prepare 104ms)
+

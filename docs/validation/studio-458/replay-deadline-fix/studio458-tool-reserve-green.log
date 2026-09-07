@@ -1,0 +1,12 @@
+(node:1611814) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+ ✓ src/services/studio-authoring/run-budget.test.ts (6 tests) 18ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  07:32:25
+   Duration  617ms (transform 127ms, setup 0ms, collect 272ms, tests 18ms, environment 0ms, prepare 81ms)
+

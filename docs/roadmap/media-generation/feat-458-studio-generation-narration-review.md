@@ -64,3 +64,5 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 ## Implementation checkpoint
 
 Reviewed implementation and verification are recorded in `docs/validation/studio-458/HANDOFF.md` and `docs/solutions/security-issues/studio-approved-production-and-retained-results.md`. Status remains in progress: paid native-hosted creative quality is partial/failing, and actual ElevenLabs narration/music/voice proof awaits verified billing/slot facts and explicit authorization. Deterministic orchestration evidence does not complete those acceptance requirements.
+
+Closed paired model comparison and the independently reviewed replay/deadline correction are recorded in `docs/validation/studio-458/model-comparison-1/README.md` and `docs/validation/studio-458/replay-deadline-fix/README.md`. Fourteen claims were consumed (one ambiguous); the remaining slots were not run. No additional provider execution is authorized.

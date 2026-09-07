@@ -1,0 +1,14 @@
+..F
+======================================================================
+FAIL: test_same_run_replay_is_rejected_before_a_second_reservation_after_restart (test_dispatch_guard_v2.ReplayFenceTests.test_same_run_replay_is_rejected_before_a_second_reservation_after_restart)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.codex/worktrees/8b33/forge/docs/validation/studio-458/replay-deadline-fix/test_dispatch_guard_v2.py", line 29, in test_same_run_replay_is_rejected_before_a_second_reservation_after_restart
+    with self.assertRaises(Rejected):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+AssertionError: Rejected not raised
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.085s
+
+FAILED (failures=1)

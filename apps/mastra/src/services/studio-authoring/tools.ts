@@ -8,8 +8,13 @@ import {
 } from "@forge/studio-contracts/sources"
 import { studioAssetReferenceSchema } from "@forge/studio-contracts"
 export function studioAssetTools(
-  call: (action: string, input: unknown) => Promise<unknown>,
+  request: (action: string, input: unknown) => Promise<unknown>,
+  signal?: AbortSignal,
 ) {
+  const call = (action: string, input: unknown) => {
+    signal?.throwIfAborted()
+    return request(action, input)
+  }
   return {
     discoverAssets: createTool({
       id: "discoverAssets",
@@ -83,7 +88,9 @@ export function studioAssetTools(
           method: "PUT",
           body: bytes,
           redirect: "error",
-          signal: AbortSignal.timeout(15000),
+          signal: signal
+            ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
+            : AbortSignal.timeout(15000),
         })
         if (!response.ok)
           throw new StudioBoundaryError("Component registration failed")

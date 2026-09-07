@@ -1,0 +1,78 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+stderr | src/services/studio-authoring/agent.test.ts > sends a bounded output allowance and does not retry an uncertain provider error
+Error in agent stream {
+  error: Error: Unexpected replay; network is disabled
+      at fetch [90m(/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra/[39msrc/services/studio-authoring/agent.test.ts:24:28[90m)[39m
+      at postToApi (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@ai-sdk+provider-utils@4.0.27_zod@4.3.6/node_modules/[4m@ai-sdk/provider-utils[24m/src/post-to-api.ts:98:28)
+      at postJsonToApi (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@ai-sdk+provider-utils@4.0.27_zod@4.3.6/node_modules/[4m@ai-sdk/provider-utils[24m/src/post-to-api.ts:31:3)
+      at OpenAIChatLanguageModel.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@ai-sdk+openai@3.0.63_zod@4.3.6/node_modules/[4m@ai-sdk/openai[24m/src/chat/openai-chat-language-model.ts:417:56)
+      at AISDKV6LanguageModel.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/llm/model/aisdk/v6/model.ts:80:12)
+      at default.retries (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:237:20)
+      at Module.pRetry (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/p-retry@7.1.1/node_modules/[4mp-retry[24m/index.js:197:19)
+      at createStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:219:16)
+      at Object.start (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/base/input.ts:67:26),
+  runId: [32m'b91bcf64-8ea8-48f4-afe9-c51f6260f283'[39m,
+  provider: [32m'openai.chat'[39m,
+  modelId: [32m'openai/gpt-5.4'[39m
+}
+
+stderr | src/services/studio-authoring/agent.test.ts
+Upstream LLM API error {
+  error: APICallError [AI_APICallError]: Uncertain provider response
+      at doStream [90m(/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra/[39msrc/services/studio-authoring/agent.test.ts:86:13[90m)[39m
+      at MockLanguageModelV3.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/ai@6.0.182_zod@4.3.6/node_modules/[4mai[24m/src/test/mock-language-model-v3.ts:61:16)
+      at AISDKV6LanguageModel.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/llm/model/aisdk/v6/model.ts:80:30)
+      at default.retries (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:225:43)
+      at Module.pRetry (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/p-retry@7.1.1/node_modules/[4mp-retry[24m/index.js:197:25)
+      at createStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:219:29)
+      at Object.start (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/base/input.ts:67:26) {
+    cause: [90mundefined[39m,
+    url: [32m'https://provider.invalid/generate'[39m,
+    requestBodyValues: {},
+    statusCode: [33m503[39m,
+    responseHeaders: [90mundefined[39m,
+    responseBody: [90mundefined[39m,
+    isRetryable: [33mtrue[39m,
+    data: [90mundefined[39m,
+    [32mSymbol(vercel.ai.error)[39m: [33mtrue[39m,
+    [32mSymbol(vercel.ai.error.AI_APICallError)[39m: [33mtrue[39m
+  },
+  runId: [32m'dffd3250-50a0-4cfc-8139-028c9249cee7'[39m,
+  provider: [32m'mock-provider'[39m,
+  modelId: [32m'mock-model-id'[39m
+}
+
+ ❯ src/services/studio-authoring/agent.test.ts (2 tests | 1 failed) 380ms
+   × does not replay a retained truncated tool call through the native SDK loop 278ms
+     → expected [ …(3) ] to have a length of 2 but got 3
+   ✓ sends a bounded output allowance and does not retry an uncertain provider error 100ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/agent.test.ts > does not replay a retained truncated tool call through the native SDK loop
+AssertionError: expected [ …(3) ] to have a length of 2 but got 3
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 2[39m
+[31m+ 3[39m
+
+ ❯ src/services/studio-authoring/agent.test.ts:46:20
+     44|     },
+     45|   }).catch((error: unknown) => error)
+     46|   expect(requests).toHaveLength(2)
+       |                    ^
+     47|   expect(failure).toMatchObject({
+     48|     message:
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  07:17:40
+   Duration  1.81s (transform 143ms, setup 0ms, collect 1.06s, tests 380ms, environment 0ms, prepare 86ms)
+

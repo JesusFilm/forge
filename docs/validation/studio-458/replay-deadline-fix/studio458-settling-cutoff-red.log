@@ -1,0 +1,45 @@
+(node:1614992) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+ ❯ src/services/studio-authoring/run-budget.test.ts (7 tests | 1 failed) 27ms
+   ✓ uses one run allowance across steps and rejects dispatch at the persistence reserve 7ms
+   ✓ caps a step at ninety seconds and preserves earlier caller cancellation 3ms
+   ✓ shortens a late step instead of resetting the whole-run clock 1ms
+   ✓ bounds terminal persistence even if its implementation ignores cancellation 2ms
+   ✓ reserves terminal time when an inter-step tool call never resolves 3ms
+   ✓ keeps caller as first abort source when the generation cutoff occurs during persistence 2ms
+   × allows successful terminal recording across the generation cutoff without aborting success 9ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/run-budget.test.ts > allows successful terminal recording across the generation cutoff without aborting success
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/services/studio-authoring/run-budget.test.ts:152:33
+    150|   await vi.advanceTimersByTimeAsync(2000)
+    151|   expect(await recording).toBe("recorded")
+    152|   expect(budget.signal.aborted).toBe(false)
+       |                                 ^
+    153|   expect(budget.remainingMs()).toBe(4000)
+    154|   budget.close()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  07:33:47
+   Duration  626ms (transform 132ms, setup 0ms, collect 283ms, tests 27ms, environment 0ms, prepare 83ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/run-budget.test.ts
