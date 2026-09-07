@@ -1214,13 +1214,14 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 
 export function assertTypesenseCredentialsDisjoint(input: {
   searchKey?: string
+  legacyKey?: string
   operatorKey?: string
 }): void {
-  const searchKey = input.searchKey?.trim()
+  const effectiveSearchKey = (input.searchKey ?? input.legacyKey)?.trim()
   const operatorKey = input.operatorKey?.trim()
-  if (searchKey && operatorKey && searchKey === operatorKey) {
+  if (effectiveSearchKey && operatorKey && effectiveSearchKey === operatorKey) {
     throw new Error(
-      "TYPESENSE_SEARCH_API_KEY and TYPESENSE_OPERATOR_API_KEY must be disjoint",
+      "The effective Typesense search credential and TYPESENSE_OPERATOR_API_KEY must be disjoint",
     )
   }
 }
@@ -1245,6 +1246,7 @@ assertBearerCsvsDisjoint({
 })
 assertTypesenseCredentialsDisjoint({
   searchKey: env.TYPESENSE_SEARCH_API_KEY,
+  legacyKey: env.TYPESENSE_API_KEY,
   operatorKey: env.TYPESENSE_OPERATOR_API_KEY,
 })
 

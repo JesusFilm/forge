@@ -631,6 +631,22 @@ describe("env", () => {
       ).toThrow(/must be disjoint/)
     })
 
+    it("keeps the legacy search fallback disjoint from the operator credential", () => {
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          legacyKey: "shared",
+          operatorKey: "shared",
+        }),
+      ).toThrow(/must be disjoint/)
+      expect(() =>
+        assertTypesenseCredentialsDisjoint({
+          searchKey: "search-only",
+          legacyKey: "operator-only",
+          operatorKey: "operator-only",
+        }),
+      ).not.toThrow()
+    })
+
     it("keeps candidate evaluation credentials disjoint from sampling", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
@@ -697,6 +713,8 @@ describe("env", () => {
       expect(source).not.toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
       // Positive control: the deprecation warn exists.
       expect(source).toMatch(/event=search_api_keys_env_var_retired/)
+      expect(source).toMatch(/assertTypesenseCredentialsDisjoint\s*\(\s*\{/)
+      expect(source).toMatch(/legacyKey:\s*env\.TYPESENSE_API_KEY/)
     })
 
     it("does not expose removed Admin search-eval harness env keys", async () => {

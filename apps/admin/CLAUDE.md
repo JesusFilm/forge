@@ -1203,7 +1203,10 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   waits for active evaluation leases but remains compatible with an already
   qualified serving candidate that shares the same transcript collection,
   embedding contract, and chunking version; a routine projection-revision
-  advance must not require requalification or promotion.
+  advance must not require requalification or promotion. When the legacy
+  `TYPESENSE_API_KEY` is the effective search-key fallback, it must also remain
+  distinct from `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so
+  the public reader cannot silently inherit publication and deletion authority.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
