@@ -32,7 +32,8 @@ describe("dashboard production snapshot validation", () => {
 
 describe("dashboard production target", () => {
   const env = {
-    JFRAG_POSTGRESQL_DB_URL: "postgresql://reader:redacted@prod.example/rag",
+    JFRAG_POSTGRESQL_READONLY_DB_URL:
+      "postgresql://reader:redacted@prod.example/rag",
     JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
   }
 

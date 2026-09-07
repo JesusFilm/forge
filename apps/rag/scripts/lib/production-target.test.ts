@@ -7,7 +7,7 @@ describe("production maintenance target", () => {
     expect(() =>
       installProductionEnvironment(
         {
-          JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@prod.example/rag",
+          JFRAG_POSTGRESQL_READONLY_DB_URL: "postgresql://u:p@prod.example/rag",
           JFRAG_OPENROUTER_API_KEY: "key",
         },
         false,
@@ -17,7 +17,7 @@ describe("production maintenance target", () => {
 
   it("rejects host mismatch before installing DATABASE_URL", () => {
     const env = {
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://u:p@wrong.example/rag",
+      JFRAG_POSTGRESQL_READONLY_DB_URL: "postgresql://u:p@wrong.example/rag",
       JFRAG_OPENROUTER_API_KEY: "key",
       JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }

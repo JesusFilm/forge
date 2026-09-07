@@ -6,7 +6,8 @@ import {
 } from "../scripts/eval-production.js"
 
 const production = {
-  JFRAG_POSTGRESQL_DB_URL: "postgresql://reader:secret@prod.example/rag",
+  JFRAG_POSTGRESQL_READONLY_DB_URL:
+    "postgresql://reader:secret@prod.example/rag",
   JFRAG_OPENROUTER_API_KEY: "provider-secret",
   JFRAG_OPENROUTER_EMBED_MODEL_ID: "model",
   JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
@@ -21,17 +22,19 @@ describe("production eval target", () => {
         environment,
       ),
     ).toEqual(["--case-set", "current"])
-    expect(environment.DATABASE_URL).toBe(production.JFRAG_POSTGRESQL_DB_URL)
+    expect(environment.DATABASE_URL).toBe(
+      production.JFRAG_POSTGRESQL_READONLY_DB_URL,
+    )
   })
 
   it("rejects generic DATABASE_URL and every other target", () => {
     expect(() =>
       installProductionReadEnvironment(["--target", "production-read"], {
-        DATABASE_URL: production.JFRAG_POSTGRESQL_DB_URL,
+        DATABASE_URL: production.JFRAG_POSTGRESQL_READONLY_DB_URL,
         OPENROUTER_API_KEY: "generic",
         JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
       }),
-    ).toThrow(/JFRAG_POSTGRESQL_DB_URL/)
+    ).toThrow(/JFRAG_POSTGRESQL_READONLY_DB_URL/)
     expect(() =>
       installProductionReadEnvironment(["--target", "production-write"], {
         ...production,

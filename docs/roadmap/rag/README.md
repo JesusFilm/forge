@@ -8,11 +8,11 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (September 4, 2026)
+## Status (September 7, 2026)
 
-- **Total tickets:** 17
+- **Total tickets:** 18
 - **Complete:** 13
-- **In progress:** 0
+- **In progress:** 1
 - **Not started:** 4
 - **Blocked:** 0
 
@@ -37,6 +37,7 @@ database into Admin.
 | [feat-445](feat-445-rag-registry-policy-test-consolidation.md) | —                                                             | Make registry policy tests execute production filtering     | not-started | —                                                                                                            |
 | [feat-446](feat-446-rag-typed-operational-errors.md)           | —                                                             | Complete typed operational errors across RAG                | not-started | —                                                                                                            |
 | [feat-452](feat-452-rag-migration-recovery.md)                 | [#130](https://github.com/JesusFilm/jesusfilm-rag/issues/130) | Recover omitted RAG migration contracts                     | complete    | [#2164](https://github.com/JesusFilm/forge/pull/2164)                                                        |
+| [feat-460](feat-460-rag-production-readonly-principal.md)      | —                                                             | Provision a least-privilege RAG production reader           | in-progress | —                                                                                                            |
 
 ## Programme invariants
 

@@ -20,7 +20,7 @@ export function requireProductionDashboardTarget(
     throw new Error(
       "dashboard snapshot refused: --target production-read is required",
     )
-  const raw = env.JFRAG_POSTGRESQL_DB_URL
+  const raw = env.JFRAG_POSTGRESQL_READONLY_DB_URL
   const expected = env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
   if (!raw || !expected)
     throw new Error(

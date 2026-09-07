@@ -179,7 +179,9 @@ export function assertEnvironmentForTarget(
   if (target === "smoke") return parseSmokeEnv(input)
   if (target === "dashboard") return resolveDashboardDatabase(input)
   if (target === "production-read" || target === "eval") {
-    return resolveProductionEnv(input)
+    return resolveProductionEnv(input, {
+      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+    })
   }
   if (target === "production-write") {
     return resolveProductionEnv(input, {
@@ -223,6 +225,12 @@ export function resolveProductionEnv(
   input: EnvironmentInput,
   options: { write?: boolean; expectHost?: string } = {},
 ): ProductionEnv {
+  if (!options.write && !options.expectHost?.trim())
+    throw environmentConfigurationError(
+      "production_read_host_required",
+      "production read refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
+      "production-read",
+    )
   if (options.write && input.JFRAG_ALLOW_PROD_WRITE !== "1") {
     throw environmentConfigurationError(
       "production_write_opt_in_required",
@@ -238,7 +246,10 @@ export function resolveProductionEnv(
     )
   }
 
-  const databaseUrl = input.JFRAG_POSTGRESQL_DB_URL?.trim()
+  const databaseVariable = options.write
+    ? "JFRAG_POSTGRESQL_DB_URL"
+    : "JFRAG_POSTGRESQL_READONLY_DB_URL"
+  const databaseUrl = input[databaseVariable]?.trim()
   const openrouterKey = input.JFRAG_OPENROUTER_API_KEY?.trim()
   const embedModel =
     input.JFRAG_OPENROUTER_EMBED_MODEL_ID?.trim() || DEFAULT_EMBED_MODEL_ID
@@ -246,7 +257,7 @@ export function resolveProductionEnv(
   if (!databaseUrl) {
     throw environmentConfigurationError(
       "production_database_required",
-      "JFRAG_POSTGRESQL_DB_URL is required for production",
+      `${databaseVariable} is required for production`,
       options.write ? "production-write" : "production-read",
     )
   }
@@ -280,18 +291,18 @@ export function resolveProductionEnv(
 
 export type DashboardDatabase = {
   url: string
-  source: "JFRAG_POSTGRESQL_DB_URL" | "DATABASE_URL"
+  source: "JFRAG_POSTGRESQL_READONLY_DB_URL" | "DATABASE_URL"
 }
 
 export function resolveDashboardDatabase(
   input: EnvironmentInput,
   options: { allowDev?: boolean } = {},
 ): DashboardDatabase {
-  const namespaced = input.JFRAG_POSTGRESQL_DB_URL?.trim()
+  const namespaced = input.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
   if (namespaced) {
     return {
       url: postgresUrl.parse(namespaced),
-      source: "JFRAG_POSTGRESQL_DB_URL",
+      source: "JFRAG_POSTGRESQL_READONLY_DB_URL",
     }
   }
 
@@ -299,7 +310,7 @@ export function resolveDashboardDatabase(
   if (!generic) {
     throw environmentConfigurationError(
       "dashboard_database_required",
-      "JFRAG_POSTGRESQL_DB_URL is required for a dashboard read",
+      "JFRAG_POSTGRESQL_READONLY_DB_URL is required for a dashboard read",
       "dashboard",
     )
   }
@@ -311,17 +322,4 @@ export function resolveDashboardDatabase(
     )
   }
   return { url: postgresUrl.parse(generic), source: "DATABASE_URL" }
-}
-
-export function redactDatabaseUrl(databaseUrl: string): string {
-  try {
-    const parsed = new URL(databaseUrl)
-    const user = parsed.username || "?"
-    const host = parsed.hostname || "?"
-    const port = parsed.port ? `:${parsed.port}` : ""
-    const database = parsed.pathname.replace(/^\//, "") || "?"
-    return `${parsed.protocol}//${user}:***@${host}${port}/${database}`
-  } catch {
-    return "(unparseable)"
-  }
 }
