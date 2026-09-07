@@ -227,6 +227,11 @@ command, and reject any configured legacy reader key that equals the operator
 key even when a newer search key takes precedence. Retaining a legacy combined
 key defeats least-privilege deployment because old benchmark and fallback
 paths can still receive it even when runtime readers are configured correctly.
+Production web startup must also reject an injected operator key: disjoint
+values prevent confused use, but only process-level separation keeps
+collection-write and deletion authority out of the public traffic service. A
+dedicated worker may hold the key while publication remains disabled so the
+rollout control stays independent from credential provisioning.
 
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after

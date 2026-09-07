@@ -145,11 +145,21 @@ export class WorkflowStartupConfigurationError extends Error {
 }
 
 export function assertWatchSearchTranscriptPublicationRuntime(): void {
-  if (!resolveWatchSearchTranscriptPublicationEnabled()) return
+  const publicationEnabled = resolveWatchSearchTranscriptPublicationEnabled()
+  const isDedicatedPostgresWorker =
+    env.WORKFLOW_RUNNER_ENABLED === "true" &&
+    env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
   if (
-    env.WORKFLOW_RUNNER_ENABLED !== "true" ||
-    env.WORKFLOW_TARGET_WORLD !== "@workflow/world-postgres"
+    env.NODE_ENV === "production" &&
+    env.TYPESENSE_OPERATOR_API_KEY?.trim() &&
+    !isDedicatedPostgresWorker
   ) {
+    throw new WorkflowStartupConfigurationError(
+      "TYPESENSE_OPERATOR_API_KEY is restricted to the dedicated Postgres worker in production",
+    )
+  }
+  if (!publicationEnabled) return
+  if (!isDedicatedPostgresWorker) {
     throw new WorkflowStartupConfigurationError(
       "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires WORKFLOW_RUNNER_ENABLED=true and WORKFLOW_TARGET_WORLD=@workflow/world-postgres",
     )

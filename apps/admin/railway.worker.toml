@@ -5,6 +5,9 @@
 # Set WORKFLOW_RUNNER_ENABLED=true on this worker service only. Leave it unset
 # or false on admin web replicas so web scaling does not also scale background
 # job runners.
+# Keep WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=false until incremental
+# publication is ready to roll out. TYPESENSE_OPERATOR_API_KEY belongs on this
+# worker service only and must never be shared with admin web replicas.
 #
 # Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
 # service variables are present during Railpack/mise build setup, before

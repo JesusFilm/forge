@@ -1220,7 +1220,10 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so no reader or
   benchmark path can silently inherit publication and deletion authority.
   Both current-index and candidate-index publication commands require the
-  operator key; the legacy key is never publication authority.
+  operator key; the legacy key is never publication authority. Production
+  Admin web startup rejects an injected operator key; the credential is valid
+  only on the dedicated Postgres worker, even while incremental publication is
+  still disabled for a staged rollout.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

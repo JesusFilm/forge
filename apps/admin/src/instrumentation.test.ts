@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
   env: {
+    NODE_ENV: "test" as "test" | "development" | "production",
     NEXT_RUNTIME: "nodejs" as "nodejs" | "edge" | undefined,
     WORKFLOW_RUNNER_ENABLED: "false" as "true" | "false" | undefined,
     WORKFLOW_TARGET_WORLD: undefined as
@@ -126,6 +127,7 @@ describe("workflow instrumentation", () => {
     prewarmWatchSearchQueryEmbeddings.mockResolvedValue(undefined)
     clearWorkflowStartupState()
     process.env.NEXT_RUNTIME = "nodejs"
+    mockEnv.env.NODE_ENV = "test"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS = 12
@@ -184,6 +186,36 @@ describe("workflow instrumentation", () => {
       ensureWatchSearchTranscriptPublicationWorkerStarted,
     ).not.toHaveBeenCalled()
     expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("refuses the Typesense operator credential on production web replicas", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toThrow(
+      new WorkflowStartupConfigurationError(
+        "TYPESENSE_OPERATOR_API_KEY is restricted to the dedicated Postgres worker in production",
+      ),
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("allows a staged operator credential on the production worker while publication remains disabled", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
+    expect(worldStart).toHaveBeenCalledTimes(1)
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledWith(prisma)
   })
 
   it("fails before workflow side effects when transcript publication lacks Typesense configuration", async () => {
