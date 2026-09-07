@@ -61,7 +61,7 @@ direct bucket variables can use the same command with `RAILWAY_S3_*` variables.
 ```bash
 DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
 TYPESENSE_HOST=http://127.0.0.1:8108 \
-TYPESENSE_API_KEY=forge-typesense-local-key \
+TYPESENSE_OPERATOR_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search
 ```
 
@@ -100,7 +100,7 @@ model dimensions, or the transcript schema need to change:
 ```bash
 DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
 TYPESENSE_HOST=http://127.0.0.1:8108 \
-TYPESENSE_API_KEY=forge-typesense-local-key \
+TYPESENSE_OPERATOR_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search -- \
   --rebuild-transcripts
 ```

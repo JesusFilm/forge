@@ -45,9 +45,11 @@ export async function runGuardedTypesenseWatchSearchPublication<T>(
 async function main(argv: readonly string[] = process.argv.slice(2)) {
   const { transcriptStrategy } = parseTypesenseWatchSearchIndexArgs(argv)
   const host = process.env.TYPESENSE_HOST
-  const apiKey = process.env.TYPESENSE_API_KEY
+  const apiKey = process.env.TYPESENSE_OPERATOR_API_KEY
   if (!host || !apiKey) {
-    throw new Error("TYPESENSE_HOST and TYPESENSE_API_KEY are required")
+    throw new Error(
+      "TYPESENSE_HOST and TYPESENSE_OPERATOR_API_KEY are required",
+    )
   }
   const typesense = new TypesenseClient({
     host,

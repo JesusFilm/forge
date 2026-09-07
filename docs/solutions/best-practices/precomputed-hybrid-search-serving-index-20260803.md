@@ -221,7 +221,10 @@ qualification or promotion
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1157-1205`,
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
 Candidate runtime, comparison, and qualification require a dedicated search
-key, while publication and deletion use a separate operator key.
+key, while publication and deletion use a separate operator key. Enforce that
+boundary in every mutating entry point, including the current full-rebuild
+command; retaining a legacy combined key there defeats least-privilege
+deployment even when runtime readers are configured correctly.
 
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after

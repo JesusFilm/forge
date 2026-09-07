@@ -1208,6 +1208,8 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   `TYPESENSE_API_KEY` is the effective search-key fallback, it must also remain
   distinct from `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so
   the public reader cannot silently inherit publication and deletion authority.
+  Both current-index and candidate-index publication commands require the
+  operator key; the legacy key is never publication authority.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
