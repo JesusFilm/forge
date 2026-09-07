@@ -1193,7 +1193,12 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   vectors from PostgreSQL, upserts stable chunk document ids into the current
   transcript collection, independently reads the documents and normalized
   vectors back, removes stale ids, and atomically completes the event while
-  advancing one durable projection revision. Once an external mutation starts,
+  advancing one durable projection revision. Before the first mutation, it
+  reads the exact physical collection schema and requires the complete Watch
+  Search transcript field contract, including grouping/visibility facets and
+  the 1,536-dimension vector declaration; document readback alone cannot prove
+  that the real reader can query an incorrectly shaped collection. Once an
+  external mutation starts,
   any later definite validation or completion failure removes and verifies
   absence of the affected current and stale document ids under the same
   publication lock before the event is released for retry; an incomplete

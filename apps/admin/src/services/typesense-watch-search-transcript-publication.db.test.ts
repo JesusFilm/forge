@@ -978,6 +978,49 @@ suite("current transcript publication into Watch Search", () => {
     })
   })
 
+  it("refuses an active transcript collection whose schema cannot satisfy the real reader", async () => {
+    const incompatibleSchema = watchTranscriptCollectionSchema(
+      "incompatible-reader-contract",
+    )
+    incompatibleSchema.fields = incompatibleSchema.fields.map((field) =>
+      field.name === "canonicalVideoId" ? { ...field, facet: false } : field,
+    )
+    await typesense.createCollection(incompatibleSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      incompatibleSchema.name,
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "schema-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/canonicalVideoId.*reader contract/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true, completedAt: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING", completedAt: null })
+    await expect(
+      typesense.getDocument(
+        incompatibleSchema.name,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
   it("does not let one event certify a populated transcript collection without legacy projection evidence", async () => {
     const preexistingDocument = {
       id: "preexisting-transcript-document",

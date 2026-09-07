@@ -289,6 +289,14 @@ cooperating publishers and rebuilds, but it cannot prevent an out-of-band
 Typesense operator from moving an alias during the external write. If the alias
 changed, leave the event pending and do not advance the projection revision.
 
+Document readback does not certify the collection schema. Before incremental
+publication mutates the frozen physical collection, fetch its schema and match
+the complete transcript field manifest, including `canonicalVideoId` and
+`publiclyVisible` facets plus the vector dimension. A collection can store and
+return an imported JSON document while still rejecting the real reader's
+grouping or filter query; completing the outbox event in that state makes the
+publication irrecoverable without operator repair.
+
 Do not let the first incremental event invent the compatibility identity of an
 already populated active collection. An empty collection can bootstrap from
 the event, and a lease-fenced retry can do so when every existing document is
