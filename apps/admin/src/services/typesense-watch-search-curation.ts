@@ -6,6 +6,9 @@ import {
   typesenseWatchLocaleCodes,
   type TypesenseWatchLexicalDocument,
 } from "./typesense-watch-search-lexical"
+import { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
+
+export { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
 
 export const TYPESENSE_WATCH_SEARCH_CURATION_TAG = "watch-search-editorial"
 
@@ -33,10 +36,6 @@ export class WatchSearchCurationProjectionError extends Error {
     super(message)
     this.name = "WatchSearchCurationProjectionError"
   }
-}
-
-export function normalizeWatchSearchCurationQuery(query: string): string {
-  return query.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase()
 }
 
 export async function loadWatchSearchCurations(
