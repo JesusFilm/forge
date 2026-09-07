@@ -3,7 +3,7 @@ id: "feat-462"
 title: "Studio Shorts replacement release verification"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-07"
 duration: 3
 depends_on:

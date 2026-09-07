@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "seconds": 72.307,
+  "network": "isolated namespace loopback only",
+  "cpuAffinity": [0, 1],
+  "configuration": "inert build-only values"
+}

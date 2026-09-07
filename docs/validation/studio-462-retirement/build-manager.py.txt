@@ -1,0 +1,12 @@
+import os,subprocess,time,json
+from pathlib import Path
+base=Path('/home/tataihono/.local/share/forge/studio-462-retirement')
+env={k:os.environ[k] for k in ['PATH','HOME'] if k in os.environ}
+env.update(TMPDIR=str(base/'tmp'),CI='1',NEXT_TELEMETRY_DISABLED='1',MUX_TOKEN_ID='inert-build-id',MUX_TOKEN_SECRET='inert-build-secret',OPENROUTER_API_KEY='inert-build-key',MANAGER_API_KEY='inert-build-manager-key',MANAGER_SESSION_SECRET='inert-build-manager-session-secret-000000',AUTH_ISSUER_URL='http://127.0.0.1:1',AUTH_MANAGER_CLIENT_ID='inert-client',ADMIN_GRAPHQL_URL='http://127.0.0.1:1/api/graphql',ADMIN_MANAGER_API_KEY='inert-build-admin-key')
+os.sched_setaffinity(0, sorted(os.sched_getaffinity(0))[:2])
+start=time.monotonic()
+with (base/'logs/manager-build.log').open('w') as out:
+ p=subprocess.run(['pnpm','--filter','@forge/manager','build'],env=env,stdout=out,stderr=subprocess.STDOUT)
+(base/'evidence/manager-build.json').write_text(json.dumps(dict(exit=p.returncode,seconds=round(time.monotonic()-start,3),network='isolated namespace loopback only',cpuAffinity=sorted(os.sched_getaffinity(0)),configuration='inert build-only values'),indent=2)+'\n')
+print('manager build exit',p.returncode,flush=True)
+raise SystemExit(p.returncode)

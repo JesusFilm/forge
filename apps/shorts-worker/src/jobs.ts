@@ -1,5 +1,4 @@
-// In-memory job registry + TWO independent bounded lanes keyed by workload
-// (prepare and render — devotional renders share render capacity). Worker state
+// In-memory devotional job registry and bounded render capacity. Worker state
 // is deliberately in-memory:
 // manager polls GET /jobs/{workerJobId} and treats 404 after a restart as a
 // lost job, resubmitting (bounded). Single replica only — see railway.toml.
@@ -19,8 +18,7 @@ export type JobRecord = {
   kind: JobKind
   /**
    * Logical job identity used for in-flight dedupe (see submit). Routes
-   * derive it from the request body's stable ids — `prepare:{assetId}` /
-   * `render:{assetId}:{propsHash}` / devotional output+input hash — deliberately
+   * derive it from the devotional output identity and input hash — deliberately
    * NOT the manager jobId, so
    * a re-launched workflow or operator retry for the same asset re-attaches
    * to the running job instead of double-rendering.
@@ -58,7 +56,6 @@ export type LaneConfig = {
 }
 
 export type CreateJobLanesOptions = {
-  prepare?: Partial<LaneConfig>
   render?: Partial<LaneConfig>
   /** Injectable clock (tests). Defaults to `() => new Date()`. */
   now?: () => Date
@@ -88,8 +85,7 @@ type Lane = {
 }
 
 export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
-  // Registry is shared across lanes (GET /jobs/{id} doesn't know the kind);
-  // execution capacity is per-lane so a long render never starves prepares.
+  // The retained devotional workload has one bounded render lane.
   const jobs = new Map<string, JobRecord>()
   const runningControllers = new Map<string, AbortController>()
   const now = options.now ?? (() => new Date())
@@ -122,11 +118,8 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
     }
   }
 
-  const prepareLane = lane("prepare", options.prepare)
-  const renderLane = lane("render", options.render)
+  const renderLane = lane("devotional-render", options.render)
   const lanes: Record<JobKind, Lane> = {
-    prepare: prepareLane,
-    render: renderLane,
     "devotional-render": renderLane,
   }
 

@@ -48,3 +48,7 @@ mutation until feat-460 supplies its catalog/render/approval checks.
 For Studio hosted instructions, OAuth MCP authority, or execution admission, read
 `docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
 root before changing those boundaries.
+
+Legacy Shorts authoring APIs and workflows are retired; `/dashboard/shorts` remains
+the Studio entry point. See CLAUDE.md “Retired Shorts authoring” before removing
+historical job types or shared worker/composition consumers.

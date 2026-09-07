@@ -74,7 +74,8 @@ export type SmartCropJobOptions = {
   force?: boolean
 }
 
-// Job options discriminator for Shorts Studio jobs (plan 2026-06-11-002).
+// Historical Shorts job options retained for generic read/filter and artifact
+// identity consumers. No active Shorts creation or execution path remains.
 // `assetId` is the per-short storage-key prefix ("{muxAssetId}-short-{suffix}",
 // plan decision 1) — shorts artifacts live under this id, NOT the job's
 // muxAssetId. `language.whisper` is the pre-resolved whisper ISO-639-1 code
@@ -167,45 +168,6 @@ export type SmartCropJobReport = {
   attempts?: SmartCropAttemptsSummary
   output?: SmartCropOutputSummary
   usage?: SmartCropUsageSummary
-}
-
-// ---------------------------------------------------------------------------
-// Shorts Studio metadata artifact entry (plan 2026-06-11-002 decision 2):
-// the `shorts` metadata artifact entry is the UI/API source of truth for the
-// shorts phase state machine — JobStatus stays closed. Single-writer rule:
-// workflows own all phase transitions; routes only set launching intents.
-// ---------------------------------------------------------------------------
-
-export type ShortsPhase =
-  | "queued"
-  | "preparing"
-  | "ready_for_review"
-  | "rendering"
-  | "mux_processing"
-  | "completed"
-  | "prepare_failed"
-  | "render_failed"
-
-export type ShortsJobReport = {
-  domain: "shorts"
-  phase: ShortsPhase
-  // transcription_skipped_no_audio | transcription_unsupported_language
-  // (worker-defined annotation literals — kept open as string for forward
-  // compatibility with new worker annotations).
-  annotation: string | null
-  hasAudio: boolean | null
-  clipDurationSec: number | null
-  captionsCount: number | null
-  // Current draft artifact version (0 = no draft written yet).
-  draftVersion: number
-  lastRenderedDraftVersion: number | null
-  lastRenderedPropsHash: string | null
-  output: {
-    muxAssetId: string | null
-    playbackId: string | null
-    ready: boolean
-  }
-  updatedAt: string
 }
 
 export type TranslationLanguageResult = {

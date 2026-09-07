@@ -15,7 +15,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prebundle": "tsx scripts/prebundle.ts",
-    "smoke": "tsx scripts/smoke.ts",
     "devo:video": "node scripts/render-devotional-video.mjs",
     "devo:detect-snippet": "node scripts/detect-and-trim-snippet.mjs",
     "studio:proof": "tsx scripts/studio-proof/smoke.ts"

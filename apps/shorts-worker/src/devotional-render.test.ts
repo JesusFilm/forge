@@ -16,7 +16,7 @@ import {
 } from "./devotional-render.js"
 import type { DevotionalWorkspaceTransfer } from "./devotional-transfer.js"
 import type { RunCommand } from "./ffmpeg.js"
-import type { RenderEngine } from "./render.js"
+import type { RenderEngine } from "./render-engine.js"
 import {
   createStorage,
   devotionalAttemptToken,

@@ -1,0 +1,35 @@
+{
+  "sourceCSS": {
+    "beforeBytes": 327084,
+    "afterBytes": 314152,
+    "beforeGzip": 47467,
+    "afterGzip": 45336
+  },
+  "survivingRules": 2219,
+  "beforeSurvivingRulesDigest": "bb6eb160e4762bf5005877d6728edb0bbc63d1090602f07919eda8b4c231ed22",
+  "afterSurvivingRulesDigest": "bb6eb160e4762bf5005877d6728edb0bbc63d1090602f07919eda8b4c231ed22",
+  "survivingRulesIdentical": true,
+  "unchanged": [
+    {
+      "path": "src/app/dashboard/shorts",
+      "unchanged": true
+    },
+    {
+      "path": "src/features/video-studio",
+      "unchanged": true
+    },
+    {
+      "path": "src/features/shell/manager-shell.tsx",
+      "unchanged": true
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "unchanged": true
+    },
+    {
+      "path": "src/app/global-shell.tsx",
+      "unchanged": true
+    }
+  ],
+  "qualification": "Dead selector removal and unreachable module retirement; no new rendering/hydration/media initialization. Source gzip is not network timing. Integrated release latency remains unproved."
+}

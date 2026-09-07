@@ -1,9 +1,7 @@
-// POST /jobs + GET /jobs/{workerJobId} — the shorts-worker HTTP contract
-// from docs/plans/2026-06-11-002-feat-manager-shorts-studio-plan.md.
+// Authenticated devotional job admission, status and cancellation.
 
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { z } from "zod"
-import { shortInputPropsSchema } from "@forge/shorts-compositions/schema"
 import { validateBearer, type ValidateBearerOptions } from "../auth.js"
 import { env } from "../config/env.js"
 import { createJobDeadline } from "../deadline.js"
@@ -21,13 +19,7 @@ import {
   UnsupportedContentTypeError,
 } from "../http.js"
 import type { JobQueue, JobRecord } from "../jobs.js"
-import { runPrepare } from "../prepare.js"
-import { runRender } from "../render.js"
-import {
-  parseAllowedHosts,
-  SourceUrlRejectedError,
-  validateSourceUrl,
-} from "../source-url.js"
+import { parseAllowedHosts } from "../source-url.js"
 import type { JobStatusBody } from "../types.js"
 
 // Matches storage's SAFE_KEY_PATTERN: ids become flat S3 key components.
@@ -37,36 +29,6 @@ const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 const PROPS_HASH_PATTERN = /^[a-f0-9]{64}$/
 
 const assetIdSchema = z.string().regex(SAFE_ID_PATTERN)
-
-const prepareJobSchema = z.looseObject({
-  kind: z.literal("prepare"),
-  /** Manager job id — log correlation only, deliberately NOT in the dedupe key. */
-  jobId: z.string().min(1).optional(),
-  assetId: assetIdSchema,
-  source: z.looseObject({ url: z.string().min(1) }),
-  clip: z
-    .looseObject({
-      startSec: z.number().min(0),
-      endSec: z.number(),
-    })
-    .refine((clip) => clip.endSec > clip.startSec, {
-      message: "clip.endSec must be greater than clip.startSec",
-    }),
-  transcription: z.looseObject({
-    language: z.string().min(1).nullable(),
-  }),
-})
-
-const renderJobSchema = z.looseObject({
-  kind: z.literal("render"),
-  jobId: z.string().min(1).optional(),
-  assetId: assetIdSchema,
-  propsHash: z.string().regex(PROPS_HASH_PATTERN),
-  draftVersion: z.number().int().min(0),
-  // Full composition props minus the server-injected clipUrl (plan decision
-  // 15) — the schema is the compositions package's, single source of truth.
-  props: shortInputPropsSchema.omit({ clipUrl: true }),
-})
 
 const devotionalRenderJobSchema = z.looseObject({
   kind: z.literal("devotional-render"),
@@ -84,8 +46,6 @@ const devotionalRenderJobSchema = z.looseObject({
 })
 
 export const jobRequestSchema = z.discriminatedUnion("kind", [
-  prepareJobSchema,
-  renderJobSchema,
   devotionalRenderJobSchema,
 ])
 
@@ -96,24 +56,16 @@ export type JobRequest = z.infer<typeof jobRequestSchema>
 // re-attaches to the running job. The manager client mirrors these keys
 // pre-submit (root CLAUDE.md: client mirrors server dedupe).
 export function jobDedupeKey(body: JobRequest): string {
-  if (body.kind === "prepare") {
-    return `prepare:${body.assetId}`
-  }
-  if (body.kind === "render") {
-    return `render:${body.assetId}:${body.propsHash}`
-  }
   return `devotional-render:${body.outputAssetId}:${body.inputHash}`
 }
 
 export type JobsRouteOptions = {
   queue: JobQueue
   auth?: ValidateBearerOptions
-  /** Drives the production-only loopback-http rejection on source.url (defaults to env). */
+  /** Controls production source and signed-transfer validation. */
   nodeEnv?: string
   allowedSourceHosts?: string[]
   devotionalWorkspaceAllowedOrigin?: string
-  runPrepareImpl?: typeof runPrepare
-  runRenderImpl?: typeof runRender
   runDevotionalRenderImpl?: typeof runDevotionalRender
 }
 
@@ -137,8 +89,6 @@ export function createJobsRoute({
     env.SHORTS_WORKER_ALLOWED_SOURCE_HOSTS,
   ),
   devotionalWorkspaceAllowedOrigin = env.DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN,
-  runPrepareImpl = runPrepare,
-  runRenderImpl = runRender,
   runDevotionalRenderImpl = runDevotionalRender,
 }: JobsRouteOptions) {
   function authorize(
@@ -186,28 +136,7 @@ export function createJobsRoute({
     }
     const body = parsed.data
 
-    // Pre-enqueue SSRF gate: reject a disallowed source with 400 instead of
-    // burning a lane slot. runPrepare re-validates before any spawn —
-    // defense in depth (plan decision 10).
-    if (body.kind === "prepare") {
-      try {
-        validateSourceUrl(
-          body.source.url,
-          allowedSourceHosts,
-          nodeEnv === "production",
-        )
-      } catch (error) {
-        if (error instanceof SourceUrlRejectedError) {
-          console.warn(
-            `[shorts-worker] event=job_rejected reason=source_rejected kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.assetId}`,
-          )
-          sendJson(response, 400, { error: "invalid_body" })
-          return
-        }
-        throw error
-      }
-    }
-    if (body.kind === "devotional-render" && body.workspaceTransfer) {
+    if (body.workspaceTransfer) {
       try {
         validateDevotionalWorkspaceTransfer(body.workspaceTransfer, {
           nodeEnv,
@@ -232,54 +161,27 @@ export function createJobsRoute({
     // must too. Budgets stay strictly below manager's poll ceilings (see
     // config/env.ts). On a dedupe hit the fresh deadline is discarded; the
     // running job keeps the deadline from its own enqueue.
-    const deadline = createJobDeadline(
-      body.kind === "prepare"
-        ? env.SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS
-        : env.SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS,
-    )
+    const deadline = createJobDeadline(env.SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS)
 
-    const outcome =
-      body.kind === "prepare"
-        ? queue.submit("prepare", dedupeKey, async ({ onProgress }) =>
-            runPrepareImpl({
-              assetId: body.assetId,
-              sourceUrl: body.source.url,
-              clip: { startSec: body.clip.startSec, endSec: body.clip.endSec },
-              language: body.transcription.language,
-              deps: { deadline, allowedHosts: allowedSourceHosts, nodeEnv },
-              onProgress,
-            }),
-          )
-        : body.kind === "render"
-          ? queue.submit("render", dedupeKey, async ({ onProgress }) =>
-              runRenderImpl({
-                assetId: body.assetId,
-                propsHash: body.propsHash,
-                draftVersion: body.draftVersion,
-                props: body.props,
-                deps: { deadline },
-                onProgress,
-              }),
-            )
-          : queue.submit(
-              "devotional-render",
-              dedupeKey,
-              async ({ onProgress, signal }) =>
-                runDevotionalRenderImpl({
-                  runId: body.runId,
-                  inputAssetId: body.inputAssetId,
-                  outputAssetId: body.outputAssetId,
-                  inputHash: body.inputHash,
-                  workspaceTransfer: body.workspaceTransfer,
-                  deps: {
-                    deadline,
-                    allowedHosts: allowedSourceHosts,
-                    nodeEnv,
-                    signal,
-                  },
-                  onProgress,
-                }),
-            )
+    const outcome = queue.submit(
+      "devotional-render",
+      dedupeKey,
+      async ({ onProgress, signal }) =>
+        runDevotionalRenderImpl({
+          runId: body.runId,
+          inputAssetId: body.inputAssetId,
+          outputAssetId: body.outputAssetId,
+          inputHash: body.inputHash,
+          workspaceTransfer: body.workspaceTransfer,
+          deps: {
+            deadline,
+            allowedHosts: allowedSourceHosts,
+            nodeEnv,
+            signal,
+          },
+          onProgress,
+        }),
+    )
 
     if (!outcome.ok) {
       console.warn(
@@ -291,11 +193,11 @@ export function createJobsRoute({
 
     if (outcome.deduped) {
       console.log(
-        `[shorts-worker] event=job_deduped workerJobId=${outcome.job.workerJobId} kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.kind === "devotional-render" ? body.outputAssetId : body.assetId} status=${outcome.job.status}`,
+        `[shorts-worker] event=job_deduped workerJobId=${outcome.job.workerJobId} kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.outputAssetId} status=${outcome.job.status}`,
       )
     } else {
       console.log(
-        `[shorts-worker] event=job_submitted workerJobId=${outcome.job.workerJobId} kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.kind === "devotional-render" ? body.outputAssetId : body.assetId}`,
+        `[shorts-worker] event=job_submitted workerJobId=${outcome.job.workerJobId} kind=${body.kind} jobId=${body.jobId ?? "-"} assetId=${body.outputAssetId}`,
       )
     }
     // On a dedupe hit this re-attaches the caller to the ACTIVE job: same

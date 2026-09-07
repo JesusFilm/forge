@@ -1,0 +1,211 @@
+(node:2209022) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/shorts-worker
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > queues the second job of the SAME lane (concurrency 1)
+[shorts-worker] event=job_started workerJobId=wj_4c32c5ce-bec0-4947-9713-cb15cc600f25 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > queues the second job of the SAME lane (concurrency 1)
+[shorts-worker] event=job_completed workerJobId=wj_4c32c5ce-bec0-4947-9713-cb15cc600f25 kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_5e1a5a40-07ea-4915-85d0-9ebe13b7b5f3 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > queues the second job of the SAME lane (concurrency 1)
+[shorts-worker] event=job_completed workerJobId=wj_5e1a5a40-07ea-4915-85d0-9ebe13b7b5f3 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > rejects with queue_full at the lane cap, while the OTHER lane stays open
+[shorts-worker] event=job_started workerJobId=wj_83cfdf8e-c2dd-4211-9322-28db16eda600 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > rejects with queue_full at the lane cap, while the OTHER lane stays open
+[shorts-worker] event=job_completed workerJobId=wj_83cfdf8e-c2dd-4211-9322-28db16eda600 kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_9a1b4336-67fd-4121-8c1b-16a086d7664f kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > rejects with queue_full at the lane cap, while the OTHER lane stays open
+[shorts-worker] event=job_completed workerJobId=wj_9a1b4336-67fd-4121-8c1b-16a086d7664f kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > rejects with queue_full at the lane cap, while the OTHER lane stays open
+[shorts-worker] event=job_started workerJobId=wj_38328009-7a51-49fc-bb64-d02897a226fd kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — per-lane execution > rejects with queue_full at the lane cap, while the OTHER lane stays open
+[shorts-worker] event=job_completed workerJobId=wj_38328009-7a51-49fc-bb64-d02897a226fd kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > re-attaches to an ACTIVE job with the same dedupe key
+[shorts-worker] event=job_started workerJobId=wj_5debdec8-2d8f-4874-b422-c93230beaa7c kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_started workerJobId=wj_636bbe08-39a9-46bf-97d3-2720d1326b62 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_completed workerJobId=wj_636bbe08-39a9-46bf-97d3-2720d1326b62 kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_6fbb3bbd-36fc-4260-be5d-3390d8b87c65 kind=devotional-render
+
+stderr | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_failed workerJobId=wj_6fbb3bbd-36fc-4260-be5d-3390d8b87c65 kind=devotional-render reason=internal_error retryable=false error="boom"
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_started workerJobId=wj_fd61af9b-9b4a-4d94-8d5f-8ea4b7258efb kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_completed workerJobId=wj_fd61af9b-9b4a-4d94-8d5f-8ea4b7258efb kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_85299ca6-a4ed-4322-bb18-1f735efdc120 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > does not dedupe against completed or failed records
+[shorts-worker] event=job_completed workerJobId=wj_85299ca6-a4ed-4322-bb18-1f735efdc120 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — in-flight dedupe > distinct propsHash values do not dedupe (re-render after an edit)
+[shorts-worker] event=job_started workerJobId=wj_b8f93fe1-baee-48c3-8660-824134bfb4b5 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — failure containment > contains async failures with a STRUCTURED error body and keeps processing
+[shorts-worker] event=job_started workerJobId=wj_14cb5f6a-63c5-4c91-ae91-26d20d4905cd kind=devotional-render
+
+stderr | src/jobs.test.ts > createJobLanes — failure containment > contains async failures with a STRUCTURED error body and keeps processing
+[shorts-worker] event=job_failed workerJobId=wj_14cb5f6a-63c5-4c91-ae91-26d20d4905cd kind=devotional-render reason=internal_error retryable=false error="render exploded"
+
+stdout | src/jobs.test.ts > createJobLanes — failure containment > contains async failures with a STRUCTURED error body and keeps processing
+[shorts-worker] event=job_started workerJobId=wj_674c890f-b9f8-4e2e-b29c-b1c6fdf957bc kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — failure containment > contains async failures with a STRUCTURED error body and keeps processing
+[shorts-worker] event=job_completed workerJobId=wj_674c890f-b9f8-4e2e-b29c-b1c6fdf957bc kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — failure containment > releases the lane slot on a SYNCHRONOUS throw (slot-leak guard)
+[shorts-worker] event=job_started workerJobId=wj_c48db831-2e0a-43da-90fd-3c8e555bd0f3 kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_6a73b100-ae7f-4acf-91fb-8ead1ce50f02 kind=devotional-render
+
+stderr | src/jobs.test.ts > createJobLanes — failure containment > releases the lane slot on a SYNCHRONOUS throw (slot-leak guard)
+[shorts-worker] event=job_failed workerJobId=wj_c48db831-2e0a-43da-90fd-3c8e555bd0f3 kind=devotional-render reason=internal_error retryable=false error="sync boom"
+
+stdout | src/jobs.test.ts > createJobLanes — failure containment > releases the lane slot on a SYNCHRONOUS throw (slot-leak guard)
+[shorts-worker] event=job_completed workerJobId=wj_6a73b100-ae7f-4acf-91fb-8ead1ce50f02 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_started workerJobId=wj_43583972-0417-4453-8d22-4f79f70962ca kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_7350cdec-327c-4fbf-9098-579e9199431c kind=devotional-render
+[shorts-worker] event=job_completed workerJobId=wj_43583972-0417-4453-8d22-4f79f70962ca kind=devotional-render
+
+stderr | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_failed workerJobId=wj_7350cdec-327c-4fbf-9098-579e9199431c kind=devotional-render reason=internal_error retryable=false error="boom"
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_started workerJobId=wj_3306eb60-80ef-4ec8-8cee-c045f8e4441e kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_completed workerJobId=wj_3306eb60-80ef-4ec8-8cee-c045f8e4441e kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_started workerJobId=wj_97b0a4a5-edcc-47b4-ac83-922ab8c48ee0 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > evicts completed/failed records older than the retention window on submit
+[shorts-worker] event=job_completed workerJobId=wj_97b0a4a5-edcc-47b4-ac83-922ab8c48ee0 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > never evicts ACTIVE jobs, no matter how old
+[shorts-worker] event=job_started workerJobId=wj_3a87daed-9f22-4499-a5f8-4be607ab648a kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > never evicts ACTIVE jobs, no matter how old
+[shorts-worker] event=job_completed workerJobId=wj_3a87daed-9f22-4499-a5f8-4be607ab648a kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_b39e943c-c440-4304-b512-f69d87c12fd0 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > never evicts ACTIVE jobs, no matter how old
+[shorts-worker] event=job_completed workerJobId=wj_b39e943c-c440-4304-b512-f69d87c12fd0 kind=devotional-render
+[shorts-worker] event=job_started workerJobId=wj_71b544df-eea2-4819-81bd-da4102ab31fb kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — terminal record eviction > never evicts ACTIVE jobs, no matter how old
+[shorts-worker] event=job_completed workerJobId=wj_71b544df-eea2-4819-81bd-da4102ab31fb kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — progress and lookups > tracks clamped progress and messages while running
+[shorts-worker] event=job_started workerJobId=wj_83e4baf2-933c-4d32-8b98-fbaa25978117 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — progress and lookups > tracks clamped progress and messages while running
+[shorts-worker] event=job_completed workerJobId=wj_83e4baf2-933c-4d32-8b98-fbaa25978117 kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — progress and lookups > returns undefined for unknown job ids and prefixes ids with wj_
+[shorts-worker] event=job_started workerJobId=wj_ebbb9e73-ef3a-49d2-8248-6257e06cb8af kind=devotional-render
+
+stdout | src/jobs.test.ts > createJobLanes — progress and lookups > returns undefined for unknown job ids and prefixes ids with wj_
+[shorts-worker] event=job_completed workerJobId=wj_ebbb9e73-ef3a-49d2-8248-6257e06cb8af kind=devotional-render
+
+ ✓ src/jobs.test.ts (11 tests) 29ms
+ ✓ src/devotional-render.test.ts (8 tests) 147ms
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > returns stable portrait and wide artifact refs
+[shorts-worker] event=job_submitted workerJobId=wj_1f381e86-49cc-4812-ba4d-a231e8a7bffd kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_1f381e86-49cc-4812-ba4d-a231e8a7bffd kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > returns stable portrait and wide artifact refs
+[shorts-worker] event=job_completed workerJobId=wj_1f381e86-49cc-4812-ba4d-a231e8a7bffd kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > passes a validated signed Workspace transfer without logging or persisting URLs
+[shorts-worker] event=job_submitted workerJobId=wj_46b48938-dc15-4f78-838e-c93e464bbbc4 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_46b48938-dc15-4f78-838e-c93e464bbbc4 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > passes a validated signed Workspace transfer without logging or persisting URLs
+[shorts-worker] event=job_completed workerJobId=wj_46b48938-dc15-4f78-838e-c93e464bbbc4 kind=devotional-render
+
+stderr | src/routes/jobs.test.ts > devotional render job lifecycle > rejects a signed Workspace transfer targeting a private host before enqueue
+[shorts-worker] event=job_rejected reason=workspace_transfer_invalid kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > dedupes active devotional renders by output asset and input hash
+[shorts-worker] event=job_submitted workerJobId=wj_e43f9a79-3945-4ef9-9d8d-5547409169a6 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_e43f9a79-3945-4ef9-9d8d-5547409169a6 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > dedupes active devotional renders by output asset and input hash
+[shorts-worker] event=job_deduped workerJobId=wj_e43f9a79-3945-4ef9-9d8d-5547409169a6 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1 status=running
+
+stdout | src/routes/jobs.test.ts > devotional render job lifecycle > cancels an active devotional render through the authenticated job route
+[shorts-worker] event=job_submitted workerJobId=wj_d122515f-6a2b-4e12-9875-3b3d6a91aecb kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_d122515f-6a2b-4e12-9875-3b3d6a91aecb kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > returns 409 queue_full when a lane is at its cap
+[shorts-worker] event=job_submitted workerJobId=wj_14f7628a-378c-49c0-ad54-b7548167b95c kind=devotional-render jobId=manager-job-devotional assetId=asset-a
+[shorts-worker] event=job_started workerJobId=wj_14f7628a-378c-49c0-ad54-b7548167b95c kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > returns 409 queue_full when a lane is at its cap
+[shorts-worker] event=job_submitted workerJobId=wj_42f86c93-ef6d-443a-ae50-59ab6c31853c kind=devotional-render jobId=manager-job-devotional assetId=asset-b
+
+stderr | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > returns 409 queue_full when a lane is at its cap
+[shorts-worker] event=job_rejected reason=queue_full kind=devotional-render jobId=manager-job-devotional
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > re-attaches a duplicate devotional render POST to the ACTIVE job (same inputHash, different jobId)
+[shorts-worker] event=job_submitted workerJobId=wj_3637a35f-2a38-4c7f-8f28-a7d2f75571e9 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_3637a35f-2a38-4c7f-8f28-a7d2f75571e9 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > re-attaches a duplicate devotional render POST to the ACTIVE job (same inputHash, different jobId)
+[shorts-worker] event=job_deduped workerJobId=wj_3637a35f-2a38-4c7f-8f28-a7d2f75571e9 kind=devotional-render jobId=manager-job-relaunched assetId=devotional-output-run-1 status=running
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > re-attaches a duplicate devotional render POST to the ACTIVE job (same inputHash, different jobId)
+[shorts-worker] event=job_submitted workerJobId=wj_efe4f1fc-8892-464e-95ac-72214541b480 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > does not dedupe after completion (manager resubmits intentionally)
+[shorts-worker] event=job_submitted workerJobId=wj_ddd021a3-fc1b-46df-a91b-77f869058802 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_ddd021a3-fc1b-46df-a91b-77f869058802 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > does not dedupe after completion (manager resubmits intentionally)
+[shorts-worker] event=job_completed workerJobId=wj_ddd021a3-fc1b-46df-a91b-77f869058802 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > does not dedupe after completion (manager resubmits intentionally)
+[shorts-worker] event=job_submitted workerJobId=wj_22228cc5-cab5-4dfd-b4cf-5b739d0b9482 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_22228cc5-cab5-4dfd-b4cf-5b739d0b9482 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > queue limits, dedupe, unknown jobs > does not dedupe after completion (manager resubmits intentionally)
+[shorts-worker] event=job_completed workerJobId=wj_22228cc5-cab5-4dfd-b4cf-5b739d0b9482 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > retired Shorts admission > rejects 'prepare' without reserving devotional capacity
+[shorts-worker] event=job_submitted workerJobId=wj_cc93949d-b54b-4783-b530-de4b4dcab80d kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_cc93949d-b54b-4783-b530-de4b4dcab80d kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > retired Shorts admission > rejects 'prepare' without reserving devotional capacity
+[shorts-worker] event=job_completed workerJobId=wj_cc93949d-b54b-4783-b530-de4b4dcab80d kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > retired Shorts admission > rejects 'render' without reserving devotional capacity
+[shorts-worker] event=job_submitted workerJobId=wj_a63827d8-6721-4618-a5b6-a421e1494744 kind=devotional-render jobId=manager-job-devotional assetId=devotional-output-run-1
+[shorts-worker] event=job_started workerJobId=wj_a63827d8-6721-4618-a5b6-a421e1494744 kind=devotional-render
+
+stdout | src/routes/jobs.test.ts > retired Shorts admission > rejects 'render' without reserving devotional capacity
+[shorts-worker] event=job_completed workerJobId=wj_a63827d8-6721-4618-a5b6-a421e1494744 kind=devotional-render
+
+ ✓ src/routes/jobs.test.ts (18 tests) 56ms
+ ✓ src/config/env.test.ts (9 tests) 10ms
+ ✓ src/render-engine.test.ts (2 tests) 13ms
+
+ Test Files  5 passed (5)
+      Tests  48 passed (48)
+   Start at  11:30:57
+   Duration  2.21s (transform 313ms, setup 0ms, collect 727ms, tests 255ms, environment 1ms, prepare 386ms)

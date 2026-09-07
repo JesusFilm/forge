@@ -18,12 +18,34 @@ function deferred<T>() {
 
 function fakeResult(label: string): JobResult {
   return {
-    artifacts: [{ assetId: label, artifactType: "shorts-clip-v1", ext: "mp4" }],
+    artifacts: [
+      {
+        assetId: label,
+        artifactType: "devotional-output-portrait-v1",
+        ext: "mp4",
+      },
+    ],
     report: {
-      hasAudio: true,
-      clipDurationSec: 10,
-      captionsCount: 4,
-      annotation: null,
+      portrait: {
+        artifact: {
+          assetId: label,
+          artifactType: "devotional-output-portrait-v1",
+          ext: "mp4",
+        },
+        outputDurationSec: 10,
+        width: 1080,
+        height: 1920,
+      },
+      wide: {
+        artifact: {
+          assetId: label,
+          artifactType: "devotional-output-wide-v1",
+          ext: "mp4",
+        },
+        outputDurationSec: 10,
+        width: 1920,
+        height: 1080,
+      },
     },
   }
 }
@@ -33,51 +55,27 @@ async function settle(): Promise<void> {
 }
 
 describe("createJobLanes — per-lane execution", () => {
-  it("runs prepare and render CONCURRENTLY (independent lanes)", async () => {
-    const lanes = createJobLanes({
-      prepare: { concurrency: 1, limit: 2 },
-      render: { concurrency: 1, limit: 2 },
-    })
-    const prepareGate = deferred<JobResult>()
-    const renderGate = deferred<JobResult>()
-    const started: string[] = []
-
-    const prepare = lanes.submit("prepare", "prepare:a", async () => {
-      started.push("prepare")
-      return prepareGate.promise
-    })
-    const render = lanes.submit("render", "render:a:h1", async () => {
-      started.push("render")
-      return renderGate.promise
-    })
-    if (!prepare.ok || !render.ok) throw new Error("submit failed")
-
-    await settle()
-    // Both lanes started despite each lane having concurrency 1.
-    expect(started.sort()).toEqual(["prepare", "render"])
-    expect(lanes.get(prepare.job.workerJobId)!.status).toBe("running")
-    expect(lanes.get(render.job.workerJobId)!.status).toBe("running")
-
-    prepareGate.resolve(fakeResult("a"))
-    renderGate.resolve(fakeResult("a"))
-    await settle()
-    expect(lanes.get(prepare.job.workerJobId)!.status).toBe("completed")
-    expect(lanes.get(render.job.workerJobId)!.status).toBe("completed")
-  })
-
   it("queues the second job of the SAME lane (concurrency 1)", async () => {
     const lanes = createJobLanes({ render: { concurrency: 1, limit: 5 } })
     const first = deferred<JobResult>()
     const order: string[] = []
 
-    const submitFirst = lanes.submit("render", "render:a:h1", async () => {
-      order.push("first")
-      return first.promise
-    })
-    const submitSecond = lanes.submit("render", "render:b:h2", async () => {
-      order.push("second")
-      return fakeResult("b")
-    })
+    const submitFirst = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => {
+        order.push("first")
+        return first.promise
+      },
+    )
+    const submitSecond = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => {
+        order.push("second")
+        return fakeResult("b")
+      },
+    )
     if (!submitFirst.ok || !submitSecond.ok) throw new Error("submit failed")
 
     await settle()
@@ -92,24 +90,23 @@ describe("createJobLanes — per-lane execution", () => {
 
   it("rejects with queue_full at the lane cap, while the OTHER lane stays open", async () => {
     const lanes = createJobLanes({
-      prepare: { concurrency: 1, limit: 2 },
       render: { concurrency: 1, limit: 2 },
     })
     const blocker = deferred<JobResult>()
 
     // Fill the render lane: 1 running + 1 queued = limit 2.
     const first = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h1",
       async () => blocker.promise,
     )
     const second = lanes.submit(
-      "render",
+      "devotional-render",
       "render:b:h2",
       async () => blocker.promise,
     )
     const third = lanes.submit(
-      "render",
+      "devotional-render",
       "render:c:h3",
       async () => blocker.promise,
     )
@@ -118,18 +115,10 @@ describe("createJobLanes — per-lane execution", () => {
     expect(second.ok).toBe(true)
     expect(third).toEqual({ ok: false, reason: "queue_full" })
 
-    // The prepare lane is unaffected by render-lane saturation.
-    const prepare = lanes.submit(
-      "prepare",
-      "prepare:a",
-      async () => blocker.promise,
-    )
-    expect(prepare.ok).toBe(true)
-
     // Finishing a render frees render capacity.
     blocker.resolve(fakeResult("a"))
     await settle()
-    const fourth = lanes.submit("render", "render:d:h4", async () =>
+    const fourth = lanes.submit("devotional-render", "render:d:h4", async () =>
       fakeResult("d"),
     )
     expect(fourth.ok).toBe(true)
@@ -142,15 +131,17 @@ describe("createJobLanes — in-flight dedupe", () => {
     const running = deferred<JobResult>()
 
     const first = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h1",
       async () => running.promise,
     )
     if (!first.ok) throw new Error("submit failed")
     await settle()
 
-    const duplicate = lanes.submit("render", "render:a:h1", async () =>
-      fakeResult("dup"),
+    const duplicate = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => fakeResult("dup"),
     )
     expect(duplicate).toEqual({ ok: true, job: first.job, deduped: true })
   })
@@ -158,22 +149,32 @@ describe("createJobLanes — in-flight dedupe", () => {
   it("does not dedupe against completed or failed records", async () => {
     const lanes = createJobLanes({ render: { concurrency: 1, limit: 5 } })
 
-    const completed = lanes.submit("render", "render:a:h1", async () =>
-      fakeResult("ok"),
+    const completed = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => fakeResult("ok"),
     )
-    const failed = lanes.submit("render", "render:b:h2", async () => {
-      throw new Error("boom")
-    })
+    const failed = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => {
+        throw new Error("boom")
+      },
+    )
     if (!completed.ok || !failed.ok) throw new Error("submit failed")
     await settle()
     expect(lanes.get(completed.job.workerJobId)!.status).toBe("completed")
     expect(lanes.get(failed.job.workerJobId)!.status).toBe("failed")
 
-    const rerunCompleted = lanes.submit("render", "render:a:h1", async () =>
-      fakeResult("again"),
+    const rerunCompleted = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => fakeResult("again"),
     )
-    const rerunFailed = lanes.submit("render", "render:b:h2", async () =>
-      fakeResult("again"),
+    const rerunFailed = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => fakeResult("again"),
     )
     if (!rerunCompleted.ok || !rerunFailed.ok) throw new Error("submit failed")
 
@@ -188,12 +189,12 @@ describe("createJobLanes — in-flight dedupe", () => {
     const gate = deferred<JobResult>()
 
     const first = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h1",
       async () => gate.promise,
     )
     const second = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h2",
       async () => gate.promise,
     )
@@ -206,11 +207,17 @@ describe("createJobLanes — in-flight dedupe", () => {
 describe("createJobLanes — failure containment", () => {
   it("contains async failures with a STRUCTURED error body and keeps processing", async () => {
     const lanes = createJobLanes({ render: { concurrency: 1, limit: 5 } })
-    const failing = lanes.submit("render", "render:a:h1", async () => {
-      throw new Error("render exploded")
-    })
-    const following = lanes.submit("render", "render:b:h2", async () =>
-      fakeResult("ok"),
+    const failing = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => {
+        throw new Error("render exploded")
+      },
+    )
+    const following = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => fakeResult("ok"),
     )
     if (!failing.ok || !following.ok) throw new Error("submit failed")
 
@@ -234,9 +241,11 @@ describe("createJobLanes — failure containment", () => {
       throw new Error("sync boom")
     }) as unknown as JobExecutor
 
-    const failing = lanes.submit("render", "render:a:h1", syncThrow)
-    const following = lanes.submit("render", "render:b:h2", async () =>
-      fakeResult("ok"),
+    const failing = lanes.submit("devotional-render", "render:a:h1", syncThrow)
+    const following = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => fakeResult("ok"),
     )
     if (!failing.ok || !following.ok) throw new Error("submit failed")
 
@@ -258,12 +267,18 @@ describe("createJobLanes — terminal record eviction", () => {
       now: () => clock,
     })
 
-    const completed = lanes.submit("render", "render:a:h1", async () =>
-      fakeResult("a"),
+    const completed = lanes.submit(
+      "devotional-render",
+      "render:a:h1",
+      async () => fakeResult("a"),
     )
-    const failed = lanes.submit("render", "render:b:h2", async () => {
-      throw new Error("boom")
-    })
+    const failed = lanes.submit(
+      "devotional-render",
+      "render:b:h2",
+      async () => {
+        throw new Error("boom")
+      },
+    )
     if (!completed.ok || !failed.ok) throw new Error("submit failed")
     await settle()
     expect(lanes.get(completed.job.workerJobId)!.status).toBe("completed")
@@ -271,7 +286,7 @@ describe("createJobLanes — terminal record eviction", () => {
 
     // Just inside the window: both records survive the next submit.
     clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS - 1)
-    const within = lanes.submit("render", "render:c:h3", async () =>
+    const within = lanes.submit("devotional-render", "render:c:h3", async () =>
       fakeResult("c"),
     )
     if (!within.ok) throw new Error("submit failed")
@@ -281,7 +296,7 @@ describe("createJobLanes — terminal record eviction", () => {
 
     // Beyond the window: the stale terminal records are pruned.
     clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS + 1)
-    const later = lanes.submit("render", "render:d:h4", async () =>
+    const later = lanes.submit("devotional-render", "render:d:h4", async () =>
       fakeResult("d"),
     )
     if (!later.ok) throw new Error("submit failed")
@@ -299,12 +314,12 @@ describe("createJobLanes — terminal record eviction", () => {
     const gate = deferred<JobResult>()
 
     const running = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h1",
       async () => gate.promise,
     )
     const queued = lanes.submit(
-      "render",
+      "devotional-render",
       "render:b:h2",
       async () => gate.promise,
     )
@@ -315,7 +330,7 @@ describe("createJobLanes — terminal record eviction", () => {
 
     // Advance far beyond the retention window — active jobs must survive.
     clock = new Date(clock.getTime() + TERMINAL_RECORD_RETENTION_MS * 3)
-    const trigger = lanes.submit("render", "render:c:h3", async () =>
+    const trigger = lanes.submit("devotional-render", "render:c:h3", async () =>
       fakeResult("c"),
     )
     if (!trigger.ok) throw new Error("submit failed")
@@ -334,7 +349,7 @@ describe("createJobLanes — progress and lookups", () => {
     let report!: Parameters<JobExecutor>[0]["onProgress"]
 
     const submitted = lanes.submit(
-      "render",
+      "devotional-render",
       "render:a:h1",
       async ({ onProgress }) => {
         report = onProgress
@@ -366,7 +381,7 @@ describe("createJobLanes — progress and lookups", () => {
     const lanes = createJobLanes()
     expect(lanes.get("wj_missing")).toBeUndefined()
 
-    const submitted = lanes.submit("prepare", "prepare:a", async () =>
+    const submitted = lanes.submit("devotional-render", "prepare:a", async () =>
       fakeResult("a"),
     )
     if (!submitted.ok) throw new Error("submit failed")

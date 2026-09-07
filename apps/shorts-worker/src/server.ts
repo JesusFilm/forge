@@ -18,8 +18,6 @@ export type ServerDependencies = {
   nodeEnv?: JobsRouteOptions["nodeEnv"]
   allowedSourceHosts?: JobsRouteOptions["allowedSourceHosts"]
   devotionalWorkspaceAllowedOrigin?: JobsRouteOptions["devotionalWorkspaceAllowedOrigin"]
-  runPrepareImpl?: JobsRouteOptions["runPrepareImpl"]
-  runRenderImpl?: JobsRouteOptions["runRenderImpl"]
   runDevotionalRenderImpl?: JobsRouteOptions["runDevotionalRenderImpl"]
   artifactStorage?: DevotionalArtifactsRouteOptions["storage"]
 }
@@ -30,8 +28,6 @@ export function createHandleRequest({
   nodeEnv,
   allowedSourceHosts,
   devotionalWorkspaceAllowedOrigin,
-  runPrepareImpl,
-  runRenderImpl,
   runDevotionalRenderImpl,
   artifactStorage,
 }: ServerDependencies = {}) {
@@ -41,8 +37,6 @@ export function createHandleRequest({
     nodeEnv,
     allowedSourceHosts,
     devotionalWorkspaceAllowedOrigin,
-    runPrepareImpl,
-    runRenderImpl,
     runDevotionalRenderImpl,
   })
   const handleDevotionalArtifactsRoute = createDevotionalArtifactsRoute({
