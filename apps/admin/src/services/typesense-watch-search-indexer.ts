@@ -9,6 +9,12 @@ import {
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
 import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import {
+  advanceCurrentWatchSearchTranscriptProjection,
+  initialCurrentWatchSearchTranscriptProjectionRevision,
+  WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
+} from "./typesense-watch-search-current-transcript-projection"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -129,6 +135,101 @@ export class TypesenseWatchSearchIndexError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "TypesenseWatchSearchIndexError"
+  }
+}
+
+export class TypesenseWatchSearchProjectionCommitIndeterminateError extends Error {
+  constructor(
+    readonly completionError: unknown,
+    readonly reconciliationError: unknown,
+  ) {
+    super("Watch Search transcript projection commit could not be reconciled", {
+      cause: reconciliationError,
+    })
+    this.name = "TypesenseWatchSearchProjectionCommitIndeterminateError"
+  }
+}
+
+type TranscriptProjectionSnapshot = {
+  transcriptCollection: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
+  projectionRevision: bigint
+}
+
+function sameTranscriptProjection(
+  left: TranscriptProjectionSnapshot | null,
+  right: TranscriptProjectionSnapshot | null,
+): boolean {
+  return (
+    left?.transcriptCollection === right?.transcriptCollection &&
+    left?.contentEmbeddingContractId === right?.contentEmbeddingContractId &&
+    left?.transcriptChunkingVersion === right?.transcriptChunkingVersion &&
+    left?.projectionRevision === right?.projectionRevision
+  )
+}
+
+async function advanceRebuiltTranscriptProjection(
+  prisma: PrismaClient,
+  input: {
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  },
+): Promise<void> {
+  const select = {
+    transcriptCollection: true,
+    contentEmbeddingContractId: true,
+    transcriptChunkingVersion: true,
+    projectionRevision: true,
+  } as const
+  const before = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+    {
+      where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      select,
+    },
+  )
+  const expectedRevision = before
+    ? before.projectionRevision + 1n
+    : initialCurrentWatchSearchTranscriptProjectionRevision()
+
+  try {
+    await advanceCurrentWatchSearchTranscriptProjection(prisma, input)
+    return
+  } catch (completionError) {
+    let observed: TranscriptProjectionSnapshot | null
+    try {
+      observed = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+        {
+          where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+          select,
+        },
+      )
+    } catch (reconciliationError) {
+      throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+        completionError,
+        reconciliationError,
+      )
+    }
+
+    if (
+      observed?.transcriptCollection === input.transcriptCollection &&
+      observed.contentEmbeddingContractId ===
+        input.contentEmbeddingContractId &&
+      observed.transcriptChunkingVersion === input.transcriptChunkingVersion &&
+      observed.projectionRevision === expectedRevision
+    ) {
+      return
+    }
+    if (sameTranscriptProjection(observed, before)) {
+      throw completionError
+    }
+    throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+      completionError,
+      new TypesenseWatchSearchIndexError(
+        "Watch Search transcript projection changed while rebuild completion was indeterminate",
+      ),
+    )
   }
 }
 
@@ -740,6 +841,7 @@ async function loadTranscriptBatch(
       (
         v.deleted_at IS NULL
         AND v.no_index = false
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
         AND EXISTS (
           SELECT 1 FROM video_locale vl
           WHERE vl.video_id = v.id
@@ -985,7 +1087,25 @@ export async function rebuildTypesenseWatchSearchIndex({
       catalogSchema.name,
     )
     catalogAliasUpdated = true
+    if (!transcriptReused) {
+      const compatibility =
+        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+      await advanceRebuiltTranscriptProjection(prisma, {
+        transcriptCollection,
+        contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
+        transcriptChunkingVersion: compatibility.transcriptChunkingVersion,
+      })
+    }
   } catch (error) {
+    // A failed reconciliation cannot distinguish a rolled-back projection
+    // write from a committed write whose acknowledgement was lost. Preserve
+    // the new aliases and collections in that case: restoring the aliases may
+    // strand a committed durable projection on a collection deleted below.
+    if (
+      error instanceof TypesenseWatchSearchProjectionCommitIndeterminateError
+    ) {
+      throw error
+    }
     const restoreAlias = async (
       alias: string,
       previousCollection: string | undefined,

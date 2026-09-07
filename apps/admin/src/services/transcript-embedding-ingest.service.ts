@@ -120,7 +120,7 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         type: z.enum(["segment-aware", "plain-text"]),
         maxChunkTokens: z.number().int().positive(),
         overlapTokens: z.number().int().nonnegative(),
-        version: z.string().min(1).optional(),
+        version: z.string().trim().min(1).optional(),
       })
       .strict(),
     generation: z
@@ -181,6 +181,7 @@ type ResolvedTarget = {
 type ExistingTranscript = {
   id: string
   sourceContentHash: string | null
+  sourceGeneration: bigint
   model: string
   dimensions: number
   embeddingProvider: string | null
@@ -191,6 +192,7 @@ type ExistingTranscript = {
   overlapTokens: number
   totalChunks: number
   totalTokens: number
+  chunkingVersion: string | null
 }
 
 export type TranscriptEmbeddingIngestStatus =
@@ -552,6 +554,7 @@ async function readExistingTranscript(
     SELECT
       id,
       source_content_hash AS "sourceContentHash",
+      source_generation AS "sourceGeneration",
       model,
       dimensions,
       embedding_provider AS "embeddingProvider",
@@ -561,7 +564,8 @@ async function readExistingTranscript(
       max_chunk_tokens AS "maxChunkTokens",
       overlap_tokens AS "overlapTokens",
       total_chunks AS "totalChunks",
-      total_tokens AS "totalTokens"
+      total_tokens AS "totalTokens",
+      chunking_version AS "chunkingVersion"
     FROM video_transcript
     WHERE video_edition_id = ${target.videoEditionId}
       AND language = ${language}
@@ -598,6 +602,7 @@ function existingMatches(
     existing.embeddingTransformVersion ===
       (payload.model.transformVersion ?? null) &&
     existing.chunkingType === payload.chunking.type &&
+    existing.chunkingVersion === (payload.chunking.version ?? null) &&
     existing.maxChunkTokens === payload.chunking.maxChunkTokens &&
     existing.overlapTokens === payload.chunking.overlapTokens &&
     existing.totalChunks === payload.chunks.length &&
@@ -628,9 +633,10 @@ async function writePayload(
   target: ResolvedTarget,
   chunks: readonly TranscriptEmbeddingPayloadChunk[],
   hash: string,
-): Promise<void> {
+  sourceGeneration: bigint,
+) {
   try {
-    await writeTranscriptEmbeddingPayloadInTransaction(tx, {
+    return await writeTranscriptEmbeddingPayloadInTransaction(tx, {
       editionId: target.videoEditionId,
       videoId: target.videoId,
       coreId: target.coreId,
@@ -660,6 +666,7 @@ async function writePayload(
         sourceContentHash: hash,
         sourceProvider: payload.source.provider ?? payload.model.provider,
         sourceGeneratedAt: payload.source.generatedAt,
+        sourceGeneration,
         generationMode: payload.generation.mode,
         mastraRunId: payload.generation.mastraRunId,
         chunkingVersion: payload.chunking.version,
@@ -672,6 +679,20 @@ async function writePayload(
       error,
     )
   }
+}
+
+function requiredTranscriptEventIdentity(
+  value: string | undefined,
+  name: string,
+): string {
+  const normalized = value?.trim()
+  if (!normalized) {
+    throw new TranscriptEmbeddingIngestError(
+      "write_failed",
+      `transcript publication ${name} is required`,
+    )
+  }
+  return normalized
 }
 
 async function lockTranscriptTarget(
@@ -789,7 +810,38 @@ export async function ingestTranscriptEmbeddings(
             status = statusForEmbeddingRewrite(mode)
           }
 
-          await writePayload(tx, payload, target, chunks, hash)
+          const nextSourceGeneration = (existing?.sourceGeneration ?? 0n) + 1n
+          const writeResult = await writePayload(
+            tx,
+            payload,
+            target,
+            chunks,
+            hash,
+            nextSourceGeneration,
+          )
+          if (!writeResult.transcriptId) {
+            throw new TranscriptEmbeddingIngestError(
+              "write_failed",
+              "transcript write did not return a transcript id",
+            )
+          }
+          await tx.watchSearchCurrentTranscriptPublicationEvent.create({
+            data: {
+              transcriptId: writeResult.transcriptId,
+              videoId: target.videoId,
+              videoEditionId: target.videoEditionId,
+              language: payload.language,
+              contentEmbeddingContractId: contract.id,
+              transcriptChunkingVersion: requiredTranscriptEventIdentity(
+                payload.chunking.version,
+                "chunking version",
+              ),
+              sourceGeneration: nextSourceGeneration,
+              sourceContentHash: hash,
+              currentDocumentIds: writeResult.currentDocumentIds,
+              staleDocumentIds: writeResult.staleDocumentIds,
+            },
+          })
 
           return {
             status,

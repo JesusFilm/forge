@@ -1187,6 +1187,43 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
   generation mode, chunking version), and delegates the actual table
   write to the existing indexer service.
+- **Incremental Watch Search publication:** every accepted canonical ingest
+  increments `sourceGeneration` and writes one identity-only publication event
+  in the same serializable transaction. The dedicated Admin worker reloads the
+  vectors from PostgreSQL, upserts stable chunk document ids into the current
+  transcript collection, independently reads the documents and normalized
+  vectors back, removes stale ids, and atomically completes the event while
+  advancing one durable projection revision. Once an external mutation starts,
+  any later definite validation or completion failure removes and verifies
+  absence of the affected current and stale document ids under the same
+  publication lock before the event is released for retry; an incomplete
+  attempt must not leave a newly public transcript searchable. A thrown final
+  PostgreSQL commit is reconciled from the durable event and projection rows
+  before compensation because the commit acknowledgement may be lost after a
+  successful commit; an unavailable reconciliation preserves the claim and
+  documents until retry rather than deleting a potentially completed
+  publication that has no pending event left to restore it. Enable it only on
+  the Admin worker
+  with `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=true`; the default is
+  `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
+  `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
+  `TYPESENSE_OPERATOR_API_KEY`. Missing Typesense operator configuration is a
+  fail-fast startup error before the workflow runtime or any scheduler starts
+  when publication is explicitly enabled, as is enabling the publisher without
+  the Postgres Workflow runner settings above. Incremental publication waits
+  for active evaluation leases but remains compatible with an already
+  qualified serving candidate that shares the same transcript collection,
+  embedding contract, and chunking version; a routine projection-revision
+  advance must not require requalification or promotion. Every configured
+  reader credential, including the legacy `TYPESENSE_API_KEY` even when a
+  dedicated search key takes precedence, must remain distinct from
+  `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so no reader or
+  benchmark path can silently inherit publication and deletion authority.
+  Both current-index and candidate-index publication commands require the
+  operator key; the legacy key is never publication authority. Production
+  Admin web startup rejects an injected operator key; the credential is valid
+  only on the dedicated Postgres worker, even while incremental publication is
+  still disabled for a staged rollout.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

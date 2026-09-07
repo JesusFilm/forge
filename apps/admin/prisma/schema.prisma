@@ -340,6 +340,12 @@ enum WatchSearchCandidateLeaseKind {
   EVALUATION @map("evaluation")
 }
 
+enum WatchSearchCurrentTranscriptPublicationStatus {
+  PENDING   @map("pending")
+  CLAIMED   @map("claimed")
+  COMPLETED @map("completed")
+}
+
 /// Execution mode is persisted with each Watch-route monitoring run so a
 /// diagnostic dry run can never be mistaken for an alert-producing run.
 enum WatchRouteAlertAutomationMode {
@@ -767,6 +773,54 @@ model WatchSearchCandidateLease {
   @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion, expiresAt])
   @@index([expiresAt])
   @@map("watch_search_candidate_lease")
+}
+
+/// Singleton state for the active shared transcript projection published into
+/// the current Typesense transcript collection.
+model WatchSearchCurrentTranscriptProjection {
+  id                         String   @id @db.VarChar(64)
+  transcriptCollection       String?  @map("transcript_collection") @db.VarChar(255)
+  contentEmbeddingContractId String?  @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion  String?  @map("transcript_chunking_version") @db.VarChar(128)
+  projectionRevision         BigInt   @default(0) @map("projection_revision")
+  version                    Int      @default(0)
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  @@map("watch_search_current_transcript_projection")
+}
+
+/// Durable outbox for current shared transcript projection publication. The
+/// payload carries transcript identity and chunk document ids only; vectors are
+/// reloaded from canonical Postgres during publication.
+model WatchSearchCurrentTranscriptPublicationEvent {
+  id                         String                                        @id @default(cuid())
+  transcriptId               String                                        @map("transcript_id")
+  transcript                 VideoTranscript                               @relation(fields: [transcriptId], references: [id], onDelete: Cascade, map: "watch_search_transcript_pub_transcript_id_fkey")
+  videoId                    String                                        @map("video_id")
+  videoEditionId             String                                        @map("video_edition_id")
+  language                   String
+  contentEmbeddingContractId String                                        @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion  String                                        @map("transcript_chunking_version") @db.VarChar(128)
+  sourceGeneration           BigInt                                        @map("source_generation")
+  sourceContentHash          String?                                       @map("source_content_hash")
+  currentDocumentIds         String[]                                      @map("current_document_ids")
+  staleDocumentIds           String[]                                      @map("stale_document_ids")
+  status                     WatchSearchCurrentTranscriptPublicationStatus @default(PENDING)
+  leaseGeneration            Int                                           @default(0) @map("lease_generation")
+  leaseTokenHash             String?                                       @map("lease_token_hash") @db.VarChar(128)
+  leaseExpiresAt             DateTime?                                     @map("lease_expires_at")
+  attemptCount               Int                                           @default(0) @map("attempt_count")
+  nextAttemptAt              DateTime?                                     @map("next_attempt_at")
+  lastErrorCode              String?                                       @map("last_error_code") @db.VarChar(128)
+  completedAt                DateTime?                                     @map("completed_at")
+  createdAt                  DateTime                                      @default(now()) @map("created_at")
+  updatedAt                  DateTime                                      @updatedAt @map("updated_at")
+
+  @@unique([transcriptId, sourceGeneration], map: "watch_search_transcript_pub_transcript_generation_key")
+  @@index([status, nextAttemptAt, createdAt], map: "watch_search_transcript_pub_status_retry_created_idx")
+  @@index([transcriptId, status, createdAt], map: "watch_search_transcript_pub_transcript_status_created_idx")
+  @@map("watch_search_current_transcript_publication_event")
 }
 
 /// Core Sync-specific detail for the generic workflow ledger. Kept separate so
@@ -2549,13 +2603,15 @@ model VideoTranscript {
   sourceContentHash         String?      @map("source_content_hash")
   sourceProvider            String?      @map("source_provider")
   sourceGeneratedAt         DateTime?    @map("source_generated_at")
+  sourceGeneration          BigInt       @default(0) @map("source_generation")
   generationMode            String?      @map("generation_mode")
   mastraRunId               String?      @map("mastra_run_id")
   chunkingVersion           String?      @map("chunking_version")
   createdAt                 DateTime     @default(now()) @map("created_at")
   updatedAt                 DateTime     @updatedAt @map("updated_at")
 
-  chunks VideoTranscriptChunk[]
+  chunks                              VideoTranscriptChunk[]
+  currentWatchSearchPublicationEvents WatchSearchCurrentTranscriptPublicationEvent[]
 
   @@unique([videoEditionId, language])
   @@index([videoId])
