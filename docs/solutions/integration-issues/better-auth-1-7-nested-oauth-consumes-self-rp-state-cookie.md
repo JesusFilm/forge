@@ -1,6 +1,7 @@
 ---
 title: "Better Auth 1.7: a Google/Okta sign-in inside the mobile self-RP flow consumes the shared state cookie, so /callback/jfp fails state_mismatch"
 date: 2026-09-07
+last_updated: 2026-09-08
 category: integration-issues
 module: apps/auth, apps/mobile
 problem_type: integration_issue
@@ -39,7 +40,8 @@ parameter off the `forgemobile://` callback, so a callback that carries
 ## Root cause
 
 Better Auth 1.7 binds every OAuth callback to ONE signed browser cookie,
-`better-auth.state` (`better-auth/dist/state.mjs`, `parseGenericState`):
+`better-auth.state` (`parseGenericState` in the installed vendor package's
+`better-auth/dist/state.mjs` under `node_modules`, not a repo file):
 
 1. `generateGenericState` plants the cookie with the flow's `state` value
    and stores the same value in the `verification` table.
@@ -118,9 +120,10 @@ binding weaker than the one the flow already had.
 
 Three vendor facts carry this argument. The cookie is `SameSite=Lax`, so a
 cross-site fetch response cannot store it. The authorization code is bound
-to the client and to the PKCE verifier in the verification row. The
-generic-oauth provider uses the database `storeStateStrategy`, so the row
-must exist and match. A change to any of the three needs a fresh review of
+to the client and to the PKCE code challenge stored with it; the verifier
+is checked against that challenge at the token exchange. The generic-oauth
+provider uses the database `storeStateStrategy`, so the row must exist and
+match. A change to any of the three needs a fresh review of
 this hook. The Tier-2 review of this change filed and then rejected a
 login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
 
@@ -153,12 +156,15 @@ login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
   production failure. Both arms ran against the same server.
 - `config.test.ts` pins the plugin's registration.
 - `pnpm --filter @forge/auth test`, `typecheck`, and `lint` are clean.
-- NOT verified before merge: a live Google or Okta sign-in on a device. The
-  replay stands in for the inner provider with a password sign-in, so the
-  real Google exchange is not exercised locally. No new mobile build is
-  needed: the fix is server-side only, and build 1.0.0 (5) already carries
-  the 1.7.1 client. After the auth deploy, one tap of Google or Okta on
-  that build is the remaining check.
+- Verified on a device (2026-09-08). PR #2187 merged to `main` on
+  2026-09-07 and Railway deployed `apps/auth` from it. After the deploy,
+  the user signed in on TestFlight build 1.0.0 (5) through a provider
+  button on the hosted page (Google/Okta): the sheet closed and the
+  Profile tab showed the signed-in state. No new mobile build was needed.
+  The fix is server-side only, and build 1.0.0 (5) already carried the
+  1.7.1 client. This is the live provider exchange the local replay stood
+  in for with a password sign-in, and it closes the last open item of the
+  pre-merge list.
 
 ## Prevention
 
@@ -171,7 +177,11 @@ login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
   the `state` cookie with a different value to stand in for the inner
   provider flow, then send the cookie jar through rows 6 and 7 of the table
   in this doc's Root cause section (the authorize continuation and the
-  `/callback/jfp` request).
+  `/callback/jfp` request). The earlier session used the password form for
+  a practical reason: it knew no local account password, so it created a
+  throwaway account through the hosted page's Sign up link and never
+  clicked a provider button (session history). The replay above stands in
+  for that click and needs no provider credentials.
 - Any Better Auth bump must re-read `better-auth/dist/state.mjs`. A change
   to the cookie name, the `maxAge`, or the compare in `parseGenericState`
   changes what this hook must plant. The round-trip test goes red on a
@@ -180,6 +190,18 @@ login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
 - A quiet cancel hides every server-side callback failure from the user.
   Production auth's deploy log is the first place to look when the sheet
   closes and nothing changes: grep for `Failed to parse state`.
+
+## Update log
+
+- 2026-09-08: closed. PR #2187 merged on 2026-09-07 and deployed to
+  production auth. A Tier-2 `ce-code-review` ran before the push (run
+  `20260907-152441-e4a87f15`); its one surviving finding, a P3, produced
+  the `code` requirement and the shared URL-parse guard the Fix section
+  describes. The independent validator rejected a security P0 (the re-plant
+  as a login-CSRF forcing surface) on the three invariants named above, and
+  a maintainability P2 (a shared cookie-planting helper) because the proxy
+  is a deliberate vendor mirror pinned by a hash guard. The device sign-in
+  the same day confirmed the fix against a real provider exchange.
 
 ## Related
 

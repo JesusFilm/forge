@@ -1034,6 +1034,8 @@ A sign-in arrangement where the auth provider registers itself as a relying clie
 
 Because the provider's sign-in machinery discovers its own endpoints the way it would discover a third party's, a starting instance can fetch metadata from itself before it can answer requests. An environment that runs one instance must answer that self-fetch without routing it through the starting instance, or startup waits on itself.
 
+A provider button on the hosted page starts a second, inner authorization inside the self-RP one, in the same browser. The provider binds each authorization to one per-browser sign-in token and consumes that token when the inner authorization completes, so the outer authorization must be bound again before it returns to the provider, or it is refused as a forgery. The password form starts no inner authorization, so a verification that uses only the password form cannot see this.
+
 ### SSO Session
 
 The sign-in session the auth provider itself holds for a person, shared by all first-party relying apps — signing in to any one app rides it, and it is what lets a later sign-in skip the login page.
