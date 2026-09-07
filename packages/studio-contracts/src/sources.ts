@@ -162,3 +162,51 @@ export function mapStudioSourceCues(
       }))
   })
 }
+
+export const studioSourcePreviewSchema = z
+  .object({
+    sourceSnapshotId: studioIdSchema,
+    language: studioIdSchema,
+    startMs: z.number().int().nonnegative(),
+    endMs: z.number().int().positive(),
+    offset: z.number().int().nonnegative().default(0),
+    limit: z.number().int().min(1).max(50).default(20),
+  })
+  .strict()
+
+/** Pages complete cues without truncating source text or hiding remaining coverage. */
+export function pageStudioSourceCues(
+  all: StudioSubtitleCue[],
+  offset: number,
+  limit: number,
+) {
+  if (
+    !Number.isInteger(offset) ||
+    offset < 0 ||
+    offset > all.length ||
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 50
+  )
+    throw new StudioSourceError("Invalid subtitle page")
+  const cues: StudioSubtitleCue[] = []
+  let size = 2
+  for (const cue of all.slice(offset, offset + limit)) {
+    const nextSize = new TextEncoder().encode(JSON.stringify(cue)).length + 1
+    if (size + nextSize > 32768) {
+      if (!cues.length)
+        throw new StudioSourceError(
+          "Canonical subtitle cue exceeds preview page capacity",
+        )
+      break
+    }
+    cues.push(cue)
+    size += nextSize
+  }
+  const next = offset + cues.length
+  return {
+    cues,
+    totalCues: all.length,
+    nextOffset: next < all.length ? next : null,
+  }
+}

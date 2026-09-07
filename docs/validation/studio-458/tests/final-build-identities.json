@@ -1,0 +1,24 @@
+{
+  "base": "2855e26512ebfacd78bee987e1cda3f66d738774",
+  "names": {
+    "admin": "5",
+    "manager": "8",
+    "mastra": "2"
+  },
+  "artifacts": [
+    {
+      "path": "apps/admin/.next/BUILD_ID",
+      "sha256": "4731303e05e51125c3f5b0f72f60384b12d934ed85edf86ea7ae6e524a247f0d",
+      "buildId": "dHjYoyKTZka9KlH_XrTOB"
+    },
+    {
+      "path": "apps/manager/.next/BUILD_ID",
+      "sha256": "113341f9db27169cc23a98e3c4ee75d9b1dea4023cc44df14c4b20889aebfed2",
+      "buildId": "1QMjCspt7EXMX4EK95MWg"
+    },
+    {
+      "path": "apps/mastra/.mastra/output/index.mjs",
+      "sha256": "916dbf66e7452938ce672eb35fe93e4a34f266452d5ffa761cf2de9abc0b5a79"
+    }
+  ]
+}

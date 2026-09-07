@@ -15,6 +15,7 @@ export const env = createEnv({
     STUDIO_PREVIEW_ORIGIN: z.string().url().optional(),
     STUDIO_PREVIEW_SERVICE_URL: z.string().url().optional(),
     STUDIO_PREVIEW_API_KEY: z.string().optional(),
+    STUDIO_PRODUCTION_RATE_CARD: z.string().optional(),
     STUDIO_FFMPEG_PATH: z.string().optional(),
     STUDIO_FFPROBE_PATH: z.string().optional(),
 
@@ -157,6 +158,7 @@ export const env = createEnv({
     STUDIO_PREVIEW_ORIGIN: process.env.STUDIO_PREVIEW_ORIGIN,
     STUDIO_PREVIEW_SERVICE_URL: process.env.STUDIO_PREVIEW_SERVICE_URL,
     STUDIO_PREVIEW_API_KEY: process.env.STUDIO_PREVIEW_API_KEY,
+    STUDIO_PRODUCTION_RATE_CARD: process.env.STUDIO_PRODUCTION_RATE_CARD,
     STUDIO_FFMPEG_PATH: process.env.STUDIO_FFMPEG_PATH,
     STUDIO_FFPROBE_PATH: process.env.STUDIO_FFPROBE_PATH,
 

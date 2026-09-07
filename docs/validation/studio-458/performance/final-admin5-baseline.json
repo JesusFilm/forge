@@ -1,0 +1,2335 @@
+{
+  "browser": "152.0.7977.64",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "serviceWorkers": "allow",
+  "samples": [
+    {
+      "variant": "baseline",
+      "pair": 0,
+      "cache": "cold",
+      "controlsMs": 523.5091770000001,
+      "previewMs": 1319.4149439999999,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 238.90000000596046,
+          "navigationId": 5755,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.800000011920929,
+          "domainLookupStart": 0.800000011920929,
+          "domainLookupEnd": 0.800000011920929,
+          "connectStart": 0.800000011920929,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.800000011920929,
+          "requestStart": 1.9000000059604645,
+          "responseStart": 20.200000017881393,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 20.200000017881393,
+          "responseEnd": 24,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 166.80000001192093,
+          "domContentLoadedEventStart": 166.80000001192093,
+          "domContentLoadedEventEnd": 166.90000000596046,
+          "domComplete": 238.90000000596046,
+          "loadEventStart": 238.90000000596046,
+          "loadEventEnd": 238.90000000596046,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 208
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 208
+          }
+        ],
+        "lcp": 524,
+        "cls": 0,
+        "longTasks": [
+          54
+        ]
+      },
+      "pageErrors": [],
+      "transferredBytes": 342457,
+      "javascriptBytes": 257891,
+      "waterfall": [
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202025.861553,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 23.063000000547618
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202025.888265,
+          "bytes": 3136,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 18.817000003764406
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202025.887359,
+          "bytes": 12769,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 20.220000005792826
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202025.887055,
+          "bytes": 53134,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 21.348000009311363
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202025.888401,
+          "bytes": 9477,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 24.594999995315447
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202025.888511,
+          "bytes": 9555,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 26.141000009374693
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202025.888679,
+          "bytes": 4545,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 53.25299999094568
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202025.888568,
+          "bytes": 39222,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 53.6699999938719
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202025.888835,
+          "bytes": 13269,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 61.69100000988692
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202025.888783,
+          "bytes": 4441,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 60.766000009607524
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202025.888908,
+          "bytes": 8884,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 61.80500000482425
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202025.888627,
+          "bytes": 71417,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 62.244999979157
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202025.888956,
+          "bytes": 13001,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 68.81999998586252
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202025.888998,
+          "bytes": 4530,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 70.25499999872409
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202025.889177,
+          "bytes": 1270,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 74.1320000088308
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202025.889118,
+          "bytes": 11562,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 78.12799999373965
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202025.889061,
+          "bytes": 64428,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 81.99599999352358
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202026.026486,
+          "bytes": 712,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 6.5540000214241445
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202026.125173,
+          "bytes": 981,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 4.778000002261251
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202026.154063,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.1960000158287585
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202026.210839,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 8.772999979555607
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "type": "Fetch",
+          "started": 202026.217573,
+          "bytes": 545,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 19.136999995680526
+        },
+        {
+          "path": "/dashboard/seo",
+          "type": "Fetch",
+          "started": 202026.244449,
+          "bytes": 1122,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 16.793000017059967
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202026.209545,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 115.75600001378916
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202026.336117,
+          "bytes": 2290,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 4.443000012543052
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202026.619679,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 59.27600001450628
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202026.644181,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 47.066999977687374
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202028.217823,
+          "bytes": 1355,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 9.124999982304871
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202028.229618,
+          "bytes": 5183,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 4.766999976709485
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "pair": 0,
+      "cache": "warm",
+      "controlsMs": 216.89608399999997,
+      "previewMs": 1006.0019639999996,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 70.09999999403954,
+          "navigationId": 9983,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.9000000059604645,
+          "domainLookupStart": 0.9000000059604645,
+          "domainLookupEnd": 0.9000000059604645,
+          "connectStart": 0.9000000059604645,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.9000000059604645,
+          "requestStart": 2.0999999940395355,
+          "responseStart": 26.5,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 26.5,
+          "responseEnd": 42.400000005960464,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 31.5,
+          "unloadEventEnd": 31.5,
+          "domInteractive": 67,
+          "domContentLoadedEventStart": 67.09999999403954,
+          "domContentLoadedEventEnd": 67.19999998807907,
+          "domComplete": 70,
+          "loadEventStart": 70.09999999403954,
+          "loadEventEnd": 70.09999999403954,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "low"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 84
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 84
+          }
+        ],
+        "lcp": 228,
+        "cls": 0,
+        "longTasks": []
+      },
+      "pageErrors": [],
+      "transferredBytes": 13809,
+      "javascriptBytes": 0,
+      "waterfall": [
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202028.255498,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.0169999916106462
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202028.262501,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.6830000095069408
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202028.282499,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.11799999629147351
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202028.282659,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.05900001269765198
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202028.283333,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.10500001371838152
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202028.283471,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07000000914558768
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202028.283567,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.060999998822808266
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202028.283648,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07799998275004327
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202028.283756,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05500001134350896
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202028.283829,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.10000000474974513
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202028.283953,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07499998901039362
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202028.284049,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.0659999786876142
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202028.284133,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06699998630210757
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202028.284219,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05600001895800233
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202028.284295,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05400000372901559
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202028.284366,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.058999983593821526
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202028.284446,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.08699999307282269
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202028.28456,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.062000006437301636
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202028.290994,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 0.12199999764561653
+        },
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202028.248949,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 41.52800000156276
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202028.328134,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.027999988058582
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202028.365687,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.9019999890588224
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202028.369963,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 8.288999990327284
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202028.36878,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 52.72900001727976
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202028.433103,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.28600002406165004
+        },
+        {
+          "path": "/dashboard/coverage",
+          "type": "Fetch",
+          "started": 202028.430349,
+          "bytes": 1642,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 17.984000005526468
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202028.696793,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 32.88299997802824
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202028.739073,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 31.2160000030417
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202030.289438,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.17399998614564538
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202030.275654,
+          "bytes": 1353,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 8.258999994723126
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "pair": 1,
+      "cache": "cold",
+      "controlsMs": 615.2879400000002,
+      "previewMs": 1447.3932509999995,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 250.80000001192093,
+          "navigationId": 6714,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.699999988079071,
+          "domainLookupStart": 0.699999988079071,
+          "domainLookupEnd": 0.699999988079071,
+          "connectStart": 0.699999988079071,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.699999988079071,
+          "requestStart": 2.5,
+          "responseStart": 24.099999994039536,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 24.099999994039536,
+          "responseEnd": 27.400000005960464,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 62.400000005960464,
+          "domContentLoadedEventStart": 62.400000005960464,
+          "domContentLoadedEventEnd": 62.5,
+          "domComplete": 250.59999999403954,
+          "loadEventStart": 250.80000001192093,
+          "loadEventEnd": 250.80000001192093,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 172
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 172
+          }
+        ],
+        "lcp": 584,
+        "cls": 0,
+        "longTasks": [
+          52,
+          56
+        ]
+      },
+      "pageErrors": [],
+      "transferredBytes": 342433,
+      "javascriptBytes": 257891,
+      "waterfall": [
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202030.45071,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 26.72200000961311
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202030.481967,
+          "bytes": 3136,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 9.22899998840876
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202030.480389,
+          "bytes": 12769,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 14.345999981742352
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202030.480042,
+          "bytes": 53134,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 20.825999992666766
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202030.48213,
+          "bytes": 9477,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 18.970000004628673
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202030.482225,
+          "bytes": 9555,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 23.82999999099411
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202030.482397,
+          "bytes": 4545,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 41.06599997612648
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202030.482277,
+          "bytes": 39222,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 41.904999990947545
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202030.591059,
+          "bytes": 712,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 15.889000002061948
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202030.482476,
+          "bytes": 4441,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 47.48400000971742
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202030.482327,
+          "bytes": 71417,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 43.52499998640269
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202030.482524,
+          "bytes": 13269,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 52.546000020811334
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202030.482624,
+          "bytes": 8884,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 58.36200001067482
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202030.482952,
+          "bytes": 4530,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 59.692000009818
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202030.482905,
+          "bytes": 13001,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 59.99499998870306
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202030.483158,
+          "bytes": 1270,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 64.82500000856817
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202030.483089,
+          "bytes": 11562,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 65.27500000083819
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202030.482992,
+          "bytes": 64428,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 60.7810000074096
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202030.728887,
+          "bytes": 981,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 14.92699998198077
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202030.819816,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 3.7099999899510294
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202030.843113,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 44.209999992745
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202030.841249,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 106.26200001570396
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202030.97086,
+          "bytes": 2290,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 16.598999995039776
+        },
+        {
+          "path": "/dashboard/coverage",
+          "type": "Fetch",
+          "started": 202030.963735,
+          "bytes": 1643,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 23.202999989734963
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202031.263505,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 78.81499998620711
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202031.286032,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 58.54999998700805
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202032.932719,
+          "bytes": 1355,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 9.98599999002181
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202032.945489,
+          "bytes": 5183,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 4.86699998145923
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "pair": 1,
+      "cache": "warm",
+      "controlsMs": 186.3085289999999,
+      "previewMs": 980.3609080000006,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 77.40000000596046,
+          "navigationId": 1621,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.7000000178813934,
+          "domainLookupStart": 0.7000000178813934,
+          "domainLookupEnd": 0.7000000178813934,
+          "connectStart": 0.7000000178813934,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.7000000178813934,
+          "requestStart": 1.7000000178813934,
+          "responseStart": 30.100000023841858,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 30.100000023841858,
+          "responseEnd": 47,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 35.60000002384186,
+          "unloadEventEnd": 35.60000002384186,
+          "domInteractive": 76.90000000596046,
+          "domContentLoadedEventStart": 76.90000000596046,
+          "domContentLoadedEventEnd": 77.2000000178814,
+          "domComplete": 77.40000000596046,
+          "loadEventStart": 77.40000000596046,
+          "loadEventEnd": 77.40000000596046,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 84
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 84
+          }
+        ],
+        "lcp": 208,
+        "cls": 0,
+        "longTasks": []
+      },
+      "pageErrors": [],
+      "transferredBytes": 17267,
+      "javascriptBytes": 0,
+      "waterfall": [
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202032.975328,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.0800000056624413
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202032.981836,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.7760000191628933
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202033.005261,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.10799997835420072
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202033.00541,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.05199998850002885
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202033.005935,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.1120000088121742
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202033.006079,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07999999797903001
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202033.006186,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.059999991208314896
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202033.006267,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.08100000559352338
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202033.006366,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06000002031214535
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202033.006444,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.060999998822808266
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202033.006523,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06900000153109431
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202033.00661,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05699999746866524
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202033.006684,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06500000017695129
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202033.006768,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.063000014051795
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202033.006852,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05400000372901559
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202033.006922,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.062000006437301636
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202033.007016,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.10800000745803118
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202033.007155,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.062000006437301636
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202033.015561,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 0.10999999358318746
+        },
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202032.967416,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 46.239999996032566
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202033.051825,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.000999986194074
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202033.086324,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.1459999843500555
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202033.08825,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 7.286999985808507
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "type": "Fetch",
+          "started": 202033.093307,
+          "bytes": 545,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 19.06799999414943
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202033.087054,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 30.704999982845038
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202033.126235,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.2880000101868063
+        },
+        {
+          "path": "/dashboard/agents",
+          "type": "Fetch",
+          "started": 202033.118339,
+          "bytes": 1792,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 24.600999982794747
+        },
+        {
+          "path": "/dashboard/seo",
+          "type": "Fetch",
+          "started": 202033.119166,
+          "bytes": 1120,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 22.72500001708977
+        },
+        {
+          "path": "/dashboard/coverage",
+          "type": "Fetch",
+          "started": 202033.149303,
+          "bytes": 1643,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 20.86699998471886
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202033.389311,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 30.276000004960224
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202033.42994,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 30.460999987553805
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202034.990783,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.19400002202019095
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202034.976513,
+          "bytes": 1354,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 7.637000002432615
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "pair": 2,
+      "cache": "cold",
+      "controlsMs": 389.944254,
+      "previewMs": 1183.054873000001,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 175.90000000596046,
+          "navigationId": 3790,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.6000000238418579,
+          "domainLookupStart": 0.6000000238418579,
+          "domainLookupEnd": 0.6000000238418579,
+          "connectStart": 0.6000000238418579,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.6000000238418579,
+          "requestStart": 1.600000023841858,
+          "responseStart": 16.700000017881393,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 16.700000017881393,
+          "responseEnd": 19.30000001192093,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 118.80000001192093,
+          "domContentLoadedEventStart": 118.80000001192093,
+          "domContentLoadedEventEnd": 118.90000000596046,
+          "domComplete": 175.90000000596046,
+          "loadEventStart": 175.90000000596046,
+          "loadEventEnd": 175.90000000596046,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 140
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 140
+          }
+        ],
+        "lcp": 404,
+        "cls": 0,
+        "longTasks": []
+      },
+      "pageErrors": [],
+      "transferredBytes": 348132,
+      "javascriptBytes": 257891,
+      "waterfall": [
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202035.146341,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 18.64899997599423
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202035.170985,
+          "bytes": 3136,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 14.674000005470589
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202035.16949,
+          "bytes": 12769,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 17.61199999600649
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202035.169135,
+          "bytes": 53134,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 22.29500000248663
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202035.171216,
+          "bytes": 9477,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 23.016000021016225
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202035.171329,
+          "bytes": 9555,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 26.60799998557195
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202035.171652,
+          "bytes": 4545,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 45.40200001792982
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202035.171765,
+          "bytes": 4441,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 47.223999979905784
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202035.17143,
+          "bytes": 39222,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 48.095000005559996
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202035.172044,
+          "bytes": 8884,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 48.171999980695546
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202035.171847,
+          "bytes": 13269,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 48.11400000471622
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202035.172146,
+          "bytes": 13001,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 62.406000011833385
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202035.17153,
+          "bytes": 71417,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 50.11199999717064
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202035.17252,
+          "bytes": 1270,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 64.35299999429844
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202035.172229,
+          "bytes": 4530,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 65.44200002099387
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202035.172406,
+          "bytes": 11562,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 64.16499998886138
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202035.17232,
+          "bytes": 64428,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 68.24299998697825
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202035.264116,
+          "bytes": 712,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 7.360999996308237
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202035.347124,
+          "bytes": 981,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 5.785000015748665
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202035.380413,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.8240000063087791
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202035.435519,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 10.67800002056174
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "type": "Fetch",
+          "started": 202035.446127,
+          "bytes": 545,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 22.494000004371628
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202035.434202,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 38.17899999557994
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202035.488941,
+          "bytes": 2290,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 8.898000000044703
+        },
+        {
+          "path": "/dashboard/agents",
+          "type": "Fetch",
+          "started": 202035.475621,
+          "bytes": 1798,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 22.01499999500811
+        },
+        {
+          "path": "/dashboard/seo",
+          "type": "Fetch",
+          "started": 202035.476741,
+          "bytes": 1123,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 19.33800001279451
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202035.519088,
+          "bytes": 1115,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 10.697999998228624
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "type": "Fetch",
+          "started": 202035.520059,
+          "bytes": 1120,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 9.909999993396923
+        },
+        {
+          "path": "/dashboard/coverage",
+          "type": "Fetch",
+          "started": 202035.530564,
+          "bytes": 1641,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 12.489000015193596
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202035.771303,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 28.095000016037375
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202035.799143,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 29.014999978244305
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202037.364629,
+          "bytes": 1355,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 6.9460000086110085
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202037.37652,
+          "bytes": 5183,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 4.052000003866851
+        }
+      ]
+    },
+    {
+      "variant": "baseline",
+      "pair": 2,
+      "cache": "warm",
+      "controlsMs": 218.99216100000012,
+      "previewMs": 1006.4840820000009,
+      "frontend": {
+        "navigation": {
+          "name": "http://studio458.localhost:3598/dashboard/shorts/000458-browser-2",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 76.2999999821186,
+          "navigationId": 9101,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "http/1.1",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "gzip",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.699999988079071,
+          "domainLookupStart": 0.699999988079071,
+          "domainLookupEnd": 0.699999988079071,
+          "connectStart": 0.699999988079071,
+          "secureConnectionStart": 0,
+          "connectEnd": 0.699999988079071,
+          "requestStart": 3.0999999940395355,
+          "responseStart": 33.19999998807907,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 33.19999998807907,
+          "responseEnd": 35.400000005960464,
+          "transferSize": 5548,
+          "encodedBodySize": 5248,
+          "decodedBodySize": 19522,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 37.79999998211861,
+          "unloadEventEnd": 37.79999998211861,
+          "domInteractive": 73.69999998807907,
+          "domContentLoadedEventStart": 73.7999999821186,
+          "domContentLoadedEventEnd": 73.90000000596046,
+          "domComplete": 76.2999999821186,
+          "loadEventStart": 76.2999999821186,
+          "loadEventEnd": 76.2999999821186,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "paint": [
+          {
+            "name": "first-paint",
+            "startTime": 88
+          },
+          {
+            "name": "first-contentful-paint",
+            "startTime": 88
+          }
+        ],
+        "lcp": 200,
+        "cls": 0,
+        "longTasks": []
+      },
+      "pageErrors": [],
+      "transferredBytes": 13835,
+      "javascriptBytes": 0,
+      "waterfall": [
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202037.405774,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.7719999887049198
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202037.411372,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 1.8109999946318567
+        },
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "type": "Stylesheet",
+          "started": 202037.433996,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.11699998867698014
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "type": "Stylesheet",
+          "started": 202037.434157,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.05199998850002885
+        },
+        {
+          "path": "/_next/static/chunks/104f6t25z--zb.css",
+          "type": "Stylesheet",
+          "started": 202037.434653,
+          "bytes": 0,
+          "status": 200,
+          "mime": "text/css",
+          "fromDiskCache": false,
+          "durationMs": 0.08900000830180943
+        },
+        {
+          "path": "/_next/static/chunks/14am8r1edq4o3.js",
+          "type": "Script",
+          "started": 202037.434774,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07300000288523734
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "type": "Script",
+          "started": 202037.434873,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06500000017695129
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "type": "Script",
+          "started": 202037.434959,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07300000288523734
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "type": "Script",
+          "started": 202037.435053,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07500001811422408
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-03h9_ij_b87-e.js",
+          "type": "Script",
+          "started": 202037.435147,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.058999983593821526
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "type": "Script",
+          "started": 202037.435223,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05699999746866524
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "type": "Script",
+          "started": 202037.435297,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.06400002166628838
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "type": "Script",
+          "started": 202037.435379,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.07000000914558768
+        },
+        {
+          "path": "/_next/static/chunks/08dkegf4cnkdd.js",
+          "type": "Script",
+          "started": 202037.435467,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05299999611452222
+        },
+        {
+          "path": "/_next/static/chunks/0mew3naq_zlvz.js",
+          "type": "Script",
+          "started": 202037.43554,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.060999998822808266
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "type": "Script",
+          "started": 202037.435619,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.05800000508315861
+        },
+        {
+          "path": "/_next/static/chunks/0tl36l4~4.25g.js",
+          "type": "Script",
+          "started": 202037.435699,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.10200001997873187
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "type": "Script",
+          "started": 202037.43583,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.059999991208314896
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "type": "Image",
+          "started": 202037.442202,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": false,
+          "durationMs": 0.09699998190626502
+        },
+        {
+          "path": "/dashboard/shorts/000458-browser-2",
+          "type": "Document",
+          "started": 202037.393119,
+          "bytes": 5839,
+          "status": 200,
+          "mime": "text/html",
+          "fromDiskCache": false,
+          "durationMs": 34.669000015128404
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202037.480232,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.031999989412725
+        },
+        {
+          "path": "/favicon.svg",
+          "type": "Other",
+          "started": 202037.508649,
+          "bytes": 0,
+          "status": 200,
+          "mime": "image/svg+xml",
+          "fromDiskCache": true,
+          "durationMs": 2.09500000346452
+        },
+        {
+          "path": "/api/jobs",
+          "type": "Fetch",
+          "started": 202037.512453,
+          "bytes": 271,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 14.177000004565343
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "type": "Fetch",
+          "started": 202037.516677,
+          "bytes": 545,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 28.224999987287447
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202037.511241,
+          "bytes": 2500,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 39.93699999409728
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "type": "Script",
+          "started": 202037.558147,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.2690000110305846
+        },
+        {
+          "path": "/dashboard/seo",
+          "type": "Fetch",
+          "started": 202037.550906,
+          "bytes": 1123,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 19.429000007221475
+        },
+        {
+          "path": "/api/studio/command",
+          "type": "Fetch",
+          "started": 202037.812419,
+          "bytes": 1110,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 25.920999993104488
+        },
+        {
+          "path": "/api/studio/preview",
+          "type": "Fetch",
+          "started": 202037.861186,
+          "bytes": 2447,
+          "status": 200,
+          "mime": "application/json",
+          "fromDiskCache": false,
+          "durationMs": 28.430000005755574
+        },
+        {
+          "path": "/_next/static/chunks/0h~lwpfxaxsso.js",
+          "type": "Script",
+          "started": 202039.442313,
+          "bytes": 0,
+          "status": 200,
+          "mime": "application/javascript",
+          "fromDiskCache": false,
+          "durationMs": 0.19299998530186713
+        },
+        {
+          "path": "/dashboard/shorts",
+          "type": "Fetch",
+          "started": 202039.426181,
+          "bytes": 1354,
+          "status": 200,
+          "mime": "text/x-component",
+          "fromDiskCache": false,
+          "durationMs": 8.46900002215989
+        }
+      ]
+    }
+  ]
+}

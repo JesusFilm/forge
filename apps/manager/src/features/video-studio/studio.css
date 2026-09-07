@@ -747,3 +747,58 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+
+.nle-dialog.nle-production {
+  width: min(960px, calc(100vw - 48px));
+}
+.nle-production > header {
+  position: sticky;
+  top: -24px;
+  background: var(--ds-panel);
+  margin: -24px -24px 16px;
+  padding: 16px 24px;
+  z-index: 2;
+}
+.nle-production fieldset {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--ds-line);
+  border-radius: 8px;
+}
+.nle-production legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.nle-production .nle-production-targets {
+  max-height: 15rem;
+  overflow-y: auto;
+}
+.nle-proposal-canvas {
+  position: relative;
+  margin: 16px auto;
+  background: var(--ds-ink);
+}
+.nle-production pre {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.nle-production .nle-spoken-bytes {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 16px;
+  padding: 8px 0;
+}
+.nle-production details {
+  margin: 10px 0;
+}
+.nle-production audio {
+  max-width: 100%;
+  width: 100%;
+  margin: 10px 0;
+}

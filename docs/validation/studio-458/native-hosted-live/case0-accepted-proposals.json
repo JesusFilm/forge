@@ -1,0 +1,213 @@
+[
+  {
+    "summary": "Revise the existing ch19-seq102 spoken items into a fuller, source-grounded English script with a curiosity-led hook, a causal bridge, and a short settle, while preserving the recovered excerpt\u2019s qualifiers and concrete anchors. This keeps the composition simple and inspectable for human review.",
+    "command": {
+      "projectId": "000458-native-ch19-seq102",
+      "expectedRevision": 1,
+      "idempotencyKey": "8c3119ef-b7c1-428d-8fd3-912a0a2e4e10",
+      "operations": [
+        {
+          "kind": "set-metadata",
+          "title": "ch19-seq102 \u2014 storm, fear, and ready faith",
+          "language": "en",
+          "durationInFrames": 2700
+        },
+        {
+          "kind": "set-text",
+          "itemId": "reflection",
+          "text": "Three Gospels remember the same storm. That repetition tells me this is not a small scene. If Matthew, Mark, and Luke all pause here, I want to pause too and ask: what am I treating as ordinary that Scripture keeps pressing into view?"
+        },
+        {
+          "kind": "set-text",
+          "itemId": "bridge",
+          "text": "Because the moment is so important, it exposes something else as well: true disciples can still be overtaken by fear. The boat fills, the wind rises, and even those who have walked with Jesus cry, \u201cMaster, Master, we are going to perish!\u201d That cry is humbling, but it is also instructive. Sight, sense, and feeling can make believers very poor theologians."
+        },
+        {
+          "kind": "set-text",
+          "itemId": "settle",
+          "text": "Take a quiet breath. Let that faith be ready."
+        }
+      ]
+    },
+    "quality": {
+      "coverage": [
+        {
+          "role": "canonical_video_source",
+          "status": "not_checked",
+          "itemIds": []
+        },
+        {
+          "role": "canonical_subtitles",
+          "status": "not_checked",
+          "itemIds": []
+        },
+        {
+          "role": "reflection",
+          "status": "present",
+          "itemIds": [
+            "reflection"
+          ]
+        },
+        {
+          "role": "bridge",
+          "status": "present",
+          "itemIds": [
+            "bridge"
+          ]
+        },
+        {
+          "role": "settle",
+          "status": "present",
+          "itemIds": [
+            "settle"
+          ]
+        }
+      ],
+      "findings": [
+        {
+          "criterion": "coherence",
+          "status": "pass",
+          "reason": "The script moves in one causal line from the repeated Gospel attestation to disciple fear and then to the practical need for faith ready at need. The settle ends the arc without a new argument.",
+          "itemIds": [
+            "reflection",
+            "bridge",
+            "settle"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "depth",
+          "status": "pass",
+          "reason": "The revision retains the excerpt\u2019s developed reasoning and concrete anchors: repeated testimony, the storm, the disciples\u2019 alarm, and the insight that sense and feeling distort judgment. It avoids flattening the argument into a generic summary.",
+          "itemIds": [
+            "reflection",
+            "bridge"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "fidelity",
+          "status": "pass",
+          "reason": "The script preserves the recovered excerpt\u2019s substance and quoted material without inventing new events or citations. Canonical video/subtitle evidence was not supplied, so those checks remain not_checked.",
+          "itemIds": [
+            "reflection",
+            "bridge",
+            "settle"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "voice",
+          "status": "pass",
+          "reason": "The script uses a reflective first-person hook and a restrained appeal without shifting into a conflicting command voice. The direct quotation is preserved as an exact echo, and the closing settle is distinct and brief.",
+          "itemIds": [
+            "reflection",
+            "bridge",
+            "settle"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "command_or_appeal",
+          "status": "pass",
+          "reason": "The appeal remains invitational rather than imperative; it asks what the speaker is treating as ordinary instead of issuing directives to the audience.",
+          "itemIds": [
+            "reflection",
+            "bridge"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "third_party_address",
+          "status": "not_checked",
+          "reason": "The revised script does not include a distinct third-party address beyond the quoted disciples\u2019 speech and general reflection, so this heuristic was not materially exercised.",
+          "itemIds": [
+            "bridge"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "self_echo",
+          "status": "pass",
+          "reason": "The opening question creates a present-tense self-echo that carries through the later application to faith under pressure.",
+          "itemIds": [
+            "reflection"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "opening_recap",
+          "status": "pass",
+          "reason": "The opening uses the repeated threefold Gospel remembrance as a hook, not a recap, prompting attention to why the scene matters.",
+          "itemIds": [
+            "reflection"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        },
+        {
+          "criterion": "scripture_echo",
+          "status": "pass",
+          "reason": "The direct quotation from the disciples is preserved and treated as an exact echo from the source excerpt rather than paraphrased away.",
+          "itemIds": [
+            "bridge"
+          ],
+          "sources": [
+            {
+              "assetId": "707c7793-b13d-4334-b9aa-69c9ebbbd9e8",
+              "versionId": "cmtrhwiqn00032cvbgmw3rn56",
+              "digest": "566b8193ee115a73c8893c05dd1c10de1eef954440b7acccacd9e66605c7a588"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

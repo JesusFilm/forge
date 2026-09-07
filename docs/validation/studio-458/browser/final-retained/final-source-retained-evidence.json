@@ -1,0 +1,8 @@
+{
+  "stages": [
+    "source-retained"
+  ],
+  "pageErrors": [],
+  "serviceWorkers": "allow",
+  "providerMode": "deterministic interception; no paid calls"
+}

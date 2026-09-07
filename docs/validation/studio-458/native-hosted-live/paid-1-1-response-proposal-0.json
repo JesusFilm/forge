@@ -1,0 +1,263 @@
+{
+  "summary": "Revise ch31-seq104 into a concise English adaptation of the recovered Good Samaritan excerpt, keeping the argument grounded in the lawyer\u2019s question, the rarity of true brotherly love, and the practical shape of charity. Preserve separate spoken roles and add a short settle ending. Note that canonical video/subtitle evidence is unavailable, so source-availability checks remain not_checked.",
+  "operations": [
+    {
+      "kind": "set-metadata",
+      "title": "ch31-seq104 \u2014 good Samaritan reflection",
+      "language": "en",
+      "durationInFrames": 1800
+    },
+    {
+      "kind": "set-text",
+      "itemId": "reflection",
+      "text": "A simple question can expose a whole way of living. When the lawyer asks, \u201cWho is my neighbour?\u201d, the answer does not begin with an abstract lesson. It begins with a wounded traveler, two religious men who pass by, and one Samaritan who stops. The point is plain before any ornament: true brotherly love is rare, and Scripture wants us to notice that rarity first."
+    },
+    {
+      "kind": "set-text",
+      "itemId": "bridge",
+      "text": "That is why the parable refuses to let us wander into clever allegories. It presses one clear truth on the conscience. Charity is not merely a feeling that notices distress from a distance. It is practical love: it takes trouble, spends time, risks inconvenience, binds wounds, makes room for someone else\u2019s need, and keeps going until help is actually arranged. In that way, the story turns sympathy into duty, and duty into action."
+    },
+    {
+      "kind": "set-text",
+      "itemId": "settle",
+      "text": "Take a quiet breath. Let that kindness settle."
+    },
+    {
+      "kind": "set-timing",
+      "itemId": "reflection",
+      "durationInFrames": 660,
+      "timingLocked": true
+    },
+    {
+      "kind": "set-timing",
+      "itemId": "bridge",
+      "durationInFrames": 780,
+      "timingLocked": true
+    },
+    {
+      "kind": "set-timing",
+      "itemId": "settle",
+      "durationInFrames": 360,
+      "timingLocked": true
+    }
+  ],
+  "quality": {
+    "coverage": [
+      {
+        "role": "reflection",
+        "status": "present",
+        "itemIds": [
+          "reflection"
+        ]
+      },
+      {
+        "role": "bridge",
+        "status": "present",
+        "itemIds": [
+          "bridge"
+        ]
+      },
+      {
+        "role": "settle",
+        "status": "present",
+        "itemIds": [
+          "settle"
+        ]
+      },
+      {
+        "role": "hook",
+        "status": "present",
+        "itemIds": [
+          "reflection"
+        ]
+      },
+      {
+        "role": "conclusion",
+        "status": "present",
+        "itemIds": [
+          "bridge"
+        ]
+      },
+      {
+        "role": "command",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "appeal",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "third_party_address",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "self_echo",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "opening_recap",
+        "status": "absent",
+        "itemIds": []
+      },
+      {
+        "role": "scripture_echo",
+        "status": "present",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "criterion": "coherence",
+        "status": "pass",
+        "reason": "The script moves in one causal line: the lawyer\u2019s question leads to the road scene, which leads to the distinction between feeling and practical charity, and ends with a short absorptive settle. No abrupt pivot or redundant closing sentence appears.",
+        "itemIds": [
+          "reflection",
+          "bridge",
+          "settle"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "depth",
+        "status": "pass",
+        "reason": "The adaptation preserves the excerpt\u2019s developed reasoning: the occasion of the parable, the rarity of true brotherly love, the warning against over-allegorizing, and the concrete works of mercy. It does not collapse the argument into a generic moral summary.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "fidelity",
+        "status": "not_checked",
+        "reason": "The recovered editorial excerpt is available, but the pack explicitly supplies no canonical source footage or subtitles. Therefore exact clip/subtitle verification, provenance matching, and timing corroboration remain not_checked rather than pass.",
+        "itemIds": [
+          "reflection",
+          "bridge",
+          "settle"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "voice",
+        "status": "pass",
+        "reason": "The script keeps a reflective devotional tone without shifting into direct exhortation aimed at the viewer. It speaks about the parable in third person, avoids self-echo, and uses the final settle as a distinct pause rather than a second conclusion.",
+        "itemIds": [
+          "reflection",
+          "bridge",
+          "settle"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "command_or_appeal",
+        "status": "fail",
+        "reason": "The revised script intentionally removes the explicit appeal style found in the recovered excerpt. It ends with a settle instead of a direct call to action, so the criterion is not carried forward as spoken content.",
+        "itemIds": [
+          "settle"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "third_party_address",
+        "status": "pass",
+        "reason": "The text addresses the parable and its actors externally rather than speaking as the viewer or inventing a first-person witness. That keeps the perspective stable and non-impersonated.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "self_echo",
+        "status": "pass",
+        "reason": "No repeated self-referential claims or first-person spiritual autobiography were introduced. The script stays anchored in the excerpt\u2019s argument rather than echoing the narrator as a character.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "opening_recap",
+        "status": "fail",
+        "reason": "The opening is intentionally curiosity-led rather than a recap, so it does not begin by summarizing prior context. That follows the creative default, but it means recap is absent as a spoken pattern.",
+        "itemIds": [
+          "reflection"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      },
+      {
+        "criterion": "scripture_echo",
+        "status": "pass",
+        "reason": "The script clearly echoes the recovered excerpt\u2019s core claims: the lawyer\u2019s question, the Samaritan\u2019s compassion, the warning against over-allegorizing, and the distinction between feeling and practical love.",
+        "itemIds": [
+          "reflection",
+          "bridge"
+        ],
+        "sources": [
+          {
+            "assetId": "c480bf29-5659-4ff1-b08c-fccfc5c16c5a",
+            "versionId": "cmtrhx33100032c767cd2d68v",
+            "digest": "2e2ef497ab4140435ccb3659f98f042f6a01c1b237b4216aa58b3864943c0ab5"
+          }
+        ]
+      }
+    ]
+  }
+}

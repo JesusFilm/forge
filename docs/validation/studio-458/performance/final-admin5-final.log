@@ -1,0 +1,6 @@
+{"variant":"final","pair":0,"cache":"cold","controlsMs":1458.15411,"previewMs":1747.6077289999998,"lcp":1024,"cls":0,"javascriptBytes":257285,"pageErrors":[]}
+{"variant":"final","pair":0,"cache":"warm","controlsMs":232.64379299999973,"previewMs":1021.6653790000005,"lcp":232,"cls":0,"javascriptBytes":0,"pageErrors":[]}
+{"variant":"final","pair":1,"cache":"cold","controlsMs":409.2682190000005,"previewMs":1214.0477440000004,"lcp":420,"cls":0,"javascriptBytes":257285,"pageErrors":[]}
+{"variant":"final","pair":1,"cache":"warm","controlsMs":213.1602640000001,"previewMs":1001.4334849999996,"lcp":216,"cls":0,"javascriptBytes":0,"pageErrors":[]}
+{"variant":"final","pair":2,"cache":"cold","controlsMs":518.4050480000005,"previewMs":1316.1264190000002,"lcp":524,"cls":0,"javascriptBytes":257285,"pageErrors":[]}
+{"variant":"final","pair":2,"cache":"warm","controlsMs":244.40699900000072,"previewMs":1032.6606630000006,"lcp":252,"cls":0,"javascriptBytes":0,"pageErrors":[]}

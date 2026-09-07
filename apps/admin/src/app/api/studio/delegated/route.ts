@@ -1,3 +1,8 @@
+import { StudioGenerationService } from "@/services/studio-authoring/generation"
+import {
+  executeStudioProduction,
+  studioProductionRpcSchema,
+} from "@/services/studio-authoring/production-rpc"
 import { prisma } from "@/db/client"
 import { env } from "@/config/env"
 import {
@@ -35,11 +40,19 @@ export async function POST(request: Request) {
         caller.clientId !== "studio-hosted"
       )
         throw new StudioBoundaryError("Trusted completion required")
-      result = await new StudioAuthoringService(prisma).complete(
-        { id: null, role: "MANAGER_BACKEND" },
-        finish.data.input,
-      )
-    } else result = await executeStudioDelegated(prisma, caller, raw)
+      result = finish.data.generation
+        ? await new StudioGenerationService(prisma).complete(
+            { id: null, role: "MANAGER_BACKEND" },
+            finish.data.input,
+            finish.data.generation,
+          )
+        : await new StudioAuthoringService(prisma).complete(
+            { id: null, role: "MANAGER_BACKEND" },
+            finish.data.input,
+          )
+    } else if (studioProductionRpcSchema.safeParse(raw).success)
+      result = await executeStudioProduction(prisma, caller, raw)
+    else result = await executeStudioDelegated(prisma, caller, raw)
     return Response.json(
       { result },
       { headers: { "cache-control": "no-store" } },

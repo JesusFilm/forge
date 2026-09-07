@@ -1,0 +1,18 @@
+import { chromium } from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'allow'});
+const page=await context.newPage(),errors=[];
+page.on('pageerror',error=>errors.push({name:error.name,message:error.message,stack:error.stack}));
+try{
+ await context.request.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});
+ await page.goto('http://studio458.localhost:3588/dashboard/shorts/000458-browser-1',{waitUntil:'domcontentloaded'});
+ await page.waitForSelector('.nle-preview[data-preview-ready="true"]',{timeout:15000});
+ await page.waitForTimeout(250);
+ await writeFile('/tmp/forge-studio-458-runtime/preview-current-body.txt',await page.locator('body').innerText());
+ await page.waitForTimeout(250);
+ const frames=page.frames().map(frame=>({url:frame.url().replace(/\/s\/[a-f0-9]{64}/g,'/s/<session>')}));
+ await writeFile('/tmp/forge-studio-458-runtime/preview-error-evidence.json',JSON.stringify({errors,frames},null,2));
+ console.log(JSON.stringify({errors}));
+ if(errors.some(error=>error.message.includes('serviceWorker')))process.exitCode=1;
+}finally{await browser.close()}

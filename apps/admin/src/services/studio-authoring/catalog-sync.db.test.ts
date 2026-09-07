@@ -15,6 +15,7 @@ suite("Core sync preserves Manager identity", () => {
       p.hostname !== "127.0.0.1" ||
       !(
         (p.port === "55459" && p.pathname === "/forge_studio_459_test") ||
+        (p.port === "55458" && p.pathname === "/forge_studio_458_test") ||
         (p.port === "55457" && p.pathname === "/forge_studio_457_test")
       )
     )

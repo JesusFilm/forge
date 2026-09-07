@@ -17,6 +17,8 @@ suite("retained source and pack revision INSERT", () => {
     if (
       parsed.hostname !== "127.0.0.1" ||
       !(
+        (parsed.port === "55458" &&
+          parsed.pathname === "/forge_studio_458_test") ||
         (parsed.port === "55457" &&
           parsed.pathname === "/forge_studio_457_test") ||
         (parsed.port === "55459" &&

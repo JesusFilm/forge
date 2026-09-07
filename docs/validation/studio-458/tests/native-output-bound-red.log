@@ -1,0 +1,57 @@
+(node:1278784) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/mastra
+
+stderr | src/services/studio-authoring/agent.test.ts
+Error in agent stream {
+  error: Error: Uncertain provider response
+      at doStream [90m(/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra/[39msrc/services/studio-authoring/agent.test.ts:9:112[90m)[39m
+      at MockLanguageModelV3.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/ai@6.0.182_zod@4.3.6/node_modules/[4mai[24m/src/test/mock-language-model-v3.ts:61:16)
+      at AISDKV6LanguageModel.doStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/llm/model/aisdk/v6/model.ts:80:30)
+      at default.retries (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:225:43)
+      at Module.pRetry (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/p-retry@7.1.1/node_modules/[4mp-retry[24m/index.js:197:25)
+      at createStream (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/aisdk/v5/execute.ts:219:29)
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at Object.start (file:///home/tataihono/.codex/worktrees/8b33/forge/node_modules/[4m.pnpm[24m/@mastra+core@1.55.0_@grpc+grpc-js@1.14.4_ai@6.0.182_zod@4.3.6__express@5.2.1_rxjs@7.8.2_zod@4.3.6/node_modules/[4m@mastra/core[24m/src/stream/base/input.ts:67:26),
+  runId: [32m'c28cee20-f3b9-421d-8833-bc1c94ecea8d'[39m,
+  provider: [32m'mock-provider'[39m,
+  modelId: [32m'mock-model-id'[39m
+}
+
+ ❯ src/services/studio-authoring/agent.test.ts (1 test | 1 failed) 84ms
+   × sends a bounded output allowance and does not retry an uncertain provider error 83ms
+     → expected [ +0 ] to deeply equal [ 4096 ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/agent.test.ts > sends a bounded output allowance and does not retry an uncertain provider error
+AssertionError: expected [ +0 ] to deeply equal [ 4096 ]
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[32m-   4096,[39m
+[31m+   0,[39m
+[2m  ][22m
+
+ ❯ src/services/studio-authoring/agent.test.ts:11:19
+      9|  const model=new MockLanguageModelV3({doStream:async options=>{observe…
+     10|  await expect(streamStudioAgent({project,frozen,model,message:"Create …
+     11|  expect(observed).toEqual([4096])
+       |                   ^
+     12| })
+     13| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  04:16:18
+   Duration  1.54s (transform 134ms, setup 0ms, collect 977ms, tests 84ms, environment 0ms, prepare 81ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/mastra:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/agent.test.ts

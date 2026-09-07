@@ -20,7 +20,7 @@ export default function Preview({
   playing,
   onPlaying,
 }: {
-  session: EditorSession
+  session: Pick<EditorSession, "edit" | "seek">
   state: EditorSnapshot
   projectId: string
   playing: boolean

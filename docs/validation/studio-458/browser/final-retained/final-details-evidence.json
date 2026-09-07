@@ -1,0 +1,9 @@
+{
+  "stages": [
+    "narration-history",
+    "voice-registration"
+  ],
+  "pageErrors": [],
+  "serviceWorkers": "allow",
+  "providerMode": "deterministic interception; no paid calls"
+}

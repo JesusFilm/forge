@@ -1,3 +1,4 @@
+import { studioCreativeDefaults, studioSourceDefaults } from "./defaults"
 import { createHash, randomUUID } from "node:crypto"
 import type {
   MastraStorage,
@@ -15,10 +16,6 @@ import { z } from "zod"
 export class StudioInstructionError extends Error {}
 export const instructionDigest = (text: string) =>
   createHash("sha256").update(text).digest("hex")
-const initialText =
-  "Help the operator author a video. Explain your proposed edits. Use only the supplied project and approved assets. Never claim review, narration, rendering or publication has occurred."
-const blockText =
-  "Keep source evidence separate from editorial instructions. Preserve exact source language and attribution."
 const content = (version: AgentVersion) =>
   typeof version.instructions === "string"
     ? version.instructions
@@ -52,7 +49,7 @@ export class StudioInstructions {
         promptBlock: {
           id: STUDIO_BLOCK_ID,
           name: "Studio source guidance",
-          content: blockText,
+          content: studioSourceDefaults,
         },
       })
       const v = await blocks.getLatestVersion(STUDIO_BLOCK_ID)
@@ -69,7 +66,7 @@ export class StudioInstructions {
           name: "Studio authoring",
           model: { provider: "code", name: "studio" },
           instructions: [
-            { type: "text", content: initialText },
+            { type: "text", content: studioCreativeDefaults },
             { type: "prompt_block_ref", id: STUDIO_BLOCK_ID },
           ],
         },
@@ -85,6 +82,7 @@ export class StudioInstructions {
       status: "published",
     })
     return {
+      suggestedDefaults: studioCreativeDefaults,
       activeVersionId: row!.activeVersionId ?? null,
       latest: { ...latest!, content: content(latest!) },
       versions: versions.versions.map((v) => ({ ...v, content: content(v) })),

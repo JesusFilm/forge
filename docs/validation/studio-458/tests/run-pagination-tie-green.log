@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/studio-authoring/execution.db.test.ts (5 tests) 349ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  05:02:46
+   Duration  1.38s (transform 360ms, setup 16ms, collect 678ms, tests 349ms, environment 0ms, prepare 84ms)
+

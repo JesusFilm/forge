@@ -1,0 +1,16 @@
+import {readFileSync,appendFileSync} from 'node:fs';
+const original=globalThis.fetch;
+const audio=readFileSync('/tmp/forge-studio-458-runtime/audio.mp3');
+globalThis.fetch=async(input,init)=>{
+ const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);
+ if(url.hostname==='api.elevenlabs.io'){
+  const body=JSON.parse(String(init?.body??'{}'));
+  appendFileSync('/tmp/forge-studio-458-runtime/deterministic-provider-observed.jsonl',JSON.stringify({fixture:true,path:url.pathname,body,at:new Date().toISOString()})+'\n');
+  if(url.pathname.startsWith('/v1/text-to-speech/')||url.pathname==='/v1/music')return new Response(audio,{headers:{'content-type':'audio/mpeg','request-id':'deterministic-fixture'}});
+  if(url.pathname==='/v1/text-to-voice/design')return Response.json({text:body.text,previews:[1,2,3].map(n=>({audio_base_64:audio.toString('base64'),generated_voice_id:`fixture-design-${n}`,media_type:'audio/mpeg',duration_secs:2,language:'en'}))},{headers:{'request-id':'fixture-design'}});
+  if(url.pathname==='/v1/text-to-voice')return Response.json({voice_id:'fixture-registered-voice'},{headers:{'request-id':'fixture-register'}});
+  throw new Error('Unconfigured deterministic provider path');
+ }
+ if(!['127.0.0.1','localhost','studio458.localhost'].includes(url.hostname))throw new Error('External network disabled in Studio fixture');
+ return original(input,init);
+};

@@ -6,15 +6,18 @@ import { StudioInstructions } from "./instructions"
 const store = new PostgresStore({
   id: "studio457-test",
   connectionString:
-    "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test",
+    env.STUDIO_TEST_DATABASE_URL ??
+    "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test",
   schemaName: "studio457_native",
 })
 const instructions = new StudioInstructions(store)
 beforeAll(async () => {
   if (env.STUDIO_TEST_DATABASE_URL) {
     if (
-      env.STUDIO_TEST_DATABASE_URL !==
-      "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test"
+      ![
+        "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test",
+        "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test",
+      ].includes(env.STUDIO_TEST_DATABASE_URL)
     )
       throw new Error("Dedicated Studio457 database only")
     await store.init()

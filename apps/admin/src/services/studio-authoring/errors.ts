@@ -10,3 +10,5 @@ export class StudioCommandError extends Error {
     this.name = "StudioCommandError"
   }
 }
+
+export class StudioProductionPreflightError extends Error {}

@@ -12,7 +12,9 @@
     "./catalog": "./src/catalog.ts",
     "./transport": "./src/transport.ts",
     "./preview": "./src/preview.ts",
-    "./agent": "./src/agent.ts"
+    "./agent": "./src/agent.ts",
+    "./production": "./src/production.ts",
+    "./generation": "./src/generation.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -1,0 +1,42 @@
+import { chromium } from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile,readFile} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'allow'});
+const page=await context.newPage(),errors=[],stages=[];page.setDefaultTimeout(15000);
+page.on('pageerror',e=>errors.push(e.message));
+const button=name=>page.getByRole('button',{name,exact:true});
+async function record(stage){stages.push(stage);console.log(JSON.stringify({stage,pageErrors:errors}));await page.screenshot({path:`/tmp/forge-studio-458-runtime/source-${stage}.png`,fullPage:true});}
+async function candidates(count){for(let n=0;n<20;n++){await button('Refresh experiment').click();if(await page.getByRole('button',{name:'Load retained audition',exact:true}).count()===count)return;await page.waitForTimeout(500);}throw new Error('Expected retained candidates missing');}
+try{
+const login=await context.request.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});if(login.status()!==302)throw new Error('Login failed');
+await page.goto('http://studio458.localhost:3588/dashboard/shorts/000458-source-case-2',{waitUntil:'domcontentloaded'});
+await page.locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});
+console.log('editor-ready');
+if(await button('Save').isEnabled()){await button('Save').click();await page.waitForTimeout(300);}
+await button('Assistant').click();await button('Instructions').click();
+await button('Activate selected version').waitFor();
+if(await button('Activate selected version').isEnabled()){await button('Activate selected version').click();await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Activate selected version'&&b.disabled),{},{timeout:15000});}
+await page.getByRole('dialog',{name:'Studio assistant',exact:true}).getByRole('button',{name:'Close',exact:true}).click();
+await button('Generate scripts').click();console.log('generation-open');
+await page.getByLabel('Explicitly generate these',{exact:false}).check();await button('Generate script, composition and source preview').click();
+await button('Load retained generation attempts').waitFor({state:'visible'});
+await page.waitForFunction(()=>[...document.querySelectorAll('select option')].some(o=>o.textContent.includes('SUCCEEDED')),{},{timeout:30000});
+const attempt=page.getByRole('combobox',{name:/^Attempt/});
+const success=attempt.locator('option').filter({hasText:'000458-source-case-2'}).filter({hasText:'SUCCEEDED'}).last();await success.waitFor({state:'attached'});const value=await success.getAttribute('value');
+await attempt.selectOption(value);
+await button('Preview proposed composition').click();
+await page.getByRole('dialog',{name:'Generate scripts and compositions',exact:true}).locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});
+await page.locator('.nle-proposal-canvas').scrollIntoViewIfNeeded();await page.waitForTimeout(300);await record('generation-preview');
+await button('Apply reviewed proposal').click();
+await page.getByText('Proposal applied. Review the complete speech before narration.',{exact:true}).waitFor();
+await button('Close generation').click();
+const observed=(await readFile('/tmp/forge-studio-458-runtime/source-provider-observed.jsonl','utf8')).trim().split('\n').map(JSON.parse);
+const sourceResults=observed.flatMap(e=>e.prompt).filter(m=>m.role==='tool').flatMap(m=>m.content).filter(c=>c.type==='tool-result'&&c.toolName==='readSource');
+if(!sourceResults.length)throw new Error('Native source read missing');
+const result=sourceResults.at(-1).output.value;
+if(result.language!=='en'||result.cues[0]?.text!=='A local colour and sound fixture.'||result.coverage!=='complete'||result.nextPage!==null)throw new Error('Unexpected retained source context');
+await writeFile('/tmp/forge-studio-458-runtime/source-read-evidence.json',JSON.stringify({result,providerMode:'deterministic native fixture; no paid calls'},null,2));
+await record('applied');
+if(errors.length)throw new Error(`Page errors: ${errors.join('; ')}`);
+}catch(e){await writeFile('/tmp/forge-studio-458-runtime/source-workflow-failure.txt',await page.locator('body').innerText());await page.screenshot({path:'/tmp/forge-studio-458-runtime/source-workflow-failure.png',fullPage:true});throw e;}
+finally{await writeFile('/tmp/forge-studio-458-runtime/source-workflow-evidence.json',JSON.stringify({stages,pageErrors:errors,serviceWorkers:'allow',providerMode:'deterministic interception; no paid calls'},null,2));await browser.close();}

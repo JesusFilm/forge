@@ -1,0 +1,25 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/studio-authoring/narration.db.test.ts (16 tests) 2356ms
+   ✓ Canonical narration completion > preserves exact unrelated video cuts and returns a conflict instead of stretching a linked cut  320ms
+ ✓ src/services/studio-authoring/assets.db.test.ts (11 tests) 1567ms
+   ✓ Studio immutable asset service with real Postgres and bytes > imports all 132 preserved originals without inventing narration identity or Studio approval  882ms
+ ✓ src/services/studio-authoring/commands.db.test.ts (12 tests) 882ms
+ ✓ src/services/studio-authoring/catalog.db.test.ts (3 tests) 737ms
+   ✓ generated catalog schema and service > stages a hidden real catalog identity from a retained matching render and replays concurrently  511ms
+ ✓ src/services/studio-authoring/sources.db.test.ts (1 test) 552ms
+   ✓ exact catalog source capture with real HTTP and retained bytes > pins exact source and subtitle bytes, maps multiple cuts and rechecks restrictions for operators  454ms
+ ✓ src/services/studio-authoring/execution.db.test.ts (5 tests) 354ms
+ ✓ src/services/studio-authoring/source-revision.db.test.ts (1 test) 340ms
+   ✓ retained source and pack revision INSERT > persists actual source items and rejects a mismatched retained tuple  339ms
+ ✓ src/services/studio-authoring/delegated.db.test.ts (1 test) 224ms
+ ✓ src/services/studio-authoring/catalog-sync.db.test.ts (1 test) 101ms
+ ✓ src/storage/media.test.ts (7 tests) 15ms
+ ✓ src/services/studio-authoring/interactive.test.ts (2 tests) 7ms
+
+ Test Files  11 passed (11)
+      Tests  60 passed (60)
+   Start at  05:03:31
+   Duration  19.91s (transform 2.93s, setup 36ms, collect 9.80s, tests 7.14s, environment 2ms, prepare 836ms)
+

@@ -1,3 +1,4 @@
+import { studioQualityReportSchema } from "./production"
 import { z } from "zod"
 import { studioIdSchema, studioApplySchema, studioProjectSchema } from "./index"
 
@@ -56,6 +57,7 @@ export const studioProposalSchema = z
   .object({
     summary: z.string().min(1).max(2000),
     command: studioApplySchema,
+    quality: studioQualityReportSchema.optional(),
   })
   .strict()
 export const studioAgentEventSchema = z.discriminatedUnion("type", [
@@ -124,9 +126,12 @@ export const studioDelegatedActions = [
   "asset",
   "capture",
   "source",
+  "source-preview",
   "search",
   "asset-read",
   "asset-upload",
+  "validate-proposal",
+  "generation-read",
 ] as const
 export const studioDelegatedRpcSchema = z
   .object({ action: z.enum(studioDelegatedActions), input: z.unknown() })

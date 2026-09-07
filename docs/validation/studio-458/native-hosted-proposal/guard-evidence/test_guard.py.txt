@@ -1,0 +1,66 @@
+import unittest,tempfile,json,copy,concurrent.futures
+from pathlib import Path
+from guard import Guard,Rejected
+PROPOSAL=Path('/home/tataihono/.codex/worktrees/8b33/forge/docs/validation/studio-458/native-hosted-proposal/corrected-readonly-proposal.body')
+class Tests(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.path=str(Path(self.tmp.name)/'claims.sqlite');self.p=json.loads(PROPOSAL.read_text());self.g=Guard(self.path,self.p)
+ def tearDown(self):self.g.close();self.tmp.cleanup()
+ def input(self,slot=0):
+  c=self.p['cases'][slot];f=self.p['frozenNativeInstructions']
+  a={'projectId':c['project']['projectId'],'revision':c['project']['revision'],'document':c['project']['document'],'message':c['message'],'agentVersionId':f['agentVersionId'],'blockVersionId':f['blockVersionId'],'effectiveDigest':f['digest']}
+  b={'model':self.p['model'],'max_tokens':4096,'reasoning':{'effort':'low'},'provider':self.p['provider'],'messages':[{'role':'system','content':f['effective']},{'role':'user','content':c['message']}],'stream':True}
+  return a,b
+ def reserve(self,slot=0,ordinal=0,body=None,admission=None):
+  a,b=self.input(slot);return self.g.reserve(slot,ordinal,f'attempt-{slot}',admission or a,json.dumps(body or b,ensure_ascii=False).encode())
+ def test_global_2_runs_10_requests_5_steps_persist_across_restart(self):
+  for slot in [0,1]:
+   for ordinal in range(5):
+    claim=self.reserve(slot,ordinal);self.g.finish(claim,'COMPLETED',{'actualCost':None,'usage':{'fixture':True}})
+    self.g.close();self.g=Guard(self.path,self.p)
+   with self.assertRaises(Rejected):self.reserve(slot,5)
+  a,b=self.input()
+  with self.assertRaises(Rejected):self.g.reserve(2,0,'extra',a,json.dumps(b).encode())
+  self.assertEqual(self.g.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0],10)
+ def test_concurrent_claim_loser_does_not_mutate_winner(self):
+  a,b=self.input();raw=json.dumps(b).encode()
+  def race(_):
+   g=Guard(self.path,self.p)
+   try:return g.reserve(0,0,'attempt-0',a,raw)
+   except Rejected:return None
+   finally:g.close()
+  with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:results=list(pool.map(race,range(16)))
+  winners=[r for r in results if r];self.assertEqual(len(winners),1)
+  self.assertEqual(self.g.db.execute('SELECT state FROM calls').fetchall(),[('RUNNING',)])
+  self.g.finish(winners[0],'COMPLETED',{'actualCost':None});self.reserve(0,1)
+ def test_crash_and_ambiguous_result_never_replay(self):
+  claim=self.reserve();self.g.close();self.g=Guard(self.path,self.p)
+  for ordinal in [0,1]:
+   with self.assertRaises(Rejected):self.reserve(0,ordinal)
+  self.assertEqual(self.g.db.execute('SELECT state FROM calls').fetchone()[0],'RUNNING')
+  self.g.finish(claim,'AMBIGUOUS',{'actualCost':None})
+  for ordinal in [0,1]:
+   with self.assertRaises(Rejected):self.reserve(0,ordinal)
+ def test_exact_admission_and_every_dynamic_request(self):
+  a,b=self.input()
+  for field in ['revision','agentVersionId','effectiveDigest','message']:
+   altered=copy.deepcopy(a);altered[field]='changed'
+   with self.assertRaises(Rejected):self.reserve(admission=altered)
+  for field,value in [('max_tokens',4097),('provider',{'allow_fallbacks':True}),('model','other')]:
+   bad=copy.deepcopy(b);bad[field]=value
+   with self.assertRaises(Rejected):self.reserve(body=bad)
+  self.g.finish(self.reserve(),'COMPLETED',{})
+  dynamic=copy.deepcopy(b);dynamic['messages'].append({'role':'tool','tool_call_id':'test','content':'é'*100000})
+  with self.assertRaises(Rejected):self.reserve(0,1,body=dynamic)
+  self.assertEqual(self.g.db.execute('SELECT COUNT(*) FROM calls').fetchone()[0],1)
+ def test_changed_batch_or_admission_cannot_reset_allowance(self):
+  claim=self.reserve();self.g.finish(claim,'COMPLETED',{})
+  a,b=self.input()
+  with self.assertRaises(Rejected):self.g.reserve(0,1,'replacement',a,json.dumps(b).encode())
+  changed=copy.deepcopy(self.p);changed['authorizationCeilingUSD']=100
+  with self.assertRaises(Rejected):Guard(self.path,changed)
+ def test_unowned_completion_cannot_clear_reservation(self):
+  claim=self.reserve();wrong={**claim,'owner':'wrong'}
+  with self.assertRaises(Rejected):self.g.finish(wrong,'COMPLETED',{})
+  self.assertEqual(self.g.db.execute('SELECT state FROM calls').fetchone()[0],'RUNNING')
+if __name__=='__main__':unittest.main(verbosity=2)

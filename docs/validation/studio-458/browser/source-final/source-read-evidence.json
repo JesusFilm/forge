@@ -1,0 +1,36 @@
+{
+  "result": {
+    "sourceSnapshotId": "c41943d6-3a19-41e0-b9d4-f8c2f540735b",
+    "videoId": "studio458-visible-source-v2",
+    "dubId": "studio458-visible-source-v2-dub",
+    "editionId": "studio458-visible-source-v2-edition",
+    "language": "en",
+    "subtitle": {
+      "trackId": "studio458-visible-source-v2-subtitle",
+      "editionId": "studio458-visible-source-v2-edition",
+      "language": "en",
+      "asset": {
+        "assetId": "91ecbdf1-450f-4a21-9499-30cbbd6dea99",
+        "versionId": "cmtrgvrxp00042ctf9n1fsfwx",
+        "digest": "84259361bb9b366a55d6e353c433a7efca0313db43a4fe59d570c57bb63d5a2d"
+      }
+    },
+    "catalogDigest": "82a0f6daefd5fee36144aa345205cdc1130209701f829bd11251ec03391e5b24",
+    "startMs": 0,
+    "endMs": 3000,
+    "offset": 0,
+    "cues": [
+      {
+        "startMs": 0,
+        "endMs": 3000,
+        "text": "A local colour and sound fixture."
+      }
+    ],
+    "totalCues": 1,
+    "nextOffset": null,
+    "evidenceKind": "untrusted-canonical-subtitle",
+    "coverage": "complete",
+    "nextPage": null
+  },
+  "providerMode": "deterministic native fixture; no paid calls"
+}

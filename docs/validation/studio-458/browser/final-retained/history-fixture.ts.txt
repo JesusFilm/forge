@@ -1,0 +1,17 @@
+import {PrismaClient,Prisma} from '@prisma/client'
+import {writeFile} from 'node:fs/promises'
+async function main(){
+ if(process.env.DATABASE_URL!=='postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test')throw new Error('Own DB only')
+ const db=new PrismaClient(),projectId='000458-browser-1',actor={kind:'human',id:'mock-manager-1',authority:'interactive'}
+ const original=await db.studioAttempt.findFirstOrThrow({where:{projectId,kind:'NARRATION'},orderBy:{createdAt:'asc'}})
+ const ids=[]
+ for(let n=0;n<22;n++){
+  const id=`studio458-history-display-${n}`
+  const attempt=await db.studioAttempt.upsert({where:{id},update:{},create:{id,projectId,baseRevision:original.baseRevision,kind:'NARRATION',status:'CANCELLED',inputHash:original.inputHash,actor,instructions:original.instructions as Prisma.InputJsonValue}})
+  const run=await db.studioProductionRun.upsert({where:{attemptId:attempt.id},update:{},create:{attemptId:attempt.id,actor,maxCostMicros:0,state:'CANCELLED'}})
+  ids.push(run.id)
+ }
+ await writeFile('/tmp/forge-studio-458-runtime/history-browser-fixture.json',JSON.stringify({purpose:'22 cancelled display-only narration history fixtures; no approvals, provider calls or generated outputs',projectId,ids},null,2))
+ await db.$disconnect();console.log('22 task-local cancelled history fixtures, zero provider calls or approvals')
+}
+main().catch(e=>{console.error(e.message);process.exitCode=1})

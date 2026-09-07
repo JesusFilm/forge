@@ -1,3 +1,4 @@
+import { orderedStudioSpeech } from "@forge/studio-contracts/production"
 import { createHash } from "node:crypto"
 import type { Prisma, StudioProject } from "@prisma/client"
 import {
@@ -95,16 +96,10 @@ export async function saveReceipt(
 export function scriptHash(document: StudioDocument) {
   return studioHash({
     language: document.language,
-    speech: document.items
-      .filter((i) => i.speech)
-      .sort(
-        (a, b) =>
-          a.startFrame - b.startFrame ||
-          document.tracks.findIndex((t) => t.id === a.trackId) -
-            document.tracks.findIndex((t) => t.id === b.trackId) ||
-          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-      )
-      .map((i) => ({ id: i.id, speech: i.speech })),
+    speech: orderedStudioSpeech(document).map((i) => ({
+      id: i.id,
+      speech: i.speech,
+    })),
   })
 }
 

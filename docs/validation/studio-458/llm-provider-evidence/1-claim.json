@@ -1,0 +1,1 @@
+{"state": "DISPATCH_CLAIMED_NO_REPLAY", "requestSHA256": "f6d3c7760d3e8067f4901f65355a01cc18377e5db45ed84e59a92e46a933fb72", "exactContentRoleTokens": 897, "framingAllowance": 1024, "inputTokenCap": 20000, "outputTokenCap": 4096, "reservedUSD": 0.033432, "approvedRoutingCorrection": "OpenAI -> openai", "startedAt": 1788793317.6598842}

@@ -1,0 +1,69 @@
+(node:1279651) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/manager
+
+ ❯ src/services/studio-production/experiments.test.ts (4 tests | 1 failed) 34ms
+   ✓ refuses missing account rates and unbounded duration without a paid probe 8ms
+   ✓ claims each fixed music request once and retains all candidates with unknown actual charges 10ms
+   × retains a changed-rate preflight failure without invoking the provider 11ms
+     → expected "spy" to be called with arguments: [ 'preflight-error', …(1) ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  [[22m
+[32m-   "preflight-error",[90m
+[32m-   {[90m
+[32m-     "diagnostic": "Verified account rates are required before a creative experiment",[90m
+[32m-   },[90m
+[31m+   "context",[90m
+[31m+   {},[90m
+[2m  ][22m
+[39m[90m
+
+Number of calls: [1m1[22m
+[39m
+   ✓ preserves preview language provenance instead of registering a wrong-language voice 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-production/experiments.test.ts > retains a changed-rate preflight failure without invoking the provider
+AssertionError: expected "spy" to be called with arguments: [ 'preflight-error', …(1) ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  [[22m
+[32m-   "preflight-error",[90m
+[32m-   {[90m
+[32m-     "diagnostic": "Verified account rates are required before a creative experiment",[90m
+[32m-   },[90m
+[31m+   "context",[90m
+[31m+   {},[90m
+[2m  ][22m
+[39m[90m
+
+Number of calls: [1m1[22m
+[39m
+ ❯ src/services/studio-production/experiments.test.ts:123:16
+    121|   await expect(executeStudioExperiment("operator", interactive, "run")…
+    122|   expect(music).not.toHaveBeenCalled()
+    123|   expect(call).toHaveBeenCalledWith("preflight-error", { diagnostic: "…
+       |                ^
+    124| })
+    125| it("preserves preview language provenance instead of registering a wro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  04:17:21
+   Duration  656ms (transform 145ms, setup 17ms, collect 252ms, tests 34ms, environment 0ms, prepare 78ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/manager:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-production/experiments.test.ts

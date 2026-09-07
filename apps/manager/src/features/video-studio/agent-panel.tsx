@@ -18,6 +18,7 @@ const versionSchema = z.object({
   changeMessage: z.string().optional(),
 })
 const viewSchema = z.object({
+  suggestedDefaults: z.string().optional(),
   activeVersionId: z.string().nullable(),
   latest: versionSchema,
   versions: z.array(versionSchema),
@@ -220,6 +221,12 @@ export default function AgentPanel({
               <article key={p.command.idempotencyKey}>
                 <h3>{p.summary}</h3>
                 <p>Based on revision {p.command.expectedRevision}</p>
+                {p.quality && (
+                  <details>
+                    <summary>Quality findings and spoken role coverage</summary>
+                    <pre>{JSON.stringify(p.quality, null, 2)}</pre>
+                  </details>
+                )}
                 <details>
                   <summary>Proposed changes</summary>
                   <pre>{JSON.stringify(p.command.operations, null, 2)}</pre>
@@ -303,6 +310,14 @@ export default function AgentPanel({
                   onChange={(e) => setDraft(e.target.value)}
                 />
               </label>
+              {view.suggestedDefaults && (
+                <button
+                  disabled={busy}
+                  onClick={() => setDraft(view.suggestedDefaults!)}
+                >
+                  Load creative defaults into draft
+                </button>
+              )}
               <button
                 disabled={busy}
                 onClick={() =>

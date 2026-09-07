@@ -3,10 +3,12 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import type { StudioDocument } from "@forge/studio-contracts"
 import {
   studioCaptureSourceSchema,
+  studioSourcePreviewSchema,
   studioSourceSnapshotSchema,
   studioMaterializeSourceSchema,
   studioSourceManifestSchema,
   parseStudioVtt,
+  pageStudioSourceCues,
   type StudioSourceSnapshot,
 } from "@forge/studio-contracts/sources"
 import type { Principal } from "@/auth/principal"
@@ -447,6 +449,50 @@ export class StudioSourceService {
         }
       }
       return snapshot
+    })
+  }
+  async preview(user: Principal | null, raw: unknown) {
+    const input = studioSourcePreviewSchema.parse(raw)
+    const snapshot = await this.read(user, input.sourceSnapshotId)
+    if (
+      input.language !== snapshot.source.language ||
+      input.language !== snapshot.source.subtitle.language ||
+      input.startMs < snapshot.source.startMs ||
+      input.endMs > snapshot.source.endMs ||
+      input.endMs <= input.startMs
+    )
+      throw new StudioCommandError("INVALID")
+    return this.db.$transaction(async (tx) => {
+      await assertStudioSourceEligible(tx, snapshot)
+      const bytes = await readVerifiedStudioAsset(
+        tx,
+        snapshot.source.subtitle.asset,
+        1048576,
+      )
+      const all = parseStudioVtt(bytes, input)
+      const page = pageStudioSourceCues(all, input.offset, input.limit)
+      return {
+        sourceSnapshotId: snapshot.id,
+        videoId: snapshot.source.videoId,
+        dubId: snapshot.source.dubId,
+        editionId: snapshot.source.editionId,
+        language: input.language,
+        subtitle: snapshot.source.subtitle,
+        catalogDigest: snapshot.catalogDigest,
+        startMs: input.startMs,
+        endMs: input.endMs,
+        offset: input.offset,
+        ...page,
+        evidenceKind: "untrusted-canonical-subtitle" as const,
+        coverage:
+          input.offset === 0 && page.nextOffset === null
+            ? ("complete" as const)
+            : ("partial" as const),
+        nextPage:
+          page.nextOffset === null
+            ? null
+            : { ...input, offset: page.nextOffset },
+      }
     })
   }
   async eligibility(user: Principal | null, id: string) {

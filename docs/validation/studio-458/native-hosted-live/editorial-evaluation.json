@@ -1,0 +1,31 @@
+{
+  "case": "ch19-native-unsupported-passes",
+  "proposalSHA256": "d9299bcf3df672786ba2142c7305219bb0e219f08deab43701219a2c7f5bbc4b",
+  "actualProposedSpeech": "Three Gospels remember the same storm. That repetition tells me this is not a small scene. If Matthew, Mark, and Luke all pause here, I want to pause too and ask: what am I treating as ordinary that Scripture keeps pressing into view? Because the moment is so important, it exposes something else as well: true disciples can still be overtaken by fear. The boat fills, the wind rises, and even those who have walked with Jesus cry, \u201cMaster, Master, we are going to perish!\u201d That cry is humbling, but it is also instructive. Sight, sense, and feeling can make believers very poor theologians. Take a quiet breath. Let that faith be ready.",
+  "requestedWordRange": [
+    150,
+    220
+  ],
+  "whitespaceWordCount": 113,
+  "evaluationMode": "Human editorial comparison; these are editable rubric expectations, not universal typed layout/content requirements.",
+  "findings": [
+    {
+      "criterion": "depth/coherence",
+      "actualPass": "The script moves in one causal line from the repeated Gospel attestation to disciple fear and then to the practical need for faith ready at need. The settle ends the arc without a new argument.",
+      "expected": "fail",
+      "evidence": "Fear is developed, then the short settle says Let that faith be ready. The proposed script does not develop possessing saving faith versus exercising it in need, despite the positive claim."
+    },
+    {
+      "criterion": "self_echo",
+      "actualPass": "The opening question creates a present-tense self-echo that carries through the later application to faith under pressure.",
+      "expected": "unsupported judgment",
+      "evidence": "The explanation praises first-person continuity rather than examining repeated words/propositions within the reflection."
+    },
+    {
+      "criterion": "scripture_echo",
+      "actualPass": "The direct quotation from the disciples is preserved and treated as an exact echo from the source excerpt rather than paraphrased away.",
+      "expected": "not_checked",
+      "evidence": "Quote preservation does not establish absence of redundant verse-card/source-dialogue repetition; canonical footage and verse-card context were unavailable."
+    }
+  ]
+}

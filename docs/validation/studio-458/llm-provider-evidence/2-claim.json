@@ -1,0 +1,1 @@
+{"serializedByteBoundWithFraming": 10889, "state": "DISPATCH_CLAIMED_NO_REPLAY", "requestSHA256": "8be6b12ff2d9997d30ccb352ddca1dab6b4323dc6483862ff76ea7b865f23ca5", "exactContentRoleTokens": 2111, "framingAllowance": 1024, "inputTokenCap": 22000, "outputTokenCap": 4096, "reservedUSD": 0.034932, "approvedRoutingCorrection": "OpenAI -> openai", "startedAt": 1788793333.9650218}

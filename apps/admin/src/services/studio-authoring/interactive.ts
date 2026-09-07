@@ -1,3 +1,7 @@
+import { StudioGenerationService } from "./generation"
+import { StudioNarrationService } from "./narration"
+import { StudioExecutionService } from "./execution"
+import { StudioExperimentService } from "./experiments"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { studioRpcSchema } from "@forge/studio-contracts/transport"
@@ -56,6 +60,45 @@ export async function executeStudioRpc(
     packs = new ContentPackService(db),
     transfers = new StudioTransferService(db)
   switch (action) {
+    case "generation-read":
+      return new StudioGenerationService(db).read(user, input)
+    case "validate-proposal":
+      return new StudioGenerationService(db).validate(user, input)
+    case "narration-plan":
+      return new StudioNarrationService(db).plan(user, input)
+    case "request":
+      return commands.request(user, input)
+    case "attempts":
+      return commands.attempts(user, studioIdSchema.parse(input))
+    case "production-admit":
+      return new StudioExecutionService(db).admit(user, input)
+    case "production-list":
+      return new StudioExecutionService(db).list(user, input)
+    case "production-read": {
+      const page = z
+        .union([
+          studioIdSchema.transform((id) => ({ id, after: undefined })),
+          z
+            .object({ id: studioIdSchema, after: studioIdSchema.optional() })
+            .strict(),
+        ])
+        .parse(input)
+      return new StudioExecutionService(db).read(user, page.id, page.after)
+    }
+    case "production-cancel":
+      return new StudioExecutionService(db).cancel(
+        user,
+        studioIdSchema.parse(input),
+      )
+    case "experiment-request":
+      return new StudioExperimentService(db).request(user, input)
+    case "experiment-select":
+      return new StudioExperimentService(db).select(user, input)
+    case "experiment-read":
+      return new StudioExperimentService(db).read(
+        user,
+        studioIdSchema.parse(input),
+      )
     case "create":
       return commands.create(user, input)
     case "apply":
@@ -91,6 +134,8 @@ export async function executeStudioRpc(
       return packs.read(user, studioIdSchema.parse(input))
     case "capture":
       return sources.capture(user, input)
+    case "source-preview":
+      return sources.preview(user, input)
     case "source":
       return sources.read(user, studioIdSchema.parse(input))
     case "eligibility":

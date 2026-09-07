@@ -1,0 +1,61 @@
+import { chromium } from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'allow'});
+const page=await context.newPage(),errors=[],stages=[];page.setDefaultTimeout(15000);
+page.on('pageerror',e=>errors.push(e.message));
+const button=name=>page.getByRole('button',{name,exact:true});
+async function record(stage){stages.push(stage);console.log(JSON.stringify({stage,pageErrors:errors}));await page.screenshot({path:`/tmp/forge-studio-458-runtime/workflow-${stage}.png`,fullPage:true});}
+async function candidates(count){for(let n=0;n<20;n++){await button('Refresh experiment').click();if(await page.getByRole('button',{name:'Load retained audition',exact:true}).count()===count)return;await page.waitForTimeout(500);}throw new Error('Expected retained candidates missing');}
+try{
+const login=await context.request.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});if(login.status()!==302)throw new Error('Login failed');
+await page.goto('http://studio458.localhost:3588/dashboard/shorts/000458-browser-1',{waitUntil:'domcontentloaded'});
+await page.locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});
+console.log('editor-ready');
+await button('Assistant').click();await button('Instructions').click();
+await button('Activate selected version').waitFor();
+if(await button('Activate selected version').isEnabled()){await button('Activate selected version').click();await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Activate selected version'&&b.disabled),{},{timeout:15000});}
+await page.getByRole('dialog',{name:'Studio assistant',exact:true}).getByRole('button',{name:'Close',exact:true}).click();
+await button('Generate scripts').click();console.log('generation-open');
+await button('Load retained generation attempts').click();
+await button('Load retained generation attempts').waitFor({state:'visible'});
+await page.waitForFunction(()=>[...document.querySelectorAll('select option')].some(o=>o.textContent.includes('SUCCEEDED')),{},{timeout:30000});
+const attempt=page.getByRole('combobox',{name:/^Attempt/});
+const success=attempt.locator('option').filter({hasText:'SUCCEEDED'}).last();await success.waitFor({state:'attached'});const value=await success.getAttribute('value');
+await attempt.selectOption(value);
+await button('Preview proposed composition').click();
+await page.getByRole('dialog',{name:'Generate scripts and compositions',exact:true}).locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});
+await page.locator('.nle-proposal-canvas').scrollIntoViewIfNeeded();await page.waitForTimeout(300);await record('generation-preview');
+await button('Apply reviewed proposal').click();
+await page.getByText('Proposal applied. Review the complete speech before narration.',{exact:true}).waitFor();
+await button('Close generation').click();
+await button('Speech and production').click();
+await button('Music and voice experiments').click();
+await page.getByRole('textbox',{name:/^Creative direction/}).fill('Quiet instrumental piano with a warm sustained texture for an editorial transition.');
+await button('Estimate experiment').click();
+await page.getByLabel('I explicitly request this fixed experiment within this budget.').check();
+await button('Generate experiment candidates').click();
+await button('Refresh experiment').waitFor();await candidates(2);
+await button('Load retained audition').first().click();
+await page.locator('audio').waitFor();
+await page.locator('audio').evaluate(async a=>{await a.play();});
+await button('Select candidate').first().click();await button('Selected').waitFor();
+await record('music-audition');
+await page.getByRole('combobox',{name:/^Kind/}).selectOption('voice');
+await page.getByRole('textbox',{name:/^Creative direction/}).fill('A warm clear adult voice with measured conversational pacing and natural, restrained expression.');
+await page.getByLabel('Exact preview text (100–1,000 characters)').fill('A new morning invites us to pause and notice the people beside us. We can listen carefully, speak with kindness, and take one thoughtful step together.');
+await page.getByLabel('Provider language code for en',{exact:true}).fill('en');
+await button('Estimate experiment').click();
+await page.getByLabel('I explicitly request this fixed experiment within this budget.').check();
+await button('Generate experiment candidates').click();await candidates(3);
+await button('Load retained audition').nth(1).click();await page.locator('audio').waitFor();await page.locator('audio').evaluate(async a=>{await a.play();});
+await button('Select candidate').nth(1).click();
+await page.getByLabel('Library name',{exact:true}).fill('Browser fixture selected voice');
+await page.getByLabel('Register this selected voice within the existing budget',{exact:false}).check();
+await button('Register voice preset').click();
+await page.waitForTimeout(1000);
+const alerts=await page.getByRole('alert').allTextContents();console.log(JSON.stringify({observedAlerts:alerts}));if(alerts.some(text=>text.trim()))throw new Error(alerts.join('; '));
+await record('voice-registration');
+if(errors.length)throw new Error(`Page errors: ${errors.join('; ')}`);
+}catch(e){await writeFile('/tmp/forge-studio-458-runtime/full-workflow-failure.txt',await page.locator('body').innerText());await page.screenshot({path:'/tmp/forge-studio-458-runtime/full-workflow-failure.png',fullPage:true});throw e;}
+finally{await writeFile('/tmp/forge-studio-458-runtime/full-workflow-evidence.json',JSON.stringify({stages,pageErrors:errors,serviceWorkers:'allow',providerMode:'deterministic interception; no paid calls'},null,2));await browser.close();}

@@ -1,7 +1,10 @@
 import { env } from "@/config/env"
 import { studioAssetReferenceSchema } from "@forge/studio-contracts"
 import { studioAssetUploadSchema } from "@forge/studio-contracts/assets"
-import { studioCaptureSourceSchema } from "@forge/studio-contracts/sources"
+import {
+  studioCaptureSourceSchema,
+  studioSourcePreviewSchema,
+} from "@forge/studio-contracts/sources"
 import { z } from "zod"
 import {
   studioApplySchema,
@@ -17,6 +20,14 @@ import {
 import { studioServiceCall } from "@/services/studio-agent/transport"
 import { studioChat } from "@/services/studio-agent/chat"
 const tools = [
+  {
+    name: "studio.sourcePreview",
+    description:
+      "Read a bounded page of exact-language retained canonical subtitle cues. Follow nextOffset until null for complete range coverage.",
+    scope: "studio:read",
+    action: "source-preview",
+    schema: studioSourcePreviewSchema,
+  },
   {
     name: "studio.assets",
     description: "Discover shared assets and immutable versions.",

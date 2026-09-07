@@ -16,7 +16,12 @@ const run = url ? test : test.skip
 run(
   "manual and delegated edits share revision checks; scoped uploads retain verified actor",
   async () => {
-    if (url !== "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test")
+    if (
+      ![
+        "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test",
+        "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test",
+      ].includes(url!)
+    )
       throw new Error("Dedicated457 database only")
     const db = new PrismaClient({ datasources: { db: { url } } })
     try {

@@ -242,6 +242,7 @@ export class StudioAssetService {
     if (
       !preset.voice ||
       preset.role !== "voice" ||
+      preset.provenance.recorded.registrationStatus === "preview" ||
       preset.voice.language !== language ||
       preset.voice.provider !== speech.provider ||
       preset.voice.model !== speech.model

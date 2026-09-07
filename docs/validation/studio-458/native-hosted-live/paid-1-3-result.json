@@ -1,0 +1,36 @@
+{
+  "http": 200,
+  "elapsedMs": 10032.051363999999,
+  "requestIds": [
+    "gen-1788801801-GjFMiCllC1ESBiAZXbeH"
+  ],
+  "provider": "OpenAI",
+  "usage": {
+    "prompt_tokens": 32421,
+    "completion_tokens": 817,
+    "total_tokens": 33238,
+    "cost": 0.00760185,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 30208,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00760185,
+      "upstream_inference_prompt_cost": 0.00392535,
+      "upstream_inference_completions_cost": 0.0036765
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 233,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "actualCostUSD": 0.00760185,
+  "requestDigest": "2d0477afadef736b8ea67216311958358691ba8973ae07d3288e01892ace629e",
+  "serializedBytes": 158231,
+  "conservativeInputBound": 162327,
+  "authorizationCeilingUSD": 2
+}

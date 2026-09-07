@@ -52,7 +52,12 @@ async function serve(handler: (r: Request) => Promise<Response>) {
 test.skipIf(!url)(
   "two native HTTP runtimes execute pinned bytes once despite active changes and reconstruction",
   async () => {
-    if (url !== "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test")
+    if (
+      ![
+        "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test",
+        "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test",
+      ].includes(url!)
+    )
       throw new Error("Dedicated457 database only")
     const pool = new Pool({ connectionString: url }),
       a = new PostgresStore({

@@ -1,0 +1,29 @@
+import {PrismaClient} from '@prisma/client'
+import {writeFile} from 'node:fs/promises'
+import {createHash} from 'node:crypto'
+import {StudioAuthoringService} from '../src/services/studio-authoring'
+import {StudioAssetService} from '../src/services/studio-authoring/assets'
+import {ContentPackService} from '../src/services/studio-authoring/packs'
+import {StudioExperimentService} from '../src/services/studio-authoring/experiments'
+import {studioAssetReferenceSchema} from '@forge/studio-contracts'
+async function main(){
+ if(process.env.DATABASE_URL!=='postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test')throw new Error('Own DB only')
+ const db=new PrismaClient(),user={id:'mock-manager-1',role:'ADMIN' as const},assets=new StudioAssetService(db),commands=new StudioAuthoringService(db),refs=new Map<string,ReturnType<typeof studioAssetReferenceSchema.parse>>()
+ const collect=(value:any)=>{if(!value||typeof value!=='object')return;const ref=studioAssetReferenceSchema.safeParse(value);if(ref.success){refs.set(ref.data.versionId,ref.data);return}for(const child of Object.values(value))collect(child)}
+ const projects=[]
+ for(const id of ['000458-browser-1','000458-browser-2','000458-source-case-2']){
+  const project=await commands.read(user,id);collect(project.document);projects.push({projectId:id,revision:project.revision,documentSha256:createHash('sha256').update(JSON.stringify(project.document)).digest('hex')})
+  for(const pack of project.document.packRevisionIds)collect(await new ContentPackService(db).read(user,pack))
+ }
+ const run=await db.studioProductionRun.findUniqueOrThrow({where:{id:'cmtrfpl0q001n2czhwt4uzhy0'}})
+ collect(await new StudioExperimentService(db).read(user,run.experimentId!))
+ const sourceAttempt=await db.studioAttempt.findFirstOrThrow({where:{projectId:'000458-source-case-2',kind:'GENERATION',status:'SUCCEEDED'},orderBy:{createdAt:'desc'}});collect(sourceAttempt.result)
+ const checked=[]
+ for(const ref of refs.values()){
+  const metadata=await assets.read(user,ref),bytes=await assets.readBytes(user,ref)
+  checked.push({reference:ref,filename:metadata.filename,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')})
+  for(const usage of await db.studioAssetUsage.findMany({where:{ownerType:'STUDIO_ASSET_VERSION',ownerId:ref.versionId},include:{version:true}}))collect({assetId:usage.version.assetId,versionId:usage.version.id,digest:usage.version.digest})
+ }
+ await db.$disconnect();await writeFile('/tmp/forge-studio-458-runtime/final-asset-preflight.json',JSON.stringify({projects,retainedVoiceRun:run.id,checked,verifiedAt:new Date().toISOString()},null,2));console.log(JSON.stringify({projects:projects.length,verifiedAssets:checked.length,missing:0,databaseMutations:0}))
+}
+main().catch(e=>{console.error(e.message);process.exitCode=1})

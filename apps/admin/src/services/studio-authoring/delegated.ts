@@ -1,3 +1,4 @@
+import { studioGenerationOutputSchema } from "@forge/studio-contracts/generation"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { studioDelegatedRpcSchema } from "@forge/studio-contracts/agent"
@@ -33,5 +34,9 @@ export async function executeStudioDelegated(
   return executeStudioRpc(db, principal, { action, input })
 }
 export const studioFinishSchema = z
-  .object({ action: z.literal("finish"), input: z.unknown() })
+  .object({
+    action: z.literal("finish"),
+    input: z.unknown(),
+    generation: studioGenerationOutputSchema.optional(),
+  })
   .strict()

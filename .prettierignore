@@ -49,3 +49,7 @@ apps/*/.impeccable
 apps/mobile/design-mockups
 
 /local/
+
+# Studio validation JSON is byte-verified provider/fixture/measurement evidence.
+# Keep exact recorded bytes; human-authored Markdown remains format-checked.
+docs/validation/studio-458/**/*.json

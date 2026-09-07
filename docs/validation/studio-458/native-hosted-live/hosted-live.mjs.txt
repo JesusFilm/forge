@@ -1,0 +1,39 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+const proposal=JSON.parse(await readFile('/home/tataihono/.codex/worktrees/8b33/forge/docs/validation/studio-458/native-hosted-proposal/corrected-readonly-proposal.body','utf8'));
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'allow'}),page=await context.newPage(),errors=[],out=[];
+await page.addInitScript(()=>{const original=window.fetch;window.hostedEvents=[];window.fetch=async(...args)=>{const response=await original(...args);if(String(args[0]).endsWith('/api/studio/generation'))response.clone().text().then(events=>window.hostedEvents.push({http:response.status,events}));return response;};});
+page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);
+const button=n=>page.getByRole('button',{name:n,exact:true});
+try{
+ await context.request.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});
+ for(const c of proposal.cases){
+  await page.goto('http://studio458.localhost:3588/dashboard/shorts/'+c.project.projectId,{waitUntil:'domcontentloaded'});
+  await button('Generate scripts').click();
+  await page.locator('textarea').fill(c.message);
+  await page.getByLabel('Explicitly generate these',{exact:false}).check();
+  await writeFile('/tmp/forge-studio-458-runtime/native-paid-guard/pre-click.txt',await page.locator('body').innerText());
+  await page.screenshot({path:'/tmp/forge-studio-458-runtime/native-paid-guard/pre-click.png',fullPage:true});
+  await page.getByRole('checkbox',{name:new RegExp(c.project.projectId)}).waitFor();
+  await button('Generate script, composition and source preview').click();
+  await page.waitForFunction(()=>window.hostedEvents.length>0,{},{timeout:120000});
+  const captured=await page.evaluate(()=>window.hostedEvents.at(-1));const events=captured.events;out.push({projectId:c.project.projectId,...captured});
+  if(!events.includes('batch-finished'))throw new Error('Incomplete hosted batch; do not retry');
+  const admitted=events.trim().split('\n').map(JSON.parse).find(e=>e.event?.type==='admitted')?.event?.attemptId;
+  if(admitted&&!events.includes('target-error')){
+   await button('Load retained generation attempts').click();
+   const attempts=page.getByRole('combobox',{name:/^Attempt/});
+   await attempts.locator('option[value="'+admitted+'"]').waitFor({state:'attached'});
+   await attempts.selectOption(admitted);
+   const preview=button('Preview proposed composition');
+   try{await preview.waitFor({timeout:5000});await preview.click();await page.getByRole('dialog',{name:'Generate scripts and compositions',exact:true}).locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});out.at(-1).previewReady=true;}catch(e){out.at(-1).previewIssue=e.message;}
+  }
+  out.at(-1).visibleText=await page.getByRole('dialog',{name:'Generate scripts and compositions',exact:true}).innerText();
+  await page.screenshot({path:'/tmp/forge-studio-458-runtime/native-paid-guard/live-'+c.case+'.png',fullPage:true});
+  await button('Close generation').click();
+  await page.locator('a[href="/dashboard/shorts"]').first().click();
+ }
+ if(errors.length)throw new Error(errors.join(';'));
+ console.log(JSON.stringify({nativeRuns:out.length,pageErrors:errors,paidRequests:"See durable LIVE ledger; no retries"}));
+}finally{await writeFile('/tmp/forge-studio-458-runtime/native-paid-guard/hosted-live-evidence.json',JSON.stringify({out,pageErrors:errors},null,2));await browser.close();}

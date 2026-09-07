@@ -1,0 +1,18 @@
+(node:1329900) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{"action":"read","ok":true}
+{"action":"preview-sources","ok":true}
+{"action":"asset-upload","ok":true}
+Error: Command failed: /tmp/studio-proof-ffmpeg -v error -protocol_whitelist file,crypto,data -i /tmp/studio-preview-RmUvcA/source-clip-preview.m3u8 -map 0:v:0 -f null -
+
+Error: Command failed: /tmp/studio-proof-ffmpeg -v error -protocol_whitelist file,crypto,data -i /tmp/studio-preview-RmUvcA/source-clip-preview.m3u8 -map 0:v:0 -f null -
+
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:514:28)
+    at maybeClose (node:internal/child_process:1141:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:306:5)
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/manager:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: tsx .tmp/source-diagnosis.ts

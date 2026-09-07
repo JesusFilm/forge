@@ -1,0 +1,11 @@
+test_changed_batch_or_admission_cannot_reset_allowance (test_guard.Tests.test_changed_batch_or_admission_cannot_reset_allowance) ... ok
+test_concurrent_claim_loser_does_not_mutate_winner (test_guard.Tests.test_concurrent_claim_loser_does_not_mutate_winner) ... ok
+test_crash_and_ambiguous_result_never_replay (test_guard.Tests.test_crash_and_ambiguous_result_never_replay) ... ok
+test_exact_admission_and_every_dynamic_request (test_guard.Tests.test_exact_admission_and_every_dynamic_request) ... ok
+test_global_2_runs_10_requests_5_steps_persist_across_restart (test_guard.Tests.test_global_2_runs_10_requests_5_steps_persist_across_restart) ... ok
+test_unowned_completion_cannot_clear_reservation (test_guard.Tests.test_unowned_completion_cannot_clear_reservation) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.056s
+
+OK

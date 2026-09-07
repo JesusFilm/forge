@@ -1,3 +1,4 @@
+import { studioGenerationOutputSchema } from "@forge/studio-contracts/generation"
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import {
@@ -99,6 +100,11 @@ export async function studioChat(
           cancelled = true
         }
       }
+      let generation = studioGenerationOutputSchema.parse({
+        text: "",
+        proposals: [],
+        diagnostics: [],
+      })
       let succeeded = false
       let ownsExecution = false
       try {
@@ -147,7 +153,22 @@ export async function studioChat(
               else if (event.type === "error") {
                 emit(event)
                 throw new StudioBoundaryError("Studio generation failed", 502)
-              } else emit(event)
+              } else {
+                // Validate the next bounded retained state before exposing a proposal.
+                generation = studioGenerationOutputSchema.parse({
+                  text:
+                    generation.text + (event.type === "text" ? event.text : ""),
+                  proposals:
+                    event.type === "proposal"
+                      ? [...generation.proposals, event.proposal]
+                      : generation.proposals,
+                  diagnostics:
+                    event.type === "diagnostic"
+                      ? [...generation.diagnostics, event.message]
+                      : generation.diagnostics,
+                })
+                emit(event)
+              }
             }
           }
         } finally {
@@ -161,7 +182,7 @@ export async function studioChat(
         emit({
           type: "error",
           message:
-            "Studio generation failed. No edits applied; retry with a new request.",
+            "Studio generation interrupted. Inspect retained results and execution status before requesting another run.",
         })
       } finally {
         try {
@@ -175,6 +196,7 @@ export async function studioChat(
               },
               {
                 action: "finish",
+                generation,
                 input: {
                   projectId: input.projectId,
                   expectedRevision: input.expectedRevision,
@@ -184,7 +206,7 @@ export async function studioChat(
                   operations: [],
                   result: {
                     assets: [],
-                    costMicros: 0,
+                    costMicros: null,
                     diagnostic: succeeded
                       ? "Hosted proposal generation completed; no edits applied"
                       : "Hosted stream failed",

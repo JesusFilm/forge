@@ -1,0 +1,35 @@
+{
+  "state": "RESPONSE_RECEIVED",
+  "http": 200,
+  "elapsedMs": 6604,
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "id": "gen-1788793317-xv2hYSWwRbVSZvQarN0e",
+  "provider": "OpenAI",
+  "model": "openai/gpt-5.4-mini",
+  "usage": {
+    "prompt_tokens": 905,
+    "completion_tokens": 529,
+    "total_tokens": 1434,
+    "cost": 0.00305925,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00305925,
+      "upstream_inference_prompt_cost": 0.00067875,
+      "upstream_inference_completions_cost": 0.0023805
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 109,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "reportedCostUSD": 0.00305925
+}

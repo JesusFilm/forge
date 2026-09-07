@@ -150,6 +150,7 @@ const itemBase = {
   startFrame: frame,
   durationInFrames: frame.min(1),
   timingLocked: z.boolean().optional(),
+  linkedTo: studioIdSchema.optional(),
   transform: studioTransformSchema.optional(),
   speech: studioSpeechSchema.optional(),
 }
@@ -182,6 +183,7 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
     .object({
       ...itemBase,
       kind: z.literal("audio"),
+      narrationFor: studioIdSchema.optional(),
       asset: studioAssetReferenceSchema,
       sourceStartMs: z.number().int().nonnegative().max(86_400_000),
       volume: z.number().min(0).max(2),
@@ -237,7 +239,28 @@ export const studioDocumentSchema = z
         if (control.type === "number" && control.min > control.max)
           fail("Invalid numeric control range")
     }
+    const links = new Map(doc.items.map((item) => [item.id, item.linkedTo]))
     for (const item of doc.items) {
+      if (
+        item.kind === "audio" &&
+        item.narrationFor &&
+        item.linkedTo !== item.narrationFor
+      )
+        fail("Generated narration must remain linked to its spoken item")
+      const seen = new Set([item.id])
+      let parent = item.linkedTo
+      while (parent) {
+        if (!links.has(parent)) {
+          fail("Unknown timing link target")
+          break
+        }
+        if (seen.has(parent)) {
+          fail("Cyclic timing link")
+          break
+        }
+        seen.add(parent)
+        parent = links.get(parent)
+      }
       if (
         !doc.tracks.some((t) => t.id === item.trackId) ||
         item.startFrame + item.durationInFrames > doc.durationInFrames
@@ -414,6 +437,7 @@ export const studioCommandResultSchema = z
     outcome: z.enum(["ACCEPTED", "STALE"]),
     attemptId: studioIdSchema.optional(),
     approvalId: studioIdSchema.optional(),
+    timingConflicts: z.array(studioIdSchema).max(1000).optional(),
   })
   .strict()
 export type StudioCommandResult = z.infer<typeof studioCommandResultSchema>
@@ -450,7 +474,16 @@ export const studioAttemptResultSchema = z
   .object({
     assets: z.array(studioAssetReferenceSchema).max(128),
     manifest: studioAssetReferenceSchema.optional(),
-    costMicros: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    timingConflictIndices: z
+      .array(z.number().int().min(0).max(999))
+      .max(1000)
+      .optional(),
+    costMicros: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
     diagnostic: z.string().max(2000).optional(),
   })
   .strict()

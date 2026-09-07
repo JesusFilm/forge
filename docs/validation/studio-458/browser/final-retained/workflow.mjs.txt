@@ -1,0 +1,50 @@
+import { chromium } from '/home/tataihono/.codex/worktrees/8b33/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile,readFile} from 'node:fs/promises';
+const providerBefore=(await readFile('/tmp/forge-studio-458-runtime/deterministic-provider-observed.jsonl','utf8')).trim().split('\n').length;
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'allow'});
+const page=await context.newPage(),errors=[],stages=[];page.setDefaultTimeout(15000);
+page.on('pageerror',e=>errors.push(e.message));
+const button=name=>page.getByRole('button',{name,exact:true});
+async function record(stage){stages.push(stage);console.log(JSON.stringify({stage,pageErrors:errors}));await page.screenshot({path:`/tmp/forge-studio-458-runtime/final-details-${stage}.png`,fullPage:true});}
+async function candidates(count){for(let n=0;n<20;n++){await button('Refresh experiment').click();if(await page.getByRole('button',{name:'Load retained audition',exact:true}).count()===count)return;await page.waitForTimeout(500);}throw new Error('Expected retained candidates missing');}
+try{
+const login=await context.request.get('http://studio458.localhost:3589/local-fixture-login',{maxRedirects:0});if(login.status()!==302)throw new Error('Login failed');
+await page.goto('http://studio458.localhost:3588/dashboard/shorts/000458-browser-1',{waitUntil:'domcontentloaded'});
+await page.locator('.nle-preview[data-preview-ready="true"]').waitFor({timeout:30000});
+await button('Speech and production').click();
+const narrationHistory = page.getByRole('combobox',{name:/^Retained runs/});
+await narrationHistory.locator('option').nth(20).waitFor({state:'attached'});
+const narrationBefore = await narrationHistory.locator('option').count();
+await button('Load older runs').click();
+await narrationHistory.locator('option').nth(narrationBefore).waitFor({state:'attached'});
+console.log(JSON.stringify({narrationHistory:{before:narrationBefore-1,after:(await narrationHistory.locator('option').count())-1}}));
+await record('narration-history');
+await button('Music and voice experiments').click();
+const history = page.getByRole('combobox',{name:/^Retained experiment runs/});
+let olderPages = 0;
+while (!(await history.locator('option[value="cmtrfpl0q001n2czhwt4uzhy0"]').count())) {
+  if (olderPages >= 50) throw new Error('Retained run absent after bounded history paging');
+  const before = await history.locator('option').count();
+  await button('Load older runs').click();
+  await history.locator('option').nth(before).waitFor({state:'attached'});
+  olderPages++;
+}
+console.log(JSON.stringify({olderPages, accessibleHistoryOptions: await history.locator('option').count()}));
+await history.selectOption('cmtrfpl0q001n2czhwt4uzhy0');
+await button('Refresh experiment').click();await button('Selected').waitFor();
+await button('Load retained audition').nth(1).click();await page.locator('audio').waitFor();await page.locator('audio').evaluate(async a=>{await a.play();});
+await button('Inspect retained provider provenance').nth(1).click();
+await page.getByText('Candidate provenance',{exact:true}).nth(1).click();
+const audio=page.locator('audio');await audio.scrollIntoViewIfNeeded();
+const layout=await page.locator('.nle-dialog').last().evaluate(dialog=>({dialogWidth:dialog.clientWidth,scrollWidth:dialog.scrollWidth,overflowing:[...dialog.querySelectorAll('fieldset,pre,audio')].filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>({tag:e.tagName,width:e.clientWidth,scrollWidth:e.scrollWidth})),audio:[...dialog.querySelectorAll('audio')].map(e=>({left:e.getBoundingClientRect().left,right:e.getBoundingClientRect().right,dialogRight:dialog.getBoundingClientRect().right}))}));
+if(layout.scrollWidth>layout.dialogWidth+1||layout.overflowing.length||layout.audio.some(a=>a.right>a.dialogRight))throw new Error('Expanded provenance overflows: '+JSON.stringify(layout));
+const providerAfter=(await readFile('/tmp/forge-studio-458-runtime/deterministic-provider-observed.jsonl','utf8')).trim().split('\n').length;
+if(providerBefore!==providerAfter)throw new Error('Read-only audition dispatched provider');
+await writeFile('/tmp/forge-studio-458-runtime/final-details-layout.json',JSON.stringify({layout,providerCalls:0,pageErrors:errors},null,2));
+
+const alerts=await page.getByRole('alert').allTextContents();console.log(JSON.stringify({observedAlerts:alerts}));if(alerts.some(text=>text.trim()))throw new Error(alerts.join('; '));
+await record('voice-registration');
+if(errors.length)throw new Error(`Page errors: ${errors.join('; ')}`);
+}catch(e){await writeFile('/tmp/forge-studio-458-runtime/final-details-failure.txt',await page.locator('body').innerText());await page.screenshot({path:'/tmp/forge-studio-458-runtime/final-details-failure.png',fullPage:true});throw e;}
+finally{await writeFile('/tmp/forge-studio-458-runtime/final-details-evidence.json',JSON.stringify({stages,pageErrors:errors,serviceWorkers:'allow',providerMode:'deterministic interception; no paid calls'},null,2));await browser.close();}

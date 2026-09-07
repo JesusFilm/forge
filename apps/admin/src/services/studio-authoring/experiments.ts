@@ -1,6 +1,9 @@
+import { StudioProductionPreflightError } from "./errors"
+import { studioAssetReferenceSchema } from "@forge/studio-contracts"
 import { canReviewStudio } from "@/auth/permissions"
 import type { PrismaClient } from "@prisma/client"
 import {
+  studioExperimentSelectionSchema,
   studioExperimentRequestSchema,
   studioExperimentCandidateSchema,
   studioExperimentOutcomeSchema,
@@ -20,6 +23,21 @@ export class StudioExperimentService {
     if (!canReviewStudio(user))
       throw new ForbiddenError("Explicit human experiment admission required")
     const input = studioExperimentRequestSchema.parse(raw)
+    if (input.kind === "voice" && input.provider === "elevenlabs") {
+      const code = input.settings.languageCode
+      const language = await this.db.language.findUnique({
+        where: { slug: input.language },
+        select: { bcp47: true },
+      })
+      if (
+        typeof code !== "string" ||
+        code !== (language?.bcp47 ?? input.language) ||
+        !/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(code)
+      )
+        throw new StudioProductionPreflightError(
+          "Voice design language must match the canonical author language",
+        )
+    }
     const requestKey = studioHash({ actor, key: input.idempotencyKey }),
       requestHash = studioHash(input)
     return this.db.$transaction(async (tx) => {
@@ -63,7 +81,9 @@ export class StudioExperimentService {
         if (
           studioHash(prior.asset) !== studioHash(input.asset) ||
           prior.providerRequestId !== input.providerRequestId ||
-          Number(prior.actualCostMicros) !== input.actualCostMicros
+          (prior.actualCostMicros === null
+            ? null
+            : Number(prior.actualCostMicros)) !== input.actualCostMicros
         )
           throw new StudioCommandError("CONFLICT")
         return prior
@@ -87,7 +107,59 @@ export class StudioExperimentService {
       return tx.studioExperimentCandidate.create({
         data: {
           ...input,
-          actualCostMicros: BigInt(input.actualCostMicros),
+          actualCostMicros:
+            input.actualCostMicros === null
+              ? null
+              : BigInt(input.actualCostMicros),
+          actor,
+        },
+      })
+    })
+  }
+  async select(user: Principal | null, raw: unknown) {
+    if (!canReviewStudio(user))
+      throw new ForbiddenError("Interactive candidate selection required")
+    const actor = studioActor(user),
+      input = studioExperimentSelectionSchema.parse(raw)
+    const requestKey = studioHash({ actor, key: input.idempotencyKey }),
+      inputHash = studioHash(input)
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM studio_experiment WHERE id=${input.experimentId} FOR UPDATE`
+      const prior = await tx.studioExperimentSelection.findUnique({
+        where: { requestKey },
+      })
+      if (prior) {
+        if (prior.inputHash !== inputHash)
+          throw new StudioCommandError("CONFLICT")
+        return prior
+      }
+      const candidate = await tx.studioExperimentCandidate.findUniqueOrThrow({
+        where: { candidateKey: input.candidateKey },
+      })
+      if (candidate.experimentId !== input.experimentId)
+        throw new StudioCommandError("INVALID")
+      const asset =
+        input.registeredVoice ??
+        studioAssetReferenceSchema.parse(candidate.asset)
+      if (input.registeredVoice) {
+        const version = await resolveAssetVersion(tx, input.registeredVoice),
+          metadata = studioRegisterAssetSchema.parse(version.metadata)
+        if (
+          version.role !== "voice" ||
+          metadata.provenance.recorded.registrationStatus !== "registered" ||
+          metadata.provenance.recorded.candidateKey !==
+            candidate.candidateKey ||
+          metadata.provenance.recorded.experimentId !== input.experimentId
+        )
+          throw new StudioCommandError("INVALID")
+      }
+      return tx.studioExperimentSelection.create({
+        data: {
+          experimentId: input.experimentId,
+          candidateKey: input.candidateKey,
+          requestKey,
+          inputHash,
+          asset,
           actor,
         },
       })
@@ -102,23 +174,34 @@ export class StudioExperimentService {
     if (!row) throw new NotFoundError("StudioExperiment")
     const request = studioExperimentRequestSchema.parse(row.request)
     const actualCost = row.candidates.reduce(
-      (sum, c) => sum + c.actualCostMicros,
+      (sum, c) => sum + (c.actualCostMicros ?? 0n),
       0n,
     )
+    const costUnknown = row.candidates.some((c) => c.actualCostMicros === null)
     const costExceeded = actualCost > BigInt(request.maxCostMicros)
     const countExceeded = row.candidates.length > request.candidateCount
     return {
       ...row,
+      selection: await this.db.studioExperimentSelection.findFirst({
+        where: { experimentId: id },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      }),
       outcome: studioExperimentOutcomeSchema.parse({
-        status: costExceeded || countExceeded ? "OVERRUN" : "WITHIN_LIMITS",
-        actualCostMicros: actualCost.toString(),
+        status:
+          costExceeded || countExceeded
+            ? "OVERRUN"
+            : costUnknown
+              ? "COST_UNKNOWN"
+              : "WITHIN_LIMITS",
+        actualCostMicros: costUnknown ? null : actualCost.toString(),
         candidateCount: row.candidates.length,
         costExceeded,
         countExceeded,
       }),
       candidates: row.candidates.map((c) => ({
         ...c,
-        actualCostMicros: Number(c.actualCostMicros),
+        actualCostMicros:
+          c.actualCostMicros === null ? null : Number(c.actualCostMicros),
       })),
     }
   }

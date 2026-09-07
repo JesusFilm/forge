@@ -5,6 +5,7 @@ import {
   type StudioOperation,
 } from "@forge/studio-contracts"
 import { StudioCommandError } from "./errors"
+import { studioHash } from "./state"
 
 export function applyOperations(
   document: StudioDocument,
@@ -87,5 +88,21 @@ export function applyOperations(
         break
     }
   }
+  // Keep immutable assets in history/cache, but never play previously approved
+  // speech after its text, role, language or pronunciation dependency changes.
+  doc.items = doc.items.filter((item) => {
+    if (item.kind !== "audio" || !item.narrationFor) return true
+    const before = document.items.find(
+      (i) => i.id === item.narrationFor,
+    )?.speech
+    const after = doc.items.find((i) => i.id === item.narrationFor)?.speech
+    return Boolean(
+      after &&
+      !after.suppressed &&
+      after.text.length &&
+      document.language === doc.language &&
+      studioHash(before) === studioHash(after),
+    )
+  })
   return studioDocumentSchema.parse(doc)
 }

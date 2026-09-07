@@ -1,0 +1,14 @@
+editor-ready
+generation-open
+generation-requested
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 30000ms exceeded.
+    at /tmp/forge-studio-458-runtime/full-workflow.mjs:23:12 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.20.0

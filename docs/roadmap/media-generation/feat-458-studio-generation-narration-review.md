@@ -3,7 +3,7 @@ id: "feat-458"
 title: "Studio generation and narration review"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-07"
 duration: 5
 depends_on:
@@ -60,3 +60,7 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Prove restart/idempotency behavior and that planner-only calls cannot reach TTS/render.
 
 - Exercise explicit music/voice audition and selection; a library miss alone must not spend credits, and unused candidates remain stored.
+
+## Implementation checkpoint
+
+Reviewed implementation and verification are recorded in `docs/validation/studio-458/HANDOFF.md` and `docs/solutions/security-issues/studio-approved-production-and-retained-results.md`. Status remains in progress: paid native-hosted creative quality is partial/failing, and actual ElevenLabs narration/music/voice proof awaits verified billing/slot facts and explicit authorization. Deterministic orchestration evidence does not complete those acceptance requirements.

@@ -1,3 +1,10 @@
+import { studioProjectSchema } from "@forge/studio-contracts"
+import { studioSourcePreviewSchema } from "@forge/studio-contracts/sources"
+import {
+  studioValidateProposalSchema,
+  StudioCoverageError,
+  studioCoverageRejectionSchema,
+} from "@forge/studio-contracts/production"
 import { z } from "zod"
 import { prisma } from "@/db/client"
 import { env } from "@/config/env"
@@ -18,9 +25,11 @@ const schema = z
       "packs",
       "pack",
       "source",
+      "source-preview",
       "search",
       "capture",
       "asset-upload",
+      "validate-proposal",
     ]),
     input: z.unknown(),
   })
@@ -41,7 +50,7 @@ export async function POST(request: Request) {
       .object({ projectId: z.string(), revision: z.number().int() })
       .strict()
       .parse(JSON.parse(input.grant.body))
-    const project = z.object({ revision: z.number() }).parse(
+    const project = studioProjectSchema.parse(
       await executeStudioDelegated(prisma, caller, {
         action: "read",
         input: grant.projectId,
@@ -49,6 +58,21 @@ export async function POST(request: Request) {
     )
     if (project.revision !== grant.revision)
       throw new StudioBoundaryError("CONFLICT", 409)
+    if (input.action === "source-preview") {
+      const preview = studioSourcePreviewSchema.parse(input.input)
+      if (preview.language !== project.document.language)
+        throw new StudioBoundaryError(
+          "Source language differs from admitted project",
+        )
+    }
+    if (input.action === "validate-proposal") {
+      const proposed = studioValidateProposalSchema.parse(input.input)
+      if (
+        proposed.command.projectId !== grant.projectId ||
+        proposed.command.expectedRevision !== grant.revision
+      )
+        throw new StudioBoundaryError("Proposal outside admitted project")
+    }
     return Response.json(
       {
         result: await executeStudioDelegated(prisma, caller, {
@@ -59,6 +83,14 @@ export async function POST(request: Request) {
       { headers: { "cache-control": "no-store" } },
     )
   } catch (e) {
+    if (e instanceof StudioCoverageError)
+      return Response.json(
+        studioCoverageRejectionSchema.parse({
+          error: "Studio role coverage rejected",
+          feedback: e.feedback,
+        }),
+        { status: 400, headers: { "cache-control": "no-store" } },
+      )
     return Response.json(
       {
         error:

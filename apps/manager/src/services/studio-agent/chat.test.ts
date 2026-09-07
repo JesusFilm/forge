@@ -133,3 +133,38 @@ test("malformed stream after done records failure rather than success", async ()
     }),
   )
 })
+
+test("retains generation text and validated proposals alongside frozen attempt completion", async () => {
+  const proposal = {
+    summary: "Title update",
+    command: {
+      projectId: "project",
+      expectedRevision: 1,
+      idempotencyKey: "proposal",
+      operations: [{ kind: "set-metadata", title: "After" }],
+    },
+  }
+  vi.mocked(studioServiceRequest).mockResolvedValue(
+    new Response(
+      [
+        JSON.stringify({ type: "text", text: "Source-based draft." }),
+        JSON.stringify({ type: "proposal", proposal }),
+        JSON.stringify({ type: "done" }),
+        "",
+      ].join("\n"),
+    ),
+  )
+  await (await studioChat(caller, input, new AbortController().signal)).text()
+  expect(studioServiceCall).toHaveBeenCalledWith(
+    "admin",
+    expect.anything(),
+    expect.objectContaining({
+      action: "finish",
+      generation: {
+        text: "Source-based draft.",
+        proposals: [proposal],
+        diagnostics: [],
+      },
+    }),
+  )
+})

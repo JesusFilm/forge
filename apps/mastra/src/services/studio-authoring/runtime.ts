@@ -21,6 +21,7 @@ import {
   type FrozenStudioInstructions,
 } from "./instructions"
 import { streamStudioAgent } from "./agent"
+import { rejectStudioAssetTool } from "./tool-feedback"
 
 type Config = {
   adminUrl?: string
@@ -332,11 +333,7 @@ function streaming(
                     signal: abort.signal,
                   },
                 )
-                if (!response.ok)
-                  throw new StudioBoundaryError(
-                    "Studio asset tool rejected",
-                    response.status,
-                  )
+                if (!response.ok) await rejectStudioAssetTool(action, response)
                 const result = JSON.parse(await readStudioBytes(response)) as {
                   result: unknown
                 }

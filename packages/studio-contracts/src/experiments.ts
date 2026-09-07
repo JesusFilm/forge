@@ -36,16 +36,32 @@ export const studioExperimentCandidateSchema = z
       .number()
       .int()
       .nonnegative()
-      .max(Number.MAX_SAFE_INTEGER),
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
   })
   .strict()
 
 export const studioExperimentOutcomeSchema = z
   .object({
-    status: z.enum(["WITHIN_LIMITS", "OVERRUN"]),
-    actualCostMicros: z.string().regex(/^\d+$/),
+    status: z.enum(["WITHIN_LIMITS", "OVERRUN", "COST_UNKNOWN"]),
+    actualCostMicros: z.string().regex(/^\d+$/).nullable(),
     candidateCount: z.number().int().nonnegative(),
     costExceeded: z.boolean(),
     countExceeded: z.boolean(),
   })
   .strict()
+
+export const studioExperimentSelectionSchema = z
+  .object({
+    experimentId: studioIdSchema,
+    candidateKey: studioIdSchema,
+    idempotencyKey: studioIdSchema,
+    registeredVoice: studioAssetReferenceSchema.optional(),
+  })
+  .strict()
+export const studioExperimentDraftSchema = studioExperimentRequestSchema.omit({
+  idempotencyKey: true,
+  estimate: true,
+  maxCostMicros: true,
+  confirmed: true,
+})

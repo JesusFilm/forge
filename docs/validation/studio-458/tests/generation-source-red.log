@@ -1,0 +1,68 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ❯ src/services/studio-authoring/narration.db.test.ts (15 tests | 1 failed | 14 skipped) 230ms
+   ↓ Canonical narration completion > preflights explicit language mapping and pinned pronunciation locators before dispatch
+   ↓ Canonical narration completion > retains hosted generation output and frozen provenance without applying it over newer edits
+   ↓ Canonical narration completion > ripples only linked followers, preserving unrelated music; linked timing lock=false
+   ↓ Canonical narration completion > ripples only linked followers, preserving unrelated music; linked timing lock=true
+   ↓ Canonical narration completion > preserves exact unrelated video cuts and returns a conflict instead of stretching a linked cut
+   ↓ Canonical narration completion > does not overwrite an unrelated item that reuses a generated audio identity
+   ↓ Canonical narration completion > attaches verified narration and ripples following content in one revision
+   ↓ Canonical narration completion > retains paid assets and visible timing conflicts without changing locked content
+   ↓ Canonical narration completion > rejects changed speech identity and keeps a stale paid completion from replacing edits
+   ↓ Canonical narration completion > keeps narration for visual changes but detaches changed spoken content without deleting assets
+   ↓ Canonical narration completion > does not overwrite a manual narration timing lock when cached duration is unchanged
+   ↓ Canonical narration completion > reconciles simultaneous tracks without global double ripple and preserves unrelated spans and trailing gaps
+   × Canonical narration completion > validates proposed role claims against projected canonical operations without applying them 224ms
+     → promise resolved "{ valid: true, …(3) }" instead of rejecting
+   ↓ Canonical narration completion > serializes concurrent completions and replays the winning receipt exactly once
+   ↓ Canonical narration completion > retains late narration after cancellation without attaching or changing the project
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/narration.db.test.ts > Canonical narration completion > validates proposed role claims against projected canonical operations without applying them
+AssertionError: promise resolved "{ valid: true, …(3) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "projectId": "f496c8c7-0773-43fe-8b36-5cbbdf1bfabc",[39m
+[31m+   "quality": {[39m
+[31m+     "coverage": [],[39m
+[31m+     "findings": [[39m
+[31m+       {[39m
+[31m+         "criterion": "source-fidelity",[39m
+[31m+         "itemIds": [[39m
+[31m+           "settle",[39m
+[31m+         ],[39m
+[31m+         "reason": "Claimed source citation",[39m
+[31m+         "sources": [[39m
+[31m+           {[39m
+[31m+             "assetId": "d2333b1a-cf7c-4bfd-a307-7c5a33c06403",[39m
+[31m+             "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",[39m
+[31m+             "versionId": "b863e33b-8ddb-4173-ac3f-77217c29c8e9",[39m
+[31m+           },[39m
+[31m+         ],[39m
+[31m+         "status": "pass",[39m
+[31m+       },[39m
+[31m+     ],[39m
+[31m+   },[39m
+[31m+   "revision": 1,[39m
+[31m+   "valid": true,[39m
+[2m  }[22m
+
+ ❯ src/services/studio-authoring/narration.db.test.ts:999:7
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 skipped (15)
+   Start at  04:14:31
+   Duration  1.24s (transform 361ms, setup 16ms, collect 632ms, tests 230ms, environment 0ms, prepare 82ms)
+

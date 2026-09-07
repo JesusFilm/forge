@@ -1,3 +1,4 @@
+import { StudioBoundaryError } from "@forge/studio-server"
 import { studioAssetTools } from "./tools"
 import { Agent, type AgentConfig } from "@mastra/core/agent"
 import { createTool } from "@mastra/core/tools"
@@ -8,6 +9,7 @@ import {
 } from "@forge/studio-contracts"
 import type { StudioAgentEvent } from "@forge/studio-contracts/agent"
 import type { FrozenStudioInstructions } from "./instructions"
+import { studioQualityReportSchema } from "@forge/studio-contracts/production"
 
 /** Per-run unregistered agent: no framework route, Workspace, memory, or editable tool registry. */
 export async function streamStudioAgent(input: {
@@ -41,19 +43,27 @@ export async function streamStudioAgent(input: {
           .object({
             summary: z.string().min(1).max(2000),
             operations: z.array(studioOperationSchema).min(1).max(100),
+            quality: studioQualityReportSchema.optional(),
           })
           .strict(),
-        execute: async ({ summary, operations }) => {
+        execute: async ({ summary, operations, quality }) => {
+          const command = {
+            projectId: input.project.projectId,
+            expectedRevision: input.project.revision,
+            idempotencyKey: crypto.randomUUID(),
+            operations,
+          }
+          if (!input.assetCall)
+            throw new StudioBoundaryError(
+              "Canonical proposal validation unavailable",
+            )
+          await input.assetCall("validate-proposal", { command, quality })
           input.emit({
             type: "proposal",
             proposal: {
               summary,
-              command: {
-                projectId: input.project.projectId,
-                expectedRevision: input.project.revision,
-                idempotencyKey: crypto.randomUUID(),
-                operations,
-              },
+              command,
+              quality,
             },
           })
           return { proposed: true, applied: false }
@@ -63,6 +73,7 @@ export async function streamStudioAgent(input: {
   })
   const stream = await agent.stream(input.message, {
     maxSteps: 5,
+    modelSettings: { maxOutputTokens: 4096, maxRetries: 0 },
     abortSignal: input.signal,
   })
   let length = 0
@@ -70,9 +81,11 @@ export async function streamStudioAgent(input: {
     if (chunk.type === "text-delta") {
       const text = chunk.payload.text
       length += text.length
-      if (length > 16000) throw new Error("Studio response exceeded its limit")
+      if (length > 16000)
+        throw new StudioBoundaryError("Studio response exceeded its limit")
       input.emit({ type: "text", text })
     }
-    if (chunk.type === "error") throw new Error("Studio generation failed")
+    if (chunk.type === "error")
+      throw new StudioBoundaryError("Studio generation failed")
   }
 }

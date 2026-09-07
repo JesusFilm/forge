@@ -4211,6 +4211,7 @@ model StudioCommand {
 }
 
 model StudioAttempt {
+  productionRun StudioProductionRun?
   catalogRelease StudioCatalogRelease?
 
   publicationApprovals StudioApproval[]
@@ -4345,6 +4346,8 @@ model StudioAssetTransfer {
 }
 
 model StudioExperiment {
+  selections StudioExperimentSelection[]
+  productionRun StudioProductionRun?
   id          String                      @id @default(cuid())
   request     Json
   actor       Json
@@ -4356,12 +4359,13 @@ model StudioExperiment {
 }
 
 model StudioExperimentCandidate {
+  selections StudioExperimentSelection[]
   id                String           @id @default(cuid())
   experimentId      String           @map("experiment_id")
   experiment        StudioExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
   asset             Json
   providerRequestId String?          @map("provider_request_id")
-  actualCostMicros  BigInt           @map("actual_cost_micros")
+  actualCostMicros  BigInt?          @map("actual_cost_micros")
   candidateKey      String           @unique @map("candidate_key")
   actor             Json
 
@@ -4418,4 +4422,44 @@ model StudioCatalogPack {
 
   @@id([releaseId, packRevisionId])
   @@map("studio_catalog_pack")
+}
+
+model StudioProductionRun {
+  id String @id @default(cuid())
+  attemptId String? @unique @map("attempt_id") @db.VarChar(128)
+  attempt StudioAttempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  experimentId String? @unique @map("experiment_id")
+  experiment StudioExperiment? @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  actor Json
+  maxCostMicros BigInt @map("max_cost_micros")
+  state String @default("READY")
+  createdAt DateTime @default(now()) @map("created_at")
+  calls StudioProductionCall[]
+  @@map("studio_production_run")
+}
+model StudioProductionCall {
+  runId String @map("run_id")
+  run StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  key String
+  inputDigest String @map("input_digest") @db.VarChar(64)
+  reserveMicros BigInt @map("reserve_micros")
+  state String @default("RUNNING")
+  result Json?
+  @@id([runId,key])
+  @@map("studio_production_call")
+}
+
+model StudioExperimentSelection {
+  id String @id @default(cuid())
+  experimentId String @map("experiment_id")
+  experiment StudioExperiment @relation(fields:[experimentId],references:[id],onDelete:Restrict)
+  candidateKey String @map("candidate_key")
+  candidate StudioExperimentCandidate @relation(fields:[candidateKey],references:[candidateKey],onDelete:Restrict)
+  requestKey String @unique @map("request_key")
+  inputHash String @map("input_hash")
+  asset Json
+  actor Json
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([experimentId,createdAt])
+  @@map("studio_experiment_selection")
 }

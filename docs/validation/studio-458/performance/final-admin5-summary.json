@@ -1,0 +1,44 @@
+{
+  "baseline": {
+    "cold": {
+      "controlsMs": 523.5091770000001,
+      "previewMs": 1319.4149439999999,
+      "javascriptBytes": 257891,
+      "lcp": 524,
+      "cls": 0
+    },
+    "warm": {
+      "controlsMs": 216.89608399999997,
+      "previewMs": 1006.0019639999996,
+      "javascriptBytes": 0,
+      "lcp": 208,
+      "cls": 0
+    },
+    "longTasks": [
+      54,
+      52,
+      56
+    ],
+    "pageErrors": []
+  },
+  "final": {
+    "cold": {
+      "controlsMs": 518.4050480000005,
+      "previewMs": 1316.1264190000002,
+      "javascriptBytes": 257285,
+      "lcp": 524,
+      "cls": 0
+    },
+    "warm": {
+      "controlsMs": 232.64379299999973,
+      "previewMs": 1021.6653790000005,
+      "javascriptBytes": 0,
+      "lcp": 232,
+      "cls": 0
+    },
+    "longTasks": [
+      51
+    ],
+    "pageErrors": []
+  }
+}

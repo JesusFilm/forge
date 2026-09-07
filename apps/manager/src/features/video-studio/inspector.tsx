@@ -522,6 +522,34 @@ export function Inspector({
           </>
         )}
         <label>
+          Linked timing target
+          <select
+            disabled={item.kind === "audio" && !!item.narrationFor}
+            value={item.linkedTo ?? ""}
+            onChange={(event) =>
+              patch((current) => {
+                const next = { ...current }
+                if (event.target.value) next.linkedTo = event.target.value
+                else delete next.linkedTo
+                return next
+              })
+            }
+          >
+            <option value="">Independent timing</option>
+            {doc.items
+              .filter(
+                (candidate) =>
+                  candidate.id !== item.id &&
+                  !(candidate.kind === "audio" && candidate.narrationFor),
+              )
+              .map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.id}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label>
           <input
             type="checkbox"
             checked={item.timingLocked ?? false}

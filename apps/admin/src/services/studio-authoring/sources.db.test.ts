@@ -48,6 +48,8 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
       !(
         (parsed.port === "55455" &&
           parsed.pathname === "/forge_studio_455_test") ||
+        (parsed.port === "55458" &&
+          parsed.pathname === "/forge_studio_458_test") ||
         (parsed.port === "55457" &&
           parsed.pathname === "/forge_studio_457_test") ||
         (parsed.port === "55459" &&
@@ -194,6 +196,34 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
     expect(competing.filter((r) => r.status === "fulfilled")).toHaveLength(1)
     expect(competing.filter((r) => r.status === "rejected")).toHaveLength(1)
     const snapshot = await service.capture(user, selection)
+    const previewInput = {
+      sourceSnapshotId: snapshot.id,
+      language: selection.language,
+      startMs: 1000,
+      endMs: 5000,
+      limit: 1,
+    }
+    const firstPage = await service.preview(user, previewInput)
+    expect(firstPage.cues).toEqual([
+      { startMs: 1000, endMs: 2000, text: "First" },
+    ])
+    expect(firstPage.subtitle).toEqual(snapshot.source.subtitle)
+    expect(firstPage.totalCues).toBe(2)
+    expect(firstPage.nextOffset).toBe(1)
+    expect(firstPage.coverage).toBe("partial")
+    expect(firstPage.nextPage).toEqual({ ...previewInput, offset: 1 })
+    const secondPage = await service.preview(user, firstPage.nextPage)
+    expect(secondPage.cues).toEqual([
+      { startMs: 3000, endMs: 5000, text: "Second" },
+    ])
+    expect(secondPage.nextOffset).toBeNull()
+    await expect(
+      service.preview(user, { ...previewInput, language: "wrong-language" }),
+    ).rejects.toThrow()
+    await expect(
+      service.preview(user, { ...previewInput, endMs: 6001 }),
+    ).rejects.toThrow()
+    await expect(service.preview(null, previewInput)).rejects.toThrow()
     const assetService = new StudioAssetService(db)
     const manifestRefs = []
     for (const purpose of ["preview", "export"] as const) {
@@ -346,6 +376,7 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
     await expect(
       db.$transaction((tx) => assertStudioSourceEligible(tx, snapshot)),
     ).rejects.toThrow()
+    await expect(service.preview(user, firstPage.nextPage)).rejects.toThrow()
     await expect(
       db.video.delete({ where: { id: selection.videoId } }),
     ).rejects.toThrow()

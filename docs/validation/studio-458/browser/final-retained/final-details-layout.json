@@ -1,0 +1,16 @@
+{
+  "layout": {
+    "dialogWidth": 958,
+    "scrollWidth": 958,
+    "overflowing": [],
+    "audio": [
+      {
+        "left": 278,
+        "right": 1162,
+        "dialogRight": 1200
+      }
+    ]
+  },
+  "providerCalls": 0,
+  "pageErrors": []
+}

@@ -1,0 +1,346 @@
+[
+  {
+    "slot": 0,
+    "ordinal": 0,
+    "requestDigest": "397b933d4f3d81416b03d679fe44aff47479dffbf0880e8b017977b7b223c381",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 4816.119637999998,
+      "requestIds": [
+        "gen-1788801707-lxvRbnNa7lBrkjRDrrjD"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 25500,
+        "completion_tokens": 71,
+        "total_tokens": 25571,
+        "cost": 0.0194445,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0194445,
+          "upstream_inference_prompt_cost": 0.019125,
+          "upstream_inference_completions_cost": 0.0003195
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 10,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.0194445,
+      "requestDigest": "397b933d4f3d81416b03d679fe44aff47479dffbf0880e8b017977b7b223c381",
+      "serializedBytes": 130673,
+      "conservativeInputBound": 134769,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 0,
+    "ordinal": 1,
+    "requestDigest": "2820232fed2788ec4d3741458d67d59484c1f396991c8bb73e57cb47102c643f",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 20883.484026000002,
+      "requestIds": [
+        "gen-1788801712-D5kjXmjpcPIlxMrk7H0o"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 27338,
+        "completion_tokens": 3080,
+        "total_tokens": 30418,
+        "cost": 0.0174291,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 25088,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0174291,
+          "upstream_inference_prompt_cost": 0.0035691,
+          "upstream_inference_completions_cost": 0.01386
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 516,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.0174291,
+      "requestDigest": "2820232fed2788ec4d3741458d67d59484c1f396991c8bb73e57cb47102c643f",
+      "serializedBytes": 137895,
+      "conservativeInputBound": 141991,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 0,
+    "ordinal": 2,
+    "requestDigest": "7340b2457d6171ffac8058bc78b5a6ac2f5d770bdc33ab5506a8bfc53475358b",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 15001.425022000003,
+      "requestIds": [
+        "gen-1788801733-ZM1WhgM3nZRWpOznNkIB"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 29917,
+        "completion_tokens": 1963,
+        "total_tokens": 31880,
+        "cost": 0.01295445,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 27136,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.01295445,
+          "upstream_inference_prompt_cost": 0.00412095,
+          "upstream_inference_completions_cost": 0.0088335
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 337,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.01295445,
+      "requestDigest": "7340b2457d6171ffac8058bc78b5a6ac2f5d770bdc33ab5506a8bfc53475358b",
+      "serializedBytes": 147862,
+      "conservativeInputBound": 151958,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 0,
+    "ordinal": 3,
+    "requestDigest": "cdab0c3a897b33150a6c66f4c4f6cfc74c35d98cd98a0a447b2740fb9ce5b05c",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 7028.753885999999,
+      "requestIds": [
+        "gen-1788801748-krZAwgRlwYVZNrgNE079"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 31565,
+        "completion_tokens": 291,
+        "total_tokens": 31856,
+        "cost": 0.00493845,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 29696,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00493845,
+          "upstream_inference_prompt_cost": 0.00362895,
+          "upstream_inference_completions_cost": 0.0013095
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 20,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.00493845,
+      "requestDigest": "cdab0c3a897b33150a6c66f4c4f6cfc74c35d98cd98a0a447b2740fb9ce5b05c",
+      "serializedBytes": 154117,
+      "conservativeInputBound": 158213,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 1,
+    "ordinal": 0,
+    "requestDigest": "9b70215644322d43ea1fe8bd491842e859dc583f9980e62cc418caa42d6abcf8",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 4162.071547999993,
+      "requestIds": [
+        "gen-1788801759-PJDB1ePvaDDBCPM0cTSg"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 25499,
+        "completion_tokens": 71,
+        "total_tokens": 25570,
+        "cost": 0.00250935,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 25088,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00250935,
+          "upstream_inference_prompt_cost": 0.00218985,
+          "upstream_inference_completions_cost": 0.0003195
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 11,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.00250935,
+      "requestDigest": "9b70215644322d43ea1fe8bd491842e859dc583f9980e62cc418caa42d6abcf8",
+      "serializedBytes": 130673,
+      "conservativeInputBound": 134769,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 1,
+    "ordinal": 1,
+    "requestDigest": "7075b5af2db2ae830cbb2ac99f60bd295f5dca2a642fd919ebbe23d94dff03cb",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 21427.216775000008,
+      "requestIds": [
+        "gen-1788801763-ypdu8G8NhNAGa14CbEBi"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 28576,
+        "completion_tokens": 3194,
+        "total_tokens": 31770,
+        "cost": 0.0188706,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 25088,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0188706,
+          "upstream_inference_prompt_cost": 0.0044976,
+          "upstream_inference_completions_cost": 0.014373
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1247,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.0188706,
+      "requestDigest": "7075b5af2db2ae830cbb2ac99f60bd295f5dca2a642fd919ebbe23d94dff03cb",
+      "serializedBytes": 143169,
+      "conservativeInputBound": 147265,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 1,
+    "ordinal": 2,
+    "requestDigest": "5aedd00584eb37d51e608f4f2a57bac7bd9c452474c56fb5f0652bc40885164b",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 15907.36931899999,
+      "requestIds": [
+        "gen-1788801785-0npAUGdpNix47KwUF8eI"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 30538,
+        "completion_tokens": 2129,
+        "total_tokens": 32667,
+        "cost": 0.013476,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 28160,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.013476,
+          "upstream_inference_prompt_cost": 0.0038955,
+          "upstream_inference_completions_cost": 0.0095805
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 261,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.013476,
+      "requestDigest": "5aedd00584eb37d51e608f4f2a57bac7bd9c452474c56fb5f0652bc40885164b",
+      "serializedBytes": 150868,
+      "conservativeInputBound": 154964,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  },
+  {
+    "slot": 1,
+    "ordinal": 3,
+    "requestDigest": "2d0477afadef736b8ea67216311958358691ba8973ae07d3288e01892ace629e",
+    "state": "COMPLETED",
+    "result": {
+      "http": 200,
+      "elapsedMs": 10032.051363999999,
+      "requestIds": [
+        "gen-1788801801-GjFMiCllC1ESBiAZXbeH"
+      ],
+      "provider": "OpenAI",
+      "usage": {
+        "prompt_tokens": 32421,
+        "completion_tokens": 817,
+        "total_tokens": 33238,
+        "cost": 0.00760185,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 30208,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00760185,
+          "upstream_inference_prompt_cost": 0.00392535,
+          "upstream_inference_completions_cost": 0.0036765
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 233,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      },
+      "actualCostUSD": 0.00760185,
+      "requestDigest": "2d0477afadef736b8ea67216311958358691ba8973ae07d3288e01892ace629e",
+      "serializedBytes": 158231,
+      "conservativeInputBound": 162327,
+      "authorizationCeilingUSD": 2,
+      "invalidBound": false
+    }
+  }
+]

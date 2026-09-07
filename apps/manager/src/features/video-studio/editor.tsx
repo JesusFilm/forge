@@ -33,6 +33,12 @@ import { Inspector, defaultTransform } from "./inspector"
 import { Timeline, itemLabel } from "./timeline"
 import { Library } from "./library"
 import "./studio.css"
+const ProductionPanel = dynamic(() => import("./production-panel"), {
+  ssr: false,
+})
+const GenerationPanel = dynamic(() => import("./generation-panel"), {
+  ssr: false,
+})
 const AgentPanel = dynamic(() => import("./agent-panel"), { ssr: false })
 const Preview = dynamic(() => import("./preview"), {
   ssr: false,
@@ -105,7 +111,9 @@ function Editor({
     [error, setError] = useState(""),
     [history, setHistory] = useState<StudioRevision[] | null>(null),
     [selectCanvas, setSelectCanvas] = useState(true),
-    [agentOpen, setAgentOpen] = useState(false)
+    [agentOpen, setAgentOpen] = useState(false),
+    [productionOpen, setProductionOpen] = useState(false),
+    [generationOpen, setGenerationOpen] = useState(false)
   const canvas = useRef<HTMLDivElement>(null),
     drag = useRef<{
       id: string
@@ -189,6 +197,12 @@ function Editor({
             <Redo2 size={17} />
           </button>
           <button onClick={() => setAgentOpen(true)}>Assistant</button>
+          <button onClick={() => setGenerationOpen(true)}>
+            Generate scripts
+          </button>
+          <button onClick={() => setProductionOpen(true)}>
+            Speech and production
+          </button>
           <button onClick={showHistory}>
             <History size={16} />
             History
@@ -377,6 +391,21 @@ function Editor({
         <Inspector session={session} state={state} onError={report} />
       </div>
       <Timeline session={session} state={state} onError={report} />
+      {generationOpen && (
+        <GenerationPanel
+          session={session}
+          projectId={projectId}
+          onClose={() => setGenerationOpen(false)}
+        />
+      )}
+      {productionOpen && (
+        <ProductionPanel
+          key={projectId}
+          session={session}
+          projectId={projectId}
+          onClose={() => setProductionOpen(false)}
+        />
+      )}
       {agentOpen && (
         <AgentPanel
           session={session}

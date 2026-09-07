@@ -1,0 +1,21 @@
+{
+  "authorizationSHA256": "010140f392b5f95dcab2416b8cae6272eb8841d13917cf64656d68149f722500",
+  "runs": 2,
+  "requests": 8,
+  "requestsPerRun": [
+    4,
+    4
+  ],
+  "authorizationCeilingUSD": 2,
+  "standardUsageBoundUSD": 1.68432,
+  "providerReportedCostUSD": 0.0972243,
+  "elapsedMsTotal": 99258.49157799999,
+  "maximumConservativeInputBound": 162327,
+  "liveLedgerLocation": "/tmp/forge-studio-458-runtime/native-paid-guard/paid-hosted.sqlite",
+  "liveLedgerSha256": "9db5ff8e8f8dd07082c8f97a5af2d09fe29ab9f1fd721f44e081078803c89b9a",
+  "pageErrors": [],
+  "retries": 0,
+  "applied": false,
+  "narrationOrMediaRequests": 0,
+  "outcome": "One accepted canonical proposal and preview; second run retained prose only after false-role coverage rejection. Creative acceptance remains partial/failing."
+}
