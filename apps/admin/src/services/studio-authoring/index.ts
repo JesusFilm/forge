@@ -1,3 +1,4 @@
+import { resolveStudioPackSources } from "./packs"
 import type { PrismaClient } from "@prisma/client"
 import {
   studioActorSchema,
@@ -33,6 +34,10 @@ import {
   publicationDependencyHash,
 } from "./state"
 import { applyOperations } from "./operations"
+import {
+  resolveStudioDocumentSources,
+  assertStudioRenderSources,
+} from "./sources"
 export { StudioCommandError } from "./errors"
 export class StudioAuthoringService {
   constructor(private readonly db: PrismaClient) {}
@@ -55,6 +60,8 @@ export class StudioAuthoringService {
       await tx.studioProject.create({
         data: { id: input.projectId, currentRevision: 1, ownerId: actor.id },
       })
+      await resolveStudioPackSources(tx, input.document.packRevisionIds)
+      await resolveStudioDocumentSources(tx, input.document)
       await tx.studioProjectRevision.create({
         data: {
           projectId: input.projectId,
@@ -105,6 +112,8 @@ export class StudioAuthoringService {
         studioDocumentSchema.parse(previous.document),
         input.operations,
       )
+      await resolveStudioPackSources(tx, document.packRevisionIds)
+      await resolveStudioDocumentSources(tx, document)
       const revision = project.currentRevision + 1
       await tx.studioProjectRevision.create({
         data: { projectId: project.id, number: revision, document, actor },
@@ -146,6 +155,11 @@ export class StudioAuthoringService {
           },
         },
       })
+      if (input.kind === "RENDER")
+        await assertStudioRenderSources(
+          tx,
+          studioDocumentSchema.parse(revision.document),
+        )
       if (input.kind === "NARRATION") {
         const dependencyHash = scriptHash(
           studioDocumentSchema.parse(revision.document),
@@ -230,6 +244,8 @@ export class StudioAuthoringService {
           studioDocumentSchema.parse(previous.document),
           input.operations,
         )
+        await resolveStudioPackSources(tx, document.packRevisionIds)
+        await resolveStudioDocumentSources(tx, document)
         revision += 1
         await tx.studioProjectRevision.create({
           data: { projectId: project.id, number: revision, document, actor },

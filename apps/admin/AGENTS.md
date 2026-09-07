@@ -133,3 +133,7 @@ from the repository root. Admin owns the durable module; Manager uses
 `apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
 `@forge/studio-contracts`. The internal publication seam has no public publish
 mutation until feat-460 supplies its catalog/render/approval checks.
+
+For shared Studio assets, Content Packs, source capture/materialization or asset
+lifecycle guards, read
+`docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`.

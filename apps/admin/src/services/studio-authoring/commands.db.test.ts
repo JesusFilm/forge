@@ -7,6 +7,8 @@ import { schema } from "@/graphql/schema"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { StudioAssetService } from "./assets"
+import type { StudioAssetReference } from "@forge/studio-contracts"
 import { StudioAuthoringService } from "./index"
 import { publishStudioProject } from "./publication"
 
@@ -35,17 +37,38 @@ const document = {
 suite("Studio command seam against disposable Postgres", () => {
   let db: PrismaClient
   let service: StudioAuthoringService
-  beforeAll(() => {
+  const refs: Record<string, StudioAssetReference> = {}
+  beforeAll(async () => {
     const parsed = new URL(url!)
     if (
       parsed.hostname !== "127.0.0.1" ||
-      !parsed.pathname.startsWith("/forge_studio_454_test")
+      !(
+        parsed.pathname.startsWith("/forge_studio_454_test") ||
+        (parsed.port === "55455" &&
+          parsed.pathname === "/forge_studio_455_test")
+      )
     )
       throw new StudioTestHarnessError(
         "Only the dedicated loopback Studio test database is allowed",
       )
     db = new PrismaClient({ datasources: { db: { url } } })
     service = new StudioAuthoringService(db)
+    for (const name of ["voice", "output", "manifest", "late"]) {
+      refs[name] = (
+        await new StudioAssetService(db).register(
+          user,
+          {
+            filename: name + ".json",
+            mimeType: "application/json",
+            role: "archive",
+            provenance: { status: "unknown", recorded: {} },
+            idempotencyKey: randomUUID(),
+          },
+          Buffer.from(name),
+          "LOCAL",
+        )
+      ).reference
+    }
   })
   afterAll(async () => {
     await db?.$disconnect()
@@ -136,7 +159,7 @@ suite("Studio command seam against disposable Postgres", () => {
       operations: [{ kind: "set-metadata", title: "Human edit" }],
     })
     const result = {
-      assets: [{ assetId: "output", versionId: "one", digest: "a".repeat(64) }],
+      assets: [refs.output!],
       costMicros: 0,
     }
     const completion = {
@@ -164,11 +187,7 @@ suite("Studio command seam against disposable Postgres", () => {
 
   it("requires human script review, preserves it for visual edits, and invalidates it for spoken dependencies", async () => {
     const projectId = randomUUID()
-    const reference = {
-      assetId: "voice",
-      versionId: "one",
-      digest: "b".repeat(64),
-    }
+    const reference = refs.voice!
     const speech = {
       text: "Spoken bridge",
       role: "bridge",
@@ -276,11 +295,7 @@ suite("Studio command seam against disposable Postgres", () => {
         result: {
           assets: [],
           costMicros: 0,
-          manifest: {
-            assetId: "manifest",
-            versionId: "one",
-            digest: "c".repeat(64),
-          },
+          manifest: refs.manifest!,
         },
       },
     )
@@ -487,7 +502,7 @@ suite("Studio command seam against disposable Postgres", () => {
 
   it("invalidates script review when timeline movement changes spoken order", async () => {
     const projectId = randomUUID()
-    const voice = { assetId: "voice", versionId: "one", digest: "b".repeat(64) }
+    const voice = refs.voice!
     const item = (id: string, startFrame: number, text: string) => ({
       id,
       kind: "text",
@@ -622,11 +637,7 @@ suite("Studio command seam against disposable Postgres", () => {
         result: {
           assets: [],
           costMicros: 0,
-          manifest: {
-            assetId: "manifest",
-            versionId: "one",
-            digest: "c".repeat(64),
-          },
+          manifest: refs.manifest!,
         },
       },
     )
@@ -759,11 +770,7 @@ suite("Studio command seam against disposable Postgres", () => {
       result: {
         assets: [],
         costMicros: 0,
-        manifest: {
-          assetId: "manifest",
-          versionId: "one",
-          digest: "c".repeat(64),
-        },
+        manifest: refs.manifest!,
       },
     })
     const approval = await service.approve(user, {
@@ -794,7 +801,7 @@ suite("Studio command seam against disposable Postgres", () => {
       status: "SUCCEEDED",
       operations: [{ kind: "set-metadata", title: "Late result" }],
       result: {
-        assets: [{ assetId: "late", versionId: "one", digest: "d".repeat(64) }],
+        assets: [refs.late!],
         costMicros: 100,
       },
     }
@@ -806,6 +813,32 @@ suite("Studio command seam against disposable Postgres", () => {
       await service.readAttempt(user, projectId, late.attemptId!),
     ).toMatchObject({ status: "STALE", result: completion.result })
     expect(await service.read(user, projectId)).toEqual(published)
+    expect(
+      await db.studioAssetUsage.findMany({
+        where: {
+          ownerType: "STUDIO_ATTEMPT",
+          ownerId: late.attemptId,
+          versionId: refs.late!.versionId,
+        },
+      }),
+    ).toHaveLength(1)
+    await service.unpublish(user, {
+      projectId,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+    })
+    expect(
+      await db.studioAssetUsage.findMany({
+        where: {
+          ownerType: "STUDIO_PUBLICATION",
+          ownerId: projectId,
+          versionId: refs.manifest!.versionId,
+        },
+      }),
+    ).toHaveLength(1)
+    expect(
+      await new StudioAssetService(db).readBytes(user, refs.late!),
+    ).toEqual(Buffer.from("late"))
     expect(await service.history(user, projectId)).toHaveLength(1)
   })
 })

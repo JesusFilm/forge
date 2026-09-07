@@ -9,6 +9,10 @@ import {
 
 function mockPrisma() {
   const client = {
+    studioAssetVersion: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     mediaAsset: {
       findMany: vi.fn(),
       findFirst: vi.fn(),

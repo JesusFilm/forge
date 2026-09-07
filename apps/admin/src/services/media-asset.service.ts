@@ -158,6 +158,18 @@ export class MediaAssetService {
 
     return this.prisma.$transaction(
       async (tx) => {
+        const studioVersion = await tx.studioAssetVersion.findFirst({
+          where: { mediaAssetId: id },
+          include: { usages: true },
+        })
+        if (
+          studioVersion &&
+          Object.keys(data).some((key) => key !== "folderId")
+        ) {
+          throw new MediaAssetValidationError(
+            `Studio asset version is retained with ${studioVersion.usages.length} durable dependencies; register replacement bytes as a new version`,
+          )
+        }
         await assertFolderExists(tx, input.folderId ?? null)
         if (exitsPublicReady) {
           const socialImageUsageCount = await tx.videoLocale.count({

@@ -4,7 +4,11 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./assets": "./src/assets.ts",
+    "./content-packs": "./src/content-packs.ts",
+    "./sources": "./src/sources.ts",
+    "./experiments": "./src/experiments.ts"
   },
   "scripts": {
     "test": "vitest run",

@@ -175,6 +175,13 @@ type ContainerSlotSpans {
   xs: Int
 }
 
+type ContentPackRevision {
+  document: JSON
+  id: ID
+  number: Int
+  packId: ID
+}
+
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -1223,6 +1230,8 @@ type Mutation {
   approveStudioProject(input: StudioApproveInput!): StudioCommandResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  attachStudioExperimentCandidate(input: JSON!): JSON
+  captureStudioSource(input: JSON!): StudioSourceSnapshot
   """
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
@@ -1254,6 +1263,9 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  issueStudioAssetRead(reference: JSON!): StudioAssetTransfer
+  issueStudioAssetUpload(input: JSON!): StudioAssetTransfer
+  materializeStudioSource(input: JSON!): StudioSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -1271,6 +1283,7 @@ type Mutation {
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
   requestStudioAttempt(input: StudioRequestInput!): StudioCommandResult
+  requestStudioExperiment(input: JSON!): JSON
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -1375,6 +1388,7 @@ type Mutation {
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
+  writeStudioContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -1496,11 +1510,20 @@ type Query {
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
   semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   studioApprovals(cursor: ID, limit: Int, projectId: ID!): [StudioApproval!]
+  studioAsset(reference: JSON!): StudioAssetVersion
+  studioAssets(input: JSON): [StudioAssetVersion!]
   studioAttempt(attemptId: ID!, projectId: ID!): StudioAttempt
   studioAttempts(cursor: ID, limit: Int, projectId: ID!): [StudioAttempt!]
+  studioContentPackRevision(id: ID!): ContentPackRevision
+  studioContentPacks(input: JSON): [ContentPackRevision!]
+  studioExperiment(id: ID!): JSON
   studioHistory(beforeRevision: Int, limit: Int, projectId: ID!): [StudioRevision!]
+  studioNarrationIdentity(language: String!, speech: JSON!): JSON
+  studioNarrationMatches(identity: JSON!): [StudioAssetVersion!]
   studioProject(projectId: ID!): StudioProject
   studioProjects(cursor: ID, limit: Int): [StudioProjectSummary!]
+  studioSourceEligibility(id: ID!): JSON
+  studioSourceSnapshot(id: ID!): StudioSourceSnapshot
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
@@ -1797,6 +1820,30 @@ input StudioApproveInput {
   renderAttemptId: ID
 }
 
+type StudioAssetReference {
+  assetId: ID
+  digest: String
+  versionId: ID
+}
+
+type StudioAssetTransfer {
+  expiresAt: String
+  method: String
+  path: String
+}
+
+type StudioAssetVersion {
+  byteSize: Float
+  filename: String
+  mediaAssetId: ID
+  mimeType: String
+  narration: JSON
+  provenance: JSON
+  reference: StudioAssetReference
+  role: String
+  voice: JSON
+}
+
 type StudioAttempt {
   actor: StudioActor
   baseRevision: Int
@@ -1889,6 +1936,24 @@ input StudioRevisionCommandInput {
   expectedRevision: Int!
   idempotencyKey: String!
   projectId: ID!
+}
+
+type StudioSourceSnapshot {
+  catalogDigest: String
+  coveredRanges: JSON
+  downloadId: ID
+  downloadUrl: String
+  durationMs: Float
+  exportHeight: Int
+  hlsUrl: String
+  id: ID
+  materialization: String
+  originalByteDigest: String
+  restrictions: [String!]
+  source: JSON
+  subtitleAiGenerated: Boolean
+  subtitlePrimary: Boolean
+  subtitleUrl: String
 }
 
 input StudioStartInput {

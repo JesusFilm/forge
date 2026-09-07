@@ -7,9 +7,10 @@ approvals and command envelopes. Consumers import `@forge/studio-contracts`.
 - Keep runtime imports limited to Zod and other neutral package-local modules.
   React, Prisma, provider SDKs, environment reads and application imports belong
   in their owning runtime.
-- Durable references identify asset/version/digest. URLs, credentials, generated
-  TSX and media bytes are resolved by the trusted broker, outside this package.
-  The preview reference can identify a digest-checked playlist/segment manifest.
+- Composition references identify asset/version/digest. Canonical source snapshots
+  returned by Admin include selected catalog URLs; clients cannot supply replacement
+  URLs in compositions. Credentials, generated TSX and media bytes remain outside
+  this package. Preview references can identify digest-checked media manifests.
 - Compositions support independent tracks and new versioned component declarations.
   Validate custom properties against declared controls and built-in properties
   against the built-in schema. Do not impose a devotional card arrangement.
@@ -24,5 +25,7 @@ approvals and command envelopes. Consumers import `@forge/studio-contracts`.
 
 The runtime proof's one-source/300-frame bounds are not product limits. This
 contract bounds one document to 256 KiB, 1,000 items, 64 tracks and 128 components.
-Asset registration/integrity resolution is feat-455; preview/render execution and
-publication eligibility remain feat-456/460.
+For shared asset, pack, source and experiment changes, read
+`docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`
+from the repository root. Preview/render execution remains feat-456; full
+publication orchestration remains feat-460.

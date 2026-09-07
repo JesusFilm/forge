@@ -1,3 +1,5 @@
+import { resolveStudioPackSources } from "./packs"
+import { assertStudioRenderSources } from "./sources"
 // INTERNAL transaction seam for feat-460. Never export via GraphQL, MCP, or Manager.
 // The required verifier must check/write catalog visibility, source eligibility,
 // schedule, language and Mux readiness in THIS transaction. No network/render work.
@@ -80,6 +82,8 @@ export async function publishStudioProject(
       approval.dependencyHash !== dependencyHash
     )
       throw new StudioCommandError("APPROVAL_REQUIRED")
+    await resolveStudioPackSources(tx, document.packRevisionIds)
+    await assertStudioRenderSources(tx, document)
     await verify(tx, {
       projectId: project.id,
       revision: project.currentRevision,
