@@ -21,6 +21,10 @@ import type {
 import { RagOperationalError } from "../../contracts/index.js"
 
 import { assertQueryDimensions, toVectorLiteral } from "./vector.js"
+import {
+  lockRawDocumentSource,
+  RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS,
+} from "./raw-document-lock.js"
 
 export { EMBEDDING_DIMENSIONS } from "./vector.js"
 
@@ -232,6 +236,7 @@ export class PostgresRawDocumentStore implements RawDocumentStore {
 
   async putRawDocument(doc: RawDocument): Promise<void> {
     await this.db.$transaction(async (tx) => {
+      await lockRawDocumentSource(tx, doc.sourceKey)
       await tx.rawDocument.deleteMany({
         where: {
           sourceKey: doc.sourceKey,
@@ -254,7 +259,7 @@ export class PostgresRawDocumentStore implements RawDocumentStore {
           notModified: doc.fetch.notModified,
         },
       })
-    })
+    }, RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS)
   }
 
   async listStagedCanonicalUrls(sourceKey: string): Promise<string[]> {

@@ -172,6 +172,7 @@ import {
   handleAiChatHistoryListRequest,
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
+import { handleAiChatHistoryRenameRequest } from "./ai-chat-history-write-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { startLangfuseTraceRetention } from "./langfuse-trace-retention"
@@ -562,8 +563,9 @@ export const mastra = new Mastra({
             requestSignal: c.req.raw.signal,
           }),
       }),
-      // The seeker send route + the two history read routes below are the
-      // ai-chat lane: their flag + bearer preamble lives in the shared lane
+      // The seeker send route + the three history routes below (two reads and
+      // the rename write) are the ai-chat lane: their flag + bearer preamble
+      // lives in the shared lane
       // admission module (feat-283), which sources the dedicated
       // AI_CHAT_SERVICE_API_KEYS lane CSV internally (KTD2/feat-250 — never
       // the shared pool), so no key list is threaded through here.
@@ -595,6 +597,20 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-rename", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryRenameRequest({
             authHeader: c.req.header("authorization"),
             readJson: () => c.req.json(),
           })

@@ -31,3 +31,10 @@ The previous public base URL and matching allowlist were retained out of band.
 Rollback restores those two values atomically while retaining the existing API
 key, then waits for the healthchecked Mastra deployment before repeating the
 Seeker smoke. The legacy receiver remains available during feat-435.
+
+## Evidence limits
+
+This receipt records the cutover and rollback procedure. It does not record a
+timed rollback rehearsal or a measured observation interval, so neither is
+claimed retroactively. `feat-435` owns the fresh rollback exercise and soak
+evidence required before retirement.

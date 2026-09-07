@@ -26,6 +26,7 @@
     "@better-auth/expo": "1.7.1",
     "@better-auth/oauth-provider": "1.7.1",
     "@better-auth/prisma-adapter": "1.7.1",
+    "@better-auth/utils": "0.4.2",
     "@forge/watch-url-policy": "workspace:*",
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",

@@ -58,3 +58,12 @@ personal environment is not a prerequisite for Seeker cutover or another Forge
 contributor workflow.
 
 Completed in [Forge PR #2152](https://github.com/JesusFilm/forge/pull/2152).
+
+### Migration traceability note
+
+The historical parent programme originally described Forge-owned dual
+`:jfrag`/`:forge` task variants. This feature deliberately replaced that shape
+with owner-managed private operations and did not add host-specific task files
+to Forge. The runtime migration does not depend on those personal tasks, but the
+scope change should be read as an explicit replacement rather than evidence
+that the originally described files were ported.
