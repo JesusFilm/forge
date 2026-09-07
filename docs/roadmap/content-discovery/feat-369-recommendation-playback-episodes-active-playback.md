@@ -3,7 +3,8 @@ id: "feat-369"
 title: "Recommendation playback episodes and active-playback proxy"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
+completed_date: "2026-09-07"
 start_date: ""
 duration: 6
 depends_on:
@@ -80,3 +81,11 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Reconcile representative episodes and classifier revisions in Admin.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## Completion Evidence
+
+- PR #2155 shipped source-neutral episodes, append-only facts, revisioned outcomes, Admin reconciliation, source-equivalence coverage, and a browser-proven Watch-to-Admin lifecycle while keeping `active-watch-proxy-v1` out of live ranking.
+- PR #2165 made selection attribution and playback delivery replay-safe, including stable claim nonces, immutable delivery receipts, exact-event idempotency, payload-conflict detection, and fail-open playback.
+- The 2026-09-07 post-deploy audit confirmed active production collection and exposed the remaining replay-receipt collision and cookie-less session-binding race instead of silently accepting corrupt evidence.
+- The closeout hotfix reserves replay ordinals through the episode row before immutable receipt insertion, serializes every session-creating browser request even without Web Locks, and stops retrying definitive invalid bindings. Privacy-safe reason codes make every rejected binding reconcilable without exposing episode, media, or session identifiers.
+- The deterministic real-PostgreSQL concurrency regression, the focused playback/route/recorder suites, both application typechecks and lints, and the full Admin and Web suites pass.

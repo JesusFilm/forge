@@ -95,7 +95,6 @@ export async function ensureRecommendationProfileReconciliationSchedulerStarted(
     where: {
       workflowKey: RECOMMENDATION_PROFILE_RECONCILIATION_SCHEDULER_WORKFLOW_KEY,
       status: { in: [WorkflowRunStatus.QUEUED, WorkflowRunStatus.RUNNING] },
-      updatedAt: { gte: freshnessCutoff },
     },
     orderBy: { updatedAt: "desc" },
   })
@@ -114,29 +113,38 @@ export async function ensureRecommendationProfileReconciliationSchedulerStarted(
         workflowKey:
           RECOMMENDATION_PROFILE_RECONCILIATION_SCHEDULER_WORKFLOW_KEY,
         status: { in: [WorkflowRunStatus.QUEUED, WorkflowRunStatus.RUNNING] },
-        updatedAt: { gte: freshnessCutoff },
       },
       orderBy: { updatedAt: "desc" },
     })
     if (existing) {
-      const terminal =
+      const matchingRuntime =
         inspected?.id === existing.id &&
         inspected.runtimeRunId === existing.runtimeRunId &&
         runtime != null
-          ? RUNTIME_TO_LEDGER_STATUS[runtime.status]
+          ? runtime
           : null
+      const terminal = matchingRuntime
+        ? RUNTIME_TO_LEDGER_STATUS[matchingRuntime.status]
+        : null
       if (!terminal) {
-        return { started: false as const, ledgerRunId: existing.id }
+        const runtimeIsActive =
+          matchingRuntime?.status === "pending" ||
+          matchingRuntime?.status === "running"
+        if (existing.updatedAt >= freshnessCutoff || runtimeIsActive) {
+          return { started: false as const, ledgerRunId: existing.id }
+        }
       }
-      await tx.workflowRun.update({
-        where: { id: existing.id },
-        data: {
-          status: terminal,
-          summary: `Profile eligibility reconciliation scheduler runtime ${runtime?.status}.`,
-          error: runtime?.error ?? null,
-          finishedAt: new Date(),
-        },
-      })
+      if (terminal) {
+        await tx.workflowRun.update({
+          where: { id: existing.id },
+          data: {
+            status: terminal,
+            summary: `Profile eligibility reconciliation scheduler runtime ${matchingRuntime?.status}.`,
+            error: matchingRuntime?.error ?? null,
+            finishedAt: new Date(),
+          },
+        })
+      }
     }
 
     const ledger = await createWorkflowRunLog(

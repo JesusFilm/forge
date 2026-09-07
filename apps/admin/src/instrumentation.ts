@@ -20,6 +20,13 @@ type RecommendationRecoveryState = {
   attempt: number
 }
 
+type ProfileReconciliationRecoveryState = {
+  checking: boolean
+  retryTimer?: ReturnType<typeof setTimeout>
+}
+
+const PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS = 5 * 60_000
+
 const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
   /too many clients already/i,
   /remaining connection slots are reserved/i,
@@ -31,7 +38,17 @@ function workflowStartupGlobal() {
     __forgeAdminWorkflowStartup?: WorkflowStartupState
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
     __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
+    __forgeAdminProfileReconciliationRecovery?: ProfileReconciliationRecoveryState
   }
+}
+
+function profileReconciliationRecoveryState() {
+  const global = workflowStartupGlobal()
+  const current = global.__forgeAdminProfileReconciliationRecovery
+  if (current) return current
+  const state: ProfileReconciliationRecoveryState = { checking: false }
+  global.__forgeAdminProfileReconciliationRecovery = state
+  return state
 }
 
 function recommendationRecoveryState() {
@@ -213,11 +230,44 @@ async function startWorkflowWorld(): Promise<void> {
   await ensureRecommendationRetentionSchedulerStarted()
   await ensureRecommendationControlReadinessSchedulerStarted()
   await ensureRecommendationProfileReconciliationSchedulerStarted()
+  scheduleProfileReconciliationRecovery(
+    ensureRecommendationProfileReconciliationSchedulerStarted,
+  )
   const { prisma } = await import("@/db/client")
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
   )
+}
+
+function scheduleProfileReconciliationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): void {
+  const state = profileReconciliationRecoveryState()
+  if (state.retryTimer || state.checking) return
+  state.retryTimer = setTimeout(() => {
+    state.retryTimer = undefined
+    void runProfileReconciliationRecovery(ensure)
+  }, PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS)
+  state.retryTimer.unref?.()
+}
+
+async function runProfileReconciliationRecovery(
+  ensure: () => Promise<unknown> | unknown,
+): Promise<void> {
+  const state = profileReconciliationRecoveryState()
+  if (state.checking) return
+  state.checking = true
+  try {
+    await ensure()
+  } catch (error) {
+    console.warn(
+      `[recommendation-profile-reconciliation] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
+    )
+  } finally {
+    state.checking = false
+    scheduleProfileReconciliationRecovery(ensure)
+  }
 }
 
 async function ensureRecommendationRecovery(
