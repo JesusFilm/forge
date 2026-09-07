@@ -91,3 +91,5 @@ Neutral handoff: `@forge/shorts-compositions/studio-proof/manifest` at
 `packages/shorts-compositions/src/studio-proof/manifest.ts` is React-free.
 feat-454 may normalize that feasibility shape into `packages/studio-contracts`;
 Admin must not import the browser-only `studio-proof/entry` or worker internals.
+
+Coordinator preflight verified user/network namespace creation in the current Railway worker, but its cgroup mount is read-only and PID 1 is Node. The evidence note records exact observed limits and assigns a container-compatible launcher and full deployment verification to feat-460/462; the local systemd launcher is not a production implementation.

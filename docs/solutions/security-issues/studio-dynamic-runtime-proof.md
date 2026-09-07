@@ -176,6 +176,37 @@ changed. Its compiler and media do not enter the Manager list/calendar bundle.
 The existing Shorts/Whisper production flow and the other task's baseline recovery
 remain untouched.
 
+## Railway runtime preflight, 2026-09-07
+
+The coordinator inspected the existing `@forge/shorts-worker` production instance
+using bounded SSH commands. No deployment, configuration change, credential read,
+render job, or persistent remote write was performed. The `stage` environment has
+no configuration for this service, so these observations concern the existing
+production container, not a new Studio execution service.
+
+- Project: `98952497-a4d9-4714-8fe8-0cdbff3147c9`; environment:
+  `5f41e037-90e4-4674-a3ea-66bbd05fb3b4`; service:
+  `395169db-b1f5-48d1-af37-3e776696da03`.
+- The container runs as UID/GID 0 with seccomp mode 2. A short-lived
+  `unshare -Urn true` child exited 0: user and network namespace creation is
+  available in this observed instance. This does not prove all Bubblewrap mounts
+  or the complete renderer launcher will work unchanged.
+- PID 1 is `node`; `/sys/fs/cgroup` is mounted read-only and a write-access check
+  returns `EROFS`. The local proof's systemd user service and writable delegated
+  cgroup assumptions therefore cannot be carried into this container unchanged.
+- Observed outer limits: `memory.max=24000000000`, `memory.swap.max=0`,
+  `pids.max=1000`, and `cpu.max=2400000 100000`. These are the current worker's
+  limits, not the proposed Studio per-attempt budget.
+
+Feat-460 must implement and test a container-compatible launcher. Keep the trusted
+broker outside the credential-free execution service, admit bounded work, and
+verify effective process-tree resource/lifetime limits under the actual platform.
+If outer container limits provide the aggregate boundary, a container OOM/restart
+must become a recoverable failed attempt without losing canonical state or
+exposing broker credentials. Do not assume a configured resource limit, an
+unprivileged namespace probe, or local systemd success proves this whole path.
+The new service's full containment smoke remains required before release.
+
 ## Primary API sources
 
 Checked 2026-09-07 against the exact installed versions:
