@@ -1042,6 +1042,48 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toBeUndefined()
   }, 180_000)
 
+  it("refuses a stored-only transcript vector before readback can falsely certify it", async () => {
+    const incompatibleSchema =
+      watchTranscriptCollectionSchema("stored-only-vector")
+    incompatibleSchema.fields = incompatibleSchema.fields.map((field) =>
+      field.name === "embedding" ? { ...field, index: false } : field,
+    )
+    await typesense.createCollection(incompatibleSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      incompatibleSchema.name,
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "vector-index-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/embedding.*not indexed.*reader contract/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true, completedAt: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING", completedAt: null })
+    await expect(
+      typesense.getDocument(
+        incompatibleSchema.name,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
   it("does not let one event certify a populated transcript collection without legacy projection evidence", async () => {
     const preexistingDocument = {
       id: "preexisting-transcript-document",

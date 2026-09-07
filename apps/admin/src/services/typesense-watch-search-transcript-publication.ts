@@ -350,6 +350,13 @@ function assertIncrementalPublicationIdentity(
 const REQUIRED_TRANSCRIPT_COLLECTION_FIELDS = watchTranscriptCollectionSchema(
   "incremental-publication-schema",
 ).fields
+const REQUIRED_SEARCHABLE_TRANSCRIPT_COLLECTION_FIELDS = new Set([
+  "documentKind",
+  "canonicalVideoId",
+  "language",
+  "publiclyVisible",
+  "embedding",
+])
 
 function assertIncrementalTranscriptCollectionSchema(
   collectionName: string,
@@ -374,6 +381,19 @@ function assertIncrementalTranscriptCollectionSchema(
     if (!observed || observed.type !== expected.type) {
       throw new WatchSearchTranscriptPublicationError(
         `active transcript collection ${collectionName} field ${expected.name} does not match the Watch Search reader contract`,
+      )
+    }
+    // Typesense returns `index: false` explicitly for stored-only fields while
+    // our schema builder omits the default `index: true`. Comparing only
+    // properties present on `expected` would therefore accept a vector field
+    // that can be imported and read back but cannot satisfy the reader's
+    // `vector_query` (and likewise accept disabled filter/group fields).
+    if (
+      REQUIRED_SEARCHABLE_TRANSCRIPT_COLLECTION_FIELDS.has(expected.name) &&
+      observed.index === false
+    ) {
+      throw new WatchSearchTranscriptPublicationError(
+        `active transcript collection ${collectionName} field ${expected.name} is not indexed for the Watch Search reader contract`,
       )
     }
     for (const key of [
