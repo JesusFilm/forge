@@ -418,3 +418,13 @@ build` + driving the image is the only proof that Chromium launches,
 - All Remotion imports stay inside lazy dynamic imports in
   `createDefaultRenderEngine`; per-job `openBrowser()` is closed in
   `finally` (no cross-job browser reuse).
+
+## Studio dynamic runtime feasibility (feat-453)
+
+For generated TSX preview/export or execution-boundary work, read
+`docs/solutions/security-issues/studio-dynamic-runtime-proof.md`. The standalone
+proof under `scripts/studio-proof/` is deliberately separate from worker job
+routes. Generated code belongs in a credential-free execution service with
+namespace and cgroup containment; the existing authenticated worker remains the
+trusted broker. The proof's CLI supplies tool paths; its parent-environment
+sentinel is an isolation test, not application configuration.

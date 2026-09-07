@@ -3,7 +3,7 @@ id: "feat-453"
 title: "Prove isolated dynamic Remotion runtime"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-07"
 duration: 3
 depends_on:
@@ -55,3 +55,39 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - One custom animated component exposes text/style controls and survives save/reload, preview, and real Chromium export.
 - Compile errors and unbounded code fail within limits without affecting the host or exposing credentials.
 - Record real source-media/time mapping and performance evidence; screenshots alone are insufficient.
+
+## Completion evidence — 2026-09-07
+
+Completed the bounded local feasibility proof; no production rollout or paid
+media generation. See [runtime evidence and deployment decision](../../solutions/security-issues/studio-dynamic-runtime-proof.md)
+for exact source IDs, measurements, commands, review findings and release checks.
+
+- Fixed host accepts bounded TSX, text/color controls and immutable content identity.
+  The edited manifest survives form input, save/reload, opaque iframe preview and
+  real Chromium export without rebuilding the host.
+- Exact English Forge Video/Dub/Edition and canonical primary non-AI VTT verified;
+  270p library HLS preview and 1080p source export use identical trim/cue semantics.
+  Actual output decodes to 60 frames / 2.000 seconds; source seek and subtitle gap
+  verified with decoded-frame timing, rendered frames and extracted MP4 frames.
+- Credential-free namespace execution and aggregate cgroup bounds exercised,
+  including real OOM containment, network/filesystem/env denial, compile/import/
+  thrown failures, infinite work and bounded output-flood termination.
+- Ordinary Chrome 152, no special site-isolation flag: distinct-site opaque iframe
+  retains parent responsiveness during infinite code. Headless Shell's weaker
+  behavior is documented; unsupported browsers are not claimed verified.
+- Both code-review axes cleared after fixes. 177 worker + 69 composition tests,
+  package typechecks/lints, worker build and real host bundle/render passed.
+
+Architecture: use a separate credential-free execution service and a preview site
+with a distinct registrable domain. Deployment verification of equivalent limits,
+headers/origins, the authenticated asset broker and browser support is required
+before release. feat-456 implements the preview integration/media broker; feat-460
+implements the production render launcher and trusted attempt/asset/result broker;
+feat-462 verifies deployment and cutover. This is not a block caused merely by the absence of a
+production deployment. It does not authorize evaluating code in the existing
+credential-bearing worker or authenticated Manager page.
+
+Neutral handoff: `@forge/shorts-compositions/studio-proof/manifest` at
+`packages/shorts-compositions/src/studio-proof/manifest.ts` is React-free.
+feat-454 may normalize that feasibility shape into `packages/studio-contracts`;
+Admin must not import the browser-only `studio-proof/entry` or worker internals.
