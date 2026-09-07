@@ -1233,7 +1233,10 @@ and is idempotent by default. Explicit modes are `idempotent`, `repair`,
   inject reader keys into every service, so `railway.worker.toml` explicitly
   unsets `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` before the worker's
   build, migration, and runtime commands load Admin's fail-closed credential
-  checks. The operator key remains available to the worker.
+  checks. Build and migration additionally unset
+  `TYPESENSE_OPERATOR_API_KEY` and
+  `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED`; the operator key remains
+  available only to the worker runtime.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

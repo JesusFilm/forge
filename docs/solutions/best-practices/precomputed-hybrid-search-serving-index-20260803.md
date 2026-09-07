@@ -243,11 +243,15 @@ chunk-count ceiling for direct service callers.
 Railway project-level variables can inject reader credentials into the worker
 even when they were intended only for traffic-serving replicas. Strip
 `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` from the dedicated worker's
-build, migration, and start commands before any Admin module loads; retain only
-`TYPESENSE_OPERATOR_API_KEY` there. Otherwise a legacy shared reader/operator
-value trips the fail-closed disjointness assertion during build or
-instrumentation loading, and the disabled-by-default publisher prevents the
-worker service from deploying at all.
+build, migration, and start commands before any Admin module loads. The
+operator key belongs only in the runtime start command: unset both
+`TYPESENSE_OPERATOR_API_KEY` and the publication flag during dependency
+installation/build and migrations so lifecycle code never receives collection
+mutation authority and build-time instrumentation follows the disabled path.
+Otherwise a legacy shared reader/operator value trips the fail-closed
+disjointness assertion during build or instrumentation loading, and the
+disabled-by-default publisher prevents the worker service from deploying at
+all.
 
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after

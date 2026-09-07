@@ -492,28 +492,45 @@ describe("workflow instrumentation", () => {
 })
 
 describe("Admin worker Railway credential isolation", () => {
-  it("removes inherited Typesense reader credentials from every worker phase", () => {
+  function workerCommands(): Record<string, string> {
     const config = readFileSync(
       fileURLToPath(new URL("../railway.worker.toml", import.meta.url)),
       "utf8",
     )
 
-    for (const command of [
-      "buildCommand",
-      "preDeployCommand",
-      "startCommand",
-    ]) {
-      const value = config.match(
-        new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
-      )?.[1]
+    return Object.fromEntries(
+      ["buildCommand", "preDeployCommand", "startCommand"].map((command) => {
+        const value = config.match(
+          new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
+        )?.[1]
+        expect(value, `${command} must exist`).toBeDefined()
+        return [command, value!]
+      }),
+    )
+  }
 
-      expect(value, `${command} must exist`).toBeDefined()
+  it("removes inherited Typesense reader credentials from every worker phase", () => {
+    for (const value of Object.values(workerCommands())) {
       expect(value).toMatch(
-        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY && /,
-      )
-      expect(value).not.toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY(?:\s|$)/,
       )
     }
+  })
+
+  it("exposes the Typesense operator credential only to the runtime publisher", () => {
+    const commands = workerCommands()
+
+    for (const command of ["buildCommand", "preDeployCommand"]) {
+      expect(commands[command]).toMatch(
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
+      )
+    }
+
+    expect(commands.startCommand).not.toMatch(
+      /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+    )
+    expect(commands.startCommand).not.toMatch(
+      /^unset [^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED(?:\s|$)/,
+    )
   })
 })
