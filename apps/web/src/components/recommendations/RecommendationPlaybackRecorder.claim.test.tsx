@@ -16,6 +16,7 @@ import {
   usePlaybackRecorderHarness,
 } from "./RecommendationPlaybackRecorder.test-fixtures"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
+import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
 
 describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   let root: Root
@@ -24,6 +25,57 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
   usePlaybackRecorderHarness((harness) => {
     root = harness.root
     fetchMock = harness.fetchMock
+  })
+
+  it("serializes source-neutral context issuance with session bootstrap", async () => {
+    const acquired = deferred<void>()
+    const release = deferred<void>()
+    const lock = withRecommendationConsentLock(async () => {
+      acquired.resolve(undefined)
+      await release.promise
+    })
+    await acquired.promise
+    fetchMock
+      .mockResolvedValueOnce(
+        response({ claimNonce: "serialized-context-claim-nonce" }),
+      )
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "serialized-episode",
+            capability: "serialized-capability",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      release.resolve(undefined)
+      await lock
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalled()
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+      action: "context",
+      mediaId: "media-1",
+      discoverySource: "direct",
+      provenance: {},
+    })
   })
 
   it("issues and claims a source-neutral context when there is no recommendation handoff", async () => {

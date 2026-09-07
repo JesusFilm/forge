@@ -37,12 +37,30 @@ describe("resolveSessionClientKind", () => {
   })
 
   it("stamps the jfp self-RP hosted-fallback callback as mobile", () => {
-    expect(resolveSessionClientKind({ path: "/oauth2/callback/jfp" })).toBe(
-      MOBILE_SESSION_CLIENT_KIND,
-    )
     expect(resolveSessionClientKind({ path: "/callback/jfp" })).toBe(
       MOBILE_SESSION_CLIENT_KIND,
     )
+  })
+
+  // 1.7's core callback is `/callback/:id`, so the hook sees that PATTERN and
+  // `params.id`, not `params.providerId`. Missing it left every post-upgrade
+  // mobile session unstamped, so its JWT carried no mobile claim.
+  it("stamps the 1.7 core callback pattern as mobile when params.id is jfp", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/callback/:id",
+        params: { id: "jfp" },
+      }),
+    ).toBe(MOBILE_SESSION_CLIENT_KIND)
+  })
+
+  it("does not stamp another provider on the core callback pattern", () => {
+    expect(
+      resolveSessionClientKind({
+        path: "/callback/:id",
+        params: { id: "google" },
+      }),
+    ).toBeUndefined()
   })
 
   it("does not stamp browser social sign-ins without an idToken", () => {
@@ -214,21 +232,14 @@ describe("defineMobileAwareJwtPayload", () => {
   })
 })
 
-describe("resolveSessionClientKind — route-pattern contexts", () => {
-  it("stamps the jfp callback when the context carries the route pattern plus params", () => {
+describe("resolveSessionClientKind — retired pre-1.7 routes", () => {
+  // The pinned 1.7 server never serves /oauth2/callback; the stamp dropped
+  // those branches, so even a jfp-shaped legacy context stays unstamped.
+  it("does not stamp the retired /oauth2/callback pattern", () => {
     expect(
       resolveSessionClientKind({
         path: "/oauth2/callback/:providerId",
         params: { providerId: "jfp" },
-      }),
-    ).toBe(MOBILE_SESSION_CLIENT_KIND)
-  })
-
-  it("does not stamp other providers under the route-pattern path", () => {
-    expect(
-      resolveSessionClientKind({
-        path: "/oauth2/callback/:providerId",
-        params: { providerId: "okta" },
       }),
     ).toBeUndefined()
   })

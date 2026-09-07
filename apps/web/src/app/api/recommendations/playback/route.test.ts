@@ -249,6 +249,40 @@ describe("POST /watch/api/recommendations/playback", () => {
     expect(variables).not.toHaveProperty("itemId")
   })
 
+  it("returns a non-retryable conflict for an invalid playback binding", async () => {
+    mutate.mockResolvedValueOnce({
+      error: {
+        errors: [
+          {
+            message: "Recommendation playback binding is invalid",
+            extensions: {
+              code: "BAD_USER_INPUT",
+              recommendationCode: "invalid_binding",
+            },
+          },
+        ],
+      },
+    })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          action: "facts",
+          contractVersion: "recommendation-evidence-v1",
+          capability: "episode-capability-secret",
+          episodeId: "episode-1",
+          mediaId: "media-1",
+          events: [playbackEvent],
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      error: "playback_binding_invalid",
+    })
+  })
+
   it("rejects missing sessions, foreign requests, duplicates, invalid fact payloads, and overflow before Admin", async () => {
     const missingSession = await POST(
       request(

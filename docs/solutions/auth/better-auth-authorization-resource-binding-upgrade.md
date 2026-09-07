@@ -196,6 +196,10 @@ or their clients disabled before restoring 1.6.2.
 
 ## Related Issues
 
+- [Better Auth 1.7 upgrade broke mobile hosted sign-in](../integration-issues/better-auth-1-7-upgrade-broke-mobile-self-rp-sign-in.md)
+  — this upgrade's downstream break: the mobile client stayed on 1.6.2 while
+  this upgrade moved the server to 1.7.1, and four 1.7 behavior changes broke
+  the mobile self-RP flow.
 - [Better Auth resource upgrade plan](../../plans/2026-08-20-1524-chore-better-auth-resource-upgrade-plan.md)
 - [OAuth grant via authorization-code delivery, not token translation](../architecture-patterns/oauth-grant-via-authorization-code-delivery-not-token-translation.md)
 - [OAuth-protected MCP tool parity pattern](../architecture-patterns/oauth-protected-mcp-tool-parity-pattern-20260721.md)

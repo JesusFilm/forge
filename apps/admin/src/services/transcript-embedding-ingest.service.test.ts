@@ -61,6 +61,7 @@ function buildPrisma() {
     },
   )
   const executeRaw = vi.fn(async (..._args: unknown[]): Promise<number> => 0)
+  const createPublicationEvent = vi.fn(async () => ({ id: "event-1" }))
   const findVideo = vi.fn(
     async (): Promise<{ id: string; coreId: string } | null> => ({
       id: "video-1",
@@ -73,6 +74,9 @@ function buildPrisma() {
   const prisma: {
     video: { findFirst: typeof findVideo }
     videoEdition: { findFirst: typeof findEdition }
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: typeof createPublicationEvent
+    }
     $executeRaw: typeof executeRaw
     $queryRaw: typeof queryRaw
     $transaction: ReturnType<typeof vi.fn>
@@ -82,6 +86,9 @@ function buildPrisma() {
     },
     videoEdition: {
       findFirst: findEdition,
+    },
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: createPublicationEvent,
     },
     $executeRaw: executeRaw,
     $queryRaw: queryRaw,
@@ -267,8 +274,11 @@ describe("ingestTranscriptEmbeddings", () => {
   beforeEach(() => {
     writeTranscriptEmbeddingPayloadMock.mockReset()
     writeTranscriptEmbeddingPayloadMock.mockResolvedValue({
+      transcriptId: "transcript-1",
       chunksIndexed: 1,
       embeddingsWritten: 1,
+      currentDocumentIds: ["chunk-doc-1"],
+      staleDocumentIds: [],
     })
   })
 
@@ -313,6 +323,39 @@ describe("ingestTranscriptEmbeddings", () => {
         }),
       }),
     )
+  })
+
+  it("normalizes chunking-version identity before canonical and outbox writes", async () => {
+    const prisma = buildPrisma()
+
+    const result = await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        chunking: {
+          type: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          version: "  mastra-v1  ",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("created")
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        provenance: expect.objectContaining({
+          chunkingVersion: "mastra-v1",
+        }),
+      }),
+    )
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        transcriptChunkingVersion: "mastra-v1",
+      }),
+    })
   })
 
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {
@@ -451,7 +494,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,
@@ -518,7 +563,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,
@@ -557,7 +604,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,
@@ -584,7 +633,13 @@ describe("ingestTranscriptEmbeddings", () => {
     )
     writeTranscriptEmbeddingPayloadMock
       .mockRejectedValueOnce(serializationFailure)
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        transcriptId: "transcript-1",
+        chunksIndexed: 1,
+        embeddingsWritten: 1,
+        currentDocumentIds: ["chunk-doc-1"],
+        staleDocumentIds: [],
+      })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, payload())
 
@@ -642,7 +697,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,
@@ -681,7 +738,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,
@@ -707,7 +766,9 @@ describe("ingestTranscriptEmbeddings", () => {
         embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
         embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
         embeddingTransformVersion: null,
+        sourceGeneration: 1n,
         chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
         maxChunkTokens: 500,
         overlapTokens: 100,
         totalChunks: 1,

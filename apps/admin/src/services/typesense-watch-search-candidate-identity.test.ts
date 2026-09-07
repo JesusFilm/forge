@@ -17,23 +17,20 @@ describe("candidateWatchSearchIndexContractRevision", () => {
     vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "deployment-b")
 
     expect(candidateWatchSearchIndexContractRevision()).toBe(firstRevision)
-    expect(firstRevision).toBe("watch-search-candidate/v3")
+    expect(firstRevision).toBe("watch-search-candidate/v4")
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
     expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v2")
   })
 
-  it("invalidates generations built before the container projection", () => {
-    // The container languages ride the catalog document, so a generation built
-    // before this projection carries documents with no such key and resolves
-    // every container as unavailable. Leaving the application revision at v2
-    // would keep that generation compatible -- free to requalify and be
-    // promoted with the benchmark green while serving the very defect the
-    // projection removes. The undeclared-field precedent settles only whether
-    // Typesense accepts the field, not whether a stale generation may serve.
+  it("invalidates generations built before the curation projection", () => {
+    // A v3 generation has no linked curation set, so it can satisfy the old
+    // collection schema while silently omitting editorial results. The v4
+    // contract requires a fresh generation whose lexical collection links to
+    // the curations captured in its candidate snapshot.
     expect(candidateWatchSearchIndexContractRevision()).toBe(
-      "watch-search-candidate/v3",
+      "watch-search-candidate/v4",
     )
   })
 

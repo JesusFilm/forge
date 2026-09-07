@@ -97,6 +97,26 @@ class PlaybackCommittedRejectionError extends RecommendationInputError {
   }
 }
 
+type PlaybackBindingRejectionReason =
+  | "episode_missing"
+  | "session_mismatch"
+  | "media_mismatch"
+  | "capability_missing"
+  | "episode_expired"
+  | "request_generation_mismatch"
+  | "episode_pending"
+  | "hard_horizon_expired"
+
+function rejectPlaybackBinding(
+  reason: PlaybackBindingRejectionReason,
+  message = "Recommendation playback binding is invalid",
+): never {
+  console.warn(
+    `[recommendations] event=playback_binding_rejected reason=${reason}`,
+  )
+  throw new RecommendationBindingError(message)
+}
+
 export class RecommendationPlaybackService {
   constructor(private readonly deps: PlaybackDependencies) {}
 
@@ -128,22 +148,29 @@ export class RecommendationPlaybackService {
         where: { id: parsed.episodeId },
         include: { request: true },
       })
+    if (!episode) rejectPlaybackBinding("episode_missing")
+    if (episode.sessionDigest !== parsed.sessionDigest) {
+      rejectPlaybackBinding("session_mismatch")
+    }
+    if (episode.mediaId !== parsed.mediaId) {
+      rejectPlaybackBinding("media_mismatch")
+    }
+    if (episode.capabilityJti == null) {
+      rejectPlaybackBinding("capability_missing")
+    }
+    if (episode.expiresAt <= now) rejectPlaybackBinding("episode_expired")
     if (
-      !episode ||
-      episode.sessionDigest !== parsed.sessionDigest ||
-      episode.mediaId !== parsed.mediaId ||
-      episode.capabilityJti == null ||
-      episode.expiresAt <= now ||
-      (episode.request != null &&
-        episode.request.generation !== episode.generation) ||
-      episode.state === RecommendationEpisodeState.PENDING
+      episode.request != null &&
+      episode.request.generation !== episode.generation
     ) {
-      throw new RecommendationBindingError(
-        "Recommendation playback binding is invalid",
-      )
+      rejectPlaybackBinding("request_generation_mismatch")
+    }
+    if (episode.state === RecommendationEpisodeState.PENDING) {
+      rejectPlaybackBinding("episode_pending")
     }
     if (now > episode.hardUntil) {
-      throw new RecommendationBindingError(
+      rejectPlaybackBinding(
+        "hard_horizon_expired",
         "Recommendation playback hard horizon expired",
       )
     }
@@ -233,6 +260,8 @@ export class RecommendationPlaybackService {
             )
             const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
               []
+            const replayReceipts: Prisma.RecommendationPlaybackTransportReplayReceiptCreateManyInput[] =
+              []
             let replayCount = 0
             let conflictCount = 0
             for (const event of parsed.events) {
@@ -244,6 +273,16 @@ export class RecommendationPlaybackService {
               }
               if (existing.payloadDigest === digest) {
                 replayCount += 1
+                replayReceipts.push({
+                  id: newId(),
+                  episodeId: locked.id,
+                  capabilityJti: locked.capabilityJti!,
+                  eventId: event.eventId,
+                  payloadDigest: digest,
+                  replayOrdinal: locked.transportReplayCount + replayCount,
+                  observedAt: now,
+                  expiresAt: locked.expiresAt,
+                })
                 if (locked.requestId) {
                   replayAudits.push({
                     requestId: locked.requestId,
@@ -281,7 +320,6 @@ export class RecommendationPlaybackService {
                 data: replayAudits,
               })
             }
-
             if (pending.length > 0) {
               const existingCount = existingFacts.length
               if (existingCount + pending.length > MAX_EPISODE_FACTS) {
@@ -411,6 +449,16 @@ export class RecommendationPlaybackService {
                   "Recommendation playback integrity count conflicted",
                 )
               }
+            }
+            // Reserve the transport replay ordinals on the episode before
+            // inserting immutable receipts. A concurrent Serializable
+            // transaction that took its snapshot while waiting on the
+            // advisory lock must fail and retry at the episode update instead
+            // of reaching the unique receipt constraint with a stale ordinal.
+            if (replayReceipts.length > 0) {
+              await tx.recommendationPlaybackTransportReplayReceipt.createMany({
+                data: replayReceipts,
+              })
             }
             return {
               receipts: parsed.events.map(

@@ -306,12 +306,13 @@ export function historyThreadCallCount(
   ).length
 }
 
-// Sidebar row titles in render order (via the button title attr, which always
-// carries the display title — sr-only suffixes never leak in).
+// Sidebar row titles in render order via the SELECT button's title attr
+// (the display title, no sr-only suffixes), scoped by data-row-select since
+// feat-450's pencil button sits beside it in every granted row.
 export function navRowTitles(): string[] {
-  return Array.from(getConversationNav().querySelectorAll("ul li button")).map(
-    (button) => button.getAttribute("title") ?? "",
-  )
+  return Array.from(
+    getConversationNav().querySelectorAll("ul li button[data-row-select]"),
+  ).map((button) => button.getAttribute("title") ?? "")
 }
 
 // Shared feat-241 fixtures.

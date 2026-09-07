@@ -89,6 +89,12 @@ function renderShell() {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("navigator", {
+    locks: {
+      request: (_name: string, operation: () => Promise<unknown>) =>
+        operation(),
+    },
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)

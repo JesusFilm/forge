@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
   env: {
+    NODE_ENV: "test" as "test" | "development" | "production",
     NEXT_RUNTIME: "nodejs" as "nodejs" | "edge" | undefined,
     WORKFLOW_RUNNER_ENABLED: "false" as "true" | "false" | undefined,
     WORKFLOW_TARGET_WORLD: undefined as
@@ -11,7 +12,18 @@ const mockEnv = vi.hoisted(() => ({
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: 12,
     RECOMMENDATION_RECOVERY_MAX_ATTEMPTS: 12,
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: 10_000,
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED: "false" as
+      | "true"
+      | "false"
+      | undefined,
+    TYPESENSE_HOST: undefined as string | undefined,
+    TYPESENSE_OPERATOR_API_KEY: undefined as string | undefined,
   },
+  resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
+    (value?: unknown) =>
+      (value ?? mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED) ===
+      "true",
+  ),
 }))
 
 const worldStart = vi.hoisted(() => vi.fn())
@@ -24,8 +36,14 @@ const ensureRecommendationRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
   vi.fn(),
 )
+const ensureRecommendationProfileReconciliationSchedulerStarted = vi.hoisted(
+  () => vi.fn(),
+)
 const ensureRecommendationEpisodeFinalizationRecovery = vi.hoisted(() =>
   vi.fn(),
+)
+const ensureWatchSearchTranscriptPublicationWorkerStarted = vi.hoisted(() =>
+  vi.fn(async () => ({ started: false, reason: "disabled" as const })),
 )
 const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
 const prisma = vi.hoisted(() => ({ id: "mock-prisma" }))
@@ -39,6 +57,9 @@ function clearWorkflowStartupState() {
     __forgeAdminRecommendationRecovery?: {
       retryTimer?: ReturnType<typeof setTimeout>
     }
+    __forgeAdminProfileReconciliationRecovery?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
   }
   if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
     clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
@@ -49,6 +70,12 @@ function clearWorkflowStartupState() {
     clearTimeout(workflowGlobal.__forgeAdminRecommendationRecovery.retryTimer)
   }
   delete workflowGlobal.__forgeAdminRecommendationRecovery
+  if (workflowGlobal.__forgeAdminProfileReconciliationRecovery?.retryTimer) {
+    clearTimeout(
+      workflowGlobal.__forgeAdminProfileReconciliationRecovery.retryTimer,
+    )
+  }
+  delete workflowGlobal.__forgeAdminProfileReconciliationRecovery
 }
 
 vi.mock("@/config/env", () => mockEnv)
@@ -71,8 +98,14 @@ vi.mock("@/services/recommendations/retention/job", () => ({
 vi.mock("@/services/recommendations/control-readiness/job", () => ({
   ensureRecommendationControlReadinessSchedulerStarted,
 }))
+vi.mock("@/services/recommendations/profiles/reconciliation.job", () => ({
+  ensureRecommendationProfileReconciliationSchedulerStarted,
+}))
 vi.mock("@/services/recommendations/finalization/job", () => ({
   ensureRecommendationEpisodeFinalizationRecovery,
+}))
+vi.mock("@/services/typesense-watch-search-transcript-publication", () => ({
+  ensureWatchSearchTranscriptPublicationWorkerStarted,
 }))
 vi.mock("@/services/watch-search.service", () => ({
   prewarmWatchSearchQueryEmbeddings,
@@ -92,16 +125,26 @@ describe("workflow instrumentation", () => {
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     ensureRecommendationRetentionSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
+    ensureRecommendationProfileReconciliationSchedulerStarted.mockReset()
     ensureRecommendationEpisodeFinalizationRecovery.mockReset()
+    ensureWatchSearchTranscriptPublicationWorkerStarted.mockReset()
+    ensureWatchSearchTranscriptPublicationWorkerStarted.mockResolvedValue({
+      started: false,
+      reason: "disabled",
+    })
     prewarmWatchSearchQueryEmbeddings.mockReset()
     prewarmWatchSearchQueryEmbeddings.mockResolvedValue(undefined)
     clearWorkflowStartupState()
     process.env.NEXT_RUNTIME = "nodejs"
+    mockEnv.env.NODE_ENV = "test"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS = 12
     mockEnv.env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS = 12
     mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 10_000
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "false"
+    mockEnv.env.TYPESENSE_HOST = undefined
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = undefined
   })
 
   afterEach(() => {
@@ -127,9 +170,95 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).not.toHaveBeenCalled()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
     expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledWith({ prisma })
+  })
+
+  it("fails startup when transcript publication is enabled outside the dedicated Postgres worker", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+    expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("refuses the Typesense operator credential on production web replicas", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toThrow(
+      new WorkflowStartupConfigurationError(
+        "TYPESENSE_OPERATOR_API_KEY is restricted to the dedicated Postgres worker in production",
+      ),
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("allows a staged operator credential on the production worker while publication remains disabled", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
+    expect(worldStart).toHaveBeenCalledTimes(1)
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledWith(prisma)
+  })
+
+  it("fails before workflow side effects when transcript publication lacks Typesense configuration", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
+    expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("fails before workflow side effects when the publisher host is not HTTP(S)", async () => {
+    mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.TYPESENSE_HOST = "file:///tmp/typesense"
+    mockEnv.env.TYPESENSE_OPERATOR_API_KEY = "operator-key"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toBeInstanceOf(
+      WorkflowStartupConfigurationError,
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(worldStart).not.toHaveBeenCalled()
   })
 
   it("starts watch search embedding prewarm only once per process", async () => {
@@ -161,6 +290,12 @@ describe("workflow instrumentation", () => {
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
     ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not start a world in the edge runtime", async () => {
@@ -182,6 +317,12 @@ describe("workflow instrumentation", () => {
     expect(ensureRecommendationRetentionSchedulerStarted).not.toHaveBeenCalled()
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).not.toHaveBeenCalled()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
     ).not.toHaveBeenCalled()
   })
 
@@ -207,8 +348,35 @@ describe("workflow instrumentation", () => {
       ensureRecommendationControlReadinessSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+    ).toHaveBeenCalledWith(prisma)
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
+  })
+
+  it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {
+    vi.useFakeTimers()
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    const { register } = await import("./instrumentation")
+
+    await register()
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
+    ).toHaveBeenCalledTimes(2)
   })
 
   it("does not block worker startup when recommendation recovery fails", async () => {
@@ -280,7 +448,7 @@ describe("workflow instrumentation", () => {
     await expect(register()).resolves.toBeUndefined()
     await Promise.resolve()
     await vi.advanceTimersByTimeAsync(10)
-    await vi.runAllTimersAsync()
+    await vi.advanceTimersByTimeAsync(10)
 
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
@@ -322,6 +490,9 @@ describe("workflow instrumentation", () => {
     )
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,

@@ -1,9 +1,10 @@
 import {
-  muxAnimatedPreviewFromPlaybackId,
   deriveMuxThumbnailUrl,
   extractMuxPlaybackId,
   isSameMuxAsset,
+  muxAnimatedPreviewFromPlaybackId,
   muxHlsUrlFromPlaybackId,
+  muxThumbnailAtSecond,
   muxThumbnailFromPlaybackId,
 } from "../muxThumbnail"
 
@@ -164,5 +165,56 @@ describe("muxAnimatedPreviewFromPlaybackId", () => {
     expect(muxAnimatedPreviewFromPlaybackId(null)).toBeNull()
     expect(muxAnimatedPreviewFromPlaybackId(undefined)).toBeNull()
     expect(muxAnimatedPreviewFromPlaybackId("")).toBeNull()
+  })
+})
+
+describe("muxThumbnailAtSecond", () => {
+  it("builds a fixed-size smartcrop still at the requested second", () => {
+    expect(muxThumbnailAtSecond("abc123XYZ", 951.16)).toBe(
+      "https://image.mux.com/abc123XYZ/thumbnail.webp?width=800&height=800&fit_mode=smartcrop&time=951.16",
+    )
+  })
+
+  it("keeps the size fixed however large the second is (KTD2)", () => {
+    // The size is a one-way door: Mux caches per exact URL, so it must not be
+    // derived from any argument. Two very different seconds, one size.
+    expect(muxThumbnailAtSecond("abc123XYZ", 1)).toContain(
+      "width=800&height=800",
+    )
+    expect(muxThumbnailAtSecond("abc123XYZ", 6114)).toContain(
+      "width=800&height=800",
+    )
+  })
+
+  it("emits a fractional second rather than rounding to a whole one", () => {
+    // KTD1: on a short runtime the 10-90% window collapses, and whole-second
+    // rounding would merge several citations onto one URL.
+    expect(muxThumbnailAtSecond("abc123XYZ", 2.84)).toContain("time=2.84")
+    expect(muxThumbnailAtSecond("abc123XYZ", 3)).toContain("time=3.00")
+  })
+
+  it("returns a byte-identical string for identical inputs (R3)", () => {
+    expect(muxThumbnailAtSecond("abc123XYZ", 12.5)).toBe(
+      muxThumbnailAtSecond("abc123XYZ", 12.5),
+    )
+  })
+
+  it("returns null for a token with non-alphanumeric characters (no injection)", () => {
+    expect(muxThumbnailAtSecond("evil.com/x", 10)).toBeNull()
+    expect(muxThumbnailAtSecond("ab cd", 10)).toBeNull()
+  })
+
+  it("returns null for null / undefined / empty", () => {
+    expect(muxThumbnailAtSecond(null, 10)).toBeNull()
+    expect(muxThumbnailAtSecond(undefined, 10)).toBeNull()
+    expect(muxThumbnailAtSecond("", 10)).toBeNull()
+  })
+
+  it("returns null for a non-finite or negative second", () => {
+    expect(muxThumbnailAtSecond("abc123XYZ", Number.NaN)).toBeNull()
+    expect(
+      muxThumbnailAtSecond("abc123XYZ", Number.POSITIVE_INFINITY),
+    ).toBeNull()
+    expect(muxThumbnailAtSecond("abc123XYZ", -1)).toBeNull()
   })
 })

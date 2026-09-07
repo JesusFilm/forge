@@ -27,7 +27,9 @@ type StoredTranscript = {
   embeddingNativeDimensions: number | null
   embeddingTransformVersion: string | null
   sourceContentHash: string | null
+  sourceGeneration: bigint
   chunkingType: string
+  chunkingVersion: string | null
   maxChunkTokens: number
   overlapTokens: number
   totalChunks: number
@@ -233,15 +235,23 @@ function buildContractPrisma() {
                   typeof update.embeddingTransformVersion === "string"
                     ? update.embeddingTransformVersion
                     : null,
-                chunkingType: stringValue(update, "chunkingType"),
-                maxChunkTokens: numberValue(update, "maxChunkTokens"),
-                overlapTokens: numberValue(update, "overlapTokens"),
-                totalChunks: numberValue(update, "totalChunks"),
-                totalTokens: numberValue(update, "totalTokens"),
                 sourceContentHash:
                   typeof update.sourceContentHash === "string"
                     ? update.sourceContentHash
                     : null,
+                sourceGeneration:
+                  typeof update.sourceGeneration === "bigint"
+                    ? update.sourceGeneration
+                    : existing.sourceGeneration,
+                chunkingType: stringValue(update, "chunkingType"),
+                chunkingVersion:
+                  typeof update.chunkingVersion === "string"
+                    ? update.chunkingVersion
+                    : null,
+                maxChunkTokens: numberValue(update, "maxChunkTokens"),
+                overlapTokens: numberValue(update, "overlapTokens"),
+                totalChunks: numberValue(update, "totalChunks"),
+                totalTokens: numberValue(update, "totalTokens"),
               }
             : {
                 id,
@@ -266,7 +276,15 @@ function buildContractPrisma() {
                   typeof create.sourceContentHash === "string"
                     ? create.sourceContentHash
                     : null,
+                sourceGeneration:
+                  typeof create.sourceGeneration === "bigint"
+                    ? create.sourceGeneration
+                    : 0n,
                 chunkingType: stringValue(create, "chunkingType"),
+                chunkingVersion:
+                  typeof create.chunkingVersion === "string"
+                    ? create.chunkingVersion
+                    : null,
                 maxChunkTokens: numberValue(create, "maxChunkTokens"),
                 overlapTokens: numberValue(create, "overlapTokens"),
                 totalChunks: numberValue(create, "totalChunks"),
@@ -278,7 +296,29 @@ function buildContractPrisma() {
       ),
     },
     videoTranscriptChunk: {
+      findMany: vi.fn(
+        async (args: {
+          where: {
+            transcriptId: string
+            chunkIndex?: { notIn?: number[] }
+          }
+          select: { id: true }
+        }) => {
+          const notIn = args.where.chunkIndex?.notIn
+          return chunks
+            .filter(
+              (chunk) =>
+                chunk.transcriptId === args.where.transcriptId &&
+                (notIn == null || !notIn.includes(chunk.chunkIndex)),
+            )
+            .sort((left, right) => left.chunkIndex - right.chunkIndex)
+            .map((chunk) => ({ id: chunk.id }))
+        },
+      ),
       deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: vi.fn(async () => ({ id: "event-1" })),
     },
     $queryRaw: queryRaw,
     $executeRaw: vi.fn(

@@ -1028,6 +1028,14 @@ One of the project's own applications that the auth provider recognizes as its o
 
 Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
 
+### Self-RP Sign-In
+
+A sign-in arrangement where the auth provider registers itself as a relying client of its own OAuth provider, so a native app can send a person to the provider's hosted login page and receive back a normal provider session. The provider is both ends of the exchange: it issues the authorization as it would for any First-Party App, and it consumes that authorization to establish the session it hands to the app. Whatever sign-in methods the hosted page offers reach the app this way without an app release.
+
+Because the provider's sign-in machinery discovers its own endpoints the way it would discover a third party's, a starting instance can fetch metadata from itself before it can answer requests. An environment that runs one instance must answer that self-fetch without routing it through the starting instance, or startup waits on itself.
+
+A provider button on the hosted page starts a second, inner authorization inside the self-RP one, in the same browser. The provider binds each authorization to one per-browser sign-in token and consumes that token when the inner authorization completes, so the outer authorization must be bound again before it returns to the provider, or it is refused as a forgery. The password form starts no inner authorization, so a verification that uses only the password form cannot see this.
+
 ### SSO Session
 
 The sign-in session the auth provider itself holds for a person, shared by all first-party relying apps — signing in to any one app rides it, and it is what lets a later sign-in skip the login page.

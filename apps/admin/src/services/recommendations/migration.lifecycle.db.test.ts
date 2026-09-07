@@ -32,6 +32,7 @@ const migrationSql = [
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
   "0075_recommendation_selection_attribution_eligibility",
+  "0076_recommendation_profile_eligibility_reconciliation",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -592,7 +593,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query(
         `UPDATE recommendation_playback_episode
          SET media_id = 'eligibility-projection-pre-grant-video',
-           session_digest = $1
+           session_digest = $1, state = 'finalized',
+           finalized_at = '2026-08-26T00:00:00.000Z'
          WHERE id = $2`,
         ["d".repeat(64), preGrant.episodeId],
       )
@@ -620,7 +622,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const graph = await insertLifecycleGraph("eligibility-projection")
       await client.query(
         `UPDATE recommendation_playback_episode
-         SET media_id = 'eligibility-projection-video', session_digest = $1
+         SET media_id = 'eligibility-projection-video', session_digest = $1,
+           state = 'finalized', finalized_at = '2026-08-25T02:00:00.000Z'
          WHERE id = $2`,
         ["a".repeat(64), graph.episodeId],
       )
@@ -685,7 +688,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         })
         await expect(
           service.classifyPlaybackOutcome("eligibility-projection-outcome"),
-        ).resolves.toMatchObject({ revision: 2, state: "eligible" })
+        ).resolves.toMatchObject({ revision: 1, state: "eligible" })
         await expect(
           service.classifyPlaybackOutcome(
             "eligibility-projection-pre-grant-outcome",
@@ -738,7 +741,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await expect(
           service.classifyPlaybackOutcome("eligibility-projection-outcome"),
         ).resolves.toMatchObject({
-          revision: 3,
+          revision: 2,
           state: "excluded",
           reasonCodes: ["promotion_rollback"],
           eligibleScopes: [],
@@ -803,8 +806,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(result.rows).toEqual([
         {
           source_eligible: false,
-          revisions: [1, 2, 3],
-          current_flags: [false, false, true],
+          revisions: [1, 2],
+          current_flags: [false, true],
         },
       ])
     })

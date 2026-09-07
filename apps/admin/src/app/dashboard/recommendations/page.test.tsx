@@ -279,6 +279,26 @@ const overview = {
       reevaluationCondition: "Re-evaluate after experiment design.",
     },
   },
+  profileReconciliation: {
+    state: "repairing",
+    suppressed: false,
+    currentPointerInvariant: "violated",
+    counts: {
+      ineligibleGenerations: 4,
+      affectedPointers: 4,
+      affectedContributions: 7,
+      rebuildCandidates: 1,
+      rebuildBacklog: 3,
+      replacementPublications: 5,
+      staleClaims: 2,
+      reclaimedRuns: 4,
+      terminalRuns: 0,
+      servingFences: 3,
+      affectedRequests: 3,
+      cleanHybridRequests: 8,
+    },
+    reasonCodes: [{ reasonCode: "eligibility_revision_superseded", count: 4 }],
+  },
 }
 
 describe("Admin Recommendations pages", () => {
@@ -356,11 +376,40 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("Profile candidate shadow")
     expect(html).toContain("MULTI-INTEREST")
     expect(html).toContain("PROMOTE TO EXPERIMENT")
+    expect(html).toContain("Profile eligibility reconciliation")
+    expect(html).toContain("Current-pointer audit violated")
+    expect(html).toContain("Affected pointers")
+    expect(html).toContain("Eligibility Revision Superseded")
+    expect(html).toContain("semantic delivery")
     expect(html).toContain("NO LIVE TRAFFIC")
     expect(html).not.toContain("private-profile")
     expect(html).not.toContain("request-private-1")
     expect(html).not.toContain("opaque-private-cursor")
     expect(html).not.toContain("/dashboard/recommendations/request-private-1")
+  })
+
+  it("labels every hidden reconciliation metric when a small cohort is suppressed", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    loadOverviewMock.mockResolvedValue({
+      ...overview,
+      profileReconciliation: {
+        state: "suppressed",
+        suppressed: true,
+        currentPointerInvariant: "violated",
+        counts: null,
+        reasonCodes: [],
+      },
+    })
+
+    const html = renderToStaticMarkup(
+      await RecommendationsPage({ searchParams: Promise.resolve({}) }),
+    )
+
+    expect(html).toContain("A small reconciliation cohort is present")
+    expect(html).toContain("Profile-source fences Suppressed")
+    expect(html).toContain("affected requests Suppressed")
+    expect(html).toContain("Reason detail is privacy-suppressed")
+    expect(html.match(/>Suppressed</g)?.length).toBeGreaterThanOrEqual(6)
   })
 
   it("renders the active-root request list and links only for ADMIN", async () => {

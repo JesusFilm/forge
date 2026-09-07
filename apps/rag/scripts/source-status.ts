@@ -23,14 +23,15 @@
  *
  * Scope: this file is the ASSERTED per-language stage state, decoupled from
  * production — nothing here reads or reconciles the prod DB, and the
- * `*:production` scripts never write back. `status:check` validates shape +
- * invariants only, not whether production matches. Inventory/counts belong in
- * the database and dashboard snapshot, never in this file.
+ * `*:production` scripts never write back. `status:check` validates shape,
+ * invariants, and package-local slice references, not whether production
+ * matches. Inventory/counts belong in the database and dashboard snapshot.
  *
  * Pure core (loadDoc/applyMutation/validateDoc/parseArgv) is exported and unit-
  * tested from tests/source-status-cli.test.ts; main() holds the fs + argv I/O.
  */
 import { readFile, rename, rm, writeFile } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseDocument, isMap } from "yaml"
@@ -50,6 +51,7 @@ import type {
   RowStatus,
   SourceStatusFile,
 } from "../src/contracts/source-status.js"
+import { RagOperationalError } from "../src/contracts/index.js"
 import {
   withOwnedFileLock,
   type OwnedFileLockOptions,
@@ -382,12 +384,43 @@ function req(flags: Record<string, string>, key: string): string {
 
 // ── I/O entrypoint ───────────────────────────────────────────────────────────
 
-const FILE = path.resolve(
-  import.meta.dirname,
-  "..",
-  "docs",
-  "source-status.yaml",
-)
+const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..")
+const FILE = path.join(PACKAGE_ROOT, "docs", "source-status.yaml")
+
+export function validateSliceFileReferences(
+  file: SourceStatusFile,
+  packageRoot: string,
+  exists: (file: string) => boolean = existsSync,
+): void {
+  for (const [key, row] of Object.entries(file.sources)) {
+    const resolved = path.resolve(packageRoot, row.slice_file)
+    if (!resolved.startsWith(`${packageRoot}${path.sep}`))
+      throw new RagOperationalError(
+        "corpus_state_invalid",
+        `source '${key}' slice_file escapes the RAG package: ${row.slice_file}`,
+      )
+    if (path.extname(resolved) !== ".md")
+      throw new RagOperationalError(
+        "corpus_state_invalid",
+        `source '${key}' slice_file must reference Markdown: ${row.slice_file}`,
+      )
+    if (!exists(resolved))
+      throw new RagOperationalError(
+        "corpus_state_invalid",
+        `source '${key}' slice_file does not exist: ${row.slice_file}`,
+      )
+  }
+}
+
+export function validateStatusDocumentForWrite(
+  doc: Document,
+  packageRoot: string,
+  exists: (file: string) => boolean = existsSync,
+): SourceStatusFile {
+  const file = validateCanonicalDoc(doc)
+  validateSliceFileReferences(file, packageRoot, exists)
+  return file
+}
 
 export interface AtomicFileOps {
   writeFile(
@@ -454,7 +487,10 @@ async function main(argv: string[]): Promise<void> {
   const cmd = parseArgv(argv)
 
   if (cmd.kind === "check") {
-    validateCanonicalDoc(loadDoc(await readFile(FILE, "utf8")))
+    validateStatusDocumentForWrite(
+      loadDoc(await readFile(FILE, "utf8")),
+      PACKAGE_ROOT,
+    )
     console.log("✔ docs/source-status.yaml is valid")
     return
   }
@@ -462,7 +498,7 @@ async function main(argv: string[]): Promise<void> {
   await withExclusiveFileLock(FILE, async () => {
     const doc = loadDoc(await readFile(FILE, "utf8"))
     applyMutation(doc, cmd, todayISO())
-    validateCanonicalDoc(doc) // gate — must pass before we touch the file
+    validateStatusDocumentForWrite(doc, PACKAGE_ROOT)
     await writeStatusFileAtomically(
       FILE,
       doc.toString(),

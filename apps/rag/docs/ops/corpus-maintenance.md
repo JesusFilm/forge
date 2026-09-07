@@ -124,6 +124,93 @@ and write preflight shown
 above. Record source key, limit, model identifier, summary counts, and pass/fail
 only.
 
+## Promote locally acquired raw documents
+
+For a new walled or metered source, production acquisition would pay to fetch
+content already validated locally. The optional `raws:promote` path copies only
+that source's newest staged row per canonical URL into production. It omits the
+source row ID, `ingested_at`, and index-attempt fields, so production assigns new
+IDs and every promoted row remains pending for the normal production indexer.
+
+Use normal `acquire:production` for free HTTP sources. Promotion deliberately
+accepts only a source with no existing production `raw_documents`; it is not an
+update, append, overwrite, or recovery mechanism. A nonempty target fails before
+mutation.
+
+Set the local database separately so the generic `DATABASE_URL` cannot be
+mistaken for production. The production target comes only from the namespaced
+Doppler value, and its exact host must match:
+
+```sh
+export RAG_LOCAL_DATABASE_URL='<local PostgreSQL URL>'
+doppler run --project forge-rag --config prd -- \
+  env RAG_LOCAL_DATABASE_URL="$RAG_LOCAL_DATABASE_URL" \
+  pnpm --filter @forge/rag raws:promote --source <source-key>
+```
+
+The first run is read-only and reports only the source key, distinct-row count,
+and a content digest. Record the exact `rows` and `digest` values. After reviewing
+them, pin both values on the apply command along with the second production-write
+signal:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  env RAG_LOCAL_DATABASE_URL="$RAG_LOCAL_DATABASE_URL" \
+      JFRAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag raws:promote --source <source-key> \
+    --expected-rows <reviewed-count> \
+    --expected-digest <reviewed-digest> \
+    --apply
+```
+
+The command requires `JFRAG_EXPECTED_POSTGRES_HOST` from the approved production
+configuration, refuses identical source/target database identities, selects the
+newest row per canonical URL, copies in batches inside one locked target
+transaction, and rolls back unless source and target count/digest reconciliation
+succeeds. The transaction takes the same source-scoped advisory lock as ordinary
+acquisition before its final empty-target check. Concurrent acquisition for that
+source therefore finishes before promotion and makes it fail closed, or waits
+until promotion commits; acquisition for other sources continues normally.
+The advisory lock also prevents two promotions from appending the source.
+`--apply` refuses before target mutation if the current local count or digest no
+longer matches the reviewed dry-run values.
+It never prints URLs, credentials, raw content, or row IDs.
+
+After apply, or whenever the apply process exits without a trustworthy success
+receipt, verify the production state with the same reviewed pins. This command
+is read-only and does not require the local database URL:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag raws:verify-promotion --source <source-key> \
+    --expected-rows <reviewed-count> \
+    --expected-digest <reviewed-digest>
+```
+
+`status: "committed"` means production's durable row count and content digest
+match the reviewed promotion. The reported `pendingRows` is informational and
+may decrease as indexing succeeds. `status: "not-committed"` means the source
+has no production raw rows, so rerun the dry-run preflight before retrying
+apply. A non-zero mismatch or connection failure is an unknown outcome: stop
+and investigate; do not retry promotion or start indexing.
+
+After promotion, preview and apply the existing bounded production index path;
+embedding remains a separate metered write:
+
+```sh
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag index:production --source <source-key> --limit 10
+doppler run --project forge-rag --config prd -- \
+  env JFRAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag index:production --source <source-key> --limit 10 --apply
+```
+
+Record only the source key, promoted count, digest, batch count, verification
+status, and pass/fail. Do not record connection details or corpus content. A
+failed process does not prove rollback because the client can lose its success
+response after PostgreSQL commits. Run `raws:verify-promotion` before deciding
+whether a retry is safe.
+
 ## Language sweep and guarded reversal
 
 Default to blank-language rows, one source, a small limit, and dry run:

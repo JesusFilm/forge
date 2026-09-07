@@ -3,7 +3,7 @@ id: "feat-363"
 title: "Chat history read path: client-side re-check of the resourceId filter"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-24"
 duration: 1
 depends_on: []
@@ -12,6 +12,34 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** Pending merge via [PR #2183](https://github.com/JesusFilm/forge/pull/2183)
+(`fix(mastra): recheck ownership before returning chat history`). Implementation
+and verification completed 2026-09-07; this completion record lands with the code.
+
+**What landed.** The history listing independently checks every returned row's
+`resourceId` before projecting its id, title, and timestamp. Foreign or missing
+ownership is dropped with one enum/count-only warning. The existing query,
+ordering, wire shape, and store pagination remain unchanged, with no extra
+store reads; replay and lane admission are untouched.
+
+**Verification.** Five rejection cases failed before implementation. All 48
+history-route tests passed afterward, including existing real-Memory integration
+checks. Full Mastra suite: 253 files / 3,112 tests passed, 7 files / 32 tests
+skipped by their existing gates. Typecheck, lint, and touched-file formatting
+passed. Code review and the independent Codex security verdict found no
+actionable issues.
+
+**Compound docs.** The [existing ownership-filter learning](../../solutions/best-practices/single-upstream-predicate-bounding-irreversible-blast-radius-20260812.md)
+now records why a history read drops and counts mismatches rather than aborting
+an otherwise useful page.
+
+**Residual risk / follow-ups.** Pagination metadata remains store-provided; a
+filtered page can be short or empty while `hasMore` is true. This check protects
+row disclosure and does not independently prove the store's filter or aggregate
+counts. No live production Postgres smoke was run.
 
 ## Problem
 

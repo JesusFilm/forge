@@ -41,12 +41,15 @@ retrieved text, scores, embeddings, or credentials.
 Production access requires fresh authority for the exact `forge-rag/prd`
 `production-read` target. The database credential must belong to the dedicated
 least-privilege evaluation/dashboard principal, and the operator must first
-have evidence that it cannot perform DDL or DML. Inject values directly from
-Doppler; do not retrieve or echo them:
+have evidence that it cannot perform DDL or DML. Provision and verify that
+principal through [`readonly-database.md`](./readonly-database.md). Inject
+values directly from Doppler; do not retrieve or echo them:
 
 ```sh
 doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag env:check production-read
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag db:verify-readonly --production
 doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag eval:production --case-set control-2026-08-06
 ```

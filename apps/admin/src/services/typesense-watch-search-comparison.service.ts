@@ -17,7 +17,7 @@ import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "./typesense-watch-search-current-transcript-projection"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -303,15 +303,23 @@ type EvaluationCandidateGenerationResolver = {
 export async function resolveEvaluationCandidateWatchSearchProfile(input: {
   generations: EvaluationCandidateGenerationResolver
   currentProfile: TypesenseWatchSearchProfile
-  transcriptCompatibility: {
+  transcriptProjection: {
+    transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    projectionRevision: bigint
   } | null
 }): Promise<TypesenseWatchSearchProfile> {
   if (
     input.currentProfile.kind !== "CURRENT" ||
     input.currentProfile.allowCompatibilityFallback ||
-    !input.transcriptCompatibility
+    !input.transcriptProjection
+  ) {
+    throw new ComparisonError("profile_unavailable")
+  }
+  if (
+    input.currentProfile.binding.transcript !==
+    input.transcriptProjection.transcriptCollection
   ) {
     throw new ComparisonError("profile_unavailable")
   }
@@ -323,9 +331,9 @@ export async function resolveEvaluationCandidateWatchSearchProfile(input: {
     indexContractRevision: candidateWatchSearchIndexContractRevision(),
     transcriptCollection: input.currentProfile.binding.transcript,
     contentEmbeddingContractId:
-      input.transcriptCompatibility.contentEmbeddingContractId,
+      input.transcriptProjection.contentEmbeddingContractId,
     transcriptChunkingVersion:
-      input.transcriptCompatibility.transcriptChunkingVersion,
+      input.transcriptProjection.transcriptChunkingVersion,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
@@ -355,8 +363,11 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
       resolveEvaluationCandidateWatchSearchProfile({
         generations,
         currentProfile,
-        transcriptCompatibility:
-          await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+        transcriptProjection:
+          await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+            prisma,
+            currentProfile,
+          }),
       }),
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),

@@ -22,7 +22,7 @@ const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 75 && name.includes("recommendation")
+    return ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")
   })
   .sort()
   .map((name) =>
@@ -369,6 +369,110 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         revision: 2,
         factWatermark: 3,
       })
+    })
+
+    it("serializes concurrent transport replays before assigning receipt ordinals", async () => {
+      const replayNow = new Date()
+      const sessionDigest = "7".repeat(64)
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "replay-race-test",
+              status: "active",
+              key: Buffer.alloc(32, 6).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenCore = createRecommendationTokenService({
+        keyring,
+        readRevokedKids: async () => [],
+        now: () => replayNow,
+      })
+      const tokenService = { activeKid: keyring.active.kid, ...tokenCore }
+      let id = 0
+      const newId = () =>
+        id++ === 0 ? "replay-race-episode" : `replay-race-${id}`
+      const episodeService = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => replayNow,
+        newId,
+        newClaimNonce: () => "replay-race-context-nonce",
+      })
+      const context = await episodeService.issueContext({
+        caller,
+        sessionDigest,
+        mediaId: "replay-race-media",
+        discoverySource: "direct",
+      })
+      const claim = await episodeService.claim({
+        caller,
+        sessionDigest,
+        mediaId: "replay-race-media",
+        claimNonce: context.claimNonce,
+      })
+      const playbackService = new RecommendationPlaybackService({
+        prisma,
+        tokenService,
+        now: () => replayNow,
+        newId,
+      })
+      const replayEvent = {
+        eventId: "replay-race-event",
+        kind: "playback_start" as const,
+        occurredAt: replayNow.toISOString(),
+        payload: { positionSeconds: 0 },
+      }
+      const input = {
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability: claim.capability,
+        episodeId: claim.episodeId,
+        sessionDigest,
+        mediaId: "replay-race-media",
+        events: [replayEvent],
+      }
+      await playbackService.record(input)
+
+      await client.query(`
+        CREATE FUNCTION slow_replay_counter_update() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.id = 'replay-race-episode'
+             AND NEW.transport_replay_count > OLD.transport_replay_count THEN
+            PERFORM pg_sleep(0.2);
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        CREATE TRIGGER slow_replay_counter_update
+          BEFORE UPDATE OF transport_replay_count
+          ON recommendation_playback_episode
+          FOR EACH ROW EXECUTE FUNCTION slow_replay_counter_update();
+      `)
+
+      const [first, second] = await Promise.all([
+        playbackService.record(input),
+        playbackService.record(input),
+      ])
+      expect(first).toEqual([
+        { eventId: replayEvent.eventId, status: "replay", sequence: 1 },
+      ])
+      expect(second).toEqual(first)
+      const receipts =
+        await prisma.recommendationPlaybackTransportReplayReceipt.findMany({
+          where: { episodeId: claim.episodeId },
+          orderBy: { replayOrdinal: "asc" },
+          select: { replayOrdinal: true },
+        })
+      expect(receipts).toEqual([{ replayOrdinal: 1 }, { replayOrdinal: 2 }])
+      await expect(
+        prisma.recommendationPlaybackEpisode.findUnique({
+          where: { id: claim.episodeId },
+          select: { transportReplayCount: true },
+        }),
+      ).resolves.toEqual({ transportReplayCount: 2 })
     })
 
     it("serializes concurrent selection and impression while preserving exact replay semantics", async () => {

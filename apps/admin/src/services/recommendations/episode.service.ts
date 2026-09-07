@@ -80,6 +80,7 @@ type EpisodeDependencies = {
     privacyGeneration: number
     evidenceWatermark: Date
   }) => Promise<unknown>
+  classifySelection?: (selectionId: string) => Promise<unknown>
 }
 
 export class RecommendationEpisodeService {
@@ -275,6 +276,7 @@ export class RecommendationEpisodeService {
       .update(input.claimNonce)
       .digest("hex")
     const episodeId = newId()
+    const selectionId = newId()
     const initialActiveUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
     const initialHardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
 
@@ -320,6 +322,7 @@ export class RecommendationEpisodeService {
           })
           return {
             status: "replay" as const,
+            selectionId: existing.id,
             attributionEligible:
               existing.attributionEligibleAt != null ||
               reconciliation.count === 1,
@@ -336,13 +339,14 @@ export class RecommendationEpisodeService {
         })
         return {
           status: "conflict" as const,
+          selectionId: null,
           attributionEligible: false,
           attributionReconciled: false,
         }
       }
       await tx.recommendationSelection.create({
         data: {
-          id: newId(),
+          id: selectionId,
           requestId: item.requestId,
           itemId: item.id,
           capabilityJti,
@@ -385,6 +389,7 @@ export class RecommendationEpisodeService {
       })
       return {
         status: "accepted" as const,
+        selectionId,
         attributionEligible: impression != null,
         attributionReconciled: false,
       }
@@ -408,35 +413,47 @@ export class RecommendationEpisodeService {
         },
       )
     }
-    const activeProfile =
+    if (
       (result.status === "accepted" && result.attributionEligible) ||
       result.attributionReconciled
-        ? await resolveActiveRecommendationProfileLink(this.deps.prisma, {
-            sessionDigest: item.request.sessionDigest,
-            now,
-          })
-        : null
-    if (activeProfile) {
-      void this.deps
-        .dispatchProfileFeedback?.({
-          sessionDigest: item.request.sessionDigest,
-          profileId: activeProfile.profileId,
-          privacyGeneration: activeProfile.privacyGeneration,
-          // Coalescing must advance from immutable committed server evidence,
-          // never a browser-controlled timestamp that can be replayed far into
-          // the past or future.
-          evidenceWatermark: now,
-        })
-        .catch(() => {
-          // Projection workflow truth records dispatch failures. Selection and
-          // navigation never wait for profile learning.
-        })
+    ) {
+      void this.classifyAndDispatchSelectionFeedback({
+        selectionId: result.selectionId,
+        sessionDigest: item.request.sessionDigest,
+        evidenceWatermark: now,
+      })
     }
     return {
       status: result.status,
       claimNonce: input.claimNonce,
       canonicalHref: item.canonicalHref,
       targetMediaId: item.targetMediaId,
+    }
+  }
+
+  private async classifyAndDispatchSelectionFeedback(input: {
+    selectionId: string
+    sessionDigest: string
+    evidenceWatermark: Date
+  }): Promise<void> {
+    try {
+      await this.deps.classifySelection?.(input.selectionId)
+      const activeProfile = await resolveActiveRecommendationProfileLink(
+        this.deps.prisma,
+        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
+      )
+      if (!activeProfile) return
+      await this.deps.dispatchProfileFeedback?.({
+        sessionDigest: input.sessionDigest,
+        profileId: activeProfile.profileId,
+        privacyGeneration: activeProfile.privacyGeneration,
+        // Coalescing advances from committed server receipt time, never the
+        // browser-controlled selection timestamp.
+        evidenceWatermark: input.evidenceWatermark,
+      })
+    } catch {
+      // Selection acknowledgement and navigation remain fail-open. Durable
+      // reconciliation will retry both classification and projection.
     }
   }
 
@@ -780,6 +797,13 @@ export function createRecommendationEpisodeService(
       const { dispatchRecommendationProfileFeedback } =
         await import("./profiles/job")
       return dispatchRecommendationProfileFeedback(input)
+    },
+    classifySelection: async (selectionId) => {
+      const { createRecommendationIntegrityService } =
+        await import("./integrity.service")
+      return createRecommendationIntegrityService(prisma).classifySelection(
+        selectionId,
+      )
     },
   })
 }

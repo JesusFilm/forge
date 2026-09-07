@@ -9,12 +9,23 @@ import {
   VISIBLE_DESCENDANT_SQL,
 } from "./search-watchability"
 import { activeTranscriptContentEmbeddingWhere } from "./content-embedding-contract"
+import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import {
+  advanceCurrentWatchSearchTranscriptProjection,
+  initialCurrentWatchSearchTranscriptProjectionRevision,
+  WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
+} from "./typesense-watch-search-current-transcript-projection"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
   bestVideoImageUrl,
   sortVideoImagesByDisplayPreference,
 } from "./video-image-selection"
+import {
+  buildTypesenseWatchCurationProjection,
+  loadWatchSearchCurations,
+  type WatchSearchCurationProjection,
+} from "./typesense-watch-search-curation"
 import {
   buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
@@ -26,6 +37,7 @@ import {
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
+  TYPESENSE_WATCH_CURATION_SET_PREFIX,
   TYPESENSE_WATCH_EMBEDDING_DIMENSIONS,
   TYPESENSE_WATCH_LEXICAL_ALIAS,
   TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
@@ -38,6 +50,7 @@ import {
   type TypesenseWatchTranscriptDocument,
   watchAvailabilityCollectionSchema,
   watchCatalogCollectionSchema,
+  watchCurationSetName,
   watchLexicalCollectionSchema,
   watchTranscriptCollectionSchema,
 } from "./typesense-watch-search-schema"
@@ -88,8 +101,13 @@ export type TypesenseWatchSearchIndexStats = {
   transcriptCollection: string
   transcriptReused: boolean
   hybridReady: boolean
+  curationSet: string
+  curationItems: number
+  skippedCurationAliases: number
   retiredCollections: string[]
   retirementFailures: Array<{ collection: string; error: string }>
+  retiredCurationSets: string[]
+  curationRetirementFailures: Array<{ curationSet: string; error: string }>
 }
 
 export type TypesenseWatchSearchTranscriptStrategy = "reuse" | "rebuild"
@@ -129,6 +147,101 @@ export class TypesenseWatchSearchIndexError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "TypesenseWatchSearchIndexError"
+  }
+}
+
+export class TypesenseWatchSearchProjectionCommitIndeterminateError extends Error {
+  constructor(
+    readonly completionError: unknown,
+    readonly reconciliationError: unknown,
+  ) {
+    super("Watch Search transcript projection commit could not be reconciled", {
+      cause: reconciliationError,
+    })
+    this.name = "TypesenseWatchSearchProjectionCommitIndeterminateError"
+  }
+}
+
+type TranscriptProjectionSnapshot = {
+  transcriptCollection: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
+  projectionRevision: bigint
+}
+
+function sameTranscriptProjection(
+  left: TranscriptProjectionSnapshot | null,
+  right: TranscriptProjectionSnapshot | null,
+): boolean {
+  return (
+    left?.transcriptCollection === right?.transcriptCollection &&
+    left?.contentEmbeddingContractId === right?.contentEmbeddingContractId &&
+    left?.transcriptChunkingVersion === right?.transcriptChunkingVersion &&
+    left?.projectionRevision === right?.projectionRevision
+  )
+}
+
+async function advanceRebuiltTranscriptProjection(
+  prisma: PrismaClient,
+  input: {
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+  },
+): Promise<void> {
+  const select = {
+    transcriptCollection: true,
+    contentEmbeddingContractId: true,
+    transcriptChunkingVersion: true,
+    projectionRevision: true,
+  } as const
+  const before = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+    {
+      where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      select,
+    },
+  )
+  const expectedRevision = before
+    ? before.projectionRevision + 1n
+    : initialCurrentWatchSearchTranscriptProjectionRevision()
+
+  try {
+    await advanceCurrentWatchSearchTranscriptProjection(prisma, input)
+    return
+  } catch (completionError) {
+    let observed: TranscriptProjectionSnapshot | null
+    try {
+      observed = await prisma.watchSearchCurrentTranscriptProjection.findUnique(
+        {
+          where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+          select,
+        },
+      )
+    } catch (reconciliationError) {
+      throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+        completionError,
+        reconciliationError,
+      )
+    }
+
+    if (
+      observed?.transcriptCollection === input.transcriptCollection &&
+      observed.contentEmbeddingContractId ===
+        input.contentEmbeddingContractId &&
+      observed.transcriptChunkingVersion === input.transcriptChunkingVersion &&
+      observed.projectionRevision === expectedRevision
+    ) {
+      return
+    }
+    if (sameTranscriptProjection(observed, before)) {
+      throw completionError
+    }
+    throw new TypesenseWatchSearchProjectionCommitIndeterminateError(
+      completionError,
+      new TypesenseWatchSearchIndexError(
+        "Watch Search transcript projection changed while rebuild completion was indeterminate",
+      ),
+    )
   }
 }
 
@@ -636,12 +749,14 @@ export type TypesenseWatchCandidateProjectionSnapshot = {
   catalog: TypesenseWatchCatalogDocument[]
   availability: TypesenseWatchAvailabilityDocument[]
   lexical: ReturnType<typeof buildTypesenseWatchCandidateLexicalDocuments>
+  curations: WatchSearchCurationProjection[]
   tokenizerLocales: string[]
   counts: { catalog: number; availability: number; lexical: number }
   digests: {
     catalog: string
     availability: string
     lexical: string
+    curations: string
     combined: string
   }
   lexicalMemory: TypesenseCandidateKeywordMemoryEstimate
@@ -683,24 +798,29 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
       const lexical = buildTypesenseWatchCandidateLexicalDocuments(
         catalog,
       ).sort((left, right) => left.id.localeCompare(right.id))
+      const curations = await loadWatchSearchCurations(tx as PrismaClient)
       const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
       const catalogDigest = projectionDigest(catalog)
       const availabilityDigest = projectionDigest(availability)
       const lexicalDigest = projectionDigest(lexical)
+      const curationsDigest = projectionDigest(curations)
       const digests = {
         catalog: catalogDigest,
         availability: availabilityDigest,
         lexical: lexicalDigest,
+        curations: curationsDigest,
         combined: projectionDigest({
           catalog: catalogDigest,
           availability: availabilityDigest,
           lexical: lexicalDigest,
+          curations: curationsDigest,
         }),
       }
       return {
         catalog,
         availability,
         lexical,
+        curations,
         tokenizerLocales,
         counts: {
           catalog: catalog.length,
@@ -740,6 +860,7 @@ async function loadTranscriptBatch(
       (
         v.deleted_at IS NULL
         AND v.no_index = false
+        AND NOT ('watch' = ANY(v.restrict_view_platforms))
         AND EXISTS (
           SELECT 1 FROM video_locale vl
           WHERE vl.video_id = v.id
@@ -770,6 +891,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   buildId = new Date().toISOString(),
   batchSize = DEFAULT_BATCH_SIZE,
   transcriptStrategy = "reuse",
+  loadCurations = () => loadWatchSearchCurations(prisma),
   onProgress,
 }: {
   prisma: PrismaClient
@@ -777,6 +899,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   buildId?: string
   batchSize?: number
   transcriptStrategy?: TypesenseWatchSearchTranscriptStrategy
+  loadCurations?: () => Promise<WatchSearchCurationProjection[]>
   onProgress?: (stats: {
     catalogDocuments: number
     availabilityDocuments: number
@@ -794,6 +917,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   const catalogSchema = watchCatalogCollectionSchema(buildId)
   const availabilitySchema = watchAvailabilityCollectionSchema(buildId)
   const transcriptSchema = watchTranscriptCollectionSchema(buildId)
+  const curationSetName = watchCurationSetName(buildId)
   const [
     existingCollections,
     previousCatalogAlias,
@@ -834,9 +958,15 @@ export async function rebuildTypesenseWatchSearchIndex({
   const catalog = await buildCatalogDocuments(prisma)
   const availability = buildAvailabilityDocuments(catalog)
   const lexical = buildTypesenseWatchLexicalDocuments(catalog)
+  const curationProjection = buildTypesenseWatchCurationProjection({
+    setName: curationSetName,
+    curations: await loadCurations(),
+    lexicalDocuments: lexical,
+  })
   const lexicalSchema = watchLexicalCollectionSchema(
     buildId,
     typesenseWatchTokenizerLocales(lexical),
+    [curationSetName],
   )
   const keywordMemory = estimateTypesenseKeywordMemory(lexical)
   let catalogDocuments = 0
@@ -876,8 +1006,12 @@ export async function rebuildTypesenseWatchSearchIndex({
     publicTranscriptDocuments = publicTranscripts?.found ?? 0
   }
 
-  await typesense.createCollection(catalogSchema)
   try {
+    await typesense.upsertCurationSet(
+      curationProjection.name,
+      curationProjection.set,
+    )
+    await typesense.createCollection(catalogSchema)
     await typesense.createCollection(availabilitySchema)
     await typesense.createCollection(lexicalSchema)
     if (!transcriptReused) {
@@ -985,7 +1119,25 @@ export async function rebuildTypesenseWatchSearchIndex({
       catalogSchema.name,
     )
     catalogAliasUpdated = true
+    if (!transcriptReused) {
+      const compatibility =
+        await resolveCurrentWatchSearchTranscriptCompatibility(prisma)
+      await advanceRebuiltTranscriptProjection(prisma, {
+        transcriptCollection,
+        contentEmbeddingContractId: compatibility.contentEmbeddingContractId,
+        transcriptChunkingVersion: compatibility.transcriptChunkingVersion,
+      })
+    }
   } catch (error) {
+    // A failed reconciliation cannot distinguish a rolled-back projection
+    // write from a committed write whose acknowledgement was lost. Preserve
+    // the new aliases and collections in that case: restoring the aliases may
+    // strand a committed durable projection on a collection deleted below.
+    if (
+      error instanceof TypesenseWatchSearchProjectionCommitIndeterminateError
+    ) {
+      throw error
+    }
     const restoreAlias = async (
       alias: string,
       previousCollection: string | undefined,
@@ -1041,7 +1193,12 @@ export async function rebuildTypesenseWatchSearchIndex({
         ? [typesense.deleteCollection(availabilitySchema.name)]
         : []),
       ...(lexicalRestored
-        ? [typesense.deleteCollection(lexicalSchema.name)]
+        ? [
+            (async () => {
+              await typesense.deleteCollection(lexicalSchema.name)
+              await typesense.deleteCurationSet(curationSetName)
+            })(),
+          ]
         : []),
     ])
     throw error
@@ -1078,6 +1235,42 @@ export async function rebuildTypesenseWatchSearchIndex({
       })
     }
   })
+  const retiredCollectionSet = new Set(retiredCollections)
+  const curationSetsToRetire = [
+    ...new Set(
+      existingCollections
+        .filter((collection) => retiredCollectionSet.has(collection.name))
+        .flatMap((collection) => collection.curation_sets ?? [])
+        .filter(
+          (name) =>
+            name.startsWith(`${TYPESENSE_WATCH_CURATION_SET_PREFIX}_`) &&
+            name !== curationSetName,
+        ),
+    ),
+  ]
+  const curationRetirementResults = await Promise.allSettled(
+    curationSetsToRetire.map((name) => typesense.deleteCurationSet(name)),
+  )
+  const retiredCurationSets: string[] = []
+  const curationRetirementFailures: Array<{
+    curationSet: string
+    error: string
+  }> = []
+  curationRetirementResults.forEach((result, index) => {
+    const curationSet = curationSetsToRetire[index]
+    if (curationSet == null) return
+    if (result.status === "fulfilled") {
+      retiredCurationSets.push(curationSet)
+    } else {
+      curationRetirementFailures.push({
+        curationSet,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      })
+    }
+  })
 
   return {
     catalogDocuments,
@@ -1097,7 +1290,15 @@ export async function rebuildTypesenseWatchSearchIndex({
     transcriptCollection,
     transcriptReused,
     hybridReady,
+    curationSet: curationSetName,
+    curationItems: curationProjection.set.items.length,
+    skippedCurationAliases: curationProjection.coverage.reduce(
+      (total, entry) => total + entry.skippedAliasIds.length,
+      0,
+    ),
     retiredCollections,
     retirementFailures,
+    retiredCurationSets,
+    curationRetirementFailures,
   }
 }

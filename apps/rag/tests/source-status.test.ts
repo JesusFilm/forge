@@ -34,6 +34,22 @@ describe("docs/source-status.yaml conforms to the contract", () => {
 })
 
 describe("the lifecycle ledger agrees with the canonical Forge registry", () => {
+  const migratedSliceFiles = [
+    "cru-10-basic-steps.md",
+    "cru.md",
+    "everystudent-ar.md",
+    "everystudent-fr.md",
+    "everystudent-siblings.md",
+    "everystudent.md",
+    "familylife.md",
+    "gotquestions-multilingual.md",
+    "gotquestions.md",
+    "jesusfilm-org.md",
+    "sightline-ministry.md",
+    "starting-with-god.md",
+    "thelife.md",
+  ]
+
   it("contains exactly the registry keys and each source's declared languages", () => {
     const registry = allSources()
     expect(Object.keys(file.sources).sort()).toEqual(
@@ -53,5 +69,71 @@ describe("the lifecycle ledger agrees with the canonical Forge registry", () => 
     >
     expect(sourceMap).toHaveProperty("gaps")
     expect(sourceMap).toHaveProperty("documented")
+  })
+
+  it("resolves every slice_file inside the RAG package", () => {
+    for (const [key, row] of Object.entries(file.sources)) {
+      const resolved = path.resolve(repoRoot, row.slice_file)
+      expect(resolved.startsWith(`${repoRoot}${path.sep}`), key).toBe(true)
+      expect(path.extname(resolved), key).toBe(".md")
+      expect(fs.existsSync(resolved), `${key}:${row.slice_file}`).toBe(true)
+    }
+  })
+
+  it("retains the complete migrated slice inventory", () => {
+    expect(
+      fs
+        .readdirSync(path.join(repoRoot, "docs/slices"))
+        .filter((name) => name.endsWith(".md"))
+        .sort(),
+    ).toEqual(migratedSliceFiles)
+  })
+
+  it("keeps source-map gaps attached to lifecycle rows and documented-only rows disjoint", () => {
+    const sourceMap = YAML.parse(read("docs/source-map.yaml")) as {
+      gaps?: Record<string, unknown>
+      documented?: Record<string, unknown>
+    }
+    const lifecycleKeys = new Set(Object.keys(file.sources))
+
+    for (const key of Object.keys(sourceMap.gaps ?? {})) {
+      expect(lifecycleKeys.has(key), `gap without lifecycle row: ${key}`).toBe(
+        true,
+      )
+    }
+    for (const key of Object.keys(sourceMap.documented ?? {})) {
+      expect(
+        lifecycleKeys.has(key),
+        `documented-only source also has lifecycle row: ${key}`,
+      ).toBe(false)
+    }
+  })
+
+  it("resolves lifecycle links between slice and slice-evidence documents", () => {
+    const lifecycleDocs = [
+      "docs/sources.md",
+      "docs/eval-approach.md",
+      "docs/jfa-registry-findings.md",
+      ...migratedSliceFiles.map((name) => `docs/slices/${name}`),
+    ]
+    const markdownLink = /\[[^\]]*\]\(([^)]+)\)/g
+
+    for (const documentPath of lifecycleDocs) {
+      const documentDirectory = path.dirname(
+        path.resolve(repoRoot, documentPath),
+      )
+      for (const match of read(documentPath).matchAll(markdownLink)) {
+        const target = match[1].split("#", 1)[0]
+        if (!target || /^(?:https?:|mailto:)/.test(target)) continue
+
+        const resolved = path.resolve(documentDirectory, target)
+        const relative = path.relative(repoRoot, resolved)
+        if (!relative.startsWith(`docs${path.sep}`)) continue
+
+        expect(fs.existsSync(resolved), `${documentPath} -> ${target}`).toBe(
+          true,
+        )
+      }
+    }
   })
 })

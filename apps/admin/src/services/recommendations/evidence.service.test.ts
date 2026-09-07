@@ -77,6 +77,9 @@ function harness() {
   }
   const prisma = {
     recommendationServedItem: { findUnique: vi.fn(async () => item) },
+    recommendationSelection: {
+      findUnique: vi.fn(async () => ({ id: "selection-1" })),
+    },
     recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
     recommendationProfileSessionLink: {
       findFirst: vi.fn(async () => ({
@@ -99,11 +102,13 @@ function harness() {
     exp: 1_776_654_600,
   }))
   const dispatchProfileFeedback = vi.fn(async () => undefined)
+  const classifySelection = vi.fn(async () => undefined)
   const service = new RecommendationEvidenceService({
     prisma: prisma as never,
     tokenService: { verifyDeliveryCapability },
     now: () => new Date("2026-04-20T03:00:00.000Z"),
     dispatchProfileFeedback,
+    classifySelection,
   })
   return {
     service,
@@ -114,6 +119,7 @@ function harness() {
     tx,
     verifyDeliveryCapability,
     dispatchProfileFeedback,
+    classifySelection,
   }
 }
 
@@ -233,7 +239,8 @@ describe("RecommendationEvidenceService", () => {
   })
 
   it("reconciles a navigation-only selection when its impression commits late", async () => {
-    const { service, tx, dispatchProfileFeedback } = harness()
+    const { service, tx, dispatchProfileFeedback, classifySelection } =
+      harness()
     await expect(
       service.record({
         ...validInput,
@@ -264,6 +271,8 @@ describe("RecommendationEvidenceService", () => {
       privacyGeneration: 3,
       evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
     })
+    expect(classifySelection).toHaveBeenCalledWith("selection-1")
+    expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
   })
 
   it("repairs a pending selection when an already-committed impression is replayed", async () => {

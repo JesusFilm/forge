@@ -98,6 +98,12 @@ export const watchSearchCandidateComparisonEnabledEnvSchema = z
   .default("false")
   .transform((value) => value === "true")
 
+export const watchSearchTranscriptPublicationEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+  .transform((value) => value === "true")
+
 export const watchSearchTranscriptProjectionRevisionEnvSchema = z.coerce
   .bigint()
   .nonnegative()
@@ -147,6 +153,15 @@ function normalizeWatchSearchRuntimeEnv(
         .catch(undefined)
         .parse(source.transcriptProjectionRevision),
   })
+}
+
+export function resolveWatchSearchTranscriptPublicationEnabled(
+  value: unknown = env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
 }
 
 /**
@@ -331,6 +346,8 @@ export const env = createEnv({
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
@@ -804,6 +821,9 @@ export const env = createEnv({
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
       "false",
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION: emptyToUndefined(
       process.env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION,
     ),
@@ -1194,13 +1214,19 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 
 export function assertTypesenseCredentialsDisjoint(input: {
   searchKey?: string
+  legacyKey?: string
   operatorKey?: string
 }): void {
-  const searchKey = input.searchKey?.trim()
   const operatorKey = input.operatorKey?.trim()
-  if (searchKey && operatorKey && searchKey === operatorKey) {
+  const readerCredentials = [input.searchKey, input.legacyKey]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+  if (
+    operatorKey &&
+    readerCredentials.some((credential) => credential === operatorKey)
+  ) {
     throw new Error(
-      "TYPESENSE_SEARCH_API_KEY and TYPESENSE_OPERATOR_API_KEY must be disjoint",
+      "Typesense reader credentials and TYPESENSE_OPERATOR_API_KEY must be disjoint",
     )
   }
 }
@@ -1225,6 +1251,7 @@ assertBearerCsvsDisjoint({
 })
 assertTypesenseCredentialsDisjoint({
   searchKey: env.TYPESENSE_SEARCH_API_KEY,
+  legacyKey: env.TYPESENSE_API_KEY,
   operatorKey: env.TYPESENSE_OPERATOR_API_KEY,
 })
 

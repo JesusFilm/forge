@@ -72,15 +72,14 @@ export function resolveSessionClientKind(
     return MOBILE_SESSION_CLIENT_KIND
   }
 
-  // The endpoint context carries the route pattern (":providerId"), so the
-  // provider id is read from params; the concrete-path form is kept too.
+  // The endpoint context carries the route PATTERN: 1.7's core callback is
+  // `/callback/:id`, so the hook sees that pattern plus params.id. The
+  // concrete-path form covers contexts that carry the resolved path instead.
+  const callbackParams = ctx.params as { id?: string } | undefined
   if (
     ctx.path === `/callback/${JFP_MOBILE_PROVIDER_ID}` ||
-    ctx.path === `/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}` ||
-    ((ctx.path.startsWith("/callback") ||
-      ctx.path.startsWith("/oauth2/callback")) &&
-      (ctx.params as { providerId?: string } | undefined)?.providerId ===
-        JFP_MOBILE_PROVIDER_ID)
+    (ctx.path.startsWith("/callback") &&
+      callbackParams?.id === JFP_MOBILE_PROVIDER_ID)
   ) {
     return MOBILE_SESSION_CLIENT_KIND
   }

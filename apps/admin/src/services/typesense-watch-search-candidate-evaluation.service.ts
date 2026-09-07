@@ -11,7 +11,7 @@ import {
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 import { resolveEvaluationCandidateWatchSearchProfile } from "./typesense-watch-search-comparison.service"
-import { resolveCurrentWatchSearchTranscriptCompatibility } from "./typesense-watch-search-transcript-compatibility"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "./typesense-watch-search-current-transcript-projection"
 import {
   assertQualificationProfilesMatchLease,
   freezeCurrentWatchSearchProfile,
@@ -127,9 +127,11 @@ export async function resolveServingCandidateWatchSearchProfile(input: {
   currentProfile: TypesenseWatchSearchProfile
   indexContractRevision: string | null
   rankingRevision: string | null
-  transcriptCompatibility: {
+  transcriptProjection: {
+    transcriptCollection: string
     contentEmbeddingContractId: string
     transcriptChunkingVersion: string
+    projectionRevision: bigint
   } | null
   qrelsRevision: string | null
 }): Promise<TypesenseWatchSearchProfile> {
@@ -138,8 +140,14 @@ export async function resolveServingCandidateWatchSearchProfile(input: {
     input.currentProfile.allowCompatibilityFallback ||
     !input.indexContractRevision ||
     !input.rankingRevision ||
-    !input.transcriptCompatibility ||
+    !input.transcriptProjection ||
     !input.qrelsRevision
+  ) {
+    throw new CandidateSearchEvaluationError("profile_unavailable")
+  }
+  if (
+    input.currentProfile.binding.transcript !==
+    input.transcriptProjection.transcriptCollection
   ) {
     throw new CandidateSearchEvaluationError("profile_unavailable")
   }
@@ -155,9 +163,9 @@ export async function resolveServingCandidateWatchSearchProfile(input: {
       indexContractRevision: input.indexContractRevision,
       transcriptCollection: input.currentProfile.binding.transcript,
       contentEmbeddingContractId:
-        input.transcriptCompatibility.contentEmbeddingContractId,
+        input.transcriptProjection.contentEmbeddingContractId,
       transcriptChunkingVersion:
-        input.transcriptCompatibility.transcriptChunkingVersion,
+        input.transcriptProjection.transcriptChunkingVersion,
       requireQualified: true,
       currentBindings: watchSearchBindingMembers(input.currentProfile),
       qrelsRevision: input.qrelsRevision,
@@ -370,8 +378,13 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
           ? await resolveEvaluationCandidateWatchSearchProfile({
               generations,
               currentProfile,
-              transcriptCompatibility:
-                await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+              transcriptProjection:
+                await resolveCurrentWatchSearchTranscriptProjectionWithFallback(
+                  {
+                    prisma,
+                    currentProfile,
+                  },
+                ),
             })
           : await resolveServingCandidateWatchSearchProfile({
               generations,
@@ -379,8 +392,13 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
               indexContractRevision:
                 candidateWatchSearchIndexContractRevision(),
               rankingRevision: candidateWatchSearchRankingRevision(),
-              transcriptCompatibility:
-                await resolveCurrentWatchSearchTranscriptCompatibility(prisma),
+              transcriptProjection:
+                await resolveCurrentWatchSearchTranscriptProjectionWithFallback(
+                  {
+                    prisma,
+                    currentProfile,
+                  },
+                ),
               qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
             })
       if (

@@ -23,6 +23,7 @@ function episode() {
     activeUntil: new Date("2026-08-19T07:00:00.000Z"),
     hardUntil: new Date("2026-08-19T09:00:00.000Z"),
     nextFactSequence: 1,
+    transportReplayCount: 0,
     generation: 3,
     claimedAt: new Date("2026-08-19T03:00:00.000Z"),
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
@@ -88,6 +89,13 @@ function harness(options: { current?: EpisodeFixture } = {}) {
         }),
       ),
     },
+    recommendationPlaybackTransportReplayReceipt: {
+      createMany: vi.fn(
+        async ({ data }: { data: Array<Record<string, unknown>> }) => ({
+          count: data.length,
+        }),
+      ),
+    },
   }
   const prisma = {
     recommendationPlaybackEpisode: {
@@ -135,6 +143,35 @@ const baseInput = {
 }
 
 describe("RecommendationPlaybackService", () => {
+  it("logs a safe reason when the playback session binding is invalid", async () => {
+    const { service } = harness()
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    await expect(
+      service.record({
+        ...baseInput,
+        sessionDigest: "b".repeat(64),
+        events: [
+          {
+            eventId: "wrong-session",
+            kind: "playback_attempt",
+            occurredAt: now.toISOString(),
+            payload: { initiation: "manual" },
+          },
+        ],
+      }),
+    ).rejects.toThrow("Recommendation playback binding is invalid")
+    expect(warning).toHaveBeenCalledWith(
+      "[recommendations] event=playback_binding_rejected reason=session_mismatch",
+    )
+    expect(warning.mock.calls.flat().join(" ")).not.toMatch(
+      /episode-1|media-1|b{16}/,
+    )
+    warning.mockRestore()
+  })
+
   it("records playback independently after a personalized assignment is fenced", async () => {
     const current = episode()
     Object.assign(current.request, {
@@ -331,6 +368,24 @@ describe("RecommendationPlaybackService", () => {
       {
         data: [expect.objectContaining({ kind: "REPLAY" })],
       },
+    )
+    expect(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          episodeId: "episode-1",
+          eventId: replay.eventId,
+          payloadDigest: await service.digest(replay),
+          replayOrdinal: 1,
+        }),
+      ],
+    })
+    expect(
+      tx.recommendationPlaybackEpisode.updateMany.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany.mock
+        .invocationCallOrder[0]!,
     )
     expect(tx.recommendationPlaybackFact.createMany).toHaveBeenCalledOnce()
     expect(tx.recommendationEvidenceAudit.createMany).toHaveBeenNthCalledWith(
@@ -586,6 +641,18 @@ describe("RecommendationPlaybackService", () => {
         expect.objectContaining({
           kind: "REPLAY",
           reasonCode: "playback_transport_replay",
+        }),
+      ],
+    })
+    expect(
+      tx.recommendationPlaybackTransportReplayReceipt.createMany,
+    ).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          episodeId: "episode-1",
+          eventId: "start-1",
+          payloadDigest: digest,
+          replayOrdinal: 1,
         }),
       ],
     })

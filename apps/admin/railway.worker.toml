@@ -5,6 +5,9 @@
 # Set WORKFLOW_RUNNER_ENABLED=true on this worker service only. Leave it unset
 # or false on admin web replicas so web scaling does not also scale background
 # job runners.
+# Keep WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=false until incremental
+# publication is ready to roll out. TYPESENSE_OPERATOR_API_KEY belongs on this
+# worker service only and must never be shared with admin web replicas.
 #
 # Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
 # service variables are present during Railpack/mise build setup, before
@@ -23,6 +26,7 @@ watchPatterns = [
 ]
 
 [deploy]
+preDeployCommand = "pnpm --filter @forge/admin db:migrate:deploy"
 startCommand = "cd apps/admin && export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && HOSTNAME=0.0.0.0 NODE_OPTIONS='--enable-source-maps --require ./node_modules/dd-trace/init --max-old-space-size=5120' pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60

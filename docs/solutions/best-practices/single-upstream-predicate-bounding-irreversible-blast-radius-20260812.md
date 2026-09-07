@@ -186,6 +186,15 @@ inconsistency — it is the discriminator:
   would let one unparseable timestamp halt retention entirely and silently
   breach the policy — the opposite of the intended effect.
 
+**History-listing disposition (2026-09-07, feat-363):** this read path also
+skips and counts mismatched rows, including missing ownership, before wire
+projection. Returning the owned subset preserves useful history without
+exposing foreign titles; unlike erasure, it makes no claim of exhaustive
+completion. Pagination metadata remains store-provided, so a mismatched page
+may be short or empty even when `hasMore` is true. The enum/count-only
+`event=history_filter_mismatch` warning is the operator signal; it does not
+prove the upstream filter works or replace the real-store smoke.
+
 Three further properties, each a deliberate choice:
 
 1. **A rejection is a distinct outcome, not a generic error.**

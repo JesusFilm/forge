@@ -5,7 +5,12 @@ import {
   activeTranscriptContentEmbeddingWhere,
 } from "@/services/content-embedding-contract"
 import { MULTI_INTEREST_PROFILE_MANIFEST_ID } from "../candidates/profile-candidate.service"
+import {
+  ACTIVE_WATCH_PROXY_VERSION,
+  RECOMMENDATION_CONTRACTS,
+} from "../contracts"
 import { RecommendationInternalStateError } from "../errors"
+import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "../integrity-policy"
 import { withRecommendationSerializableRetry } from "../transaction-retry"
 import {
   buildMultiInterestProjection,
@@ -16,9 +21,8 @@ import {
 } from "./projection"
 
 export const PROFILE_PROJECTION_ELIGIBILITY_VERSION =
-  "recommendation-integrity-v1" as const
-export const PROFILE_PROJECTION_OUTCOME_VERSION =
-  "active-watch-proxy-v1" as const
+  RECOMMENDATION_INTEGRITY_POLICY_VERSION
+export const PROFILE_PROJECTION_OUTCOME_VERSION = ACTIVE_WATCH_PROXY_VERSION
 export const DURABLE_PROFILE_PROJECTION_DAYS = 180
 export const SESSION_PROFILE_PROJECTION_HOURS = 24
 
@@ -31,6 +35,11 @@ export type ProfileProjectionEvidence = Readonly<{
   sourceExpiresAt: Date
   eligibilityPolicyVersion: string | null
   outcomeClassifierVersion: string | null
+  eligibilityDecisionId?: string | null
+  eligibilityRevision?: number | null
+  eligibilityInputDigest?: string | null
+  eligibilityDecidedAt?: Date | null
+  evidenceWatermark?: Date | null
 }>
 
 export type LoadedProfileProjectionEvidence = Readonly<{
@@ -41,15 +50,28 @@ export type LoadedProfileProjectionEvidence = Readonly<{
 }>
 
 export type ProfileProjectionRequest = Readonly<{
-  sessionDigest: string
+  sessionDigest: string | null
   profileId: string | null
   privacyGeneration: number | null
   now?: Date
+  expectedPointer?: Readonly<{
+    generationId: string | null
+    pointerGeneration: number
+  }> | null
+  runFence?: Readonly<{
+    runId: string
+    claimId: string
+    generation: number
+  }> | null
 }>
+
+type NormalizedProfileProjectionRequest = ProfileProjectionRequest & {
+  now: Date
+}
 
 type PublishInput = Readonly<{
   scope: "durable" | "session"
-  sessionDigest: string
+  sessionDigest: string | null
   profileId: string | null
   privacyGeneration: number | null
   now: Date
@@ -57,6 +79,9 @@ type PublishInput = Readonly<{
   projection: MultiInterestProjection
   durableEvidence: ProfileProjectionEvidence[]
   sessionEvidence: ProfileProjectionEvidence[]
+  evidenceSnapshotDigest?: string
+  expectedPointer?: ProfileProjectionRequest["expectedPointer"]
+  runFence?: ProfileProjectionRequest["runFence"]
 }>
 
 export type ProfileProjectionReceipt = Readonly<{
@@ -68,7 +93,7 @@ export type ProfileProjectionReceipt = Readonly<{
 
 type ProjectionDependencies = Readonly<{
   loadEvidence: (
-    input: Required<ProfileProjectionRequest>,
+    input: NormalizedProfileProjectionRequest,
   ) => Promise<LoadedProfileProjectionEvidence>
   loadEmbeddings: (
     targetMediaIds: readonly string[],
@@ -84,12 +109,16 @@ export function createRecommendationProfileProjectionService(
       input: ProfileProjectionRequest,
     ): Promise<ProfileProjectionReceipt> {
       const now = input.now ?? new Date()
-      assertDigest(input.sessionDigest)
+      if (input.sessionDigest != null) assertDigest(input.sessionDigest)
       if ((input.profileId == null) !== (input.privacyGeneration == null)) {
         throw new RangeError("Profile projection privacy scope is invalid")
       }
-      const normalized = { ...input, now } as Required<ProfileProjectionRequest>
+      if (input.profileId == null && input.sessionDigest == null) {
+        throw new RangeError("Session projection requires a session digest")
+      }
+      const normalized = { ...input, now }
       const evidence = await dependencies.loadEvidence(normalized)
+      const evidenceSnapshotDigest = profileEvidenceSnapshotDigest(evidence)
       const targetMediaIds = [
         ...new Set(
           [...evidence.durable, ...evidence.session].map(
@@ -130,6 +159,7 @@ export function createRecommendationProfileProjectionService(
         session: sessionEvidence.map(toDigestEvidence),
         explicit: projection.explicitPreferences,
         negative: projection.negativeEvidence,
+        evidenceSnapshotDigest,
       })
       return dependencies.publish({
         scope: input.profileId ? "durable" : "session",
@@ -141,6 +171,9 @@ export function createRecommendationProfileProjectionService(
         projection,
         durableEvidence,
         sessionEvidence,
+        evidenceSnapshotDigest,
+        expectedPointer: input.expectedPointer,
+        runFence: input.runFence,
       })
     },
   }
@@ -160,7 +193,7 @@ export function createDatabaseRecommendationProfileProjectionService(
 
 export async function loadDatabaseProfileProjectionEvidence(
   prisma: Pick<PrismaClient, "$queryRaw">,
-  input: Required<ProfileProjectionRequest>,
+  input: NormalizedProfileProjectionRequest,
 ): Promise<LoadedProfileProjectionEvidence> {
   const sessionStart = new Date(
     input.now.getTime() - SESSION_PROFILE_PROJECTION_HOURS * 3_600_000,
@@ -171,9 +204,17 @@ export async function loadDatabaseProfileProjectionEvidence(
     weight: number
     occurredAt: Date
     sourceExpiresAt: Date
+    eligibilityPolicyVersion: string
+    outcomeClassifierVersion: null
+    eligibilityDecisionId: string
+    eligibilityRevision: number
+    eligibilityInputDigest: string
+    eligibilityDecidedAt: Date
+    evidenceWatermark: Date | null
   }
-  const session = input.profileId
-    ? await prisma.$queryRaw<SessionEvidenceRow[]>(Prisma.sql`
+  const session =
+    input.profileId && input.sessionDigest
+      ? await prisma.$queryRaw<SessionEvidenceRow[]>(Prisma.sql`
         SELECT
           selection.id AS "sourceId",
           item.target_media_id AS "targetMediaId",
@@ -182,9 +223,17 @@ export async function loadDatabaseProfileProjectionEvidence(
           LEAST(
             selection.expires_at,
             request.expires_at,
+            impression.expires_at,
             link.expires_at,
             profile.expires_at
           ) AS "sourceExpiresAt"
+          , decision.policy_version AS "eligibilityPolicyVersion"
+          , NULL::text AS "outcomeClassifierVersion"
+          , decision.id AS "eligibilityDecisionId"
+          , decision.revision AS "eligibilityRevision"
+          , decision.input_digest AS "eligibilityInputDigest"
+          , decision.decided_at AS "eligibilityDecidedAt"
+          , decision.evidence_watermark AS "evidenceWatermark"
         FROM recommendation_profile profile
         JOIN recommendation_profile_session_link link
           ON link.profile_id = profile.id
@@ -198,6 +247,18 @@ export async function loadDatabaseProfileProjectionEvidence(
         JOIN recommendation_served_item item
           ON item.request_id = selection.request_id
           AND item.id = selection.item_id
+        JOIN recommendation_impression impression
+          ON impression.request_id = selection.request_id
+          AND impression.item_id = selection.item_id
+          AND impression.visibility_policy = ${RECOMMENDATION_CONTRACTS.surface}
+          AND impression.expires_at > ${input.now}
+          AND impression.expires_at >= selection.attribution_eligible_at
+        JOIN recommendation_eligibility_decision decision
+          ON decision.selection_id = selection.id
+          AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
+          AND decision.is_current = true
+          AND decision.state = 'eligible'
+          AND 'profile' = ANY(decision.eligible_scopes)
         WHERE profile.id = ${input.profileId}
           AND profile.privacy_generation = ${input.privacyGeneration}
           AND profile.state = 'active'
@@ -205,6 +266,7 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND request.expires_at > ${input.now}
           AND selection.expires_at > ${input.now}
+          AND decision.expires_at > ${input.now}
           AND selection.attribution_eligible_at <= ${input.now}
           AND selection.occurred_at >= GREATEST(
             ${sessionStart}, profile.created_at, link.linked_at
@@ -213,26 +275,52 @@ export async function loadDatabaseProfileProjectionEvidence(
         ORDER BY selection.occurred_at DESC, selection.id
         LIMIT 32
       `)
-    : await prisma.$queryRaw<SessionEvidenceRow[]>(Prisma.sql`
+      : input.sessionDigest
+        ? await prisma.$queryRaw<SessionEvidenceRow[]>(Prisma.sql`
         SELECT
           selection.id AS "sourceId",
           item.target_media_id AS "targetMediaId",
           1::double precision AS weight,
           selection.occurred_at AS "occurredAt",
-          LEAST(selection.expires_at, request.expires_at) AS "sourceExpiresAt"
+          LEAST(
+            selection.expires_at,
+            request.expires_at,
+            impression.expires_at
+          ) AS "sourceExpiresAt"
+          , decision.policy_version AS "eligibilityPolicyVersion"
+          , NULL::text AS "outcomeClassifierVersion"
+          , decision.id AS "eligibilityDecisionId"
+          , decision.revision AS "eligibilityRevision"
+          , decision.input_digest AS "eligibilityInputDigest"
+          , decision.decided_at AS "eligibilityDecidedAt"
+          , decision.evidence_watermark AS "evidenceWatermark"
         FROM recommendation_selection selection
         JOIN recommendation_request request ON request.id = selection.request_id
         JOIN recommendation_served_item item
           ON item.request_id = selection.request_id AND item.id = selection.item_id
+        JOIN recommendation_impression impression
+          ON impression.request_id = selection.request_id
+          AND impression.item_id = selection.item_id
+          AND impression.visibility_policy = ${RECOMMENDATION_CONTRACTS.surface}
+          AND impression.expires_at > ${input.now}
+          AND impression.expires_at >= selection.attribution_eligible_at
+        JOIN recommendation_eligibility_decision decision
+          ON decision.selection_id = selection.id
+          AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
+          AND decision.is_current = true
+          AND decision.state = 'eligible'
+          AND 'profile' = ANY(decision.eligible_scopes)
         WHERE request.session_digest = ${input.sessionDigest}
           AND request.expires_at > ${input.now}
           AND selection.expires_at > ${input.now}
+          AND decision.expires_at > ${input.now}
           AND selection.attribution_eligible_at <= ${input.now}
           AND selection.occurred_at >= ${sessionStart}
           AND selection.occurred_at <= ${input.now}
         ORDER BY selection.occurred_at DESC, selection.id
         LIMIT 32
-      `)
+        `)
+        : []
   const priorDurable = input.profileId
     ? await prisma.$queryRaw<
         Array<{
@@ -243,6 +331,11 @@ export async function loadDatabaseProfileProjectionEvidence(
           sourceExpiresAt: Date
           eligibilityPolicyVersion: string | null
           outcomeClassifierVersion: string | null
+          eligibilityDecisionId: string
+          eligibilityRevision: number
+          eligibilityInputDigest: string
+          eligibilityDecidedAt: Date
+          evidenceWatermark: Date | null
         }>
       >(Prisma.sql`
         SELECT
@@ -257,6 +350,11 @@ export async function loadDatabaseProfileProjectionEvidence(
           ) AS "sourceExpiresAt",
           decision.policy_version AS "eligibilityPolicyVersion",
           outcome.classifier_version AS "outcomeClassifierVersion"
+          , decision.id AS "eligibilityDecisionId"
+          , decision.revision AS "eligibilityRevision"
+          , decision.input_digest AS "eligibilityInputDigest"
+          , decision.decided_at AS "eligibilityDecidedAt"
+          , decision.evidence_watermark AS "evidenceWatermark"
         FROM recommendation_profile_projection_pointer pointer
         JOIN recommendation_profile_projection_generation generation
           ON generation.id = pointer.generation_id
@@ -279,6 +377,8 @@ export async function loadDatabaseProfileProjectionEvidence(
           ON request.id = episode.request_id
         JOIN recommendation_eligibility_decision decision
           ON decision.outcome_id = outcome.id
+          AND decision.id = contribution.source_eligibility_decision_id
+          AND decision.revision = contribution.source_eligibility_revision
           AND decision.policy_version = ${PROFILE_PROJECTION_ELIGIBILITY_VERSION}
           AND decision.is_current = true
           AND decision.state = 'eligible'
@@ -293,6 +393,8 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
+          AND episode.state = 'finalized'
+          AND episode.finalized_at IS NOT NULL
           AND contribution.target_media_id = episode.media_id
           AND (
             episode.request_id IS NULL
@@ -332,6 +434,11 @@ export async function loadDatabaseProfileProjectionEvidence(
           sourceExpiresAt: Date
           eligibilityPolicyVersion: string
           outcomeClassifierVersion: string
+          eligibilityDecisionId: string
+          eligibilityRevision: number
+          eligibilityInputDigest: string
+          eligibilityDecidedAt: Date
+          evidenceWatermark: Date | null
         }>
       >(Prisma.sql`
         SELECT
@@ -342,6 +449,11 @@ export async function loadDatabaseProfileProjectionEvidence(
           LEAST(outcome.expires_at, decision.expires_at) AS "sourceExpiresAt",
           decision.policy_version AS "eligibilityPolicyVersion",
           outcome.classifier_version AS "outcomeClassifierVersion"
+          , decision.id AS "eligibilityDecisionId"
+          , decision.revision AS "eligibilityRevision"
+          , decision.input_digest AS "eligibilityInputDigest"
+          , decision.decided_at AS "eligibilityDecidedAt"
+          , decision.evidence_watermark AS "evidenceWatermark"
         FROM recommendation_profile profile
         JOIN recommendation_profile_session_link link
           ON link.profile_id = profile.id
@@ -372,6 +484,8 @@ export async function loadDatabaseProfileProjectionEvidence(
           AND profile.expires_at > ${input.now}
           AND outcome.classifier_version = ${PROFILE_PROJECTION_OUTCOME_VERSION}
           AND outcome.qualified_view = true
+          AND episode.state = 'finalized'
+          AND episode.finalized_at IS NOT NULL
           AND (
             episode.request_id IS NULL
             OR (
@@ -433,8 +547,6 @@ export async function loadDatabaseProfileProjectionEvidence(
     session: session.map((row) => ({
       ...row,
       sourceType: "selection",
-      eligibilityPolicyVersion: null,
-      outcomeClassifierVersion: null,
     })),
     // U11 is intentionally not a dependency. The channels are independent in
     // the projection contract and remain empty until explicit controls land.
@@ -515,12 +627,85 @@ export async function publishDatabaseProfileProjection(
             )
           }
         }
+        if (input.runFence) {
+          const expectedPointerFence = input.expectedPointer
+            ? Prisma.sql`
+              AND expected_generation_id IS NOT DISTINCT FROM ${input.expectedPointer.generationId}
+              AND expected_pointer_generation = ${input.expectedPointer.pointerGeneration}
+            `
+            : Prisma.empty
+          const claimed = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT id
+            FROM recommendation_profile_projection_run
+            WHERE id = ${input.runFence.runId}
+              AND state = 'claimed'
+              AND claim_id = ${input.runFence.claimId}::uuid
+              AND generation = ${input.runFence.generation}
+              AND lease_expires_at > CURRENT_TIMESTAMP
+              ${expectedPointerFence}
+            FOR UPDATE
+          `)
+          if (!claimed[0]) {
+            throw new RecommendationInternalStateError(
+              "profile_projection_claim_fenced",
+            )
+          }
+        }
+        const current = await tx.$queryRaw<
+          Array<{
+            id: string
+            generation: number
+            pointerGeneration: number
+          }>
+        >(Prisma.sql`
+          SELECT
+            generation.id,
+            generation.generation,
+            pointer.pointer_generation AS "pointerGeneration"
+          FROM recommendation_profile_projection_pointer pointer
+          JOIN recommendation_profile_projection_generation generation
+            ON generation.id = pointer.generation_id
+          WHERE pointer.scope_digest = ${scopeDigest}
+          FOR UPDATE OF pointer
+        `)
+        if (
+          input.expectedPointer &&
+          ((current[0]?.id ?? null) !== input.expectedPointer.generationId ||
+            (current[0]?.pointerGeneration ?? 0) !==
+              input.expectedPointer.pointerGeneration)
+        ) {
+          throw new RecommendationInternalStateError(
+            "profile_projection_pointer_fenced",
+          )
+        }
+        if (input.evidenceSnapshotDigest) {
+          const currentEvidence = await loadDatabaseProfileProjectionEvidence(
+            tx,
+            {
+              sessionDigest: input.sessionDigest,
+              profileId: input.profileId,
+              privacyGeneration: input.privacyGeneration,
+              now: input.now,
+              expectedPointer: input.expectedPointer ?? null,
+              runFence: input.runFence ?? null,
+            },
+          )
+          if (
+            profileEvidenceSnapshotDigest(currentEvidence) !==
+            input.evidenceSnapshotDigest
+          ) {
+            throw new RecommendationInternalStateError(
+              "profile_projection_input_fenced",
+            )
+          }
+        }
         const existing = await tx.$queryRaw<
           Array<{ id: string; generation: number }>
         >(Prisma.sql`
         SELECT id, generation
         FROM recommendation_profile_projection_generation
         WHERE input_digest = ${input.inputDigest}
+          AND state = 'published'
           AND (
             (${input.scope}::text = 'durable' AND scope = 'durable'
               AND profile_id = ${input.profileId}
@@ -529,8 +714,20 @@ export async function publishDatabaseProfileProjection(
               AND session_digest = ${input.sessionDigest})
           )
         LIMIT 1
-      `)
+        `)
         if (existing[0]) {
+          if (current[0]?.id !== existing[0].id) {
+            const swapped = await swapProjectionPointer(tx, {
+              scopeDigest,
+              input,
+              generationId: existing[0].id,
+            })
+            if (!swapped) {
+              throw new RecommendationInternalStateError(
+                "profile_projection_pointer_fenced",
+              )
+            }
+          }
           return {
             status: "published" as const,
             generationId: existing[0].id,
@@ -539,43 +736,13 @@ export async function publishDatabaseProfileProjection(
           }
         }
         const allEvidence = [...input.durableEvidence, ...input.sessionEvidence]
-        const watermark = latestDate(allEvidence.map((row) => row.occurredAt))
-        const current = await tx.$queryRaw<
-          Array<{
-            id: string
-            generation: number
-            inputWatermark: Date | null
-            contributionCount: number
-          }>
-        >(Prisma.sql`
-          SELECT
-            generation.id,
-            generation.generation,
-            generation.input_watermark AS "inputWatermark",
-            generation.contribution_count AS "contributionCount"
-          FROM recommendation_profile_projection_pointer pointer
-          JOIN recommendation_profile_projection_generation generation
-            ON generation.id = pointer.generation_id
-          WHERE pointer.scope_digest = ${scopeDigest}
-            AND generation.state = 'published'
-            AND generation.expires_at > ${input.now}
-          FOR UPDATE OF pointer
-        `)
-        if (
-          current[0] &&
-          publishedProjectionIsNewer(
-            current[0],
-            watermark,
-            input.projection.contributionCount,
-          )
-        ) {
-          return {
-            status: "published" as const,
-            generationId: current[0].id,
-            generation: current[0].generation,
-            replay: true,
-          }
-        }
+        const watermark = latestDate(
+          allEvidence.flatMap((row) => [
+            row.occurredAt,
+            row.eligibilityDecidedAt ?? row.occurredAt,
+            row.evidenceWatermark ?? row.occurredAt,
+          ]),
+        )
         const next = await tx.$queryRaw<Array<{ generation: number }>>(
           Prisma.sql`
           SELECT COALESCE(MAX(generation), 0)::int + 1 AS generation
@@ -712,22 +879,16 @@ export async function publishDatabaseProfileProjection(
         SET state = 'published', published_at = ${input.now}
         WHERE id = ${generationId} AND state = 'building'
       `)
-        await tx.$executeRaw(Prisma.sql`
-        INSERT INTO recommendation_profile_projection_pointer (
-          scope_digest, scope, profile_id, privacy_generation, session_digest,
-          generation_id, pointer_generation, updated_at
-        ) VALUES (
-          ${scopeDigest}, ${input.scope}::"RecommendationProfileProjectionScope",
-          ${input.scope === "durable" ? input.profileId : null},
-          ${input.scope === "durable" ? input.privacyGeneration : null},
-          ${input.scope === "session" ? input.sessionDigest : null},
-          ${generationId}, ${generation}, ${input.now}
-        )
-        ON CONFLICT (scope_digest) DO UPDATE SET
-          generation_id = EXCLUDED.generation_id,
-          pointer_generation = EXCLUDED.pointer_generation,
-          updated_at = EXCLUDED.updated_at
-      `)
+        const swapped = await swapProjectionPointer(tx, {
+          scopeDigest,
+          input,
+          generationId,
+        })
+        if (!swapped) {
+          throw new RecommendationInternalStateError(
+            "profile_projection_pointer_fenced",
+          )
+        }
         return {
           status: "published" as const,
           generationId,
@@ -738,6 +899,43 @@ export async function publishDatabaseProfileProjection(
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),
   )
+}
+
+async function swapProjectionPointer(
+  tx: Prisma.TransactionClient,
+  args: {
+    scopeDigest: string
+    input: PublishInput
+    generationId: string
+  },
+): Promise<boolean> {
+  const expectedPointerFence = args.input.expectedPointer
+    ? Prisma.sql`
+      recommendation_profile_projection_pointer.generation_id
+        IS NOT DISTINCT FROM ${args.input.expectedPointer.generationId}
+      AND recommendation_profile_projection_pointer.pointer_generation =
+        ${args.input.expectedPointer.pointerGeneration}
+    `
+    : Prisma.sql`true`
+  const changed = await tx.$executeRaw(Prisma.sql`
+    INSERT INTO recommendation_profile_projection_pointer (
+      scope_digest, scope, profile_id, privacy_generation, session_digest,
+      generation_id, pointer_generation, updated_at
+    ) VALUES (
+      ${args.scopeDigest},
+      ${args.input.scope}::"RecommendationProfileProjectionScope",
+      ${args.input.scope === "durable" ? args.input.profileId : null},
+      ${args.input.scope === "durable" ? args.input.privacyGeneration : null},
+      ${args.input.scope === "session" ? args.input.sessionDigest : null},
+      ${args.generationId}, 1, ${args.input.now}
+    )
+    ON CONFLICT (scope_digest) DO UPDATE SET
+      generation_id = EXCLUDED.generation_id,
+      pointer_generation = recommendation_profile_projection_pointer.pointer_generation + 1,
+      updated_at = EXCLUDED.updated_at
+    WHERE ${expectedPointerFence}
+  `)
+  return changed === 1
 }
 
 async function insertInterest(
@@ -795,6 +993,7 @@ async function insertContributions(
       id, generation_id, kind, source_id_digest, source_outcome_id,
       source_selection_id, target_media_id, interest_ordinal, weight,
       eligibility_policy_version, outcome_classifier_version,
+      source_eligibility_decision_id, source_eligibility_revision,
       privacy_generation, occurred_at, expires_at
     ) VALUES ${Prisma.join(
       inputs.map(
@@ -807,7 +1006,9 @@ async function insertContributions(
           ${input.row.targetMediaId.slice(0, 191)}, ${input.interestOrdinal},
           ${Math.max(-1, Math.min(1, input.row.weight))},
           ${input.row.eligibilityPolicyVersion},
-          ${input.row.outcomeClassifierVersion}, ${input.privacyGeneration},
+          ${input.row.outcomeClassifierVersion},
+          ${input.row.eligibilityDecisionId ?? null},
+          ${input.row.eligibilityRevision ?? null}, ${input.privacyGeneration},
           ${input.row.occurredAt}, ${input.expiresAt}
         )`,
       ),
@@ -824,7 +1025,31 @@ function toDigestEvidence(row: ProfileProjectionEvidence) {
     sourceExpiresAt: row.sourceExpiresAt.toISOString(),
     eligibility: row.eligibilityPolicyVersion,
     classifier: row.outcomeClassifierVersion,
+    eligibilityDecision: row.eligibilityDecisionId ?? null,
+    eligibilityRevision: row.eligibilityRevision ?? null,
+    eligibilityInput: row.eligibilityInputDigest ?? null,
+    eligibilityDecidedAt: row.eligibilityDecidedAt?.toISOString() ?? null,
+    evidenceWatermark: row.evidenceWatermark?.toISOString() ?? null,
   }
+}
+
+function profileEvidenceSnapshotDigest(
+  evidence: LoadedProfileProjectionEvidence,
+): string {
+  return digestJson({
+    durable: [...evidence.durable]
+      .map(toDigestEvidence)
+      .sort((left, right) =>
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      ),
+    session: [...evidence.session]
+      .map(toDigestEvidence)
+      .sort((left, right) =>
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      ),
+    explicit: evidence.explicitPreferences,
+    negative: evidence.negativeEvidence,
+  })
 }
 
 function stableSourceDigest(row: ProfileProjectionEvidence): string {
@@ -878,22 +1103,6 @@ function latestDate(values: readonly Date[]): Date | null {
   return values.length === 0
     ? null
     : new Date(Math.max(...values.map((value) => value.getTime())))
-}
-
-function publishedProjectionIsNewer(
-  current: { inputWatermark: Date | null; contributionCount: number },
-  candidateWatermark: Date | null,
-  candidateContributionCount: number,
-): boolean {
-  if (current.inputWatermark == null) return false
-  if (candidateWatermark == null) return true
-  const watermarkDifference =
-    current.inputWatermark.getTime() - candidateWatermark.getTime()
-  return (
-    watermarkDifference > 0 ||
-    (watermarkDifference === 0 &&
-      current.contributionCount > candidateContributionCount)
-  )
 }
 
 function average(values: readonly number[]): number {

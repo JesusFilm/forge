@@ -21,9 +21,11 @@ const fields = {
   transcript: [{ name: "embedding", type: "float[]" }],
 }
 
-const transcriptCompatibility = {
+const transcriptProjection = {
+  transcriptCollection: "watch_search_transcripts_20260810",
   contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
   transcriptChunkingVersion: "mastra-v1",
+  projectionRevision: 7n,
 } as const
 
 function fixture() {
@@ -43,7 +45,8 @@ function fixture() {
   const resolveGeneration = vi.fn(async (input) => ({
     generationId: input.generationId,
     indexContractRevision: input.indexContractRevision,
-    ...transcriptCompatibility,
+    contentEmbeddingContractId: transcriptProjection.contentEmbeddingContractId,
+    transcriptChunkingVersion: transcriptProjection.transcriptChunkingVersion,
     transcriptProjectionRevision: input.transcriptProjectionRevision ?? 7n,
     collections: {
       catalog: `watch_search_candidate_${input.generationId}_catalog`,
@@ -121,7 +124,7 @@ describe("resolveWatchSearchServingProfile", () => {
       selector: "CURRENT",
       indexContractRevision: null,
       rankingRevision: null,
-      transcriptCompatibility: null,
+      transcriptProjection: null,
       qrelsRevision: null,
       typesense: { getAlias },
       generations: { getPointer, resolveGeneration },
@@ -147,7 +150,7 @@ describe("resolveWatchSearchServingProfile", () => {
       selector: "CANDIDATE:generation-a",
       indexContractRevision: "revision-a",
       rankingRevision: "title-and-brand-v2",
-      transcriptCompatibility,
+      transcriptProjection,
       qrelsRevision: "qrels-1",
       typesense: { getAlias },
       generations: { getPointer, resolveGeneration },
@@ -158,7 +161,9 @@ describe("resolveWatchSearchServingProfile", () => {
       indexContractRevision: "revision-a",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_search_transcripts_20260810",
-      ...transcriptCompatibility,
+      contentEmbeddingContractId:
+        transcriptProjection.contentEmbeddingContractId,
+      transcriptChunkingVersion: transcriptProjection.transcriptChunkingVersion,
       requireQualified: true,
       currentBindings: [
         `${TYPESENSE_WATCH_CATALOG_ALIAS}_20260810`,
@@ -182,7 +187,7 @@ describe("resolveWatchSearchServingProfile", () => {
         selector: "CANDIDATE:generation-a",
         indexContractRevision: null,
         rankingRevision: "title-and-brand-v2",
-        transcriptCompatibility,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: first.getAlias },
         generations: {
@@ -201,7 +206,7 @@ describe("resolveWatchSearchServingProfile", () => {
         selector: "CANDIDATE:generation-a",
         indexContractRevision: "revision-a",
         rankingRevision: "title-and-brand-v2",
-        transcriptCompatibility,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: second.getAlias },
         generations: {
@@ -226,7 +231,7 @@ describe("resolveWatchSearchServingProfile", () => {
         selector: "CANDIDATE:generation-a",
         indexContractRevision: "revision-a",
         rankingRevision: "title-and-brand-v2",
-        transcriptCompatibility,
+        transcriptProjection,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: fixtureValue.getAlias },
         generations: {
@@ -236,5 +241,25 @@ describe("resolveWatchSearchServingProfile", () => {
       }),
     ).rejects.toThrow(/serving pointer/i)
     expect(fixtureValue.resolveGeneration).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the current transcript alias drifts from the published projection", async () => {
+    const { getAlias, getPointer, resolveGeneration } = fixture()
+
+    await expect(
+      resolveWatchSearchServingProfile({
+        selector: "CANDIDATE:generation-a",
+        indexContractRevision: "revision-a",
+        rankingRevision: "title-and-brand-v2",
+        transcriptProjection: {
+          ...transcriptProjection,
+          transcriptCollection: "watch_search_transcripts_other",
+        },
+        qrelsRevision: "qrels-1",
+        typesense: { getAlias },
+        generations: { getPointer, resolveGeneration },
+      }),
+    ).rejects.toThrow(/alias drifted/i)
+    expect(resolveGeneration).not.toHaveBeenCalled()
   })
 })

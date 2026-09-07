@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import { AccessibilityInfo, AppState } from "react-native"
+import { AppState } from "react-native"
 
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import {
   PREVIEW_HOLD_MS,
   PREVIEW_START_DELAY_MS,
@@ -29,8 +30,6 @@ type Args = {
  * "Load More" page or a scroll — and always resumes past the last card shown,
  * so nothing replays. Only a new search (`passKey`) starts over from the top.
  *
- * TODO after merging main: swap this AccessibilityInfo read for the shared
- * `useReduceMotion` hook, which does not exist on this branch yet.
  */
 export function useSearchPreviewCycle({
   results,
@@ -39,7 +38,7 @@ export function useSearchPreviewCycle({
   passKey,
 }: Args): number | null {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const [reduceMotion, setReduceMotion] = useState(false)
+  const reduceMotion = useReduceMotion()
 
   // Read at tick time so a scroll re-aims a live pass without restarting it.
   const resultsRef = useRef(results)
@@ -85,25 +84,6 @@ export function useSearchPreviewCycle({
       PREVIEW_START_DELAY_MS,
     )
   }
-
-  useEffect(() => {
-    let alive = true
-    void AccessibilityInfo.isReduceMotionEnabled()
-      .then((on) => {
-        if (alive) setReduceMotion(on)
-      })
-      // A rejection here must not become an unhandled rejection; the safe
-      // default is the motion the user already sees elsewhere in the app.
-      .catch(() => undefined)
-    const sub = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setReduceMotion,
-    )
-    return () => {
-      alive = false
-      sub.remove()
-    }
-  }, [])
 
   // Unmount is the ONLY teardown that must always run. Keeping it in its own
   // effect means no other effect's cleanup has to cancel a chain it did not

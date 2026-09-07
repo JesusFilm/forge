@@ -7,6 +7,7 @@ export type RecommendationRuntimeErrorCode =
   | "content_action_unavailable"
   | "profile_unavailable"
   | "claim_invalid"
+  | "playback_binding_invalid"
   | "evidence_failed"
   | "deadline"
   | "request_failed"
@@ -20,6 +21,8 @@ const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
   content_action_unavailable: "Recommendation content action unavailable",
   profile_unavailable: "Recommendation profile control unavailable",
   claim_invalid: "Semantic recommendation claim is invalid",
+  playback_binding_invalid:
+    "Semantic recommendation playback binding is invalid",
   evidence_failed: "Semantic recommendation evidence failed",
   deadline: "Semantic recommendation request deadline exceeded",
   request_failed: "Semantic recommendation request failed",

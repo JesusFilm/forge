@@ -36,6 +36,18 @@ export function ComposeIcon({ className }: IconProps) {
   )
 }
 
+/** Pencil glyph — the per-row "Rename" control (feat-450). Distinct from
+ * ComposeIcon (pencil + baseline): a bare pencil, so the two actions never
+ * read as the same affordance in the rail. */
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+      <path d="M14 6l4 4" />
+    </svg>
+  )
+}
+
 /** Hamburger glyph — the mobile "open menu" trigger. */
 export function MenuIcon({ className }: IconProps) {
   return (
