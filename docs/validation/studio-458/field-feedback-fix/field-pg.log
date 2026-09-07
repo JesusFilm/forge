@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/studio-authoring/narration.db.test.ts (18 tests) 2552ms
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  06:16:42
+   Duration  3.74s (transform 441ms, setup 20ms, collect 755ms, tests 2.55s, environment 0ms, prepare 133ms)
+

@@ -1,0 +1,25 @@
+(node:1458391) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/studio-authoring/property-feedback.test.ts (2 tests) 12ms
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[redis] event=redis.error message=connect ENETUNREACH 127.0.0.1:6379 - Local (0.0.0.0:0) service=forge-admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[ratelimit] event=rate_limit.redis_unavailable keyPrefix=sign-in/email error=redis_not_ready_reconnecting
+
+stderr | src/auth/rate-limit.test.ts > incrementFixedWindow (redis path) > returns source=redis with the INCR count from a live Redis eval
+[redis] event=redis.error message=connect ENETUNREACH 127.0.0.1:6379 - Local (0.0.0.0:0) service=forge-admin
+
+ ✓ src/auth/rate-limit.test.ts (8 tests) 506ms
+   ✓ rateLimitAuthRoute > uses the local fallback when Redis env is absent  351ms
+ ✓ src/services/seo-experiment.service.test.ts (30 tests) 5610ms
+   ✓ SEO ledger boundaries > trims canonical report detail to the durable byte budget  5500ms
+
+ Test Files  3 passed (3)
+      Tests  40 passed (40)
+   Start at  06:16:40
+   Duration  6.70s (transform 772ms, setup 47ms, collect 1.27s, tests 6.13s, environment 1ms, prepare 384ms)
+

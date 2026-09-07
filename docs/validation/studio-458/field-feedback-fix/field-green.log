@@ -1,0 +1,11 @@
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/studio-authoring/narration.db.test.ts (18 tests | 17 skipped) 376ms
+   ✓ Canonical narration completion > returns safe field facts for actual ch19 properties, then preserves its coverage rejection  367ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 17 skipped (18)
+   Start at  06:10:25
+   Duration  1.67s (transform 505ms, setup 17ms, collect 926ms, tests 376ms, environment 0ms, prepare 82ms)
+

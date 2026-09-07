@@ -1,7 +1,10 @@
-import { studioCoverageRejectionSchema } from "@forge/studio-contracts/production"
+import {
+  studioCoverageRejectionSchema,
+  studioProposalFieldRejectionSchema,
+} from "@forge/studio-contracts/production"
 import { readStudioBytes, StudioBoundaryError } from "@forge/studio-server"
 
-/** Only the authenticated Admin's bounded coverage contract is exposed to the model. */
+/** Only authenticated Admin's bounded canonical validation facts reach the model. */
 export async function rejectStudioAssetTool(
   action: string,
   response: Response,
@@ -20,6 +23,12 @@ export async function rejectStudioAssetTool(
     if (parsed.success)
       throw new StudioBoundaryError(
         `${parsed.data.feedback.code}: ${JSON.stringify(parsed.data.feedback)}. Coverage must match explicit item.speech.role identities. Put semantic QA concerns such as scripture echo in findings, not inferred role claims. Read the admitted project for any omitted facts.`,
+        400,
+      )
+    const fields = studioProposalFieldRejectionSchema.safeParse(body)
+    if (fields.success)
+      throw new StudioBoundaryError(
+        `${fields.data.feedback.code}: ${JSON.stringify(fields.data.feedback)}. Correct these field types without coercing source content, then validate the proposal again. Other validation errors may remain.`,
         400,
       )
   }

@@ -115,3 +115,24 @@ its actual script jumps from fear to a brief settle. These editorial examples
 remain findings for human review, not hard schema restrictions. Existing native
 versions are not rewritten or automatically activated by changing seed defaults;
 new drafts require the existing explicit native version/activation workflow.
+
+## Canonical field/type rejection feedback
+
+A closed native-hosted evaluation exposed an actionable validation error hidden
+behind the generic asset-tool boundary: ch19 proposed string text `fontSize`
+values. Preserve that rejection and its raw streams; do not replay the provider
+to diagnose deterministic canonical validation.
+
+Canonical text-property validation now throws `StudioProposalFieldError` with
+`PROPOSAL_FIELD_TYPE_MISMATCH`, at most eight operation index/text-key/expected-type
+facts. The shared strict schema excludes arbitrary keys, supplied values and raw
+validator messages. Admin emits this envelope only for an admitted authenticated
+`validate-proposal`; the native boundary accepts it only on HTTP 400 within its
+existing byte bound. Invalid envelopes and unrelated errors remain generic.
+Component properties remain dynamic, and unsupported text values still fail.
+
+Use the retained actual proposal to test validation ordering. Correcting its
+property types must still expose the distinct `ROLE_COVERAGE_UNCHECKED_IDS`
+rejection without mutating the project. Field repair is not creative QA success.
+The separate unpaid fix evidence and fixed-base reviews are in
+`docs/validation/studio-458/field-feedback-fix/README.md`.

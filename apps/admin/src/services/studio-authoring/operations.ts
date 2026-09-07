@@ -6,13 +6,39 @@ import {
 } from "@forge/studio-contracts"
 import { StudioCommandError } from "./errors"
 import { studioHash } from "./state"
+import {
+  StudioProposalFieldError,
+  studioProposalFieldFeedbackSchema,
+} from "@forge/studio-contracts/production"
+
+function textProperties(raw: unknown, operationIndex: number) {
+  const parsed = studioTextPropertiesSchema.safeParse(raw)
+  if (parsed.success) return parsed.data
+  const issues = parsed.error.issues
+    .flatMap((issue) => {
+      if (issue.code !== "invalid_type") return []
+      const safe =
+        studioProposalFieldFeedbackSchema.shape.issues.element.safeParse({
+          path: ["operations", operationIndex, "properties", ...issue.path],
+          expected: issue.expected,
+        })
+      return safe.success ? [safe.data] : []
+    })
+    .slice(0, 8)
+  if (issues.length)
+    throw new StudioProposalFieldError({
+      code: "PROPOSAL_FIELD_TYPE_MISMATCH",
+      issues,
+    })
+  throw parsed.error
+}
 
 export function applyOperations(
   document: StudioDocument,
   operations: StudioOperation[],
 ): StudioDocument {
   let doc = structuredClone(document)
-  for (const op of operations) {
+  for (const [operationIndex, op] of operations.entries()) {
     if (op.kind === "restore-document") {
       doc = structuredClone(op.document)
       continue
@@ -75,7 +101,7 @@ export function applyOperations(
           throw new StudioCommandError("INVALID")
         item.properties =
           item.kind === "text"
-            ? studioTextPropertiesSchema.parse(op.properties)
+            ? textProperties(op.properties, operationIndex)
             : op.properties
         break
       case "trim-source":

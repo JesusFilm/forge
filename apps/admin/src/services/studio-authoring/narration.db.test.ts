@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs"
-import { studioDocumentSchema } from "@forge/studio-contracts"
+import {
+  studioDocumentSchema,
+  studioOperationSchema,
+} from "@forge/studio-contracts"
 import { ForbiddenError } from "../errors"
 import { StudioSourceService } from "./sources"
 import { randomUUID } from "node:crypto"
@@ -232,6 +235,103 @@ class FixtureError extends Error {}
         expectedItemIds: [],
         observedRoles: ["bridge", "reflection", "settle"],
       },
+    })
+    expect(await commands.read(human, projectId)).toEqual(before)
+  })
+  it("returns safe field facts for actual ch19 properties, then preserves its coverage rejection", async () => {
+    const { commands, projectId, speech } = await fixture()
+    const evidence = new URL(
+      "../../../../../docs/validation/studio-458/",
+      import.meta.url,
+    )
+    const input = JSON.parse(
+      readFileSync(
+        new URL(
+          "native-hosted-proposal/corrected-readonly-proposal.body",
+          evidence,
+        ),
+        "utf8",
+      ),
+    )
+    const rejected = JSON.parse(
+      readFileSync(
+        new URL(
+          "native-hosted-followup-2/live/paid-0-2-response-proposal-0.json",
+          evidence,
+        ),
+        "utf8",
+      ),
+    )
+    const admitted = studioDocumentSchema.parse(input.cases[0].project.document)
+    await commands.apply(human, {
+      projectId,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+      operations: [
+        {
+          kind: "restore-document",
+          document: {
+            ...admitted,
+            packRevisionIds: [],
+            items: admitted.items.map((item) => ({
+              ...item,
+              speech: {
+                ...speech,
+                text: item.speech!.text,
+                role: item.speech!.role,
+              },
+            })),
+          },
+        },
+      ],
+    })
+    const before = await commands.read(human, projectId)
+    await expect(
+      new StudioGenerationService(db).validate(human, {
+        command: {
+          projectId,
+          expectedRevision: 2,
+          idempotencyKey: randomUUID(),
+          operations: rejected.operations,
+        },
+        quality: rejected.quality,
+      }),
+    ).rejects.toMatchObject({
+      feedback: {
+        code: "PROPOSAL_FIELD_TYPE_MISMATCH",
+        issues: [
+          {
+            path: ["operations", 6, "properties", "fontSize"],
+            expected: "number",
+          },
+        ],
+      },
+    })
+    expect(await commands.read(human, projectId)).toEqual(before)
+    const correctedTypes = rejected.operations.map((raw: unknown) => {
+      const operation = studioOperationSchema.parse(raw)
+      return operation.kind === "set-properties"
+        ? {
+            ...operation,
+            properties: {
+              ...operation.properties,
+              fontSize: operation.itemId === "settle" ? 56 : 52,
+            },
+          }
+        : operation
+    })
+    await expect(
+      new StudioGenerationService(db).validate(human, {
+        command: {
+          projectId,
+          expectedRevision: 2,
+          idempotencyKey: randomUUID(),
+          operations: correctedTypes,
+        },
+        quality: rejected.quality,
+      }),
+    ).rejects.toMatchObject({
+      feedback: { code: "ROLE_COVERAGE_UNCHECKED_IDS", role: "video" },
     })
     expect(await commands.read(human, projectId)).toEqual(before)
   })

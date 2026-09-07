@@ -4,6 +4,8 @@ import {
   studioValidateProposalSchema,
   StudioCoverageError,
   studioCoverageRejectionSchema,
+  StudioProposalFieldError,
+  studioProposalFieldRejectionSchema,
 } from "@forge/studio-contracts/production"
 import { z } from "zod"
 import { prisma } from "@/db/client"
@@ -35,6 +37,7 @@ const schema = z
   })
   .strict()
 export async function POST(request: Request) {
+  let admittedProposal = false
   try {
     const input = schema.parse(JSON.parse(await readStudioBytes(request)))
     const caller = await verifyStudioRequest(
@@ -72,6 +75,7 @@ export async function POST(request: Request) {
         proposed.command.expectedRevision !== grant.revision
       )
         throw new StudioBoundaryError("Proposal outside admitted project")
+      admittedProposal = true
     }
     return Response.json(
       {
@@ -83,6 +87,17 @@ export async function POST(request: Request) {
       { headers: { "cache-control": "no-store" } },
     )
   } catch (e) {
+    if (admittedProposal && e instanceof StudioProposalFieldError) {
+      const rejection = studioProposalFieldRejectionSchema.safeParse({
+        error: "Studio proposal fields rejected",
+        feedback: e.feedback,
+      })
+      if (rejection.success)
+        return Response.json(rejection.data, {
+          status: 400,
+          headers: { "cache-control": "no-store" },
+        })
+    }
     if (e instanceof StudioCoverageError)
       return Response.json(
         studioCoverageRejectionSchema.parse({

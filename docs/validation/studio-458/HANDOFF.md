@@ -82,3 +82,18 @@ original filename only in disposable reproduction storage. Probe is Remotion
 4.0.475's bundled n7.1. Built source reproduction also requires task-local Redis
 (127.0.0.1:56458 in this fixture). No earlier 456 codec evidence was rewritten.
 This does not establish feat-460 render or publication acceptance.
+
+## Closed follow-up 2 and separate field/type correction
+
+The later follow-up is also closed: two runs/seven requests, provider-reported
+USD 0.0791718. See `native-hosted-followup-2/live/comparison.md` and `summary.json`.
+ch19 produced no accepted proposal; ch31 previewed but retained documented
+fidelity/depth/voice shortcomings. This is same-case calibration, not blind
+acceptance. All three paid batches are closed. No additional provider dispatch is
+authorized; ElevenLabs and creative acceptance remain outstanding.
+
+The separately reviewed unpaid correction based on `2554442afcd0be5209789ff46c22a9b11ee434da`
+adds bounded canonical property-type facts to the native validation next turn.
+See `field-feedback-fix/README.md` for exact exports, authority/response bounds,
+actual ch19 regression, independent reviews and verification. Correcting types
+still fails the separate role-coverage check. No defaults or paid evidence changed.

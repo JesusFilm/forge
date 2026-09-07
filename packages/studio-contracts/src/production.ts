@@ -9,6 +9,7 @@ import {
   studioAssetReferenceSchema,
   studioCommandBaseSchema,
   studioIdSchema,
+  studioTextPropertiesSchema,
 } from "./index"
 import { studioNarrationIdentitySchema } from "./assets"
 export const studioPronunciationLocatorsSchema = z
@@ -142,6 +143,42 @@ export class StudioCoverageError extends Error {
     readonly feedback: z.infer<typeof studioCoverageFeedbackSchema>,
   ) {
     super(message)
+  }
+}
+
+/** Known schema facts only; never include supplied property values or arbitrary keys. */
+export const studioProposalFieldFeedbackSchema = z
+  .object({
+    code: z.literal("PROPOSAL_FIELD_TYPE_MISMATCH"),
+    issues: z
+      .array(
+        z
+          .object({
+            path: z.tuple([
+              z.literal("operations"),
+              z.number().int().min(0).max(99),
+              z.literal("properties"),
+              studioTextPropertiesSchema.keyof(),
+            ]),
+            expected: z.enum(["number", "string"]),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(8),
+  })
+  .strict()
+export const studioProposalFieldRejectionSchema = z
+  .object({
+    error: z.literal("Studio proposal fields rejected"),
+    feedback: studioProposalFieldFeedbackSchema,
+  })
+  .strict()
+export class StudioProposalFieldError extends Error {
+  constructor(
+    readonly feedback: z.infer<typeof studioProposalFieldFeedbackSchema>,
+  ) {
+    super("Studio proposal fields rejected")
   }
 }
 function coverageError(
