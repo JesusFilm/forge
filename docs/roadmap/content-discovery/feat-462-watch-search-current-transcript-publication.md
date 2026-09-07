@@ -1,5 +1,5 @@
 ---
-id: "feat-461"
+id: "feat-462"
 title: "Watch search current transcript publication"
 owner: "codex"
 priority: "P1"
@@ -75,5 +75,5 @@ WATCH_SEARCH_DB_TEST=1 pnpm --filter @forge/admin test -- src/services/typesense
 pnpm --filter @forge/admin test -- src/services/typesense-client.test.ts src/instrumentation.test.ts
 pnpm --filter @forge/admin typecheck
 pnpm --filter @forge/admin db:migrate:deploy
-pnpm prettier --check docs/roadmap/content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md docs/roadmap/content-discovery/feat-461-watch-search-current-transcript-publication.md
+pnpm prettier --check docs/roadmap/content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md docs/roadmap/content-discovery/feat-462-watch-search-current-transcript-publication.md
 ```

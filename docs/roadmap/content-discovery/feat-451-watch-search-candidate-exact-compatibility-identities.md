@@ -8,7 +8,7 @@ start_date: "2026-09-03"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-461"
+  - "feat-462"
 tags:
   - "admin"
   - "search"
