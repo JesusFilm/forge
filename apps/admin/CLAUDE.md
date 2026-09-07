@@ -1157,9 +1157,10 @@ provider metadata).
 Mastra writes vectors through Admin's narrow internal ingest route:
 `POST /api/internal/mastra/transcript-embeddings`. The route validates
 `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
-guards `dimensions === 1536`, resolves Admin or external targets before
-writing, and is idempotent by default. Explicit modes are `idempotent`,
-`repair`, `force`, and `model-upgrade`.
+guards `dimensions === 1536`, caps the streamed JSON body at 16 MiB and each
+transcript at 1,024 chunks, resolves Admin or external targets before writing,
+and is idempotent by default. Explicit modes are `idempotent`, `repair`,
+`force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per

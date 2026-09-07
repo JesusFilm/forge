@@ -233,6 +233,13 @@ collection-write and deletion authority out of the public traffic service. A
 dedicated worker may hold the key while publication remains disabled so the
 rollout control stays independent from credential provisioning.
 
+Bound upstream ingest at both transport and schema layers. A dedicated bearer
+authenticates the caller but does not make its payload safe: an unbounded
+vector-bearing JSON body or chunk array can exhaust the Admin process, inflate
+PostgreSQL/outbox work, and amplify that work through the privileged publisher.
+Stream the request under a byte ceiling before parsing and retain a separate
+chunk-count ceiling for direct service callers.
+
 Railway project-level variables can inject reader credentials into the worker
 even when they were intended only for traffic-serving replicas. Strip
 `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` from the dedicated worker's

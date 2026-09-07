@@ -19,6 +19,8 @@ import {
   type ContentEmbeddingTuple,
 } from "@/services/content-embedding-contract"
 
+export const MAX_TRANSCRIPT_INGEST_CHUNKS = 1_024
+
 const AdminTargetSchema = z
   .object({
     videoId: z.string().min(1),
@@ -134,7 +136,7 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         mastraRunId: z.string().min(1),
       })
       .strict(),
-    chunks: z.array(IngestChunkSchema).min(1),
+    chunks: z.array(IngestChunkSchema).min(1).max(MAX_TRANSCRIPT_INGEST_CHUNKS),
   })
   .strict()
   .superRefine((payload, ctx) => {

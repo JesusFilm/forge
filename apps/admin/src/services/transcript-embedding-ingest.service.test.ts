@@ -27,7 +27,7 @@ vi.mock("@/services/transcript-embedding.service", async (importOriginal) => {
   }
 })
 
-const { ingestTranscriptEmbeddings, _internals } =
+const { ingestTranscriptEmbeddings, MAX_TRANSCRIPT_INGEST_CHUNKS, _internals } =
   await import("@/services/transcript-embedding-ingest.service")
 
 function activeContractRow() {
@@ -385,6 +385,30 @@ describe("ingestTranscriptEmbeddings", () => {
     expect(
       prisma.watchSearchCurrentTranscriptPublicationEvent.create,
     ).not.toHaveBeenCalled()
+  })
+
+  it("rejects chunk counts above the bounded publication-work ceiling", async () => {
+    const prisma = buildPrisma()
+    const chunkEmbedding = new Array(
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ).fill(0.01)
+    const body = payload({
+      chunks: Array.from(
+        { length: MAX_TRANSCRIPT_INGEST_CHUNKS + 1 },
+        (_, chunkIndex) => ({
+          chunkIndex,
+          chunkId: `chunk-${chunkIndex}`,
+          text: `Chunk ${chunkIndex}`,
+          tokenCount: 2,
+          embedding: chunkEmbedding,
+        }),
+      ),
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, body),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {
