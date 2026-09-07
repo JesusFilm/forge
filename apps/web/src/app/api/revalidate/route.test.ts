@@ -43,6 +43,67 @@ describe("POST /api/revalidate", () => {
     vi.resetModules()
   })
 
+  it.each(["tag", "edge"])(
+    "reports strict Studio %s invalidation failure without changing legacy semantics",
+    async (failure) => {
+      const { POST } = await import("./route")
+      if (failure === "tag")
+        revalidateTagMock.mockImplementation(() => {
+          throw new Error("injected cache failure")
+        })
+      purgeWatchDynamicCollectionsCacheMock.mockResolvedValue(
+        failure === "edge" ? "failed" : "skipped",
+      )
+      const send = (requireComplete: boolean) =>
+        POST(
+          new Request("http://example.test/api/revalidate", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: "Bearer test-revalidation-secret",
+            },
+            body: JSON.stringify({
+              model: "video",
+              entry: {},
+              requireComplete,
+            }),
+          }),
+        )
+      const strict = await send(true)
+      expect(strict.status).toBe(503)
+      expect(await strict.json()).toMatchObject({
+        revalidated: false,
+        delivery: {
+          version: 1,
+          complete: false,
+          edge: failure === "edge" ? "failed" : "skipped",
+        },
+      })
+      expect((await send(false)).status).toBe(200)
+    },
+  )
+  it("explicitly distinguishes unconfigured edge cache in strict successful delivery", async () => {
+    const { POST } = await import("./route")
+    purgeWatchDynamicCollectionsCacheMock.mockResolvedValue("skipped")
+    const r = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {},
+          requireComplete: true,
+        }),
+      }),
+    )
+    expect(r.status).toBe(200)
+    expect(await r.json()).toMatchObject({
+      delivery: { version: 1, complete: true, edge: "skipped" },
+    })
+  })
   it("revalidates the full watch app when watch settings change (Bearer)", async () => {
     const { POST } = await import("./route")
 

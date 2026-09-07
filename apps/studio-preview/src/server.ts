@@ -163,7 +163,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(201).end()
         return
       }
-      if (req.method !== "GET") {
+      if (req.method !== "GET" && req.method !== "HEAD") {
         res.writeHead(405).end()
         return
       }
@@ -180,8 +180,40 @@ const server = http.createServer(async (req, res) => {
         return
       }
       res.setHeader("Content-Type", asset.type)
-      res.setHeader("Content-Length", asset.bytes.length)
-      res.end(asset.bytes)
+      res.setHeader("Accept-Ranges", "bytes")
+      const length = asset.bytes.length
+      // Resolve the authorized, unexpired session and exact retained file before
+      // examining Range. One zero-copy slice keeps response memory bounded.
+      // HTTP Range applies to GET; HEAD describes the complete representation.
+      const range = req.method === "GET" ? req.headers.range : undefined
+      if (range !== undefined) {
+        const match =
+          range.length <= 80 ? /^bytes=(\d*)-(\d*)$/.exec(range) : null
+        const first = match?.[1] ?? "",
+          last = match?.[2] ?? ""
+        const start = first ? Number(first) : Math.max(0, length - Number(last))
+        const end =
+          first && last ? Math.min(Number(last), length - 1) : length - 1
+        if (
+          !match ||
+          (!first && !last) ||
+          (!first && Number(last) === 0) ||
+          (first && !Number.isSafeInteger(Number(first))) ||
+          (last && !Number.isSafeInteger(Number(last))) ||
+          start >= length ||
+          start > end
+        ) {
+          res.setHeader("Content-Range", `bytes */${length}`)
+          res.writeHead(416).end()
+          return
+        }
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${length}`)
+        res.setHeader("Content-Length", end - start + 1)
+        res.writeHead(206).end(asset.bytes.subarray(start, end + 1))
+        return
+      }
+      res.setHeader("Content-Length", length)
+      res.end(req.method === "HEAD" ? undefined : asset.bytes)
       return
     }
     if (req.method === "GET" && url.pathname === "/client.js") {

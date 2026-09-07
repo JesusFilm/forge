@@ -1,3 +1,4 @@
+import { studioPublicReleaseSql } from "@/services/search-watchability"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import {
   boundedScore,
@@ -462,6 +463,7 @@ export async function queryProfileCandidates(
       JOIN video ON video.id = transcript.video_id
         AND video.deleted_at IS NULL
         AND NOT ('watch' = ANY(video.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`video.id`)}
       JOIN LATERAL (
         SELECT locale_display.title
         FROM video_locale locale_display

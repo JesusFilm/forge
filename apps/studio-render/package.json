@@ -1,0 +1,24 @@
+{
+  "name": "@forge/studio-render",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm build:native && vitest run src/startup.test.ts && cd ../.. && node --import tsx --test apps/studio-render/test/*.test.mjs",
+    "build:native": "mkdir -p dist && cc -O2 -Wall -Wextra -Werror native/guard.c -o dist/guard && cc -O2 -Wall -Wextra -Werror native/sandbox-init.c -o dist/sandbox-init && cc -O2 -Wall -Wextra -Werror native/entrypoint.c -o dist/entrypoint",
+    "build": "pnpm build:native && node build.mjs"
+  },
+  "dependencies": {
+    "@forge/studio-contracts": "workspace:*",
+    "@remotion/renderer": "4.0.475",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@forge/shorts-compositions": "workspace:*",
+    "@remotion/bundler": "4.0.475",
+    "esbuild": "0.27.3",
+    "tsx": "^4.21.0",
+    "vitest": "3.2.4"
+  }
+}

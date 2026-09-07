@@ -1,3 +1,7 @@
+import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
+import { readStudioRenderState } from "./render-state"
+import { StudioRenderJobs } from "./render-jobs"
+import { StudioCatalogPublicationService } from "./catalog-publication"
 import { StudioGenerationService } from "./generation"
 import { StudioNarrationService } from "./narration"
 import { StudioExecutionService } from "./execution"
@@ -60,6 +64,14 @@ export async function executeStudioRpc(
     packs = new ContentPackService(db),
     transfers = new StudioTransferService(db)
   switch (action) {
+    case "publication-candidate":
+      return new StudioPublicationReadinessResolver(db).candidate(user, input)
+    case "render-state":
+      return readStudioRenderState(db, user, input)
+    case "render-cancel":
+      return new StudioRenderJobs(db).cancel(user, input)
+    case "publish":
+      return new StudioCatalogPublicationService(db).publish(user, input)
     case "generation-read":
       return new StudioGenerationService(db).read(user, input)
     case "validate-proposal":

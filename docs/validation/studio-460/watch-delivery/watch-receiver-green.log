@@ -1,0 +1,32 @@
+(node:1901390) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/web@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+> pnpm run generate:ui-locales && vitest run "src/app/api/revalidate/route.test.ts"
+
+
+> @forge/web@0.0.1 generate:ui-locales /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+> node scripts/generate-ui-locales.mjs
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+
+stderr | src/app/api/revalidate/route.test.ts > POST /api/revalidate > reports strict Studio tag invalidation failure without changing legacy semantics
+[revalidate] event=watch_revalidate.tag.failed tag=watch:video detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:series detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:child-dub-languages detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:home detail=injected cache failure
+
+stderr | src/app/api/revalidate/route.test.ts > POST /api/revalidate > reports strict Studio tag invalidation failure without changing legacy semantics
+[revalidate] event=watch_revalidate.tag.failed tag=watch:video detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:series detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:child-dub-languages detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:home detail=injected cache failure
+
+ ✓ src/app/api/revalidate/route.test.ts (25 tests) 1251ms
+
+ Test Files  1 passed (1)
+      Tests  25 passed (25)
+   Start at  09:24:20
+   Duration  1.92s (transform 267ms, setup 118ms, collect 71ms, tests 1.25s, environment 0ms, prepare 80ms)
+

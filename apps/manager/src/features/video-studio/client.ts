@@ -3,6 +3,7 @@ export class StudioClientError extends Error {
   constructor(
     public status: number,
     message: string,
+    public publicationRejected = false,
   ) {
     super(message)
   }
@@ -16,7 +17,16 @@ export async function studioCall<T>(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ action, input }),
   })
-  const data = (await response.json()) as { result: T; error: string }
-  if (!response.ok) throw new StudioClientError(response.status, data.error)
+  const data = (await response.json()) as {
+    result: T
+    error: string
+    publicationRejected?: boolean
+  }
+  if (!response.ok)
+    throw new StudioClientError(
+      response.status,
+      data.error,
+      data.publicationRejected === true,
+    )
   return data.result
 }

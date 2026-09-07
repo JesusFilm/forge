@@ -1,0 +1,34 @@
+(node:1678959) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/web@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+> pnpm run generate:ui-locales && vitest run "src/lib/studio-playback.test.ts" "src/lib/media-image-url.test.ts" "src/lib/url.test.ts" "src/components/sections/VideoRecommendations.test.tsx" "src/components/search/VideoCard.test.tsx" "src/components/watch/__tests__/SeriesEpisodeCard.test.tsx"
+
+
+> @forge/web@0.0.1 generate:ui-locales /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+> node scripts/generate-ui-locales.mjs
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+
+ ✓ src/lib/studio-playback.test.ts (1 test) 7ms
+ ✓ src/lib/media-image-url.test.ts (12 tests) 6ms
+ ✓ src/lib/url.test.ts (9 tests) 8ms
+ ✓ src/components/sections/VideoRecommendations.test.tsx (6 tests) 109ms
+ ✓ src/components/watch/__tests__/SeriesEpisodeCard.test.tsx (30 tests) 164ms
+stderr | src/components/search/VideoCard.test.tsx
+Error: Not implemented: navigation (except hash changes)
+    at module.exports (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at navigateFetch (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+    at exports.navigate (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+    at Timeout._onTimeout (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:80:7)
+    at listOnTimeout (node:internal/timers:685:17)
+    at processTimers (node:internal/timers:618:7) undefined
+
+ ✓ src/components/search/VideoCard.test.tsx (50 tests) 181ms
+
+ Test Files  6 passed (6)
+      Tests  108 passed (108)
+   Start at  07:58:10
+   Duration  1.68s (transform 665ms, setup 672ms, collect 1.26s, tests 475ms, environment 1.50s, prepare 612ms)
+

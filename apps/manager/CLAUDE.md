@@ -568,3 +568,25 @@ used to attribute human commands. Production render execution remains feat-460.
 For Studio hosted instructions, OAuth MCP authority, or execution admission, read
 `docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
 root before changing those boundaries.
+
+## Contained Studio rendering (feat-460)
+
+`STUDIO_RENDER_SERVICE_URL` is the dedicated private execution-service origin
+(`*.railway.internal`; loopback for isolated local verification).
+`STUDIO_RENDER_PRIVATE_KEY` is the broker's Ed25519 admission key; only its
+public counterpart belongs in the execution container. The Manager startup
+reconciler runs only when both are configured. Browser commands enqueue/poll;
+the server owns the900-second cumulative render profile,920-second private
+request and1200-second durable lease. Preparation is bounded90seconds and
+retention60seconds. Mux readiness/publication is a distinct durable phase.
+Do not route this request through the public edge or put provider/DB/storage
+credentials in the executor. Changes to service settings require normal release
+approval; adding these code fields does not authorize deployment.
+
+`STUDIO_MUX_INGEST_ENABLED=true` enables the separate durable Mux processing
+reconciler; enabling it is an external spending/release step, never a local
+validation requirement. `STUDIO_ASSET_INGEST_ORIGIN` is the public HTTPS Admin
+origin for short-lived retained-byte read capabilities consumed by Mux. Signed
+Studio ingest never uses the legacy public playback helper. Consumed ambiguous
+creates remain unresolved and cannot automatically create another paid asset.
+The processing loop uses a bounded keyset cursor independently of long renders.

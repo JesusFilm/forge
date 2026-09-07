@@ -1,0 +1,54 @@
+(node:1648443) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/playback.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+ ❯ src/services/studio-authoring/playback.test.ts (8 tests | 3 failed) 55ms
+   ✓ rewrites all HLS resources without exposing tokens and revokes previously issued URLs 21ms
+   ✓ rejects cross-release resource binding and hostile redirects without leaking provider errors 3ms
+   ✓ rechecks publication after upstream fetch so a concurrent unpublish cannot deliver bytes 2ms
+   ✓ forwards valid single segment ranges, rejects malformed/multiple ranges, and serves HEAD without a body 9ms
+   ✓ revokes poster and storyboard image resources and exposes no public download route 2ms
+   × bounds hung initial work and restores all request slots without late exposure 8ms
+     → expected false to be true // Object.is equality
+   × bounds hung final work and restores all request slots without late exposure 8ms
+     → expected false to be true // Object.is equality
+   × bounds hung signing work and restores all request slots without late exposure 1ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/playback.test.ts > bounds hung initial work and restores all request slots without late exposure
+ FAIL  src/services/studio-authoring/playback.test.ts > bounds hung final work and restores all request slots without late exposure
+ FAIL  src/services/studio-authoring/playback.test.ts > bounds hung signing work and restores all request slots without late exposure
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/services/studio-authoring/playback.test.ts:104:55
+    102|   await vi.advanceTimersByTimeAsync(15001)
+    103|   const results=await Promise.all(requests.map(result=>Promise.race([r…
+    104|   expect(results.every(result=>result?.status===502)).toBe(true)
+       |                                                       ^
+    105|   recover=true
+    106|   expect((await gateway.serve("recovered","index.m3u8",request)).statu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 5 passed (8)
+   Start at  07:50:47
+   Duration  497ms (transform 70ms, setup 13ms, collect 104ms, tests 55ms, environment 0ms, prepare 83ms)
+
+/home/tataihono/.codex/worktrees/06c1/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/admin@0.0.1 test: `vitest run "src/services/studio-authoring/playback.test.ts"`
+Exit status 1

@@ -1,0 +1,29 @@
+(node:1884598) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/catalog-publication.db.test.ts" "-t" "reconciles Watch admission"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":3,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":3,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":37}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":3,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":3,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":4}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":3,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":3,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":4}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":2,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":2,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":5}
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (7 tests | 6 skipped) 459ms
+   ✓ canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery  451ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 6 skipped (7)
+   Start at  09:18:51
+   Duration  2.13s (transform 670ms, setup 16ms, collect 1.20s, tests 459ms, environment 0ms, prepare 97ms)
+

@@ -1,0 +1,38 @@
+(node:1947092) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/catalog-publication.db.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":5,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":4,"contentAudioLanguagePairs":5,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":83}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":5,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":4,"contentAudioLanguagePairs":5,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":7}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":5,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":4,"contentAudioLanguagePairs":5,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":15}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":4,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":4,"contentAudioLanguagePairs":4,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":4}
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (10 tests) 8696ms
+   ✓ canonical catalog publication transaction > bounds a blocked playback authorization query at PostgreSQL and recovers  1140ms
+   ✓ canonical catalog publication transaction > rejects readiness that expires while publication waits on current membership  2424ms
+   ✓ canonical catalog publication transaction > rolls scheduled consumption back when readiness expires during final receipt persistence  1414ms
+   ✓ canonical catalog publication transaction > resolves only the exact currently approved release and rejects revoked approval membership  342ms
+   ✓ canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery  632ms
+   ✓ canonical catalog publication transaction > consumes one durable Mux dispatch and reconciles an ambiguous response without another create  1044ms
+   ✓ canonical catalog publication transaction > publishes exact hidden content atomically, revokes it permanently, and returns the original receipt on retry  566ms
+   ✓ canonical catalog publication transaction > rejects delegated human publication and revoked approval membership without changing visibility  444ms
+   ✓ canonical catalog publication transaction > consumes a trusted schedule hook in the publication transaction and skips it for exact retries after unpublish  357ms
+   ✓ canonical catalog publication transaction > rolls schedule consumption back when publication readiness is stale  319ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  09:40:34
+   Duration  10.86s (transform 780ms, setup 30ms, collect 1.34s, tests 8.70s, environment 0ms, prepare 111ms)
+

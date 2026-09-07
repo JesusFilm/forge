@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { createRequire } from "node:module"
 // Pothos uses GraphQL CJS; use that same module instance for execution.
 const { graphql } = createRequire(import.meta.url)(
@@ -45,20 +46,21 @@ suite("Studio command seam against disposable Postgres", () => {
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (
-      parsed.hostname !== "127.0.0.1" ||
-      !(
-        parsed.pathname.startsWith("/forge_studio_454_test") ||
-        (parsed.port === "55458" &&
-          parsed.pathname === "/forge_studio_458_test") ||
-        (parsed.port === "55457" &&
-          parsed.pathname === "/forge_studio_457_test") ||
-        (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test") ||
-        (parsed.port === "55456" &&
-          parsed.pathname === "/forge_studio_456_test") ||
-        (parsed.port === "55455" &&
-          parsed.pathname === "/forge_studio_455_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (parsed.hostname !== "127.0.0.1" ||
+        !(
+          parsed.pathname.startsWith("/forge_studio_454_test") ||
+          (parsed.port === "55458" &&
+            parsed.pathname === "/forge_studio_458_test") ||
+          (parsed.port === "55457" &&
+            parsed.pathname === "/forge_studio_457_test") ||
+          (parsed.port === "55459" &&
+            parsed.pathname === "/forge_studio_459_test") ||
+          (parsed.port === "55456" &&
+            parsed.pathname === "/forge_studio_456_test") ||
+          (parsed.port === "55455" &&
+            parsed.pathname === "/forge_studio_455_test")
+        ))
     )
       throw new StudioTestHarnessError(
         "Only the dedicated loopback Studio test database is allowed",

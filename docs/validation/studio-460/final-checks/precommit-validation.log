@@ -1,0 +1,28 @@
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (b4729d87)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json — 352 files
+[STARTED] *.{ts,tsx} — 139 files
+[STARTED] * — 352 files
+[STARTED] eslint --max-warnings=0
+[STARTED] prettier --write --ignore-unknown
+[COMPLETED] prettier --write --ignore-unknown
+[COMPLETED] * — 352 files
+[FAILED] eslint --max-warnings=0 [FAILED]
+[FAILED] eslint --max-warnings=0 [FAILED]
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[SKIPPED] Skipped because of errors from tasks.
+[STARTED] Reverting to original state because of errors...
+[COMPLETED] Reverting to original state because of errors...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+
+✖ eslint --max-warnings=0:
+
+/home/tataihono/.codex/worktrees/06c1/forge/docs/validation/studio-460/watch-delivery/receiver-chain.test.ts
+  17:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 2 problems (2 errors, 0 warnings)
+

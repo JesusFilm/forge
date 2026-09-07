@@ -1,0 +1,347 @@
+{
+  "errors": [
+    "Cannot read properties of undefined (reading 'id')"
+  ],
+  "blockedHosts": [],
+  "steps": [
+    "Production Manager browser edit/save/enqueue, real signed worker dispatch, contained Chromium render and independent codec verification, canonical retained SUCCEEDED"
+  ],
+  "editorReadyMs": 1848.2021359999999,
+  "performance": {
+    "navigation": [
+      {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/f639d7c3-298f-41cb-8ced-f8d013bb634e",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 910.2999999821186,
+        "navigationId": 3922,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.7999999821186066,
+        "domainLookupStart": 0.7999999821186066,
+        "domainLookupEnd": 0.7999999821186066,
+        "connectStart": 0.7999999821186066,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.7999999821186066,
+        "requestStart": 29.900000005960464,
+        "responseStart": 564.2999999821186,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 564.2999999821186,
+        "responseEnd": 641.2999999821186,
+        "transferSize": 5654,
+        "encodedBodySize": 5354,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 692.4000000059605,
+        "domContentLoadedEventStart": 692.5,
+        "domContentLoadedEventEnd": 692.5999999940395,
+        "domComplete": 910.2999999821186,
+        "loadEventStart": 910.2999999821186,
+        "loadEventEnd": 910.2999999821186,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      }
+    ],
+    "resources": [
+      {
+        "name": "/_next/static/chunks/0dhhbuvur51v-.css",
+        "duration": 74.2000000178814,
+        "transferSize": 53019,
+        "encodedBodySize": 52719
+      },
+      {
+        "name": "/_next/static/chunks/124wj_sfq37ps.css",
+        "duration": 45.900000005960464,
+        "transferSize": 12686,
+        "encodedBodySize": 12386
+      },
+      {
+        "name": "/_next/static/chunks/0lvke~rgk0wjg.css",
+        "duration": 46.30000001192093,
+        "transferSize": 3247,
+        "encodedBodySize": 2947
+      },
+      {
+        "name": "/_next/static/chunks/03_b.fmhsfym1.js",
+        "duration": 77,
+        "transferSize": 9386,
+        "encodedBodySize": 9086
+      },
+      {
+        "name": "/_next/static/chunks/17rjbzjl~sg-w.js",
+        "duration": 91.19999998807907,
+        "transferSize": 9458,
+        "encodedBodySize": 9158
+      },
+      {
+        "name": "/_next/static/chunks/02kbh1yuwe5rg.js",
+        "duration": 111.69999998807907,
+        "transferSize": 39100,
+        "encodedBodySize": 38800
+      },
+      {
+        "name": "/_next/static/chunks/0zjjbsizuvpvi.js",
+        "duration": 182.69999998807907,
+        "transferSize": 71277,
+        "encodedBodySize": 70977
+      },
+      {
+        "name": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+        "duration": 147.40000000596046,
+        "transferSize": 4448,
+        "encodedBodySize": 4148
+      },
+      {
+        "name": "/_next/static/chunks/0yv0gttvno-ru.js",
+        "duration": 175.40000000596046,
+        "transferSize": 4345,
+        "encodedBodySize": 4045
+      },
+      {
+        "name": "/_next/static/chunks/0m.d73n129mb5.js",
+        "duration": 180.30000001192093,
+        "transferSize": 13172,
+        "encodedBodySize": 12872
+      },
+      {
+        "name": "/_next/static/chunks/00jntgjvwqi-r.js",
+        "duration": 180.5,
+        "transferSize": 8787,
+        "encodedBodySize": 8487
+      },
+      {
+        "name": "/_next/static/chunks/020e31uanesrk.js",
+        "duration": 177.7000000178814,
+        "transferSize": 12906,
+        "encodedBodySize": 12606
+      },
+      {
+        "name": "/_next/static/chunks/0um6n-8cge45w.js",
+        "duration": 189.30000001192093,
+        "transferSize": 6054,
+        "encodedBodySize": 5754
+      },
+      {
+        "name": "/_next/static/chunks/0p8f3y8x.ulp7.js",
+        "duration": 193.7999999821186,
+        "transferSize": 10758,
+        "encodedBodySize": 10458
+      },
+      {
+        "name": "/_next/static/chunks/04w5go15ym7l5.js",
+        "duration": 198.69999998807907,
+        "transferSize": 1223,
+        "encodedBodySize": 923
+      },
+      {
+        "name": "/_next/static/chunks/08graravsts3r.js",
+        "duration": 204.09999999403954,
+        "transferSize": 64291,
+        "encodedBodySize": 63991
+      },
+      {
+        "name": "/jesusfilm-sign.svg",
+        "duration": 38.69999998807907,
+        "transferSize": 701,
+        "encodedBodySize": 401
+      },
+      {
+        "name": "/favicon.svg",
+        "duration": 17.400000005960464,
+        "transferSize": 970,
+        "encodedBodySize": 670
+      },
+      {
+        "name": "/favicon.svg",
+        "duration": 18.80000001192093,
+        "transferSize": 970,
+        "encodedBodySize": 670
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 527.7999999821186,
+        "transferSize": 831,
+        "encodedBodySize": 531
+      },
+      {
+        "name": "/api/jobs",
+        "duration": 332.40000000596046,
+        "transferSize": 311,
+        "encodedBodySize": 11
+      },
+      {
+        "name": "/dashboard/agents",
+        "duration": 266.19999998807907,
+        "transferSize": 468,
+        "encodedBodySize": 168
+      },
+      {
+        "name": "/dashboard/seo",
+        "duration": 266.5,
+        "transferSize": 459,
+        "encodedBodySize": 159
+      },
+      {
+        "name": "/dashboard/shorts",
+        "duration": 266.30000001192093,
+        "transferSize": 461,
+        "encodedBodySize": 161
+      },
+      {
+        "name": "/dashboard/smart-crop",
+        "duration": 266.19999998807907,
+        "transferSize": 465,
+        "encodedBodySize": 165
+      },
+      {
+        "name": "/dashboard/jobs",
+        "duration": 49.10000002384186,
+        "transferSize": 466,
+        "encodedBodySize": 166
+      },
+      {
+        "name": "/dashboard/coverage",
+        "duration": 49.19999998807907,
+        "transferSize": 470,
+        "encodedBodySize": 170
+      },
+      {
+        "name": "/dashboard/agents",
+        "duration": 53.900000005960464,
+        "transferSize": 1691,
+        "encodedBodySize": 1391
+      },
+      {
+        "name": "/dashboard/seo",
+        "duration": 51.5,
+        "transferSize": 1030,
+        "encodedBodySize": 730
+      },
+      {
+        "name": "/dashboard/shorts",
+        "duration": 44.5,
+        "transferSize": 1024,
+        "encodedBodySize": 724
+      },
+      {
+        "name": "/dashboard/smart-crop",
+        "duration": 43.69999998807907,
+        "transferSize": 1027,
+        "encodedBodySize": 727
+      },
+      {
+        "name": "/dashboard/jobs",
+        "duration": 39,
+        "transferSize": 2542,
+        "encodedBodySize": 2242
+      },
+      {
+        "name": "/dashboard/coverage",
+        "duration": 35,
+        "transferSize": 1539,
+        "encodedBodySize": 1239
+      },
+      {
+        "name": "/_next/static/chunks/0pw50l50kke3l.js",
+        "duration": 24.799999982118607,
+        "transferSize": 2194,
+        "encodedBodySize": 1894
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 635.5999999940395,
+        "transferSize": 313,
+        "encodedBodySize": 13
+      },
+      {
+        "name": "/api/studio/preview",
+        "duration": 685.6000000238419,
+        "transferSize": 737,
+        "encodedBodySize": 437
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 786.1999999880791,
+        "transferSize": 397,
+        "encodedBodySize": 97
+      },
+      {
+        "name": "/s/e4ac27e0a38e2d6df259c1c404de4253787351ead28e7b70fb588cb0ddd4b0db/",
+        "duration": 506.09999999403954,
+        "transferSize": 0,
+        "encodedBodySize": 0
+      },
+      {
+        "name": "/_next/static/chunks/04jykyc_bf.-t.js",
+        "duration": 32.80000001192093,
+        "transferSize": 14339,
+        "encodedBodySize": 14039
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 670.7000000178814,
+        "transferSize": 891,
+        "encodedBodySize": 591
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 730.4000000059605,
+        "transferSize": 437,
+        "encodedBodySize": 137
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 763.4000000059605,
+        "transferSize": 1052,
+        "encodedBodySize": 752
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 82.7999999821186,
+        "transferSize": 1083,
+        "encodedBodySize": 783
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 350.59999999403954,
+        "transferSize": 1083,
+        "encodedBodySize": 783
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 693.5999999940395,
+        "transferSize": 1083,
+        "encodedBodySize": 783
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 58.30000001192093,
+        "transferSize": 1087,
+        "encodedBodySize": 787
+      }
+    ]
+  },
+  "failure": "Expected values to be strictly equal:\n\n1 !== 0\n",
+  "body": "Studio\nALPHA\nVideo editor\nStandalone projects\nReport\nJobs\n3\nSmart Crop\nVideo editor\nSEO\nAgents\nToggle sidebar\nStudio\nVideo editor\nProject\nStudio460 browser render\n320 × 180 · 30 fps\nAssistant\nGenerate scripts\nSpeech and production\nRender and publish\nHistory\nSaved · r2\nSave\nSource Library\nAdd text card\n\nNo matching footage with an exact dub and timed subtitle track.\n\nCanvas\nSelect & move\n0.00 / 1.00s\nProject\nTitle\nWidth\nHeight\nDuration (seconds)\n\nSelect a canvas element or timeline clip to inspect it.\n\nCards & elements\nTimeline\n0 items · 30 fps\nTrack\nZoom\nTracks\n0.0s\n0.1s\n0.2s\n0.3s\n0.5s\n0.6s\n0.7s\n0.8s\n0.9s\nClose\nRender and publish\n\nRender the saved revision, review its video, then approve publication to Watch.\n\nRender: SUCCEEDED. Video processing: Not started.\n\nRender saved revisionPublish to Watch"
+}

@@ -1,0 +1,26 @@
+(node:1868819) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/catalog-publication.db.test.ts" "-t" "reconciles Watch admission"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":1,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":1,"contentAudioLanguagePairs":1,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":50}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":1,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":1,"contentAudioLanguagePairs":1,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":6}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":0,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":0,"contentAudioLanguagePairs":0,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":5}
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (7 tests | 6 skipped) 720ms
+   ✓ canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery  709ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 6 skipped (7)
+   Start at  09:12:48
+   Duration  2.98s (transform 988ms, setup 29ms, collect 1.68s, tests 720ms, environment 0ms, prepare 141ms)
+

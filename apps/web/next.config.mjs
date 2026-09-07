@@ -1,3 +1,4 @@
+import { URL } from "node:url"
 import createNextIntlPlugin from "next-intl/plugin"
 import { fileURLToPath } from "node:url"
 import { WATCH_BASE_PATH } from "./watch-base-path.mjs"
@@ -117,6 +118,9 @@ export const nextConfig = {
     },
   },
   images: {
+    // The optimizer validates only the initial host. Redirects could otherwise
+    // copy revocable Studio bytes into its persistent public cache.
+    maximumRedirects: 0,
     // Next re-encodes on the way out and defaults to 75, which smears the
     // text in UI screenshots. Non-default qualities must be allowlisted
     // since Next 15.4 or the optimizer returns an error, not an image.

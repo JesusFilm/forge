@@ -1,0 +1,52 @@
+(node:2057532) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stderr | src/services/studio-authoring/render-jobs.db.test.ts
+[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys
+
+ ❯ src/services/studio-authoring/render-jobs.db.test.ts (9 tests | 1 failed | 8 skipped) 1260ms
+   ↓ durable render leases > atomically retains registered partial output for its exact lease before terminal recording
+   ↓ durable render leases > only one dispatcher owns an admitted render; expired leases are fenced on restart
+   ↓ durable render leases > retains a superseded execution without allowing its late callback to complete the winning lease
+   ↓ durable render leases > exhausted leases terminally fail the admitted attempt without inventing an execution result
+   × durable render leases > retains a finish that waits across lease expiry without admitting it 1247ms
+     → expected { admitted: true } to deeply equal { admitted: false }
+   ↓ durable render leases > claim rechecks terminal attempt after waiting on another connection's project lock
+   ↓ durable render leases > finish rechecks terminal attempt after waiting on another connection's project lock
+   ↓ durable render leases > restart discovers admission before enqueue and cancellation fences an active lease permanently
+   ↓ durable render leases > accepts only the dedicated server render capability and never dispatches review commands
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/render-jobs.db.test.ts > durable render leases > retains a finish that waits across lease expiry without admitting it
+AssertionError: expected { admitted: true } to deeply equal { admitted: false }
+
+- Expected
++ Received
+
+  {
+-   "admitted": false,
++   "admitted": true,
+  }
+
+ ❯ src/services/studio-authoring/render-jobs.db.test.ts:289:29
+    287|         await new Promise(done => setTimeout(done, Math.max(0, lease.e…
+    288|       })
+    289|       expect(await pending).toEqual({ admitted: false })
+       |                             ^
+    290|       expect((await jobs.read(worker, attemptId)).executions).toHaveLe…
+    291|       expect((await jobs.read(worker, attemptId)).state).toBe("RUNNING…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+   Start at  10:29:51
+   Duration  3.49s (transform 986ms, setup 21ms, collect 1.65s, tests 1.26s, environment 0ms, prepare 179ms)
+
+undefined
+/home/tataihono/.codex/worktrees/06c1/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/render-jobs.db.test.ts -t waits across lease expiry

@@ -40,3 +40,34 @@ export const studioPublicationFailureSchema = z.enum([
 export type StudioPublicationFailure = z.infer<
   typeof studioPublicationFailureSchema
 >
+
+/** Exact immutable human-approved content. Provider readiness is deliberately
+ * absent: it is resolved afresh by trusted server code for this same release. */
+export const studioApprovedReleaseSchema = studioPublishSchema
+  .pick({
+    projectId: true,
+    expectedRevision: true,
+    approvalId: true,
+    renderAttemptId: true,
+    releaseId: true,
+  })
+  .strict()
+export type StudioApprovedRelease = z.infer<typeof studioApprovedReleaseSchema>
+export const studioScheduledPublicationPreparationSchema = studioPublishSchema
+  .omit({ readinessId: true })
+  .extend({ schedule: studioSchedulePublicationBindingSchema })
+  .strict()
+export type StudioScheduledPublicationPreparation = z.infer<
+  typeof studioScheduledPublicationPreparationSchema
+>
+export const studioPublicationCandidateSchema = studioApprovedReleaseSchema
+  .extend({
+    readiness: z
+      .object({
+        state: z.enum(["missing", "expired", "ready"]),
+        id: studioIdSchema.nullable(),
+        expiresAt: z.iso.datetime().nullable(),
+      })
+      .strict(),
+  })
+  .strict()

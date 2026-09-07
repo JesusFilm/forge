@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { createRequire } from "node:module"
 const { graphql } = createRequire(import.meta.url)(
   "graphql",
@@ -23,12 +24,13 @@ suite("generated catalog schema and service", () => {
   beforeAll(() => {
     const p = new URL(url!)
     if (
-      p.hostname !== "127.0.0.1" ||
-      !(
-        (p.port === "55459" && p.pathname === "/forge_studio_459_test") ||
-        (p.port === "55458" && p.pathname === "/forge_studio_458_test") ||
-        (p.port === "55457" && p.pathname === "/forge_studio_457_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (p.hostname !== "127.0.0.1" ||
+        !(
+          (p.port === "55459" && p.pathname === "/forge_studio_459_test") ||
+          (p.port === "55458" && p.pathname === "/forge_studio_458_test") ||
+          (p.port === "55457" && p.pathname === "/forge_studio_457_test")
+        ))
     )
       throw new CatalogHarnessError("Only isolated feat-459 database allowed")
     db = new PrismaClient({ datasources: { db: { url } } })

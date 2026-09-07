@@ -3,7 +3,7 @@ id: "feat-460"
 title: "Studio render and immutable Watch publication"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-07"
 duration: 5
 depends_on:
@@ -57,3 +57,17 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Real worker container render -> verified storage -> Mux readiness -> Forge -> Watch smoke with matching source metadata and audio/subtitles.
 - Race edit versus publish; duplicate callbacks/retries; restart recovery; cross-route immutable edits and unpublish public access checks.
 - Watch production build, visual playback smoke and page-load performance measurements.
+
+## Implementation checkpoint (2026-09-08)
+
+Local implementation, independent fixed-base review and validation are documented
+in `docs/validation/studio-460/HANDOFF.md`. Migrations0083–0087, final same-release
+scheduled adapter and canonical manual publication are owned here; calendar owns
+0088 onward. Follow-up reviews resolved the lease lock-wait expiry and actual
+search-projection discoverability findings. Existing Watch/preview behavior and
+loading have matched local evidence.
+
+Status remains in progress: exact OCI-image/deployed containment and real Mux
+acceptance require separately authorized external steps. The local rootless image
+builder's missing privileged UID/GID mapping helpers do not waive runtime proof.
+No provider, infrastructure or production operation is authorized by this entry.

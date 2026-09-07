@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import type { Route } from "next"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import Link from "next/link"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getSceneRecommendations, getVideoBySlug } from "@/lib/recommendations"

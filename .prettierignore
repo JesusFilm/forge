@@ -59,3 +59,8 @@ docs/validation/studio-458/model-comparison-1/**/*.mjs
 docs/validation/studio-458/model-comparison-1/evaluation.md
 docs/validation/studio-458/model-comparison-1/content-overlap-findings.md
 docs/validation/studio-458/model-comparison-1/live/editorial-blinded/evaluation.md
+
+# Exact Studio render proof harnesses and captured measurements; Markdown remains checked.
+docs/validation/studio-460/**/*.json
+docs/validation/studio-460/**/*.mjs
+docs/validation/studio-460/**/*.cjs

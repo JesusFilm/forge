@@ -1,0 +1,10 @@
+73a51a094a95fc7f7ef97e1728c7369c1cae2217bdcbd348e48df9075655fa86  docs/validation/studio-460/scheduled-adapter/README.md
+6783f1983f8dad2af0127d4460dd3ad9c4ab6d341295cfc16d7e8bf404e67117  docs/validation/studio-460/scheduled-adapter/admin-types-resolver.log
+5d2b424c87bf68c19ad771cf67a5875b4a066de002cdf7c6b26abfe151756b19  docs/validation/studio-460/scheduled-adapter/catalog-publication-resolver-full.log
+e83008e9af3da10231b269b80007accd54310df89182d242b4e3ff9f4b16da58  docs/validation/studio-460/scheduled-adapter/manager-types-resolver.log
+b868acda22e55ce7e6cc5ecaa8ce427fdd3952c391e6c40f8d19e63c4800ea36  docs/validation/studio-460/scheduled-adapter/readiness-final-receipt.log
+42a45bb1d2a01479fbcaf0292cd565dcebd07e5e0e9b910e043b3ab0ef6fa6de  docs/validation/studio-460/scheduled-adapter/readiness-wait-green.log
+ebf534ac7cb8ea1333830c4e37f1df7630faecd605e2e5de7a995fd2caaa49a0  docs/validation/studio-460/scheduled-adapter/readiness-wait-red.log
+eca76c77cac903d7a3dd4f0d9cbd55152f0a6fb8cfa6ead65095a55c4f477adb  docs/validation/studio-460/scheduled-adapter/scheduled-native-publish.log
+d7563bb827a938f87513792ff88eafa18f991245037e3d3af5c1794cf63336c7  docs/validation/studio-460/scheduled-adapter/scheduled-native-retry.log
+5a75a996c6564ccb2482cbecd93bc6a5a478e8890df80891d092efedeba990f6  docs/validation/studio-460/scheduled-adapter/scheduled-native.ts

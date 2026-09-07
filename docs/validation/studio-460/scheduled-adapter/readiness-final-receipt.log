@@ -1,0 +1,17 @@
+(node:1938931) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/catalog-publication.db.test.ts" "-t" "final receipt persistence"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (10 tests | 9 skipped) 1784ms
+   ✓ canonical catalog publication transaction > rolls scheduled consumption back when readiness expires during final receipt persistence  1773ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 9 skipped (10)
+   Start at  09:38:12
+   Duration  4.24s (transform 1.13s, setup 20ms, collect 1.82s, tests 1.78s, environment 0ms, prepare 176ms)
+

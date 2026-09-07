@@ -1,0 +1,17 @@
+{"version":"baseline","url":"http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713","body":"Studio\nALPHA\nVideo editor\nStandalone projects\nReport\nJobs\n3\nSmart Crop\nVideo editor\nSEO\nAgents\nToggle sidebar\nStudio\nVideo editor\nProject\nProject unavailable\n\nSame-origin interactive request required\n\nBack to projects","errors":[]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: 'Save', exact: true }) to be visible[22m
+
+    at /home/tataihono/.cache/forge-studio-460-runtime/performance-manager.mjs:15:57 {
+  log: [
+    "  - waiting for getByRole('button', { name: 'Save', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.20.0

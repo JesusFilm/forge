@@ -1,0 +1,52 @@
+(node:1906744) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/revalidate-webhook.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stderr | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > does not acknowledge a legacy 200 for strict Studio delivery
+{"event":"web_revalidate.failed","model":"video","slug":null,"locale":null,"languageSlug":null,"durationMs":0,"reason":"remote_non_2xx","detail":"Receiver did not attest complete invalidation"}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > accepts an explicit complete receiver receipt with edge skipped
+{"event":"web_revalidate.sent","model":"video","slug":null,"locale":null,"languageSlug":null,"durationMs":0,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > accepts an explicit complete receiver receipt with edge purged
+{"event":"web_revalidate.sent","model":"video","slug":null,"locale":null,"languageSlug":null,"durationMs":0,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > accepts an explicit complete receiver receipt with edge not-applicable
+{"event":"web_revalidate.sent","model":"watch-route-manifest","slug":null,"locale":null,"languageSlug":null,"durationMs":1,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > POSTs the correct shape with bearer header on the happy path
+{"event":"web_revalidate.sent","model":"experience","slug":"jesus","locale":"en","languageSlug":null,"durationMs":0,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > forwards null slug/locale as undefined in the entry payload
+{"event":"web_revalidate.sent","model":"watch-route-manifest","slug":null,"locale":null,"languageSlug":null,"durationMs":1,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > additively forwards an exact video language slug
+{"event":"web_revalidate.sent","model":"video","slug":"jesus","locale":"en","languageSlug":"english","durationMs":0,"httpStatus":200}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > skips silently when WEB_REVALIDATE_URL is unset
+{"event":"web_revalidate.skipped","model":"experience","slug":"jesus","locale":"en","languageSlug":null,"durationMs":0,"reason":"config_missing"}
+
+stdout | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > skips silently when WEB_REVALIDATE_TOKEN is unset
+{"event":"web_revalidate.skipped","model":"experience","slug":"jesus","locale":"en","languageSlug":null,"durationMs":0,"reason":"config_missing"}
+
+stderr | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > swallows a downstream 5xx and reports remote_non_2xx — never throws
+{"event":"web_revalidate.failed","model":"experience","slug":"jesus","locale":"en","languageSlug":null,"durationMs":1,"reason":"remote_non_2xx","detail":"web returned 502: upstream burning"}
+
+stderr | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > swallows a network error and reports network — never throws
+{"event":"web_revalidate.failed","model":"experience","slug":"jesus","locale":"en","languageSlug":null,"durationMs":0,"reason":"network","detail":"fetch failed"}
+
+stderr | src/services/revalidate-webhook.test.ts > emitRevalidateWebhook > swallows an AbortSignal timeout and reports network — never throws
+{"event":"web_revalidate.failed","model":"video","slug":"jesus","locale":"en","languageSlug":null,"durationMs":1,"reason":"network","detail":"The operation was aborted due to timeout"}
+
+ ✓ src/services/revalidate-webhook.test.ts (12 tests) 20ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  09:26:12
+   Duration  506ms (transform 76ms, setup 17ms, collect 63ms, tests 20ms, environment 0ms, prepare 90ms)
+

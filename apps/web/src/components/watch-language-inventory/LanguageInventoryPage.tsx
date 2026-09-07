@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react"
 import type { Route } from "next"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import {

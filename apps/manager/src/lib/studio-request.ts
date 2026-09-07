@@ -16,16 +16,26 @@ export async function authenticateStudioRequest(request: Request) {
 
 export class StudioRequestTooLarge extends Error {}
 /** Cap bytes while streaming, including requests without Content-Length. */
-export async function readStudioBody(request: Request, limit: number) {
+export async function readStudioBody(
+  request: Request,
+  limit: number,
+  signal: AbortSignal = request.signal,
+) {
   if (Number(request.headers.get("content-length")) > limit)
     throw new StudioRequestTooLarge()
+  signal.throwIfAborted()
   const reader = request.body?.getReader()
   if (!reader) return new Uint8Array()
   const chunks: Uint8Array[] = []
   let size = 0
+  let abort: () => void = () => {}
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(signal.reason)
+    signal.addEventListener("abort", abort, { once: true })
+  })
   try {
     while (true) {
-      const { done, value } = await reader.read()
+      const { done, value } = await Promise.race([reader.read(), interrupted])
       if (done) break
       size += value.length
       if (size > limit) throw new StudioRequestTooLarge()
@@ -33,9 +43,10 @@ export async function readStudioBody(request: Request, limit: number) {
     }
     return new Uint8Array(Buffer.concat(chunks))
   } catch (error) {
-    await reader.cancel().catch(() => {})
+    void reader.cancel().catch(() => {})
     throw error
   } finally {
+    signal.removeEventListener("abort", abort)
     reader.releaseLock()
   }
 }

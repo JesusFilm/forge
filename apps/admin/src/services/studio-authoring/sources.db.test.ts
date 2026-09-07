@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { createServer, type Server } from "node:http"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
@@ -44,19 +45,20 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
   beforeAll(async () => {
     const parsed = new URL(url!)
     if (
-      parsed.hostname !== "127.0.0.1" ||
-      !(
-        (parsed.port === "55455" &&
-          parsed.pathname === "/forge_studio_455_test") ||
-        (parsed.port === "55458" &&
-          parsed.pathname === "/forge_studio_458_test") ||
-        (parsed.port === "55457" &&
-          parsed.pathname === "/forge_studio_457_test") ||
-        (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test") ||
-        (parsed.port === "55456" &&
-          parsed.pathname === "/forge_studio_456_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (parsed.hostname !== "127.0.0.1" ||
+        !(
+          (parsed.port === "55455" &&
+            parsed.pathname === "/forge_studio_455_test") ||
+          (parsed.port === "55458" &&
+            parsed.pathname === "/forge_studio_458_test") ||
+          (parsed.port === "55457" &&
+            parsed.pathname === "/forge_studio_457_test") ||
+          (parsed.port === "55459" &&
+            parsed.pathname === "/forge_studio_459_test") ||
+          (parsed.port === "55456" &&
+            parsed.pathname === "/forge_studio_456_test")
+        ))
     )
       throw new SourceHarnessError(
         "Only isolated Studio test databases allowed",

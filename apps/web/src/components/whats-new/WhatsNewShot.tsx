@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 
 /**
  * How close a card gets before its clip is fetched, and how much of it has

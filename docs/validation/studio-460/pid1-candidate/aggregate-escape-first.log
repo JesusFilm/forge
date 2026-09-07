@@ -1,0 +1,3 @@
+/tmp/forge-studio-460-prep/aggregate-escape.py:8: DeprecationWarning: This process (pid=1983646) is multi-threaded, use of fork() may lead to deadlocks in the child.
+  r,w=os.pipe();pid=os.fork()
+{"children": 102, "errno": 11, "limit": [128, 128]}

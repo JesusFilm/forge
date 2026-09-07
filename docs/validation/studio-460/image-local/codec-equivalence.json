@@ -1,0 +1,16 @@
+[
+  {
+    "archive": "/tmp/forge-studio-460-runtime/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz",
+    "binaries": {
+      "ffprobe": "c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c",
+      "ffmpeg": "bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6"
+    }
+  },
+  {
+    "archive": "/tmp/forge-studio-460-prep/image/ffmpeg-immutable.tar.xz",
+    "binaries": {
+      "ffmpeg": "bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6",
+      "ffprobe": "c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c"
+    }
+  }
+]

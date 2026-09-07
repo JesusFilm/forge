@@ -1,3 +1,7 @@
+import {
+  executeStudioRender,
+  studioRenderRpcSchema,
+} from "@/services/studio-authoring/render-rpc"
 import { StudioGenerationService } from "@/services/studio-authoring/generation"
 import {
   executeStudioProduction,
@@ -50,7 +54,9 @@ export async function POST(request: Request) {
             { id: null, role: "MANAGER_BACKEND" },
             finish.data.input,
           )
-    } else if (studioProductionRpcSchema.safeParse(raw).success)
+    } else if (studioRenderRpcSchema.safeParse(raw).success)
+      result = await executeStudioRender(prisma, caller, raw)
+    else if (studioProductionRpcSchema.safeParse(raw).success)
       result = await executeStudioProduction(prisma, caller, raw)
     else result = await executeStudioDelegated(prisma, caller, raw)
     return Response.json(
@@ -62,11 +68,12 @@ export async function POST(request: Request) {
       error instanceof StudioCommandError && error.code === "CONFLICT"
     return Response.json(
       {
-        error: conflict
-          ? "CONFLICT"
-          : error instanceof StudioBoundaryError
-            ? error.message
-            : "Studio command rejected",
+        error:
+          error instanceof StudioCommandError
+            ? error.code
+            : error instanceof StudioBoundaryError
+              ? error.message
+              : "Studio command rejected",
       },
       {
         status: conflict

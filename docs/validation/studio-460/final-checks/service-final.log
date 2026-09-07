@@ -1,0 +1,11 @@
+✔ signed one-use admission runs a real child and rejects altered bytes/replay (295.694479ms)
+✔ staging, render and verification share one native monotonic job deadline (421.711599ms)
+✔ stalled response reader cannot retain the execution slot past the total deadline (1403.904866ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2541.653648

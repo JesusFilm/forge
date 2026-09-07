@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import {
   Check,
   ChevronDown,

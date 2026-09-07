@@ -1,3 +1,4 @@
+import { studioPlaybackUrl } from "./playback-config"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import {
@@ -222,8 +223,23 @@ export class StudioCatalogService {
             aiGenerated: true,
             published: false,
             downloadable: false,
+            hls: studioPlaybackUrl(id, "index.m3u8"),
           },
         })
+        const poster = studioPlaybackUrl(id, "poster.webp")
+        if (poster)
+          await tx.videoImage.create({
+            data: {
+              source: "MANAGER",
+              videoId: video.id,
+              url: poster,
+              thumbnail: poster,
+              videoStill: poster,
+              width: document.width,
+              height: document.height,
+              kind: "poster",
+            },
+          })
         const generation = {
           renderAttemptId: attempt.id,
           inputHash: attempt.inputHash,

@@ -280,6 +280,9 @@ export const env = createEnv({
       .enum(["local", "preview", "production"])
       .default("local"),
     STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: z.string().url().optional(),
+    STUDIO_MUX_SIGNING_KEY: z.string().optional(),
+    STUDIO_MUX_PRIVATE_KEY: z.string().optional(),
 
     // Unit 2 — Prisma / Postgres
     //
@@ -736,6 +739,9 @@ export const env = createEnv({
   runtimeEnv: {
     STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
     STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: process.env.STUDIO_PUBLIC_PLAYBACK_ORIGIN,
+    STUDIO_MUX_SIGNING_KEY: process.env.STUDIO_MUX_SIGNING_KEY,
+    STUDIO_MUX_PRIVATE_KEY: process.env.STUDIO_MUX_PRIVATE_KEY,
 
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,

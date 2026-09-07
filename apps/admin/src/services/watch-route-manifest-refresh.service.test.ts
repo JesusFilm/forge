@@ -57,7 +57,10 @@ describe("watch route manifest refresh", () => {
       .mockResolvedValue({ status: "sent", httpStatus: 200 })
 
     const outcome = await refreshWatchRouteManifest({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       reason: "experience.publish",
       emitWebhook,
     })
@@ -87,7 +90,10 @@ describe("watch route manifest refresh", () => {
     generateMock.mockRejectedValueOnce(new Error("db unavailable"))
 
     const outcome = await refreshWatchRouteManifest({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       reason: "experience.update",
       emitWebhook: vi.fn(),
     })
@@ -151,7 +157,10 @@ describe("watch route manifest refresh", () => {
   it("skips Core sync refresh when no route-relevant phases ran", async () => {
     const emitWebhook = vi.fn()
     const outcome = await refreshWatchRouteManifestAfterCoreSync({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       phases: [{ phase: "keywords" }],
       emitWebhook,
     })
@@ -169,7 +178,10 @@ describe("watch route manifest refresh", () => {
       .mockResolvedValue({ status: "sent", httpStatus: 200 })
 
     const outcome = await refreshWatchRouteManifestAfterCoreSync({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       phases: [{ phase: "video-images", created: 1, updated: 0 }],
       emitWebhook,
     })
@@ -199,7 +211,10 @@ describe("watch route manifest refresh", () => {
     expect(shouldInvalidateWatchRenderDataAfterCoreSync(phases)).toBe(true)
 
     const outcome = await refreshWatchRouteManifestAfterCoreSync({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       phases,
       emitWebhook,
     })
@@ -221,7 +236,10 @@ describe("watch route manifest refresh", () => {
     const emitWebhook = vi.fn()
 
     const outcome = await refreshWatchRouteManifestAfterCoreSync({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       phases: [
         { phase: "video-images", created: 0, updated: 0, softDeleted: 0 },
       ],
@@ -247,7 +265,10 @@ describe("watch route manifest refresh", () => {
       .mockResolvedValue({ status: "sent", httpStatus: 200 })
 
     const outcome = await refreshWatchRouteManifestAfterCoreSync({
-      prisma: {} as never,
+      prisma: {
+        $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+          work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+      } as never,
       phases: [{ phase: "video-dubs", updated: 1 }],
       emitWebhook,
     })
@@ -276,7 +297,10 @@ describe("watch route manifest refresh", () => {
 
     try {
       const outcome = await refreshWatchRouteManifestAfterCoreSync({
-        prisma: {} as never,
+        prisma: {
+          $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+            work({ $executeRaw: vi.fn(), $queryRaw: vi.fn() }),
+        } as never,
         phases: [{ phase: "video-images", updated: 1 }],
         emitWebhook,
       })

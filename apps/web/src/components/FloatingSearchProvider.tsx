@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import dynamic from "next/dynamic"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"

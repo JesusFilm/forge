@@ -61,6 +61,7 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
       name: { en: "English" },
     },
     muxVideo: { playbackId: "mux-playback-1" },
+    videoEdition: null,
     ...overrides,
   }
 }
@@ -70,7 +71,7 @@ function makeChild(overrides: Record<string, unknown> = {}) {
     documentId: "child-1",
     coreId: "child-core-1",
     slug: "episode-one",
-    label: "EPISODE",
+    label: "EPISODE" as const,
     durationSeconds: 87,
     primaryLanguage: {
       coreId: "529",
@@ -103,7 +104,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     documentId: "video-1",
     coreId: "1_jf-0-0",
     slug: "jesus",
-    label: "FEATURE_FILM",
+    label: "FEATURE_FILM" as const,
     durationSeconds: 123,
     primaryLanguage: {
       coreId: "529",

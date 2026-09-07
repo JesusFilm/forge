@@ -47,7 +47,7 @@ export type StudioPublicationVerifier = (
     publishedAt: Date
     restrictions: string[]
   },
-) => Promise<void>
+) => Promise<void | (() => void)>
 
 export async function publishStudioProject(
   db: PrismaClient,
@@ -131,7 +131,7 @@ export async function publishStudioProject(
         await scheduled.consume(tx, scheduled.input, publishedAt)
         assertDeliveryWindow(new Date())
       }
-      await verify(tx, {
+      const assertVerifiedCurrent = await verify(tx, {
         projectId: project.id,
         revision: project.currentRevision,
         document,
@@ -160,6 +160,7 @@ export async function publishStudioProject(
       // Last server decision after all callback and persistence waits. Commit
       // itself is outside this callback; this is not a commit-instant guarantee.
       assertDeliveryWindow(new Date())
+      if (assertVerifiedCurrent) assertVerifiedCurrent()
       return result
     } catch (error) {
       if (error instanceof StudioCommandError)

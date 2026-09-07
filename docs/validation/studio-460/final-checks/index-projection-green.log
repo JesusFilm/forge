@@ -1,0 +1,29 @@
+(node:2066020) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":11,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":10,"contentAudioLanguagePairs":11,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":41}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":11,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":10,"contentAudioLanguagePairs":11,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":6}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":11,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":10,"contentAudioLanguagePairs":11,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":6}
+
+stdout | src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+{"event":"watch_route_manifest.generated","contentSlugs":10,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":10,"contentAudioLanguagePairs":10,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":6}
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (10 tests) 6693ms
+   ✓ canonical catalog publication transaction > bounds a blocked playback authorization query at PostgreSQL and recovers  1143ms
+   ✓ canonical catalog publication transaction > rejects readiness that expires while publication waits on current membership  2395ms
+   ✓ canonical catalog publication transaction > rolls scheduled consumption back when readiness expires during final receipt persistence  1372ms
+   ✓ canonical catalog publication transaction > consumes one durable Mux dispatch and reconciles an ambiguous response without another create  544ms
+   ✓ canonical catalog publication transaction > publishes exact hidden content atomically, revokes it permanently, and returns the original receipt on retry  390ms
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  10:32:20
+   Duration  8.17s (transform 627ms, setup 14ms, collect 1.08s, tests 6.69s, environment 0ms, prepare 84ms)
+

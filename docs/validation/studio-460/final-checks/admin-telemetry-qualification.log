@@ -1,0 +1,21 @@
+(node:2126265) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[redis] event=redis.error message=Task test guard denies non-owned endpoint service=forge-admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[ratelimit] event=rate_limit.redis_unavailable keyPrefix=sign-in/email error=redis_not_ready_end
+
+[workflow-startup] transient startup failure; retrying attempt 2/12 error=sorry, too many clients already
+ ✓ src/config/env.test.ts (64 tests) 63ms
+ ✓ src/instrumentation.test.ts (11 tests) 284ms
+ ✓ src/auth/rate-limit.test.ts (8 tests) 315ms
+
+ Test Files  3 passed (3)
+      Tests  83 passed (83)
+   Start at  10:48:46
+   Duration  827ms (transform 427ms, setup 45ms, collect 503ms, tests 662ms, environment 1ms, prepare 309ms)
+

@@ -1,0 +1,30 @@
+health {
+  instanceId: 'b9743713-e902-458f-a000-0ee8428b354f',
+  budget: {
+    memoryBytes: 2147483648,
+    swapBytes: 0,
+    tasks: 128,
+    cpuQuota: 200000,
+    cpuPeriod: 100000
+  },
+  busy: false,
+  healthy: true,
+  profileId: 'studio-render-1/900s-2cpu-2g-128p-96child-128m'
+}
+{"elapsedMs":3427.680523,"bytes":47471,"verification":{"version":1,"verifierVersion":"studio-codec-1/ffmpeg-n9.0.1-27-g9b0578816c-20260907","outputDigest":"6c00d095dbd13fd714d0baeab5dd8243b525830c087af402954851fe92fe46d9","video":{"codec":"h264","width":320,"height":180,"fps":30,"frames":30,"durationMs":1000},"audio":{"codec":"aac","sampleRate":48000,"channels":2,"durationMs":1045.333},"decoded":true}}
+metrics {
+  'memory.peak': '249122816\n',
+  'memory.events': 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n',
+  'pids.peak': '112\n',
+  'cpu.stat': 'usage_usec 3747362\n' +
+    'user_usec 2561537\n' +
+    'system_usec 1185824\n' +
+    'nice_usec 0\n' +
+    'core_sched.force_idle_usec 0\n' +
+    'nr_periods 37\n' +
+    'nr_throttled 1\n' +
+    'throttled_usec 137\n' +
+    'nr_bursts 0\n' +
+    'burst_usec 0\n'
+}
+clean PID1 retirement { code: 0, signal: null }

@@ -1,0 +1,7211 @@
+{
+  "base": "4109b02c",
+  "results": [
+    {
+      "hostBefore": {
+        "loadAverage": [
+          7.28,
+          7.58,
+          6.99
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571578920,
+          "total": 1756354000
+        },
+        "freeMemory": 24893886464
+      },
+      "hostAfter": {
+        "loadAverage": [
+          7.28,
+          7.58,
+          6.99
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571586360,
+          "total": 1756371440
+        },
+        "freeMemory": 24602460160
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220777.357038
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 24
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 16
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.121795
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.016225
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.033432
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.162438
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000648
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.506559
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.172021
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.322172
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.52
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10250792
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13684736
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220776.057588
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220775.327654
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220775.159974
+          }
+        ]
+      },
+      "round": 0,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 1185.318079,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 243.30000001192093,
+        "navigationId": 7998,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.800000011920929,
+        "domainLookupStart": 0.800000011920929,
+        "domainLookupEnd": 0.800000011920929,
+        "connectStart": 0.800000011920929,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.800000011920929,
+        "requestStart": 9.5,
+        "responseStart": 26.19999998807907,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 26.19999998807907,
+        "responseEnd": 29.900000005960464,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 167.59999999403954,
+        "domContentLoadedEventStart": 167.59999999403954,
+        "domContentLoadedEventEnd": 167.69999998807907,
+        "domComplete": 243.30000001192093,
+        "loadEventStart": 243.30000001192093,
+        "loadEventEnd": 243.30000001192093,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 196,
+          "duration": 0,
+          "navigationId": 7998,
+          "paintTime": 159.80000001192093,
+          "presentationTime": 196
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 196,
+          "duration": 0,
+          "navigationId": 7998,
+          "paintTime": 159.80000001192093,
+          "presentationTime": 196
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 179.69999998807907,
+          "duration": 52
+        },
+        {
+          "start": 288.30000001192093,
+          "duration": 54
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 27.299999982118607
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 24.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 28.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 33.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 44.5
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 59.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 70.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 55.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 56
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 60.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 68.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 69.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 73.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 81.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 77.69999998807907
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 17.099999994039536
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 16.30000001192093
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 15.299999982118607
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 439.09999999403954
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 23.19999998807907
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 36.400000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 36.5
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 37
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 37
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 36.900000005960464
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 37.5
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1692,
+          "encoded": 1392,
+          "duration": 36.69999998807907
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1031,
+          "encoded": 731,
+          "duration": 35
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1025,
+          "encoded": 725,
+          "duration": 32.70000001788139
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1027,
+          "encoded": 727,
+          "duration": 32.20000001788139
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2544,
+          "encoded": 2244,
+          "duration": 32.099999994039536
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1539,
+          "encoded": 1239,
+          "duration": 27.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 38.20000001788139
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 74
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 87.7000000178814
+        },
+        {
+          "path": "/s/bb4ec41638b06fd85a2bc1510eb2761a9717af1f97d9425543023772f2e69304/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 97.09999999403954
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 33.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 44.5
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 59.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 70.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 55.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 56
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 60.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 68.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 69.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 73.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 81.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 77.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 38.20000001788139
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          7.28,
+          7.58,
+          6.99
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571586760,
+          "total": 1756372620
+        },
+        "freeMemory": 24676638720
+      },
+      "hostAfter": {
+        "loadAverage": [
+          7.28,
+          7.58,
+          6.99
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571592650,
+          "total": 1756384960
+        },
+        "freeMemory": 24375955456
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220779.07819
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 21
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 18
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.091675
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.019639
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.032349
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.141354
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000755
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.439874
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.154102
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.327894
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.53
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10258160
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13684736
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220778.026467
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220777.688566
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220777.51707
+          }
+        ]
+      },
+      "round": 0,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 549.2622909999995,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 246.2000000178814,
+        "navigationId": 3583,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.5,
+        "domainLookupStart": 0.5,
+        "domainLookupEnd": 0.5,
+        "connectStart": 0.5,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.5,
+        "requestStart": 9.599999994039536,
+        "responseStart": 35.400000005960464,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 35.400000005960464,
+        "responseEnd": 41.70000001788139,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 171.2000000178814,
+        "domContentLoadedEventStart": 171.40000000596046,
+        "domContentLoadedEventEnd": 171.59999999403954,
+        "domComplete": 246.2000000178814,
+        "loadEventStart": 246.2000000178814,
+        "loadEventEnd": 246.2000000178814,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "high"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 204,
+          "duration": 0,
+          "navigationId": 3583,
+          "paintTime": 169.30000001192093,
+          "presentationTime": 204
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 204,
+          "duration": 0,
+          "navigationId": 3583,
+          "paintTime": 169.30000001192093,
+          "presentationTime": 204
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 183.2000000178814,
+          "duration": 51
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 24.299999982118607
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 18.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 15.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 40.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 42.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 50.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 68.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 66.5
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 69.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 71.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 72.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 71.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 78.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 79.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 91.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 77.5
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 24
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 7.5999999940395355
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 6.199999988079071
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 77.7000000178814
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 15.599999994039536
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 33.5
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 33.89999997615814
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 33.900000005960464
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 34.19999998807907
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 32.599999994039536
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 31.900000005960464
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1693,
+          "encoded": 1393,
+          "duration": 33.400000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 31.099999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1025,
+          "encoded": 725,
+          "duration": 32.5
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1029,
+          "encoded": 729,
+          "duration": 32.400000005960464
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2545,
+          "encoded": 2245,
+          "duration": 33.69999998807907
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1540,
+          "encoded": 1240,
+          "duration": 31.200000017881393
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 20.30000001192093
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 51.69999998807907
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 55.5
+        },
+        {
+          "path": "/s/d4a974880464d55851a7808201f0aec339aaa1fb5959a6fd76152b8b7fc0a38b/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 338.40000000596046
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 40.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 42.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 50.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 68.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 66.5
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 69.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 71.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 72.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 71.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 78.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 79.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 91.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 77.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 20.30000001192093
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          7.28,
+          7.58,
+          6.99
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571592920,
+          "total": 1756386190
+        },
+        "freeMemory": 24474841088
+      },
+      "hostAfter": {
+        "loadAverage": [
+          7.1,
+          7.54,
+          6.98
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571595870,
+          "total": 1756398520
+        },
+        "freeMemory": 24343846912
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220780.795952
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 20
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.082824
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.013737
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.041024
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.167122
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000969
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.473261
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.167585
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.334427
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.53
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10227092
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13160448
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220779.784593
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220779.394427
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220779.242421
+          }
+        ]
+      },
+      "round": 1,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 535.9803569999995,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 221.2999999821186,
+        "navigationId": 4510,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.699999988079071,
+        "domainLookupStart": 0.699999988079071,
+        "domainLookupEnd": 0.699999988079071,
+        "connectStart": 0.699999988079071,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.699999988079071,
+        "requestStart": 9.400000005960464,
+        "responseStart": 26.5,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 26.5,
+        "responseEnd": 35.19999998807907,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 152,
+        "domContentLoadedEventStart": 152.09999999403954,
+        "domContentLoadedEventEnd": 152.09999999403954,
+        "domComplete": 221.2999999821186,
+        "loadEventStart": 221.2999999821186,
+        "loadEventEnd": 221.2999999821186,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 176,
+          "duration": 0,
+          "navigationId": 4510,
+          "paintTime": 149.2999999821186,
+          "presentationTime": 176
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 176,
+          "duration": 0,
+          "navigationId": 4510,
+          "paintTime": 149.2999999821186,
+          "presentationTime": 176
+        }
+      ],
+      "longTasks": [],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 33.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 27.899999976158142
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 25.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 35.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 37.29999998211861
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 64.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 59.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 73.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 74.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 75
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 75.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 75.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 77.5
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 89
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 87.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 81.80000001192093
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 11.900000005960464
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 6.0999999940395355
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 7.899999976158142
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 117.40000000596046
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 22.700000017881393
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 34.79999998211861
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 39.400000005960464
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 39.70000001788139
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 40.5
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 21.19999998807907
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 49.599999994039536
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1694,
+          "encoded": 1394,
+          "duration": 53.400000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 49.400000005960464
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 36.400000005960464
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1028,
+          "encoded": 728,
+          "duration": 66.7000000178814
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2546,
+          "encoded": 2246,
+          "duration": 65.30000001192093
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1540,
+          "encoded": 1240,
+          "duration": 60.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 34.29999998211861
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 134.5
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 138.09999999403954
+        },
+        {
+          "path": "/s/2edb75bf69b43a4fea1c7c04a6078ff08cc214b51545cfef92d4cfc75b846ec5/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 369.09999999403954
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 35.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 37.29999998211861
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 64.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 59.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 73.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 74.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 75
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 75.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 75.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 77.5
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 89
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 87.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 81.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 34.29999998211861
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          7.1,
+          7.54,
+          6.98
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571595910,
+          "total": 1756400320
+        },
+        "freeMemory": 24413986816
+      },
+      "hostAfter": {
+        "loadAverage": [
+          7.1,
+          7.54,
+          6.98
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571600120,
+          "total": 1756413290
+        },
+        "freeMemory": 24292646912
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220782.667034
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 22
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.101486
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.015217
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.04077
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.170266
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.001068
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.543351
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.214544
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.321816
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.51
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10175056
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13160448
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220781.631995
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220781.21807
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220781.03247
+          }
+        ]
+      },
+      "round": 1,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 626.473954,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 304.30000001192093,
+        "navigationId": 7336,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.699999988079071,
+        "domainLookupStart": 0.699999988079071,
+        "domainLookupEnd": 0.699999988079071,
+        "connectStart": 0.699999988079071,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.699999988079071,
+        "requestStart": 5.5,
+        "responseStart": 21.099999994039536,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 21.099999994039536,
+        "responseEnd": 31.900000005960464,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 185.5,
+        "domContentLoadedEventStart": 185.5,
+        "domContentLoadedEventEnd": 185.59999999403954,
+        "domComplete": 304.30000001192093,
+        "loadEventStart": 304.30000001192093,
+        "loadEventEnd": 304.30000001192093,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 212,
+          "duration": 0,
+          "navigationId": 7336,
+          "paintTime": 173.5,
+          "presentationTime": 212
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 212,
+          "duration": 0,
+          "navigationId": 7336,
+          "paintTime": 173.5,
+          "presentationTime": 212
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 189.30000001192093,
+          "duration": 80
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 34.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 32.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 29.099999994039536
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 47
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 74.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 124
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 109.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 122
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 121.5
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 125.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 122.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 134.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 148.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 139.5
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 26.400000005960464
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 11.599999994039536
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 7.4000000059604645
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 69.80000001192093
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 23.200000017881393
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 31.80000001192093
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 32.79999998211861
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 33.29999998211861
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 29.600000023841858
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 42.10000002384186
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 41.599999994039536
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1690,
+          "encoded": 1390,
+          "duration": 40.900000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 39.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 41.099999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 27.799999982118607
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1027,
+          "encoded": 727,
+          "duration": 27.099999994039536
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2545,
+          "encoded": 2245,
+          "duration": 27.799999982118607
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1539,
+          "encoded": 1239,
+          "duration": 34.39999997615814
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 45
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 55.30000001192093
+        },
+        {
+          "path": "/s/aa0f9131cf86cd42623127cc18f299b851d6ed4fe20c5ccae211609a235fac04/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 103
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 47
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 74.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 124
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 109.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 122
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 121.5
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 125.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 122.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 134.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 148.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 139.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 41.099999994039536
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          7.1,
+          7.54,
+          6.98
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571600360,
+          "total": 1756414670
+        },
+        "freeMemory": 24304529408
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571605750,
+          "total": 1756427780
+        },
+        "freeMemory": 24271458304
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220784.507743
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 19
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.090301
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.021933
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.035381
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.163138
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.00066
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.486626
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.175213
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.336864
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.53
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10165832
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13422592
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220783.458554
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220783.08141
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220782.85143
+          }
+        ]
+      },
+      "round": 2,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 639.5096300000005,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 316.09999999403954,
+        "navigationId": 674,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.5999999940395355,
+        "domainLookupStart": 0.5999999940395355,
+        "domainLookupEnd": 0.5999999940395355,
+        "connectStart": 0.5999999940395355,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.5999999940395355,
+        "requestStart": 5.5,
+        "responseStart": 20.69999998807907,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 20.69999998807907,
+        "responseEnd": 106.69999998807907,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 230,
+        "domContentLoadedEventStart": 230,
+        "domContentLoadedEventEnd": 230.09999999403954,
+        "domComplete": 316.09999999403954,
+        "loadEventStart": 316.09999999403954,
+        "loadEventEnd": 316.09999999403954,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 272,
+          "duration": 0,
+          "navigationId": 674,
+          "paintTime": 228.2999999821186,
+          "presentationTime": 272
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 272,
+          "duration": 0,
+          "navigationId": 674,
+          "paintTime": 228.2999999821186,
+          "presentationTime": 272
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 350.5,
+          "duration": 58
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 75.2999999821186
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 45.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 43.5
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 78.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 83.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 149.5
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 153.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 138.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 139.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 147.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 149.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 157.5
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 160
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 158.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 166.40000000596046
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 34.30000001192093
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 9.099999994039536
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 11.200000017881393
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 104.2000000178814
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 27.69999998807907
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 32.599999994039536
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 35.599999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 34.30000001192093
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 34.5
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 36.30000001192093
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 36.60000002384186
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1691,
+          "encoded": 1391,
+          "duration": 33.80000001192093
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1029,
+          "encoded": 729,
+          "duration": 33.400000005960464
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 37.80000001192093
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1027,
+          "encoded": 727,
+          "duration": 36.39999997615814
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2544,
+          "encoded": 2244,
+          "duration": 34.30000001192093
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1538,
+          "encoded": 1238,
+          "duration": 32.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 21.19999998807907
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 69.69999998807907
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 68.69999998807907
+        },
+        {
+          "path": "/s/a90ab3c046fbf64d85994945de489aea884c1a93b80bc5e0bbf7db4aaf08606e/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 97.5
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 78.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 83.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 149.5
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 153.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 138.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 139.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 147.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 149.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 157.5
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 160
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 158.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 166.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 21.19999998807907
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571605980,
+          "total": 1756428970
+        },
+        "freeMemory": 24414687232
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571610580,
+          "total": 1756441490
+        },
+        "freeMemory": 24275521536
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220786.246722
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 17
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 18
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.079184
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.018139
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.042512
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.153829
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000758
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.445598
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.151176
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.317412
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.5
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10246540
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13684736
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220785.198378
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220784.823372
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220784.669122
+          }
+        ]
+      },
+      "round": 2,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 567.9532190000009,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 220.09999999403954,
+        "navigationId": 9846,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.5,
+        "domainLookupStart": 0.5,
+        "domainLookupEnd": 0.5,
+        "connectStart": 0.5,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.5,
+        "requestStart": 7.300000011920929,
+        "responseStart": 30.700000017881393,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 30.700000017881393,
+        "responseEnd": 34.900000005960464,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 154.30000001192093,
+        "domContentLoadedEventStart": 154.30000001192093,
+        "domContentLoadedEventEnd": 159.80000001192093,
+        "domComplete": 220.09999999403954,
+        "loadEventStart": 220.09999999403954,
+        "loadEventEnd": 220.09999999403954,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 184,
+          "duration": 0,
+          "navigationId": 9846,
+          "paintTime": 147.7000000178814,
+          "presentationTime": 184
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 184,
+          "duration": 0,
+          "navigationId": 9846,
+          "paintTime": 147.7000000178814,
+          "presentationTime": 184
+        }
+      ],
+      "longTasks": [],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 25
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 19.600000023841858
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 24.099999994039536
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 33.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 44.5
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 68.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 77.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 56.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 59.5
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 74.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 75.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 75.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 76.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 91.5
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 91
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 90.2999999821186
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 25.400000005960464
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 12.400000005960464
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 13.100000023841858
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 93.10000002384186
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 77.90000000596046
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 78.40000000596046
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 79.69999998807907
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 79.90000000596046
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 79.69999998807907
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 33.29999998211861
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 32.5
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1692,
+          "encoded": 1392,
+          "duration": 34.70000001788139
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 32.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 24.599999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 39.19999998807907
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1028,
+          "encoded": 728,
+          "duration": 38.70000001788139
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2545,
+          "encoded": 2245,
+          "duration": 45.099999994039536
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1541,
+          "encoded": 1241,
+          "duration": 39.69999998807907
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 54.70000001788139
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 69.09999999403954
+        },
+        {
+          "path": "/s/f059754906c8bdbcc6766d6cbc73037a0275cebc993158a9b4e8dd9ee0219613/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 332.90000000596046
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 33.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 44.5
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 68.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 77.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 56.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 59.5
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 74.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 75.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 75.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 76.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 91.5
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 91
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 90.2999999821186
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 24.599999994039536
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571610970,
+          "total": 1756442550
+        },
+        "freeMemory": 24346976256
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571615800,
+          "total": 1756455020
+        },
+        "freeMemory": 24105115648
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220787.967438
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 22
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.096978
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.013874
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.036673
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.151721
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000796
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.453019
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.152977
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.327086
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.52
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10199364
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13422592
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220786.929223
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220786.575572
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220786.393266
+          }
+        ]
+      },
+      "round": 3,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 565.044183,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 254.10000002384186,
+        "navigationId": 1437,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.6000000238418579,
+        "domainLookupStart": 0.6000000238418579,
+        "domainLookupEnd": 0.6000000238418579,
+        "connectStart": 0.6000000238418579,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.6000000238418579,
+        "requestStart": 4.800000011920929,
+        "responseStart": 23.80000001192093,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 23.80000001192093,
+        "responseEnd": 52.20000001788139,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 182.40000000596046,
+        "domContentLoadedEventStart": 182.40000000596046,
+        "domContentLoadedEventEnd": 182.40000000596046,
+        "domComplete": 254.10000002384186,
+        "loadEventStart": 254.10000002384186,
+        "loadEventEnd": 254.10000002384186,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 208,
+          "duration": 0,
+          "navigationId": 1437,
+          "paintTime": 176.5,
+          "presentationTime": 208
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 208,
+          "duration": 0,
+          "navigationId": 1437,
+          "paintTime": 176.5,
+          "presentationTime": 208
+        }
+      ],
+      "longTasks": [],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 42.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 34.79999998211861
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 12.699999988079071
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 27.200000017881393
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 33.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 67.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 51.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 72.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 50.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 77.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 79.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 80.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 78.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 87.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 89.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 88.10000002384186
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 20.200000017881393
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 7.200000017881393
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 8.100000023841858
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 84.90000000596046
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 21.5
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 54.900000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 55.400000005960464
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 55.80000001192093
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 59.19999998807907
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 29.099999994039536
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 25.900000005960464
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1691,
+          "encoded": 1391,
+          "duration": 25.900000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 24.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 30.799999982118607
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1026,
+          "encoded": 726,
+          "duration": 21.799999982118607
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1028,
+          "encoded": 728,
+          "duration": 20.200000017881393
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2545,
+          "encoded": 2245,
+          "duration": 18.69999998807907
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1540,
+          "encoded": 1240,
+          "duration": 21.80000001192093
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 63.70000001788139
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 61.099999994039536
+        },
+        {
+          "path": "/s/d9ea9b95af7d277a5cd6e04bb5727e685bf937aa4ab900eae405fd136037db20/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 331.7000000178814
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 27.200000017881393
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 33.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 67.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 51.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 72.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 50.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 77.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 79.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 80.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 78.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 87.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 89.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 88.10000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 30.799999982118607
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.85,
+          7.48,
+          6.97
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571616070,
+          "total": 1756456130
+        },
+        "freeMemory": 24199651328
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571622090,
+          "total": 1756468120
+        },
+        "freeMemory": 24069021696
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220789.632217
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 26
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.079523
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.018614
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.033125
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.159
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000732
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.446055
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.155061
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.331171
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.52
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10184972
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13946880
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220788.636024
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220788.265015
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220788.118095
+          }
+        ]
+      },
+      "round": 3,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 503.4297409999999,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 230.7000000178814,
+        "navigationId": 8155,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.5999999940395355,
+        "domainLookupStart": 0.5999999940395355,
+        "domainLookupEnd": 0.5999999940395355,
+        "connectStart": 0.5999999940395355,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.5999999940395355,
+        "requestStart": 8,
+        "responseStart": 21.900000005960464,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 21.900000005960464,
+        "responseEnd": 28.30000001192093,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 146.90000000596046,
+        "domContentLoadedEventStart": 146.90000000596046,
+        "domContentLoadedEventEnd": 147.09999999403954,
+        "domComplete": 230.59999999403954,
+        "loadEventStart": 230.7000000178814,
+        "loadEventEnd": 230.7000000178814,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 168,
+          "duration": 0,
+          "navigationId": 8155,
+          "paintTime": 142.59999999403954,
+          "presentationTime": 168
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 168,
+          "duration": 0,
+          "navigationId": 8155,
+          "paintTime": 142.59999999403954,
+          "presentationTime": 168
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 163.80000001192093,
+          "duration": 54
+        },
+        {
+          "start": 274.2000000178814,
+          "duration": 57
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 25.599999994039536
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 18.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 15.5
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 24.399999976158142
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 30.299999982118607
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 47.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 63.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 55.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 53.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 56.5
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 60.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 65.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 66.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 77.89999997615814
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 67.5
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 22.599999994039536
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 5.899999976158142
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 10.5
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 80.40000000596046
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 25.400000005960464
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 21.099999994039536
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 49.599999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 51.10000002384186
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 52
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 28.900000005960464
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 40.10000002384186
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1691,
+          "encoded": 1391,
+          "duration": 41.69999998807907
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 38.80000001192093
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1025,
+          "encoded": 725,
+          "duration": 38.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 12.700000017881393
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1028,
+          "encoded": 728,
+          "duration": 43.80000001192093
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2545,
+          "encoded": 2245,
+          "duration": 41.5
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1538,
+          "encoded": 1238,
+          "duration": 38.599999994039536
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 43.30000001192093
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 50.900000005960464
+        },
+        {
+          "path": "/s/3df94b3b0c6e55b97da1f9928b369923098c43f87d9b2b4a2cb1e45f28f69edf/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 80.40000000596046
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 24.399999976158142
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 30.299999982118607
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 47.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 63.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 55.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 53.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 56.5
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 60.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 65.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 66.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 77.89999997615814
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 67.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 12.700000017881393
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571622540,
+          "total": 1756469310
+        },
+        "freeMemory": 24049963008
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571628180,
+          "total": 1756481540
+        },
+        "freeMemory": 24004612096
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220791.340343
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 23
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.080032
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.016369
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.0401
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.163228
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.000826
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.475785
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.17523
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.381763
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.59
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10158928
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13160448
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220790.315222
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220789.860464
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220789.792145
+          }
+        ]
+      },
+      "round": 4,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 534.5544300000001,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 207.09999999403954,
+        "navigationId": 1447,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 0.800000011920929,
+        "domainLookupStart": 0.800000011920929,
+        "domainLookupEnd": 0.800000011920929,
+        "connectStart": 0.800000011920929,
+        "secureConnectionStart": 0,
+        "connectEnd": 0.800000011920929,
+        "requestStart": 4.5999999940395355,
+        "responseStart": 19.30000001192093,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 19.30000001192093,
+        "responseEnd": 22.599999994039536,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 68.30000001192093,
+        "domContentLoadedEventStart": 68.40000000596046,
+        "domContentLoadedEventEnd": 68.40000000596046,
+        "domComplete": 207.09999999403954,
+        "loadEventStart": 207.09999999403954,
+        "loadEventEnd": 207.09999999403954,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 180,
+          "duration": 0,
+          "navigationId": 1447,
+          "paintTime": 135.2000000178814,
+          "presentationTime": 180
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 180,
+          "duration": 0,
+          "navigationId": 1447,
+          "paintTime": 135.2000000178814,
+          "presentationTime": 180
+        }
+      ],
+      "longTasks": [],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 24.5
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 17.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 18.099999994039536
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 32.099999994039536
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 34
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 53.10000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 64
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 57.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 65.2999999821186
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 71.5
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 68.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 74
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 72.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 84.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 79.19999998807907
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 16.099999994039536
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 12.399999976158142
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 10.900000005960464
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 120.40000000596046
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 30.400000005960464
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 36.89999997615814
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 36.69999998807907
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 39.79999998211861
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 39.70000001788139
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 15.099999994039536
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 30.19999998807907
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1690,
+          "encoded": 1390,
+          "duration": 28
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1029,
+          "encoded": 729,
+          "duration": 26.299999982118607
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1025,
+          "encoded": 725,
+          "duration": 14.599999994039536
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1027,
+          "encoded": 727,
+          "duration": 39.400000005960464
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2542,
+          "encoded": 2242,
+          "duration": 40.5
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1539,
+          "encoded": 1239,
+          "duration": 37.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 13
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 135.7000000178814
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 127.19999998807907
+        },
+        {
+          "path": "/s/7852983b38ba404847727b4ca713f7c62a9c30403edf8418e47868d279288849/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 132.09999999403954
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 32.099999994039536
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 34
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 53.10000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 64
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 57.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 65.2999999821186
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 71.5
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 68.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 74
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 72.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 84.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 79.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 13
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571628740,
+          "total": 1756483280
+        },
+        "freeMemory": 24155910144
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571633890,
+          "total": 1756497200
+        },
+        "freeMemory": 23985721344
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220793.335511
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 17
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 18
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.119554
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.020017
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.049227
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.253047
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.001884
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.675825
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.232096
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.513234
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.79
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10249604
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13946880
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220792.312386
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220791.798382
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220791.571206
+          }
+        ]
+      },
+      "round": 4,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 748.9101029999983,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 338.60000002384186,
+        "navigationId": 7321,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 1.5,
+        "domainLookupStart": 1.5,
+        "domainLookupEnd": 1.5,
+        "connectStart": 1.5,
+        "secureConnectionStart": 0,
+        "connectEnd": 1.5,
+        "requestStart": 13.600000023841858,
+        "responseStart": 51.20000001788139,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 51.20000001788139,
+        "responseEnd": 60.30000001192093,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 227.10000002384186,
+        "domContentLoadedEventStart": 227.2000000178814,
+        "domContentLoadedEventEnd": 227.40000000596046,
+        "domComplete": 338.5,
+        "loadEventStart": 338.60000002384186,
+        "loadEventEnd": 338.60000002384186,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 268,
+          "duration": 0,
+          "navigationId": 7321,
+          "paintTime": 221.40000000596046,
+          "presentationTime": 268
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 268,
+          "duration": 0,
+          "navigationId": 7321,
+          "paintTime": 221.40000000596046,
+          "presentationTime": 268
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 253.60000002384186,
+          "duration": 63
+        },
+        {
+          "start": 414.10000002384186,
+          "duration": 82
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 35.5
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 30.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 26.799999982118607
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 42.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 89.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 103.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 72.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 93.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 93.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 95.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 101.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 121.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 131.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 113.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 124
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 46
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 24.400000005960464
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 32.29999998211861
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 136.5
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 56.29999998211861
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 57.69999998807907
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 57.69999998807907
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 57.5
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 57.5
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 43.80000001192093
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 43
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1693,
+          "encoded": 1393,
+          "duration": 40.79999998211861
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1029,
+          "encoded": 729,
+          "duration": 39.20000001788139
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1026,
+          "encoded": 726,
+          "duration": 52.400000005960464
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1029,
+          "encoded": 729,
+          "duration": 51.400000005960464
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2544,
+          "encoded": 2244,
+          "duration": 51.400000005960464
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1540,
+          "encoded": 1240,
+          "duration": 49.39999997615814
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 22.69999998807907
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 105.30000001192093
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 144.30000001192093
+        },
+        {
+          "path": "/s/6ef92feef8c844b3c0e80edee2a3fa01c185b8d82c6fa97b5a939b8c06c8c121/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 409.10000002384186
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.5
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 42.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 89.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 103.90000000596046
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 72.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 93.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 93.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 95.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 101.7999999821186
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 121.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 131.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 113.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 124
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 22.69999998807907
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.54,
+          7.4,
+          6.94
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571634360,
+          "total": 1756499340
+        },
+        "freeMemory": 24078721024
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.18,
+          7.31,
+          6.92
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571640220,
+          "total": 1756513610
+        },
+        "freeMemory": 23872094208
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220795.434488
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 377
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 415
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 478
+          },
+          {
+            "name": "Resources",
+            "value": 37
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 31
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 21
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 18
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.088934
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.019697
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.055642
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.228828
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.001625
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.625712
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.230986
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.499647
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.78
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10271336
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13684736
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220794.416609
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220793.824688
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220793.623685
+          }
+        ]
+      },
+      "round": 5,
+      "version": "changed",
+      "status": 200,
+      "readyMs": 792.7939430000006,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 292.30000001192093,
+        "navigationId": 1231,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 1.2000000178813934,
+        "domainLookupStart": 1.2000000178813934,
+        "domainLookupEnd": 1.2000000178813934,
+        "connectStart": 1.2000000178813934,
+        "secureConnectionStart": 0,
+        "connectEnd": 1.2000000178813934,
+        "requestStart": 9.300000011920929,
+        "responseStart": 48.20000001788139,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 48.20000001788139,
+        "responseEnd": 52.20000001788139,
+        "transferSize": 5655,
+        "encodedBodySize": 5355,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 200.90000000596046,
+        "domContentLoadedEventStart": 201,
+        "domContentLoadedEventEnd": 201.2000000178814,
+        "domComplete": 292.30000001192093,
+        "loadEventStart": 292.30000001192093,
+        "loadEventEnd": 292.30000001192093,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 228,
+          "duration": 0,
+          "navigationId": 1231,
+          "paintTime": 191.80000001192093,
+          "presentationTime": 228
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 228,
+          "duration": 0,
+          "navigationId": 1231,
+          "paintTime": 191.80000001192093,
+          "presentationTime": 228
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 212.90000000596046,
+          "duration": 56
+        },
+        {
+          "start": 376.60000002384186,
+          "duration": 67
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 34.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 28.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 26.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 45.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 84.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 85.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 91.5
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 82.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 84.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 82.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 105.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "kind": "script",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 106.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 108
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "kind": "script",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 107.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 98.5
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 25.19999998807907
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 21.799999982118607
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 18.19999998807907
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 232.69999998807907
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 72.19999998807907
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 85.7999999821186
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 461,
+          "encoded": 161,
+          "duration": 85.30000001192093
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 463,
+          "encoded": 163,
+          "duration": 85.09999999403954
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 84.09999999403954
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 116.80000001192093
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 472,
+          "encoded": 172,
+          "duration": 112
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1693,
+          "encoded": 1393,
+          "duration": 113.7999999821186
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 111.80000001192093
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 41.80000001192093
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1028,
+          "encoded": 728,
+          "duration": 40.900000005960464
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2546,
+          "encoded": 2246,
+          "duration": 38.79999998211861
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1539,
+          "encoded": 1239,
+          "duration": 37.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 22.900000005960464
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 111.69999998807907
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 105.19999998807907
+        },
+        {
+          "path": "/s/c3fbe033003f638113850cb17986c8db882cb13f773c89bd3f775af0ef69d238/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 407.19999998807907
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 43.400000005960464
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 45.70000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 84.7000000178814
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 85.19999998807907
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 91.5
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 82.09999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 84.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 82.80000001192093
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 105.60000002384186
+        },
+        {
+          "path": "/_next/static/chunks/00i3nnjl7wsa6.js",
+          "transfer": 6056,
+          "encoded": 5756,
+          "duration": 106.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 108
+        },
+        {
+          "path": "/_next/static/chunks/0b0v5hijp_q26.js",
+          "transfer": 10784,
+          "encoded": 10484,
+          "duration": 107.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 98.5
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 22.900000005960464
+        }
+      ]
+    },
+    {
+      "hostBefore": {
+        "loadAverage": [
+          6.18,
+          7.31,
+          6.92
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571640900,
+          "total": 1756515440
+        },
+        "freeMemory": 24008220672
+      },
+      "hostAfter": {
+        "loadAverage": [
+          6.18,
+          7.31,
+          6.92
+        ],
+        "cpuCount": 8,
+        "cpu": {
+          "idle": 1571647230,
+          "total": 1756529890
+        },
+        "freeMemory": 23894159360
+      },
+      "browserMetrics": {
+        "metrics": [
+          {
+            "name": "Timestamp",
+            "value": 220797.503728
+          },
+          {
+            "name": "AudioHandlers",
+            "value": 0
+          },
+          {
+            "name": "AudioWorkletProcessors",
+            "value": 0
+          },
+          {
+            "name": "Documents",
+            "value": 10
+          },
+          {
+            "name": "Frames",
+            "value": 6
+          },
+          {
+            "name": "JSEventListeners",
+            "value": 375
+          },
+          {
+            "name": "LayoutObjects",
+            "value": 412
+          },
+          {
+            "name": "MediaKeySessions",
+            "value": 0
+          },
+          {
+            "name": "MediaKeys",
+            "value": 0
+          },
+          {
+            "name": "Nodes",
+            "value": 475
+          },
+          {
+            "name": "Resources",
+            "value": 36
+          },
+          {
+            "name": "ContextLifecycleStateObservers",
+            "value": 30
+          },
+          {
+            "name": "V8PerContextDatas",
+            "value": 4
+          },
+          {
+            "name": "WorkerGlobalScopes",
+            "value": 0
+          },
+          {
+            "name": "UACSSResources",
+            "value": 0
+          },
+          {
+            "name": "RTCPeerConnections",
+            "value": 0
+          },
+          {
+            "name": "ResourceFetchers",
+            "value": 10
+          },
+          {
+            "name": "AdSubframes",
+            "value": 0
+          },
+          {
+            "name": "DetachedScriptStates",
+            "value": 2
+          },
+          {
+            "name": "ArrayBufferContents",
+            "value": 23
+          },
+          {
+            "name": "LayoutCount",
+            "value": 8
+          },
+          {
+            "name": "RecalcStyleCount",
+            "value": 17
+          },
+          {
+            "name": "LayoutDuration",
+            "value": 0.133337
+          },
+          {
+            "name": "RecalcStyleDuration",
+            "value": 0.021761
+          },
+          {
+            "name": "DevToolsCommandDuration",
+            "value": 0.049088
+          },
+          {
+            "name": "ScriptDuration",
+            "value": 0.225935
+          },
+          {
+            "name": "V8CompileDuration",
+            "value": 0.001664
+          },
+          {
+            "name": "TaskDuration",
+            "value": 0.674073
+          },
+          {
+            "name": "TaskOtherDuration",
+            "value": 0.242288
+          },
+          {
+            "name": "ThreadTime",
+            "value": 0.505662
+          },
+          {
+            "name": "ProcessTime",
+            "value": 0.76
+          },
+          {
+            "name": "JSHeapUsedSize",
+            "value": 10206564
+          },
+          {
+            "name": "JSHeapTotalSize",
+            "value": 13422592
+          },
+          {
+            "name": "FirstMeaningfulPaint",
+            "value": 220796.487143
+          },
+          {
+            "name": "DomContentLoaded",
+            "value": 220795.942908
+          },
+          {
+            "name": "NavigationStart",
+            "value": 220795.686081
+          }
+        ]
+      },
+      "round": 5,
+      "version": "baseline",
+      "status": 200,
+      "readyMs": 801.1266609999984,
+      "errors": [],
+      "navigation": {
+        "name": "http://studio460.localhost:34680/dashboard/shorts/4b04cf53-61d7-48b0-a701-c83da8b8d713",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 363.7000000178814,
+        "navigationId": 4426,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 1.300000011920929,
+        "domainLookupStart": 1.300000011920929,
+        "domainLookupEnd": 1.300000011920929,
+        "connectStart": 1.300000011920929,
+        "secureConnectionStart": 0,
+        "connectEnd": 1.300000011920929,
+        "requestStart": 12.200000017881393,
+        "responseStart": 46.5,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 46.5,
+        "responseEnd": 54.099999994039536,
+        "transferSize": 5588,
+        "encodedBodySize": 5288,
+        "decodedBodySize": 19414,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 256.80000001192093,
+        "domContentLoadedEventStart": 256.80000001192093,
+        "domContentLoadedEventEnd": 257,
+        "domComplete": 363.5,
+        "loadEventStart": 363.7000000178814,
+        "loadEventEnd": 363.7000000178814,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      },
+      "paint": [
+        {
+          "name": "first-paint",
+          "entryType": "paint",
+          "startTime": 324,
+          "duration": 0,
+          "navigationId": 4426,
+          "paintTime": 248.40000000596046,
+          "presentationTime": 324
+        },
+        {
+          "name": "first-contentful-paint",
+          "entryType": "paint",
+          "startTime": 324,
+          "duration": 0,
+          "navigationId": 4426,
+          "paintTime": 248.40000000596046,
+          "presentationTime": 324
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 279,
+          "duration": 67
+        },
+        {
+          "start": 442,
+          "duration": 78
+        }
+      ],
+      "networkResources": [
+        {
+          "path": "/_next/static/chunks/0dhhbuvur51v-.css",
+          "kind": "link",
+          "transfer": 53019,
+          "encoded": 52719,
+          "duration": 45.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/124wj_sfq37ps.css",
+          "kind": "link",
+          "transfer": 12686,
+          "encoded": 12386,
+          "duration": 35.900000005960464
+        },
+        {
+          "path": "/_next/static/chunks/0lvke~rgk0wjg.css",
+          "kind": "link",
+          "transfer": 3247,
+          "encoded": 2947,
+          "duration": 36
+        },
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "kind": "link",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 53.20000001788139
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "kind": "script",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 58.20000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "kind": "script",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 80.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "kind": "script",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 87.10000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "kind": "script",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 89.5
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "kind": "script",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 89.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "kind": "script",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 94.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "kind": "script",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 94.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "kind": "script",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 105.5
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "kind": "script",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 125.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "kind": "script",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 135.5
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "kind": "script",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 133.30000001192093
+        },
+        {
+          "path": "/jesusfilm-sign.svg",
+          "kind": "img",
+          "transfer": 701,
+          "encoded": 401,
+          "duration": 66.09999999403954
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 25.100000023841858
+        },
+        {
+          "path": "/favicon.svg",
+          "kind": "other",
+          "transfer": 970,
+          "encoded": 670,
+          "duration": 30.5
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 1120,
+          "encoded": 820,
+          "duration": 183.40000000596046
+        },
+        {
+          "path": "/api/jobs",
+          "kind": "fetch",
+          "transfer": 311,
+          "encoded": 11,
+          "duration": 54
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 470,
+          "encoded": 170,
+          "duration": 62.5
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 462,
+          "encoded": 162,
+          "duration": 61.599999994039536
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 464,
+          "encoded": 164,
+          "duration": 62.599999994039536
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 467,
+          "encoded": 167,
+          "duration": 62.5
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 469,
+          "encoded": 169,
+          "duration": 56
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 471,
+          "encoded": 171,
+          "duration": 53.400000005960464
+        },
+        {
+          "path": "/dashboard/agents",
+          "kind": "fetch",
+          "transfer": 1692,
+          "encoded": 1392,
+          "duration": 51.400000005960464
+        },
+        {
+          "path": "/dashboard/seo",
+          "kind": "fetch",
+          "transfer": 1030,
+          "encoded": 730,
+          "duration": 42.900000005960464
+        },
+        {
+          "path": "/dashboard/shorts",
+          "kind": "fetch",
+          "transfer": 1024,
+          "encoded": 724,
+          "duration": 44.5
+        },
+        {
+          "path": "/dashboard/smart-crop",
+          "kind": "fetch",
+          "transfer": 1027,
+          "encoded": 727,
+          "duration": 41.29999998211861
+        },
+        {
+          "path": "/dashboard/coverage",
+          "kind": "fetch",
+          "transfer": 1540,
+          "encoded": 1240,
+          "duration": 41
+        },
+        {
+          "path": "/dashboard/jobs",
+          "kind": "fetch",
+          "transfer": 2543,
+          "encoded": 2243,
+          "duration": 38.89999997615814
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "kind": "script",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 19.599999994039536
+        },
+        {
+          "path": "/api/studio/command",
+          "kind": "fetch",
+          "transfer": 313,
+          "encoded": 13,
+          "duration": 118.30000001192093
+        },
+        {
+          "path": "/api/studio/preview",
+          "kind": "fetch",
+          "transfer": 998,
+          "encoded": 698,
+          "duration": 120.59999999403954
+        },
+        {
+          "path": "/s/a03844d3e5b3a0c4f3f2db36ac3747188b06bbb4f39095e47990202e65e54896/",
+          "kind": "iframe",
+          "transfer": 0,
+          "encoded": 0,
+          "duration": 146.59999999403954
+        }
+      ],
+      "resources": [
+        {
+          "path": "/_next/static/chunks/03_b.fmhsfym1.js",
+          "transfer": 9386,
+          "encoded": 9086,
+          "duration": 53.20000001788139
+        },
+        {
+          "path": "/_next/static/chunks/17rjbzjl~sg-w.js",
+          "transfer": 9458,
+          "encoded": 9158,
+          "duration": 58.20000001788139
+        },
+        {
+          "path": "/_next/static/chunks/02kbh1yuwe5rg.js",
+          "transfer": 39100,
+          "encoded": 38800,
+          "duration": 80.2000000178814
+        },
+        {
+          "path": "/_next/static/chunks/0zjjbsizuvpvi.js",
+          "transfer": 71277,
+          "encoded": 70977,
+          "duration": 87.10000002384186
+        },
+        {
+          "path": "/_next/static/chunks/0yv0gttvno-ru.js",
+          "transfer": 4345,
+          "encoded": 4045,
+          "duration": 89.5
+        },
+        {
+          "path": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+          "transfer": 4448,
+          "encoded": 4148,
+          "duration": 89.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/0m.d73n129mb5.js",
+          "transfer": 13172,
+          "encoded": 12872,
+          "duration": 94.59999999403954
+        },
+        {
+          "path": "/_next/static/chunks/00jntgjvwqi-r.js",
+          "transfer": 8787,
+          "encoded": 8487,
+          "duration": 94.40000000596046
+        },
+        {
+          "path": "/_next/static/chunks/020e31uanesrk.js",
+          "transfer": 12906,
+          "encoded": 12606,
+          "duration": 105.5
+        },
+        {
+          "path": "/_next/static/chunks/11qx0ks.t78rq.js",
+          "transfer": 15664,
+          "encoded": 15364,
+          "duration": 125.69999998807907
+        },
+        {
+          "path": "/_next/static/chunks/08graravsts3r.js",
+          "transfer": 64291,
+          "encoded": 63991,
+          "duration": 135.5
+        },
+        {
+          "path": "/_next/static/chunks/04w5go15ym7l5.js",
+          "transfer": 1223,
+          "encoded": 923,
+          "duration": 133.30000001192093
+        },
+        {
+          "path": "/_next/static/chunks/0pw50l50kke3l.js",
+          "transfer": 2194,
+          "encoded": 1894,
+          "duration": 19.599999994039536
+        }
+      ]
+    }
+  ]
+}

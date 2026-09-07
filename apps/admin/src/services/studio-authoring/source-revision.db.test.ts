@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { describe, it, expect } from "vitest"
@@ -15,17 +16,18 @@ suite("retained source and pack revision INSERT", () => {
   it("persists actual source items and rejects a mismatched retained tuple", async () => {
     const parsed = new URL(url!)
     if (
-      parsed.hostname !== "127.0.0.1" ||
-      !(
-        (parsed.port === "55458" &&
-          parsed.pathname === "/forge_studio_458_test") ||
-        (parsed.port === "55457" &&
-          parsed.pathname === "/forge_studio_457_test") ||
-        (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test") ||
-        (parsed.port === "55456" &&
-          parsed.pathname === "/forge_studio_456_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (parsed.hostname !== "127.0.0.1" ||
+        !(
+          (parsed.port === "55458" &&
+            parsed.pathname === "/forge_studio_458_test") ||
+          (parsed.port === "55457" &&
+            parsed.pathname === "/forge_studio_457_test") ||
+          (parsed.port === "55459" &&
+            parsed.pathname === "/forge_studio_459_test") ||
+          (parsed.port === "55456" &&
+            parsed.pathname === "/forge_studio_456_test")
+        ))
     )
       throw new SourceRevisionHarnessError(
         "Only isolated Studio test databases allowed",

@@ -1,0 +1,1 @@
+PASS: esbuild TypeScript erasure (identifier minification disabled) produces byte-identical JavaScript after replacing explicit any annotations.

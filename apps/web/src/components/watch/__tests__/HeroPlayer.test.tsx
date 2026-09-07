@@ -4889,3 +4889,24 @@ describe("HeroPlayer — Watch Next countdown", () => {
     )
   })
 })
+it("uses the revocable Studio HLS and poster even when stale data includes a Mux identity", async () => {
+  const block = makeBlock(),
+    hls = "https://admin.test/api/studio/playback/release/index.m3u8"
+  block.variant.hls = hls
+  const idle = installIdleCallbackStub()
+  try {
+    act(() => {
+      root.render(<HeroPlayer block={block} />)
+    })
+    const poster = container.querySelector('[data-testid="hero-player-poster"]')
+    expect(poster?.getAttribute("src")).toBe(
+      hls.replace("index.m3u8", "poster.webp"),
+    )
+    expect(poster?.getAttribute("srcset")).toBeNull()
+    await idle.runNext()
+    expect(lastMuxProps()?.playbackId).toBeUndefined()
+    expect(lastMuxProps()?.src).toBe(hls)
+  } finally {
+    idle.restore()
+  }
+})

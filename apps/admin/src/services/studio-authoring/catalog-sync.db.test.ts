@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { describe, it, expect, vi } from "vitest"
@@ -12,12 +13,13 @@ suite("Core sync preserves Manager identity", () => {
   it("leaves Manager editions intact while updating and tombstoning real Core editions", async () => {
     const p = new URL(url!)
     if (
-      p.hostname !== "127.0.0.1" ||
-      !(
-        (p.port === "55459" && p.pathname === "/forge_studio_459_test") ||
-        (p.port === "55458" && p.pathname === "/forge_studio_458_test") ||
-        (p.port === "55457" && p.pathname === "/forge_studio_457_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (p.hostname !== "127.0.0.1" ||
+        !(
+          (p.port === "55459" && p.pathname === "/forge_studio_459_test") ||
+          (p.port === "55458" && p.pathname === "/forge_studio_458_test") ||
+          (p.port === "55457" && p.pathname === "/forge_studio_457_test")
+        ))
     )
       throw new SyncHarnessError("Only isolated feat-459 database allowed")
     const db = new PrismaClient({ datasources: { db: { url } } })

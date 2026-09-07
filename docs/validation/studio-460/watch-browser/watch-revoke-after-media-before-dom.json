@@ -1,0 +1,85 @@
+{
+  "scope": "Owned loopback Mux protocol fixture; no actual provider acceptance",
+  "before": [
+    {
+      "key": "8f0a3ff9b5d084be82c022671abf0b4668c6f6831d5506d505bdb54e6dd95445",
+      "status": 200,
+      "bytes": 2266,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "0bb5b2c61e71ce0f637857b797b5d8d405842ce6baa0670ebe33d07dccfe47b2",
+      "status": 200,
+      "bytes": 1094,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "e7836715451087e504e9ddcf60bc6c192374b473310601e1e316ebb4a56ae0b3",
+      "status": 200,
+      "bytes": 1167,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "74dd10855ec123f3920af265f1d1a821367549e24690d60b54f61e3dc3029200",
+      "status": 200,
+      "bytes": 241016,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "acf87e8af94289f662f0b5997586a27dc1542b2f8194069e12e519ac9fdbdda0",
+      "status": 200,
+      "bytes": 1091,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "08fa4687c2aadfa77ae6dc2c94fbb0cfe0f088f506e4702ee48802362969897c",
+      "status": 200,
+      "bytes": 2266,
+      "cache": "private, no-store, max-age=0"
+    }
+  ],
+  "after": [
+    {
+      "key": "8f0a3ff9b5d084be82c022671abf0b4668c6f6831d5506d505bdb54e6dd95445",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "0bb5b2c61e71ce0f637857b797b5d8d405842ce6baa0670ebe33d07dccfe47b2",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "e7836715451087e504e9ddcf60bc6c192374b473310601e1e316ebb4a56ae0b3",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "74dd10855ec123f3920af265f1d1a821367549e24690d60b54f61e3dc3029200",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "acf87e8af94289f662f0b5997586a27dc1542b2f8194069e12e519ac9fdbdda0",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "key": "08fa4687c2aadfa77ae6dc2c94fbb0cfe0f088f506e4702ee48802362969897c",
+      "status": 404,
+      "cache": "private, no-store, max-age=0"
+    }
+  ],
+  "errors": [],
+  "head": {
+    "status": 200,
+    "bytes": 0
+  },
+  "range": {
+    "status": 206,
+    "bytes": 188,
+    "contentRange": "bytes 0-187/241016"
+  },
+  "failure": "page.evaluate: TypeError: r.status is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:72)\n    at async <anonymous>:329:30",
+  "managerBody": "Studio\nALPHA\nVideo editor\nStandalone projects\nReport\nJobs\n3\nSmart Crop\nVideo editor\nSEO\nAgents\nToggle sidebar\nStudio\nVideo editor\nProject\nStudio460 Watch browser\n320 × 180 · 30 fps\nAssistant\nGenerate scripts\nSpeech and production\nRender and publish\nHistory\nSaved · r2\nSave\nThis published project is permanently read-only.\nSource Library\nAdd text card\n\nNo matching footage with an exact dub and timed subtitle track.\n\nCanvas\nSelect & move\nYour text\n0.00 / 5.00s\nProject\nTitle\nWidth\nHeight\nDuration (seconds)\n\nSelect a canvas element or timeline clip to inspect it.\n\nCards & elements\nYour text\n0.0s · 5.0s\nTimeline\n1 items · 30 fps\nTrack\nZoom\nTracks\nVisual 1\n0.0s\n0.6s\n1.1s\n1.7s\n2.3s\n2.9s\n3.4s\n4.0s\n4.6s\nYour text\nRender and publish\nClose\n\nRender the saved revision, review its video, then approve publication to Watch.\n\nUnpublished permanently\n\nRender saved revisionReview rendered video\n\nThis project remains locked. Create a new project for another publication."
+}

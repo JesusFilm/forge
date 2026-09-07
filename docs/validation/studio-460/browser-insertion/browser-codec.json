@@ -1,0 +1,1 @@
+{"version":1,"verifierVersion":"studio-codec-1/ffmpeg-n9.0.1-27-g9b0578816c-20260907","outputDigest":"b3e6caa79dd299b1c68f0c02ea81b61dc5eb4596c765a5310eec71878952095b","decoded":true,"video":{"codec":"h264","width":320,"height":180,"fps":30,"frames":150,"durationMs":5000},"audio":{"codec":"aac","sampleRate":48000,"channels":2,"durationMs":5056}}

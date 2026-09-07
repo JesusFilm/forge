@@ -4166,6 +4166,7 @@ model WhatsNewFeatureVote {
 
 // Studio authoring is independent of Manager render jobs and catalog lifecycle.
 model StudioProject {
+  publication           StudioPublication?
   id                    String                  @id @db.VarChar(128)
   currentRevision       Int                     @map("current_revision")
   ownerId               String                  @map("owner_id") @db.VarChar(128)
@@ -4211,7 +4212,9 @@ model StudioCommand {
 }
 
 model StudioAttempt {
-  productionRun StudioProductionRun?
+  muxJob         StudioMuxJob?
+  renderJob      StudioRenderJob?
+  productionRun  StudioProductionRun?
   catalogRelease StudioCatalogRelease?
 
   publicationApprovals StudioApproval[]
@@ -4235,6 +4238,7 @@ model StudioAttempt {
 }
 
 model StudioApproval {
+  publications    StudioPublication[]
   id              String                @id @default(cuid()) @db.VarChar(128)
   projectId       String                @map("project_id") @db.VarChar(128)
   revision        Int
@@ -4252,18 +4256,19 @@ model StudioApproval {
 
 /// Studio families group versions; each version pins a separate registry blob.
 model StudioAssetVersion {
-  usages       StudioAssetUsage[]
-  id           String             @id @default(cuid())
-  assetId      String             @map("asset_id")
-  mediaAssetId String             @unique @map("media_asset_id")
-  mediaAsset   MediaAsset         @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
-  digest       String
-  role         String
-  metadata     Json
-  actor        Json
-  requestKey   String             @unique @map("request_key")
-  requestHash  String             @map("request_hash")
-  createdAt    DateTime           @default(now()) @map("created_at")
+  renderRetentions StudioRenderRetainedAsset[]
+  usages           StudioAssetUsage[]
+  id               String                      @id @default(cuid())
+  assetId          String                      @map("asset_id")
+  mediaAssetId     String                      @unique @map("media_asset_id")
+  mediaAsset       MediaAsset                  @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  digest           String
+  role             String
+  metadata         Json
+  actor            Json
+  requestKey       String                      @unique @map("request_key")
+  requestHash      String                      @map("request_hash")
+  createdAt        DateTime                    @default(now()) @map("created_at")
 
   @@index([assetId])
   @@index([role, createdAt])
@@ -4346,27 +4351,27 @@ model StudioAssetTransfer {
 }
 
 model StudioExperiment {
-  selections StudioExperimentSelection[]
+  selections    StudioExperimentSelection[]
   productionRun StudioProductionRun?
-  id          String                      @id @default(cuid())
-  request     Json
-  actor       Json
-  requestKey  String                      @unique @map("request_key")
-  requestHash String                      @map("request_hash")
-  candidates  StudioExperimentCandidate[]
+  id            String                      @id @default(cuid())
+  request       Json
+  actor         Json
+  requestKey    String                      @unique @map("request_key")
+  requestHash   String                      @map("request_hash")
+  candidates    StudioExperimentCandidate[]
 
   @@map("studio_experiment")
 }
 
 model StudioExperimentCandidate {
-  selections StudioExperimentSelection[]
-  id                String           @id @default(cuid())
-  experimentId      String           @map("experiment_id")
-  experiment        StudioExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  selections        StudioExperimentSelection[]
+  id                String                      @id @default(cuid())
+  experimentId      String                      @map("experiment_id")
+  experiment        StudioExperiment            @relation(fields: [experimentId], references: [id], onDelete: Restrict)
   asset             Json
-  providerRequestId String?          @map("provider_request_id")
-  actualCostMicros  BigInt?          @map("actual_cost_micros")
-  candidateKey      String           @unique @map("candidate_key")
+  providerRequestId String?                     @map("provider_request_id")
+  actualCostMicros  BigInt?                     @map("actual_cost_micros")
+  candidateKey      String                      @unique @map("candidate_key")
   actor             Json
 
   @@map("studio_experiment_candidate")
@@ -4374,6 +4379,8 @@ model StudioExperimentCandidate {
 
 /// Immutable staged render identity. Publication/visibility is a separate feat-460 operation.
 model StudioCatalogRelease {
+  publication     StudioPublication?
+  readiness       StudioCatalogReadiness[]
   id              String                    @id @default(cuid())
   projectId       String                    @map("project_id") @db.VarChar(128)
   revision        Int
@@ -4425,41 +4432,163 @@ model StudioCatalogPack {
 }
 
 model StudioProductionRun {
-  id String @id @default(cuid())
-  attemptId String? @unique @map("attempt_id") @db.VarChar(128)
-  attempt StudioAttempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
-  experimentId String? @unique @map("experiment_id")
-  experiment StudioExperiment? @relation(fields: [experimentId], references: [id], onDelete: Restrict)
-  actor Json
-  maxCostMicros BigInt @map("max_cost_micros")
-  state String @default("READY")
-  createdAt DateTime @default(now()) @map("created_at")
-  calls StudioProductionCall[]
+  id            String                 @id @default(cuid())
+  attemptId     String?                @unique @map("attempt_id") @db.VarChar(128)
+  attempt       StudioAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  experimentId  String?                @unique @map("experiment_id")
+  experiment    StudioExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  actor         Json
+  maxCostMicros BigInt                 @map("max_cost_micros")
+  state         String                 @default("READY")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  calls         StudioProductionCall[]
+
   @@map("studio_production_run")
 }
+
 model StudioProductionCall {
-  runId String @map("run_id")
-  run StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict)
-  key String
-  inputDigest String @map("input_digest") @db.VarChar(64)
-  reserveMicros BigInt @map("reserve_micros")
-  state String @default("RUNNING")
-  result Json?
-  @@id([runId,key])
+  runId         String              @map("run_id")
+  run           StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  key           String
+  inputDigest   String              @map("input_digest") @db.VarChar(64)
+  reserveMicros BigInt              @map("reserve_micros")
+  state         String              @default("RUNNING")
+  result        Json?
+
+  @@id([runId, key])
   @@map("studio_production_call")
 }
 
 model StudioExperimentSelection {
-  id String @id @default(cuid())
-  experimentId String @map("experiment_id")
-  experiment StudioExperiment @relation(fields:[experimentId],references:[id],onDelete:Restrict)
-  candidateKey String @map("candidate_key")
-  candidate StudioExperimentCandidate @relation(fields:[candidateKey],references:[candidateKey],onDelete:Restrict)
-  requestKey String @unique @map("request_key")
-  inputHash String @map("input_hash")
-  asset Json
-  actor Json
-  createdAt DateTime @default(now()) @map("created_at")
-  @@index([experimentId,createdAt])
+  id           String                    @id @default(cuid())
+  experimentId String                    @map("experiment_id")
+  experiment   StudioExperiment          @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  candidateKey String                    @map("candidate_key")
+  candidate    StudioExperimentCandidate @relation(fields: [candidateKey], references: [candidateKey], onDelete: Restrict)
+  requestKey   String                    @unique @map("request_key")
+  inputHash    String                    @map("input_hash")
+  asset        Json
+  actor        Json
+  createdAt    DateTime                  @default(now()) @map("created_at")
+
+  @@index([experimentId, createdAt])
   @@map("studio_experiment_selection")
+}
+
+model StudioRenderJob {
+  leases         StudioRenderLease[]
+  executions     StudioRenderExecution[]
+  attemptId      String                  @id @map("attempt_id") @db.VarChar(128)
+  attempt        StudioAttempt           @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  snapshot       Json
+  state          String                  @default("QUEUED")
+  generation     Int                     @default(0)
+  leaseId        String?                 @map("lease_id")
+  leaseExpiresAt DateTime?               @map("lease_expires_at")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  @@map("studio_render_job")
+}
+
+model StudioRenderExecution {
+  readiness   StudioCatalogReadiness[]
+  lease       StudioRenderLease        @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
+  attemptId   String                   @map("attempt_id") @db.VarChar(128)
+  leaseId     String                   @map("lease_id")
+  job         StudioRenderJob          @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict)
+  requestHash String                   @map("request_hash") @db.VarChar(64)
+  status      String
+  result      Json
+  admitted    Boolean
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  @@id([attemptId, leaseId])
+  @@map("studio_render_execution")
+}
+
+model StudioRenderLease {
+  retainedAssets StudioRenderRetainedAsset[]
+  attemptId      String                      @map("attempt_id") @db.VarChar(128)
+  leaseId        String                      @map("lease_id")
+  job            StudioRenderJob             @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict)
+  generation     Int
+  expiresAt      DateTime                    @map("expires_at")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  execution      StudioRenderExecution?
+
+  @@id([attemptId, leaseId])
+  @@unique([attemptId, generation])
+  @@map("studio_render_lease")
+}
+
+model StudioCatalogReadiness {
+  id           String                @id @default(cuid())
+  sequence     BigInt                @unique @default(autoincrement())
+  releaseId    String                @map("release_id")
+  release      StudioCatalogRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  attemptId    String                @map("attempt_id") @db.VarChar(128)
+  leaseId      String                @map("lease_id")
+  execution    StudioRenderExecution @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
+  proof        Json
+  requestHash  String                @map("request_hash")
+  checkedAt    DateTime              @map("checked_at")
+  expiresAt    DateTime              @map("expires_at")
+  publications StudioPublication[]
+
+  @@index([releaseId, sequence(sort: Desc)], map: "studio_catalog_readiness_latest")
+  @@map("studio_catalog_readiness")
+}
+
+model StudioPublication {
+  releaseId       String                 @id @map("release_id")
+  release         StudioCatalogRelease   @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  projectId       String                 @unique @map("project_id") @db.VarChar(128)
+  project         StudioProject          @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  approvalId      String                 @map("approval_id") @db.VarChar(128)
+  approval        StudioApproval         @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+  readinessId     String                 @map("readiness_id")
+  readiness       StudioCatalogReadiness @relation(fields: [readinessId], references: [id], onDelete: Restrict)
+  publishedAt     DateTime               @map("published_at")
+  revokedAt       DateTime?              @map("revoked_at")
+  watchDeliveries StudioWatchDelivery[]
+
+  @@map("studio_publication")
+}
+
+model StudioRenderRetainedAsset {
+  attemptId      String             @map("attempt_id") @db.VarChar(128)
+  leaseId        String             @map("lease_id")
+  assetVersionId String             @map("asset_version_id")
+  lease          StudioRenderLease  @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
+  assetVersion   StudioAssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Restrict)
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  @@id([attemptId, leaseId, assetVersionId])
+  @@map("studio_render_retained_asset")
+}
+
+model StudioMuxJob {
+  id         String        @id @default(cuid())
+  attemptId  String        @unique @map("attempt_id") @db.VarChar(128)
+  attempt    StudioAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  snapshot   Json
+  state      String        @default("PENDING")
+  dispatchId String?       @unique @map("dispatch_id")
+  assetId    String?       @unique @map("asset_id")
+  readiness  Json?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  @@map("studio_mux_job")
+}
+
+model StudioWatchDelivery {
+  releaseId   String            @map("release_id")
+  publication StudioPublication @relation(fields: [releaseId], references: [releaseId], onDelete: Restrict)
+  phase       String
+  deliveredAt DateTime          @default(now()) @map("delivered_at") @db.Timestamptz(6)
+
+  @@id([releaseId, phase])
+  @@map("studio_watch_delivery")
 }

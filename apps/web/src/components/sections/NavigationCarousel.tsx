@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import { useTranslations } from "next-intl"
 import type {
   FragmentOf,

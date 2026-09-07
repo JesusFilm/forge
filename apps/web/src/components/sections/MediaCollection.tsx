@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import type { ComponentProps, CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"

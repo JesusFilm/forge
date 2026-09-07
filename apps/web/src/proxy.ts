@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { isStudioPlaybackUrl } from "@/lib/studio-playback"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 import {
   DEFAULT_LOCALE,
@@ -708,6 +709,14 @@ async function isAdmittedInternalRewrite(
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
+  if (pathname === "/_next/image") {
+    if (isStudioPlaybackUrl(request.nextUrl.clone().searchParams.get("url")))
+      return new NextResponse(null, {
+        status: 404,
+        headers: { "cache-control": "private, no-store, max-age=0" },
+      })
+    return NextResponse.next()
+  }
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())
@@ -781,5 +790,6 @@ export const config = {
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
     "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|language-globe|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    "/_next/image",
   ],
 }

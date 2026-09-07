@@ -1,3 +1,4 @@
+import { studioPublicReleaseSql } from "@/services/search-watchability"
 // Video service — read-only in v1. Writes come via Core sync (Unit 10).
 //
 // Auth contract (consumer-migration U2 — 2026-05-11): `list`/`getById`/
@@ -2266,6 +2267,7 @@ export class VideoService {
               AND parent.deleted_at IS NULL
               AND parent.no_index = FALSE
               AND NOT ('watch' = ANY(parent.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`parent.id`)}
               AND EXISTS (
                 SELECT 1
                 FROM video_locale published_locale
@@ -2285,6 +2287,7 @@ export class VideoService {
                     AND child.no_index = FALSE
                     ${excludedChildIdsFilter}
                     AND NOT ('watch' = ANY(child.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`child.id`)}
                     AND EXISTS (
                       SELECT 1
                       FROM video_locale published_locale
@@ -2347,6 +2350,7 @@ export class VideoService {
                 AND child.no_index = FALSE
                 ${excludedChildIdsFilter}
                 AND NOT ('watch' = ANY(child.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`child.id`)}
                 AND EXISTS (
                   SELECT 1
                   FROM video_locale published_locale
@@ -2586,6 +2590,7 @@ export class VideoService {
             ON child.id = relation.child_id
           WHERE child.deleted_at IS NULL
             AND NOT ('watch' = ANY(child.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`child.id`)}
             AND EXISTS (
               SELECT 1
               FROM video_locale child_locale
@@ -2793,6 +2798,7 @@ export class VideoService {
         WHERE video.deleted_at IS NULL
           AND video.no_index = FALSE
           AND NOT ('watch' = ANY(video.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`video.id`)}
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -2834,6 +2840,7 @@ export class VideoService {
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
           AND NOT ('watch' = ANY(parent.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`parent.id`)}
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -3115,6 +3122,7 @@ export class VideoService {
           AND child_video.deleted_at IS NULL
           AND child_video.no_index = FALSE
           AND NOT ('watch' = ANY(child_video.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`child_video.id`)}
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
@@ -3173,6 +3181,7 @@ export class VideoService {
           AND parent.deleted_at IS NULL
           AND parent.no_index = FALSE
           AND NOT ('watch' = ANY(parent.restrict_view_platforms))
+        AND ${studioPublicReleaseSql(Prisma.sql`parent.id`)}
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale

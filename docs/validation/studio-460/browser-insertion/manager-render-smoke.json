@@ -1,0 +1,363 @@
+{
+  "errors": [],
+  "blockedHosts": [],
+  "steps": [
+    "Production Manager browser edit/save/enqueue, real signed worker dispatch, contained Chromium render and independent codec verification, canonical retained SUCCEEDED"
+  ],
+  "editorReadyMs": 2332.4915169999995,
+  "attemptId": "cmtrpzzg7000f2cq7h842o3ob",
+  "revision": 3,
+  "performance": {
+    "navigation": [
+      {
+        "name": "http://studio460.localhost:34666/dashboard/shorts/f639d7c3-298f-41cb-8ced-f8d013bb634e",
+        "entryType": "navigation",
+        "startTime": 0,
+        "duration": 1219.5,
+        "navigationId": 551,
+        "initiatorType": "navigation",
+        "deliveryType": "",
+        "nextHopProtocol": "http/1.1",
+        "renderBlockingStatus": "non-blocking",
+        "contentType": "text/html",
+        "contentEncoding": "gzip",
+        "workerStart": 0,
+        "workerRouterEvaluationStart": 0,
+        "workerCacheLookupStart": 0,
+        "workerMatchedSourceType": "",
+        "workerFinalSourceType": "",
+        "redirectStart": 0,
+        "redirectEnd": 0,
+        "fetchStart": 2.9000000059604645,
+        "domainLookupStart": 2.9000000059604645,
+        "domainLookupEnd": 2.9000000059604645,
+        "connectStart": 2.9000000059604645,
+        "secureConnectionStart": 0,
+        "connectEnd": 2.9000000059604645,
+        "requestStart": 29.80000001192093,
+        "responseStart": 626.9000000059605,
+        "firstInterimResponseStart": 0,
+        "finalResponseHeadersStart": 626.9000000059605,
+        "responseEnd": 643.6000000238419,
+        "transferSize": 5657,
+        "encodedBodySize": 5357,
+        "decodedBodySize": 19693,
+        "responseStatus": 200,
+        "serverTiming": [],
+        "unloadEventStart": 0,
+        "unloadEventEnd": 0,
+        "domInteractive": 948.6000000238419,
+        "domContentLoadedEventStart": 948.6000000238419,
+        "domContentLoadedEventEnd": 948.9000000059605,
+        "domComplete": 1219.4000000059605,
+        "loadEventStart": 1219.5,
+        "loadEventEnd": 1219.5,
+        "type": "navigate",
+        "redirectCount": 0,
+        "activationStart": 0,
+        "criticalCHRestart": 0,
+        "notRestoredReasons": null,
+        "confidence": {
+          "randomizedTriggerRate": 0.4994798,
+          "value": "low"
+        }
+      }
+    ],
+    "resources": [
+      {
+        "name": "/_next/static/chunks/0dhhbuvur51v-.css",
+        "duration": 164.19999998807907,
+        "transferSize": 53019,
+        "encodedBodySize": 52719
+      },
+      {
+        "name": "/_next/static/chunks/124wj_sfq37ps.css",
+        "duration": 98.09999999403954,
+        "transferSize": 12686,
+        "encodedBodySize": 12386
+      },
+      {
+        "name": "/_next/static/chunks/0lvke~rgk0wjg.css",
+        "duration": 116.40000000596046,
+        "transferSize": 3247,
+        "encodedBodySize": 2947
+      },
+      {
+        "name": "/_next/static/chunks/03_b.fmhsfym1.js",
+        "duration": 224.09999999403954,
+        "transferSize": 9386,
+        "encodedBodySize": 9086
+      },
+      {
+        "name": "/_next/static/chunks/17rjbzjl~sg-w.js",
+        "duration": 268.89999997615814,
+        "transferSize": 9458,
+        "encodedBodySize": 9158
+      },
+      {
+        "name": "/_next/static/chunks/02kbh1yuwe5rg.js",
+        "duration": 285.89999997615814,
+        "transferSize": 39100,
+        "encodedBodySize": 38800
+      },
+      {
+        "name": "/_next/static/chunks/0zjjbsizuvpvi.js",
+        "duration": 343.09999999403954,
+        "transferSize": 71277,
+        "encodedBodySize": 70977
+      },
+      {
+        "name": "/_next/static/chunks/turbopack-00k7djsjxb7ul.js",
+        "duration": 305.5,
+        "transferSize": 4448,
+        "encodedBodySize": 4148
+      },
+      {
+        "name": "/_next/static/chunks/0yv0gttvno-ru.js",
+        "duration": 314.2000000178814,
+        "transferSize": 4345,
+        "encodedBodySize": 4045
+      },
+      {
+        "name": "/_next/static/chunks/0m.d73n129mb5.js",
+        "duration": 323.40000000596046,
+        "transferSize": 13172,
+        "encodedBodySize": 12872
+      },
+      {
+        "name": "/_next/static/chunks/00jntgjvwqi-r.js",
+        "duration": 331.7000000178814,
+        "transferSize": 8787,
+        "encodedBodySize": 8487
+      },
+      {
+        "name": "/_next/static/chunks/020e31uanesrk.js",
+        "duration": 324.40000000596046,
+        "transferSize": 12906,
+        "encodedBodySize": 12606
+      },
+      {
+        "name": "/_next/static/chunks/0a_gribkh81b8.js",
+        "duration": 333.5,
+        "transferSize": 6056,
+        "encodedBodySize": 5756
+      },
+      {
+        "name": "/_next/static/chunks/0b0v5hijp_q26.js",
+        "duration": 371,
+        "transferSize": 10784,
+        "encodedBodySize": 10484
+      },
+      {
+        "name": "/_next/static/chunks/08graravsts3r.js",
+        "duration": 372.80000001192093,
+        "transferSize": 64291,
+        "encodedBodySize": 63991
+      },
+      {
+        "name": "/_next/static/chunks/04w5go15ym7l5.js",
+        "duration": 368.30000001192093,
+        "transferSize": 1223,
+        "encodedBodySize": 923
+      },
+      {
+        "name": "/jesusfilm-sign.svg",
+        "duration": 134.69999998807907,
+        "transferSize": 701,
+        "encodedBodySize": 401
+      },
+      {
+        "name": "/favicon.svg",
+        "duration": 29.200000017881393,
+        "transferSize": 970,
+        "encodedBodySize": 670
+      },
+      {
+        "name": "/favicon.svg",
+        "duration": 65.60000002384186,
+        "transferSize": 970,
+        "encodedBodySize": 670
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 497.30000001192093,
+        "transferSize": 831,
+        "encodedBodySize": 531
+      },
+      {
+        "name": "/api/jobs",
+        "duration": 394.5,
+        "transferSize": 311,
+        "encodedBodySize": 11
+      },
+      {
+        "name": "/dashboard/agents",
+        "duration": 358,
+        "transferSize": 469,
+        "encodedBodySize": 169
+      },
+      {
+        "name": "/dashboard/seo",
+        "duration": 361.19999998807907,
+        "transferSize": 461,
+        "encodedBodySize": 161
+      },
+      {
+        "name": "/dashboard/shorts",
+        "duration": 362.40000000596046,
+        "transferSize": 463,
+        "encodedBodySize": 163
+      },
+      {
+        "name": "/dashboard/smart-crop",
+        "duration": 364,
+        "transferSize": 467,
+        "encodedBodySize": 167
+      },
+      {
+        "name": "/dashboard/jobs",
+        "duration": 122.80000001192093,
+        "transferSize": 468,
+        "encodedBodySize": 168
+      },
+      {
+        "name": "/dashboard/coverage",
+        "duration": 119.59999999403954,
+        "transferSize": 471,
+        "encodedBodySize": 171
+      },
+      {
+        "name": "/dashboard/agents",
+        "duration": 117.30000001192093,
+        "transferSize": 1692,
+        "encodedBodySize": 1392
+      },
+      {
+        "name": "/dashboard/seo",
+        "duration": 115.59999999403954,
+        "transferSize": 1030,
+        "encodedBodySize": 730
+      },
+      {
+        "name": "/dashboard/shorts",
+        "duration": 89.30000001192093,
+        "transferSize": 1026,
+        "encodedBodySize": 726
+      },
+      {
+        "name": "/dashboard/smart-crop",
+        "duration": 83.89999997615814,
+        "transferSize": 1028,
+        "encodedBodySize": 728
+      },
+      {
+        "name": "/dashboard/jobs",
+        "duration": 82.40000000596046,
+        "transferSize": 2543,
+        "encodedBodySize": 2243
+      },
+      {
+        "name": "/dashboard/coverage",
+        "duration": 78.40000000596046,
+        "transferSize": 1539,
+        "encodedBodySize": 1239
+      },
+      {
+        "name": "/_next/static/chunks/0pw50l50kke3l.js",
+        "duration": 60.099999994039536,
+        "transferSize": 2194,
+        "encodedBodySize": 1894
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 137.2999999821186,
+        "transferSize": 313,
+        "encodedBodySize": 13
+      },
+      {
+        "name": "/api/studio/preview",
+        "duration": 162.09999999403954,
+        "transferSize": 737,
+        "encodedBodySize": 437
+      },
+      {
+        "name": "/s/[redacted-expired-session]/",
+        "duration": 464.90000000596046,
+        "transferSize": 0,
+        "encodedBodySize": 0
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 162.5,
+        "transferSize": 397,
+        "encodedBodySize": 97
+      },
+      {
+        "name": "/_next/static/chunks/17fi-9fypyhq..js",
+        "duration": 19.19999998807907,
+        "transferSize": 14130,
+        "encodedBodySize": 13830
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 82.90000000596046,
+        "transferSize": 1378,
+        "encodedBodySize": 1078
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 81.09999999403954,
+        "transferSize": 437,
+        "encodedBodySize": 137
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 85.2999999821186,
+        "transferSize": 1540,
+        "encodedBodySize": 1240
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 92.19999998807907,
+        "transferSize": 1540,
+        "encodedBodySize": 1240
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 54.79999998211861,
+        "transferSize": 1122,
+        "encodedBodySize": 822
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 94.5,
+        "transferSize": 1571,
+        "encodedBodySize": 1271
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 75.30000001192093,
+        "transferSize": 1571,
+        "encodedBodySize": 1271
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 73.19999998807907,
+        "transferSize": 1571,
+        "encodedBodySize": 1271
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 82.7000000178814,
+        "transferSize": 1571,
+        "encodedBodySize": 1271
+      },
+      {
+        "name": "/api/studio/command",
+        "duration": 155,
+        "transferSize": 1575,
+        "encodedBodySize": 1275
+      }
+    ]
+  }
+}

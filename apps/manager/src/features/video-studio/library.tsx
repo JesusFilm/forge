@@ -92,6 +92,15 @@ export function Library({
   function insert(item: StudioTimelineItem) {
     session.edit((d) => ({
       ...d,
+      tracks: d.tracks.some((track) => track.id === item.trackId)
+        ? d.tracks
+        : [
+            ...d.tracks,
+            {
+              id: item.trackId,
+              kind: item.kind === "audio" ? "audio" : "visual",
+            },
+          ],
       durationInFrames: Math.max(
         d.durationInFrames,
         item.startFrame + item.durationInFrames,
@@ -102,7 +111,7 @@ export function Library({
   }
   const base = (kind: "visual" | "audio" = "visual") => ({
     id: crypto.randomUUID(),
-    trackId: doc.tracks.find((t) => t.kind === kind)?.id ?? doc.tracks[0]!.id,
+    trackId: doc.tracks.find((t) => t.kind === kind)?.id ?? crypto.randomUUID(),
     startFrame: state.playhead,
     durationInFrames: 150,
   })

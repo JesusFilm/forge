@@ -33,6 +33,7 @@ import { Inspector, defaultTransform } from "./inspector"
 import { Timeline, itemLabel } from "./timeline"
 import { Library } from "./library"
 import "./studio.css"
+const RenderPanel = dynamic(() => import("./render-panel"), { ssr: false })
 const ProductionPanel = dynamic(() => import("./production-panel"), {
   ssr: false,
 })
@@ -44,7 +45,13 @@ const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
 })
-export function StudioEditor({ projectId }: { projectId: string }) {
+export function StudioEditor({
+  projectId,
+  watchOrigin,
+}: {
+  projectId: string
+  watchOrigin?: string
+}) {
   const [session, setSession] = useState<EditorSession | null>(null),
     [error, setError] = useState("")
   useEffect(() => {
@@ -89,7 +96,7 @@ export function StudioEditor({ projectId }: { projectId: string }) {
       </section>
     )
   return session ? (
-    <Editor projectId={projectId} session={session} />
+    <Editor projectId={projectId} session={session} watchOrigin={watchOrigin} />
   ) : (
     <p className="nle-empty">Opening project…</p>
   )
@@ -97,9 +104,11 @@ export function StudioEditor({ projectId }: { projectId: string }) {
 function Editor({
   session,
   projectId,
+  watchOrigin,
 }: {
   session: EditorSession
   projectId: string
+  watchOrigin?: string
 }) {
   const state = useSyncExternalStore(
       session.subscribe,
@@ -112,6 +121,7 @@ function Editor({
     [history, setHistory] = useState<StudioRevision[] | null>(null),
     [selectCanvas, setSelectCanvas] = useState(true),
     [agentOpen, setAgentOpen] = useState(false),
+    [renderOpen, setRenderOpen] = useState(false),
     [productionOpen, setProductionOpen] = useState(false),
     [generationOpen, setGenerationOpen] = useState(false)
   const canvas = useRef<HTMLDivElement>(null),
@@ -202,6 +212,9 @@ function Editor({
           </button>
           <button onClick={() => setProductionOpen(true)}>
             Speech and production
+          </button>
+          <button onClick={() => setRenderOpen(true)}>
+            Render and publish
           </button>
           <button onClick={showHistory}>
             <History size={16} />
@@ -396,6 +409,14 @@ function Editor({
           session={session}
           projectId={projectId}
           onClose={() => setGenerationOpen(false)}
+        />
+      )}
+      {renderOpen && (
+        <RenderPanel
+          session={session}
+          projectId={projectId}
+          watchOrigin={watchOrigin}
+          onClose={() => setRenderOpen(false)}
         />
       )}
       {productionOpen && (

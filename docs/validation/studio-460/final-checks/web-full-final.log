@@ -1,0 +1,1036 @@
+(node:2042700) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/web
+
+stderr | src/components/__tests__/FloatingSearchProvider.test.tsx > FloatingSearchProvider — search pagination > reports Datadog RUM context when a Watch search result is clicked
+Error: Not implemented: navigation (except hash changes)
+    at module.exports (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at navigateFetch (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+    at exports.navigate (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+    at /home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:80:7
+    at callTimer (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2211:25)
+    at doTickInner (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2814:30)
+    at doTick (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2895:21)
+    at Object.tick (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2903:21)
+    at FakeTimers.advanceTimersByTime (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:3629:44)
+    at Object.advanceTimersByTime (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:3857:13) undefined
+Error: Not implemented: navigation (except hash changes)
+    at module.exports (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at navigateFetch (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+    at exports.navigate (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+    at /home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:80:7
+    at callTimer (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2211:25)
+    at doTickInner (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2814:30)
+    at doTick (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2895:21)
+    at Object.tick (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:2903:21)
+    at FakeTimers.advanceTimersByTime (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:3629:44)
+    at Object.advanceTimersByTime (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@25.2.3_jiti@2.6.1_jsdom@26.1.0_lightningcss@1.32_cupt4tjvfq7gxgoepszny52lou/node_modules/vitest/dist/chunks/vi.bdSIJ99Y.js:3857:13) undefined
+
+ ✓ src/components/__tests__/FloatingSearchProvider.test.tsx (147 tests) 4780ms
+ ✓ src/components/watch/__tests__/HeroPlayer.test.tsx (124 tests | 1 skipped) 4214ms
+stderr | src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-routing.test.tsx > Catch-all routing — metadata for playable watch pages > uses lightweight fallback metadata when watch route resolution throws
+[watch] event=watch_metadata.video.fallback slug=easter rawLocale=english detail=You_are_trying_to_access__videoBySlug__too_often
+
+stderr | src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-routing.test.tsx > Catch-all routing — series branch (2-seg) > renders an error state instead of bubbling to a 500 when route resolution throws
+[watch] event=watch_route.video.resolve_failed slug=life-of-jesus-gospel-of-john rawLocale=english detail=Response_not_successful:_Received_status_code_503
+
+ ✓ src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-routing.test.tsx (92 tests) 1316ms
+ ✓ src/components/whats-new/__tests__/WatchWhatsNewPage.test.tsx (100 tests) 13389ms
+   ✓ WatchWhatsNewPage > renders one h1 carrying the announcement title  480ms
+   ✓ WatchWhatsNewPage > gives every era with a photo a photo, and the rest the rendered panel  319ms
+ ✓ src/components/watch/__tests__/SiblingCarousel.test.tsx (36 tests) 1720ms
+ ✓ src/components/watch/__tests__/LanguagePickerModal.test.tsx (34 tests) 3485ms
+ ✓ src/components/sections/MediaCollection.test.tsx (51 tests) 917ms
+ ✓ src/components/watch-language-inventory/LanguageInventoryPage.test.tsx (37 tests) 1124ms
+ ✓ src/components/watch/__tests__/HeroPlayerControls.test.tsx (40 tests) 833ms
+ ✓ src/components/watch/__tests__/LanguageCombobox.test.tsx (39 tests) 807ms
+ ✓ src/components/home/__tests__/WatchHomePage.test.tsx (18 tests) 2200ms
+ ✓ src/components/watch/__tests__/DownloadModal.test.tsx (32 tests) 2101ms
+   ✓ DownloadModal — header metadata > renders title, language pill, and duration overlay when provided  317ms
+ ✓ src/components/FeedbackLauncher.test.tsx (24 tests) 8026ms
+   ✓ FeedbackLauncher > keeps the lazy 44px headset launcher and removes every Google form resource  1055ms
+   ✓ FeedbackLauncher > renders large icon categories with contextual copy  458ms
+   ✓ FeedbackLauncher > requires a useful message and name while validating optional email  325ms
+   ✓ FeedbackLauncher > previews opt-in diagnostics and sends the native payload to Forge  883ms
+   ✓ FeedbackLauncher > accepts typed language and content when lookup services fail  632ms
+   ✓ FeedbackLauncher > submits typed content with no match and omits unapproved diagnostics  464ms
+   ✓ FeedbackLauncher > renders translated content-search loading, error, and no-match states  1121ms
+ ✓ src/components/watch/__tests__/SeriesPageClient.test.tsx (28 tests) 521ms
+stderr | src/components/watch/__tests__/WatchPageClient.download.test.tsx > WatchPageClient download boundary > reopens the download modal after returning from sign-in
+An update to WatchPageClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WatchPageClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/components/watch/__tests__/WatchPageClient.download.test.tsx (20 tests) 322ms
+ ✓ src/components/watch/__tests__/CollectionDownloadModal.test.tsx (24 tests) 1008ms
+ ✓ src/components/watch/__tests__/WatchBody.test.tsx (22 tests) 527ms
+ ✓ src/components/recommendations/WatchSemanticRecommendations.test.tsx (26 tests) 346ms
+ ✓ src/components/sections/DynamicMediaCollection.test.tsx (19 tests) 333ms
+stderr | src/components/search/VideoCard.test.tsx
+Error: Not implemented: navigation (except hash changes)
+    at module.exports (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:9:17)
+    at navigateFetch (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+    at exports.navigate (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+    at Timeout._onTimeout (/home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/jsdom@26.1.0/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:80:7)
+    at listOnTimeout (node:internal/timers:685:17)
+    at processTimers (node:internal/timers:618:7) undefined
+
+ ✓ src/components/search/VideoCard.test.tsx (50 tests) 197ms
+ ✓ src/components/recommendations/RecommendationCookieBanner.test.tsx (19 tests) 266ms
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > offers every sticker and the advertised budget
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > sticks a picked-up sticker onto the card that is tapped
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > works without dragging at all
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > records which sticker was used, not just a count
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > stops at the budget instead of handing out a fourth sticker
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > frees a sticker again when one is peeled off
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > never nests a peel button inside the card drop target
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > sticks where the pointer lands, not in a fixed slot
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > clamps a stored position that would park a sticker off the card
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > takes the held sticker out of the pile entirely
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > sticks a dropped sticker where it was dropped
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > returns the sticker to the pile once it is placed
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > hands the held sticker back when the reader changes their mind
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > keeps keyboard focus with the sticker across the hand-off
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > puts a held sticker back on Escape
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > stands the pile under the cards, at pick-up size
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > keeps the pile a step above the stuck size, from one number
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > puts the idea button in the header, above the cards
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > carries the light-band sticker surface hook
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > offers the stickers as a loose pile with a prompt
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > hides the carousel scrollbar and bleeds it past the rail
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > survives a reload
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > refuses a stored board that would exceed the budget
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > drops stored stickers that are not real kinds
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > opens the support composer from the idea button
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx > WhatsNewFeatureVote > recording votes > says nothing at all until the first read lands
+An update to WhatsNewFeatureVote inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/components/whats-new/__tests__/WhatsNewFeatureVote.test.tsx (38 tests) 1344ms
+ ✓ src/components/watch/__tests__/BibleQuotesSection.test.tsx (16 tests) 659ms
+ ✓ src/components/watch/__tests__/SubtitleTranscript.render.test.tsx (21 tests) 401ms
+ ✓ src/components/recommendations/RecommendationPlaybackRecorder.test.tsx (13 tests) 127ms
+ ✓ src/components/whats-new/__tests__/WhatsNewNoteBoard.test.tsx (30 tests) 1363ms
+ ✓ src/components/watch/__tests__/WatchSectionRenderer.test.tsx (8 tests) 143ms
+ ✓ src/components/watch/__tests__/ShareModal.test.tsx (16 tests) 674ms
+ ✓ src/components/home/WatchHomeExperiencePage.test.tsx (14 tests) 157ms
+ ✓ src/components/watch/__tests__/WatchPageClient.navigation.test.tsx (7 tests) 123ms
+ ✓ src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.test.tsx (7 tests) 250ms
+ ✓ src/lib/watch-interaction-loader.test.ts (20 tests) 82ms
+ ✓ src/components/watch/__tests__/SeriesEpisodeCard.test.tsx (30 tests) 431ms
+ ✓ src/components/home/__tests__/WatchHomeCategoryRail.test.tsx (26 tests) 429ms
+ ✓ src/components/recommendations/WatchSemanticRecommendations.lifecycle.test.tsx (8 tests) 188ms
+ ✓ src/components/watch/BetaTesterModalProvider.test.tsx (17 tests) 697ms
+ ✓ src/components/watch/__tests__/GlobalLanguagePickerModal.test.tsx (11 tests) 717ms
+ ✓ src/components/watch/WatchModalActivityProvider.test.tsx (13 tests) 70ms
+ ✓ src/components/watch-language-inventory/__tests__/LanguageInventoryPage.thumbnails.test.tsx (12 tests) 315ms
+ ✓ src/components/watch/LanguageCombobox.aliases.test.tsx (11 tests) 277ms
+ ✓ src/components/watch-language-inventory/InventoryFilterShell.test.tsx (16 tests) 398ms
+ ✓ src/lib/watch-home-carousel-sequence.test.ts (16 tests) 35ms
+ ✓ src/components/whats-new/__tests__/WhatsNewAssistantPhone.test.tsx (14 tests) 311ms
+ ✓ src/components/watch/WatchUnavailableLanguage.test.tsx (8 tests) 249ms
+ ✓ src/components/watch/WatchLanguageIndexBrowser.test.tsx (5 tests) 231ms
+ ✓ src/components/whats-new/__tests__/WhatsNewShot.test.tsx (12 tests) 98ms
+stderr | src/components/watch/__tests__/AccountControl.test.tsx > AccountControl > closes the account menu when the watch controls fade away
+An update to AccountControl inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ src/components/watch/__tests__/AccountControl.test.tsx (15 tests) 178ms
+ ✓ src/components/watch/LanguagePickerModal.aliases.test.tsx (5 tests) 560ms
+ ✓ src/components/watch/__tests__/MuxHoverPreview.test.tsx (11 tests) 104ms
+ ✓ src/components/watch/__tests__/WatchEventRecorder.test.tsx (4 tests) 36ms
+ ✓ src/components/watch/__tests__/TierListbox.test.tsx (10 tests) 383ms
+ ✓ src/components/watch/__tests__/SeriesHero.test.tsx (4 tests) 54ms
+ ✓ src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-metadata.test.tsx (4 tests) 12ms
+ ✓ src/components/home/__tests__/WatchHomeFooter.test.tsx (9 tests) 136ms
+ ✓ src/lib/dynamic-collection-client.test.ts (9 tests) 96ms
+ ✓ src/components/__tests__/DatadogRum.test.tsx (11 tests) 52ms
+ ✓ src/components/recommendations/RecommendationPlaybackRecorder.claim.test.tsx (5 tests) 87ms
+ ✓ src/components/sections/Text.test.tsx (10 tests) 135ms
+ ✓ src/components/whats-new/__tests__/WhatsNewLanguageSwitcher.test.tsx (6 tests) 89ms
+ ✓ src/components/watch/__tests__/SubtitleOverlay.test.tsx (4 tests) 80ms
+ ✓ src/lib/language-preference.test.ts (15 tests) 21ms
+stderr | src/components/sections/__tests__/CarouselVideo.test.tsx > CarouselVideo > mounts via Mux Video for the selected item
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/CarouselVideo.test.tsx > CarouselVideo > uses the shared focus frame and preserves selected-state framing
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/CarouselVideo.test.tsx > CarouselVideo > uses the shared focus frame and preserves selected-state framing
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/CarouselVideo.test.tsx > CarouselVideo > omits the copy block when no carousel text is authored
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/CarouselVideo.test.tsx > CarouselVideo > pauses its authored carousel media when modal activity opens
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+ ✓ src/components/sections/__tests__/CarouselVideo.test.tsx (4 tests) 228ms
+ ✓ src/components/whats-new/__tests__/WhatsNewSelfId.test.tsx (8 tests) 173ms
+ ✓ src/components/watch/GlobalLanguagePickerModal.aliases.test.tsx (3 tests) 422ms
+ ✓ src/components/sections/VideoRecommendations.test.tsx (6 tests) 112ms
+ ✓ src/lib/subtitle-preference-client.test.ts (15 tests) 11ms
+ ✓ src/components/ui/__tests__/carousel.test.tsx (9 tests) 122ms
+stderr | src/components/sections/__tests__/VideoHero.test.tsx > VideoHero > mounts the Mux branch and renders the shared overlay
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/VideoHero.test.tsx > VideoHero > mute-toggle click flips the `muted` property on the underlying media element
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/VideoHero.test.tsx > VideoHero > scroll past 100px pauses the underlying video element
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/VideoHero.test.tsx > VideoHero > pauses its authored hero media when modal activity opens
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+ ✓ src/components/sections/__tests__/VideoHero.test.tsx (4 tests) 113ms
+ ✓ src/lib/watch-progress-client.test.tsx (6 tests) 19ms
+ ✓ src/components/watch/BetaTesterModal.test.tsx (5 tests) 644ms
+   ✓ BetaTesterModal > focuses close, restores the trigger, and creates a fresh iframe  313ms
+ ✓ src/components/watch/__tests__/SeriesEpisodesGrid.test.tsx (6 tests) 161ms
+ ✓ src/lib/watch-unavailable-recovery-context.test.ts (4 tests) 12ms
+ ✓ src/components/sections/LanguageGlobe.lifecycle.test.tsx (1 test) 69ms
+ ✓ src/components/sections/RelatedQuestions.test.tsx (4 tests) 114ms
+ ✓ src/components/__tests__/GoogleAnalytics.test.tsx (6 tests) 54ms
+stderr | src/components/sections/__tests__/Video.test.tsx > Video > mounts via Mux and exposes the section testid
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/Video.test.tsx > Video > shows the branded player loader until the media can play
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/Video.test.tsx > Video > restores the player loader while playback buffers
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+stderr | src/components/sections/__tests__/Video.test.tsx > Video > pauses its authored media when modal activity opens
+It looks like the video you're trying to play will not work on this system! If possible, try upgrading to the newest versions of your browser or software.
+
+ ✓ src/components/sections/__tests__/Video.test.tsx (5 tests) 162ms
+ ✓ src/app/[locale]/[htmlLang]/languages/page.test.tsx (5 tests) 89ms
+ ✓ src/components/watch/WatchModalViewportCloseButton.test.tsx (5 tests) 149ms
+ ✓ src/components/whats-new/__tests__/WhatsNewAudienceQuiz.test.tsx (7 tests) 118ms
+ ✓ src/components/home/__tests__/useWatchHomeTvCarousel.test.ts (7 tests) 8ms
+ ✓ src/components/watch/ModalPlaybackRegistration.test.tsx (2 tests) 130ms
+ ✓ src/components/WatchNotFound.test.tsx (4 tests) 90ms
+ ✓ src/components/sections/BibleQuotesCarousel.test.tsx (3 tests) 274ms
+ ✓ src/components/watch-language-inventory/__tests__/LanguageCollectionSwitcher.test.tsx (1 test) 97ms
+ ✓ src/components/watch/WatchHistoryClient.test.tsx (1 test) 95ms
+ ✓ src/components/watch/collection-download-queue.test.ts (4 tests) 17ms
+ ✓ src/components/whats-new/__tests__/WhatsNewFaq.test.tsx (4 tests) 129ms
+ ✓ src/components/ui/video-thumbnail-interaction-frame.test.tsx (3 tests) 56ms
+ ✓ src/components/demo-search/GeneratedSections.test.tsx (1 test) 69ms
+ ✓ src/components/sections/WatchHomeCategoryRailExperience.test.tsx (2 tests) 363ms
+   ✓ WatchHomeCategoryRail Experience dispatch > passes the authored ids and page language through normal dispatch  358ms
+ ✓ src/components/ui/video-thumbnail-caption.test.tsx (3 tests) 37ms
+ ✓ src/components/home/__tests__/WatchHomeHero.test.tsx (1 test) 47ms
+ ✓ src/components/ui/dialog.test.tsx (2 tests) 116ms
+ ✓ src/components/sections/DeferredLanguageGlobe.test.tsx (2 tests) 46ms
+ ✓ src/components/watch/__tests__/download-session-client.test.ts (3 tests) 21ms
+ ✓ src/lib/__tests__/viewer-id.test.ts (4 tests) 8ms
+ ✓ src/components/sections/CTASection.test.tsx (2 tests) 51ms
+ ✓ src/lib/recommendation-withdrawal-pending.test.ts (2 tests) 17ms
+ ✓ src/components/recommendations/RecommendationPersonalizationControl.test.tsx (1 test) 34ms
+ ✓ src/lib/watch-volume-preference.test.ts (3 tests) 5ms
+ ✓ src/lib/feedback.test.ts (2 tests) 27ms
+ ✓ scripts/translate-ui-catalogs.test.mjs (44 tests) 134ms
+stderr | src/lib/content.test.ts > resolveWatchVideoBySlug — locale fallback > keeps rendering the playable route when selected dub detail hydration is rate-limited
+[watch] event=watch_video_dub_detail.hydration_failed videoSlug=life-of-jesus-gospel-of-john variantId=variant-ru languageSlug=russian detail=You_are_trying_to_access__videoDub__too_often
+
+ ✓ src/lib/content.test.ts (35 tests) 2190ms
+   ✓ resolveWatchPage > declares tags on every watch resolver cache  595ms
+ ✓ src/proxy.test.ts (110 tests) 86ms
+ ✓ src/app/globals.test.ts (40 tests) 20ms
+ ✓ src/lib/__tests__/content-watch-merge.test.ts (48 tests) 18ms
+stderr | src/app/api/revalidate/route.test.ts > POST /api/revalidate > reports strict Studio tag invalidation failure without changing legacy semantics
+[revalidate] event=watch_revalidate.tag.failed tag=watch:video detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:series detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:child-dub-languages detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:home detail=injected cache failure
+
+stderr | src/app/api/revalidate/route.test.ts > POST /api/revalidate > reports strict Studio tag invalidation failure without changing legacy semantics
+[revalidate] event=watch_revalidate.tag.failed tag=watch:video detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:series detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:child-dub-languages detail=injected cache failure
+[revalidate] event=watch_revalidate.tag.failed tag=watch:home detail=injected cache failure
+
+ ✓ src/app/api/revalidate/route.test.ts (25 tests) 1207ms
+ ✓ src/lib/watch-url-probe.test.ts (50 tests) 50ms
+ ✓ src/lib/experience-metadata.test.ts (16 tests) 312ms
+ ✓ src/lib/search-actions.test.ts (24 tests) 39ms
+ ✓ src/app/api/recommendations/route.test.ts (19 tests) 74ms
+ ✓ src/app/api/download/route.test.ts (31 tests) 123ms
+ ✓ src/lib/__tests__/watch-home.test.ts (13 tests) 579ms
+ ✓ src/lib/routes.test.ts (64 tests) 20ms
+ ✓ src/lib/url-canonicalize.test.ts (76 tests) 19ms
+stderr | src/lib/watch-language-inventory.test.ts > resolveWatchLanguageInventory — collection language counts > still resolves the page when the counts query fails
+[watch] event=watch_collection_language_counts.failed collections=1 detail=statement_timeout
+
+ ✓ src/lib/watch-language-inventory.test.ts (17 tests) 24ms
+ ✓ src/lib/watch-structured-data.test.ts (19 tests) 32ms
+ ✓ src/app/api/recommendations/profile/route.test.ts (13 tests) 58ms
+ ✓ src/lib/experience-preview.test.ts (21 tests) 21ms
+ ✓ src/lib/locale.test.ts (64 tests) 37ms
+ ✓ src/lib/__tests__/watch-ui-provisional-catalogs.test.ts (7 tests) 988ms
+   ✓ watch UI provisional official-language catalogs > tracks every machine-translated catalog with current provenance  412ms
+   ✓ watch UI provisional official-language catalogs > guards provisional refreshes, creates missing catalogs, and keeps checks read-only  554ms
+ ✓ src/i18n/__tests__/messages-parity.test.ts (458 tests) 8843ms
+   ✓ messages catalogs — ICU and rich-text syntax > preserves English variable, rich-tag, and plural/select contracts  576ms
+   ✓ messages catalogs — ICU and rich-text syntax > formats every translated message without parser errors  6934ms
+ ✓ src/lib/search.test.ts (9 tests) 17ms
+ ✓ src/app/api/download/route.auth.test.ts (10 tests) 945ms
+   ✓ GET /watch/api/download - account gate > returns 401 before DNS or upstream fetch when the request has no auth cookie  526ms
+ ✓ src/lib/watch-route-manifest.test.ts (14 tests) 81ms
+ ✓ src/app/api/dynamic-collections/route.test.ts (18 tests) 40ms
+ ✓ src/lib/watch-search-client.test.ts (10 tests) 26ms
+ ✓ src/lib/watch-sitemap.test.ts (17 tests) 16ms
+ ✓ src/lib/watch-sitemap-audit.test.ts (10 tests) 39ms
+ ✓ src/lib/watch-search-analytics.test.ts (10 tests) 17ms
+ ✓ src/lib/recommendation-mutation-admission.test.ts (8 tests) 35ms
+ ✓ src/components/watch/__tests__/SubtitleTranscript.test.tsx (22 tests) 50ms
+stderr | src/lib/admin-client.test.ts > admin-client env validation > throws at import when ADMIN_GRAPHQL_URL is unset
+❌ Invalid environment variables: [
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'ADMIN_GRAPHQL_URL' ],
+    message: 'Invalid input: expected string, received undefined'
+  }
+]
+
+stderr | src/lib/admin-client.test.ts > admin-client env validation > throws at import when WEB_ADMIN_API_KEYS is unset
+❌ Invalid environment variables: [
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'WEB_ADMIN_API_KEYS' ],
+    message: 'Invalid input: expected string, received undefined'
+  }
+]
+
+ ✓ src/lib/admin-client.test.ts (11 tests) 750ms
+   ✓ admin-client env validation > imports cleanly when ADMIN_GRAPHQL_URL and WEB_ADMIN_API_KEYS are both set  426ms
+ ✓ src/app/[locale]/[htmlLang]/page.test.tsx (7 tests) 52ms
+ ✓ src/lib/fragments/__tests__/watch-video.test.ts (10 tests) 65ms
+ ✓ src/app/(preview)/preview/experience/[token]/page.test.tsx (8 tests) 16ms
+stderr | src/lib/watch-unavailable-recovery-actions.test.ts > resolveWatchUnavailableRecovery > keeps admitted audio options when recovery metadata fails to load
+[watch] event=watch_unavailable_recovery.metadata.failed contentSlug=good-friday-live requestedLanguageSlug=chinese-simplified error=Admin_metadata_unavailable
+
+stderr | src/lib/watch-unavailable-recovery-actions.test.ts > resolveWatchUnavailableRecovery > keeps recovery metadata when audio options fail to load
+[watch] event=watch_unavailable_recovery.variants.failed contentSlug=good-friday-live requestedLanguageSlug=chinese-simplified error=Admin_variants_unavailable
+
+ ✓ src/lib/watch-unavailable-recovery-actions.test.ts (8 tests) 15ms
+ ✓ src/lib/recommendation-route-policy.test.ts (23 tests) 29ms
+ ✓ src/lib/enrichment.test.ts (21 tests) 10ms
+ ✓ src/lib/feature-flags.test.ts (13 tests) 457ms
+stderr | src/lib/experience-generator.test.ts > generateExperience > throws SCHEMA_MISMATCH when the model returns a wrong-shape payload
+[experience-generator] outer schema validation failed [
+  {
+    "expected": "string",
+    "code": "invalid_type",
+    "path": [
+      "intro"
+    ],
+    "message": "Invalid input: expected string, received undefined"
+  },
+  {
+    "expected": "array",
+    "code": "invalid_type",
+    "path": [
+      "sections"
+    ],
+    "message": "Invalid input: expected array, received undefined"
+  }
+] raw parsed: {"title":"Test"}
+
+stderr | src/lib/experience-generator.test.ts > generateExperience > throws SCHEMA_MISMATCH when the model content is not JSON
+[experience-generator] model returned non-JSON content not actually json
+
+ ✓ src/lib/experience-generator.test.ts (12 tests) 1571ms
+   ✓ generateExperience > throws UPSTREAM_ERROR on non-2xx OpenRouter response  398ms
+   ✓ generateExperience > retries once on 5xx then throws UPSTREAM_ERROR if still failing  723ms
+   ✓ generateExperience > retries once on transport error then throws UPSTREAM_ERROR if still failing  420ms
+ ✓ src/lib/feedback-linear.test.ts (14 tests) 134ms
+ ✓ src/lib/watch-home-tiles.test.ts (27 tests) 19ms
+stderr | src/env.test.ts > web env — Admin GraphQL URL > still rejects known non-GraphQL jesusfilm.org hosts
+❌ Invalid environment variables: [
+  {
+    code: 'custom',
+    path: [ 'ADMIN_GRAPHQL_URL' ],
+    message: 'ADMIN_GRAPHQL_URL points at a known non-GraphQL host (e.g. auth.jesusfilm.org). Admin GraphQL lives at admin.jesusfilm.org/api/graphql, not the auth host (PR #909).'
+  }
+]
+
+ ✓ src/env.test.ts (11 tests) 327ms
+ ✓ src/components/watch/__tests__/download-link.test.ts (18 tests) 11ms
+ ✓ src/lib/search-language.test.ts (11 tests) 11ms
+ ✓ src/lib/download-target.test.ts (10 tests) 73ms
+ ✓ src/components/demo-search/generate-button-state.test.ts (17 tests) 8ms
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > validates and forwards a bounded feedback payload
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > accepts feedback without optional email or diagnostics
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=false element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > rate limits a hashed client bucket before dispatch
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > rate limits a hashed client bucket before dispatch
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > rate limits a hashed client bucket before dispatch
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > rate limits a hashed client bucket before dispatch
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > rate limits a hashed client bucket before dispatch
+[feedback] event=linear_issue_created category=problem language=true content=true diagnostics=true element=false
+
+stderr | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > maps Linear failures to a generic typed result
+[feedback] event=linear_create_failed reason=timeout retryable=true
+
+stdout | src/lib/feedback-action-core.test.ts > submitFeedbackWithHeaders > attaches a validated follow-up email through an opaque receipt
+[feedback] event=linear_follow_up_email_added
+
+ ✓ src/lib/feedback-action-core.test.ts (14 tests) 99ms
+ ✓ src/lib/watch-search-suggestions-client.test.ts (7 tests) 50ms
+ ✓ src/lib/__tests__/citation-format.test.ts (16 tests) 7ms
+ ✓ src/app/api/recommendations/playback/route.test.ts (4 tests) 44ms
+ ✓ src/lib/language-index.test.ts (3 tests) 11ms
+ ✓ src/components/sections/LanguageGlobe.test.tsx (12 tests) 68ms
+ ✓ src/components/watch/collection-download-options.test.ts (7 tests) 10ms
+ ✓ src/lib/url-shape.test.ts (30 tests) 10ms
+ ✓ src/lib/watch-seo-manifest.test.ts (7 tests) 24ms
+[datadog-logs] failed to forward log: socket failed
+ ✓ src/observability/datadog-logs.test.ts (7 tests) 29ms
+ ✓ src/lib/search-language-actions.test.ts (5 tests) 27ms
+ ✓ src/app/api/auth/session/route.test.ts (7 tests) 684ms
+   ✓ GET /watch/api/auth/session > accepts the relative Watch homepage as a signed-out callback  437ms
+ ✓ src/lib/dynamic-collection-feed.test.ts (3 tests) 14ms
+ ✓ src/app/sitemap.test.ts (6 tests) 284ms
+ ✓ src/lib/__tests__/content-width.test.ts (25 tests) 11ms
+ ✓ src/lib/share.test.ts (26 tests) 11ms
+ ✓ src/app/api/recommendations/content-actions/route.test.ts (5 tests) 59ms
+ ✓ src/lib/language-display.test.ts (18 tests) 8ms
+ ✓ src/lib/fragments/__tests__/watch-experience.test.ts (4 tests) 40ms
+ ✓ src/auth/oauth-client.test.ts (6 tests) 255ms
+ ✓ src/components/whats-new/__tests__/whats-new-content.test.ts (5 tests) 9ms
+ ✓ src/lib/episode-image.test.ts (9 tests) 6ms
+ ✓ src/lib/subtitle-target.test.ts (6 tests) 53ms
+ ✓ src/lib/__tests__/select-playable-variant.test.ts (7 tests) 6ms
+ ✓ src/app/api/recommendations/evidence/route.test.ts (3 tests) 36ms
+ ✓ src/app/api/recommendations/select/route.test.ts (3 tests) 33ms
+stderr | src/lib/watch-home-route-admission.test.ts > getWatchHomepageAvailability > distinguishes a missing homepage from an upstream failure
+[watch] event=watch_home_admission.fetch.failed locale=fr status=503
+
+stderr | src/lib/watch-home-route-admission.test.ts > getWatchHomepageAvailability > retries an upstream failure instead of caching unknown
+[watch] event=watch_home_admission.fetch.failed locale=es status=503
+
+ ✓ src/lib/watch-home-route-admission.test.ts (4 tests) 23ms
+ ✓ src/lib/watch-language-switcher.test.ts (14 tests) 8ms
+ ✓ src/lib/fragments/__tests__/preview-experience.test.ts (5 tests) 7ms
+ ✓ src/lib/__tests__/watch-ui-official-languages.test.ts (5 tests) 39ms
+ ✓ src/components/watch/WatchUnavailableLanguage.server.test.tsx (3 tests) 11ms
+ ✓ src/lib/__tests__/experience-metadata-series.test.ts (9 tests) 8ms
+ ✓ src/components/watch/__tests__/SubtitleTranscript.ssr.test.tsx (3 tests) 43ms
+ ✓ src/lib/search-language-display-name.test.ts (7 tests) 35ms
+ ✓ src/lib/cloudflare-cache.test.ts (6 tests) 20ms
+ ✓ src/lib/url.test.ts (9 tests) 6ms
+ ✓ src/lib/watch-language-search-aliases.test.ts (18 tests) 11ms
+ ✓ src/lib/watch-collection-download-actions.test.ts (3 tests) 12ms
+ ✓ src/lib/__tests__/download-allowlist.test.ts (13 tests) 6ms
+ ✓ src/lib/media-image-url.test.ts (12 tests) 6ms
+ ✓ src/lib/watch-app-metadata.test.ts (7 tests) 9ms
+ ✓ src/lib/recommendations.profile.test.ts (3 tests) 11ms
+ ✓ src/components/__tests__/SearchCategoryIcons.test.tsx (4 tests) 4ms
+ ✓ src/lib/recommendation-session.test.ts (3 tests) 12ms
+ ↓ src/lib/recommendation-mutation-admission.redis.db.test.ts (1 test | 1 skipped)
+ ✓ src/components/watch/__tests__/mux-storyboard.test.ts (15 tests) 6ms
+ ✓ src/lib/__tests__/content-series.test.ts (8 tests) 5ms
+ ✓ src/lib/recommendation-consent.test.ts (2 tests) 11ms
+ ✓ src/lib/next-cache-handler.test.ts (3 tests) 230ms
+ ✓ src/i18n/client-messages.test.ts (6 tests) 5ms
+ ✓ src/components/sections/LanguageGlobeSection.test.tsx (2 tests) 24ms
+ ✓ src/lib/language-aliases.test.ts (12 tests) 6ms
+ ✓ src/lib/watch-event-actions.test.ts (2 tests) 19ms
+ ✓ src/app/api/language-options/route.test.ts (2 tests) 12ms
+ ✓ src/lib/demo-search-metrics.test.ts (6 tests) 6ms
+ ✓ src/lib/watch-observability.test.ts (5 tests) 9ms
+ ✓ src/lib/dynamic-collection-cache-signature.test.ts (2 tests) 6ms
+ ✓ src/lib/__tests__/resolve-series-episode.test.ts (6 tests) 4ms
+ ✓ src/app/api/auth/login/route.test.ts (2 tests) 179ms
+ ✓ src/lib/__tests__/experience-metadata-watch-page.test.ts (3 tests) 5ms
+ ✓ src/auth/web-session.test.ts (2 tests) 143ms
+ ✓ src/app/[locale]/[htmlLang]/unavailable/404/page.test.tsx (2 tests) 6ms
+ ✓ scripts/next-config.test.mjs (5 tests) 5ms
+ ✓ src/components/sections/LanguageGlobeExperience.test.tsx (3 tests) 27ms
+ ✓ src/lib/watch-cache-tags.test.ts (3 tests) 5ms
+ ✓ src/lib/recommendation-content-actions.test.ts (2 tests) 8ms
+ ✓ src/app/[locale]/[htmlLang]/layout.test.tsx (1 test) 14ms
+ ✓ src/lib/watch-callback.test.ts (6 tests) 4ms
+ ✓ src/app/api/beta-tester-cta/route.test.ts (3 tests) 10ms
+ ✓ src/instrumentation.test.ts (3 tests) 253ms
+ ✓ src/lib/featured-collection-references.test.ts (1 test) 4ms
+ ✓ src/app/[locale]/[htmlLang]/whats-new/page.test.ts (2 tests) 5ms
+ ✓ src/lib/fragments/__tests__/watch-home.test.ts (1 test) 6ms
+ ✓ src/lib/language-code.test.ts (6 tests) 5ms
+ ✓ src/components/ExperienceError.test.tsx (2 tests) 35ms
+stderr | src/lib/auth-session.test.ts > resolveAuthBaseURL > defaults to the production Auth service in production
+[env] ADMIN_GRAPHQL_URL host "admin.example.test" is outside the soft allowlist (localhost / 127.0.0.1 / *.jesusfilm.org / *.railway.internal / *.railway.app / *.local). Continuing without throwing — verify this is intentional.
+
+stderr | src/lib/auth-session.test.ts > resolveAuthBaseURL > rejects localhost Auth URLs in production
+[env] ADMIN_GRAPHQL_URL host "admin.example.test" is outside the soft allowlist (localhost / 127.0.0.1 / *.jesusfilm.org / *.railway.internal / *.railway.app / *.local). Continuing without throwing — verify this is intentional.
+
+ ✓ src/lib/auth-session.test.ts (2 tests) 162ms
+ ✓ src/lib/studio-playback.test.ts (1 test) 3ms
+ ✓ src/app/[locale]/[htmlLang]/[...rest]/layout.test.ts (2 tests) 3ms
+ ✓ src/lib/recommendation-consent-bootstrap.test.ts (1 test) 4ms
+ ✓ src/app/robots.test.ts (3 tests) 4ms
+ ✓ src/components/ui/MediaImage.test.tsx (1 test) 18ms
+ ✓ src/lib/recommendation-errors.test.ts (1 test) 3ms
+ ✓ src/lib/readable-scrim-color.test.ts (2 tests) 4ms
+ ✓ src/lib/webvtt.test.ts (1 test) 4ms
+
+ Test Files  231 passed | 1 skipped (232)
+      Tests  3700 passed | 1 skipped | 1 todo (3702)
+   Start at  10:25:55
+   Duration  281.70s (transform 12.20s, setup 12.24s, collect 53.44s, tests 87.84s, environment 53.05s, prepare 21.76s)
+

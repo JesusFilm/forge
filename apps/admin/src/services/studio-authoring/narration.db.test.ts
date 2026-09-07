@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { readFileSync } from "node:fs"
 import {
   studioDocumentSchema,
@@ -28,7 +29,10 @@ class FixtureError extends Error {}
 ;(url ? describe : describe.skip)("Canonical narration completion", () => {
   let db: PrismaClient
   beforeAll(() => {
-    if (url !== "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test")
+    if (
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      url !== "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test"
+    )
       throw new FixtureError("Use task-owned database only")
     db = new PrismaClient({ datasources: { db: { url } } })
   })

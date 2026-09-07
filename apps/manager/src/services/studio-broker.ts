@@ -27,7 +27,11 @@ import {
   studioPreviewSchema,
   type StudioPreview,
 } from "@forge/studio-contracts/preview"
-import type { StudioInteractiveClient } from "@/backend/studio-interactive"
+import type { StudioAction } from "@forge/studio-contracts/transport"
+export type StudioBrokerClient = (
+  action: StudioAction,
+  input: unknown,
+) => Promise<unknown>
 import { env } from "@/config/env"
 
 export class StudioBrokerError extends Error {}
@@ -112,7 +116,7 @@ async function readBounded(response: Response, max: number) {
   return Buffer.concat(chunks)
 }
 export function createStudioAssetBroker(
-  call: StudioInteractiveClient,
+  call: StudioBrokerClient,
   signal?: AbortSignal,
 ) {
   return {
@@ -343,10 +347,69 @@ async function updateStudioPreviewSession(
     throw new StudioBrokerError("Preview session is no longer available")
 }
 
+/** Validates retained media authority, independently of interactive attribution.
+ * The caller resolves current source eligibility before invoking this reader. */
+export async function readRetainedStudioSource(
+  call: StudioBrokerClient,
+  assets: ReturnType<typeof createStudioAssetBroker>,
+  snapshot: StudioSourceSnapshot,
+  entry: { startMs: number; endMs: number },
+  proofKey: string,
+) {
+  const retained = []
+  for (const [purpose, ref] of [
+    ["preview", snapshot.source.preview],
+    ["export", snapshot.source.export],
+  ] as const) {
+    const asset = studioAssetVersionSchema.parse(await call("asset", ref))
+    const { proofSignature, ...proof } = asset.provenance.recorded
+    const expected = createHmac("sha256", proofKey)
+      .update(`${ref.digest}:${canonical(proof)}`)
+      .digest("hex")
+    if (
+      typeof proofSignature !== "string" ||
+      proofSignature.length !== expected.length ||
+      !timingSafeEqual(Buffer.from(proofSignature), Buffer.from(expected))
+    )
+      break
+    const manifest = studioSourceManifestSchema.parse(
+      JSON.parse((await assets.read(ref, 1048576)).toString()),
+    )
+    const admitted = studioSourceSnapshotSchema.parse(
+      await call("source", manifest.sourceSnapshotId),
+    )
+    const identity = (s: StudioSourceSnapshot) =>
+      canonical({
+        catalogDigest: s.catalogDigest,
+        downloadId: s.downloadId,
+        source: {
+          ...s.source,
+          preview: null,
+          export: null,
+          startMs: 0,
+          endMs: 0,
+        },
+      })
+    if (
+      identity(admitted) !== identity(snapshot) ||
+      manifest.catalogDigest !== snapshot.catalogDigest ||
+      manifest.purpose !== purpose ||
+      !manifest.ranges.some(
+        (r) => r.startMs <= entry.startMs && r.endMs >= entry.endMs,
+      )
+    )
+      throw new StudioBrokerError(
+        "Retained codec proof does not cover this source",
+      )
+    retained.push({ manifest, proof })
+  }
+  return retained
+}
+
 // One active preparation per Manager process bounds aggregate memory and extraction work.
 let preparing = false
 export async function prepareStudioPreview(
-  call: StudioInteractiveClient,
+  call: StudioBrokerClient,
   projectId: string,
   rawDocument: unknown,
   signal?: AbortSignal,
@@ -411,53 +474,13 @@ export async function prepareStudioPreview(
           (r) => r.startMs <= entry.startMs && r.endMs >= entry.endMs,
         )
       ) {
-        const retained = []
-        for (const [purpose, ref] of [
-          ["preview", snapshot.source.preview],
-          ["export", snapshot.source.export],
-        ] as const) {
-          const asset = studioAssetVersionSchema.parse(await call("asset", ref))
-          const { proofSignature, ...proof } = asset.provenance.recorded
-          const expected = createHmac("sha256", env.STUDIO_PREVIEW_API_KEY)
-            .update(`${ref.digest}:${canonical(proof)}`)
-            .digest("hex")
-          if (
-            typeof proofSignature !== "string" ||
-            proofSignature.length !== expected.length ||
-            !timingSafeEqual(Buffer.from(proofSignature), Buffer.from(expected))
-          )
-            break
-          const manifest = studioSourceManifestSchema.parse(
-            JSON.parse((await assets.read(ref, 1048576)).toString()),
-          )
-          const admitted = studioSourceSnapshotSchema.parse(
-            await call("source", manifest.sourceSnapshotId),
-          )
-          const identity = (s: StudioSourceSnapshot) =>
-            canonical({
-              catalogDigest: s.catalogDigest,
-              downloadId: s.downloadId,
-              source: {
-                ...s.source,
-                preview: null,
-                export: null,
-                startMs: 0,
-                endMs: 0,
-              },
-            })
-          if (
-            identity(admitted) !== identity(snapshot) ||
-            manifest.catalogDigest !== snapshot.catalogDigest ||
-            manifest.purpose !== purpose ||
-            !manifest.ranges.some(
-              (r) => r.startMs <= entry.startMs && r.endMs >= entry.endMs,
-            )
-          )
-            throw new StudioBrokerError(
-              "Retained codec proof does not cover this source",
-            )
-          retained.push({ manifest, proof })
-        }
+        const retained = await readRetainedStudioSource(
+          call,
+          assets,
+          snapshot,
+          entry,
+          env.STUDIO_PREVIEW_API_KEY,
+        )
         if (retained.length === 2) {
           const { manifest, proof } = retained[0]!
           const info = z

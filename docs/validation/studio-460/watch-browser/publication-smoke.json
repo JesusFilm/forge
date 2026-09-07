@@ -1,0 +1,109 @@
+{
+  "scope": "Owned local Mux protocol fixture, not actual provider acceptance",
+  "errors": [],
+  "steps": [
+    "Actual browser retained video review, trusted interactive approval, fresh readiness and canonical atomic publication with local signed-only provider fixture"
+  ],
+  "review": {
+    "duration": 5.056,
+    "width": 320,
+    "height": 180
+  },
+  "watchHref": "http://127.0.0.1:34667/watch/studio-5774f6c8-6379-46c2-ae48-6cba85a01980.html",
+  "state": {
+    "project": {
+      "projectId": "0bcc1fb0-fa64-4b80-93ba-1c00a022e77b",
+      "revision": 2,
+      "lifecycle": "PUBLISHED",
+      "firstPublishedAt": "2026-09-07T21:24:52.675Z",
+      "document": {
+        "version": 1,
+        "title": "Studio460 Watch browser",
+        "language": "english",
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "width": 320,
+        "height": 180,
+        "fps": 30,
+        "durationInFrames": 150,
+        "tracks": [
+          {
+            "id": "b076c32d-3eea-4235-892e-a6c009985ce9",
+            "kind": "visual"
+          }
+        ],
+        "components": [],
+        "items": [
+          {
+            "id": "e19e36e3-a6b4-467e-8f05-096e2bcf3eca",
+            "trackId": "b076c32d-3eea-4235-892e-a6c009985ce9",
+            "startFrame": 0,
+            "durationInFrames": 150,
+            "kind": "text",
+            "text": "Your text",
+            "properties": {
+              "color": "#ffffff",
+              "fontSize": 72,
+              "align": "center"
+            }
+          }
+        ],
+        "packRevisionIds": []
+      },
+      "actor": {
+        "kind": "human",
+        "id": "989f3bdc-c427-4bb2-af2a-bb717a9fb891",
+        "authority": "interactive"
+      }
+    },
+    "attempts": [
+      {
+        "id": "cmtrqzkpf000t2c2da5ja3wwr",
+        "baseRevision": 2,
+        "status": "SUCCEEDED",
+        "createdAt": "2026-09-07T21:23:34.420Z",
+        "renderJob": {
+          "state": "COMPLETED",
+          "generation": 1
+        },
+        "muxJob": {
+          "state": "READY"
+        },
+        "catalogRelease": {
+          "id": "5774f6c8-6379-46c2-ae48-6cba85a01980",
+          "video": {
+            "slug": "studio-5774f6c8-6379-46c2-ae48-6cba85a01980"
+          },
+          "dub": {
+            "hls": "http://127.0.0.1:34669/api/studio/playback/5774f6c8-6379-46c2-ae48-6cba85a01980/index.m3u8",
+            "language": {
+              "slug": "english"
+            }
+          },
+          "readiness": [
+            {
+              "id": "mux-ready:cmtrr00ik00172c2dwczqruwm:e0d24968c5077b5c16f79bae",
+              "checkedAt": "2026-09-07T21:24:52.480Z",
+              "expiresAt": "2026-09-07T21:25:52.480Z"
+            }
+          ],
+          "output": {
+            "assetId": "c4c0675e-eca3-45ea-8d16-ebffc2c2d0bc",
+            "versionId": "cmtrqztfb000x2c2dfod9m60o",
+            "digest": "b3e6caa79dd299b1c68f0c02ea81b61dc5eb4596c765a5310eec71878952095b"
+          }
+        }
+      }
+    ],
+    "approvals": [
+      {
+        "id": "cmtrr18pn001j2c2dhrds73vo",
+        "renderAttemptId": "cmtrqzkpf000t2c2da5ja3wwr"
+      }
+    ],
+    "publication": {
+      "releaseId": "5774f6c8-6379-46c2-ae48-6cba85a01980",
+      "publishedAt": "2026-09-07T21:24:52.675Z",
+      "revokedAt": null
+    }
+  }
+}

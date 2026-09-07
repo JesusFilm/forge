@@ -13,12 +13,16 @@ export class StudioTransportError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string,
+    public readonly publicationRejected = false,
   ) {
     super(code)
   }
 }
 /** Server-only: accepts the actor returned by authenticated Manager session validation. */
-export function createStudioInteractiveClient(actor: ManagerInteractiveActor) {
+export function createStudioInteractiveClient(
+  actor: ManagerInteractiveActor,
+  signal?: AbortSignal,
+) {
   return async function call(
     action: StudioAction,
     input: unknown,
@@ -59,18 +63,25 @@ export function createStudioInteractiveClient(actor: ManagerInteractiveActor) {
         },
         body,
         redirect: "error",
-        signal: AbortSignal.timeout(action === "capture" ? 45000 : 15000),
+        signal: signal
+          ? AbortSignal.any([
+              signal,
+              AbortSignal.timeout(action === "capture" ? 45000 : 15000),
+            ])
+          : AbortSignal.timeout(action === "capture" ? 45000 : 15000),
         cache: "no-store",
       },
     )
     const payload = (await response.json()) as {
       result?: unknown
       error?: string
+      publicationRejected?: boolean
     }
     if (!response.ok)
       throw new StudioTransportError(
         response.status,
         payload.error ?? "Studio request failed",
+        payload.publicationRejected === true,
       )
     return payload.result
   }

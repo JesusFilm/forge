@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { createRequire } from "node:module"
 import { schema } from "@/graphql/schema"
 const { graphql } = createRequire(import.meta.url)(
@@ -30,19 +31,20 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
   beforeAll(() => {
     const parsed = new URL(url!)
     if (
-      parsed.hostname !== "127.0.0.1" ||
-      !(
-        (parsed.port === "55455" &&
-          parsed.pathname === "/forge_studio_455_test") ||
-        (parsed.port === "55458" &&
-          parsed.pathname === "/forge_studio_458_test") ||
-        (parsed.port === "55457" &&
-          parsed.pathname === "/forge_studio_457_test") ||
-        (parsed.port === "55459" &&
-          parsed.pathname === "/forge_studio_459_test") ||
-        (parsed.port === "55456" &&
-          parsed.pathname === "/forge_studio_456_test")
-      )
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
+      (parsed.hostname !== "127.0.0.1" ||
+        !(
+          (parsed.port === "55455" &&
+            parsed.pathname === "/forge_studio_455_test") ||
+          (parsed.port === "55458" &&
+            parsed.pathname === "/forge_studio_458_test") ||
+          (parsed.port === "55457" &&
+            parsed.pathname === "/forge_studio_457_test") ||
+          (parsed.port === "55459" &&
+            parsed.pathname === "/forge_studio_459_test") ||
+          (parsed.port === "55456" &&
+            parsed.pathname === "/forge_studio_456_test")
+        ))
     )
       throw new AssetHarnessError("Only isolated Studio test databases allowed")
     db = new PrismaClient({ datasources: { db: { url } } })

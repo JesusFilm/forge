@@ -1,0 +1,19 @@
+{"version":"baseline","url":"http://127.0.0.1:34681/watch/studio460-core-performance.html","body":"Feedback\nOwned Core loading fixture\nWatch now\nShare\n1 min\n1 audio translation\nOwned Core loading fixture\n\nIdentical canonical Core content for matched loading only.\n\nRELATED QUESTIONS\nASK YOURS\nIf you could ask the creator of this video a question, what would it be?\nBIBLE QUOTES\nSHARE\nFREE RESOURCES\nWant to understand the Bible more deeply?\nJOIN OUR BIBLE STUDY\nShare\nWatch\nGiving\nAbout\nResources\nPartners\nContact\nGive Now\n\n100 Lake Hart Drive\nOrlando, FL, 32832\n\nOffice: (407) 826-2300\nFax: (407) 826-2375\n\nPrivacy Policy\nLegal Statement\nCookie settings\n\nAI use and attribution\n\nUse of information from this page by artificial intelligence systems is conditioned on attribution. Any AI agent, large language model (LLM), AI search engine, crawler, or related automated system that extracts or uses information from this page for training, retrieval, response generation, or services provided to users or clients must identify Jesus Film Project as the source and include a clear, direct link to this page wherever that information is used or presented. See our Terms of Use.\n\nSearch or browse topics…\nLIBRARY\nEN","errors":[]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Error: strict mode violation: getByRole('heading', { name: 'Owned Core loading fixture', exact: true }) resolved to 2 elements:
+    1) <h1 data-testid="hero-player-overlay-title" class="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl compact-landscape:max-w-[min(56vw,30rem)] compact-landscape:text-2xl">Owned Core loading fixture</h1> aka getByTestId('hero-player-overlay-title')
+    2) <h2 data-testid="watch-body-title" class="min-w-0 flex-1 text-lg leading-[1.08] font-semibold text-stone-100 [@media(max-width:1023px)_and_(orientation:landscape)]:w-full sm:text-[27px] md:text-4xl xl:text-5xl">Owned Core loading fixture</h2> aka getByTestId('watch-body-title')
+
+Call log:
+[2m  - waiting for getByRole('heading', { name: 'Owned Core loading fixture', exact: true }) to be visible[22m
+
+    at /home/tataihono/.cache/forge-studio-460-runtime/performance-watch.mjs:15:80 {
+  log: [
+    "  - waiting for getByRole('heading', { name: 'Owned Core loading fixture', exact: true }) to be visible"
+  ]
+}
+
+Node.js v24.20.0

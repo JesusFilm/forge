@@ -1,0 +1,2 @@
+supervisor {"pid":1,"realUid":1000,"effectiveUid":1000,"status":{"Uid":"1000\t1000\t1000\t1000","Gid":"1000\t1000\t1000\t1000","CapInh":"0000000000000000","CapPrm":"0000000000000000","CapEff":"0000000000000000","CapBnd":"000001ffffffffff","CapAmb":"0000000000000000","NoNewPrivs":"1"},"limits":["Max processes             128                  128                  processes "]}
+detached child cancellation completed

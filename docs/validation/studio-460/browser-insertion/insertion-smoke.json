@@ -1,0 +1,168 @@
+{
+  "steps": [
+    "One revision-checked restore-document batch preserves audio track and atomically adds matching visual track plus text",
+    "Real retained WAV upload into zero-track project saves matching audio track and item in one batch",
+    "Real stale second browser cannot leave an orphan track or item after concurrent title revision wins"
+  ],
+  "batches": [
+    {
+      "projectId": "f61dc73a-a222-415d-8a18-5dbea4683c01",
+      "expectedRevision": 1,
+      "idempotencyKey": "4c4fbf20-5d97-44c1-a941-1572cf5c124a",
+      "operations": [
+        {
+          "kind": "restore-document",
+          "document": {
+            "version": 1,
+            "title": "Insertion audioOnly",
+            "language": "590bcebb-e752-4c8d-b071-3cff4c9e60b7",
+            "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+            "width": 320,
+            "height": 180,
+            "fps": 30,
+            "durationInFrames": 150,
+            "tracks": [
+              {
+                "id": "existing-voice",
+                "kind": "audio"
+              },
+              {
+                "id": "00286009-d53c-4c24-89f1-5fdde3a1ed5c",
+                "kind": "visual"
+              }
+            ],
+            "components": [],
+            "items": [
+              {
+                "id": "39255c2f-56d0-4eb0-b0cf-229287c36319",
+                "trackId": "00286009-d53c-4c24-89f1-5fdde3a1ed5c",
+                "startFrame": 0,
+                "durationInFrames": 150,
+                "kind": "text",
+                "text": "Your text",
+                "properties": {
+                  "color": "#ffffff",
+                  "fontSize": 72,
+                  "align": "center"
+                }
+              }
+            ],
+            "packRevisionIds": []
+          }
+        }
+      ]
+    },
+    {
+      "projectId": "68830d3b-f11e-4dd4-8bf9-1b95c2ae3204",
+      "expectedRevision": 1,
+      "idempotencyKey": "7b731c0f-fffa-49e7-9165-34c5fe98ee89",
+      "operations": [
+        {
+          "kind": "restore-document",
+          "document": {
+            "version": 1,
+            "title": "Insertion audioUpload",
+            "language": "590bcebb-e752-4c8d-b071-3cff4c9e60b7",
+            "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+            "width": 320,
+            "height": 180,
+            "fps": 30,
+            "durationInFrames": 150,
+            "tracks": [
+              {
+                "id": "32d1d2f5-1863-40e3-a2bc-68557ca2be57",
+                "kind": "audio"
+              }
+            ],
+            "components": [],
+            "items": [
+              {
+                "id": "23c1c378-6029-4bbd-b770-d8628b7d8a5d",
+                "trackId": "32d1d2f5-1863-40e3-a2bc-68557ca2be57",
+                "startFrame": 0,
+                "durationInFrames": 150,
+                "kind": "audio",
+                "asset": {
+                  "assetId": "e4fcd7be-48c8-4bfe-85e1-cf57751cd92d",
+                  "versionId": "cmtrq3dfc000v2cq7wsaxkr6t",
+                  "digest": "414c98aeed4505ceb7b839cc98f619f20654143a2e7ba8fce57f7695074ab2e3"
+                },
+                "sourceStartMs": 0,
+                "volume": 1
+              }
+            ],
+            "packRevisionIds": []
+          }
+        }
+      ]
+    },
+    {
+      "projectId": "bb8176de-3555-4ac9-bfe9-119652b9da11",
+      "expectedRevision": 1,
+      "idempotencyKey": "adc2ebda-74ad-46e0-bda7-f6e8f021858a",
+      "operations": [
+        {
+          "kind": "restore-document",
+          "document": {
+            "version": 1,
+            "title": "Concurrent winner",
+            "language": "590bcebb-e752-4c8d-b071-3cff4c9e60b7",
+            "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+            "width": 320,
+            "height": 180,
+            "fps": 30,
+            "durationInFrames": 30,
+            "tracks": [],
+            "components": [],
+            "items": [],
+            "packRevisionIds": []
+          }
+        }
+      ]
+    },
+    {
+      "projectId": "bb8176de-3555-4ac9-bfe9-119652b9da11",
+      "expectedRevision": 1,
+      "idempotencyKey": "37f62b89-e475-411e-aefb-dcc2e3fd1479",
+      "operations": [
+        {
+          "kind": "restore-document",
+          "document": {
+            "version": 1,
+            "title": "Insertion conflict",
+            "language": "590bcebb-e752-4c8d-b071-3cff4c9e60b7",
+            "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+            "width": 320,
+            "height": 180,
+            "fps": 30,
+            "durationInFrames": 150,
+            "tracks": [
+              {
+                "id": "8d0edd14-8598-4aa6-b8dd-664d163313d0",
+                "kind": "visual"
+              }
+            ],
+            "components": [],
+            "items": [
+              {
+                "id": "f7d9f5c8-1f8d-4cd0-a50c-78adcb2c1fc4",
+                "trackId": "8d0edd14-8598-4aa6-b8dd-664d163313d0",
+                "startFrame": 0,
+                "durationInFrames": 150,
+                "kind": "text",
+                "text": "Your text",
+                "properties": {
+                  "color": "#ffffff",
+                  "fontSize": 72,
+                  "align": "center"
+                }
+              }
+            ],
+            "packRevisionIds": []
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

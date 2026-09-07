@@ -1,0 +1,21 @@
+(node:1653016) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+> vitest run "src/services/studio-authoring/catalog-publication.db.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stderr | src/services/studio-authoring/catalog-publication.db.test.ts
+[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys
+
+ ✓ src/services/studio-authoring/catalog-publication.db.test.ts (6 tests) 2344ms
+   ✓ canonical catalog publication transaction > bounds a blocked playback authorization query at PostgreSQL and recovers  1142ms
+   ✓ canonical catalog publication transaction > consumes one durable Mux dispatch and reconciles an ambiguous response without another create  582ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  07:53:03
+   Duration  3.61s (transform 405ms, setup 15ms, collect 806ms, tests 2.34s, environment 0ms, prepare 86ms)
+

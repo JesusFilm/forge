@@ -1,0 +1,28 @@
+Installed Next 16.2.4 image-optimizer.js SHA256 9ea6a506d3e3c6b2d6f535dfa3fbb5ed2ee8241bf230876bb7c1da2729cdd935
+
+591:                 'https:'
+592:             ].includes(hrefParsed.protocol)) {
+593:                 return {
+594:                     errorMessage: '"url" parameter is invalid'
+595:                 };
+596:             }
+597:             if (!(0, _matchremotepattern.hasRemoteMatch)(domains, remotePatterns, hrefParsed)) {
+598:                 return {
+599:                     errorMessage: '"url" parameter is not allowed'
+600:                 };
+601:             }
+602:         }
+603:         if (!w) {
+604:             return {
+959:     if (isRedirect(res.status) && locationHeader && URL.canParse(locationHeader, href)) {
+960:         if (count === 0) {
+961:             _log.error('upstream image response had too many redirects', href);
+962:             throw Object.defineProperty(new ImageError(508, '"url" parameter is valid but upstream response is invalid'), "__NEXT_ERROR_CODE", {
+963:                 value: "E394",
+964:                 enumerable: false,
+965:                 configurable: true
+966:             });
+967:         }
+968:         const redirect = new URL(locationHeader, href).href;
+969:         return fetchExternalImage(redirect, dangerouslyAllowLocalIP, maximumResponseBody, count - 1);
+970:     }

@@ -5,6 +5,10 @@ export const STUDIO_INTERACTIVE_HEADER = "x-forge-studio-interactive"
 export const studioRpcSchema = z
   .object({
     action: z.enum([
+      "render-state",
+      "publication-candidate",
+      "render-cancel",
+      "publish",
       "narration-plan",
       "request",
       "attempts",

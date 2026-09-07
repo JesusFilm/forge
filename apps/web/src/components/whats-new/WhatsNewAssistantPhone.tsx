@@ -1,5 +1,5 @@
 import { Fragment, type CSSProperties } from "react"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 
 import { WHATS_NEW_ASSISTANTS } from "@/components/whats-new/whats-new-content"
 

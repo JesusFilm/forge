@@ -1,0 +1,13 @@
+46a8e60336a656de38f66036dcde8247a09d08bf5818a0a688449169377d4385  docs/validation/studio-460/watch-browser/README.md
+a00a6513b236e349fab0ff799c9e1cb80b09c1d1c4417fa30d631d5274b030fd  docs/validation/studio-460/watch-browser/publication-smoke.json
+3ff6e017e36a3765671cb05a0666e53f4ec12c6de427c62f99d232d017513379  docs/validation/studio-460/watch-browser/publication-smoke.mjs
+eae5692caca6b5fdb5cf4b8ae991dd75e8c2c9db3e2808cbf7bb0d046a652ab5  docs/validation/studio-460/watch-browser/stale-watch-revoked.png
+8e50c12ab65b992df676712da03f75786ab12a6b77dcf6454e1b9ac37b154a93  docs/validation/studio-460/watch-browser/unpublished.png
+518c52cce634cf7951364feed6592b041da92813f1538bfe92e9a9176f28033a  docs/validation/studio-460/watch-browser/uuid-language-publication-smoke.json
+ac567e1826d130c5ce48a675de6de962e6d6cdf99af81a013c6fc0e363261ce1  docs/validation/studio-460/watch-browser/watch-playback.json
+d86b5cb36163d93015be7a448614e8079317e5359c60a29350dbad3bc354cf0e  docs/validation/studio-460/watch-browser/watch-playback.mjs
+47d84a12fcd358704d6a466aaa70b8bc13dec61bbddd185a5836cfae4b438d10  docs/validation/studio-460/watch-browser/watch-playback.png
+f18201d24560777944edf351fb83f686ae6678e861f0153bab55141df874a5f1  docs/validation/studio-460/watch-browser/watch-revoke-after-media-before-dom.json
+768bc3e0995ce814ab3c00275a0cb9e5c0121e2800bfbab326554eae89e1753b  docs/validation/studio-460/watch-browser/watch-revoke-vtt-harness-red.json
+d8601386cdaf20083d7f91a7f7eebbae114660578ab350a9b9dd10cbd3ecf8bc  docs/validation/studio-460/watch-browser/watch-revoke.json
+e6c8e5cf01041c93c0afcd710b68a4315903cd60cd1b3b4d04a5cf8929fec9d3  docs/validation/studio-460/watch-browser/watch-revoke.mjs

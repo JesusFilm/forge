@@ -1,0 +1,69 @@
+# syntax=docker/dockerfile:1
+# Repo-root context. Credential-free execution only: no Admin/Manager/provider
+# credentials, source acquisition, catalog writes or publication run here.
+ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+FROM ${NODE_IMAGE} AS runtime-base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libcap2 libseccomp2 libnss3 libdbus-1-3 libatk1.0-0 \
+    libasound2 libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 \
+    libgbm1 libcups2 libcairo2 libpango-1.0-0 libatk-bridge2.0-0 \
+    fonts-noto-color-emoji fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM runtime-base AS build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential meson ninja-build pkg-config libcap-dev libseccomp-dev curl xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+# Published SHA: https://github.com/containers/bubblewrap/releases/tag/v0.11.1
+RUN curl --fail --location --proto '=https' \
+      https://github.com/containers/bubblewrap/releases/download/v0.11.1/bubblewrap-0.11.1.tar.xz -o /tmp/bwrap.tar.xz \
+    && echo 'c1b7455a1283b1295879a46d5f001dfd088c0bb0f238abb5e128b3583a246f71  /tmp/bwrap.tar.xz' | sha256sum -c - \
+    && tar -xJf /tmp/bwrap.tar.xz -C /tmp \
+    && meson setup /tmp/bwrap-build /tmp/bubblewrap-0.11.1 --prefix=/usr \
+      -Dman=disabled -Dtests=false -Dselinux=disabled -Dbash_completion=disabled -Dzsh_completion=disabled \
+    && ninja -C /tmp/bwrap-build
+RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches patches
+COPY apps/studio-render/package.json apps/studio-render/package.json
+COPY packages/studio-contracts/package.json packages/studio-contracts/package.json
+COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @forge/studio-render...
+COPY apps/studio-render apps/studio-render
+COPY packages/studio-contracts packages/studio-contracts
+COPY packages/shorts-compositions packages/shorts-compositions
+RUN pnpm --filter @forge/studio-render build \
+    && pnpm --filter @forge/studio-render --prod deploy /runtime-deps --ignore-scripts
+# Exact Remotion version pins Chromium149.0.7790.0. Browser is downloaded at
+# build time only; execution has no download or package installation authority.
+WORKDIR /app/apps/studio-render
+RUN node --input-type=module -e "import('@remotion/renderer').then(({ensureBrowser})=>ensureBrowser())"
+# Named context is staged from the retained reviewed archive outside the repo.
+# No provider/build credential enters an image layer. See IMAGE.md for CI supply.
+COPY --from=studio_codec /codec.tar.xz /tmp/codec.tar.xz
+RUN echo 'da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6  /tmp/codec.tar.xz' | sha256sum -c - \
+    && mkdir /codec \
+    && tar -xJf /tmp/codec.tar.xz -C /codec --strip-components=2 \
+      ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffmpeg \
+      ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffprobe
+
+FROM runtime-base AS runtime
+COPY --from=build /tmp/bwrap-build/bwrap /usr/bin/bwrap
+COPY --from=build /app/apps/studio-render/dist/main.mjs /opt/studio-render/main.mjs
+COPY --from=build /app/apps/studio-render/dist/child.mjs /opt/studio-render/child.mjs
+COPY --from=build /app/apps/studio-render/dist/verify.mjs /opt/studio-render/verify.mjs
+COPY --from=build /app/apps/studio-render/dist/guard /opt/studio-render/native/guard
+COPY --from=build /app/apps/studio-render/dist/sandbox-init /opt/studio-render/native/sandbox-init
+COPY --from=build /app/apps/studio-render/dist/entrypoint /opt/studio-render/native/entrypoint
+COPY --from=build /app/apps/studio-render/dist/bundle /opt/studio-render/bundle
+COPY --from=build /runtime-deps/node_modules /opt/studio-render/deps
+COPY --from=build /app/apps/studio-render/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64 /opt/studio-render/browser
+COPY --from=build /codec /opt/studio-render/codec
+RUN mkdir -p /work /runtime && cp /usr/local/bin/node /runtime/node \
+    && chmod 0755 /work && chmod 0755 /opt/studio-render/native/* /usr/bin/bwrap \
+    && find /opt/studio-render /usr -xdev -type f -perm /6000 -exec chmod a-s {} +
+USER 1000:1000
+ENV PORT=3330
+EXPOSE 3330
+ENTRYPOINT ["/opt/studio-render/native/entrypoint"]

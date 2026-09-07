@@ -1,0 +1,5 @@
+[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys
+{"event":"watch_route_manifest.generated","contentSlugs":2,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":2,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":34}
+{"event":"web_revalidate.sent","model":"watch-route-manifest","slug":null,"locale":null,"languageSlug":null,"durationMs":50,"httpStatus":200}
+{"event":"watch_route_manifest.refresh.refreshed","reason":"core-sync","version":"2e821d52ec295f9bf92915cc21974a98d7e4a21ca2c99f9ef0fe88cbe7915c44","contentSlugs":2,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":2,"contentAudioLanguagePairs":2,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":93}
+{ slug: 'studio460-core-performance', status: 'refreshed' }

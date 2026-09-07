@@ -1,0 +1,48 @@
+(node:2064405) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+ ❯ src/services/studio-authoring/catalog-publication.db.test.ts (10 tests | 1 failed | 9 skipped) 607ms
+   ↓ canonical catalog publication transaction > bounds a blocked playback authorization query at PostgreSQL and recovers
+   ↓ canonical catalog publication transaction > rejects readiness that expires while publication waits on current membership
+   ↓ canonical catalog publication transaction > rolls scheduled consumption back when readiness expires during final receipt persistence
+   ↓ canonical catalog publication transaction > resolves only the exact currently approved release and rejects revoked approval membership
+   ↓ canonical catalog publication transaction > reconciles Watch admission after restart and does not lose revocation during delivery
+   ↓ canonical catalog publication transaction > consumes one durable Mux dispatch and reconciles an ambiguous response without another create
+   × canonical catalog publication transaction > publishes exact hidden content atomically, revokes it permanently, and returns the original receipt on retry 599ms
+     → expected false to be true // Object.is equality
+   ↓ canonical catalog publication transaction > rejects delegated human publication and revoked approval membership without changing visibility
+   ↓ canonical catalog publication transaction > consumes a trusted schedule hook in the publication transaction and skips it for exact retries after unpublish
+   ↓ canonical catalog publication transaction > rolls schedule consumption back when publication readiness is stale
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/catalog-publication.db.test.ts > canonical catalog publication transaction > publishes exact hidden content atomically, revokes it permanently, and returns the original receipt on retry
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/services/studio-authoring/catalog-publication.db.test.ts:421:31
+    419|       const accepted = await executeStudioInteractive(db,f.user,{actio…
+    420|       await expect(executeStudioInteractive(db,f.user,{action:"publish…
+    421|       expect(await indexed()).toBe(true)
+       |                               ^
+    422|       expect((await db.video.findUniqueOrThrow({where:{id:f.release.vi…
+    423|       expect(await visible()).toBe(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  10:32:00
+   Duration  2.50s (transform 878ms, setup 20ms, collect 1.44s, tests 607ms, environment 0ms, prepare 115ms)
+
+undefined
+/home/tataihono/.codex/worktrees/06c1/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/catalog-publication.db.test.ts -t publishes exact hidden

@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -18,8 +19,9 @@ class PublicationHookHarnessError extends Error {}
     let db: PrismaClient
     beforeAll(() => {
       if (
+        url !== STUDIO_RENDER_TEST_DATABASE_URL &&
         url !==
-        "postgresql://tataihono@127.0.0.1:55460/forge_studio_460_publication_base"
+          "postgresql://tataihono@127.0.0.1:55460/forge_studio_460_publication_base"
       )
         throw new PublicationHookHarnessError(
           "Dedicated isolated publication database required",

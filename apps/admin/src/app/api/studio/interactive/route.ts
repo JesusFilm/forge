@@ -6,7 +6,10 @@ import {
   interactiveStudioPrincipal,
 } from "@/services/studio-authoring/interactive"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
-import { StudioCommandError } from "@/services/studio-authoring/errors"
+import {
+  StudioCommandError,
+  StudioPublicationRejected,
+} from "@/services/studio-authoring/errors"
 import { StudioSourceError } from "@forge/studio-contracts/sources"
 import { ZodError } from "zod"
 
@@ -61,18 +64,21 @@ export async function POST(request: Request) {
               : 500
     return Response.json(
       {
+        publicationRejected: error instanceof StudioPublicationRejected,
         error:
-          error instanceof StudioSourceError
-            ? error.message
-            : status === 409
-              ? "CONFLICT"
-              : status === 403
-                ? "FORBIDDEN"
-                : status === 404
-                  ? "NOT_FOUND"
-                  : status === 400
-                    ? "INVALID"
-                    : "UNAVAILABLE",
+          error instanceof StudioCommandError
+            ? error.code
+            : error instanceof StudioSourceError
+              ? error.message
+              : status === 409
+                ? "CONFLICT"
+                : status === 403
+                  ? "FORBIDDEN"
+                  : status === 404
+                    ? "NOT_FOUND"
+                    : status === 400
+                      ? "INVALID"
+                      : "UNAVAILABLE",
       },
       { status, headers: { "cache-control": "no-store" } },
     )

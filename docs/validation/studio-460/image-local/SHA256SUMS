@@ -1,0 +1,10 @@
+6c9b0bc50065cee4ff2062f4d1bc3088da6ca4645898606c775d191f7f4d584f  docs/validation/studio-460/image-local/README.md
+d386d01f14aae1f7b063050c1cbfc3bdeb12b175bbfed4af3114fb111894d212  docs/validation/studio-460/image-local/buildkit-build-first.log
+172ab6bc22837b8900a941cde68facef11522f08f2e6b59647e360f82ae5d418  docs/validation/studio-460/image-local/buildkit-daemon2.log
+444b3492893d46acc55a86a863c361e8129db1599d619a22c571a4d9ce816dc9  docs/validation/studio-460/image-local/codec-equivalence.json
+2c51fb57ff2c60d56b0102871d0d5d7ccf42082a9e62c2e2aa555b22a8d02cc9  docs/validation/studio-460/image-local/fresh-admin-studio-suite.log
+b9c44d3801817a9382ca67a03c1dac274eba67775e91fb09ed1090df6ae960c8  docs/validation/studio-460/image-local/fresh-migration-replay.log
+5297abcbcc4c631a95eb18d3946a3453d42f33821860366efcae58c56edaf8d6  docs/validation/studio-460/image-local/native-entrypoint-build3.log
+1ed1635917103624056cd5773defbf5c4acf0d88edab2f99265adee5d5441f5b  docs/validation/studio-460/image-local/native-forged-record.log
+76fb79f27c458535c25debf823abc477ed6216acdf73f7ed82232e5c41661c9c  docs/validation/studio-460/image-local/native-sealed-record.log
+2990a78fb46897cff63badbba39206e1264773ae2b9a92db017b43546ebb009e  docs/validation/studio-460/image-local/native-startup-vitest.log

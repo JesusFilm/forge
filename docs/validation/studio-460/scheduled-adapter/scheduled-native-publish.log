@@ -1,0 +1,2 @@
+[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys
+{"mode":"prepare-publish","receipt":{"projectId":"4b04cf53-61d7-48b0-a701-c83da8b8d713","revision":2,"outcome":"ACCEPTED"},"consumeCalls":1,"lifecycle":"PUBLISHED","scope":"Actual Admin→Manager HTTP preparation; local signed provider; explicit calendar hook/storage fixture, not461 acceptance"}

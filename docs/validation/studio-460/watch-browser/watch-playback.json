@@ -1,0 +1,33 @@
+{
+  "errors": [],
+  "responses": [
+    {
+      "status": 200,
+      "cache": "private, no-store, max-age=0",
+      "urlHash": "1a0c5ef7be24bcf6dad80204708b1a53c8d3f1b87b4058e299415035056a8df9"
+    },
+    {
+      "status": 200,
+      "cache": "private, no-store, max-age=0",
+      "urlHash": "58fdc400e03b5d7f7c11742a8bfc3f6abc05c9c17d8a0950d311cb348d55d754"
+    },
+    {
+      "status": 200,
+      "cache": "private, no-store, max-age=0",
+      "urlHash": "4fdfc67996b3e41e26475bf26511bfe5d353f92a3ad3e5369badbc7a7bdc5a63"
+    },
+    {
+      "status": 200,
+      "cache": "private, no-store, max-age=0",
+      "urlHash": "f09dde747f4834be8d04eefeef4cd643a0f9fbcedf6729554371184d10c299cb"
+    }
+  ],
+  "blocked": [],
+  "videos": [
+    {
+      "src": "blob:http://127.0.0.1:34667/a0a18946-9f10-4651-99d3-491d39123155",
+      "readyState": 4,
+      "currentTime": 1.028003
+    }
+  ]
+}

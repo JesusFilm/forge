@@ -26,6 +26,8 @@ export async function POST(request: Request) {
       return new Response(null, { status: 413 })
     return Response.json(
       {
+        publicationRejected:
+          error instanceof StudioTransportError && error.publicationRejected,
         error:
           error instanceof StudioTransportError
             ? error.code

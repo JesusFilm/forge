@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_TEST_DATABASE_URL } from "./database.test-support"
 import { randomUUID, createHash } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { expect, test } from "vitest"
@@ -17,6 +18,7 @@ run(
   "manual and delegated edits share revision checks; scoped uploads retain verified actor",
   async () => {
     if (
+      url !== STUDIO_RENDER_TEST_DATABASE_URL &&
       ![
         "postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test",
         "postgresql://tataihono@127.0.0.1:55458/forge_studio_458_test",

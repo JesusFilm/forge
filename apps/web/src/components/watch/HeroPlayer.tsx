@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
-import Image, { type ImageLoaderProps } from "next/image"
+import Image, { type ImageLoaderProps } from "@/components/ui/MediaImage"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
@@ -63,6 +63,7 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { isStudioPlaybackUrl, studioPosterFromHls } from "@/lib/studio-playback"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
@@ -362,9 +363,12 @@ export function HeroPlayer({
   const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
-  const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
-  const heroPosterUrl = buildHeroPosterUrl(playbackId)
+  const playbackId = isStudioPlaybackUrl(hlsSrc)
+    ? undefined
+    : (variant.muxVideo?.playbackId ?? undefined)
+  const heroPosterUrl =
+    studioPosterFromHls(hlsSrc) ?? buildHeroPosterUrl(playbackId)
   const searchParams = useSearchParams()
   const router = useRouter()
   const tParam = searchParams?.get("t")

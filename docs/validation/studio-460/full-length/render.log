@@ -1,0 +1,3 @@
+{"durationSeconds":231,"frames":6930,"width":1080,"height":1920,"budget":{"memoryBytes":2147483648,"swapBytes":0,"tasks":128,"cpuQuota":200000,"cpuPeriod":100000},"deadlineMs":900000,"before":"usage_usec 454448\nuser_usec 282925\nsystem_usec 171523\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 5\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n"}
+{"status":"rendered","elapsedMs":622186.130111,"outputBytes":10773384}
+{"after":"usage_usec 687378474\nuser_usec 483143225\nsystem_usec 204235249\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 6227\nnr_throttled 2\nthrottled_usec 2803\nnr_bursts 0\nburst_usec 0\n","memoryPeak":"863707136\n","memoryEvents":"low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n"}

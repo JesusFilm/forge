@@ -1,0 +1,17 @@
+(node:2059112) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/06c1/forge/apps/admin
+
+stderr | src/services/studio-authoring/render-jobs.db.test.ts
+[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys
+
+ ✓ src/services/studio-authoring/render-jobs.db.test.ts (9 tests) 2387ms
+   ✓ durable render leases > atomically retains registered partial output for its exact lease before terminal recording  460ms
+   ✓ durable render leases > retains a finish that waits across lease expiry without admitting it  1113ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  10:30:10
+   Duration  4.44s (transform 843ms, setup 31ms, collect 1.42s, tests 2.39s, environment 0ms, prepare 168ms)
+

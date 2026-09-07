@@ -498,7 +498,25 @@ describe("VideoService", () => {
           { deletedAt: null },
           {
             NOT: { restrictViewPlatforms: { has: "watch" } },
-            studioRelease: null,
+            AND: [
+              {
+                OR: [
+                  { studioRelease: null },
+                  {
+                    studioRelease: {
+                      is: {
+                        publication: {
+                          is: {
+                            revokedAt: null,
+                            project: { is: { lifecycle: "PUBLISHED" } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
           },
         ],
       })
@@ -1500,7 +1518,25 @@ describe("VideoService", () => {
         id: "v-1",
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
-        studioRelease: null,
+        AND: [
+          {
+            OR: [
+              { studioRelease: null },
+              {
+                studioRelease: {
+                  is: {
+                    publication: {
+                      is: {
+                        revokedAt: null,
+                        project: { is: { lifecycle: "PUBLISHED" } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       })
     })
   })
@@ -1523,7 +1559,25 @@ describe("VideoService", () => {
         slug: "jf",
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
-        studioRelease: null,
+        AND: [
+          {
+            OR: [
+              { studioRelease: null },
+              {
+                studioRelease: {
+                  is: {
+                    publication: {
+                      is: {
+                        revokedAt: null,
+                        project: { is: { lifecycle: "PUBLISHED" } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       })
     })
   })
@@ -1556,7 +1610,25 @@ describe("VideoService", () => {
       expect(where.video).toEqual({
         deletedAt: null,
         NOT: { restrictViewPlatforms: { has: "watch" } },
-        studioRelease: null,
+        AND: [
+          {
+            OR: [
+              { studioRelease: null },
+              {
+                studioRelease: {
+                  is: {
+                    publication: {
+                      is: {
+                        revokedAt: null,
+                        project: { is: { lifecycle: "PUBLISHED" } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       })
     })
 
@@ -2066,7 +2138,25 @@ describe("VideoService", () => {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          studioRelease: null,
+          AND: [
+            {
+              OR: [
+                { studioRelease: null },
+                {
+                  studioRelease: {
+                    is: {
+                      publication: {
+                        is: {
+                          revokedAt: null,
+                          project: { is: { lifecycle: "PUBLISHED" } },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         },
       })
     })
@@ -2097,7 +2187,25 @@ describe("VideoService", () => {
           coreId: { in: ["core-1"] },
           deletedAt: null,
           NOT: { restrictViewPlatforms: { has: "watch" } },
-          studioRelease: null,
+          AND: [
+            {
+              OR: [
+                { studioRelease: null },
+                {
+                  studioRelease: {
+                    is: {
+                      publication: {
+                        is: {
+                          revokedAt: null,
+                          project: { is: { lifecycle: "PUBLISHED" } },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         },
       })
     })
@@ -2490,7 +2598,25 @@ describe("VideoService", () => {
         deletedAt: null,
         locales: { some: { status: "PUBLISHED" } },
         NOT: { restrictViewPlatforms: { has: "watch" } },
-        studioRelease: null,
+        AND: [
+          {
+            OR: [
+              { studioRelease: null },
+              {
+                studioRelease: {
+                  is: {
+                    publication: {
+                      is: {
+                        revokedAt: null,
+                        project: { is: { lifecycle: "PUBLISHED" } },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       })
     })
 
@@ -2580,7 +2706,25 @@ describe("VideoService", () => {
             locales: { some: { status: "PUBLISHED", deletedAt: null } },
             parents: { some: { parentId: "series-1" } },
             NOT: { restrictViewPlatforms: { has: "watch" } },
-            studioRelease: null,
+            AND: [
+              {
+                OR: [
+                  { studioRelease: null },
+                  {
+                    studioRelease: {
+                      is: {
+                        publication: {
+                          is: {
+                            revokedAt: null,
+                            project: { is: { lifecycle: "PUBLISHED" } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
           },
         },
         distinct: ["videoId"],

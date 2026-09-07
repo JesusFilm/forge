@@ -1,0 +1,11 @@
+✔ namespace launcher death tears down all descendants before the next job (344.638794ms)
+✔ namespace namespace-init death tears down all descendants before the next job (326.446059ms)
+✔ injected parent fcntl setup failure reaps detached descendants within deadline (520.268177ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1292.444092

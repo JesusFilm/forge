@@ -92,6 +92,68 @@ afterAll(async () => {
   }
   if (directory) await rm(directory, { recursive: true, force: true })
 })
+it("serves bounded byte ranges for retained audio seeking and revokes every range after release", async () => {
+  const staged = await fetch(origin + "/sessions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(input),
+  })
+  expect(staged.status).toBe(200)
+  const { url } = await staged.json(),
+    asset = url + "voice.wav"
+  try {
+    expect(
+      (
+        await fetch(asset, {
+          method: "PUT",
+          headers: { ...headers, "content-type": "audio/wav" },
+          body: "0123456789",
+        })
+      ).status,
+    ).toBe(201)
+    const head = await fetch(asset, {
+      method: "HEAD",
+      headers: { range: "bytes=2-5" },
+    })
+    expect(head.status).toBe(200)
+    expect(head.headers.get("content-length")).toBe("10")
+    expect(head.headers.get("accept-ranges")).toBe("bytes")
+    expect(await head.text()).toBe("")
+    for (const [range, expected, contentRange] of [
+      ["bytes=2-5", "2345", "bytes 2-5/10"],
+      ["bytes=7-", "789", "bytes 7-9/10"],
+      ["bytes=-3", "789", "bytes 7-9/10"],
+      ["bytes=8-99", "89", "bytes 8-9/10"],
+    ]) {
+      const response = await fetch(asset, { headers: { range: range! } })
+      expect(response.status).toBe(206)
+      expect(response.headers.get("accept-ranges")).toBe("bytes")
+      expect(response.headers.get("content-range")).toBe(contentRange)
+      expect(await response.text()).toBe(expected)
+    }
+    for (const range of [
+      "bytes=10-",
+      "bytes=4-2",
+      "bytes=-0",
+      "bytes=0-1,4-5",
+      "bytes=9007199254740992-",
+      "bytes=0-" + "9".repeat(100),
+    ]) {
+      const response = await fetch(asset, { headers: { range } })
+      expect(response.status).toBe(416)
+      expect(response.headers.get("content-range")).toBe("bytes */10")
+      expect((await response.arrayBuffer()).byteLength).toBe(0)
+    }
+    expect((await fetch(url, { method: "DELETE", headers })).status).toBe(204)
+    expect(
+      (await fetch(asset, { headers: { range: "bytes=0-1" } })).status,
+    ).toBe(410)
+    expect((await fetch(asset, { method: "HEAD" })).status).toBe(410)
+  } finally {
+    await fetch(url, { method: "DELETE", headers })
+  }
+})
+
 it("authenticates staging, releases and renews sessions, and reclaims abandoned quota", async () => {
   expect(
     (
@@ -160,6 +222,16 @@ it("authenticates staging, releases and renews sessions, and reclaims abandoned 
   )
   await writeFile(clock, String(startedAt + 31 * 60000))
   expect((await fetch(sessions[1]!)).status).toBe(410)
+  expect(
+    (
+      await fetch(sessions[1] + "voice.wav", {
+        headers: { range: "bytes=0-1" },
+      })
+    ).status,
+  ).toBe(410)
+  expect(
+    (await fetch(sessions[1] + "voice.wav", { method: "HEAD" })).status,
+  ).toBe(410)
   expect((await fetch(sessions[0]!)).status).toBe(200)
   for (let i = 0; i < 7; i++) {
     expect(

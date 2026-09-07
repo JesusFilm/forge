@@ -15,7 +15,9 @@
     "./agent": "./src/agent.ts",
     "./production": "./src/production.ts",
     "./generation": "./src/generation.ts",
-    "./publication": "./src/publication.ts"
+    "./publication": "./src/publication.ts",
+    "./render": "./src/render.ts",
+    "./publication-state": "./src/publication-state.ts"
   },
   "scripts": {
     "test": "vitest run",

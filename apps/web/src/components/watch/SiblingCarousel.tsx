@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react"
-import Image from "next/image"
+import Image from "@/components/ui/MediaImage"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Circle, LoaderCircle, Play } from "lucide-react"

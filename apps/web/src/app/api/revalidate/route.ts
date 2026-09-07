@@ -29,6 +29,7 @@ const BEARER_PREFIX = "Bearer "
 const REVALIDATE_TAG_PROFILE = { expire: 0 } as const
 
 interface RevalidateWebhookPayload {
+  requireComplete?: boolean
   model: RevalidateModel
   entry: {
     slug?: string
@@ -74,6 +75,11 @@ function parsePayload(
     return { ok: false, reason: "invalid_payload" }
   }
 
+  if (
+    value.requireComplete !== undefined &&
+    typeof value.requireComplete !== "boolean"
+  )
+    return { ok: false, reason: "invalid_payload" }
   const { slug, locale, languageSlug } = value.entry
   if (slug != null && typeof slug !== "string") {
     return { ok: false, reason: "invalid_payload" }
@@ -89,6 +95,7 @@ function parsePayload(
     ok: true,
     payload: {
       model: value.model,
+      requireComplete: value.requireComplete === true,
       entry: {
         ...(slug !== undefined && slug !== null ? { slug } : {}),
         ...(locale !== undefined && locale !== null ? { locale } : {}),
@@ -144,7 +151,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { model, entry } = parsedPayload.payload
+  const { model, entry, requireComplete } = parsedPayload.payload
   const { slug, locale, languageSlug } = entry
 
   if (slug !== undefined && !SLUG_PATTERN.test(slug)) {
@@ -297,6 +304,8 @@ export async function POST(request: Request) {
     }
   }
 
+  let edgeOutcome: "not-applicable" | "skipped" | "purged" | "failed" =
+    "not-applicable"
   const responsePayload = (extra: Record<string, unknown> = {}) => ({
     revalidated: true,
     paths: revalidated,
@@ -305,10 +314,32 @@ export async function POST(request: Request) {
     ...extra,
   })
 
+  const deliveryResponse = (extra: Record<string, unknown> = {}) => {
+    if (!requireComplete) return NextResponse.json(responsePayload(extra))
+    const complete = tagErrors.length === 0 && edgeOutcome !== "failed"
+    return NextResponse.json(
+      {
+        ...responsePayload(extra),
+        revalidated: complete,
+        delivery: { version: 1, complete, edge: edgeOutcome },
+      },
+      {
+        status: complete ? 200 : 503,
+        headers: {
+          "cache-control": "private, no-store",
+          "x-forge-invalidation-version": "1",
+          "x-forge-invalidation-complete": String(complete),
+          "x-forge-invalidation-edge": edgeOutcome,
+        },
+      },
+    )
+  }
+
   const purgeDynamicCollectionEdgeCache = async () => {
     try {
-      await purgeWatchDynamicCollectionsCache()
+      edgeOutcome = await purgeWatchDynamicCollectionsCache()
     } catch {
+      edgeOutcome = "failed"
       console.warn(
         "[revalidate] event=watch_revalidate.edge_cache.purge.failed",
       )
@@ -319,22 +350,14 @@ export async function POST(request: Request) {
     pushTags(WATCH_CACHE_TAG_GROUPS.watchRouteManifest)
     clearWatchRouteManifestCache()
     revalidateAllWatchPages()
-    return NextResponse.json(
-      responsePayload({
-        manifestCacheCleared: true,
-      }),
-    )
+    return deliveryResponse({ manifestCacheCleared: true })
   }
 
   if (model === "watch-seo-manifest") {
     pushTags(WATCH_CACHE_TAG_GROUPS.watchSeoManifest)
     clearWatchSeoManifestCache()
     revalidateWatchSitemaps()
-    return NextResponse.json(
-      responsePayload({
-        seoManifestCacheCleared: true,
-      }),
-    )
+    return deliveryResponse({ seoManifestCacheCleared: true })
   }
 
   if (model === "watch-setting") {
@@ -342,7 +365,7 @@ export async function POST(request: Request) {
     revalidateAllWatchPages()
     revalidateHomepagePaths()
     await purgeDynamicCollectionEdgeCache()
-    return NextResponse.json(responsePayload())
+    return deliveryResponse()
   }
 
   if (model === "experience") {
@@ -365,5 +388,5 @@ export async function POST(request: Request) {
 
   await purgeDynamicCollectionEdgeCache()
 
-  return NextResponse.json(responsePayload())
+  return deliveryResponse()
 }

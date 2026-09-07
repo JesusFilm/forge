@@ -1,0 +1,1 @@
+[{"startSeconds": 0.1, "sampleCount": 48000, "rms": 0.044165301526382615, "frequencyHz": 880.0, "expectedGain": 0.5}, {"startSeconds": 115, "sampleCount": 48000, "rms": 0.044167536651974586, "frequencyHz": 880.0, "expectedGain": 0.5}, {"startSeconds": 230, "sampleCount": 48000, "rms": 0.04416677958405968, "frequencyHz": 880.0, "expectedGain": 0.5}]
