@@ -33,6 +33,7 @@ import { Inspector, defaultTransform } from "./inspector"
 import { Timeline, itemLabel } from "./timeline"
 import { Library } from "./library"
 import "./studio.css"
+const AgentPanel = dynamic(() => import("./agent-panel"), { ssr: false })
 const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
@@ -103,7 +104,8 @@ function Editor({
   const [playing, setPlaying] = useState(false),
     [error, setError] = useState(""),
     [history, setHistory] = useState<StudioRevision[] | null>(null),
-    [selectCanvas, setSelectCanvas] = useState(true)
+    [selectCanvas, setSelectCanvas] = useState(true),
+    [agentOpen, setAgentOpen] = useState(false)
   const canvas = useRef<HTMLDivElement>(null),
     drag = useRef<{
       id: string
@@ -186,6 +188,7 @@ function Editor({
           >
             <Redo2 size={17} />
           </button>
+          <button onClick={() => setAgentOpen(true)}>Assistant</button>
           <button onClick={showHistory}>
             <History size={16} />
             History
@@ -374,6 +377,13 @@ function Editor({
         <Inspector session={session} state={state} onError={report} />
       </div>
       <Timeline session={session} state={state} onError={report} />
+      {agentOpen && (
+        <AgentPanel
+          session={session}
+          projectId={projectId}
+          onClose={() => setAgentOpen(false)}
+        />
+      )}
       {history && (
         <div className="nle-dialog-backdrop">
           <section
@@ -392,7 +402,8 @@ function Editor({
                   <strong>Revision {revision.revision}</strong>
                   <p>
                     {revision.document.title} · {revision.actor.kind}:{" "}
-                    {revision.actor.id}
+                    {revision.actor.id} · {revision.actor.authority ?? "legacy"}{" "}
+                    {revision.actor.clientId ?? ""}
                   </p>
                 </div>
                 <button

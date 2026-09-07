@@ -121,7 +121,8 @@
     "tsx": "^4.21.0",
     "workflow": "^4.2.2",
     "zod": "^4.3.6",
-    "@forge/studio-contracts": "workspace:*"
+    "@forge/studio-contracts": "workspace:*",
+    "@forge/studio-server": "workspace:*"
   },
   "devDependencies": {
     "@smithy/node-http-handler": "4.4.14",

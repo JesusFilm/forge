@@ -177,6 +177,9 @@ export class StudioAuthoringService {
           kind: input.kind,
           inputHash: studioHash({
             document: revision.document,
+            ...(input.executionInputDigest
+              ? { executionInputDigest: input.executionInputDigest }
+              : {}),
             instructions: input.instructions,
             kind: input.kind,
           }),

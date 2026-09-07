@@ -1,0 +1,292 @@
+[
+  {
+    "scenario": "same title edit via external scoped OAuth MCP",
+    "beforeRevision": 5,
+    "after": {
+      "projectId": "762aec64-b7d6-43e1-bb48-7da0e92a82c0",
+      "revision": 6,
+      "lifecycle": "DRAFT",
+      "firstPublishedAt": null,
+      "document": {
+        "version": 1,
+        "title": "Agent revised",
+        "language": "english",
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "durationInFrames": 900,
+        "tracks": [
+          {
+            "id": "visual-1",
+            "kind": "visual"
+          },
+          {
+            "id": "visual-2",
+            "kind": "visual"
+          },
+          {
+            "id": "audio-1",
+            "kind": "audio"
+          }
+        ],
+        "components": [],
+        "items": [],
+        "packRevisionIds": []
+      },
+      "actor": {
+        "kind": "human",
+        "id": "mock-manager-1",
+        "authority": "delegated",
+        "clientId": "claude-local"
+      }
+    },
+    "history": [
+      {
+        "revision": 6,
+        "document": {
+          "version": 1,
+          "title": "Agent revised",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "delegated",
+          "clientId": "claude-local"
+        }
+      },
+      {
+        "revision": 5,
+        "document": {
+          "version": 1,
+          "title": "Studio 457 same-edit proof",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "interactive"
+        }
+      },
+      {
+        "revision": 4,
+        "document": {
+          "version": 1,
+          "title": "Agent revised",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "delegated",
+          "clientId": "studio-hosted"
+        }
+      },
+      {
+        "revision": 3,
+        "document": {
+          "version": 1,
+          "title": "Studio 457 same-edit proof",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "interactive"
+        }
+      },
+      {
+        "revision": 2,
+        "document": {
+          "version": 1,
+          "title": "Agent revised",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "interactive"
+        }
+      },
+      {
+        "revision": 1,
+        "document": {
+          "version": 1,
+          "title": "Studio 457 same-edit proof",
+          "language": "english",
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+          "width": 1920,
+          "height": 1080,
+          "fps": 30,
+          "durationInFrames": 900,
+          "tracks": [
+            {
+              "id": "visual-1",
+              "kind": "visual"
+            },
+            {
+              "id": "visual-2",
+              "kind": "visual"
+            },
+            {
+              "id": "audio-1",
+              "kind": "audio"
+            }
+          ],
+          "components": [],
+          "items": [],
+          "packRevisionIds": []
+        },
+        "actor": {
+          "kind": "human",
+          "id": "mock-manager-1",
+          "authority": "interactive"
+        }
+      }
+    ],
+    "asset": {
+      "reference": {
+        "assetId": "1b2fdd2d-368c-4b3b-8c0b-5300ae8141d3",
+        "versionId": "cmtrb7t4a00072ccky9r934m0",
+        "digest": "aad583e417c76d839f260070238c8161864bb10393bee6b096bf19618fe937ab"
+      },
+      "mediaAssetId": "cmtrb7t3p00052cck6iwy910w",
+      "filename": "mcp-component.tsx",
+      "mimeType": "text/plain",
+      "byteSize": 35,
+      "role": "component",
+      "provenance": {
+        "status": "recorded",
+        "recorded": {}
+      },
+      "narration": null,
+      "voice": null,
+      "actor": {
+        "kind": "human",
+        "id": "mock-manager-1",
+        "authority": "delegated",
+        "clientId": "claude-local"
+      }
+    },
+    "negativeChecks": [
+      "invalid bearer",
+      "read-only edit",
+      "read-only upload",
+      "stale revision",
+      "activation unavailable",
+      "approval unavailable"
+    ],
+    "localDeterministic": true
+  }
+]

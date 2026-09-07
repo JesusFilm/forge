@@ -57,6 +57,7 @@ describe("devotional database migrator", () => {
         "001-devotional-workspace.sql",
         "002-support-research.sql",
         "003-datadog-triage.sql",
+        "004-studio-agent-execution.sql",
       ],
       skipped: [],
     })
@@ -73,6 +74,7 @@ describe("devotional database migrator", () => {
       "001-devotional-workspace.sql",
       "002-support-research.sql",
       "003-datadog-triage.sql",
+      "004-studio-agent-execution.sql",
     ] as const
     const existingEntries = Object.fromEntries(
       await Promise.all(

@@ -1,3 +1,6 @@
+import { serializeStudioInstructions } from "../services/studio-authoring/execution"
+import { Pool } from "pg"
+import { createStudioRuntime } from "../services/studio-authoring/runtime"
 import { mkdirSync } from "node:fs"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
@@ -412,6 +415,18 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-studio", {
+        method: "POST",
+        handler: async (c) => {
+          if (
+            env.STUDIO_AGENT_ENABLED !== "true" ||
+            !env.STUDIO_INTERACTIVE_PUBLIC_KEYS ||
+            !env.STUDIO_ADMISSION_SECRET
+          )
+            return c.json({ error: "Studio agent unavailable" }, 503)
+          return getStudioRuntime()(c.req.raw)
+        },
+      }),
       registerApiRoute("/forge-smoke", {
         method: "POST",
         handler: async (c) => {
@@ -993,4 +1008,40 @@ if (env.NODE_ENV === "production") {
   // retention (kill-switch completeness follows data lifetime). Same
   // single-instance assumption as above.
   startLangfuseTraceRetention()
+}
+
+let studioRuntime: ReturnType<typeof createStudioRuntime> | undefined
+function getStudioRuntime() {
+  if (!studioRuntime) {
+    const pool = new Pool({ connectionString: getMastraDatabaseUrl(), max: 2 })
+    // Authoritative native instructions are never handed to the generic Editor.
+    // Same Postgres provider/database, separate native schema; no body copy/fallback.
+    const studioStorage = new PostgresStore({
+      id: "studio-authoring-native-storage",
+      connectionString: getMastraDatabaseUrl(),
+      schemaName: "mastra_studio_authoring",
+    })
+    studioRuntime = createStudioRuntime(studioStorage, {
+      adminUrl: env.STUDIO_ADMIN_URL,
+      publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
+      environment: env.STUDIO_ENVIRONMENT,
+      model: env.STUDIO_AGENT_MODEL,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      claim: async (id, digest) => {
+        const result = await pool.query(
+          "INSERT INTO studio_agent_execution (id, instruction_digest) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          [id, digest],
+        )
+        return result.rowCount === 1
+      },
+      finish: async (id, status) => {
+        await pool.query(
+          "UPDATE studio_agent_execution SET status=$2 WHERE id=$1",
+          [id, status],
+        )
+      },
+      serialize: (work) => serializeStudioInstructions(pool, work),
+    })
+  }
+  return studioRuntime
 }

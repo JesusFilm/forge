@@ -48,6 +48,8 @@ suite("Studio command seam against disposable Postgres", () => {
       parsed.hostname !== "127.0.0.1" ||
       !(
         parsed.pathname.startsWith("/forge_studio_454_test") ||
+        (parsed.port === "55457" &&
+          parsed.pathname === "/forge_studio_457_test") ||
         (parsed.port === "55459" &&
           parsed.pathname === "/forge_studio_459_test") ||
         (parsed.port === "55456" &&
@@ -94,7 +96,11 @@ suite("Studio command seam against disposable Postgres", () => {
     expect(saved.document).toEqual(document)
     expect(saved.lifecycle).toBe("DRAFT")
     expect(saved.firstPublishedAt).toBeNull()
-    expect(saved.actor).toEqual({ kind: "human", id: user.id })
+    expect(saved.actor).toEqual({
+      kind: "human",
+      id: user.id,
+      authority: "interactive",
+    })
   })
   it("serializes competing edits and makes a lost response safely retryable", async () => {
     const projectId = randomUUID()

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFileSync,writeFileSync} from 'node:fs';
+const req=createRequire('/home/tataihono/.codex/worktrees/0941/forge/apps/mastra/package.json');
+const {PostgresStore}=await import(req.resolve('@mastra/pg'));
+const results=JSON.parse(readFileSync('/tmp/forge-studio-457-probe/results.json','utf8'));
+const pg=new PostgresStore({id:'reopened',connectionString:'postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test',schemaName:'mastra'});
+await pg.init();
+const agents=await pg.getStore('agents'), blocks=await pg.getStore('promptBlocks');
+assert.equal((await agents.getByIdResolved('studio-probe',{status:'published'})).resolvedVersionId,results.versions.agent[0]);
+assert.equal((await blocks.getByIdResolved('voice',{status:'published'})).resolvedVersionId,results.versions.block[0]);
+assert.equal((await blocks.getByIdResolved('voice',{status:'draft'})).resolvedVersionId,results.versions.block[2]);
+assert.equal((await agents.listVersions({agentId:'studio-probe'})).total,3);
+assert.equal((await blocks.listVersions({blockId:'voice'})).total,3);
+results.survivedPostgresRestart=true;
+writeFileSync('/tmp/forge-studio-457-probe/results.json',JSON.stringify(results,null,2));
+console.log('PASS persisted active/draft identities and history after Postgres restart');
+await pg.close();

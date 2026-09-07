@@ -348,7 +348,10 @@ export const auth = betterAuth({
           resources?.length === 1
             ? resolveOAuthResource(protectedResources, resources[0])
             : undefined
-        if (target?.resourceClass === "admin-mcp") {
+        if (
+          target?.resourceClass === "admin-mcp" ||
+          target?.resourceClass === "studio-mcp"
+        ) {
           return {
             "https://jesusfilm.org/claims/environment":
               target.trustedEnvironment,

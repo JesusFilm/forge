@@ -34,6 +34,8 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       !(
         (parsed.port === "55455" &&
           parsed.pathname === "/forge_studio_455_test") ||
+        (parsed.port === "55457" &&
+          parsed.pathname === "/forge_studio_457_test") ||
         (parsed.port === "55459" &&
           parsed.pathname === "/forge_studio_459_test") ||
         (parsed.port === "55456" &&

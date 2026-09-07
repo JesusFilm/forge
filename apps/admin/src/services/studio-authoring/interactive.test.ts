@@ -22,7 +22,11 @@ it("keeps delegated attribution but refuses every explicit human review seam", a
     role: "ADMIN" as const,
     studioAuthority: "delegated" as const,
   }
-  expect(studioActor(delegated)).toEqual({ id: "operator", kind: "human" })
+  expect(studioActor(delegated)).toEqual({
+    id: "operator",
+    kind: "human",
+    authority: "delegated",
+  })
   await expect(
     new StudioAuthoringService(db).unpublish(delegated, {}),
   ).rejects.toBeInstanceOf(ForbiddenError)

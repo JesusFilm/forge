@@ -186,6 +186,15 @@ export type LangfuseConfig = {
 }
 
 const envSchema = z.object({
+  STUDIO_TEST_DATABASE_URL: z.string().optional(),
+  STUDIO_ADMIN_URL: z.string().url().optional(),
+  STUDIO_AGENT_ENABLED: z.enum(["true", "false"]).default("false"),
+  STUDIO_ADMISSION_SECRET: z.string().min(32).optional(),
+  STUDIO_AGENT_MODEL: z.string().default("openai/gpt-5.4-mini"),
+  STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+  STUDIO_ENVIRONMENT: z
+    .enum(["local", "preview", "staging", "production"])
+    .default("local"),
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
@@ -848,6 +857,13 @@ const envSchema = z.object({
 })
 
 export const env = envSchema.parse({
+  STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+  STUDIO_ADMIN_URL: process.env.STUDIO_ADMIN_URL,
+  STUDIO_AGENT_ENABLED: process.env.STUDIO_AGENT_ENABLED,
+  STUDIO_ADMISSION_SECRET: process.env.STUDIO_ADMISSION_SECRET,
+  STUDIO_AGENT_MODEL: process.env.STUDIO_AGENT_MODEL,
+  STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+  STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
   ADMIN_EXPERIENCE_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_EXPERIENCE_INGEST_URL,
   ),

@@ -173,3 +173,7 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - `pnpm --filter @forge/mastra typecheck`
 - `pnpm --filter @forge/mastra lint`
 - `pnpm --filter @forge/mastra eval:content-embedding-gate -- --baseline-name=<baseline>`
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

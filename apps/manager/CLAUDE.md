@@ -564,3 +564,7 @@ The existing root Nixpacks setup provisions FFmpeg generally. Studio's pinned
 a system binary is not claimed to reproduce the pinned proof automatically.
 `ADMIN_MANAGER_API_KEY` authorizes trusted source materialization only; it is not
 used to attribute human commands. Production render execution remains feat-460.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

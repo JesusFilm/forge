@@ -1,0 +1,22 @@
+import {generateKeyPairSync,randomBytes} from 'node:crypto';
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {spawn} from 'node:child_process';
+const path='/tmp/forge-studio-457-probe/local-runtime.json';
+if(!existsSync(path)){
+ const pair=generateKeyPairSync('ed25519');
+ writeFileSync(path,JSON.stringify({privateKey:pair.privateKey.export({type:'pkcs8',format:'pem'}),publicKey:pair.publicKey.export({type:'spki',format:'pem'}),managerSessionSecret:randomBytes(32).toString('hex'),serviceKey:randomBytes(32).toString('hex'),previewKey:randomBytes(32).toString('hex'),adminSession:randomBytes(32).toString('hex')}),{mode:0o600});
+}
+const keys=JSON.parse(readFileSync(path));
+const root='/home/tataihono/.codex/worktrees/0941/forge';
+const common={PATH:process.env.PATH,HOME:process.env.HOME,NODE_ENV:process.argv[2]==='admin'?'development':'production',STUDIO_ENVIRONMENT:'local',DATABASE_URL:'postgresql://tataihono@127.0.0.1:55457/forge_studio_457_test',ADMIN_SESSION_SECRET:keys.adminSession,AUTH_ISSUER_URL:'http://127.0.0.1:3448',AUTH_ADMIN_CLIENT_ID:'studio457-local',MANAGER_ADMIN_API_KEY:keys.serviceKey,STUDIO_INTERACTIVE_PUBLIC_KEYS:JSON.stringify({studio457:keys.publicKey}),NEXT_TELEMETRY_DISABLED:'1'};
+const manager={...common,MANAGER_DATA_MODE:'mock',MANAGER_BACKEND_MODE:'mock',MANAGER_SESSION_SECRET:keys.managerSessionSecret,MANAGER_MOCK_SESSION_SECRET:keys.managerSessionSecret,MANAGER_MOCK_DATA_PATH:'/tmp/forge-studio-457-probe/mock-store.json',MANAGER_BASE_URL:'http://studio457.localhost:3457',MUX_TOKEN_ID:'unused-local',MUX_TOKEN_SECRET:'unused-local',OPENROUTER_API_KEY:'unused-local',ADMIN_GRAPHQL_URL:'http://127.0.0.1:3447/api/graphql',ADMIN_MANAGER_API_KEY:keys.serviceKey,MASTRA_BASE_URL:'http://127.0.0.1:4117',STUDIO_MCP_AUDIENCE:'http://studio457.localhost:3457/mcp',STUDIO_INTERACTIVE_KEY_ID:'studio457',STUDIO_INTERACTIVE_PRIVATE_KEY:keys.privateKey,STUDIO_PREVIEW_API_KEY:keys.previewKey,STUDIO_PREVIEW_ORIGIN:'http://127.0.0.1:3446',STUDIO_PREVIEW_SERVICE_URL:'http://127.0.0.1:3446',STUDIO_FFMPEG_PATH:'/tmp/studio-proof-ffmpeg',STUDIO_FFPROBE_PATH:root+'/node_modules/.pnpm/@remotion+compositor-linux-x64-gnu@4.0.475/node_modules/@remotion/compositor-linux-x64-gnu/ffprobe'};
+const mode=process.argv[2];
+let cwd=root,env=manager,command='pnpm',args=[];
+if(mode==='admin'){cwd+='/apps/admin';env=common;args=['exec','next','dev','--hostname','127.0.0.1','--port','3447'];}
+if(mode==='admin-build'){cwd+='/apps/admin';env=common;args=['build'];}
+if(mode==='build')args=['--filter','@forge/manager','build'];
+if(mode==='manager')args=['--filter','@forge/manager','exec','next','start','--hostname','0.0.0.0','--port','3457'];
+if(mode==='preview'){cwd+='/apps/studio-preview';env={...common,PORT:'3446',STUDIO_PREVIEW_API_KEY:keys.previewKey,STUDIO_PREVIEW_PUBLIC_ORIGIN:'http://127.0.0.1:3446',STUDIO_MANAGER_ORIGIN:manager.MANAGER_BASE_URL};command='node';args=['dist/server.mjs'];}
+if(mode==='seed'){cwd+='/apps/admin';env=common;args=['exec','tsx',...process.argv.slice(3)];}
+if(mode==='broker'){cwd+='/apps/manager';env=manager;command=root+'/apps/admin/node_modules/.bin/tsx';args=['.tmp/studio457-broker.ts'];}
+const child=spawn(command,args,{cwd,env,stdio:'inherit'});child.on('exit',code=>process.exit(code??1));

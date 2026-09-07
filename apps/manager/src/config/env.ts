@@ -8,6 +8,8 @@ export const env = createEnv({
     STUDIO_ENVIRONMENT: z
       .enum(["local", "preview", "production"])
       .default("local"),
+    STUDIO_MCP_AUDIENCE: z.string().url().optional(),
+    STUDIO_MCP_CLIENT_IDS: z.string().optional(),
     STUDIO_INTERACTIVE_KEY_ID: z.string().optional(),
     STUDIO_INTERACTIVE_PRIVATE_KEY: z.string().optional(),
     STUDIO_PREVIEW_ORIGIN: z.string().url().optional(),
@@ -148,6 +150,8 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_MCP_AUDIENCE: process.env.STUDIO_MCP_AUDIENCE,
+    STUDIO_MCP_CLIENT_IDS: process.env.STUDIO_MCP_CLIENT_IDS,
     STUDIO_INTERACTIVE_KEY_ID: process.env.STUDIO_INTERACTIVE_KEY_ID,
     STUDIO_INTERACTIVE_PRIVATE_KEY: process.env.STUDIO_INTERACTIVE_PRIVATE_KEY,
     STUDIO_PREVIEW_ORIGIN: process.env.STUDIO_PREVIEW_ORIGIN,

@@ -93,6 +93,10 @@ describe("OAuth resource catalogue", () => {
       "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
     expect(publicResources).not.toEqual(
       expect.arrayContaining([AUTH_ISSUER, customAudience]),
@@ -110,7 +114,14 @@ describe("OAuth resource catalogue", () => {
 
     expect(getPublicDcrAllowedScopes(catalogue)).toEqual(
       Array.from(
-        new Set([...ADMIN_MCP_DEFAULT_SCOPES, ...CHANGELOG_DEFAULT_SCOPES]),
+        new Set([
+          ...ADMIN_MCP_DEFAULT_SCOPES,
+          ...CHANGELOG_DEFAULT_SCOPES,
+          "studio:read",
+          "studio:edit",
+          "studio:chat",
+          "studio:instructions:read",
+        ]),
       ),
     )
     expect(getPublicDcrAllowedScopes(catalogue)).not.toContain(

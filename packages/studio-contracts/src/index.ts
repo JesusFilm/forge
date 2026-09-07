@@ -5,7 +5,12 @@ export const studioIdSchema = z
   .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$/)
 export const studioDigestSchema = z.string().regex(/^[a-f0-9]{64}$/)
 export const studioActorSchema = z
-  .object({ kind: z.enum(["human", "service"]), id: studioIdSchema })
+  .object({
+    kind: z.enum(["human", "service"]),
+    id: studioIdSchema,
+    authority: z.enum(["interactive", "delegated"]).optional(),
+    clientId: studioIdSchema.optional(),
+  })
   .strict()
 export type StudioActor = z.infer<typeof studioActorSchema>
 export const studioLifecycleSchema = z.enum([
@@ -431,9 +436,12 @@ export const studioInstructionReferenceSchema = z
     agentVersionId: studioIdSchema,
     blockVersionId: studioIdSchema,
     digest: studioDigestSchema,
+    agentDigest: studioDigestSchema.optional(),
+    blockDigest: studioDigestSchema.optional(),
   })
   .strict()
 export const studioRequestSchema = studioCommandBaseSchema.extend({
+  executionInputDigest: studioDigestSchema.optional(),
   kind: studioAttemptKindSchema,
   instructions: z.array(studioInstructionReferenceSchema).max(64),
 })

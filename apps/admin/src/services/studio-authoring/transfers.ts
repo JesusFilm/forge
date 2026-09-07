@@ -25,6 +25,8 @@ const principalSchema = z.object({
     "MOBILE_USER",
     "CONSUMER_BEARER",
   ]),
+  studioAuthority: z.enum(["interactive", "delegated"]).optional(),
+  studioClientId: z.string().optional(),
   managerRole: z.literal("OPERATOR").nullish(),
 })
 export class StudioTransferService {
@@ -43,6 +45,8 @@ export class StudioTransferService {
       id: user!.id,
       role: user!.role,
       managerRole: user!.managerRole,
+      studioAuthority: user!.studioAuthority,
+      studioClientId: user!.studioClientId,
     })
     await this.db.studioAssetTransfer.create({
       data: {

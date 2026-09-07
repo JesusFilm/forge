@@ -3,7 +3,7 @@ id: "feat-457"
 title: "Studio agent instructions and shared MCP tools"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-07"
 duration: 4
 depends_on:
@@ -56,3 +56,21 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - Exercise native prompt draft/test/activation/restore against actual Postgres and verify selected versions affect hosted generation.
 - Run the same editing scenario through UI, hosted agent and external MCP with matching state and actor history.
 - Verify stale revisions, unauthorized scopes, streamed errors, and explicit instruction activation behavior.
+
+## Completion evidence
+
+Implemented on reviewed prerequisite `e12643ecc76c30f73722848195a62d66865f7a90`.
+See `docs/validation/studio-457/README.md` for native Postgres lifecycle/restart,
+provider-observed deterministic frozen bytes, actual Manager/MCP interaction,
+transfer attribution, negative authorization/identity cases, matched frontend
+loading measurements, suites/types/builds and independent review.
+
+The authoritative native PostgresStore uses `mastra_studio_authoring` on the
+existing database and is never given to generic Editor routes. Identical generic
+shadow IDs cannot read/change those instruction bodies or activation. There is
+no prompt-body copy, fallback authority or production prompt migration.
+
+`docs/solutions/security-issues/studio-native-agent-admission.md` documents the
+canonical command, native admission and execution-claim extension seams for458.
+Paid/provider narration proof, atomic attachment/timing ripple and downstream
+execution remain with458. No deployment or paid generation was performed.

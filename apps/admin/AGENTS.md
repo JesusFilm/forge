@@ -137,3 +137,7 @@ mutation until feat-460 supplies its catalog/render/approval checks.
 For shared Studio assets, Content Packs, source capture/materialization or asset
 lifecycle guards, read
 `docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

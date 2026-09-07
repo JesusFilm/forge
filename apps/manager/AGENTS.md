@@ -44,3 +44,7 @@ from the repository root. Admin owns the durable module; Manager uses
 `apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
 `@forge/studio-contracts`. The internal publication seam has no public publish
 mutation until feat-460 supplies its catalog/render/approval checks.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

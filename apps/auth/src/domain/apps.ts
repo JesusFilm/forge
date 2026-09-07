@@ -628,7 +628,35 @@ export const TV_DEVICE_CLIENT_IDS = [
   "jfp_tv_production",
 ] as const
 
+export const STUDIO_MCP_APP_SEED: RegisteredAppSeed = {
+  key: "studio-mcp",
+  displayName: "Studio MCP",
+  description: "Delegated Studio authoring without human review authority.",
+  ...FIRST_PARTY_OWNER,
+  environments: MANAGER_APP_SEED.environments.map((e) => ({
+    ...e,
+    clientId: `jfp_studio_mcp_${e.kind}`,
+    managerSessionServiceClientId: undefined,
+    managerSessionServiceAudience: undefined,
+    mcpResourceAudience: new URL("/mcp", e.allowedOrigins[0]!).toString(),
+    redirectUris: [
+      new URL("/mcp/oauth/callback", e.allowedOrigins[0]!).toString(),
+    ],
+    defaultScopes: [
+      "openid",
+      "profile:read",
+      "email:read",
+      "studio:read",
+      "studio:edit",
+      "studio:chat",
+      "studio:instructions:read",
+    ],
+    autoApprove: false,
+  })),
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
+  STUDIO_MCP_APP_SEED,
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
   WEB_APP_SEED,

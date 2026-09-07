@@ -1,0 +1,36 @@
+import {chromium} from '/home/tataihono/.codex/worktrees/0941/forge/apps/shorts-worker/node_modules/playwright/index.mjs';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--host-resolver-rules=MAP images.jesusfilm.org ~NOTFOUND']});
+const samples=[];let currentPage;
+try { for(let repetition=1;repetition<=3;repetition++){for(const [build,port] of [['baseline',3437],['final',3457]]){
+ const origin=`http://studio457.localhost:${port}`;
+ const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+ const login=await context.request.get('http://studio457.localhost:3449/local-fixture-login',{maxRedirects:0});if(login.status()!==302)throw new Error('Fixture login unavailable');
+ await context.addInitScript(()=>{window.__studioPerf={tasks:[],shifts:[]};new PerformanceObserver(list=>window.__studioPerf.tasks.push(...list.getEntries().map(e=>({startTime:e.startTime,duration:e.duration})))).observe({type:'longtask',buffered:true});new PerformanceObserver(list=>window.__studioPerf.shifts.push(...list.getEntries().filter(e=>!e.hadRecentInput).map(e=>e.value))).observe({type:'layout-shift',buffered:true})});
+ const page=await context.newPage();currentPage=page;const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');await cdp.send('Network.clearBrowserCache');
+ let requests=new Map();
+ const clean=url=>{const u=new URL(url);return (u.origin+u.pathname).replace(/\/s\/[a-f0-9]{64}\//g,'/s/<session>/').replace(/\/transfer\/[a-f0-9]{64}/g,'/transfer/<capability>')};
+ cdp.on('Network.requestWillBeSent',e=>requests.set(e.requestId,{url:clean(e.request.url),start:e.timestamp,type:e.type}));
+ cdp.on('Network.responseReceived',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{status:e.response.status,fromDiskCache:e.response.fromDiskCache,fromServiceWorker:e.response.fromServiceWorker,mimeType:e.response.mimeType})});
+ cdp.on('Network.loadingFinished',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{end:e.timestamp,encodedDataLength:e.encodedDataLength})});
+ cdp.on('Network.loadingFailed',e=>{const r=requests.get(e.requestId);if(r)Object.assign(r,{failed:e.errorText})});
+ for(const cache of ['cold','warm']){
+  requests=new Map();await page.goto(origin+'/dashboard/shorts/8de8d16d-3ed1-425f-a1f9-e8558a1eeed3',{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Add text card',exact:true}).click();await page.getByRole('textbox',{name:'Text',exact:true}).waitFor();const controls=await page.evaluate(()=>performance.now());await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('.nle-preview')?.getAttribute('data-preview-ready')==='true',{},{timeout:45000});
+  await page.waitForTimeout(1000);
+  const parent=await page.evaluate(()=>({navigation:performance.getEntriesByType('navigation')[0].toJSON(),resources:performance.getEntriesByType('resource').map(e=>e.toJSON()),...window.__studioPerf}));
+  const network=[...requests.values()];
+  let assistant=null;
+  if(build==='final'){
+   const before=new Set(parent.resources.map(r=>r.name));const start=await page.evaluate(()=>performance.now());await page.getByRole('button',{name:'Assistant',exact:true}).click();await page.getByRole('textbox',{name:'Message',exact:true}).waitFor();
+   assistant={readyMs:await page.evaluate(()=>performance.now())-start,resources:await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.toJSON()))};assistant.resources=assistant.resources.filter(r=>!before.has(r.name));
+   await page.screenshot({path:`/tmp/forge-studio-457-probe/assistant-${cache}.png`});await page.getByRole('button',{name:'Close',exact:true}).click();
+  }
+  samples.push({build,repetition,cache,controls,parent,network,assistant});console.log(build,repetition,cache,controls);
+  const released=page.waitForResponse(r=>r.url().endsWith('/api/studio/preview')&&r.request().method()==='DELETE'&&r.status()===204,{timeout:15000});await page.getByTitle('Back to projects',{exact:true}).click();await released;
+ }
+ await context.close();
+ }}
+ await writeFile('/tmp/forge-studio-457-probe/performance-final.json',JSON.stringify({browser:browser.version(),playwright:'1.61.1',viewport:{width:1440,height:1000},conditions:'Matched baseline e12643ec and current production Manager builds; same canonical service-owned blank composition; own loopback Admin/native/preview services; fresh isolated context and cleared browser cache for cold, second navigation same context for warm. No CPU/network throttling. Actual Add text card, inspector and Undo. Preview-ready required. One-second measurement window. Assistant opened only after base sample. Navigation DELETE cleanup outside each sample. No decoded-media comparison; media engine unchanged.',samples},null,2).replace(/\/s\/[a-f0-9]{64}\//g,'/s/<session>/').replace(/\/transfer\/[a-f0-9]{64}/g,'/transfer/<capability>'));
+}catch(e){console.error(e);if(currentPage)console.error(await currentPage.locator('body').innerText());process.exitCode=1}finally{await browser.close()}

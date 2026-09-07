@@ -17,7 +17,12 @@ import { StudioCommandError } from "./errors"
 export function studioActor(user: Principal | null) {
   if (!canAuthorStudio(user)) throw new ForbiddenError()
   if (isStudioHuman(user))
-    return studioActorSchema.parse({ kind: "human", id: user!.id })
+    return studioActorSchema.parse({
+      kind: "human",
+      id: user!.id,
+      authority: user!.studioAuthority,
+      clientId: user!.studioClientId,
+    })
   if (user?.role === "MANAGER_BACKEND" || user?.role === "SYSTEM")
     return studioActorSchema.parse({
       kind: "service",

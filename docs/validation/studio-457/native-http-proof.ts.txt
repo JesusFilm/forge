@@ -1,0 +1,60 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
+import { signStudioRequest } from '@forge/studio-server'
+const root='http://127.0.0.1:4127', dir='/tmp/forge-studio-457-probe'
+const keys=JSON.parse(readFileSync(dir+'/local-runtime.json','utf8'))
+const evidence:any[]=[]
+async function scoped(command:any,authority='interactive') {
+ const body=JSON.stringify({action:'instructions',command})
+ const assertion=await signStudioRequest(body,'forge-mastra:studio',{sub:'local-operator',authority:authority as 'interactive'|'delegated',clientId:'fixture',scopes:['studio:instructions:read']},{privateKey:keys.privateKey,keyId:'studio457',environment:'local'})
+ return fetch(root+'/forge-studio',{method:'POST',headers:{'x-forge-studio-service':assertion},body})
+}
+async function inspect(){const r=await scoped({action:'inspect'});assert.equal(r.status,200);return (await r.json()).result}
+async function native(method:string,path:string,body?:unknown,expected=200){
+ const r=await fetch(root+path,{method,headers:{'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})})
+ const text=await r.text();assert.equal(r.status,expected,method+' '+path+': '+text.slice(0,160));assert.ok(!text.includes('SCOPED-AUTHORITATIVE-457'),path+' exposed authoritative body')
+ evidence.push({method,path,status:r.status,authoritativeMarkerAbsent:true})
+ return text&&expected===200?JSON.parse(text):null
+}
+async function main(){
+ if(process.argv.includes('--restart')){
+  const previous=JSON.parse(readFileSync(dir+'/native-isolation-before.json','utf8'));assert.deepEqual(await inspect(),previous)
+  writeFileSync(dir+'/native-restart-evidence.json',JSON.stringify({separateBuiltProcess:true,preservedAuthoritativeState:true,activeVersionId:previous.activeVersionId,latestVersionId:previous.latest.id},null,2)+'\n');console.log('Native isolated store persists across built process restart');return
+ }
+ const initial=await inspect()
+ const saved=await scoped({action:'save',expectedVersionId:initial.latest.id,content:'SCOPED-AUTHORITATIVE-457: only the trusted native adapter owns these bytes.'});assert.equal(saved.status,200);const draft=(await saved.json()).result;assert.equal(draft.activeVersionId,initial.activeVersionId)
+ const activated=await scoped({action:'activate',versionId:draft.latest.id,expectedActiveVersionId:initial.activeVersionId});assert.equal(activated.status,200);await activated.text()
+ const before=await inspect();const agent='studio-authoring',block='studio-authoring-voice'
+ // Only disposable generic-schema prep rows are removed; authoritative native schema is never targeted here.
+ for(const [kind,id] of [['agents',agent],['prompt-blocks',block]]){
+  const r=await fetch(root+'/api/stored/'+kind+'/'+id,{method:'DELETE'});assert.ok([200,404].includes(r.status));await r.text()
+ }
+ await native('POST','/api/stored/prompt-blocks',{name:'Studio Authoring Voice',content:'GENERIC SHADOW BLOCK'})
+ await native('POST','/api/stored/agents',{name:'Studio Authoring',instructions:'GENERIC SHADOW AGENT',model:{provider:'code',name:'studio'}})
+ for(const base of ['/api/agents','/api/stored/agents','/api/stored/prompt-blocks'])for(const suffix of ['', '/', '?status=draft','?status=published','?page=0&perPage=100'])await native('GET',base+suffix,undefined,suffix==='/'?404:200)
+ for(const [kind,id] of [['agents',agent],['prompt-blocks',block]]){
+  const path='/api/stored/'+kind+'/'+id
+  for(const suffix of ['', '?status=draft','?status=published'])await native('GET',path+suffix)
+  const listed=await native('GET',path+'/versions');const version=listed.versions[0].id
+  await native('GET',path+'/versions/'+version)
+  await native('GET',path+'/versions/compare?from='+version+'&to='+version)
+  await native('POST',path+'/versions/'+version+'/activate',{})
+  await native('POST',path+'/versions/'+version+'/restore',{})
+  await native('PATCH',path,kind==='agents'?{instructions:'CHANGED GENERIC SHADOW'}:{content:'CHANGED GENERIC SHADOW'})
+  // Exact scoped state survives generic update/activation/restore of identical IDs.
+  assert.deepEqual(await inspect(),before)
+ }
+ await native('POST','/api/stored/agents/preview-instructions',{blocks:[{type:'prompt_block_ref',id:block}]})
+ await native('GET','/api/agents/seekerAgent')
+ await native('DELETE','/api/stored/agents/'+agent)
+ await native('POST','/api/agents/seekerAgent/clone',{newId:'Studio Authoring',newName:'Generic shadow clone'})
+ await native('DELETE','/api/stored/agents/'+agent)
+ await native('DELETE','/api/stored/prompt-blocks/'+block)
+ assert.deepEqual(await inspect(),before)
+ const denied=await scoped({action:'activate',versionId:before.latest.id,expectedActiveVersionId:before.activeVersionId},'delegated');assert.equal(denied.status,403);await denied.text()
+ const missing=await fetch(root+'/forge-studio',{method:'POST',body:JSON.stringify({action:'instructions',command:{action:'inspect'}})});assert.equal(missing.status,403);await missing.text()
+ writeFileSync(dir+'/native-isolation-before.json',JSON.stringify(before,null,2)+'\n')
+ writeFileSync(dir+'/native-http-evidence.json',JSON.stringify({runtime:'production mastra build --studio; real native Editor/Postgres; no provider invocation',authoritativeSchema:'mastra_studio_authoring',genericEditorSchema:'mastra',nativeAgentVersion:before.latest.id,nativeBlockVersion:before.block.activeVersionId,unchangedAuthoritativeState:true,draftSavePreservedActive:true,delegatedActivation:denied.status,missingAuthentication:missing.status,cases:evidence},null,2)+'\n')
+ console.log(JSON.stringify({passed:evidence.length,unchangedAuthoritativeState:true}))
+}
+main().catch(error=>{console.error(error);process.exitCode=1})

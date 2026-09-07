@@ -60,6 +60,7 @@ export type Role =
   | "CONSUMER_BEARER"
 
 export type Principal = {
+  studioClientId?: string
   id: string | null
   role: Role
   /** Set only by trusted Studio interactive transport; OAuth delegation is not review. */

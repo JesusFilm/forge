@@ -1,5 +1,27 @@
 export const AUTH_SCOPES = [
   {
+    key: "studio:read",
+    label: "Read Studio projects",
+    description: "Read Studio projects, history and shared assets.",
+  },
+  {
+    key: "studio:edit",
+    label: "Edit Studio drafts",
+    description:
+      "Apply revision-checked draft edits; never approve or publish.",
+  },
+  {
+    key: "studio:chat",
+    label: "Run Studio agent",
+    description:
+      "Request hosted authoring proposals; never approve narration or publication.",
+  },
+  {
+    key: "studio:instructions:read",
+    label: "Read Studio instructions",
+    description: "Inspect active Studio guidance without changing activation.",
+  },
+  {
     key: "openid",
     label: "Sign you in",
     description: "Confirm your identity for the requesting application.",

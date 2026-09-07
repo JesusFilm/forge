@@ -152,3 +152,7 @@ pnpm --filter @forge/auth mint:apple-client-secret \
   JWT is a credential too.
 
 The current secret expires **2027-02-04**.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

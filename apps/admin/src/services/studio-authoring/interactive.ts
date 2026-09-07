@@ -40,6 +40,15 @@ export async function executeStudioInteractive(
   raw: unknown,
 ) {
   if (user.studioAuthority !== "interactive") throw new ForbiddenError()
+  return executeStudioRpc(db, user, raw)
+}
+
+/** Canonical dispatcher; authorization is supplied only by verified server transports. */
+export async function executeStudioRpc(
+  db: PrismaClient,
+  user: Principal,
+  raw: unknown,
+) {
   const { action, input } = studioRpcSchema.parse(raw)
   const commands = new StudioAuthoringService(db),
     assets = new StudioAssetService(db),
