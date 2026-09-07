@@ -88,7 +88,11 @@ describe("profile reconciliation scheduler", () => {
   })
 
   it("does not duplicate a fresh active scheduler", async () => {
-    const existing = { id: "existing-ledger", runtimeRunId: null }
+    const existing = {
+      id: "existing-ledger",
+      runtimeRunId: null,
+      updatedAt: new Date(),
+    }
     workflowRun.findFirst.mockResolvedValue(existing)
     tx.workflowRun.findFirst.mockResolvedValue(existing)
 
@@ -99,6 +103,55 @@ describe("profile reconciliation scheduler", () => {
       ledgerRunId: "existing-ledger",
     })
     expect(start).not.toHaveBeenCalled()
+  })
+
+  it("does not duplicate an active runtime when its heartbeat is stale", async () => {
+    const existing = {
+      id: "slow-ledger",
+      runtimeRunId: "slow-runtime",
+      updatedAt: new Date("2026-09-06T22:00:00.000Z"),
+    }
+    workflowRun.findFirst.mockResolvedValue(existing)
+    tx.workflowRun.findFirst.mockResolvedValue(existing)
+    runtimeRunGet.mockResolvedValue({ status: "running", error: null })
+
+    await expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted(),
+    ).resolves.toEqual({
+      started: false,
+      ledgerRunId: "slow-ledger",
+    })
+    expect(start).not.toHaveBeenCalled()
+  })
+
+  it("replaces a scheduler whose runtime failed after start returned", async () => {
+    const existing = {
+      id: "failed-ledger",
+      runtimeRunId: "failed-runtime",
+      updatedAt: NOW,
+    }
+    workflowRun.findFirst.mockResolvedValue(existing)
+    tx.workflowRun.findFirst.mockResolvedValue(existing)
+    runtimeRunGet.mockResolvedValue({
+      status: "failed",
+      error: { message: "WorkflowNotRegisteredError" },
+    })
+
+    await expect(
+      ensureRecommendationProfileReconciliationSchedulerStarted(),
+    ).resolves.toEqual({
+      started: true,
+      runId: "runtime-459",
+      ledgerRunId: "ledger-459",
+    })
+    expect(tx.workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "failed-ledger" },
+      data: expect.objectContaining({
+        status: "FAILED",
+        error: "WorkflowNotRegisteredError",
+      }),
+    })
+    expect(start).toHaveBeenCalledTimes(1)
   })
 
   it("records only privacy-safe aggregate batch evidence", async () => {

@@ -1,5 +1,6 @@
 let bootstrapPromise: Promise<void> | null = null
 let resolveBootstrap: (() => void) | null = null
+let fallbackLock: Promise<void> = Promise.resolve()
 
 export function startRecommendationConsentBootstrap() {
   if (bootstrapPromise) return
@@ -27,5 +28,10 @@ export async function withRecommendationConsentLock<T>(
   if (typeof navigator !== "undefined" && navigator.locks) {
     return navigator.locks.request("forge-recommendation-consent", operation)
   }
-  return operation()
+  const result = fallbackLock.then(operation, operation)
+  fallbackLock = result.then(
+    () => undefined,
+    () => undefined,
+  )
+  return result
 }

@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (September 7, 2026)
 
-- **Total tickets:** 632
-- **Complete:** 474
-- **In progress:** 47
-- **Not started:** 37
-- **Blocked:** 74
+- **Total tickets:** 633
+- **Complete:** 476
+- **In progress:** 46
+- **Not started:** 41
+- **Blocked:** 70
 - **Overdue and not complete:** 115
 
 ## Feature Index
@@ -20,8 +20,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | ID                                                                                                             | Feature                                                                                         | Owner      | Priority | Start      | Days | Due        | Status      |
 | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-368](content-discovery/feat-368-production-semantic-recommendation-tracer.md)                            | Production semantic recommendation tracer                                                       | nisal      | P0       | —          | 10   | —          | complete    |
-| [feat-369](content-discovery/feat-369-recommendation-playback-episodes-active-playback.md)                     | Recommendation playback episodes and active-playback proxy                                      | nisal      | P0       | —          | 6    | —          | in-progress |
-| [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | blocked     |
+| [feat-369](content-discovery/feat-369-recommendation-playback-episodes-active-playback.md)                     | Recommendation playback episodes and active-playback proxy                                      | nisal      | P0       | —          | 6    | —          | complete    |
+| [feat-372](content-discovery/feat-372-recommendation-mission-value-actions.md)                                 | Recommendation mission-value actions                                                            | nisal      | P0       | —          | 4    | —          | not-started |
 | [feat-373](content-discovery/feat-373-watch-surface-impressions-ctr.md)                                        | Watch surface impressions and CTR                                                               | nisal      | P0       | —          | 5    | —          | not-started |
 | [feat-376](content-discovery/feat-376-recommendation-integrity-eligibility.md)                                 | Recommendation integrity and evidence eligibility                                               | nisal      | P0       | —          | 6    | —          | complete    |
 | [feat-378](content-discovery/feat-378-consent-aware-recommendation-profile.md)                                 | Consent-aware recommendation profile                                                            | nisal      | P0       | —          | 7    | —          | complete    |
@@ -66,15 +66,15 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-334](content-discovery/feat-334-watch-search-typesense-parallel-backend.md)                              | Watch Search Typesense parallel backend                                                         | codex      | P0       | 2026-08-03 | 2    | 2026-08-04 | complete    |
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
-| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | —          | 4    | —          | blocked     |
-| [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | blocked     |
+| [feat-370](content-discovery/feat-370-recommendation-playback-navigation-qoe.md)                               | Recommendation playback navigation and QoE signals                                              | nisal      | P1       | —          | 4    | —          | not-started |
+| [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | not-started |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | blocked     |
 | [feat-375](content-discovery/feat-375-semantic-search-downstream-outcomes.md)                                  | Semantic search downstream outcomes                                                             | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-377](content-discovery/feat-377-authenticated-machine-recommendation-parity.md)                          | Authenticated machine recommendation parity                                                     | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-379](content-discovery/feat-379-recommendation-intent-profile-controls.md)                               | Recommendation intent and profile controls                                                      | nisal      | P1       | —          | 4    | —          | blocked     |
 | [feat-380](content-discovery/feat-380-reported-value-surveys.md)                                               | Reported-value surveys                                                                          | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-386](content-discovery/feat-386-multi-interest-profile-candidates.md)                                    | Multi-interest profile candidates                                                               | nisal      | P1       | —          | 6    | —          | complete    |
-| [feat-387](content-discovery/feat-387-profile-conditioned-directional-cowatch.md)                              | Profile-conditioned directional co-watch                                                        | nisal      | P1       | —          | 8    | —          | blocked     |
+| [feat-387](content-discovery/feat-387-profile-conditioned-directional-cowatch.md)                              | Profile-conditioned directional co-watch                                                        | nisal      | P1       | —          | 8    | —          | not-started |
 | [feat-388](content-discovery/feat-388-editorial-recommendation-candidates.md)                                  | Editorial recommendation candidates                                                             | nisal      | P1       | —          | 4    | —          | blocked     |
 | [feat-389](content-discovery/feat-389-search-session-intent-candidates.md)                                     | Search and session-intent candidates                                                            | nisal      | P1       | —          | 5    | —          | blocked     |
 | [feat-390](content-discovery/feat-390-continuation-recommendation-candidates.md)                               | Continuation recommendation candidates                                                          | nisal      | P1       | —          | 4    | —          | blocked     |
@@ -159,8 +159,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-451](content-discovery/feat-451-watch-search-candidate-exact-compatibility-identities.md)                | Watch search candidate exact compatibility identities                                           | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
 | [feat-452](content-discovery/feat-452-watch-home-autoplay-cycle.md)                                            | Watch home autoplay continues after played-history exhaustion                                   | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
 | [feat-452](content-discovery/feat-452-watch-search-backdrop-dismissal.md)                                      | Watch search backdrop dismissal                                                                 | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
-| [feat-461](content-discovery/feat-461-watch-search-editorial-curations.md)                                     | Watch Search editorial curations                                                                | codex      | P1       | 2026-09-07 | 3    | 2026-09-09 | complete    |
 | [feat-462](content-discovery/feat-462-watch-search-current-transcript-publication.md)                          | Watch search current transcript publication                                                     | codex      | P1       | 2026-09-03 | 1    | 2026-09-03 | complete    |
+| [feat-461](content-discovery/feat-461-watch-search-editorial-curations.md)                                     | Watch Search editorial curations                                                                | codex      | P1       | 2026-09-07 | 3    | 2026-09-09 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |

@@ -15,10 +15,11 @@ import {
 } from "@/lib/recommendation-contracts"
 import {
   recommendationEventId,
-  recommendationFetchWithRetry,
+  recommendationFetchWithDeadline,
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
 import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
 import { watchPath } from "@/lib/watch-paths"
 
@@ -103,8 +104,10 @@ function playbackPosition(
   }
 }
 
+class DefinitivePlaybackError extends Error {}
+
 async function postPlayback(body: string, keepalive: boolean) {
-  return recommendationFetchWithRetry(
+  const response = await recommendationFetchWithDeadline(
     PLAYBACK_ENDPOINT,
     {
       method: "POST",
@@ -115,8 +118,20 @@ async function postPlayback(body: string, keepalive: boolean) {
       body,
     },
     REQUEST_DEADLINE_MS,
-    { attempts: 1 },
   )
+  if (response.ok) return response
+  if (response.status === 409) {
+    let value: { error?: unknown } | null = null
+    try {
+      value = (await response.json()) as { error?: unknown }
+    } catch {
+      // A malformed error body remains a retryable transport failure.
+    }
+    if (value?.error === "playback_binding_invalid") {
+      throw new DefinitivePlaybackError()
+    }
+  }
+  throw new RecommendationRuntimeError("request_failed")
 }
 
 function playbackFactsBody(
@@ -136,6 +151,7 @@ function playbackFactsBody(
 
 type PlaybackDegradationReason =
   | "body_limit"
+  | "binding_invalid"
   | "episode_limit"
   | "integrity_conflict"
   | "pending_claim"
@@ -209,34 +225,38 @@ async function claimRecommendationEpisode(
 
 async function issuePlaybackContext(mediaId: string): Promise<string> {
   const discovery = consumePlaybackDiscoveryContext(mediaId)
-  return withinRecommendationDeadline(
-    undefined,
-    REQUEST_DEADLINE_MS,
-    async (signal) => {
-      const response = await fetch(PLAYBACK_ENDPOINT, {
-        method: "POST",
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action: "context",
-          mediaId,
-          discoverySource: discovery.source,
-          provenance: discovery.provenance,
-        }),
-        signal,
-      })
-      if (!response.ok) throw new RecommendationRuntimeError("request_failed")
-      const value = (await response.json()) as { claimNonce?: unknown }
-      if (
-        typeof value.claimNonce !== "string" ||
-        value.claimNonce.length < 16 ||
-        value.claimNonce.length > 191
-      ) {
-        throw new RecommendationRuntimeError("claim_invalid")
-      }
-      return value.claimNonce
-    },
+  return withRecommendationConsentLock(() =>
+    withinRecommendationDeadline(
+      undefined,
+      REQUEST_DEADLINE_MS,
+      async (signal) => {
+        const response = await fetch(PLAYBACK_ENDPOINT, {
+          method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "context",
+            mediaId,
+            discoverySource: discovery.source,
+            provenance: discovery.provenance,
+          }),
+          signal,
+        })
+        if (!response.ok) {
+          throw new RecommendationRuntimeError("request_failed")
+        }
+        const value = (await response.json()) as { claimNonce?: unknown }
+        if (
+          typeof value.claimNonce !== "string" ||
+          value.claimNonce.length < 16 ||
+          value.claimNonce.length > 191
+        ) {
+          throw new RecommendationRuntimeError("claim_invalid")
+        }
+        return value.claimNonce
+      },
+    ),
   )
 }
 
@@ -391,7 +411,21 @@ export function RecommendationPlaybackRecorder({
                 break
               }
             }
-          } catch {
+          } catch (error) {
+            if (error instanceof DefinitivePlaybackError) {
+              const dropped = outboundRef.current.splice(0)
+              episodeRef.current = null
+              claimSettledRef.current = true
+              drainRequestedRef.current = false
+              for (const fact of dropped) {
+                deliveryAttemptsRef.current.delete(fact.eventId)
+              }
+              reportDegradation(
+                "binding_invalid",
+                dropped.map((fact) => fact.eventId),
+              )
+              break
+            }
             const exhausted = events.filter(
               (fact) =>
                 (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) >=

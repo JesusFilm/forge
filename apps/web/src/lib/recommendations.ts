@@ -29,6 +29,34 @@ function upstreamContext(timeoutMs: number) {
   return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
 }
 
+function hasRecommendationGraphqlCode(
+  value: unknown,
+  expected: string,
+): boolean {
+  if (!value || typeof value !== "object") return false
+  const record = value as { error?: unknown; errors?: unknown }
+  const direct = Array.isArray(record.errors) ? record.errors : []
+  const nested =
+    record.error &&
+    typeof record.error === "object" &&
+    "errors" in record.error &&
+    Array.isArray(record.error.errors)
+      ? record.error.errors
+      : []
+  return [...direct, ...nested].some((entry) => {
+    if (!entry || typeof entry !== "object" || !("extensions" in entry)) {
+      return false
+    }
+    const extensions = entry.extensions
+    return (
+      !!extensions &&
+      typeof extensions === "object" &&
+      "recommendationCode" in extensions &&
+      extensions.recommendationCode === expected
+    )
+  })
+}
+
 // Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
 // `videoId` is admin's cuid string (ID); web's previous Strapi-backed shape
 // carried it as an integer and is updated in this rebuild to match.
@@ -580,6 +608,9 @@ export async function recordSemanticRecommendationPlayback(
     fetchPolicy: "no-cache",
     context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
   })
+  if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
+    throw new RecommendationRuntimeError("playback_binding_invalid")
+  }
   if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
     throw new RecommendationRuntimeError("playback_unavailable")
   }
