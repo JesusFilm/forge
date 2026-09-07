@@ -196,6 +196,52 @@ curl -si 'http://localhost:3004/api/auth/callback/jfp?state=<state>&code=bogus' 
 # Expect: 400.
 ```
 
+### 8. Replay the nested-provider state-cookie loss (2026-09-08)
+
+A provider button on the hosted page (Google, Okta) runs a second OAuth flow
+inside the self-RP flow and consumes the one `state` cookie the self-RP
+callback checks. A password sign-in does not, so hop 3 above cannot see that
+break. This replay stands in for the inner provider with a password sign-up
+and DROPS the proxy's state cookie, which is what `/callback/google` does.
+Run it once with the re-planted cookie and once without: the first arm must
+end in `forgemobile:///?cookie=…`, the second in
+`forgemobile:///?error=state_mismatch`.
+
+```bash
+# replay-nested.sh <with-cookie|without-cookie>
+MODE="${1:-with-cookie}"; BASE=http://localhost:3004; W=/tmp/replay-$MODE
+rm -rf "$W"; mkdir -p "$W"
+# hop 1: the app's sign-in POST
+curl -sS -o "$W/hop1.json" -X POST "$BASE/api/auth/sign-in/social" \
+  -H 'content-type: application/json' -H 'expo-origin: forgemobile://' \
+  -H 'x-skip-oauth-proxy: true' \
+  -d '{"provider":"jfp","callbackURL":"forgemobile:///"}'
+AUTHZ=$(node -e 'console.log(require(process.argv[1]).url)' "$W/hop1.json")
+# hop 2: the browser proxy plants state cookie S (kept in jar-proxy)
+ENC=$(node -e 'console.log(encodeURIComponent(process.argv[1]))' "$AUTHZ")
+curl -sS -o /dev/null -c "$W/jar-proxy.txt" \
+  "$BASE/api/auth/expo-authorization-proxy?authorizationURL=$ENC"
+# inner flow stand-in: password sign-up -> session cookie ONLY (no state cookie)
+curl -sS -o /dev/null -c "$W/jar-session.txt" -X POST "$BASE/api/auth/sign-up/email" \
+  -H 'content-type: application/json' \
+  -d "{\"email\":\"replay-$(date +%s)@example.com\",\"password\":\"Replay-passw0rd-$(date +%s)\",\"name\":\"Replay\"}"
+# hop 6: the authorize continuation (prompt=login consumed) with the session only
+CONT=$(node -e 'const u=new URL(process.argv[1]); u.searchParams.delete("prompt"); console.log(u.toString())' "$AUTHZ")
+curl -sS -o /dev/null -b "$W/jar-session.txt" -c "$W/jar-after-hop6.txt" \
+  -D "$W/hop6-headers.txt" "$CONT"
+LOC=$(grep -i '^location:' "$W/hop6-headers.txt" | tr -d '\r' | cut -d' ' -f2-)
+grep -i 'set-cookie: better-auth.state=' "$W/hop6-headers.txt" && echo "re-planted"
+# hop 7: /callback/jfp with, or without, the re-planted cookie
+[ "$MODE" = with-cookie ] && JAR="$W/jar-after-hop6.txt" || JAR="$W/jar-session.txt"
+curl -sS -o /dev/null -b "$JAR" -D "$W/hop7-headers.txt" "$LOC"
+grep -i '^location:' "$W/hop7-headers.txt" | sed -E 's/cookie=[^&]*/cookie=<present>/'
+```
+
+Observed 2026-09-08 on the `selfRpStateCookiePlugin` build: hop 6 answered
+`302 …/callback/jfp?code=…&state=S` with `Set-Cookie: better-auth.state=S.…`;
+hop 7 answered `302 forgemobile:///?cookie=<present>` with the cookie and
+`302 forgemobile:///?error=state_mismatch` without it.
+
 ## Why This Matters
 
 The vendor drift guard `apps/auth/src/auth/mobile-expo-plugin.guard.test.ts`

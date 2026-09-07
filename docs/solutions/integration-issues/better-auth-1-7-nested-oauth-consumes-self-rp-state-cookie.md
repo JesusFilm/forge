@@ -141,13 +141,24 @@ login-CSRF finding on these grounds (run `20260907-152441-e4a87f15`).
   no cookie. A cookie name or signing change on a Better Auth bump goes red
   there.
 - Falsified once: with the matcher neutered, the planting cases go red.
+- Local end-to-end replay (2026-09-08, this branch's standalone build behind
+  the static-discovery proxy, step 8 of
+  `docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`):
+  the production hop sequence with the inner provider flow stood in for by
+  a password sign-in plus dropping the proxy's state cookie. The authorize
+  continuation answered `302 /api/auth/callback/jfp?code=…&state=S` with
+  `Set-Cookie: better-auth.state=S.…`. With that cookie, `/callback/jfp`
+  answered `302 forgemobile:///?cookie=…` (1313 chars). Without it, the
+  same request answered `302 forgemobile:///?error=state_mismatch`, the
+  production failure. Both arms ran against the same server.
 - `config.test.ts` pins the plugin's registration.
 - `pnpm --filter @forge/auth test`, `typecheck`, and `lint` are clean.
-- NOT verified before merge: a live Google or Okta sign-in on a device. That
-  needs the fix deployed to production auth, because the nested provider
-  flow needs the real provider credentials and redirect URIs. No new mobile
-  build is needed: the fix is server-side only, and build 1.0.0 (5) already
-  carries the 1.7.1 client.
+- NOT verified before merge: a live Google or Okta sign-in on a device. The
+  replay stands in for the inner provider with a password sign-in, so the
+  real Google exchange is not exercised locally. No new mobile build is
+  needed: the fix is server-side only, and build 1.0.0 (5) already carries
+  the 1.7.1 client. After the auth deploy, one tap of Google or Okta on
+  that build is the remaining check.
 
 ## Prevention
 
