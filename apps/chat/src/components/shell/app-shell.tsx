@@ -82,6 +82,7 @@ export function AppShell({
     draft,
     pending,
     pendingIds,
+    renamingIds,
     streamingMessageId,
     history,
     setDraft,
@@ -93,6 +94,7 @@ export function AppShell({
     retryHistory,
     loadMoreHistory,
     retryReplay,
+    renameConversation,
   } = useConversations(
     grantedShell,
     // KTD5 guard: on a denial shell the id serves ONLY the returnTo links —
@@ -257,6 +259,8 @@ export function AppShell({
         conversations={conversations}
         activeId={activeId}
         pendingIds={pendingIds}
+        renamingIds={renamingIds}
+        grantedShell={grantedShell}
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         authConfigured={authConfigured}
@@ -271,6 +275,7 @@ export function AppShell({
         onCloseMobile={closeMobile}
         onRetryHistory={retryHistory}
         onLoadMore={loadMoreHistory}
+        onRename={renameConversation}
       />
       {/* `inert` while the drawer is open traps focus inside it and blocks
           interaction with the content behind the scrim (mobile only — the
