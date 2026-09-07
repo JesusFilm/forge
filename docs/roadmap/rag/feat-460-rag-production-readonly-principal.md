@@ -82,3 +82,7 @@ requires its separate URL for production evaluation and dashboard reads, and
 keeps production role creation as a guarded manual Railway database operation.
 The local PostgreSQL 18 proof allowed `SELECT` and denied persistent and
 temporary DDL plus corpus `INSERT`, `UPDATE`, and `DELETE` without residue.
+After provisioning, the original owner also retained persistent and temporary
+DDL and `INSERT`, `UPDATE`, and `DELETE` access to both a probe table and the
+application `sources` table. The focused adapter and raw-document-promotion
+integration suites continued to pass against the provisioned database.

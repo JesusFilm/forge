@@ -53,6 +53,21 @@ persistent DDL, temporary DDL, `INSERT`, `UPDATE`, and `DELETE` are denied. Each
 negative probe is transaction-wrapped and rolls back if it unexpectedly
 succeeds.
 
+The PostgreSQL integration test provisions the reader and then reconnects with
+the original owner credential. It proves that the owner can still create and
+drop a persistent table, create a temporary table, and insert, update, and
+delete both a probe row and a real `sources` row. The test asserts that neither
+the source row nor persistent table remains. Run that proof together with the
+existing adapter and raw-document-promotion write suites:
+
+```sh
+DATABASE_URL=postgresql://forge:forge@localhost:5435/forge_rag \
+  pnpm --filter @forge/rag exec vitest run --no-file-parallelism \
+  tests/adapters.integration.test.ts \
+  tests/raw-document-promotion.integration.test.ts \
+  tests/readonly-role.integration.test.ts
+```
+
 ## Railway production procedure
 
 This is a manual database administration action after the provisioning code has
