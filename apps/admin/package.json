@@ -78,6 +78,8 @@
     "@escape.tech/graphql-armor-max-aliases": "2.6.2",
     "@escape.tech/graphql-armor-max-depth": "2.4.2",
     "@escape.tech/graphql-armor-max-tokens": "2.5.1",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
     "@forge/experience-schema": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "0.21.1",
