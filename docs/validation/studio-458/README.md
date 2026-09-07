@@ -132,8 +132,12 @@ Final rebuilt expanded audition/history and retained source checks passed, with
 zero page errors or new provider calls. All 16 referenced assets and three project
 documents matched before/after hashes. See `browser/final-retained/`.
 
-Outstanding acceptance: finalized artifact hashes and hook-enabled implementation
-commits, creative-quality acceptance after the preserved failed comparison, and
+Implementation commit `341d57f05f381eab2d8f0bb828c9788c6035ed7d` passed the
+normal ESLint, staged-format and full-repository format hooks. `SHA256SUMS`
+addresses all retained evidence files; exact provider bytes remain unchanged.
+The subsequent documentation handoff commit contains this record.
+
+Outstanding acceptance: creative-quality acceptance after the preserved failed comparison, and
 authorized actual narration/music/voice audition with verified billing facts. The
 ticket stays in progress. Typed role-feedback regression and editable rubric
 calibration are unpaid corrections; they do not relabel the failed paid outputs.

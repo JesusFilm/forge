@@ -3,8 +3,10 @@
 This handoff covers feat-458 implementation against reviewed base
 `2855e26512ebfacd78bee987e1cda3f66d738774` (root reviewed 457 `8ca433eb`
 patch-equivalent). All prerequisites are already incorporated; do not cherry-pick
-those prerequisites again. Implementation commits will be identified by the
-coordinator message accompanying this handoff. The ticket remains in progress.
+those prerequisites again. Reviewed implementation commit: `341d57f05f381eab2d8f0bb828c9788c6035ed7d`.
+A subsequent documentation-only handoff commit records these hook results and
+evidence hashes; its exact SHA is in the coordinator handoff message. Apply that
+ordered pair only, without prerequisite duplicates. The ticket remains in progress.
 
 ## Downstream interfaces
 
