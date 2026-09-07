@@ -372,3 +372,148 @@ export const studioProductionListSchema = z
       .optional(),
   })
   .strict()
+
+export const STUDIO_SPEECH_FEEDBACK_LIMITS = Object.freeze({
+  inlineBytes: 30720,
+  nativeBytes: 32768,
+})
+const feedbackCount = z.number().int().nonnegative().max(1000)
+const feedbackDigest = z.string().regex(/^[a-f0-9]{64}$/)
+const speechFeedbackHeader = z
+  .object({
+    version: z.literal(1),
+    projectId: studioIdSchema,
+    baseRevision: z.number().int().positive(),
+    language: studioIdSchema,
+    operationsDigest: feedbackDigest,
+    scriptDigest: feedbackDigest,
+    speechItemCount: feedbackCount,
+    spokenItemCount: feedbackCount,
+    suppressedItemCount: feedbackCount,
+    emptyItemCount: feedbackCount,
+    exactTextUtf8Bytes: z.number().int().nonnegative().max(32_000_000),
+  })
+  .strict()
+const speechFeedbackItem = z
+  .object({
+    itemId: studioIdSchema,
+    trackId: studioIdSchema,
+    startFrame: z.number().int().nonnegative(),
+    durationInFrames: z.number().int().positive(),
+    role: studioIdSchema,
+    suppressed: z.boolean(),
+    text: z.string().max(8000),
+    spoken: z.boolean(),
+  })
+  .strict()
+export const studioEffectiveSpeechSchema = z
+  .discriminatedUnion("view", [
+    speechFeedbackHeader
+      .extend({
+        view: z.literal("inline"),
+        complete: z.literal(true),
+        items: z.array(speechFeedbackItem).max(1000),
+      })
+      .strict(),
+    speechFeedbackHeader
+      .extend({
+        view: z.literal("unavailable"),
+        complete: z.literal(false),
+        reason: z.literal("INLINE_BYTE_LIMIT"),
+        inlineByteLimit: z.literal(30720),
+      })
+      .strict(),
+  ])
+  .superRefine((value, ctx) => {
+    const invalid = () =>
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid canonical speech feedback",
+      })
+    if (
+      [
+        value.spokenItemCount,
+        value.suppressedItemCount,
+        value.emptyItemCount,
+      ].some((n) => n > value.speechItemCount)
+    )
+      invalid()
+    if (value.view === "inline") {
+      if (
+        new TextEncoder().encode(JSON.stringify(value)).length >
+        STUDIO_SPEECH_FEEDBACK_LIMITS.inlineBytes
+      )
+        invalid()
+      if (
+        value.items.length !== value.speechItemCount ||
+        new Set(value.items.map((i) => i.itemId)).size !== value.items.length ||
+        value.items.filter((i) => i.spoken).length !== value.spokenItemCount ||
+        value.items.filter((i) => i.suppressed).length !==
+          value.suppressedItemCount ||
+        value.items.filter((i) => !i.text.length).length !==
+          value.emptyItemCount ||
+        value.items.some(
+          (i) => i.spoken !== (!i.suppressed && i.text.length > 0),
+        ) ||
+        value.items.reduce(
+          (sum, i) => sum + new TextEncoder().encode(i.text).length,
+          0,
+        ) !== value.exactTextUtf8Bytes
+      )
+        invalid()
+    }
+  })
+export type StudioEffectiveSpeech = z.infer<typeof studioEffectiveSpeechSchema>
+export function unavailableStudioSpeech(
+  value: StudioEffectiveSpeech,
+): StudioEffectiveSpeech {
+  const {
+    version,
+    projectId,
+    baseRevision,
+    language,
+    operationsDigest,
+    scriptDigest,
+    speechItemCount,
+    spokenItemCount,
+    suppressedItemCount,
+    emptyItemCount,
+    exactTextUtf8Bytes,
+  } = value
+  return {
+    version,
+    projectId,
+    baseRevision,
+    language,
+    operationsDigest,
+    scriptDigest,
+    speechItemCount,
+    spokenItemCount,
+    suppressedItemCount,
+    emptyItemCount,
+    exactTextUtf8Bytes,
+    view: "unavailable",
+    complete: false,
+    reason: "INLINE_BYTE_LIMIT",
+    inlineByteLimit: 30720,
+  }
+}
+export const studioProposalValidationResultSchema = z
+  .object({
+    valid: z.literal(true),
+    projectId: studioIdSchema,
+    revision: z.number().int().positive(),
+    quality: studioQualityReportSchema.optional(),
+    effectiveSpeech: studioEffectiveSpeechSchema,
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (
+      value.projectId !== value.effectiveSpeech.projectId ||
+      value.revision !== value.effectiveSpeech.baseRevision
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Canonical speech binding mismatch",
+      })
+  })

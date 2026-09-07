@@ -1,0 +1,29 @@
+(node:1645910) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/proposal-speech.test.ts [ src/services/studio-authoring/proposal-speech.test.ts ]
+Error: ENOENT: no such file or directory, open '/home/tataihono/.codex/worktrees/8b33/docs/validation/studio-458/model-comparison-1/verified-bound-proposal.body'
+ ❯ src/services/studio-authoring/proposal-speech.test.ts:9:26
+      7| 
+      8| const evidence = new URL("../../../../../../docs/validation/studio-458…
+      9| const bound = JSON.parse(readFileSync(new URL("verified-bound-proposal…
+       |                          ^
+     10| const saved = JSON.parse(readFileSync(new URL("live/retained-0.body", …
+     11| const project = studioProjectSchema.parse(bound.cases.find((c: { case:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  07:48:53
+   Duration  630ms (transform 149ms, setup 14ms, collect 0ms, tests 0ms, environment 0ms, prepare 87ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/proposal-speech.test.ts

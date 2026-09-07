@@ -1,5 +1,6 @@
 import { orderedStudioSpeech } from "@forge/studio-contracts/production"
-import { createHash } from "node:crypto"
+import { studioHash } from "@forge/studio-server"
+export { studioHash } from "@forge/studio-server"
 import type { Prisma, StudioProject } from "@prisma/client"
 import {
   studioActorSchema,
@@ -30,21 +31,6 @@ export function studioActor(user: Principal | null) {
       id: user.role.toLowerCase(),
     })
   throw new ForbiddenError()
-}
-export function studioHash(value: unknown): string {
-  const canonical = (v: unknown): unknown =>
-    Array.isArray(v)
-      ? v.map(canonical)
-      : v !== null && typeof v === "object"
-        ? Object.fromEntries(
-            Object.entries(v)
-              .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-              .map(([k, x]) => [k, canonical(x)]),
-          )
-        : v
-  return createHash("sha256")
-    .update(JSON.stringify(canonical(value)))
-    .digest("hex")
 }
 
 export async function lockProject(

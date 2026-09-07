@@ -3,6 +3,7 @@ import {
   studioDocumentSchema,
   studioOperationSchema,
 } from "@forge/studio-contracts"
+import { studioHash } from "./state"
 import { ForbiddenError } from "../errors"
 import { StudioSourceService } from "./sources"
 import { randomUUID } from "node:crypto"
@@ -1198,6 +1199,20 @@ class FixtureError extends Error {}
       },
     })
     expect(result.valid).toBe(true)
+    expect(result).toMatchObject({
+      effectiveSpeech: {
+        view: "inline",
+        complete: true,
+        projectId,
+        baseRevision: 1,
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            itemId: "settle",
+            text: "A revised quiet moment.",
+          }),
+        ]),
+      },
+    })
     await expect(
       service.validate(human, {
         command,
@@ -1222,6 +1237,75 @@ class FixtureError extends Error {}
       }),
     ).rejects.toThrow("Verified Studio asset version")
     expect((await commands.read(human, projectId)).revision).toBe(1)
+  })
+
+  it("binds original ordered commands without mutation and permits oversized transcript feedback", async () => {
+    const { projectId, commands } = await fixture()
+    const service = new StudioGenerationService(db)
+    const beforeProject = await commands.read(human, projectId)
+    const item = beforeProject.document.items.find((i) => i.id === "settle")
+    if (!item?.speech) throw new FixtureError("Missing speech")
+    const command = {
+      projectId,
+      expectedRevision: 1,
+      idempotencyKey: randomUUID(),
+      operations: [
+        {
+          kind: "set-speech" as const,
+          itemId: item.id,
+          speech: { ...item.speech, text: "Long original spoken intent" },
+        },
+        {
+          kind: "set-text" as const,
+          itemId: item.id,
+          text: "  Exact final\n ",
+        },
+      ],
+    }
+    const before = structuredClone(command),
+      digest = studioHash(command.operations)
+    const result = await service.validate(human, { command })
+    expect(command).toEqual(before)
+    expect(result.effectiveSpeech.operationsDigest).toBe(digest)
+    if (result.effectiveSpeech.view !== "inline")
+      throw new FixtureError("Expected inline")
+    expect(result.effectiveSpeech.items[0].text).toBe("  Exact final\n ")
+    const opposite = await service.validate(human, {
+      command: { ...before, operations: [...before.operations].reverse() },
+    })
+    if (opposite.effectiveSpeech.view !== "inline")
+      throw new FixtureError("Expected inline")
+    expect(opposite.effectiveSpeech.items[0].text).toBe(
+      "Long original spoken intent",
+    )
+    const oversized = {
+      ...before,
+      operations: Array.from({ length: 24 }, (_, index) => ({
+        kind: "insert-item" as const,
+        item: {
+          ...structuredClone(item),
+          id: `more-${index}`,
+          speech: { ...item.speech!, text: "x".repeat(2000) },
+        },
+      })),
+    }
+    expect(await service.validate(human, { command: oversized })).toMatchObject(
+      {
+        valid: true,
+        effectiveSpeech: {
+          view: "unavailable",
+          complete: false,
+          speechItemCount: 25,
+        },
+      },
+    )
+    await expect(service.validate(null, { command })).rejects.toThrow(
+      ForbiddenError,
+    )
+    await expect(
+      service.validate(human, { command: { ...command, expectedRevision: 2 } }),
+    ).rejects.toThrow("CONFLICT")
+    expect(await commands.read(human, projectId)).toEqual(beforeProject)
   })
 
   it("serializes concurrent completions and replays the winning receipt exactly once", async () => {

@@ -1,0 +1,35 @@
+(node:1648079) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ❯ src/services/studio-authoring/proposal-speech.test.ts (3 tests | 1 failed) 21ms
+   ✓ reports the actual final slot0 speech after ordered set-speech and set-text operations 7ms
+   × preserves ordering, independent display text, suppression and exact whitespace 9ms
+     → expected '24ef947553b85443767e28bf31f798289da12…' not to be '24ef947553b85443767e28bf31f798289da12…' // Object.is equality
+   ✓ binds voice settings and pronunciation without changing transcript bytes 3ms
+ ✓ src/services/studio-authoring/narration.db.test.ts (18 tests | 17 skipped) 193ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/proposal-speech.test.ts > preserves ordering, independent display text, suppression and exact whitespace
+AssertionError: expected '24ef947553b85443767e28bf31f798289da12…' not to be '24ef947553b85443767e28bf31f798289da12…' // Object.is equality
+ ❯ src/services/studio-authoring/proposal-speech.test.ts:45:30
+     43|   const x = proposalSpeech(a, { ...command, operations: forward }), y …
+     44|   expect(x.operationsDigest).not.toBe(y.operationsDigest)
+     45|   expect(x.scriptDigest).not.toBe(y.scriptDigest)
+       |                              ^
+     46|   const removed = applyOperations(document, [{ kind: "set-speech", ite…
+     47|   expect(removed.items.find((i) => i.id === first.id)?.speech).toBeUnd…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 3 passed | 17 skipped (21)
+   Start at  07:50:31
+   Duration  1.20s (transform 413ms, setup 18ms, collect 1.04s, tests 214ms, environment 0ms, prepare 152ms)
+
+undefined
+/home/tataihono/.codex/worktrees/8b33/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/proposal-speech.test.ts src/services/studio-authoring/narration.db.test.ts -t reports the actual|preserves ordering|binds voice|validates proposed role

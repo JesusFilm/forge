@@ -1,0 +1,15 @@
+(node:1680809) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
+
+ ✓ src/services/seo-experiment.service.test.ts (30 tests) 5244ms
+   ✓ SEO ledger boundaries > trims canonical report detail to the durable byte budget  5142ms
+ ✓ src/graphql/context.test.ts (17 tests) 1396ms
+   ✓ createContext > returns PUBLIC when no session resolves  1377ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  07:59:30
+   Duration  7.74s (transform 889ms, setup 17ms, collect 512ms, tests 6.64s, environment 0ms, prepare 149ms)
+

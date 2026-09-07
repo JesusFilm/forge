@@ -1,0 +1,17 @@
+(node:1671721) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/studio-server@0.0.1 test /home/tataihono/.codex/worktrees/8b33/forge/packages/studio-server
+> vitest run
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/8b33/forge/packages/studio-server
+
+ ✓ src/hash.test.ts (1 test) 14ms
+ ✓ src/index.test.ts (1 test) 50ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  07:56:51
+   Duration  1.21s (transform 285ms, setup 0ms, collect 529ms, tests 65ms, environment 7ms, prepare 476ms)
+

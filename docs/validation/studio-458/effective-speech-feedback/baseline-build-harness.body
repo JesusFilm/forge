@@ -1,0 +1,23 @@
+import pathlib, subprocess, os, json, hashlib, signal
+root=pathlib.Path.cwd()
+out=root/'.tmp/studio458-speech-feedback'
+(out/'builds').mkdir(exist_ok=True)
+paths=subprocess.check_output(['git','diff','--name-only']).decode().splitlines()
+original={p:(root/p).read_bytes() for p in paths}
+manifest={p:hashlib.sha256(b).hexdigest() for p,b in original.items()}
+(out/'baseline-overlay-before.json').write_text(json.dumps(manifest,indent=2))
+os.kill(1683990,signal.SIGTERM)
+os.rename(root/'apps/manager/.next',out/'builds/final-next')
+try:
+ for p in paths: (root/p).write_bytes(subprocess.check_output(['git','show','5a17a9da:'+p]))
+ env=dict(os.environ,TMPDIR=str(out/'build-tmp'))
+ (out/'build-tmp').mkdir(exist_ok=True)
+ with (out/'baseline-rebuild.log').open('w') as f:
+  subprocess.run(['node',str(out/'runtime.mjs'),'build'],env=env,stdout=f,stderr=subprocess.STDOUT,check=True)
+ os.rename(root/'apps/manager/.next',out/'builds/baseline-next')
+finally:
+ for p,b in original.items(): (root/p).write_bytes(b)
+ after={p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in paths}
+ (out/'baseline-overlay-after.json').write_text(json.dumps(after,indent=2))
+ assert after==manifest
+ if not (root/'apps/manager/.next').exists(): (root/'apps/manager/.next').symlink_to(out/'builds/final-next',target_is_directory=True)

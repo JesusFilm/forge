@@ -1,0 +1,16 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: 'Assistant', exact: true }) to be visible[22m
+
+    at /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/loading-interleaved.mjs:33:64 {
+  log: [
+    "  - waiting for getByRole('button', { name: 'Assistant', exact: true }) to be visible"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.20.0

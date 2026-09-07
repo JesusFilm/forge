@@ -345,7 +345,10 @@ export const studioOperationSchema = z.discriminatedUnion("kind", [
       itemId: studioIdSchema,
       text: z.string().max(8000),
     })
-    .strict(),
+    .strict()
+    .describe(
+      "Set the displayed text of a text item. If the item has speech when this operation executes, also replace that speech's text with these exact bytes; this does not create speech. Operations execute in array order. A later set-text can overwrite text supplied by an earlier set-speech. To intentionally keep different displayed and spoken text, put set-speech after set-text.",
+    ),
   z
     .object({
       kind: z.literal("set-properties"),
@@ -366,7 +369,10 @@ export const studioOperationSchema = z.discriminatedUnion("kind", [
       itemId: studioIdSchema,
       speech: studioSpeechSchema.nullable(),
     })
-    .strict(),
+    .strict()
+    .describe(
+      "Set or remove this item's speech without changing displayed text. Operations execute in array order: a later set-text on a text item with speech also replaces speech.text. Review canonical effective speech after all operations.",
+    ),
   z
     .object({
       kind: z.literal("move-item"),

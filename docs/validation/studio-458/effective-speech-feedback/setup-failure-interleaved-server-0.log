@@ -1,0 +1,66 @@
+▲ Next.js 16.2.4
+- Local:         http://127.0.0.1:3588
+- Network:       http://127.0.0.1:3588
+✓ Ready in 180ms
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+⨯ Error: Failed to load external module next/dist/compiled/next-server/app-page-turbo.runtime.prod.js: Error: Cannot find module 'next/dist/compiled/next-server/app-page-turbo.runtime.prod.js'
+Require stack:
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/app/_global-error/page.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/require.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/lib/start-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/cli/next-start.js
+    at Context.externalRequire [as x] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:624:15)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js:1:1569)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.commonJsRequire [as r] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:302:12)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__05qwoik._.js:1:196)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:281:20)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/0mzs_next_dist_esm_build_templates_app-page_07fbf09.js:1:47)
+[cache-warm] All caches warmed successfully
+⨯ Error: Failed to load external module next/dist/compiled/next-server/app-page-turbo.runtime.prod.js: Error: Cannot find module 'next/dist/compiled/next-server/app-page-turbo.runtime.prod.js'
+Require stack:
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/app/_global-error/page.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/require.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/lib/start-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/cli/next-start.js
+    at Context.externalRequire [as x] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:624:15)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js:1:1569)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.commonJsRequire [as r] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:302:12)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__05qwoik._.js:1:196)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:281:20)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/0mzs_next_dist_esm_build_templates_app-page_07fbf09.js:1:47)
+⨯ Error: Failed to load external module next/dist/compiled/next-server/app-page-turbo.runtime.prod.js: Error: Cannot find module 'next/dist/compiled/next-server/app-page-turbo.runtime.prod.js'
+Require stack:
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js
+- /home/tataihono/.codex/worktrees/8b33/forge/.tmp/studio458-speech-feedback/builds/baseline-next/server/app/_global-error/page.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/require.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/next.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/server/lib/start-server.js
+- /home/tataihono/.codex/worktrees/8b33/forge/node_modules/.pnpm/next@16.2.4_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.61.1_babel-plugin-_ivzi7ozcqsy7h6egw24hhvk7oa/node_modules/next/dist/cli/next-start.js
+    at Context.externalRequire [as x] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:624:15)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__0s_yw1x._.js:1:1569)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.commonJsRequire [as r] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:302:12)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[root-of-the-server]__05qwoik._.js:1:196)
+    at instantiateModule (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/[turbopack]_runtime.js:281:20)
+    at module evaluation (../../.tmp/studio458-speech-feedback/builds/baseline-next/server/chunks/ssr/0mzs_next_dist_esm_build_templates_app-page_07fbf09.js:1:47)

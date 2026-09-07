@@ -1,0 +1,206 @@
+[
+  {
+    "variant": "baseline",
+    "pair": 0,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 376.028,
+      "ScriptDuration": 120.005,
+      "LayoutDuration": 95.003,
+      "RecalcStyleDuration": 14.078
+    },
+    "derivedNavigation": {
+      "responseStart": 115.19999998807907,
+      "responseEnd": 120.80000001192093,
+      "domInteractive": 253.40000000596046,
+      "domContentLoadedEventEnd": 253.59999999403954
+    }
+  },
+  {
+    "variant": "baseline",
+    "pair": 0,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 168.71999999999997,
+      "ScriptDuration": 57.255,
+      "LayoutDuration": 3.416000000000002,
+      "RecalcStyleDuration": 8.596
+    },
+    "derivedNavigation": {
+      "responseStart": 43.29999998211861,
+      "responseEnd": 54.89999997615814,
+      "domInteractive": 83.69999998807907,
+      "domContentLoadedEventEnd": 83.89999997615814
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 0,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 337.322,
+      "ScriptDuration": 117.098,
+      "LayoutDuration": 66.704,
+      "RecalcStyleDuration": 11.806000000000001
+    },
+    "derivedNavigation": {
+      "responseStart": 117.69999998807907,
+      "responseEnd": 120.7999999821186,
+      "domInteractive": 227.59999999403954,
+      "domContentLoadedEventEnd": 227.59999999403954
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 0,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 188.263,
+      "ScriptDuration": 66.134,
+      "LayoutDuration": 3.8419999999999983,
+      "RecalcStyleDuration": 9.758
+    },
+    "derivedNavigation": {
+      "responseStart": 41.70000001788139,
+      "responseEnd": 52.599999994039536,
+      "domInteractive": 88,
+      "domContentLoadedEventEnd": 88.30000001192093
+    }
+  },
+  {
+    "variant": "baseline",
+    "pair": 1,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 354.70599999999996,
+      "ScriptDuration": 118.565,
+      "LayoutDuration": 77.78500000000001,
+      "RecalcStyleDuration": 12.605
+    },
+    "derivedNavigation": {
+      "responseStart": 111.89999997615814,
+      "responseEnd": 114.59999999403954,
+      "domInteractive": 223.7999999821186,
+      "domContentLoadedEventEnd": 224
+    }
+  },
+  {
+    "variant": "baseline",
+    "pair": 1,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 159.79299999999995,
+      "ScriptDuration": 54.35899999999999,
+      "LayoutDuration": 3.4000000000000004,
+      "RecalcStyleDuration": 8.206000000000001
+    },
+    "derivedNavigation": {
+      "responseStart": 37.099999994039536,
+      "responseEnd": 46.400000005960464,
+      "domInteractive": 53.599999994039536,
+      "domContentLoadedEventEnd": 53.900000005960464
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 1,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 343.28000000000003,
+      "ScriptDuration": 115.246,
+      "LayoutDuration": 71.73100000000001,
+      "RecalcStyleDuration": 16.125
+    },
+    "derivedNavigation": {
+      "responseStart": 111.90000000596046,
+      "responseEnd": 114.90000000596046,
+      "domInteractive": 154.7999999821186,
+      "domContentLoadedEventEnd": 154.7999999821186
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 1,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 161.97399999999996,
+      "ScriptDuration": 55.56799999999998,
+      "LayoutDuration": 3.2019999999999964,
+      "RecalcStyleDuration": 8.380000000000003
+    },
+    "derivedNavigation": {
+      "responseStart": 36.69999998807907,
+      "responseEnd": 47.400000005960464,
+      "domInteractive": 77.09999999403954,
+      "domContentLoadedEventEnd": 77.30000001192093
+    }
+  },
+  {
+    "variant": "baseline",
+    "pair": 2,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 341.85200000000003,
+      "ScriptDuration": 115.40100000000001,
+      "LayoutDuration": 69.577,
+      "RecalcStyleDuration": 10.803999999999998
+    },
+    "derivedNavigation": {
+      "responseStart": 112.60000002384186,
+      "responseEnd": 114.90000000596046,
+      "domInteractive": 220.90000000596046,
+      "domContentLoadedEventEnd": 221.10000002384186
+    }
+  },
+  {
+    "variant": "baseline",
+    "pair": 2,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 193.77299999999997,
+      "ScriptDuration": 62.617000000000004,
+      "LayoutDuration": 3.6489999999999996,
+      "RecalcStyleDuration": 10.379
+    },
+    "derivedNavigation": {
+      "responseStart": 52.5,
+      "responseEnd": 55.79999998211861,
+      "domInteractive": 97.40000000596046,
+      "domContentLoadedEventEnd": 97.59999999403954
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 2,
+    "cache": "cold",
+    "derivedCpuMs": {
+      "TaskDuration": 392.453,
+      "ScriptDuration": 140.167,
+      "LayoutDuration": 74.615,
+      "RecalcStyleDuration": 12.645999999999999
+    },
+    "derivedNavigation": {
+      "responseStart": 123.09999999403954,
+      "responseEnd": 129.09999999403954,
+      "domInteractive": 246,
+      "domContentLoadedEventEnd": 246.09999999403954
+    }
+  },
+  {
+    "variant": "final",
+    "pair": 2,
+    "cache": "warm",
+    "derivedCpuMs": {
+      "TaskDuration": 180.21300000000002,
+      "ScriptDuration": 60.734999999999985,
+      "LayoutDuration": 3.696000000000005,
+      "RecalcStyleDuration": 9.568
+    },
+    "derivedNavigation": {
+      "responseStart": 56.900000005960464,
+      "responseEnd": 75.19999998807907,
+      "domInteractive": 100.2999999821186,
+      "domContentLoadedEventEnd": 100.59999999403954
+    }
+  }
+]

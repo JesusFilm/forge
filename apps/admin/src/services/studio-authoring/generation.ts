@@ -1,3 +1,4 @@
+import { proposalSpeech } from "./proposal-speech"
 import { ForbiddenError } from "../errors"
 import { studioGenerationOutputSchema } from "@forge/studio-contracts/generation"
 import {
@@ -10,7 +11,7 @@ import {
   readVerifiedStudioAsset,
   resolveAssetVersion,
 } from "./assets"
-import { studioActor } from "./state"
+import { studioActor, studioHash } from "./state"
 import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
@@ -143,7 +144,11 @@ export class StudioGenerationService {
     )
     if (project.revision !== command.expectedRevision)
       throw new StudioCommandError("CONFLICT")
-    const document = applyOperations(project.document, command.operations)
+    const operationsDigest = studioHash(command.operations)
+    const document = applyOperations(
+      project.document,
+      structuredClone(command.operations),
+    )
     if (quality) {
       validateStudioRoleCoverage(document, quality.coverage)
       if (
@@ -168,6 +173,7 @@ export class StudioGenerationService {
       projectId: project.projectId,
       revision: project.revision,
       quality,
+      effectiveSpeech: proposalSpeech(document, command, operationsDigest),
     }
   }
 }

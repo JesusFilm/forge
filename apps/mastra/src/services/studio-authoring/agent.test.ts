@@ -3,6 +3,8 @@ import { MockLanguageModelV3 } from "ai/test"
 import { APICallError } from "ai"
 import { studioProjectSchema } from "@forge/studio-contracts"
 import type { StudioAgentEvent } from "@forge/studio-contracts/agent"
+import { studioHash } from "@forge/studio-server"
+import { studioApplySchema } from "@forge/studio-contracts"
 import { streamStudioAgent } from "./agent"
 import { createOpenAI } from "@ai-sdk/openai"
 import { readFileSync } from "node:fs"
@@ -130,7 +132,33 @@ it("retains an earlier validated proposal when a later malformed tool turn stall
       model,
       message: "Propose",
       signal: new AbortController().signal,
-      assetCall: async () => ({ valid: true }),
+      assetCall: async (_action, input) => {
+        const command = studioApplySchema.parse(
+          Reflect.get(Object(input), "command"),
+        )
+        return {
+          valid: true,
+          projectId: command.projectId,
+          revision: command.expectedRevision,
+          effectiveSpeech: {
+            version: 1,
+            projectId: command.projectId,
+            baseRevision: command.expectedRevision,
+            language: "en",
+            operationsDigest: studioHash(command.operations),
+            scriptDigest:
+              "6250993a4f51836a4496c503048f63f42e73bcfe0d07aea6f9664be3488bb2d8",
+            speechItemCount: 0,
+            spokenItemCount: 0,
+            suppressedItemCount: 0,
+            emptyItemCount: 0,
+            exactTextUtf8Bytes: 0,
+            view: "inline",
+            complete: true,
+            items: [],
+          },
+        }
+      },
       emit: (event) => events.push(event),
     }),
   ).rejects.toThrow("Studio tool call was incomplete or malformed")

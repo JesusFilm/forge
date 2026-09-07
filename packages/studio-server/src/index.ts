@@ -1,3 +1,4 @@
+export { studioHash } from "./hash"
 // Node-only authenticated transport. No application imports or default credentials.
 import { createHash } from "node:crypto"
 import {
