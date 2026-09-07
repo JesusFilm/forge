@@ -76,7 +76,7 @@ bypassed that handler.
 Mobile (`apps/mobile`):
 
 - `better-auth` and `@better-auth/expo` → 1.7.1, exact, in lockstep with
-  auth. `src/lib/__tests__/betterAuthVersionLockstep.guard.test.js` reads
+  auth. `apps/mobile/src/lib/__tests__/betterAuthVersionLockstep.guard.test.js` reads
   both manifests and fails on drift.
 - `@better-auth/utils` pinned to `0.4.2` in BOTH manifests, and in the same
   guard. It is `@better-auth/core`'s EXACT peer while `better-call` depends
@@ -90,7 +90,7 @@ Mobile (`apps/mobile`):
   pins the walk with a lockfile diff confined to Better Auth entries.
 - `signIn.social({ provider: "jfp", callbackURL: "/" })` replaces
   `signIn.oauth2`; the generic-oauth client plugin is removed. The provider
-  id lives in the leaf `src/lib/authProvider.ts`, because the actions suite
+  id lives in the leaf `apps/mobile/src/lib/authProvider.ts`, because the actions suite
   mocks `authSession` wholesale and a constant there reached the call as
   `undefined` with the suite green.
 - `createSecureStorageAdapter` carries the async pair the 1.7 client
@@ -137,7 +137,9 @@ opens the sheet on the proxy's 400.
   200 with the `jfp_mobile_production` authorize URL; the simulator sheet
   opened on the proxy's `{"message":"Invalid authorizationURL"}` — exactly
   the auth-side gap.
-- Local auth (standalone build behind a discovery proxy) with every auth
+- Local auth (standalone build behind a discovery proxy — the recipe is
+  `docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`)
+  with every auth
   change: the full chain through the simulator's sheet —
   `sign-in/social` 200 → proxy 302 with the signed `state` cookie →
   authorize → hosted login → `/callback/jfp` → `302 forgemobile:///?cookie=…`
@@ -155,7 +157,8 @@ simulator's dev client is unsigned, `securityd` refuses every SecureStore
 call with `-34018` ("neither application-identifier nor
 keychain-access-groups entitlements"), and this iOS 26 runtime refuses to
 launch an ad-hoc-signed app that carries `application-identifier`. That
-step needs a signed build. See `todos/025`.
+step needs a signed build. See the gitignored local ticket
+`todos/025-pending-p2-mobile-local-ios-build-and-simulator-keychain.md`.
 
 ## Prevention
 
@@ -174,6 +177,9 @@ step needs a signed build. See `todos/025`.
 
 ## Related
 
+- `docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`
+  — the local verification recipe (standalone build behind a static-discovery
+  proxy) this doc's Verification section used.
 - `apps/auth/CLAUDE.md` — "Mobile hosted sign-in — the self-RP flow on
   Better Auth 1.7"
 - `apps/mobile/CLAUDE.md` — "Auth + watch progress"

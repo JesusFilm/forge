@@ -204,10 +204,12 @@ peer at the importer pins the walk, and the mobile lockstep guard holds the
 two pins equal. Re-pin it whenever a bump moves core's peer range.
 
 Deploy order: this app first, then the mobile build. Local dev caveat:
-`next dev` deadlocks on the provider's init-time discovery fetch (the
-`/.well-known/openid-configuration` handler awaits the same auth instance
-that is fetching it); run `next build && next start -p 3004` for a local
-end-to-end sign-in.
+BOTH `next dev` and the bare standalone build deadlock on the provider's
+init-time discovery fetch (the `/.well-known/openid-configuration` handler
+awaits the same auth instance that is fetching it). For a local end-to-end
+sign-in, run the standalone build behind a static-discovery proxy — the
+full recipe is
+`docs/solutions/auth/self-rp-oauth-discovery-deadlock-standalone-proxy-recipe.md`.
 
 ## Sign in with Apple — App Store constraint (guideline 4.8)
 
