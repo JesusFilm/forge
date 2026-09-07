@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -245,6 +245,13 @@ vectors to exceed a safe request-body size even though its chunk count looks
 modest. Each import batch still needs exact response-line count and success
 validation, followed by independent document and normalized-vector readback
 over the complete chunk set.
+
+The current alias is another mutable trust boundary. Freeze it to an exact
+physical transcript collection before writing, then resolve it again after
+readback and before durable completion. The PostgreSQL advisory lock serializes
+cooperating publishers and rebuilds, but it cannot prevent an out-of-band
+Typesense operator from moving an alias during the external write. If the alias
+changed, leave the event pending and do not advance the projection revision.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate

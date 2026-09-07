@@ -1341,6 +1341,82 @@ suite("current transcript publication into Watch Search", () => {
     ).resolves.toBeUndefined()
   }, 180_000)
 
+  it("refuses completion when the active transcript alias rotates during publication", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    const pendingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        {
+          where: { sourceGeneration: 1n },
+        },
+      )
+    const driftedSchema = watchTranscriptCollectionSchema("racing-drift")
+    await typesense.createCollection(driftedSchema)
+
+    let aliasRotated = false
+    const racingTypesense = {
+      getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
+        typesense.getAlias(...args),
+      importDocuments: (
+        ...args: Parameters<TypesenseClient["importDocuments"]>
+      ) => typesense.importDocuments(...args),
+      deleteDocumentsByFilter: (
+        ...args: Parameters<TypesenseClient["deleteDocumentsByFilter"]>
+      ) => typesense.deleteDocumentsByFilter(...args),
+      getDocument: async (
+        ...args: Parameters<TypesenseClient["getDocument"]>
+      ) => {
+        if (!aliasRotated) {
+          aliasRotated = true
+          await typesense.upsertAlias(
+            TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+            driftedSchema.name,
+          )
+        }
+        return typesense.getDocument(...args)
+      },
+    } satisfies Pick<
+      TypesenseClient,
+      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+    >
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense: racingTypesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/alias changed during publication/i)
+
+    expect(
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow(
+        {
+          where: { id: pendingEvent.id },
+          select: { status: true, completedAt: true, lastErrorCode: true },
+        },
+      ),
+    ).toEqual({
+      status: "PENDING",
+      completedAt: null,
+      lastErrorCode: "WatchSearchTranscriptPublicationError",
+    })
+    expect(
+      await prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).toBeNull()
+    await expect(
+      typesense.getDocument(
+        driftedSchema.name,
+        pendingEvent.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
   it("refuses to complete a batch when the canonical chunk set no longer matches the event evidence", async () => {
     await ingestTranscriptEmbeddings(
       prisma,

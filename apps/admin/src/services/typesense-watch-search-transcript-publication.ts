@@ -844,6 +844,14 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         transcriptCollection,
         batch.staleDocumentIds,
       )
+      const verifiedProfile = await freezeCurrentWatchSearchProfile(
+        input.typesense,
+      )
+      if (verifiedProfile.binding.transcript !== transcriptCollection) {
+        throw new WatchSearchTranscriptPublicationError(
+          "current transcript alias changed during publication",
+        )
+      }
       const canonicalFingerprint = sha256(
         canonical.documents.map(normalizeTranscriptDocument),
       )
