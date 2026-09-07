@@ -122,7 +122,6 @@ export async function resolveWatchSearchServingProfile(input: {
       input.transcriptProjection.contentEmbeddingContractId,
     transcriptChunkingVersion:
       input.transcriptProjection.transcriptChunkingVersion,
-    transcriptProjectionRevision: input.transcriptProjection.projectionRevision,
     requireQualified: true,
     currentBindings: watchSearchBindingMembers(currentProfile),
     qrelsRevision: input.qrelsRevision,

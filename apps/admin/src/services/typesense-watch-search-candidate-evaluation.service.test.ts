@@ -472,7 +472,6 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       transcriptCollection: currentProfile.binding.transcript,
       contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
       transcriptChunkingVersion: "mastra-v1",
-      transcriptProjectionRevision: 7n,
       requireQualified: true,
       currentBindings: Object.values(currentProfile.binding),
       qrelsRevision: "qrels-reviewed-1",

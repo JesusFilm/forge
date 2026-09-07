@@ -1187,6 +1187,22 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
   generation mode, chunking version), and delegates the actual table
   write to the existing indexer service.
+- **Incremental Watch Search publication:** every accepted canonical ingest
+  increments `sourceGeneration` and writes one identity-only publication event
+  in the same serializable transaction. The dedicated Admin worker reloads the
+  vectors from PostgreSQL, upserts stable chunk document ids into the current
+  transcript collection, independently reads the documents and normalized
+  vectors back, removes stale ids, and atomically completes the event while
+  advancing one durable projection revision. Enable it only on the Admin worker
+  with `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=true`; the default is
+  `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
+  `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
+  `TYPESENSE_OPERATOR_API_KEY`. Missing Typesense operator configuration is a
+  startup error when publication is explicitly enabled. Incremental publication
+  waits for active evaluation leases but remains compatible with an already
+  qualified serving candidate that shares the same transcript collection,
+  embedding contract, and chunking version; a routine projection-revision
+  advance must not require requalification or promotion.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

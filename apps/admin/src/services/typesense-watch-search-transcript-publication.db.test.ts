@@ -20,10 +20,7 @@ import {
   ingestTranscriptEmbeddings,
 } from "./transcript-embedding-ingest.service"
 import { TypesenseClient } from "./typesense-client"
-import {
-  CandidateGenerationCompatibilityError,
-  TypesenseWatchSearchCandidateGenerationService,
-} from "./typesense-watch-search-candidate-generation"
+import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import {
   publishOneCurrentTranscriptToWatchSearch,
@@ -1074,7 +1071,7 @@ suite("current transcript publication into Watch Search", () => {
     })
   }, 180_000)
 
-  it("refuses a stale candidate lease when publication wins the lock after profile resolution", async () => {
+  it("allows a candidate lease after a routine transcript projection revision change", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
       payload({ mode: "idempotent", mastraRunId: "create-run" }),
@@ -1123,6 +1120,12 @@ suite("current transcript publication into Watch Search", () => {
         validatedAt: new Date(),
       },
     })
+    await prisma.watchSearchCandidatePointer.create({
+      data: {
+        kind: "SERVING",
+        generationId: "candidate-before-publication-race",
+      },
+    })
 
     await ingestTranscriptEmbeddings(
       prisma,
@@ -1165,8 +1168,11 @@ suite("current transcript publication into Watch Search", () => {
           transcriptSchema.name,
         ],
       }),
-    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
-    expect(await prisma.watchSearchCandidateLease.count()).toBe(0)
+    ).resolves.toMatchObject({
+      holderToken: "stale-profile-holder",
+      transcriptProjectionRevision: 1n,
+    })
+    expect(await prisma.watchSearchCandidateLease.count()).toBe(1)
   }, 180_000)
 
   it("advances the stored transcript projection when a rebuild rotates the active transcript collection", async () => {

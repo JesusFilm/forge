@@ -244,7 +244,7 @@ describe("TypesenseWatchSearchComparisonService", () => {
       transcriptCollection: currentProfile.binding.transcript,
       contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
       transcriptChunkingVersion: "mastra-v2",
-      transcriptProjectionRevision: 8n,
+      transcriptProjectionRevision: 7n,
       requireQualified: false,
     })
   })

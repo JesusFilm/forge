@@ -334,7 +334,7 @@ export async function resolveEvaluationCandidateWatchSearchProfile(input: {
       input.transcriptProjection.contentEmbeddingContractId,
     transcriptChunkingVersion:
       input.transcriptProjection.transcriptChunkingVersion,
-    transcriptProjectionRevision: input.transcriptProjection.projectionRevision,
+    transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
   return createCandidateWatchSearchProfile(resolved)

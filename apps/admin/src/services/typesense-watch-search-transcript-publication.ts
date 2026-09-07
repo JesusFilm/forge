@@ -932,7 +932,7 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
   | { started: true }
   | {
       started: false
-      reason: "already-started" | "disabled" | "missing-config"
+      reason: "already-started" | "disabled"
     }
 > {
   const enabled = resolveWatchSearchTranscriptPublicationEnabled()
@@ -942,7 +942,9 @@ export async function ensureWatchSearchTranscriptPublicationWorkerStarted(
   const host = env.TYPESENSE_HOST
   const apiKey = env.TYPESENSE_OPERATOR_API_KEY
   if (!host || !apiKey) {
-    return { started: false, reason: "missing-config" }
+    throw new WatchSearchTranscriptPublicationError(
+      "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED requires TYPESENSE_HOST and TYPESENSE_OPERATOR_API_KEY",
+    )
   }
   const state = workerState()
   if (state.started) {

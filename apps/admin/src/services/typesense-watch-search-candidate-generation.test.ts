@@ -242,29 +242,35 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     warning.mockRestore()
   })
 
-  it("invalidates a candidate when the published transcript projection revision changes", async () => {
-    await ready()
+  it("keeps a candidate compatible when only the transcript projection revision changes", async () => {
+    const advanced = createCandidateGenerationTestHarness({
+      currentTranscriptProjection: {
+        ...currentTranscriptProjection,
+        projectionRevision: 18n,
+      },
+    })
+    await advanced.ready()
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {})
 
     await expect(
-      service.resolveGeneration({
+      advanced.service.resolveGeneration({
         generationId: "candidate-1",
         indexContractRevision: "admin-app-sha-1",
         transcriptCollection: "watch_search_transcripts_active",
         contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
         transcriptChunkingVersion: "mastra-v1",
-        transcriptProjectionRevision: 18n,
+        transcriptProjectionRevision: 17n,
       }),
-    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
-
-    expect(db.generations.get("candidate-1")).toMatchObject({
-      state: "INVALIDATED",
-      invalidationReason:
-        "transcript physical collection, embedding contract, chunking version, or projection revision changed",
+    ).resolves.toMatchObject({
+      generationId: "candidate-1",
+      transcriptProjectionRevision: 17n,
     })
-    expect(warning).toHaveBeenCalledWith(
-      expect.stringContaining("requested_projection_revision=18"),
-    )
+
+    expect(advanced.db.generations.get("candidate-1")).toMatchObject({
+      state: "READY",
+      invalidationReason: null,
+    })
+    expect(warning).not.toHaveBeenCalled()
     warning.mockRestore()
   })
 
@@ -345,7 +351,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(db.leases.size).toBe(0)
   })
 
-  it("refuses lease admission when publication advanced after profile resolution", async () => {
+  it("allows lease admission when publication only advanced the projection revision", async () => {
     const stale = createCandidateGenerationTestHarness({
       currentTranscriptProjection: {
         ...currentTranscriptProjection,
@@ -368,8 +374,11 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         transcriptProjectionRevision: 17n,
         currentBindings,
       }),
-    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
-    expect(stale.db.leases.size).toBe(0)
+    ).resolves.toMatchObject({
+      holderToken: "holder-a",
+      transcriptProjectionRevision: 17n,
+    })
+    expect(stale.db.leases.size).toBe(1)
   })
 
   it("refuses lease renewal while current publication owns the lock", async () => {
@@ -463,7 +472,8 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     ).resolves.toBe(undefined)
   })
 
-  it("blocks current publication while a candidate is serving", async () => {
+  it("allows incremental publication while preserving rebuild protection for a serving candidate", async () => {
+    await ready()
     db.pointers.set("SERVING", {
       kind: "SERVING",
       generationId: "candidate-1",
@@ -472,10 +482,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
     await expect(
       service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
-    ).rejects.toThrow(/serving candidate generation candidate-1/)
+    ).resolves.toBe(undefined)
     await expect(
       service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
-    ).rejects.toThrow(/serving candidate generation candidate-1/)
+    ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
   })
 
   it("blocks transcript rebuilds while a live candidate can reference them", async () => {
@@ -642,7 +652,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(staleDb.pointers.get("SERVING")?.generationId).toBeNull()
   })
 
-  it("rejects stale qualification and serving promotion after the published transcript projection revision changes in place", async () => {
+  it("keeps qualification and serving promotion valid after a routine transcript projection revision change", async () => {
     const harness = createCandidateGenerationTestHarness({
       currentTranscriptProjection: {
         ...currentTranscriptProjection,
@@ -668,22 +678,8 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         currentBindings,
         evidence: passingQualificationReport({ currentBindings }),
       }),
-    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
-    expect(staleDb.qualifications).toHaveLength(0)
-
-    staleDb.qualifications.push({
-      id: "qualification-1",
-      generationId: "candidate-1",
-      status: "PASSED",
-      indexContractRevision: "admin-app-sha-1",
-      transcriptCollection: "watch_search_transcripts_active",
-      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
-      transcriptChunkingVersion: "mastra-v1",
-      transcriptProjectionRevision: 17n,
-      qrelsRevision: "qrels-reviewed-1",
-      currentBindings,
-      evidence: passingQualificationReport({ currentBindings }),
-    })
+    ).resolves.toMatchObject({ status: "PASSED" })
+    expect(staleDb.qualifications).toHaveLength(1)
     await expect(
       staleService.pinServingGeneration({
         qualificationAudit,
@@ -694,8 +690,8 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         qrelsRevision: "qrels-reviewed-1",
         rankingRevision: "title-and-brand-v2",
       }),
-    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
-    expect(staleDb.pointers.get("SERVING")?.generationId).toBeNull()
+    ).resolves.toMatchObject({ generationId: "candidate-1" })
+    expect(staleDb.pointers.get("SERVING")?.generationId).toBe("candidate-1")
   })
 
   it("rejects self-asserted passing evidence", async () => {

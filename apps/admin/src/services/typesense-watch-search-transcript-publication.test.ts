@@ -100,6 +100,22 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     )
   })
 
+  it("fails worker startup when publication is enabled without operator configuration", async () => {
+    envMock.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "true"
+    const prisma = { id: "prisma" } as never
+
+    const {
+      ensureWatchSearchTranscriptPublicationWorkerStarted,
+      WatchSearchTranscriptPublicationError,
+    } = await import("./typesense-watch-search-transcript-publication")
+
+    await expect(
+      ensureWatchSearchTranscriptPublicationWorkerStarted(prisma),
+    ).rejects.toBeInstanceOf(WatchSearchTranscriptPublicationError)
+    expect(typesenseClientConstructor).not.toHaveBeenCalled()
+    expect(candidateGenerationConstructor).not.toHaveBeenCalled()
+  })
+
   it("continues the legacy runtime projection revision when creating the first stored row", async () => {
     envMock.resolveWatchSearchRuntimeEnv.mockReturnValue({
       defaultShadowEnabled: true,

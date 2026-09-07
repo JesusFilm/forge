@@ -164,7 +164,6 @@ describe("resolveWatchSearchServingProfile", () => {
       contentEmbeddingContractId:
         transcriptProjection.contentEmbeddingContractId,
       transcriptChunkingVersion: transcriptProjection.transcriptChunkingVersion,
-      transcriptProjectionRevision: transcriptProjection.projectionRevision,
       requireQualified: true,
       currentBindings: [
         `${TYPESENSE_WATCH_CATALOG_ALIAS}_20260810`,

@@ -603,7 +603,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
       : this.resolveCurrentTranscriptProjection(prisma)
   }
 
-  private async assertExactCurrentTranscriptProjection(input: {
+  private async assertExactCurrentTranscriptCompatibility(input: {
     generation: StoredGeneration
     currentBindings?: readonly string[]
     prisma?: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
@@ -636,9 +636,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
       input.generation.contentEmbeddingContractId !==
         currentProjection.contentEmbeddingContractId ||
       input.generation.transcriptChunkingVersion !==
-        currentProjection.transcriptChunkingVersion ||
-      input.generation.transcriptProjectionRevision !==
-        currentProjection.projectionRevision
+        currentProjection.transcriptChunkingVersion
     ) {
       throw new CandidateGenerationCompatibilityError(
         `candidate generation ${input.generation.id} transcript identity is stale`,
@@ -869,14 +867,10 @@ export class TypesenseWatchSearchCandidateGenerationService {
       generation.transcriptCollection !== input.transcriptCollection ||
       generation.contentEmbeddingContractId !==
         input.contentEmbeddingContractId ||
-      generation.transcriptChunkingVersion !==
-        input.transcriptChunkingVersion ||
-      (input.transcriptProjectionRevision !== undefined &&
-        generation.transcriptProjectionRevision !==
-          input.transcriptProjectionRevision)
+      generation.transcriptChunkingVersion !== input.transcriptChunkingVersion
     ) {
       console.warn(
-        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion} stored_projection_revision=${generation.transcriptProjectionRevision.toString()} requested_projection_revision=${input.transcriptProjectionRevision?.toString() ?? "unspecified"}`,
+        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion}`,
       )
       await this.prisma.watchSearchCandidateGeneration.updateMany({
         where: {
@@ -889,7 +883,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
           version: { increment: 1 },
           invalidatedAt: this.now(),
           invalidationReason:
-            "transcript physical collection, embedding contract, chunking version, or projection revision changed",
+            "transcript physical collection, embedding contract, or chunking version changed",
         },
       })
       throw new CandidateGenerationCompatibilityError(
@@ -1045,7 +1039,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
-        await this.assertExactCurrentTranscriptProjection({
+        await this.assertExactCurrentTranscriptCompatibility({
           generation,
           currentBindings,
           prisma: tx,
@@ -1119,11 +1113,11 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
-        // Profile resolution happens before lease admission. Publication may
-        // complete after that read but before this transaction wins the shared
-        // advisory lock, so re-freeze the aliases and durable projection while
-        // the lock is held before binding evaluation evidence to the generation.
-        await this.assertExactCurrentTranscriptProjection({
+        // Profile resolution happens before lease admission. Publication or a
+        // rebuild may complete before this transaction wins the shared lock,
+        // so re-freeze aliases and durable compatibility before persisting the
+        // lease. A routine revision-only advance remains compatible.
+        await this.assertExactCurrentTranscriptCompatibility({
           generation,
           currentBindings,
           prisma: tx,
@@ -1479,31 +1473,21 @@ export class TypesenseWatchSearchCandidateGenerationService {
     rebuildTranscripts: boolean
   }): Promise<void> {
     const now = this.now()
-    const [activeLease, transcriptCandidate, servingPointer] =
-      await Promise.all([
-        this.prisma.watchSearchCandidateLease.findFirst({
-          where: { expiresAt: { gt: now } },
-          select: { resourceKey: true },
-        }),
-        input.rebuildTranscripts
-          ? this.prisma.watchSearchCandidateGeneration.findFirst({
-              where: { state: { in: ["BUILDING", "READY"] } },
-              select: { id: true },
-            })
-          : Promise.resolve(null),
-        this.prisma.watchSearchCandidatePointer.findUnique({
-          where: { kind: "SERVING" },
-          select: { generationId: true },
-        }),
-      ])
+    const [activeLease, transcriptCandidate] = await Promise.all([
+      this.prisma.watchSearchCandidateLease.findFirst({
+        where: { expiresAt: { gt: now } },
+        select: { resourceKey: true },
+      }),
+      input.rebuildTranscripts
+        ? this.prisma.watchSearchCandidateGeneration.findFirst({
+            where: { state: { in: ["BUILDING", "READY"] } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ])
     if (activeLease) {
       throw new CandidateGenerationLeaseError(
         "current publication is blocked by an active candidate lease",
-      )
-    }
-    if (servingPointer?.generationId) {
-      throw new CandidateGenerationLeaseError(
-        `current publication is blocked by serving candidate generation ${servingPointer.generationId}`,
       )
     }
     if (transcriptCandidate) {
@@ -1572,7 +1556,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
-          await this.assertExactCurrentTranscriptProjection({
+          await this.assertExactCurrentTranscriptCompatibility({
             generation,
             currentBindings,
             prisma: tx,

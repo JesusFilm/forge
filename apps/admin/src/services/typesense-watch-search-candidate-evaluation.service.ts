@@ -166,8 +166,6 @@ export async function resolveServingCandidateWatchSearchProfile(input: {
         input.transcriptProjection.contentEmbeddingContractId,
       transcriptChunkingVersion:
         input.transcriptProjection.transcriptChunkingVersion,
-      transcriptProjectionRevision:
-        input.transcriptProjection.projectionRevision,
       requireQualified: true,
       currentBindings: watchSearchBindingMembers(input.currentProfile),
       qrelsRevision: input.qrelsRevision,

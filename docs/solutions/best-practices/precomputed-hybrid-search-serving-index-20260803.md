@@ -151,10 +151,14 @@ Deployment, private evaluation, and public serving are separate controls:
   deployed value rather than assuming `CURRENT`.
 - Candidate serving requires the selector and `SERVING` pointer to name the
   same generation, then revalidates the exact application revision, ranking
-  revision, transcript projection, current physical bindings, and evaluation
-  revision. The authorizing qualification is either an automatic `PASSED`
-  record or a truthful `OPERATOR_ACCEPTED` record for the same evidence-bound
-  identity (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1430-1487`).
+  revision, transcript physical collection, embedding contract, chunking
+  version, current physical bindings, and evaluation revision. The projection
+  revision remains immutable evaluation evidence, but a routine incremental
+  transcript publication may advance the shared collection's revision without
+  invalidating or requalifying an otherwise compatible serving generation. The
+  authorizing qualification is either an automatic `PASSED` record or a
+  truthful `OPERATOR_ACCEPTED` record for the same evidence-bound identity
+  (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1430-1487`).
 
 The application revision is the physical Candidate-collection compatibility
 identity, not the Admin deployment SHA. It stays stable across unrelated
@@ -207,8 +211,12 @@ can be stored or used for serving promotion
 Coordinate mutation and evaluation in the database, not by operator timing.
 Current publication holds one PostgreSQL advisory lock across the external
 Typesense operation. Lease acquisition, lease renewal, and `SERVING` promotion
-probe that same lock transactionally; current publication also refuses active
-candidate leases or a serving candidate
+probe that same lock transactionally. Both rebuild and incremental publication
+refuse active candidate leases. A full transcript rebuild also refuses a live
+candidate generation because it rotates the shared physical collection;
+incremental publication does not refuse an existing `SERVING` pointer because
+it preserves the physical compatibility tuple and must not require another
+qualification or promotion
 (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:799-912`,
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1157-1205`,
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
@@ -222,7 +230,9 @@ after acquiring the lock, re-freeze the current aliases and re-read the durable
 transcript projection before inserting the lease. Lease renewal must likewise
 read the current time only after it acquires the lock. Otherwise a request that
 entered before its deadline can resurrect an expired lease after publication
-has already advanced the projection.
+has already advanced the projection. The re-read rejects collection, embedding
+contract, or chunking-version drift; a revision-only advance remains compatible
+and preserves the generation's immutable evaluation evidence.
 
 For a durable outbox publisher, acquire that session advisory lock before
 claiming an event and retain it through external write, independent readback,
