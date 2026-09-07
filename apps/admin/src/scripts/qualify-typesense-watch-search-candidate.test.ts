@@ -47,7 +47,7 @@ function report(overrides: Record<string, unknown> = {}) {
     reasons: [],
     identity: {
       generationId: "candidate-1",
-      indexContractRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v4",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_transcripts_current_42",
       ...transcriptCompatibility,
@@ -69,7 +69,7 @@ function operatorAcceptanceBundle(overrides: Record<string, unknown> = {}) {
     status: "OPERATOR_ACCEPTED",
     identity: {
       generationId: "candidate-1",
-      indexContractRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v4",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_transcripts_current_42",
       ...transcriptCompatibility,
@@ -136,7 +136,7 @@ function fixture(
       id: "candidate-1",
       state: "READY",
       indexContractRevision:
-        input.generationApplicationRevision ?? "watch-search-candidate/v3",
+        input.generationApplicationRevision ?? "watch-search-candidate/v4",
       catalogCollection: candidateBindings.catalog,
       availabilityCollection: candidateBindings.availability,
       lexicalCollection: candidateBindings.lexical,
@@ -428,7 +428,7 @@ describe("watch search Candidate qualification operator", () => {
     })
     expect(service.pinServingGeneration).toHaveBeenCalledWith({
       generationId: "candidate-1",
-      indexContractRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v4",
       expectedPointerVersion: 4,
       currentBindings,
       qrelsRevision: "public-watch-qrels/reviewed-v2",

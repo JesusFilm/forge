@@ -6,6 +6,7 @@ const authConfigCapture = vi.hoisted(() => ({
   oauthProvider: vi.fn(() => ({})),
   genericOAuth: vi.fn((_options: unknown) => ({})),
   mobileAwareExpoPlugin: vi.fn((_options: unknown) => ({ id: "expo" })),
+  selfRpStateCookiePlugin: vi.fn(() => ({ id: "self-rp-state-cookie" })),
   jwt: vi.fn((_options: unknown) => ({})),
   env: {} as Record<string, string | undefined>,
   findAccountUnique: vi.fn(
@@ -41,6 +42,10 @@ vi.mock("@better-auth/expo", () => ({
 
 vi.mock("@/auth/mobile-expo-plugin", () => ({
   mobileAwareExpoPlugin: authConfigCapture.mobileAwareExpoPlugin,
+}))
+
+vi.mock("@/auth/self-rp-state-cookie-plugin", () => ({
+  selfRpStateCookiePlugin: authConfigCapture.selfRpStateCookiePlugin,
 }))
 
 vi.mock("@better-auth/prisma-adapter", () => ({
@@ -574,6 +579,14 @@ describe("mobile login configuration", () => {
     })
     // The wrapper's return is what registers — not a bare expo() plugin.
     expect(options.plugins).toContainEqual({ id: "expo" })
+  })
+
+  // Without it, a Google/Okta sign-in inside the hosted page consumes the
+  // `state` cookie and `/callback/jfp` ends on forgemobile:///?error=…
+  it("registers the self-RP state cookie re-plant beside the expo plugin", async () => {
+    const options = await captureAuthOptions()
+    expect(authConfigCapture.selfRpStateCookiePlugin).toHaveBeenCalled()
+    expect(options.plugins).toContainEqual({ id: "self-rp-state-cookie" })
   })
 
   // 1.7's `requireLocalEmailVerified` default (true) refused every first

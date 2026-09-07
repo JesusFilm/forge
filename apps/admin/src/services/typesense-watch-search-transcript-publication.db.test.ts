@@ -107,6 +107,7 @@ type StoredCollection = {
 class ControlledTypesenseServer {
   private readonly collections = new Map<string, StoredCollection>()
   private readonly aliases = new Map<string, string>()
+  private readonly curationSets = new Map<string, Record<string, unknown>>()
   private server = createServer(this.handleRequest.bind(this))
   url = ""
 
@@ -130,6 +131,7 @@ class ControlledTypesenseServer {
   reset(): void {
     this.collections.clear()
     this.aliases.clear()
+    this.curationSets.clear()
   }
 
   private async readBody(request: IncomingMessage): Promise<string> {
@@ -339,6 +341,25 @@ class ControlledTypesenseServer {
       : presentedKey === TYPESENSE_OPERATOR_KEY
     if (!authorized) {
       this.json(response, { message: "unauthorized" }, 401)
+      return
+    }
+
+    if (request.method === "PUT" && pathname.startsWith("/curation_sets/")) {
+      const name = decodeURIComponent(pathname.split("/").at(-1) ?? "")
+      const curationSet = JSON.parse(await this.readBody(request)) as Record<
+        string,
+        unknown
+      >
+      this.curationSets.set(name, curationSet)
+      this.json(response, curationSet)
+      return
+    }
+    if (request.method === "DELETE" && pathname.startsWith("/curation_sets/")) {
+      this.curationSets.delete(
+        decodeURIComponent(pathname.split("/").at(-1) ?? ""),
+      )
+      response.statusCode = 204
+      response.end()
       return
     }
 
@@ -1660,6 +1681,7 @@ suite("current transcript publication into Watch Search", () => {
           prisma,
           typesense,
           buildId: "rebuild-2",
+          loadCurations: async () => [],
           transcriptStrategy: "rebuild",
         }),
       { databaseUrl },
@@ -1697,6 +1719,7 @@ suite("current transcript publication into Watch Search", () => {
           prisma: prismaWithLostRebuildProjectionAcknowledgement(),
           typesense,
           buildId: "rebuild-lost-ack",
+          loadCurations: async () => [],
           transcriptStrategy: "rebuild",
         }),
       { databaseUrl },
@@ -1739,6 +1762,7 @@ suite("current transcript publication into Watch Search", () => {
             }),
             typesense,
             buildId: "rebuild-indeterminate",
+            loadCurations: async () => [],
             transcriptStrategy: "rebuild",
           }),
         { databaseUrl },

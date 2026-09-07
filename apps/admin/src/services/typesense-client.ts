@@ -21,6 +21,7 @@ export type TypesenseCollectionSchema = {
   fields: TypesenseCollectionField[]
   default_sorting_field?: string
   enable_nested_fields?: boolean
+  curation_sets?: string[]
 }
 
 export type TypesenseCollection = TypesenseCollectionSchema & {
@@ -37,6 +38,7 @@ export type TypesenseSearchRequest = Record<
 
 export type TypesenseSearchHit<T> = {
   document: T
+  curated?: boolean
   text_match?: number
   text_match_info?: {
     score?: string
@@ -69,6 +71,25 @@ export type TypesenseSearchResult<T> = TypesenseSearchResultBase &
 export type TypesenseAlias = {
   name: string
   collection_name: string
+}
+
+export type TypesenseCurationSet = {
+  items: Array<{
+    id: string
+    rule: {
+      query?: string
+      filter_by?: string
+      match?: "exact" | "contains"
+      tags?: string[]
+      synonyms?: boolean
+      stem?: boolean
+    }
+    includes?: Array<{ id: string; position: number }>
+    excludes?: Array<{ id: string }>
+    filter_curated_hits?: boolean
+    remove_matched_tokens?: boolean
+    stop_processing?: boolean
+  }>
 }
 
 type TypesenseMultiSearchResponse<T> = {
@@ -226,6 +247,25 @@ export class TypesenseClient {
   deleteAlias(alias: string): Promise<void> {
     return this.request(
       `/aliases/${encodeURIComponent(alias)}`,
+      { method: "DELETE" },
+      { acceptedStatuses: [404] },
+    )
+  }
+
+  upsertCurationSet(
+    name: string,
+    curationSet: TypesenseCurationSet,
+  ): Promise<TypesenseCurationSet> {
+    return this.request(`/curation_sets/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(curationSet),
+    })
+  }
+
+  deleteCurationSet(name: string): Promise<void> {
+    return this.request(
+      `/curation_sets/${encodeURIComponent(name)}`,
       { method: "DELETE" },
       { acceptedStatuses: [404] },
     )

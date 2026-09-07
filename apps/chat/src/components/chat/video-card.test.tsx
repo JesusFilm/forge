@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { type VideoAttachment } from "@/lib/conversations"
 
+import { displayUtilities } from "./display-utility-denylist"
 import { VideoCard, VideoRenderBoundary } from "./video-card"
 
 // The real `next/dynamic` boundary stays in play (findBy* awaits it); only the
@@ -161,24 +162,6 @@ describe("VideoCard title bounding (render layer only)", () => {
     await screen.findByTestId("mux-video")
     const caption = container.querySelector("[data-video-caption]")!
     expect(caption).toHaveClass("line-clamp-2")
-    // jsdom performs no layout, so the class mix IS the guard. Same denylist
-    // as sources-list.test.tsx (source of truth) — keep the two in step; any
-    // display utility here silently unclamps, browser-caught in feat-269.
-    const displayUtilities = [
-      "block",
-      "inline-block",
-      "inline",
-      "flex",
-      "inline-flex",
-      "grid",
-      "inline-grid",
-      "table",
-      "inline-table",
-      "flow-root",
-      "contents",
-      "list-item",
-      "hidden",
-    ]
     for (const cls of displayUtilities) {
       expect(caption.classList.contains(cls)).toBe(false)
     }
@@ -277,6 +260,7 @@ describe("VideoRenderBoundary", () => {
       <VideoRenderBoundary>{() => <Boom />}</VideoRenderBoundary>,
     )
     expect(container.querySelector('[data-video="unavailable"]')).not.toBeNull()
+    expect(screen.queryByText(/Refresh the page/)).toBeNull()
     spy.mockRestore()
   })
 
@@ -321,6 +305,7 @@ describe("VideoCard playback failure", () => {
       onError()
     })
     expect(screen.getByText(/can’t be played here/)).toBeInTheDocument()
+    expect(screen.queryByText(/Refresh the page/)).toBeNull()
     // The caption link survives so the watch page stays reachable.
     expect(
       screen.getByRole("link", { name: /Jesus Calms the Storm/ }),

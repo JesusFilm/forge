@@ -1,5 +1,6 @@
 import { refuseUnverifiedConsumerLink } from "@/auth/account-linking-guard"
 import { mobileAwareExpoPlugin } from "@/auth/mobile-expo-plugin"
+import { selfRpStateCookiePlugin } from "@/auth/self-rp-state-cookie-plugin"
 import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { oauthProvider } from "@better-auth/oauth-provider"
 import { betterAuth, type BetterAuthOptions } from "better-auth"
@@ -302,6 +303,9 @@ export const auth = betterAuth({
     // self-RP authorize URL (mobile-expo-plugin.ts). A bare expo() here
     // turns every mobile sign-in into a 400 inside the sheet.
     mobileAwareExpoPlugin({ selfRpClientId: mobileSelfRpClientId }),
+    // Re-plants the self-RP `state` cookie when the provider issues the code:
+    // a Google/Okta flow inside the hosted page consumes the one 1.7 checks.
+    selfRpStateCookiePlugin(),
     // Lean payload + short expiry: sign-out revokes the session but an
     // already-minted JWT lives to its exp — 15m bounds that window (KTD1).
     jwt({
