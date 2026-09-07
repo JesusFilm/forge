@@ -39,6 +39,8 @@ const STALE_DELETE_BATCH_SIZE = 100
 const BASE_RETRY_DELAY_MS = 5_000
 const MAX_RETRY_DELAY_MS = 5 * 60_000
 const POLL_MS = 5_000
+const COMPLETION_TRANSACTION_MAX_WAIT_MS = 10_000
+const COMPLETION_TRANSACTION_TIMEOUT_MS = 30_000
 
 export const WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID =
   CURRENT_TRANSCRIPT_PROJECTION_ID
@@ -824,7 +826,15 @@ async function completeTranscriptPublicationBatch(
           projectionRevision: projection.projectionRevision,
         }
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // Completion reloads and fingerprints every accepted vector while the
+        // transaction protects the canonical snapshot and fenced event update.
+        // Prisma's 2s max-wait / 5s interactive-transaction defaults are too
+        // small for the accepted 1,024-chunk ceiling under worker pool load.
+        maxWait: COMPLETION_TRANSACTION_MAX_WAIT_MS,
+        timeout: COMPLETION_TRANSACTION_TIMEOUT_MS,
+      },
     )
   } catch (completionError) {
     // PostgreSQL can commit a transaction and then lose the acknowledgement

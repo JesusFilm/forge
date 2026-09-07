@@ -910,6 +910,32 @@ suite("current transcript publication into Watch Search", () => {
     })
   }
 
+  function prismaRequiringBoundedCompletionTransaction(): PrismaClient {
+    let transactionCount = 0
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "$transaction") {
+          return async (...args: unknown[]) => {
+            transactionCount += 1
+            if (transactionCount === 2) {
+              const options = args[1] as
+                | { maxWait?: number; timeout?: number }
+                | undefined
+              if (options?.maxWait !== 10_000 || options.timeout !== 30_000) {
+                throw new Error(
+                  "transcript publication completion transaction is not bounded for the accepted chunk ceiling",
+                )
+              }
+            }
+            return Reflect.apply(target.$transaction, target, args)
+          }
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   function prismaWithLostRebuildProjectionAcknowledgement(input?: {
     reconciliationFails?: boolean
   }): PrismaClient {
@@ -1423,6 +1449,27 @@ suite("current transcript publication into Watch Search", () => {
       slug: "watch-search-transcript-fixture",
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
+    })
+  }, 180_000)
+
+  it("bounds the vector-fingerprint completion transaction for the accepted chunk ceiling", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "bounded-completion-run" }),
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma: prismaRequiringBoundedCompletionTransaction(),
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
     })
   }, 180_000)
 
