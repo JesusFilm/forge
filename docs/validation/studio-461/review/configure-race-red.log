@@ -1,0 +1,48 @@
+(node:2079848) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts (6 tests | 1 failed | 5 skipped) 455ms
+   ↓ calendar commands > persists one calendar and preserves an explicit override across retries and a new service instance
+   × calendar commands > rejects stale configuration after a queued weekly update wins the calendar lock 359ms
+     → promise resolved "{ …(2) }" instead of rejecting
+   ↓ calendar commands > admits planning once, preserves a racing manual override, and does not invent source evidence
+   ↓ calendar commands > plans an empty pack-assigned slot and deduplicates simultaneous daily admissions
+   ↓ calendar commands > admits explicit production from verified selected pack bytes without modifying work or generating, and blocks missing sources
+   ↓ calendar commands > consumes calendar authorization with publication atomically, rolls back verifier failure and keeps accepted retries after unpublish
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/calendar.db.test.ts > calendar commands > rejects stale configuration after a queued weekly update wins the calendar lock
+AssertionError: promise resolved "{ …(2) }" instead of rejecting
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "calendarId": "70c102b9-abb4-414d-9cc6-1243a38c2932",[39m
+[31m+   "version": 2,[39m
+[2m  }[22m
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts:108:44
+    106|       await expect.poll(waiters).toBe(1)
+    107|       const configuration = service.configure(user, { calendarId, expe…
+    108|       const rejected = expect(configuration).rejects.toMatchObject({ c…
+       |                                            ^
+    109|       await expect.poll(waiters).toBe(2)
+    110|       release(); await blocker
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 skipped (6)
+   Start at  10:36:17
+   Duration  1.92s (transform 380ms, setup 26ms, collect 766ms, tests 455ms, environment 0ms, prepare 108ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/calendar.db.test.ts -t rejects stale configuration

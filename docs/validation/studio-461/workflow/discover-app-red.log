@@ -1,0 +1,17 @@
+[]
+Discovering workflow directives 2987ms
+discovered [
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/mediaImageEnrichment.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationPromotion.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/coreSync.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/experienceEmbedding.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationRetention.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationEpisodeFinalization.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/videoDbBackup.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationControlReadiness.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationShadowEvaluation.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationExperimentEvaluation.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/recommendationProfileProjection.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/transcriptEmbeddingBackfill.ts',
+  '/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin/src/workflows/experienceEmbeddingBackfill.ts'
+]

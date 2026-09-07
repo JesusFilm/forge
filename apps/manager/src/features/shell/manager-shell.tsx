@@ -350,6 +350,10 @@ function getBreadcrumbs(pathname: string): string[] {
     return ["Studio", "Video editor", "New project"]
   }
 
+  if (pathname === "/dashboard/shorts/calendar") {
+    return ["Studio", "Video editor", "Planning calendar"]
+  }
+
   if (pathname.startsWith("/dashboard/shorts/")) {
     return ["Studio", "Video editor", "Project"]
   }

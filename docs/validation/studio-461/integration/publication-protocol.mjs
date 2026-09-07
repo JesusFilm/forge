@@ -1,0 +1,17 @@
+import http from 'node:http';import {readFileSync,appendFileSync,existsSync} from 'node:fs';import {verify} from 'node:crypto';import {basename} from 'node:path';
+const base='.tmp/studio461/integration', publicKey=JSON.parse(readFileSync('.tmp/studio461/playback-keys.json')).public;
+const log=(value)=>appendFileSync(base+'/protocol-requests.jsonl',JSON.stringify({...value,time:new Date().toISOString()})+'\n');
+http.createServer((req,res)=>{const url=new URL(req.url,'http://127.0.0.1:3468');const send=(status,body,contentType)=>{res.writeHead(status,{'content-type':contentType??'text/plain','cache-control':'no-store'});res.end(req.method==='HEAD'?undefined:body)};
+ try{if(!existsSync(base+'/native-fixture.json'))return send(503,'Fixture not ready');const fixture=JSON.parse(readFileSync(base+'/native-fixture.json'));
+ if(url.pathname.startsWith('/mux/api.mux.com/')){log({kind:'observation',method:req.method,path:url.pathname});if(req.method!=='GET')return send(405,'No asset creation allowed');if(!url.pathname.endsWith('/video/v1/assets/'+fixture.assetId))return send(404,'Unknown fixture asset');return send(200,JSON.stringify({data:{id:fixture.assetId,status:'ready',passthrough:fixture.muxJobId,duration:5,playback_ids:[{id:fixture.playbackId,policy:'signed'}],tracks:[{type:'video',max_width:640,max_height:360,max_frame_rate:30},{type:'audio',max_channels:2}]}}),'application/json')}
+ const token=url.searchParams.get('token'), parts=token?.split('.');if(!parts||parts.length!==3||!verify('RSA-SHA256',Buffer.from(parts[0]+'.'+parts[1]),publicKey,Buffer.from(parts[2],'base64url')))return send(403,'Signature required');const claims=JSON.parse(Buffer.from(parts[1],'base64url'));if(claims.sub!==fixture.playbackId||claims.exp<Math.floor(Date.now()/1000))return send(403,'Invalid token');
+ const path=url.pathname, prefix='/mux/stream.mux.com/'+fixture.playbackId, imagePrefix='/mux/image.mux.com/'+fixture.playbackId;
+ log({kind:'playback',method:req.method,path,range:req.headers.range??null,audience:claims.aud});
+ if(path===prefix+'.m3u8'){if(claims.aud!=='v')return send(403,'Wrong audience');return send(200,`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=500000,RESOLUTION=640x360\n${fixture.playbackId}/media.m3u8?token=${token}\n`,'application/vnd.apple.mpegurl')}
+ if(path===prefix+'/media.m3u8'){const playlist=readFileSync(base+'/media/media.m3u8','utf8').replace(/^(segment-\d+\.ts)$/gm,`$1?token=${token}`);return send(200,playlist,'application/vnd.apple.mpegurl')}
+ if(path===imagePrefix+'/thumbnail.webp'||path===imagePrefix+'/storyboard.webp')return send(200,readFileSync(base+'/media/poster.webp'),'image/webp');
+ if(path===imagePrefix+'/storyboard.vtt')return send(200,`WEBVTT\n\n00:00.000 --> 00:05.000\nhttps://image.mux.com/${fixture.playbackId}/storyboard.webp?token=${token}#xywh=0,0,640,360\n`,'text/vtt');
+ if(path.startsWith(prefix+'/')&&/^segment-\d+\.ts$/.test(basename(path))){const data=readFileSync(base+'/media/'+basename(path));const range=/^bytes=(\d+)-(\d*)$/.exec(req.headers.range??'');if(range){const start=Number(range[1]),end=range[2]?Math.min(Number(range[2]),data.length-1):data.length-1;res.setHeader('content-range',`bytes ${start}-${end}/${data.length}`);return send(206,data.subarray(start,end+1),'video/mp2t')}return send(200,data,'video/mp2t')}
+ return send(404,'Unknown fixture resource')
+ }catch(e){log({kind:'error',message:e.message});return send(500,'Fixture error')}
+}).listen(3468,'127.0.0.1');

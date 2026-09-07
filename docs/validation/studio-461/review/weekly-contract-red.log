@@ -1,0 +1,54 @@
+(node:2095811) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/packages/studio-contracts
+
+ ❯ src/calendar.test.ts (5 tests | 1 failed) 57ms
+   × calendar civil time > accepts only admitted weekly themes with exact pack/source bindings 12ms
+     → [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "weeks"
+    ],
+    "path": [],
+    "message": "Unrecognized key: \"weeks\""
+  }
+]
+   ✓ calendar civil time > accepts default packs plus distinct slot assignments without dropping pack context 7ms
+   ✓ calendar civil time > rejects fixed-offset zones but accepts UTC and supported IANA names and aliases 23ms
+   ✓ calendar civil time > shows two complete fortnights across month boundaries in the chosen timezone 3ms
+   ✓ calendar civil time > rejects spring gaps and requires a choice for fall folds without UTC fallback 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/calendar.test.ts > calendar civil time > accepts only admitted weekly themes with exact pack/source bindings
+ZodError: [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "weeks"
+    ],
+    "path": [],
+    "message": "Unrecognized key: \"weeks\""
+  }
+]
+ ❯ src/calendar.test.ts:12:48
+     10| describe("calendar civil time", () => {
+     11|   it("accepts only admitted weekly themes with exact pack/source bindi…
+     12|     const context = calendarPlannerInputSchema.parse({
+       |                                                ^
+     13|       calendarId: "calendar", version: 1, language: "english", slots: …
+     14|       weeks: [{ startDate: "2026-09-28", packRevisionIds: ["guidance"]…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  10:40:10
+   Duration  1000ms (transform 286ms, setup 0ms, collect 480ms, tests 57ms, environment 0ms, prepare 131ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/packages/studio-contracts:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/calendar.test.ts

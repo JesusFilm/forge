@@ -1,0 +1,12 @@
+(node:2081685) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+ ✓ src/services/studio-authoring/calendar.db.test.ts (6 tests | 5 skipped) 316ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 5 skipped (6)
+   Start at  10:36:39
+   Duration  1.24s (transform 215ms, setup 16ms, collect 505ms, tests 316ms, environment 0ms, prepare 122ms)
+

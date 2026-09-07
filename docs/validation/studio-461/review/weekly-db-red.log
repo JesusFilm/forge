@@ -1,0 +1,48 @@
+(node:2101996) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts (7 tests | 1 failed | 6 skipped) 677ms
+   ↓ calendar commands > persists one calendar and preserves an explicit override across retries and a new service instance
+   ↓ calendar commands > rejects stale configuration after a queued weekly update wins the calendar lock
+   × calendar commands > suggests only complete future weeks and preserves a human weekly edit after admission 574ms
+     → expected undefined to deeply equal [ '2026-09-21', '2026-09-28' ]
+   ↓ calendar commands > admits planning once, preserves a racing manual override, and does not invent source evidence
+   ↓ calendar commands > plans an empty pack-assigned slot and deduplicates simultaneous daily admissions
+   ↓ calendar commands > admits explicit production from verified selected pack bytes without modifying work or generating, and blocks missing sources
+   ↓ calendar commands > consumes calendar authorization with publication atomically, rolls back verifier failure and keeps accepted retries after unpublish
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/calendar.db.test.ts > calendar commands > suggests only complete future weeks and preserves a human weekly edit after admission
+AssertionError: expected undefined to deeply equal [ '2026-09-21', '2026-09-28' ]
+
+[32m- Expected:[39m 
+[
+  "2026-09-21",
+  "2026-09-28",
+]
+
+[31m+ Received:[39m 
+undefined
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts:128:62
+    126|       const futureDates = before.slots.slice(14).map((slot) => slot.da…
+    127|       const expectedWeeks = futureDates.filter((date) => new Date(date…
+    128|       expect(run.input.weeks?.map((week) => week.startDate)).toEqual(e…
+       |                                                              ^
+    129|       const week = { startDate: expectedWeeks[0], theme: "A week of ho…
+    130|       const result = { items: [], weeks: [week], instructions: [{ agen…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  10:43:07
+   Duration  2.50s (transform 648ms, setup 30ms, collect 832ms, tests 677ms, environment 0ms, prepare 141ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/calendar.db.test.ts -t suggests only complete future weeks

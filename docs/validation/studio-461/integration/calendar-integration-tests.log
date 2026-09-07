@@ -1,0 +1,47 @@
+(node:2177244) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+> vitest run "src/services/studio-authoring/calendar.db.test.ts" "src/services/studio-authoring/calendar-dispatch.test.ts" "src/services/studio-authoring/calendar-scheduler.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 3 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: ENOSPC: no space left on device, mkdir '/tmp/eAf1_2c2Rfk_i3YhDjKsx/ssr'
+ ❯ mkdirSync node:fs:1411:26
+ ❯ Proxy.fetch ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/coverage.DL5VHqXY.js:2471:5
+ ❯ EventEmitter.onMessage ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/index.B521nVV-.js:103:20
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: ENOSPC: no space left on device, mkdir '/tmp/eAf1_2c2Rfk_i3YhDjKsx/ssr'
+ ❯ mkdirSync node:fs:1411:26
+ ❯ Proxy.fetch ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/coverage.DL5VHqXY.js:2471:5
+ ❯ process.processTicksAndRejections node:internal/process/task_queues:104:5
+ ❯ EventEmitter.onMessage ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/index.B521nVV-.js:103:20
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: ENOSPC: no space left on device, mkdir '/tmp/eAf1_2c2Rfk_i3YhDjKsx/ssr'
+ ❯ mkdirSync node:fs:1411:26
+ ❯ Proxy.fetch ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/coverage.DL5VHqXY.js:2471:5
+ ❯ EventEmitter.onMessage ../../node_modules/.pnpm/vitest@3.2.4_@types+debug@4.1.12_@types+node@22.19.15_jiti@2.6.1_jsdom@26.1.0_lightningcss@1._qzu3c4v3zlmgsgil6ydjd3zgly/node_modules/vitest/dist/chunks/index.B521nVV-.js:103:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files   (3)
+      Tests  no tests
+     Errors  3 errors
+   Start at  11:12:51
+   Duration  396ms (transform 17ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)
+
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/admin@0.0.1 test: `vitest run "src/services/studio-authoring/calendar.db.test.ts" "src/services/studio-authoring/calendar-dispatch.test.ts" "src/services/studio-authoring/calendar-scheduler.test.ts"`
+Exit status 1

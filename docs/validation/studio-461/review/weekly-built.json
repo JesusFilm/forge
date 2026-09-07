@@ -1,0 +1,1102 @@
+{
+  "requests": [
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    }
+  ],
+  "checks": [
+    "Built Manager → isolated native planner → Admin persisted weekly theme and frozen provenance",
+    "Weekly guidance has missing source status and no pack reassignment",
+    "All slots and human weekly settings unchanged"
+  ],
+  "before": {
+    "planningRun": {
+      "id": "b50194c3-7452-4c3a-99d6-78f3f04d62a7",
+      "status": "COMPLETE",
+      "createdAt": "2026-09-07T21:57:34.068Z",
+      "finishedAt": "2026-09-07T21:57:34.179Z"
+    },
+    "calendarId": "studio-calendar",
+    "version": 7,
+    "settings": {
+      "timeZone": "Pacific/Auckland",
+      "publishTime": "09:00",
+      "deliveryWindowMinutes": 60,
+      "plannerTimes": [
+        "06:00"
+      ],
+      "automationEnabled": false,
+      "defaultPackRevisionIds": [
+        "cmtrquaqd00042c585ijvkrly"
+      ],
+      "language": "english"
+    },
+    "weeks": [
+      {
+        "calendarId": "studio-calendar",
+        "startDate": "2026-09-21",
+        "packRevisionId": null,
+        "theme": "Human weekly theme",
+        "provenance": null
+      }
+    ],
+    "slots": [
+      {
+        "id": "7c897a1b6d1ba1cd90fc678dde824aac540d9f6cdf088451d8bf672314bfff3e",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-08",
+        "version": 1,
+        "title": "Hope for the week ahead",
+        "theme": "Hope drawn from the assigned guidance",
+        "manual": false,
+        "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+        "projectId": null,
+        "provenance": {
+          "runId": "62b34f86-b177-4a73-8757-8d0d74a58b0d",
+          "sourceState": "MISSING",
+          "instructions": [
+            {
+              "digest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99",
+              "agentVersionId": "c6d8bac5-13a6-4758-ac28-4b048a945714",
+              "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+            }
+          ],
+          "sourceIndices": [],
+          "effectiveDigest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99"
+        },
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "a36bbb3f63a10c59959b02c3577b3e8e40cf726adbb33e83f1d7fc959b87c903",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-09",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "eccc4e60339bef793819769e927daa188a0dc35b3c65499b9c5327d7171a8439",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-10",
+        "version": 1,
+        "title": "Production target 1",
+        "theme": "",
+        "manual": true,
+        "packRevisionId": "cmtrsafbg00052czam2odw622",
+        "projectId": "329e2d40-e97e-492d-b460-e2f325f0ade1",
+        "provenance": null,
+        "project": {
+          "currentRevision": 2,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": true
+      },
+      {
+        "id": "c85461e8d00354d8fd8d02dd0dfb22464244d1f399543bbc1108e24f2dbf6320",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-11",
+        "version": 1,
+        "title": "Production target 2",
+        "theme": "",
+        "manual": true,
+        "packRevisionId": "cmtrsafbg00052czam2odw622",
+        "projectId": "77f87f3f-4131-4935-a520-fbafb61cfcd0",
+        "provenance": null,
+        "project": {
+          "currentRevision": 1,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [
+              {
+                "id": "cmtrt90bl00012czv3hsmrvnu",
+                "status": "SUCCEEDED"
+              }
+            ],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": true
+      },
+      {
+        "id": "8491b025340081fc506014b13ffb4888194413e9a0b2c04b15a8c3553428aeff",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-12",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ef2dba203ff007346f829a1d35c6fed7efb042b862dd52d98ca20c93d430533c",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-13",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "870ea843e81d6e6ee886393430909b45574662a3c197d2a280e76fbf7166dd43",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-14",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "1c0ea2d54a99b10d19ba44f3104f2587a4e6ed8528c867927e9a55cda7f6da10",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-15",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "457e4eb8871452e63f952a6d322ff21284f36022c29598e85a982368106ce59c",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-16",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "6b374e880a56d55a43555d7f3644685e0b845e97baa4533de8d898115472e5f9",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-17",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "0ea096a0036ba5d3a91903c44cd0e864e6c49e73e8ab9c57bcc8bbf80d010dc6",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-18",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "39761063f9e219960ae924aad0b82f40fd39e817f8d3076c4e22a5ad0a7245eb",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-19",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "08f47bc19e2eda6dc2958e79b0b167c9aa542cf5e8c27e471cd7ee14f63b6356",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-20",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ff00805e78239b9e269249ea642254ed9e4bddd40c3f55cd69f13a82b7375baa",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-21",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ad906211ed1d7cb072b14675cd2cac25c837827ecfd64bef21a5f663f78aa2b4",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-22",
+        "version": 1,
+        "title": "My future hope title",
+        "theme": "A deliberately chosen human theme",
+        "manual": true,
+        "packRevisionId": null,
+        "projectId": "studio461-baseline",
+        "provenance": null,
+        "project": {
+          "currentRevision": 1,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "efc754bd88d7ea5b707e7ae145b66794b1f9c77f341be2d8aec225e8039fcfd0",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-23",
+        "version": 1,
+        "title": "Hope for the week ahead",
+        "theme": "Hope drawn from the assigned guidance",
+        "manual": false,
+        "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+        "projectId": null,
+        "provenance": {
+          "runId": "b50194c3-7452-4c3a-99d6-78f3f04d62a7",
+          "sourceState": "MISSING",
+          "instructions": [
+            {
+              "digest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99",
+              "agentVersionId": "c6d8bac5-13a6-4758-ac28-4b048a945714",
+              "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+            }
+          ],
+          "sourceIndices": [],
+          "effectiveDigest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99"
+        },
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "7238f9de519e73297fe4d441af7e06a001bf590127562bf3c18976f8817f995e",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-24",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "3a8a2dac460295c1766b31776fd0af59cae4b7ca09fb53c665c7f3907042b4f7",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-25",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "0c1046c72d40b6d61357c608998c21097121ef3e26065275d939d08753d807bf",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-26",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "95cc329f24451a89f5188e78d5febf31bd993f779d406dc23f8bd2c008c9856d",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-27",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "5b5cc94bed1fe97bba096d3ff8e3c1d8a45d63b135692e1e46cf0cd9c5111a15",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-28",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "365b9b3cc9f2bec0723906a2a8944b31407b5e52eceb82126eec1545752a05b9",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-29",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "cd1d63ec8ac52f434002b066460179c02130e21f987506a6421e52af6d15f143",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-30",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "630adb0f40c047351afc44bf966616987393a78b84d48e4bb5ddbf370840c25e",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-01",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "f08da9c6af7129e3b6a53c4783a79a09d6011e506f6d75412f97adb962cf257e",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-02",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ca3b0aa50e1af682316c1cd79a1e24814dd1995aa194a89b3eda46d3c06e6ace",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-03",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "eff9deb0d3e1956a27e24713fbfea24668d3e86589b8ed665af1dec690bbf1d7",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-04",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "46994a5d91b1fca6adcc410c2c99f99c8a2c137e353bcb94292a9f4a856a4ee7",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-05",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      }
+    ]
+  },
+  "originalRequests": [
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/calendar-plan",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/calendar-plan",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/calendar-plan",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/calendar-plan",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    }
+  ],
+  "harnessCorrection": "Resume verification of already completed run after correcting expected status from completed to complete; no repeat generation",
+  "after": {
+    "planningRun": {
+      "id": "0c4c811f-e84f-4529-8f1b-6f7df09d4fa4",
+      "status": "COMPLETE",
+      "createdAt": "2026-09-07T22:58:29.374Z",
+      "finishedAt": "2026-09-07T22:58:29.680Z"
+    },
+    "calendarId": "studio-calendar",
+    "version": 8,
+    "settings": {
+      "timeZone": "Pacific/Auckland",
+      "publishTime": "09:00",
+      "deliveryWindowMinutes": 60,
+      "plannerTimes": [
+        "06:00"
+      ],
+      "automationEnabled": false,
+      "defaultPackRevisionIds": [
+        "cmtrquaqd00042c585ijvkrly"
+      ],
+      "language": "english"
+    },
+    "weeks": [
+      {
+        "calendarId": "studio-calendar",
+        "startDate": "2026-09-21",
+        "packRevisionId": null,
+        "theme": "Human weekly theme",
+        "provenance": null
+      },
+      {
+        "calendarId": "studio-calendar",
+        "startDate": "2026-09-28",
+        "packRevisionId": null,
+        "theme": "Hope together this week",
+        "provenance": {
+          "runId": "0c4c811f-e84f-4529-8f1b-6f7df09d4fa4",
+          "sourceState": "MISSING",
+          "instructions": [
+            {
+              "digest": "e031fa3a60b6823ab19ec086f40436fab80cb3bef36e0bc24c20d00e56243089",
+              "agentVersionId": "eccc6485-bb48-41fe-8246-bb642dc514c7",
+              "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+            }
+          ],
+          "sourceIndices": [],
+          "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+          "effectiveDigest": "e031fa3a60b6823ab19ec086f40436fab80cb3bef36e0bc24c20d00e56243089"
+        }
+      }
+    ],
+    "slots": [
+      {
+        "id": "7c897a1b6d1ba1cd90fc678dde824aac540d9f6cdf088451d8bf672314bfff3e",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-08",
+        "version": 1,
+        "title": "Hope for the week ahead",
+        "theme": "Hope drawn from the assigned guidance",
+        "manual": false,
+        "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+        "projectId": null,
+        "provenance": {
+          "runId": "62b34f86-b177-4a73-8757-8d0d74a58b0d",
+          "sourceState": "MISSING",
+          "instructions": [
+            {
+              "digest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99",
+              "agentVersionId": "c6d8bac5-13a6-4758-ac28-4b048a945714",
+              "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+            }
+          ],
+          "sourceIndices": [],
+          "effectiveDigest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99"
+        },
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "a36bbb3f63a10c59959b02c3577b3e8e40cf726adbb33e83f1d7fc959b87c903",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-09",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "eccc4e60339bef793819769e927daa188a0dc35b3c65499b9c5327d7171a8439",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-10",
+        "version": 1,
+        "title": "Production target 1",
+        "theme": "",
+        "manual": true,
+        "packRevisionId": "cmtrsafbg00052czam2odw622",
+        "projectId": "329e2d40-e97e-492d-b460-e2f325f0ade1",
+        "provenance": null,
+        "project": {
+          "currentRevision": 2,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": true
+      },
+      {
+        "id": "c85461e8d00354d8fd8d02dd0dfb22464244d1f399543bbc1108e24f2dbf6320",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-11",
+        "version": 1,
+        "title": "Production target 2",
+        "theme": "",
+        "manual": true,
+        "packRevisionId": "cmtrsafbg00052czam2odw622",
+        "projectId": "77f87f3f-4131-4935-a520-fbafb61cfcd0",
+        "provenance": null,
+        "project": {
+          "currentRevision": 1,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [
+              {
+                "id": "cmtrt90bl00012czv3hsmrvnu",
+                "status": "SUCCEEDED"
+              }
+            ],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": true
+      },
+      {
+        "id": "8491b025340081fc506014b13ffb4888194413e9a0b2c04b15a8c3553428aeff",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-12",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ef2dba203ff007346f829a1d35c6fed7efb042b862dd52d98ca20c93d430533c",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-13",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "870ea843e81d6e6ee886393430909b45574662a3c197d2a280e76fbf7166dd43",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-14",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "1c0ea2d54a99b10d19ba44f3104f2587a4e6ed8528c867927e9a55cda7f6da10",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-15",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "457e4eb8871452e63f952a6d322ff21284f36022c29598e85a982368106ce59c",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-16",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "6b374e880a56d55a43555d7f3644685e0b845e97baa4533de8d898115472e5f9",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-17",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "0ea096a0036ba5d3a91903c44cd0e864e6c49e73e8ab9c57bcc8bbf80d010dc6",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-18",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "39761063f9e219960ae924aad0b82f40fd39e817f8d3076c4e22a5ad0a7245eb",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-19",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "08f47bc19e2eda6dc2958e79b0b167c9aa542cf5e8c27e471cd7ee14f63b6356",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-20",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ff00805e78239b9e269249ea642254ed9e4bddd40c3f55cd69f13a82b7375baa",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-21",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ad906211ed1d7cb072b14675cd2cac25c837827ecfd64bef21a5f663f78aa2b4",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-22",
+        "version": 1,
+        "title": "My future hope title",
+        "theme": "A deliberately chosen human theme",
+        "manual": true,
+        "packRevisionId": null,
+        "projectId": "studio461-baseline",
+        "provenance": null,
+        "project": {
+          "currentRevision": 1,
+          "lifecycle": "DRAFT",
+          "currentRevisionRecord": {
+            "attempts": [],
+            "approvals": []
+          }
+        },
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "efc754bd88d7ea5b707e7ae145b66794b1f9c77f341be2d8aec225e8039fcfd0",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-23",
+        "version": 1,
+        "title": "Hope for the week ahead",
+        "theme": "Hope drawn from the assigned guidance",
+        "manual": false,
+        "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+        "projectId": null,
+        "provenance": {
+          "runId": "b50194c3-7452-4c3a-99d6-78f3f04d62a7",
+          "sourceState": "MISSING",
+          "instructions": [
+            {
+              "digest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99",
+              "agentVersionId": "c6d8bac5-13a6-4758-ac28-4b048a945714",
+              "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+            }
+          ],
+          "sourceIndices": [],
+          "effectiveDigest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99"
+        },
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "7238f9de519e73297fe4d441af7e06a001bf590127562bf3c18976f8817f995e",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-24",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "3a8a2dac460295c1766b31776fd0af59cae4b7ca09fb53c665c7f3907042b4f7",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-25",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "0c1046c72d40b6d61357c608998c21097121ef3e26065275d939d08753d807bf",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-26",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "95cc329f24451a89f5188e78d5febf31bd993f779d406dc23f8bd2c008c9856d",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-27",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "5b5cc94bed1fe97bba096d3ff8e3c1d8a45d63b135692e1e46cf0cd9c5111a15",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-28",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "365b9b3cc9f2bec0723906a2a8944b31407b5e52eceb82126eec1545752a05b9",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-29",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "cd1d63ec8ac52f434002b066460179c02130e21f987506a6421e52af6d15f143",
+        "calendarId": "studio-calendar",
+        "date": "2026-09-30",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "630adb0f40c047351afc44bf966616987393a78b84d48e4bb5ddbf370840c25e",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-01",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "f08da9c6af7129e3b6a53c4783a79a09d6011e506f6d75412f97adb962cf257e",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-02",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "ca3b0aa50e1af682316c1cd79a1e24814dd1995aa194a89b3eda46d3c06e6ace",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-03",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "eff9deb0d3e1956a27e24713fbfea24668d3e86589b8ed665af1dec690bbf1d7",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-04",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      },
+      {
+        "id": "46994a5d91b1fca6adcc410c2c99f99c8a2c137e353bcb94292a9f4a856a4ee7",
+        "calendarId": "studio-calendar",
+        "date": "2026-10-05",
+        "version": 0,
+        "title": "",
+        "theme": "",
+        "manual": false,
+        "packRevisionId": null,
+        "projectId": null,
+        "provenance": null,
+        "project": null,
+        "authorizations": [],
+        "projectSourcesSelected": false
+      }
+    ]
+  },
+  "modelRequests": [],
+  "body": "Studio\nALPHA\nVideo editor\nStandalone projects\nReport\nJobs\nSmart Crop\nVideo editor\nSEO\nAgents\nToggle sidebar\nStudio\nVideo editor\nPlanning calendar\n← Projects\n\nVIDEO STUDIO\n\nPlanning calendar\n\nPlan titles and themes, then choose which projects to produce and review.\n\nCalendar settings\nPlanner instructions\nSuggest missing titles/themes in both fortnights\nGenerate selected projects\n\nLatest planning run: complete. Existing projects and overrides are preserved.\n\nCurrent 14 daysFollowing 14 days\n\nPacific/Auckland · 09:00 publication time\n\nOne slot per day. Projects can also remain standalone. A title suggestion does not mean its sources, production or publication are ready.\n\nWeekly themes and Content Packs\nWeek of 2026-09-21\n\nYour weekly settings\n\nWeekly theme\nWeek Content Pack\nUse default pack\nHope source\nGuidance\nHope\nGuidance\nHope source\nHope\nHope\nHope source\nWeekly guidance\nHope source\nGuidance\nWeekly guidance\nWeekly guidance\nHope source\nHope\nOne slot only\nOne slot only\nHope source\nHope source\nWeekly guidance\nOne slot only\nWeekly guidance\nHope\nGuidance\nOne slot only\nHope\nHope\nGuidance\nOne slot only\nGuidance\nHope\nHope\nCalendar production source fixture\nHope\nGuidance\nWeekly guidance\nHope source\nOne slot only\nHope\nWeekly guidance\nHope\nHope\nWeekly guidance\nOne slot only\nGuidance\nHope source\nHope\nGuidance\nWeekly guidance\nWeekly guidance\nHope\nHope source\nGuidance\nHope source\nHope source\nSave week\nWeek of 2026-09-28\n\nPlanner suggestion from Guidance. Verify sources before production. Your pack assignments are unchanged.\n\nWeekly theme\nWeek Content Pack\nUse default pack\nHope source\nGuidance\nHope\nGuidance\nHope source\nHope\nHope\nHope source\nWeekly guidance\nHope source\nGuidance\nWeekly guidance\nWeekly guidance\nHope source\nHope\nOne slot only\nOne slot only\nHope source\nHope source\nWeekly guidance\nOne slot only\nWeekly guidance\nHope\nGuidance\nOne slot only\nHope\nHope\nGuidance\nOne slot only\nGuidance\nHope\nHope\nCalendar production source fixture\nHope\nGuidance\nWeekly guidance\nHope source\nOne slot only\nHope\nWeekly guidance\nHope\nHope\nWeekly guidance\nOne slot only\nGuidance\nHope source\nHope\nGuidance\nWeekly guidance\nWeekly guidance\nHope\nHope source\nGuidance\nHope source\nHope source\nSave week\nWeek of 2026-10-05\nWeekly theme\nWeek Content Pack\nUse default pack\nHope source\nGuidance\nHope\nGuidance\nHope source\nHope\nHope\nHope source\nWeekly guidance\nHope source\nGuidance\nWeekly guidance\nWeekly guidance\nHope source\nHope\nOne slot only\nOne slot only\nHope source\nHope source\nWeekly guidance\nOne slot only\nWeekly guidance\nHope\nGuidance\nOne slot only\nHope\nHope\nGuidance\nOne slot only\nGuidance\nHope\nHope\nCalendar production source fixture\nHope\nGuidance\nWeekly guidance\nHope source\nOne slot only\nHope\nWeekly guidance\nHope\nHope\nWeekly guidance\nOne slot only\nGuidance\nHope source\nHope\nGuidance\nWeekly guidance\nWeekly guidance\nHope\nHope source\nGuidance\nHope source\nHope source\nSave week\nTue, Sep 22\nMy future hope title\n\nA deliberately chosen human theme\n\nYour override\n\nDraft linked — review required\n\nProduction: not started. Publication: unapproved.\n\nSource selection missing — unready\n\nOpen project and review\nEdit slot\nWed, Sep 23\nHope for the week ahead\n\nHope drawn from the assigned guidance\n\nPlanner may fill empty slots\n\nTitle/theme suggestion — no production\n\nSource selection missing — unready\n\nEdit slot\nThu, Sep 24\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nFri, Sep 25\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nSat, Sep 26\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nSun, Sep 27\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nMon, Sep 28\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nTue, Sep 29\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nWed, Sep 30\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nThu, Oct 1\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nFri, Oct 2\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nSat, Oct 3\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nSun, Oct 4\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\nMon, Oct 5\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot"
+}

@@ -1,0 +1,29 @@
+{
+  "before": {
+    "id": "b77322e9-c3ef-402b-82d6-15059ba0d5ee",
+    "currentRevision": 2,
+    "ownerId": "studio461-operator",
+    "lifecycle": "UNPUBLISHED",
+    "firstPublishedAt": "2026-09-07T23:32:12.317Z",
+    "unpublishedAt": "2026-09-07T23:35:28.071Z",
+    "createdAt": "2026-09-07T23:24:25.599Z"
+  },
+  "after": {
+    "id": "b77322e9-c3ef-402b-82d6-15059ba0d5ee",
+    "currentRevision": 2,
+    "ownerId": "studio461-operator",
+    "lifecycle": "UNPUBLISHED",
+    "firstPublishedAt": "2026-09-07T23:32:12.317Z",
+    "unpublishedAt": "2026-09-07T23:35:28.071Z",
+    "createdAt": "2026-09-07T23:24:25.599Z"
+  },
+  "receipt": {
+    "projectId": "b77322e9-c3ef-402b-82d6-15059ba0d5ee",
+    "revision": 2,
+    "outcome": "ACCEPTED"
+  },
+  "consumes": 0,
+  "envelopeDigest": "8f1b80f5ea1597537c5cdabfa461c75bca28bde9eee87443afb96a9bdc8b3e74",
+  "authorizationUnchanged": true,
+  "preparationCalls": 0
+}

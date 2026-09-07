@@ -345,6 +345,7 @@ enum WatchSearchCandidateLeaseKind {
 // -----------------------------------------------------------------------------
 
 model User {
+  calendarAuthorizations StudioScheduleAuthorization[]
   chatThreadsCreated ExperienceChatThread[] // experience-AI chat (additive)
   id                 String                 @id
   name               String
@@ -4167,6 +4168,7 @@ model WhatsNewFeatureVote {
 // Studio authoring is independent of Manager render jobs and catalog lifecycle.
 model StudioProject {
   publication           StudioPublication?
+  calendarSlots StudioPlanSlot[]
   id                    String                  @id @db.VarChar(128)
   currentRevision       Int                     @map("current_revision")
   ownerId               String                  @map("owner_id") @db.VarChar(128)
@@ -4182,6 +4184,7 @@ model StudioProject {
 }
 
 model StudioProjectRevision {
+  calendarAuthorizations StudioScheduleAuthorization[]
   catalogReleases StudioCatalogRelease[]
 
   currentFor StudioProject[]  @relation("CurrentStudioRevision")
@@ -4215,6 +4218,7 @@ model StudioAttempt {
   muxJob         StudioMuxJob?
   renderJob      StudioRenderJob?
   productionRun  StudioProductionRun?
+  calendarAuthorizations StudioScheduleAuthorization[]
   catalogRelease StudioCatalogRelease?
 
   publicationApprovals StudioApproval[]
@@ -4239,6 +4243,7 @@ model StudioAttempt {
 
 model StudioApproval {
   publications    StudioPublication[]
+  calendarAuthorizations StudioScheduleAuthorization[]
   id              String                @id @default(cuid()) @db.VarChar(128)
   projectId       String                @map("project_id") @db.VarChar(128)
   revision        Int
@@ -4284,6 +4289,8 @@ model ContentPack {
 }
 
 model ContentPackRevision {
+  calendarSlots StudioPlanSlot[]
+  calendarWeeks StudioPlanWeek[]
   catalogReferences StudioCatalogPack[]
 
   id             String      @id @default(cuid())
@@ -4381,6 +4388,7 @@ model StudioExperimentCandidate {
 model StudioCatalogRelease {
   publication     StudioPublication?
   readiness       StudioCatalogReadiness[]
+  calendarAuthorizations StudioScheduleAuthorization[]
   id              String                    @id @default(cuid())
   projectId       String                    @map("project_id") @db.VarChar(128)
   revision        Int
@@ -4591,4 +4599,108 @@ model StudioWatchDelivery {
 
   @@id([releaseId, phase])
   @@map("studio_watch_delivery")
+}
+
+model StudioCalendar {
+  id String @id @db.VarChar(128)
+  version Int
+  settings Json
+  slots StudioPlanSlot[]
+  weeks StudioPlanWeek[]
+  commands StudioCalendarCommand[]
+  runs StudioPlanningRun[]
+  @@map("studio_calendar")
+}
+model StudioPlanSlot {
+  id String @id @db.VarChar(128)
+  calendarId String @map("calendar_id") @db.VarChar(128)
+  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  date String @db.VarChar(10)
+  version Int @default(0)
+  title String @default("") @db.VarChar(300)
+  theme String @default("")
+  manual Boolean @default(false)
+  packRevisionId String? @map("pack_revision_id")
+  packRevision ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
+  projectId String? @map("project_id") @db.VarChar(128)
+  project StudioProject? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  provenance Json?
+  authorizations StudioScheduleAuthorization[]
+  @@unique([calendarId, date])
+  @@index([projectId])
+  @@map("studio_plan_slot")
+}
+model StudioPlanWeek {
+  calendarId String @map("calendar_id") @db.VarChar(128)
+  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  startDate String @map("start_date") @db.VarChar(10)
+  packRevisionId String? @map("pack_revision_id")
+  packRevision ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
+  theme String
+  provenance Json?
+  @@id([calendarId, startDate])
+  @@map("studio_plan_week")
+}
+model StudioCalendarCommand {
+  calendarId String @map("calendar_id") @db.VarChar(128)
+  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  key String @db.VarChar(128)
+  inputHash String @map("input_hash") @db.VarChar(64)
+  result Json
+  @@id([calendarId,key])
+  @@map("studio_calendar_command")
+}
+model StudioPlanningRun {
+  actor Json?
+  id String @id @db.VarChar(128)
+  calendarId String @map("calendar_id") @db.VarChar(128)
+  calendar StudioCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  occurrence String @db.VarChar(128)
+  version Int
+  input Json
+  result Json?
+  status String @default("RUNNING") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+  finishedAt DateTime? @map("finished_at")
+  @@unique([calendarId, occurrence])
+  @@map("studio_planning_run")
+}
+model StudioScheduleAuthorization {
+  dispatch StudioScheduleDispatch?
+  id String @id @db.VarChar(128)
+  slotId String @map("slot_id") @db.VarChar(128)
+  slot StudioPlanSlot @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  version Int
+  projectId String @map("project_id") @db.VarChar(128)
+  revision Int
+  projectRevision StudioProjectRevision @relation(fields: [projectId,revision], references: [projectId,number], onDelete: Restrict)
+  approvalId String @map("approval_id") @db.VarChar(128)
+  approval StudioApproval @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+  renderAttemptId String @map("render_attempt_id") @db.VarChar(128)
+  renderAttempt StudioAttempt @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict)
+  releaseId String @map("release_id") @db.VarChar(128)
+  release StudioCatalogRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  operatorId String @map("operator_id")
+  operator User @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  dueAt DateTime @map("due_at")
+  latestAllowedAt DateTime @map("latest_allowed_at")
+  revokedAt DateTime? @map("revoked_at")
+  consumedAt DateTime? @map("consumed_at")
+  submission Json?
+  outcome String? @db.VarChar(40)
+  @@unique([slotId,version])
+  @@index([dueAt])
+  @@map("studio_schedule_authorization")
+}
+
+model StudioScheduleDispatch {
+  authorizationId String @id @map("authorization_id") @db.VarChar(128)
+  authorization StudioScheduleAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  state String @default("PENDING") @db.VarChar(16)
+  attempts Int @default(0)
+  leaseId String? @map("lease_id") @db.Uuid
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamptz(6)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError String? @map("last_error") @db.VarChar(80)
+  @@map("studio_schedule_dispatch")
 }

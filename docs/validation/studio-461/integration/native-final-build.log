@@ -1,0 +1,63 @@
+(node:2282069) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/mastra@0.0.1 build /home/tataihono/.codex/worktrees/5b8f/forge/apps/mastra
+> mastra build --studio
+
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32mINFO[39m [2026-09-08 11:48:18.566 +1200] (Mastra CLI): [36mAnalyzing dependencies...[39m
+[32mINFO[39m [2026-09-08 11:48:28.975 +1200] (Mastra CLI): [36mOptimizing dependencies...[39m
+[32mINFO[39m [2026-09-08 11:48:31.961 +1200] (Mastra CLI): [36mBundling Mastra application[39m
+[32mINFO[39m [2026-09-08 11:48:37.975 +1200] (Mastra CLI): [36mBundling Mastra done[39m
+[32mINFO[39m [2026-09-08 11:48:37.976 +1200] (Mastra CLI): [36mCopying public files[39m
+[32mINFO[39m [2026-09-08 11:48:37.976 +1200] (Mastra CLI): [36mDone copying public files[39m
+[32mINFO[39m [2026-09-08 11:48:37.977 +1200] (Mastra CLI): [36mCopying .npmrc file[39m
+[32mINFO[39m [2026-09-08 11:48:37.977 +1200] (Mastra CLI): [36mDone copying .npmrc file[39m
+[32mINFO[39m [2026-09-08 11:48:37.977 +1200] (Mastra CLI): [36mInstalling dependencies[39m
+(node:2282460) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[32mINFO[39m [2026-09-08 11:48:38.504 +1200] (Mastra CLI): [36m(node:2282460) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/execa: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.855 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/execa: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/fastq: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.859 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/fastq: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/p-map: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.861 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/p-map: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ws: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.863 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ws: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/chat: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.866 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/chat: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/croner: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.868 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/croner: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/tokenx: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.871 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/tokenx: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ignore: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.873 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ignore: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/jpeg-js: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.873 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/jpeg-js: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/picomatch: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.875 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/picomatch: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/p-retry: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.876 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/p-retry: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/dotenv: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.878 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/dotenv: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ajv: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.883 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/ajv: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/@a2a-js%2Fsdk: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.885 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/@a2a-js%2Fsdk: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/lru-cache: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.887 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/lru-cache: Owned publication fixture denied external node request[39m
+ERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/gray-matter: Owned publication fixture denied external node request
+[32mINFO[39m [2026-09-08 11:49:48.889 +1200] (Mastra CLI): [36mERR_PNPM_META_FETCH_FAIL  GET https://registry.npmjs.org/gray-matter: Owned publication fixture denied external node request[39m
+Terminated
+[32mINFO[39m [2026-09-08 11:50:44.601 +1200] (Mastra CLI): [36mTerminated[39m
+[31mERROR[39m [2026-09-08 11:50:44.605 +1200] (Mastra CLI): [36mFailed during bundler bundle stage: Process exited with code 143[39m
+    [35mdomain[39m: "DEPLOYER"
+    [35mcategory[39m: "SYSTEM"
+    [35mdetails[39m: {}
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/mastra:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/mastra@0.0.1 build: `mastra build --studio`
+Exit status 1

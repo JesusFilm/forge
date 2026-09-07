@@ -1,0 +1,23 @@
+{
+  "head": "2d4d9bb8fe544335a32778043936b38f5ca5a0c3",
+  "files": [
+    {
+      "path": "apps/manager/src/features/video-studio/projects.tsx",
+      "backup": "0",
+      "currentHash": "b4b31e356342d6e63dcdf227d39ef4782ba4d80aaffc8de7581dfa72fb7c92a9",
+      "baselineHash": "066dcf41384a5c12405e141602e51bd218d7452d67dbde9564eac0aad1455e67"
+    },
+    {
+      "path": "apps/manager/src/features/shell/manager-shell.tsx",
+      "backup": "1",
+      "currentHash": "ddef2a8bfc9e7e5c1f111c73e86e7896e17ec7fc7c5272cd8f49d8ea41d8f070",
+      "baselineHash": "542077d3ded40aa95592f69a97ad0fe0e4e76429e12f90a55a318a82cd5cccf1"
+    }
+  ],
+  "routes": [
+    "apps/manager/src/app/dashboard/shorts/calendar",
+    "apps/manager/src/app/api/studio/calendar-plan",
+    "apps/manager/src/app/api/studio/calendar-production",
+    "apps/manager/src/app/api/admin-trigger/studio-calendar"
+  ]
+}

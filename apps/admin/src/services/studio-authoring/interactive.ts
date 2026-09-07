@@ -2,6 +2,7 @@ import { StudioPublicationReadinessResolver } from "./publication-readiness-reso
 import { readStudioRenderState } from "./render-state"
 import { StudioRenderJobs } from "./render-jobs"
 import { StudioCatalogPublicationService } from "./catalog-publication"
+import { executeCalendarRpc } from "./calendar-rpc"
 import { StudioGenerationService } from "./generation"
 import { StudioNarrationService } from "./narration"
 import { StudioExecutionService } from "./execution"
@@ -72,6 +73,15 @@ export async function executeStudioRpc(
       return new StudioRenderJobs(db).cancel(user, input)
     case "publish":
       return new StudioCatalogPublicationService(db).publish(user, input)
+    case "calendar-production":
+    case "calendar-read":
+    case "calendar-configure":
+    case "calendar-edit-slot":
+    case "calendar-assign-week":
+    case "calendar-plan-admit":
+    case "calendar-authorize":
+    case "calendar-cancel":
+      return executeCalendarRpc(db, user, action, input)
     case "generation-read":
       return new StudioGenerationService(db).read(user, input)
     case "validate-proposal":

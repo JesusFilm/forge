@@ -1,0 +1,78 @@
+(node:2127623) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts (9 tests | 2 failed | 6 skipped) 940ms
+   ↓ calendar commands > persists one calendar and preserves an explicit override across retries and a new service instance
+   ↓ calendar commands > rejects stale configuration after a queued weekly update wins the calendar lock
+   × calendar commands > suggests only complete future weeks and preserves human changes (none) 450ms
+     → expected { …(5) } to match object { theme: 'A week of hope', …(2) }
+(4 matching properties omitted from actual)
+   ✓ calendar commands > suggests only complete future weeks and preserves human changes (week) 230ms
+   × calendar commands > suggests only complete future weeks and preserves human changes (slot) 187ms
+     → expected 2 to be 1 // Object.is equality
+   ↓ calendar commands > admits planning once, preserves a racing manual override, and does not invent source evidence
+   ↓ calendar commands > plans an empty pack-assigned slot and deduplicates simultaneous daily admissions
+   ↓ calendar commands > admits explicit production from verified selected pack bytes without modifying work or generating, and blocks missing sources
+   ↓ calendar commands > consumes calendar authorization with publication atomically, rolls back verifier failure and keeps accepted retries after unpublish
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/calendar.db.test.ts > calendar commands > suggests only complete future weeks and preserves human changes (none)
+AssertionError: expected { …(5) } to match object { theme: 'A week of hope', …(2) }
+(4 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -1,9 +1,8 @@[39m
+[2m  {[22m
+[32m-   "packRevisionId": null,[39m
+[32m-   "provenance": {[39m
+[2m    "packRevisionId": "cmtru2c2t00042cqnyibbpt32",[22m
+[31m+   "provenance": {[39m
+[2m      "runId": "837ace89-e9af-4367-bd8f-19addb8b124f",[22m
+[2m      "sourceIndices": [],[22m
+[2m      "sourceState": "MISSING",[22m
+[2m    },[22m
+[2m    "theme": "A week of hope",[22m
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts:244:30
+    242|       ).toBe(true)
+    243|       if (humanEdit === "slot") { expect(after.weeks).toHaveLength(0);…
+    244|       expect(after.weeks[0]).toMatchObject(
+       |                              ^
+    245|         humanEdit === "week"
+    246|           ? { theme: "Operator wins", packRevisionId: null, provenance…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/services/studio-authoring/calendar.db.test.ts > calendar commands > suggests only complete future weeks and preserves human changes (slot)
+AssertionError: expected 2 to be 1 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 2[39m
+
+ ❯ src/services/studio-authoring/calendar.db.test.ts:236:29
+    234|       await service.finishPlanning(worker, run.id, result)
+    235|       const after = await service.read(user, calendarId)
+    236|       expect(after.version).toBe(humanEdit === "slot" ? 1 : 2)
+       |                             ^
+    237|       expect(after.slots.slice(0, 14)).toEqual(before.slots.slice(0, 1…
+    238|       expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed | 6 skipped (9)
+   Start at  10:49:40
+   Duration  1.86s (transform 342ms, setup 18ms, collect 497ms, tests 940ms, environment 0ms, prepare 90ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/calendar.db.test.ts -t suggests only complete future weeks

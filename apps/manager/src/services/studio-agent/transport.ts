@@ -7,12 +7,14 @@ import {
   type StudioCaller,
 } from "@forge/studio-server"
 export async function studioServiceRequest(
-  target: "admin" | "mastra",
+  target: "admin" | "mastra" | "calendar" | "calendar-admin",
   caller: StudioCaller,
   payload: unknown,
   signal?: AbortSignal,
 ) {
-  const base = target === "admin" ? env.ADMIN_GRAPHQL_URL : env.MASTRA_BASE_URL
+  const base = ["admin", "calendar-admin"].includes(target)
+    ? env.ADMIN_GRAPHQL_URL
+    : env.MASTRA_BASE_URL
   if (
     !base ||
     !env.STUDIO_INTERACTIVE_PRIVATE_KEY ||
@@ -22,7 +24,13 @@ export async function studioServiceRequest(
   const body = JSON.stringify(payload)
   const assertion = await signStudioRequest(
     body,
-    target === "admin" ? "forge-admin:studio:delegated" : "forge-mastra:studio",
+    target === "calendar"
+      ? "forge-mastra:studio-calendar"
+      : target === "calendar-admin"
+        ? "forge-admin:studio-calendar"
+        : target === "admin"
+          ? "forge-admin:studio:delegated"
+          : "forge-mastra:studio",
     caller,
     {
       privateKey: env.STUDIO_INTERACTIVE_PRIVATE_KEY,
@@ -32,7 +40,13 @@ export async function studioServiceRequest(
   )
   const response = await fetch(
     new URL(
-      target === "admin" ? "/api/studio/delegated" : "/forge-studio",
+      target === "calendar"
+        ? "/forge-studio-calendar"
+        : target === "calendar-admin"
+          ? "/api/studio/calendar-worker"
+          : target === "admin"
+            ? "/api/studio/delegated"
+            : "/forge-studio",
       base,
     ),
     {
@@ -68,7 +82,7 @@ export async function studioServiceRequest(
   return response
 }
 export async function studioServiceCall(
-  target: "admin" | "mastra",
+  target: "admin" | "mastra" | "calendar" | "calendar-admin",
   caller: StudioCaller,
   payload: unknown,
 ) {

@@ -43,12 +43,17 @@ export class StudioRunBudget {
   constructor(
     private readonly caller: AbortSignal,
     private readonly report: (event: StudioRunTelemetry) => void = () => {},
+    private readonly limits: {
+      runMs: number
+      stepMs: number
+      persistenceMs: number
+    } = STUDIO_AGENT_LIMITS,
   ) {
     // This runs independently of model iterations, so a blocked tool cannot
     // consume the terminal-recording reserve. settle uses the original clock.
     this.generationTimer = setTimeout(
       () => this.abort("whole-run"),
-      STUDIO_AGENT_LIMITS.runMs - STUDIO_AGENT_LIMITS.persistenceMs,
+      this.limits.runMs - this.limits.persistenceMs,
     )
     this.observe("started")
     caller.addEventListener("abort", this.callerAborted, { once: true })
@@ -58,10 +63,7 @@ export class StudioRunBudget {
     return this.controller.signal
   }
   remainingMs() {
-    return Math.max(
-      0,
-      STUDIO_AGENT_LIMITS.runMs - (performance.now() - this.started),
-    )
+    return Math.max(0, this.limits.runMs - (performance.now() - this.started))
   }
   private observe(event: StudioRunTelemetry["event"], source?: AbortSource) {
     try {
@@ -88,17 +90,14 @@ export class StudioRunBudget {
     this.signal.throwIfAborted()
     if (this.closed) throw new StudioBoundaryError("Studio run is closed")
     this.endStep()
-    const available = this.remainingMs() - STUDIO_AGENT_LIMITS.persistenceMs
+    const available = this.remainingMs() - this.limits.persistenceMs
     if (available <= 0) {
       this.abort("whole-run")
       this.signal.throwIfAborted()
     }
-    const duration = Math.min(STUDIO_AGENT_LIMITS.stepMs, available)
+    const duration = Math.min(this.limits.stepMs, available)
     this.stepTimer = setTimeout(
-      () =>
-        this.abort(
-          duration < STUDIO_AGENT_LIMITS.stepMs ? "whole-run" : "step",
-        ),
+      () => this.abort(duration < this.limits.stepMs ? "whole-run" : "step"),
       duration,
     )
     this.observe("step-started")
@@ -133,10 +132,7 @@ export class StudioRunBudget {
     // Generation is over. Its cutoff must not turn a successful terminal
     // write into an aborted stream; persistence still uses the original clock.
     clearTimeout(this.generationTimer)
-    const timeoutMs = Math.min(
-      STUDIO_AGENT_LIMITS.persistenceMs,
-      this.remainingMs(),
-    )
+    const timeoutMs = Math.min(this.limits.persistenceMs, this.remainingMs())
     if (timeoutMs <= 0) throw new StudioRunDeadlineError("persistence")
     const controller = new AbortController()
     const timer = setTimeout(() => {

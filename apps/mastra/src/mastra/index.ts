@@ -1,3 +1,4 @@
+import { createCalendarRuntime } from "../services/studio-authoring/calendar-runtime"
 import {
   serializeStudioInstructions,
   finishStudioExecution,
@@ -418,6 +419,19 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-studio-calendar", {
+        method: "POST",
+        handler: async (c) => {
+          if (
+            env.STUDIO_AGENT_ENABLED !== "true" ||
+            !env.STUDIO_INTERACTIVE_PUBLIC_KEYS ||
+            !env.STUDIO_ADMISSION_SECRET
+          )
+            return c.json({ error: "Studio planner unavailable" }, 503)
+          getStudioRuntime()
+          return calendarRuntime!(c.req.raw)
+        },
+      }),
       registerApiRoute("/forge-studio", {
         method: "POST",
         handler: async (c) => {
@@ -1013,6 +1027,7 @@ if (env.NODE_ENV === "production") {
   startLangfuseTraceRetention()
 }
 
+let calendarRuntime: ReturnType<typeof createCalendarRuntime> | undefined
 let studioRuntime: ReturnType<typeof createStudioRuntime> | undefined
 function getStudioRuntime() {
   if (!studioRuntime) {
@@ -1027,6 +1042,29 @@ function getStudioRuntime() {
       id: "studio-authoring-native-storage",
       connectionString: getMastraDatabaseUrl(),
       schemaName: "mastra_studio_authoring",
+    })
+    const calendarPool = new Pool({
+      connectionString: getMastraDatabaseUrl(),
+      max: 1,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 5000,
+      query_timeout: 5000,
+    })
+    calendarRuntime = createCalendarRuntime(studioStorage, {
+      publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
+      environment: env.STUDIO_ENVIRONMENT,
+      model: env.STUDIO_AGENT_MODEL,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      serialize: (work) => serializeStudioInstructions(pool, work),
+      claim: async (id, digest) => {
+        const result = await calendarPool.query({
+          text: "INSERT INTO studio_agent_execution(id,instruction_digest) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING id",
+          values: [id, digest],
+        })
+        return result.rowCount === 1
+      },
+      finish: (id, status, context) =>
+        finishStudioExecution(calendarPool, id, status, context),
     })
     studioRuntime = createStudioRuntime(studioStorage, {
       adminUrl: env.STUDIO_ADMIN_URL,

@@ -1,0 +1,85 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /opt/google/chrome/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-40ZdZ8 --remote-debugging-pipe --no-startup-window
+<launched> pid=2027099
+[pid=2027099][err] [0908/101859.371543:WARNING:chrome/app/chrome_main_linux.cc:84] Read channel stable from /opt/google/chrome/CHROME_VERSION_EXTRA
+[pid=2027099][err] [2027099:2027129:0908/101859.491456:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.
+[pid=2027099][err] [2027099:2027126:0908/101859.492112:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.
+[pid=2027099][err] [2027099:2027129:0908/101859.492391:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.
+[pid=2027099][err] [2027099:2027126:0908/101859.492554:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.
+[pid=2027099][err] [2027136:2027140:0908/101859.503526:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache
+[pid=2027099][err] [2027136:2027140:0908/101859.504070:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache
+[pid=2027099][err] [2027136:2027140:0908/101859.504095:ERROR:net/disk_cache/simple/simple_backend_impl.cc:749] Simple Cache Backend: wrong file structure on disk: 1 path: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache
+[pid=2027099][err] [2027099:2027099:0908/101859.504201:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.B2z3Eq failed: No space left on device (28)
+[pid=2027099][err] [2027136:2027141:0908/101859.505631:ERROR:net/disk_cache/disk_cache.cc:290] Unable to create cache
+[pid=2027099][err] [2027133:2027133:0908/101859.508445:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.tLrsDS failed: No space left on device (28)
+[pid=2027099][err] [2027099:2027099:0908/101859.510896:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.OzjGe8 failed: No space left on device (28)
+[pid=2027099][err] [0908/101859.522803:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)
+[pid=2027099][err] [0908/101859.522872:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)
+[pid=2027099][err] [2027136:2027141:0908/101900.007258:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.z5x7IY failed: No space left on device (28)
+Call log:
+[2m  - <launching> /opt/google/chrome/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-40ZdZ8 --remote-debugging-pipe --no-startup-window[22m
+[2m  - <launched> pid=2027099[22m
+[2m  - [pid=2027099][err] [0908/101859.371543:WARNING:chrome/app/chrome_main_linux.cc:84] Read channel stable from /opt/google/chrome/CHROME_VERSION_EXTRA[22m
+[2m  - [pid=2027099][err] [2027099:2027129:0908/101859.491456:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.[22m
+[2m  - [pid=2027099][err] [2027099:2027126:0908/101859.492112:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.[22m
+[2m  - [pid=2027099][err] [2027099:2027129:0908/101859.492391:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.[22m
+[2m  - [pid=2027099][err] [2027099:2027126:0908/101859.492554:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.[22m
+[2m  - [pid=2027099][err] [2027136:2027140:0908/101859.503526:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache[22m
+[2m  - [pid=2027099][err] [2027136:2027140:0908/101859.504070:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache[22m
+[2m  - [pid=2027099][err] [2027136:2027140:0908/101859.504095:ERROR:net/disk_cache/simple/simple_backend_impl.cc:749] Simple Cache Backend: wrong file structure on disk: 1 path: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache[22m
+[2m  - [pid=2027099][err] [2027099:2027099:0908/101859.504201:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.B2z3Eq failed: No space left on device (28)[22m
+[2m  - [pid=2027099][err] [2027136:2027141:0908/101859.505631:ERROR:net/disk_cache/disk_cache.cc:290] Unable to create cache[22m
+[2m  - [pid=2027099][err] [2027133:2027133:0908/101859.508445:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.tLrsDS failed: No space left on device (28)[22m
+[2m  - [pid=2027099][err] [2027099:2027099:0908/101859.510896:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.OzjGe8 failed: No space left on device (28)[22m
+[2m  - [pid=2027099][err] [0908/101859.522803:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)[22m
+[2m  - [pid=2027099][err] [0908/101859.522872:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)[22m
+[2m  - [pid=2027099][err] [2027136:2027141:0908/101900.007258:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.z5x7IY failed: No space left on device (28)[22m
+[2m  - [pid=2027099] <gracefully close start>[22m
+[2m  - [pid=2027099] <kill>[22m
+[2m  - [pid=2027099] <will force kill>[22m
+[2m  - [pid=2027099][err] [2027136:2027141:0908/101904.582743:ERROR:net/socket/ssl_client_socket_impl.cc:962] handshake failed; returned -1, SSL error code 1, net_error -3[22m
+[2m  - [pid=2027099][err] [2027136:2027141:0908/101904.582895:ERROR:net/socket/ssl_client_socket_impl.cc:962] handshake failed; returned -1, SSL error code 1, net_error -3[22m
+[2m  - [pid=2027099] <process did exit: exitCode=null, signal=SIGTRAP>[22m
+[2m  - [pid=2027099] starting temporary directories cleanup[22m
+[2m  - [pid=2027099] finished temporary directories cleanup[22m
+[2m  - [pid=2027099] <gracefully close end>[22m
+
+    at /home/tataihono/.codex/worktrees/5b8f/forge/.tmp/studio461/calendar-final-smoke.mjs:1:269
+    at async node:internal/modules/esm/loader:647:26 {
+  log: [
+    '  - <launching> /opt/google/chrome/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-40ZdZ8 --remote-debugging-pipe --no-startup-window',
+    '  - <launched> pid=2027099',
+    '  - [pid=2027099][err] [0908/101859.371543:WARNING:chrome/app/chrome_main_linux.cc:84] Read channel stable from /opt/google/chrome/CHROME_VERSION_EXTRA',
+    '  - [pid=2027099][err] [2027099:2027129:0908/101859.491456:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.',
+    '  - [pid=2027099][err] [2027099:2027126:0908/101859.492112:ERROR:components/password_manager/core/browser/password_store/login_database.cc:1117] Unable to create the meta table.',
+    '  - [pid=2027099][err] [2027099:2027129:0908/101859.492391:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.',
+    '  - [pid=2027099][err] [2027099:2027126:0908/101859.492554:ERROR:components/password_manager/core/browser/password_store/login_database_async_helper.cc:77] Could not create/open login database.',
+    '  - [pid=2027099][err] [2027136:2027140:0908/101859.503526:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache',
+    '  - [pid=2027099][err] [2027136:2027140:0908/101859.504070:ERROR:net/disk_cache/simple/simple_backend_impl.cc:81] Failed to create directory: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache',
+    '  - [pid=2027099][err] [2027136:2027140:0908/101859.504095:ERROR:net/disk_cache/simple/simple_backend_impl.cc:749] Simple Cache Backend: wrong file structure on disk: 1 path: /tmp/playwright_chromiumdev_profile-40ZdZ8/Default/Shared Dictionary/cache',
+    '  - [pid=2027099][err] [2027099:2027099:0908/101859.504201:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.B2z3Eq failed: No space left on device (28)',
+    '  - [pid=2027099][err] [2027136:2027141:0908/101859.505631:ERROR:net/disk_cache/disk_cache.cc:290] Unable to create cache',
+    '  - [pid=2027099][err] [2027133:2027133:0908/101859.508445:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.tLrsDS failed: No space left on device (28)',
+    '  - [pid=2027099][err] [2027099:2027099:0908/101859.510896:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.OzjGe8 failed: No space left on device (28)',
+    '  - [pid=2027099][err] [0908/101859.522803:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)',
+    '  - [pid=2027099][err] [0908/101859.522872:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)',
+    '  - [pid=2027099][err] [2027136:2027141:0908/101900.007258:ERROR:base/memory/platform_shared_memory_region_posix.cc:214] Creating shared memory in /tmp/.com.google.Chrome.z5x7IY failed: No space left on device (28)',
+    '  - [pid=2027099] <gracefully close start>',
+    '  - [pid=2027099] <kill>',
+    '  - [pid=2027099] <will force kill>',
+    '  - [pid=2027099][err] [2027136:2027141:0908/101904.582743:ERROR:net/socket/ssl_client_socket_impl.cc:962] handshake failed; returned -1, SSL error code 1, net_error -3',
+    '  - [pid=2027099][err] [2027136:2027141:0908/101904.582895:ERROR:net/socket/ssl_client_socket_impl.cc:962] handshake failed; returned -1, SSL error code 1, net_error -3',
+    '  - [pid=2027099] <process did exit: exitCode=null, signal=SIGTRAP>',
+    '  - [pid=2027099] starting temporary directories cleanup',
+    '  - [pid=2027099] finished temporary directories cleanup',
+    '  - [pid=2027099] <gracefully close end>'
+  ]
+}
+
+Node.js v24.20.0

@@ -1,0 +1,57 @@
+(node:2056897) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/packages/studio-contracts
+
+ ❯ src/calendar.test.ts (4 tests | 1 failed) 53ms
+   × calendar civil time > accepts default packs plus distinct slot assignments without dropping pack context 12ms
+     → [
+  {
+    "origin": "array",
+    "code": "too_big",
+    "maximum": 16,
+    "inclusive": true,
+    "path": [
+      "packs"
+    ],
+    "message": "Too big: expected array to have <=16 items"
+  }
+]
+   ✓ calendar civil time > rejects fixed-offset zones but accepts UTC and supported IANA names and aliases 24ms
+   ✓ calendar civil time > shows two complete fortnights across month boundaries in the chosen timezone 4ms
+   ✓ calendar civil time > rejects spring gaps and requires a choice for fall folds without UTC fallback 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/calendar.test.ts > calendar civil time > accepts default packs plus distinct slot assignments without dropping pack context
+ZodError: [
+  {
+    "origin": "array",
+    "code": "too_big",
+    "maximum": 16,
+    "inclusive": true,
+    "path": [
+      "packs"
+    ],
+    "message": "Too big: expected array to have <=16 items"
+  }
+]
+ ❯ src/calendar.test.ts:25:39
+     23|       })),
+     24|     }
+     25|     expect(calendarPlannerInputSchema.parse(input).packs).toHaveLength…
+       |                                       ^
+     26|     expect(calendarPlannerInputSchema.safeParse({
+     27|       ...input,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  10:29:40
+   Duration  1.16s (transform 378ms, setup 0ms, collect 525ms, tests 53ms, environment 0ms, prepare 203ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/packages/studio-contracts:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/calendar.test.ts

@@ -1,0 +1,20 @@
+(node:2278718) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/mastra@0.0.1 test /home/tataihono/.codex/worktrees/5b8f/forge/apps/mastra
+> vitest run "src/services/studio-authoring/calendar-instructions.db.test.ts" "src/services/studio-authoring/calendar-runtime.db.test.ts" "src/services/studio-authoring/calendar-planner.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/mastra
+
+ ✓ src/services/studio-authoring/calendar-planner.test.ts (4 tests) 273ms
+ ✓ src/services/studio-authoring/calendar-instructions.db.test.ts (1 test) 2056ms
+   ✓ planner instructions use isolated native versions and freeze exact active bytes across drafts and restart  821ms
+ ✓ src/services/studio-authoring/calendar-runtime.db.test.ts (1 test) 7301ms
+   ✓ signed native planning binds input and authority, pins versions and refuses replay after reconstruction  7298ms
+
+ Test Files  3 passed (3)
+      Tests  6 passed (6)
+   Start at  11:45:38
+   Duration  10.64s (transform 627ms, setup 0ms, collect 7.77s, tests 9.63s, environment 1ms, prepare 439ms)
+

@@ -1,0 +1,112 @@
+(node:2157813) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/manager@0.0.1 build /home/tataihono/.codex/worktrees/5b8f/forge/apps/manager
+> next build
+
+Discovering workflow directives 1785ms
+Created steps bundle 127ms
+Created intermediate workflow bundle 284ms
+Creating webhook route
+Creating manifest...
+Created manifest with 33 steps, 5 workflows, and 0 classes 287ms
+▲ Next.js 16.2.4 (Turbopack)
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 12.4s
+  Running TypeScript ...
+  Finished TypeScript in 20.6s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/46) ...
+  Generating static pages using 7 workers (11/46) 
+  Generating static pages using 7 workers (22/46) 
+  Generating static pages using 7 workers (34/46) 
+✓ Generating static pages using 7 workers (46/46) in 410ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /.well-known/oauth-protected-resource
+├ ƒ /.well-known/workflow/v1/flow
+├ ƒ /.well-known/workflow/v1/step
+├ ƒ /.well-known/workflow/v1/webhook/[token]
+├ ƒ /api/admin-embeds/scene
+├ ƒ /api/admin-embeds/transcript
+├ ƒ /api/admin-trigger/scene-analysis
+├ ƒ /api/admin-trigger/studio-calendar
+├ ƒ /api/admin-trigger/transcript
+├ ƒ /api/auth/callback
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/mock-login
+├ ƒ /api/automations
+├ ƒ /api/automations/[id]/dry-run
+├ ƒ /api/automations/[id]/status
+├ ƒ /api/automations/runs/[id]/enqueue
+├ ƒ /api/backfill/cancel
+├ ƒ /api/backfill/start
+├ ƒ /api/backfill/status
+├ ƒ /api/coverage-snapshots
+├ ƒ /api/enrich
+├ ƒ /api/health
+├ ƒ /api/jobs
+├ ƒ /api/jobs/[id]
+├ ƒ /api/jobs/[id]/artifacts/[artifact]
+├ ƒ /api/jobs/[id]/events
+├ ƒ /api/jobs/[id]/mux-sync/override
+├ ƒ /api/jobs/[id]/review-context
+├ ƒ /api/jobs/[id]/transcription/rerun
+├ ƒ /api/jobs/events
+├ ƒ /api/languages
+├ ƒ /api/scene-analysis
+├ ƒ /api/seo/lessons/[id]/review
+├ ƒ /api/seo/proposals/[id]/approve
+├ ƒ /api/seo/proposals/[id]/reject
+├ ƒ /api/seo/reconciliation/[id]
+├ ƒ /api/shorts/jobs
+├ ƒ /api/shorts/jobs/[id]/draft
+├ ƒ /api/shorts/jobs/[id]/media/[artifact]
+├ ƒ /api/shorts/jobs/[id]/render
+├ ƒ /api/shorts/jobs/[id]/retry
+├ ƒ /api/shorts/videos/[coreId]
+├ ƒ /api/smart-crop/jobs
+├ ƒ /api/smart-crop/jobs/[id]/approve
+├ ƒ /api/smart-crop/jobs/[id]/retry
+├ ƒ /api/smart-crop/videos/[coreId]
+├ ƒ /api/studio/agent
+├ ƒ /api/studio/audition
+├ ƒ /api/studio/calendar-plan
+├ ƒ /api/studio/calendar-production
+├ ƒ /api/studio/command
+├ ƒ /api/studio/generation
+├ ƒ /api/studio/preview
+├ ƒ /api/studio/production
+├ ƒ /api/studio/upload
+├ ƒ /api/videos
+├ ƒ /dashboard
+├ ƒ /dashboard/agents
+├ ƒ /dashboard/coverage
+├ ƒ /dashboard/jobs
+├ ƒ /dashboard/jobs/[id]
+├ ƒ /dashboard/seo
+├ ƒ /dashboard/seo/runs/[runId]
+├ ƒ /dashboard/shorts
+├ ƒ /dashboard/shorts/[id]
+├ ƒ /dashboard/shorts/calendar
+├ ƒ /dashboard/shorts/new
+├ ƒ /dashboard/smart-crop
+├ ƒ /dashboard/smart-crop/[id]
+├ ƒ /design
+├ ƒ /favicon.svg
+├ ƒ /jesusfilm-sign.svg
+├ ƒ /login
+└ ƒ /mcp
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

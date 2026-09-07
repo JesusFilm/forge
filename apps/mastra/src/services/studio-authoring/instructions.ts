@@ -32,9 +32,27 @@ export type FrozenStudioInstructions = {
   digest: string
 }
 
+export type StudioInstructionProfile = {
+  agentId: string
+  blockId: string
+  name: string
+  defaults: string
+  sourceDefaults: string
+}
+const authoringProfile: StudioInstructionProfile = {
+  agentId: STUDIO_AGENT_ID,
+  blockId: STUDIO_BLOCK_ID,
+  name: "Studio authoring",
+  defaults: studioCreativeDefaults,
+  sourceDefaults: studioSourceDefaults,
+}
+
 /** Native storage only. Caller serializes mutations across replicas; bodies never leave this store for persistence. */
 export class StudioInstructions {
-  constructor(private readonly storage: MastraStorage) {}
+  constructor(
+    private readonly storage: MastraStorage,
+    private readonly profile: StudioInstructionProfile = authoringProfile,
+  ) {}
   private async stores() {
     const agents = await this.storage.getStore("agents"),
       blocks = await this.storage.getStore("promptBlocks")
@@ -44,45 +62,45 @@ export class StudioInstructions {
   }
   async inspect() {
     const { agents, blocks } = await this.stores()
-    if (!(await blocks.getById(STUDIO_BLOCK_ID))) {
+    if (!(await blocks.getById(this.profile.blockId))) {
       await blocks.create({
         promptBlock: {
-          id: STUDIO_BLOCK_ID,
-          name: "Studio source guidance",
-          content: studioSourceDefaults,
+          id: this.profile.blockId,
+          name: this.profile.name + " source guidance",
+          content: this.profile.sourceDefaults,
         },
       })
-      const v = await blocks.getLatestVersion(STUDIO_BLOCK_ID)
+      const v = await blocks.getLatestVersion(this.profile.blockId)
       await blocks.update({
-        id: STUDIO_BLOCK_ID,
+        id: this.profile.blockId,
         activeVersionId: v!.id,
         status: "published",
       })
     }
-    if (!(await agents.getById(STUDIO_AGENT_ID)))
+    if (!(await agents.getById(this.profile.agentId)))
       await agents.create({
         agent: {
-          id: STUDIO_AGENT_ID,
-          name: "Studio authoring",
+          id: this.profile.agentId,
+          name: this.profile.name,
           model: { provider: "code", name: "studio" },
           instructions: [
-            { type: "text", content: studioCreativeDefaults },
-            { type: "prompt_block_ref", id: STUDIO_BLOCK_ID },
+            { type: "text", content: this.profile.defaults },
+            { type: "prompt_block_ref", id: this.profile.blockId },
           ],
         },
       })
-    const row = await agents.getById(STUDIO_AGENT_ID),
-      latest = await agents.getLatestVersion(STUDIO_AGENT_ID)
+    const row = await agents.getById(this.profile.agentId),
+      latest = await agents.getLatestVersion(this.profile.agentId)
     const versions = await agents.listVersions({
-      agentId: STUDIO_AGENT_ID,
+      agentId: this.profile.agentId,
       perPage: 100,
       orderBy: { field: "versionNumber", direction: "DESC" },
     })
-    const block = await blocks.getByIdResolved(STUDIO_BLOCK_ID, {
+    const block = await blocks.getByIdResolved(this.profile.blockId, {
       status: "published",
     })
     return {
-      suggestedDefaults: studioCreativeDefaults,
+      suggestedDefaults: this.profile.defaults,
       activeVersionId: row!.activeVersionId ?? null,
       latest: { ...latest!, content: content(latest!) },
       versions: versions.versions.map((v) => ({ ...v, content: content(v) })),
@@ -97,13 +115,13 @@ export class StudioInstructions {
       throw new StudioInstructionError("CONFLICT")
     await agents.createVersion({
       id: randomUUID(),
-      agentId: STUDIO_AGENT_ID,
+      agentId: this.profile.agentId,
       versionNumber: current.latest.versionNumber + 1,
-      name: "Studio authoring",
+      name: this.profile.name,
       model: { provider: "code", name: "studio" },
       instructions: [
         { type: "text", content: text },
-        { type: "prompt_block_ref", id: STUDIO_BLOCK_ID },
+        { type: "prompt_block_ref", id: this.profile.blockId },
       ],
       changeMessage: `Draft saved by ${actor}`,
       changedFields: ["instructions"],
@@ -120,10 +138,10 @@ export class StudioInstructions {
     if (current.activeVersionId !== expectedActiveVersionId)
       throw new StudioInstructionError("CONFLICT")
     const version = await agents.getVersion(versionId)
-    if (!version || version.agentId !== STUDIO_AGENT_ID)
+    if (!version || version.agentId !== this.profile.agentId)
       throw new StudioInstructionError("Unknown Studio version")
     await agents.update({
-      id: STUDIO_AGENT_ID,
+      id: this.profile.agentId,
       activeVersionId: versionId,
       status: "published",
       metadata: { activatedBy: actor },
@@ -133,7 +151,7 @@ export class StudioInstructions {
   async restore(versionId: string, expectedVersionId: string, actor: string) {
     const { agents } = await this.stores(),
       version = await agents.getVersion(versionId)
-    if (!version || version.agentId !== STUDIO_AGENT_ID)
+    if (!version || version.agentId !== this.profile.agentId)
       throw new StudioInstructionError("Unknown Studio version")
     return this.save(expectedVersionId, content(version), actor)
   }
@@ -144,8 +162,8 @@ export class StudioInstructions {
     if (
       !a ||
       !b ||
-      a.agentId !== STUDIO_AGENT_ID ||
-      b.agentId !== STUDIO_AGENT_ID
+      a.agentId !== this.profile.agentId ||
+      b.agentId !== this.profile.agentId
     )
       throw new StudioInstructionError("Unknown Studio version")
     return {
@@ -159,7 +177,7 @@ export class StudioInstructions {
   ): Promise<FrozenStudioInstructions> {
     const selection = studioInstructionSelectionSchema.parse(raw),
       { agents, blocks } = await this.stores()
-    const row = await agents.getById(STUDIO_AGENT_ID)
+    const row = await agents.getById(this.profile.agentId)
     if (
       !row ||
       (selection.mode === "active" &&
@@ -171,7 +189,7 @@ export class StudioInstructions {
     const agent = await agents.getVersion(
       selection.mode === "active" ? row.activeVersionId! : selection.versionId,
     )
-    const blockRow = await blocks.getById(STUDIO_BLOCK_ID)
+    const blockRow = await blocks.getById(this.profile.blockId)
     const blockId =
       selection.mode === "active"
         ? blockRow?.activeVersionId
@@ -179,9 +197,9 @@ export class StudioInstructions {
     const block = blockId ? await blocks.getVersion(blockId) : null
     if (
       !agent ||
-      agent.agentId !== STUDIO_AGENT_ID ||
+      agent.agentId !== this.profile.agentId ||
       !block ||
-      block.blockId !== STUDIO_BLOCK_ID ||
+      block.blockId !== this.profile.blockId ||
       (selection.mode === "active" && blockRow?.status !== "published")
     )
       throw new StudioInstructionError("Missing native instruction snapshot")
@@ -191,7 +209,7 @@ export class StudioInstructions {
         : agent.instructions
     const frozen = source.map((b) => {
       if (b.type !== "prompt_block_ref") return b
-      if (b.id !== STUDIO_BLOCK_ID)
+      if (b.id !== this.profile.blockId)
         throw new StudioInstructionError("Unknown Studio prompt block")
       return {
         type: "prompt_block" as const,

@@ -1,0 +1,103 @@
+{
+  "version": "152.0.7977.64",
+  "console": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 404
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/command",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3461/api/studio/calendar-production",
+      "status": 400
+    }
+  ],
+  "checks": [
+    "Fixed-offset timezone rejected by actual form",
+    "Two disjoint complete 14-day windows",
+    "Manual title/theme and standalone project link survive full reload; missing source stays unready",
+    "Weekly edit preserves slot override",
+    "Explicit production cannot admit a linked project with no selected sources",
+    "No successful publication or paid generation simulated"
+  ],
+  "currentDates": [
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18",
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21"
+  ],
+  "followingDates": [
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+    "2026-10-04",
+    "2026-10-05"
+  ],
+  "body": "Studio\nALPHA\nVideo editor\nStandalone projects\nReport\nJobs\nSmart Crop\nVideo editor\nSEO\nAgents\nToggle sidebar\nStudio\nVideo editor\nProject\n← Projects\n\nVIDEO STUDIO\n\nPlanning calendar\n\nPlan titles and themes, then choose which projects to produce and review.\n\nCalendar settings\nPlanner instructions\nSuggest missing titles/themes in both fortnights\nExplicit single/batch production\n\nWeekly plan saved; existing titles and projects were preserved.\n\nCurrent 14 daysFollowing 14 days\n\nPacific/Auckland · 09:00 publication time\n\nOne slot per day. Projects can also remain standalone. A title suggestion does not mean its sources, production or publication are ready.\n\nWeekly themes and Content Packs\nWeek of 2026-09-07\nWeekly theme\nWeek Content Pack\nUse default pack\nGuidance\nHope\nHope\nHope\nHope\nHope\nGuidance\nGuidance\nHope\nHope\nGuidance\nHope source\nHope\nHope\nHope\nGuidance\nHope source\nHope\nGuidance\nHope\nGuidance\nHope source\nSave week\nWeek of 2026-09-14\nWeekly theme\nWeek Content Pack\nUse default pack\nGuidance\nHope\nHope\nHope\nHope\nHope\nGuidance\nGuidance\nHope\nHope\nGuidance\nHope source\nHope\nHope\nHope\nGuidance\nHope source\nHope\nGuidance\nHope\nGuidance\nHope source\nSave week\nWeek of 2026-09-21\nWeekly theme\nWeek Content Pack\nUse default pack\nGuidance\nHope\nHope\nHope\nHope\nHope\nGuidance\nGuidance\nHope\nHope\nGuidance\nHope source\nHope\nHope\nHope\nGuidance\nHope source\nHope\nGuidance\nHope\nGuidance\nHope source\nSave week\n2026-09-08\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-09\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-10\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-11\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-12\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-13\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-14\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-15\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-16\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-17\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-18\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-19\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-20\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot\n2026-09-21\nUnplanned\n\nNo theme selected\n\nPlanner may fill empty slots\n\nMissing title/theme\n\nSource selection missing — unready\n\nEdit slot"
+}

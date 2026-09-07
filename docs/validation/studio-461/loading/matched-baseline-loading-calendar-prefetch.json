@@ -1,0 +1,162 @@
+[
+  {
+    "route": "",
+    "cache": "cold",
+    "pair": 0,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "warm",
+    "pair": 0,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "cold",
+    "pair": 1,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "warm",
+    "pair": 1,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "cold",
+    "pair": 2,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "warm",
+    "pair": 2,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "cold",
+    "pair": 3,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "warm",
+    "pair": 3,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "cold",
+    "pair": 4,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "",
+    "cache": "warm",
+    "pair": 4,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "cold",
+    "pair": 0,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "warm",
+    "pair": 0,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "cold",
+    "pair": 1,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "warm",
+    "pair": 1,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "cold",
+    "pair": 2,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "warm",
+    "pair": 2,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "cold",
+    "pair": 3,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "warm",
+    "pair": 3,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "cold",
+    "pair": 4,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  },
+  {
+    "route": "/new",
+    "cache": "warm",
+    "pair": 4,
+    "count": 0,
+    "bytes": 0,
+    "requests": []
+  }
+]

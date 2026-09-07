@@ -1,0 +1,11 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+cdpSession.send: Protocol error (Browser.getBrowserCommandLine): Command line not returned because --enable-automation not set.
+    at /home/tataihono/.codex/worktrees/5b8f/forge/.tmp/studio461/alternating-loading.mjs:11:282 {
+  log: [],
+  name: 'Error'
+}
+
+Node.js v24.20.0

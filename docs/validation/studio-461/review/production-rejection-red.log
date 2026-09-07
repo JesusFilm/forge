@@ -1,0 +1,64 @@
+(node:2089955) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/manager
+
+ ❯ src/app/api/studio/calendar-production/route.test.ts (2 tests | 2 failed) 31ms
+   × marks a confirmed admission conflict as safely refreshable without dispatch 23ms
+     → expected 400 to be 409 // Object.is equality
+   × retains ambiguous admission and execution failures rather than authorizing a fresh selection 7ms
+     → expected { Object (error) } to match object { admission: 'unknown' }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/app/api/studio/calendar-production/route.test.ts > marks a confirmed admission conflict as safely refreshable without dispatch
+AssertionError: expected 400 to be 409 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 409[39m
+[31m+ 400[39m
+
+ ❯ src/app/api/studio/calendar-production/route.test.ts:16:27
+     14|   fixture.call.mockRejectedValue(new StudioTransportError(409, "CONFLI…
+     15|   const response = await POST(request())
+     16|   expect(response.status).toBe(409)
+       |                           ^
+     17|   expect(await response.json()).toMatchObject({ admission: "rejected" …
+     18|   expect(fixture.generate).not.toHaveBeenCalled()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/app/api/studio/calendar-production/route.test.ts > retains ambiguous admission and execution failures rather than authorizing a fresh selection
+AssertionError: expected { Object (error) } to match object { admission: 'unknown' }
+(1 matching property omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "admission": "unknown",[39m
+[31m+   "error": "Production is unready or the calendar selection changed. Review the linked project.",[39m
+[2m  }[22m
+
+ ❯ src/app/api/studio/calendar-production/route.test.ts:22:48
+     20| it("retains ambiguous admission and execution failures rather than aut…
+     21|   fixture.call.mockRejectedValueOnce(new Error("Connection lost after …
+     22|   expect(await (await POST(request())).json()).toMatchObject({ admissi…
+       |                                                ^
+     23|   fixture.call.mockResolvedValueOnce({ requests: [] })
+     24|   fixture.generate.mockRejectedValueOnce(new StudioTransportError(409,…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  10:38:35
+   Duration  983ms (transform 226ms, setup 22ms, collect 451ms, tests 31ms, environment 0ms, prepare 128ms)
+
+undefined
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/manager:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/app/api/studio/calendar-production/route.test.ts

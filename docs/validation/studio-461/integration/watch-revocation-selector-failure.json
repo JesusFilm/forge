@@ -1,0 +1,46 @@
+{
+  "before": [
+    {
+      "resource": "/api/studio/playback/0e1f3972-f1aa-4c5a-847d-ccb6f4e19f2c/index.m3u8",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "resource": "sealed:dd87584e03a28e25",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "resource": "sealed:d59688da0e7a6e0b",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "resource": "/api/studio/playback/0e1f3972-f1aa-4c5a-847d-ccb6f4e19f2c/poster.webp",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "resource": "/api/studio/playback/0e1f3972-f1aa-4c5a-847d-ccb6f4e19f2c/storyboard.vtt",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    },
+    {
+      "resource": "sealed:c834f27dc23ab13e",
+      "status": 200,
+      "cache": "private, no-store, max-age=0"
+    }
+  ],
+  "after": [],
+  "checks": [],
+  "playbackTime": 0.859129,
+  "range": {
+    "status": 206,
+    "length": 128
+  },
+  "head": {
+    "status": 200,
+    "length": 0
+  },
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Unpublish', exact: true })\u001b[22m\n"
+}

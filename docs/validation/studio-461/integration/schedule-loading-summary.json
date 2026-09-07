@@ -1,0 +1,133 @@
+{
+  "design": "Three AB/BA alternating rounds; same origin and backend; restarted variant process warmed by login each route; browser cold/warm; CPU profiler active identically; 1s post-ready observation",
+  "datasetBefore": "5cc70b4b7d0f5906097803eaa035f83f",
+  "datasetAfter": "5cc70b4b7d0f5906097803eaa035f83f",
+  "samples": 12,
+  "errors": null,
+  "groups": {
+    "cold-baseline": {
+      "controlsMs": [
+        517,
+        456.5,
+        518.1999999880791
+      ],
+      "medianControlsMs": 517,
+      "scriptMs": [
+        110.277,
+        109.08500000000001,
+        122.599
+      ],
+      "medianScriptMs": 110.277,
+      "cls": [
+        0,
+        0,
+        0
+      ],
+      "longTasks": [
+        67,
+        67,
+        78
+      ],
+      "requestCounts": [
+        40,
+        40,
+        40
+      ]
+    },
+    "cold-feature": {
+      "controlsMs": [
+        466.5,
+        485.80000001192093,
+        486.40000000596046
+      ],
+      "medianControlsMs": 485.80000001192093,
+      "scriptMs": [
+        111.17299999999999,
+        122.957,
+        123.68700000000001
+      ],
+      "medianScriptMs": 122.957,
+      "cls": [
+        0,
+        0,
+        0
+      ],
+      "longTasks": [
+        75,
+        77,
+        73
+      ],
+      "requestCounts": [
+        38,
+        38,
+        38
+      ]
+    },
+    "warm-baseline": {
+      "controlsMs": [
+        346.5,
+        392.69999998807907,
+        384.80000001192093
+      ],
+      "medianControlsMs": 384.80000001192093,
+      "scriptMs": [
+        82.138,
+        86.50999999999999,
+        95.22599999999998
+      ],
+      "medianScriptMs": 86.50999999999999,
+      "cls": [
+        0,
+        0,
+        0
+      ],
+      "longTasks": [
+        0,
+        0,
+        54
+      ],
+      "requestCounts": [
+        40,
+        40,
+        40
+      ]
+    },
+    "warm-feature": {
+      "controlsMs": [
+        339,
+        446.19999998807907,
+        349.09999999403954
+      ],
+      "medianControlsMs": 349.09999999403954,
+      "scriptMs": [
+        76.08700000000002,
+        108.91199999999999,
+        86.36599999999999
+      ],
+      "medianScriptMs": 86.36599999999999,
+      "cls": [
+        0,
+        0,
+        0
+      ],
+      "longTasks": [
+        0,
+        0,
+        54
+      ],
+      "requestCounts": [
+        38,
+        38,
+        38
+      ]
+    }
+  },
+  "coldDeltaMs": {
+    "medianControlsMs": -31.19999998807907,
+    "medianScriptMs": 12.679999999999993
+  },
+  "warmDeltaMs": {
+    "medianControlsMs": -35.70000001788139,
+    "medianScriptMs": -0.14400000000000546
+  }
+}

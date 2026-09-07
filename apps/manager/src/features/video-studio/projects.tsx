@@ -62,6 +62,9 @@ export function StudioProjects() {
   }, [])
   return (
     <section className="nle-projects">
+      <nav>
+        <Link href="/dashboard/shorts/calendar">Planning calendar</Link>
+      </nav>
       <header>
         <div>
           <p className="nle-eyebrow">VIDEO STUDIO</p>

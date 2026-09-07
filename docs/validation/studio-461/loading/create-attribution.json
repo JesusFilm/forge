@@ -1,0 +1,232 @@
+{
+  "baseline": {
+    "chunks": {
+      "project": [
+        "0~zdggr33u~g-.js"
+      ],
+      "shell": [
+        "020e31uanesrk.js",
+        "0rwxux9-im3nk.js"
+      ]
+    },
+    "samples": [
+      {
+        "round": 0,
+        "sampledSelfCpuMs": {
+          "shell": 3.151,
+          "project": 1.115
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 1,
+        "sampledSelfCpuMs": {
+          "shell": 3.2239999999999998
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 2,
+        "sampledSelfCpuMs": {
+          "shell": 1.079
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 3,
+        "sampledSelfCpuMs": {
+          "project": 2.138
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 4,
+        "sampledSelfCpuMs": {
+          "shell": 2.198
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      }
+    ],
+    "sampledSelfCpuMedians": {
+      "project": 0,
+      "shell": 2.198
+    }
+  },
+  "feature": {
+    "chunks": {
+      "shell": [
+        "07m1d5s0--fa1.js",
+        "0-jjeaxm1um6k.js"
+      ],
+      "project": [
+        "0yk0i5.d.z1rj.js"
+      ],
+      "calendar": [
+        "0h2kq21alu_-..js"
+      ]
+    },
+    "samples": [
+      {
+        "round": 0,
+        "sampledSelfCpuMs": {
+          "shell": 1.075,
+          "project": 2.133
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 1,
+        "sampledSelfCpuMs": {
+          "shell": 2.18
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 2,
+        "sampledSelfCpuMs": {
+          "shell": 2.193,
+          "project": 1.283
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 3,
+        "sampledSelfCpuMs": {
+          "shell": 1.09,
+          "project": 5.074999999999999
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      },
+      {
+        "round": 4,
+        "sampledSelfCpuMs": {
+          "shell": 1.615,
+          "project": 1.085
+        },
+        "calendarClientRequests": [],
+        "nonCodeRequests": {
+          "/jesusfilm-sign.svg": 1,
+          "/favicon.svg": 2,
+          "/api/jobs": 1,
+          "/dashboard/shorts": 2,
+          "/dashboard/agents": 2,
+          "/dashboard/seo": 2,
+          "/dashboard/smart-crop": 2,
+          "/dashboard/jobs": 2,
+          "/dashboard/coverage": 2
+        }
+      }
+    ],
+    "sampledSelfCpuMedians": {
+      "project": 1.283,
+      "shell": 1.615
+    }
+  },
+  "unchangedSampledChunks": {
+    "0zjjbsizuvpvi.js": "53f65509256b9237cf7459591c1b46baaf0e256f44ac9e99ebb3ea9de748844e",
+    "02kbh1yuwe5rg.js": "1c53a4f7cf679357e4b933fadb791db070e149f89dd23c179e4789f2eceaff74",
+    "00jntgjvwqi-r.js": "fea4a9ab63e3a9016e2f10606826a9639dd57db01854d74d61c6d2efd8e19067",
+    "turbopack-00k7djsjxb7ul.js": "44c0bff762650f5e631f49cde11d86b1ad9717b02d631c0d42156131d7a67f02",
+    "03_b.fmhsfym1.js": "ab14f5796035c429e19c288de08fa4017024094e4db40d77cd5ee3e67710e94e"
+  },
+  "studioCreateSourceUnchanged": true
+}

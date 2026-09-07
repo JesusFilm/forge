@@ -1,0 +1,14 @@
+{
+  "missing-source-authorization-red.log": {
+    "sha256": "01b199519cd9e579aea11be6386aaeeefeba7e4668aa7347ad739861f40100e6",
+    "bytes": 54463257,
+    "gzip": "missing-source-authorization-red.log.gz",
+    "gzipSha256": "96c994bbe48698e8532105b6766ee9cab81db9b18945b15f6da220f963ef2b56"
+  },
+  "missing-source-authorization-red-bounded.log": {
+    "sha256": "b6a96f43e8c8772485dd957205370cdf80842558d854dae728cecdbe8f6e18c3",
+    "bytes": 54463258,
+    "gzip": "missing-source-authorization-red-bounded.log.gz",
+    "gzipSha256": "5ca21997bb524c1028a3323c8f525f9b8afd017fa8b8351fd48d7475594e6629"
+  }
+}

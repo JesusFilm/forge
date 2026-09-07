@@ -1,0 +1,267 @@
+{
+  "runs": [
+    {
+      "id": "b50194c3-7452-4c3a-99d6-78f3f04d62a7",
+      "occurrence": "automatic:2026-09-08:06:00",
+      "status": "COMPLETE",
+      "version": 6,
+      "input": {
+        "packs": [
+          {
+            "document": {
+              "title": "Guidance",
+              "sources": [],
+              "guidance": "Hope"
+            },
+            "revisionId": "cmtrquaqd00042c585ijvkrly"
+          }
+        ],
+        "slots": [
+          {
+            "date": "2026-09-23",
+            "version": 0,
+            "weeklyTheme": "Human weekly theme",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-24",
+            "version": 0,
+            "weeklyTheme": "Human weekly theme",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-25",
+            "version": 0,
+            "weeklyTheme": "Human weekly theme",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-26",
+            "version": 0,
+            "weeklyTheme": "Human weekly theme",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-27",
+            "version": 0,
+            "weeklyTheme": "Human weekly theme",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-28",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-29",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-09-30",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-10-01",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-10-02",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-10-03",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-10-04",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          },
+          {
+            "date": "2026-10-05",
+            "version": 0,
+            "weeklyTheme": "",
+            "packRevisionIds": [
+              "cmtrquaqd00042c585ijvkrly"
+            ]
+          }
+        ],
+        "version": 6,
+        "language": "english",
+        "calendarId": "studio-calendar"
+      },
+      "result": {
+        "items": [
+          {
+            "date": "2026-09-23",
+            "theme": "Hope drawn from the assigned guidance",
+            "title": "Hope for the week ahead",
+            "sourceIndices": [],
+            "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+            "expectedVersion": 0
+          }
+        ],
+        "instructions": [
+          {
+            "digest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99",
+            "agentVersionId": "c6d8bac5-13a6-4758-ac28-4b048a945714",
+            "blockVersionId": "08d86e7e-8c75-4922-9a60-1e1c1430f0b6"
+          }
+        ],
+        "effectiveDigest": "5e08e133b5cbf8aa2c7dcbb1075a4a83282eaa6a6f8d24c7f8d9f840f8b3cc99"
+      },
+      "actor": {
+        "id": "system",
+        "kind": "service"
+      },
+      "created_at": "2026-09-07T21:57:34.068",
+      "finished_at": "2026-09-07T21:57:34.179"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "wrun_01M1YXGC8DFHT8A2FRS70YF666",
+      "name": "workflow//./src/workflows/studioCalendar//runStudioCalendarScheduler",
+      "status": "failed",
+      "created_at": "2026-09-08T09:48:35.479664",
+      "updated_at": "2026-09-07T21:48:37.994"
+    },
+    {
+      "id": "wrun_01M1YXMY02X9GF3Q2WEFVZND7G",
+      "name": "workflow//./src/workflows/studioCalendar//runStudioCalendarScheduler",
+      "status": "failed",
+      "created_at": "2026-09-08T09:51:04.713526",
+      "updated_at": "2026-09-07T21:51:07.687"
+    },
+    {
+      "id": "wrun_01M1YY0PM28AGRQB0RV2CWNRPF",
+      "name": "workflow//./src/workflows/studioCalendar//runStudioCalendarScheduler",
+      "status": "running",
+      "created_at": "2026-09-08T09:57:30.37751",
+      "updated_at": "2026-09-07T21:57:33.404"
+    }
+  ],
+  "claims": [
+    {
+      "id": "calendar:b50194c3-7452-4c3a-99d6-78f3f04d62a7",
+      "status": "completed",
+      "instruction_digest": "c37c1f6b1d827b0c1a1f1d974022dc4ae6f0b34a285b2428fe888deab9543d18"
+    }
+  ],
+  "fixtureRequests": [
+    {
+      "path": "/v1/responses",
+      "calendarId": "studio-calendar",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09",
+        "2026-09-10",
+        "2026-09-11",
+        "2026-09-12",
+        "2026-09-13",
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17",
+        "2026-09-18",
+        "2026-09-19",
+        "2026-09-20",
+        "2026-09-21",
+        "2026-09-23",
+        "2026-09-24",
+        "2026-09-25",
+        "2026-09-26",
+        "2026-09-27",
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-02",
+        "2026-10-03",
+        "2026-10-04",
+        "2026-10-05"
+      ],
+      "tools": 0,
+      "result": {
+        "items": [
+          {
+            "date": "2026-09-08",
+            "expectedVersion": 0,
+            "title": "Hope for the week ahead",
+            "theme": "Hope drawn from the assigned guidance",
+            "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+            "sourceIndices": []
+          }
+        ]
+      }
+    },
+    {
+      "path": "/v1/responses",
+      "calendarId": "studio-calendar",
+      "dates": [
+        "2026-09-23",
+        "2026-09-24",
+        "2026-09-25",
+        "2026-09-26",
+        "2026-09-27",
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-02",
+        "2026-10-03",
+        "2026-10-04",
+        "2026-10-05"
+      ],
+      "tools": 0,
+      "result": {
+        "items": [
+          {
+            "date": "2026-09-23",
+            "expectedVersion": 0,
+            "title": "Hope for the week ahead",
+            "theme": "Hope drawn from the assigned guidance",
+            "packRevisionId": "cmtrquaqd00042c585ijvkrly",
+            "sourceIndices": []
+          }
+        ]
+      }
+    }
+  ]
+}

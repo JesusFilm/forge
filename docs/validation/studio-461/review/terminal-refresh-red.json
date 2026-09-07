@@ -1,0 +1,7 @@
+{
+  "source": "definite-production.json",
+  "confirmedNewAttempt": true,
+  "staleCardText": "Production: not started.",
+  "expected": "Production: succeeded.",
+  "result": "red: terminal batch did not refresh parent view"
+}

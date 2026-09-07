@@ -1,0 +1,2546 @@
+(node:2139225) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 build /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+> prisma generate && next build && node scripts/verify-recommendation-workflow-build.mjs && node scripts/verify-studio-calendar-workflow-build.mjs
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 1.57s
+
+✔ Generated Pothos integration to ./../../node_modules/.pnpm/@pothos+plugin-prisma@4.14.3_@pothos+core@4.12.0_graphql@16.13.1__@prisma+client@6.19.3_prism_sqtyjvequyzsqiijhnyuyfdhlm/node_modules/@pothos/plugin-prisma/generated.d.ts in 1.03s
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+Discovering workflow directives 5465ms
+Created steps bundle 172ms
+Created intermediate workflow bundle 285ms
+Creating webhook route
+Creating manifest...
+Created manifest with 67 steps, 18 workflows, and 0 classes 311ms
+▲ Next.js 16.2.4 (Turbopack)
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+Turbopack build encountered 65 warnings:
+./apps/admin/src/scripts/video-db-backup.ts:884:29
+A Node.js API is used (process.argv at line: 884) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m882 |[0m [36mexport[0m [36masync[0m [36mfunction[0m main(
+  [90m883 |[0m   command: [32m"restore"[0m,
+[31m[1m>[0m [90m884 |[0m   argv: readonly string[] = process.argv.slice([35m2[0m),
+  [90m    |[0m                             [31m[1m^^^^^^^^^^^^[0m
+  [90m885 |[0m ): [33mPromise[0m<[36mvoid[0m> {
+  [90m886 |[0m   [36mconst[0m parsed = parseArgs(command, argv)
+  [90m887 |[0m   [36mconst[0m plan = buildRestorePlan(parsed)
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:912:29
+A Node.js API is used (process.argv at line: 912) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m910 |[0m
+  [90m911 |[0m [36mexport[0m [36masync[0m [36mfunction[0m restoreLatestMain(
+[31m[1m>[0m [90m912 |[0m   argv: readonly string[] = process.argv.slice([35m2[0m),
+  [90m    |[0m                             [31m[1m^^^^^^^^^^^^[0m
+  [90m913 |[0m ): [33mPromise[0m<[36mvoid[0m> {
+  [90m914 |[0m   [36mif[0m (argv.some((arg) => arg.startsWith([32m"--in="[0m))) {
+  [90m915 |[0m     [36mthrow[0m [36mnew[0m [33mVideoDbBackupError[0m(
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:964:59
+A Node.js API is used (process.argv at line: 964) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m962 |[0m ...
+  [90m963 |[0m ...
+[31m[1m>[0m [90m964 |[0m ...[36mypeof[0m process.argv[[35m1[0m] === [32m"string"[0m ? process.argv[[35m1[0m] : [32m""[0m
+  [90m    |[0m                                         [31m[1m^^^^^^^^^^^^[0m
+  [90m965 |[0m ...== [32m`file://[0m${invokedPath[32m}`[0m) {
+  [90m966 |[0m ...e(
+  [90m967 |[0m ...[32m] Backup is scheduled-only. Use pnpm --filter @forge/admin restore:video-db for restor...[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup-core.ts:228:5
+A Node.js API is used (process.cwd at line: 228) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m226 |[0m [36mfunction[0m defaultOutPath(profile: [33mVideoDbBackupProfile[0m): string {
+  [90m227 |[0m   [36mreturn[0m resolvePath(
+[31m[1m>[0m [90m228 |[0m     process.cwd(),
+  [90m    |[0m     [31m[1m^^^^^^^^^^^[0m
+  [90m229 |[0m     [32m".tmp"[0m,
+  [90m230 |[0m     [32m"db-backups"[0m,
+  [90m231 |[0m     [32m`video-db-[0m${profile[32m}-[0m${timestamp()[32m}.dump`[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup-core.ts:239:5
+A Node.js API is used (process.cwd at line: 239) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m237 |[0m ): string {
+  [90m238 |[0m   [36mreturn[0m resolvePath(
+[31m[1m>[0m [90m239 |[0m     process.cwd(),
+  [90m    |[0m     [31m[1m^^^^^^^^^^^[0m
+  [90m240 |[0m     [32m".tmp"[0m,
+  [90m241 |[0m     [32m"db-backups"[0m,
+  [90m242 |[0m     [32m`video-db-[0m${profile[32m}-latest.dump`[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:969:3
+A Node.js API is used (process.exit at line: 969) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m967 |[0m     [32m"[video-db-backup] Backup is scheduled-only. Use pnpm --filter @forge/admin restore:v...[0m
+  [90m968 |[0m   )
+[31m[1m>[0m [90m969 |[0m   process.exit([35m1[0m)
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^[0m
+  [90m970 |[0m }
+  [90m971 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/workflow-worker-heartbeat.service.ts:58:5
+A Node.js API is used (process.pid at line: 58) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m56 |[0m     [32m"admin"[0m,
+  [90m57 |[0m     hostname().replace([35m/[^a-zA-Z0-9_.-]/g[0m, [32m"-"[0m),
+[31m[1m>[0m [90m58 |[0m     process.pid,
+  [90m   |[0m     [31m[1m^^^^^^^^^^^[0m
+  [90m59 |[0m     randomUUID().slice([35m0[0m, [35m8[0m),
+  [90m60 |[0m   ].join([32m":"[0m)
+  [90m61 |[0m }
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/workflow-worker-heartbeat.service.ts:64:41
+A Node.js API is used (process.pid at line: 64) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m62 |[0m
+  [90m63 |[0m [36masync[0m [36mfunction[0m recordWorkflowWorkerHeartbeat(workerId: string) {
+[31m[1m>[0m [90m64 |[0m   [36mconst[0m details = [33mJSON[0m.stringify({ pid: process.pid, host: hostname() })
+  [90m   |[0m                                         [31m[1m^^^^^^^^^^^[0m
+  [90m65 |[0m
+  [90m66 |[0m   [36mawait[0m prisma.$executeRaw[32m`[0m
+  [90m67 |[0m [32m    INSERT INTO workflow_worker_heartbeat ([0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/instrumentation.ts:229:5
+A Node.js API is used (process.stderr at line: 229) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m227 |[0m     }
+  [90m228 |[0m
+[31m[1m>[0m [90m229 |[0m     process.stderr.write(
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m230 |[0m       [32m`[workflow-startup] transient startup failure; retrying attempt [0m${attempt + [35m1[0m[32m}/[0m${ma...
+  [90m231 |[0m     )
+  [90m232 |[0m     scheduleWorkflowStartupRetry(attempt + [35m1[0m)
+
+Ecmascript file had an error
+
+Import trace:
+  Instrumentation:
+    ./apps/admin/src/instrumentation.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/scripts/video-db-backup.ts:966:3
+A Node.js API is used (process.stderr at line: 966) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m964 |[0m [36mconst[0m invokedPath = [36mtypeof[0m process.argv[[35m1[0m] === [32m"string"[0m ? process.argv[[35m1[0m] : [32m""[0m
+  [90m965 |[0m [36mif[0m ([36mimport[0m.meta.url === [32m`file://[0m${invokedPath[32m}`[0m) {
+[31m[1m>[0m [90m966 |[0m   process.stderr.write(
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^^^[0m
+  [90m967 |[0m     [32m"[video-db-backup] Backup is scheduled-only. Use pnpm --filter @forge/admin restore:v...[0m
+  [90m968 |[0m   )
+  [90m969 |[0m   process.exit([35m1[0m)
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:730:3
+A Node.js API is used (process.stdout at line: 730) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m728 |[0m     freshness: source.freshness,
+  [90m729 |[0m   }
+[31m[1m>[0m [90m730 |[0m   process.stdout.write([32m`[0m${[33mJSON[0m.stringify(result)[32m}\n`[0m)
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^^^[0m
+  [90m731 |[0m   [36mreturn[0m result
+  [90m732 |[0m }
+  [90m733 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:782:5
+A Node.js API is used (process.stdout at line: 782) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m780 |[0m       freshness: source.freshness,
+  [90m781 |[0m     }
+[31m[1m>[0m [90m782 |[0m     process.stdout.write([32m`[0m${[33mJSON[0m.stringify(result)[32m}\n`[0m)
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m783 |[0m     [36mreturn[0m result
+  [90m784 |[0m   } [36mfinally[0m {
+  [90m785 |[0m     s3.destroy()
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:800:3
+A Node.js API is used (process.stdout at line: 800) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m798 |[0m ): [33mPromise[0m<[33mVideoDbBackupJobResult[0m> {
+  [90m799 |[0m   [36mconst[0m plan = buildBackupPlan(parsed, env)
+[31m[1m>[0m [90m800 |[0m   process.stdout.write([32m`[0m${[33mJSON[0m.stringify(printablePlan(plan))[32m}\n`[0m)
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^^^[0m
+  [90m801 |[0m
+  [90m802 |[0m   [36mif[0m (parsed.dryRun) {
+  [90m803 |[0m     [36mconst[0m result: [33mVideoDbBackupJobResult[0m = {
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:812:5
+A Node.js API is used (process.stdout at line: 812) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m810 |[0m         : [36mundefined[0m,
+  [90m811 |[0m     }
+[31m[1m>[0m [90m812 |[0m     process.stdout.write([32m`[0m${[33mJSON[0m.stringify(result)[32m}\n`[0m)
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m813 |[0m     [36mreturn[0m result
+  [90m814 |[0m   }
+  [90m815 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:822:5
+A Node.js API is used (process.stdout at line: 822) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m820 |[0m     [36mconst[0m exportDurationMs = elapsedMilliseconds(exportStartedAt)
+  [90m821 |[0m     [36mconst[0m dumpSize = ([36mawait[0m stat(plan.outPath)).size
+[31m[1m>[0m [90m822 |[0m     process.stdout.write(
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m823 |[0m       [32m`[0m${[33mJSON[0m.stringify({
+  [90m824 |[0m         event: [32m"video-db.backup.dump.complete"[0m,
+  [90m825 |[0m         profile: plan.profile,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:839:9
+A Node.js API is used (process.stdout at line: 839) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m837 |[0m       } [36mcatch[0m (error) {
+  [90m838 |[0m         uploadDurationMs = elapsedMilliseconds(uploadStartedAt)
+[31m[1m>[0m [90m839 |[0m         process.stdout.write(
+  [90m    |[0m         [31m[1m^^^^^^^^^^^^^^[0m
+  [90m840 |[0m           [32m`[0m${[33mJSON[0m.stringify({
+  [90m841 |[0m             event: [32m"video-db.backup.upload.failed"[0m,
+  [90m842 |[0m             profile: plan.profile,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:867:5
+A Node.js API is used (process.stdout at line: 867) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m865 |[0m         : [36mundefined[0m,
+  [90m866 |[0m     }
+[31m[1m>[0m [90m867 |[0m     process.stdout.write([32m`[0m${[33mJSON[0m.stringify(result)[32m}\n`[0m)
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m868 |[0m     [36mreturn[0m result
+  [90m869 |[0m   } [36mfinally[0m {
+  [90m870 |[0m     [36mif[0m (plan.generatedOutPath) {
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:889:3
+A Node.js API is used (process.stdout at line: 889) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m887 |[0m   [36mconst[0m plan = buildRestorePlan(parsed)
+  [90m888 |[0m
+[31m[1m>[0m [90m889 |[0m   process.stdout.write([32m`[0m${[33mJSON[0m.stringify(printablePlan(plan))[32m}\n`[0m)
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^^^[0m
+  [90m890 |[0m
+  [90m891 |[0m   [36mif[0m (parsed.dryRun) {
+  [90m892 |[0m     process.stdout.write(
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:892:5
+A Node.js API is used (process.stdout at line: 892) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m890 |[0m
+  [90m891 |[0m   [36mif[0m (parsed.dryRun) {
+[31m[1m>[0m [90m892 |[0m     process.stdout.write(
+  [90m    |[0m     [31m[1m^^^^^^^^^^^^^^[0m
+  [90m893 |[0m       [32m`[0m${[33mJSON[0m.stringify({ event: [32m"video-db.restore.dry-run-complete"[0m })[32m}\n`[0m,
+  [90m894 |[0m     )
+  [90m895 |[0m     [36mreturn[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:900:3
+A Node.js API is used (process.stdout at line: 900) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m898 |[0m   [36mconst[0m restoreStartedAt = performance.now()
+  [90m899 |[0m   [36mawait[0m executeBuiltRestorePlan(plan, captureCommand)
+[31m[1m>[0m [90m900 |[0m   process.stdout.write(
+  [90m    |[0m   [31m[1m^^^^^^^^^^^^^^[0m
+  [90m901 |[0m     [32m`[0m${[33mJSON[0m.stringify({
+  [90m902 |[0m       event: [32m"video-db.restore.complete"[0m,
+  [90m903 |[0m       profile: plan.profile,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:930:7
+A Node.js API is used (process.stdout at line: 930) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m928 |[0m       )
+  [90m929 |[0m
+[31m[1m>[0m [90m930 |[0m       process.stdout.write(
+  [90m    |[0m       [31m[1m^^^^^^^^^^^^^^[0m
+  [90m931 |[0m         [32m`[0m${[33mJSON[0m.stringify({
+  [90m932 |[0m           event: [32m"video-db.restore-latest.plan"[0m,
+  [90m933 |[0m           profile: parsed.profile,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:949:7
+A Node.js API is used (process.stdout at line: 949) which is not supported in the Edge Runtime.
+    Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+  [90m947 |[0m         })[32m}\n`[0m,
+  [90m948 |[0m       )
+[31m[1m>[0m [90m949 |[0m       process.stdout.write(
+  [90m    |[0m       [31m[1m^^^^^^^^^^^^^^[0m
+  [90m950 |[0m         [32m`[0m${[33mJSON[0m.stringify({ event: [32m"video-db.restore-latest.dry-run-complete"[0m })[32m}\n`[0m,
+  [90m951 |[0m       )
+  [90m952 |[0m       [36mreturn[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:18:1
+A Node.js module is loaded ('node:child_process' at line 18) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m16 |[0m [90m */[0m
+  [90m17 |[0m
+[31m[1m>[0m [90m18 |[0m [36mimport[0m { spawn } [36mfrom[0m [32m"node:child_process"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m19 |[0m [36mimport[0m { createReadStream, createWriteStream } [36mfrom[0m [32m"node:fs"[0m
+  [90m20 |[0m [36mimport[0m { mkdir, rm, stat } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/embeddings.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m [36mtype[0m { [33mPrisma[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m3 |[0m [36mimport[0m { z } [36mfrom[0m [32m"zod"[0m
+  [90m4 |[0m [36mimport[0m { canWriteDerived } [36mfrom[0m [32m"@/auth/permissions"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/embeddings.service.ts
+    ./apps/admin/src/app/api/search/health/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/embeddings.service.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/embeddings.service.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Server Component]:
+    ./apps/admin/src/services/embeddings.service.ts
+    ./apps/admin/src/services/experience-ai/experience-ai-exemplar.service.ts
+    ./apps/admin/src/app/dashboard/experiences/generate-draft-action.ts
+    ./apps/admin/src/app/dashboard/experiences/[id]/page.tsx
+
+  #5 [Instrumentation]:
+    ./apps/admin/src/services/embeddings.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/recommendations/admission.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash, randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { env } [36mfrom[0m [32m"@/config/env"[0m
+  [90m3 |[0m [36mimport[0m { getRedisClient } [36mfrom[0m [32m"@/infra/redis"[0m
+  [90m4 |[0m [36mimport[0m { [33mRecommendationInternalStateError[0m } [36mfrom[0m [32m"./errors"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/admission.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [App Route]:
+    ./apps/admin/src/services/recommendations/admission.ts
+    ./apps/admin/src/services/recommendations/delivery.factory.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/app/api/recommendations/promotion/route.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/admission.ts
+    ./apps/admin/src/services/recommendations/delivery.factory.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/admission.ts
+    ./apps/admin/src/services/recommendations/delivery.factory.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/admission.ts
+    ./apps/admin/src/services/recommendations/delivery.factory.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/promotion/job.ts
+    ./apps/admin/src/workflows/recommendationPromotion.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/control-readiness/service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash, randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationControlDimensionOutcome[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/control-readiness/service.ts
+    ./apps/admin/src/services/recommendations/control-readiness/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/control-readiness/service.ts
+    ./apps/admin/src/services/recommendations/control-readiness/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/control-readiness/service.ts
+    ./apps/admin/src/services/recommendations/control-readiness/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/control-readiness/service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/control-readiness/service.ts
+    ./apps/admin/src/services/recommendations/control-readiness/job.ts
+    ./apps/admin/src/workflows/recommendationControlReadiness.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/delivery.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mRecommendationAuditKind[0m,
+  [90m4 |[0m   [33mRecommendationDeliveryResult[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/app/api/recommendations/promotion/route.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/promotion/job.ts
+    ./apps/admin/src/workflows/recommendationPromotion.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/evidence.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash, randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mRecommendationAuditKind[0m,
+  [90m4 |[0m   [33mRecommendationExperimentArm[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/graphql/mutations/recommendation-evidence.ts
+    ./apps/admin/src/graphql/schema.ts
+    ./apps/admin/src/app/api/graphql/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/workflows/recommendationEpisodeFinalization.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/integrity.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationContentActionActorClass[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/integrity.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/integrity.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/integrity.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Server Component]:
+    ./apps/admin/src/services/recommendations/integrity.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/workflows/recommendationEpisodeFinalization.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #5 [App Route]:
+    ./apps/admin/src/services/recommendations/integrity.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/services/recommendations/playback.service.ts
+    ./apps/admin/src/graphql/mutations/recommendation-evidence.ts
+    ./apps/admin/src/graphql/schema.ts
+    ./apps/admin/src/app/api/graphql/route.ts
+
+
+./apps/admin/src/services/recommendations/orchestration.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { dedupeByVideoIdentity } [36mfrom[0m [32m"@/services/video-dedup"[0m
+  [90m3 |[0m [36mimport[0m {
+  [90m4 |[0m   [33mCANDIDATE_CONTEXT_VERSION[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/orchestration.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/app/api/recommendations/promotion/route.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/orchestration.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/orchestration.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/orchestration.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/orchestration.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/promotion/job.ts
+    ./apps/admin/src/workflows/recommendationPromotion.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/outcome.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationEpisodeState[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Server Component]:
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/workflows/recommendationEpisodeFinalization.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #5 [App Route]:
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/services/recommendations/playback.service.ts
+    ./apps/admin/src/graphql/mutations/recommendation-evidence.ts
+    ./apps/admin/src/graphql/schema.ts
+    ./apps/admin/src/app/api/graphql/route.ts
+
+
+./apps/admin/src/services/recommendations/profiles/job.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationProfileProjectionRunState[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [App Route]:
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/graphql/mutations/recommendation-profile.ts
+    ./apps/admin/src/graphql/schema.ts
+    ./apps/admin/src/app/api/graphql/route.ts
+
+  #4 [Server Component]:
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/workflows/recommendationProfileProjection.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #5 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash, randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { [33mPrisma[0m, [36mtype[0m [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m3 |[0m [36mimport[0m { [33mMULTI_INTEREST_PROFILE_MANIFEST_ID[0m } [36mfrom[0m [32m"../candidates/profile-candidate.service"[0m
+  [90m4 |[0m [36mimport[0m { [33mRecommendationInternalStateError[0m } [36mfrom[0m [32m"../errors"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [App Route]:
+    ./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/graphql/mutations/recommendation-profile.ts
+    ./apps/admin/src/graphql/schema.ts
+    ./apps/admin/src/app/api/graphql/route.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/profiles/profile-projection.service.ts
+    ./apps/admin/src/services/recommendations/profiles/job.ts
+    ./apps/admin/src/workflows/recommendationProfileProjection.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/promotion/manifest.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { [33mBOOTSTRAP_RECOMMENDATION_MANIFEST_ID[0m } [36mfrom[0m [32m"../manifest.service"[0m
+  [90m3 |[0m [36mimport[0m {
+  [90m4 |[0m   [33mDELIVERY_RETRIEVAL_BUDGET_MS[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/promotion/manifest.ts
+    ./apps/admin/src/services/recommendations/shadow-evaluation/operator.ts
+    ./apps/admin/src/app/api/recommendations/shadow-evaluations/route.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/manifest.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/recommendations/promotion/manifest.ts
+    ./apps/admin/src/services/recommendations/admin-ops/overview-profile-promotion.ts
+    ./apps/admin/src/services/recommendations/admin-ops/overview.service.ts
+    ./apps/admin/src/services/recommendations/admin-ops/index.ts
+    ./apps/admin/src/app/dashboard/recommendations/[requestId]/page.tsx
+
+  #4 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/manifest.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/manifest.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/recommendations/promotion/service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationPromotionEventType[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/app/api/recommendations/promotion/route.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/evidence.service.ts
+    ./apps/admin/src/services/recommendations/outcome.service.ts
+    ./apps/admin/src/services/recommendations/finalization/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/services/recommendations/promotion/job.ts
+    ./apps/admin/src/workflows/recommendationPromotion.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/recommendations/retention.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m {
+  [90m3 |[0m   [33mPrisma[0m,
+  [90m4 |[0m   [33mRecommendationConsentReceiptState[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/recommendations/retention.service.ts
+    ./apps/admin/src/services/recommendations/retention/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/retention.service.ts
+    ./apps/admin/src/services/recommendations/retention/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/recommendations/retention.service.ts
+    ./apps/admin/src/services/recommendations/admin-ops/overview.service.ts
+    ./apps/admin/src/services/recommendations/admin-ops/index.ts
+    ./apps/admin/src/app/dashboard/recommendations/[requestId]/page.tsx
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/recommendations/retention.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [App Route]:
+    ./apps/admin/src/services/recommendations/retention.service.ts
+    ./apps/admin/src/services/recommendations/delivery.factory.ts
+    ./apps/admin/src/services/recommendations/delivery.service.ts
+    ./apps/admin/src/services/recommendations/promotion/service.ts
+    ./apps/admin/src/app/api/recommendations/promotion/route.ts
+
+
+./apps/admin/src/services/studio-authoring/calendar.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { [33mPrisma[0m, [36mtype[0m [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m3 |[0m [36mimport[0m { z } [36mfrom[0m [32m"zod"[0m
+  [90m4 |[0m [36mimport[0m {
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/app/api/studio/calendar-worker/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/watch-route-manifest.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m3 |[0m [36mimport[0m { z } [36mfrom[0m [32m"zod"[0m
+  [90m4 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Instrumentation]:
+    ./apps/admin/src/services/watch-route-manifest.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [App Route]:
+    ./apps/admin/src/services/watch-route-manifest.service.ts
+    ./apps/admin/src/services/watch-route-manifest-refresh.service.ts
+    ./apps/admin/src/services/experience.service.ts
+    ./apps/admin/src/services/experience-mcp.service.ts
+    ./apps/admin/src/app/mcp/route.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/watch-route-manifest.service.ts
+    ./apps/admin/src/services/watch-route-manifest-refresh.service.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/watch-route-manifest.service.ts
+    ./apps/admin/src/services/watch-route-manifest-refresh.service.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/watch-route-manifest.service.ts
+    ./apps/admin/src/services/watch-route-manifest-refresh.service.ts
+    ./apps/admin/src/services/experience.service.ts
+    ./apps/admin/src/services/index.ts
+    ./apps/admin/src/app/dashboard/ops-data.ts
+    ./apps/admin/src/app/dashboard/page.tsx
+
+
+./apps/admin/src/services/watch-search.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash, randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m
+  [90m3 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m4 |[0m [36mimport[0m {
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/app/api/internal/search-eval/search/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/mastra/tools/search-videos.ts
+    ./apps/admin/src/mastra/agents/default-chat-agent.ts
+    ./apps/admin/src/mastra/index.ts
+    ./apps/admin/src/app/dashboard/experiences/generate-draft-action.ts
+    ./apps/admin/src/app/dashboard/experiences/[id]/page.tsx
+
+
+./apps/admin/src/services/watch-seo-manifest.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m3 |[0m [36mimport[0m { z } [36mfrom[0m [32m"zod"[0m
+  [90m4 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/watch-seo-manifest.service.ts
+    ./apps/admin/src/services/watch-seo-manifest-store.ts
+    ./apps/admin/src/app/api/watch-seo-manifest/route.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/watch-seo-manifest.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Edge Instrumentation]:
+    ./apps/admin/src/services/watch-seo-manifest.service.ts
+    ./apps/admin/src/services/watch-seo-manifest-refresh.service.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/watch-seo-manifest.service.ts
+    ./apps/admin/src/services/watch-seo-manifest-refresh.service.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/workflow-worker-heartbeat.service.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { hostname } [36mfrom[0m [32m"node:os"[0m
+  [90m3 |[0m [36mimport[0m { [33mPrisma[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m4 |[0m [36mimport[0m { prisma } [36mfrom[0m [32m"@/db/client"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./packages/studio-server/src/hash.ts:1:1
+A Node.js module is loaded ('node:crypto' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m
+  [90m3 |[0m [90m/** Existing canonical Admin hash; array order and exact string bytes are significant. */[0m
+  [90m4 |[0m [36mexport[0m [36mfunction[0m studioHash(value: unknown): string {
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./packages/studio-server/src/hash.ts
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/app/api/studio/calendar-worker/route.ts
+
+  Edge Instrumentation:
+    ./packages/studio-server/src/hash.ts
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./packages/studio-server/src/hash.ts
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./packages/studio-server/src/index.ts:3:1
+A Node.js module is loaded ('node:crypto' at line 3) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m1 |[0m [36mexport[0m { studioHash } [36mfrom[0m [32m"./hash"[0m
+  [90m2 |[0m [90m// Node-only authenticated transport. No application imports or default credentials.[0m
+[31m[1m>[0m [90m3 |[0m [36mimport[0m { createHash } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m4 |[0m [36mimport[0m {
+  [90m5 |[0m   [33mSignJWT[0m,
+  [90m6 |[0m   importPKCS8,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./packages/studio-server/src/index.ts
+    ./apps/admin/src/app/api/studio/calendar-worker/route.ts
+
+  Edge Instrumentation:
+    ./packages/studio-server/src/index.ts
+    ./apps/admin/src/services/studio-authoring/state.ts
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./packages/studio-server/src/index.ts
+    ./apps/admin/src/services/studio-authoring/state.ts
+    ./apps/admin/src/services/studio-authoring/calendar.ts
+    ./apps/admin/src/services/studio-authoring/calendar-scheduler.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-countries.ts:4:1
+A Node.js module is loaded ('node:crypto' at line 4) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m2 |[0m [90m// Depends on: languages (for continent localized names)[0m
+  [90m3 |[0m
+[31m[1m>[0m [90m4 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m5 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m6 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m7 |[0m [36mimport[0m { coreQuery } [36mfrom[0m [32m"../core-client"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-countries.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-countries.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-countries.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-countries.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-keywords.ts:4:1
+A Node.js module is loaded ('node:crypto' at line 4) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m2 |[0m [90m// Depends on: languages (keyword.languageId FK)[0m
+  [90m3 |[0m
+[31m[1m>[0m [90m4 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m5 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m6 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m7 |[0m [36mimport[0m { coreQuery } [36mfrom[0m [32m"../core-client"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-keywords.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-keywords.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-keywords.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-keywords.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-dub-downloads.ts:5:1
+A Node.js module is loaded ('node:crypto' at line 5) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m3 |[0m
+  [90m4 |[0m [36mimport[0m [36mtype[0m { [33mPrisma[0m, [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+[31m[1m>[0m [90m5 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m7 |[0m [36mimport[0m { coreQuery, [33mCoreGraphQLError[0m } [36mfrom[0m [32m"../core-client"[0m
+  [90m8 |[0m [36mimport[0m { [33mCoreDubDownloadSchema[0m } [36mfrom[0m [32m"../schemas/dub-download"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-dub-downloads.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dub-downloads.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dub-downloads.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dub-downloads.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-languages.ts:6:1
+A Node.js module is loaded ('node:crypto' at line 6) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m4 |[0m [90m// localized name stored as a JSON column keyed by locale.[0m
+  [90m5 |[0m
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m8 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m9 |[0m [36mimport[0m { coreQuery } [36mfrom[0m [32m"../core-client"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-languages.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-languages.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-languages.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-languages.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-video-editions.ts:6:1
+A Node.js module is loaded ('node:crypto' at line 6) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m4 |[0m
+  [90m5 |[0m [36mimport[0m [36mtype[0m { [33mPrisma[0m, [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+[31m[1m>[0m [90m6 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m7 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m8 |[0m [36mimport[0m { coreQuery } [36mfrom[0m [32m"../core-client"[0m
+  [90m9 |[0m [36mimport[0m { [33mCoreVideoEditionSchema[0m } [36mfrom[0m [32m"../schemas/video-edition"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-editions.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-editions.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-editions.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-editions.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-videos.ts:7:1
+A Node.js module is loaded ('node:crypto' at line 7) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m 5 |[0m [90m// source='manager' rows are NEVER overwritten (short-circuit on upsert).[0m
+  [90m 6 |[0m
+[31m[1m>[0m [90m 7 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 8 |[0m [36mimport[0m [36mtype[0m { [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m 9 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m10 |[0m [36mimport[0m { coreQuery } [36mfrom[0m [32m"../core-client"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-videos.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-videos.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-videos.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-videos.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-dubs.ts:8:1
+A Node.js module is loaded ('node:crypto' at line 8) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m 6 |[0m
+  [90m 7 |[0m [36mimport[0m [36mtype[0m { [33mPrisma[0m, [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+[31m[1m>[0m [90m 8 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m 9 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m10 |[0m [36mimport[0m { coreQuery, [33mCoreGraphQLError[0m } [36mfrom[0m [32m"../core-client"[0m
+  [90m11 |[0m [36mimport[0m { [33mCoreDubSchema[0m } [36mfrom[0m [32m"../schemas/dub"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-dubs.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dubs.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dubs.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-dubs.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts:9:1
+A Node.js module is loaded ('node:crypto' at line 9) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m 7 |[0m
+  [90m 8 |[0m [36mimport[0m [36mtype[0m { [33mPrisma[0m, [33mPrismaClient[0m } [36mfrom[0m [32m"@prisma/client"[0m
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m [36mimport[0m [36mtype[0m { [33mSyncStats[0m, [33mProgressReporter[0m } [36mfrom[0m [32m"../types"[0m
+  [90m11 |[0m [36mimport[0m { coreQuery, [33mCoreGraphQLError[0m } [36mfrom[0m [32m"../core-client"[0m
+  [90m12 |[0m [36mimport[0m { [33mCoreVideoSubtitleSchema[0m } [36mfrom[0m [32m"../schemas/video-subtitle"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/app/api/core-sync/scheduled/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
+    ./apps/admin/src/services/core-sync/orchestrator.ts
+    ./apps/admin/src/services/core-sync/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/core-sync/phases/sync-video-subtitles.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/scripts/video-db-backup.ts:19:1
+A Node.js module is loaded ('node:fs' at line 19) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m17 |[0m
+  [90m18 |[0m [36mimport[0m { spawn } [36mfrom[0m [32m"node:child_process"[0m
+[31m[1m>[0m [90m19 |[0m [36mimport[0m { createReadStream, createWriteStream } [36mfrom[0m [32m"node:fs"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m20 |[0m [36mimport[0m { mkdir, rm, stat } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup-core.ts:1:1
+A Node.js module is loaded ('node:fs/promises' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { mkdir, open } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m [36mimport[0m { basename, dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m3 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m4 |[0m [36mimport[0m { [33mVideoDbBackupError[0m } [36mfrom[0m [32m"@/services/video-db-backup/errors"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:20:1
+A Node.js module is loaded ('node:fs/promises' at line 20) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m18 |[0m [36mimport[0m { spawn } [36mfrom[0m [32m"node:child_process"[0m
+  [90m19 |[0m [36mimport[0m { createReadStream, createWriteStream } [36mfrom[0m [32m"node:fs"[0m
+[31m[1m>[0m [90m20 |[0m [36mimport[0m { mkdir, rm, stat } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m23 |[0m [36mimport[0m { [33mReadable[0m } [36mfrom[0m [32m"node:stream"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/workflow-worker-heartbeat.service.ts:2:1
+A Node.js module is loaded ('node:os' at line 2) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m1 |[0m [36mimport[0m { randomUUID } [36mfrom[0m [32m"node:crypto"[0m
+[31m[1m>[0m [90m2 |[0m [36mimport[0m { hostname } [36mfrom[0m [32m"node:os"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m3 |[0m [36mimport[0m { [33mPrisma[0m } [36mfrom[0m [32m"@prisma/client"[0m
+  [90m4 |[0m [36mimport[0m { prisma } [36mfrom[0m [32m"@/db/client"[0m
+  [90m5 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [Edge Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #2 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Server Component]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/workflow-worker-heartbeat.service.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/src/scripts/video-db-backup-core.ts:2:1
+A Node.js module is loaded ('node:path' at line 2) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m1 |[0m [36mimport[0m { mkdir, open } [36mfrom[0m [32m"node:fs/promises"[0m
+[31m[1m>[0m [90m2 |[0m [36mimport[0m { basename, dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m3 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m4 |[0m [36mimport[0m { [33mVideoDbBackupError[0m } [36mfrom[0m [32m"@/services/video-db-backup/errors"[0m
+  [90m5 |[0m [36mimport[0m [36mtype[0m { [33mVideoDbBackupFreshnessAvailable[0m } [36mfrom[0m [32m"@/services/video-db-backup/freshness"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:21:1
+A Node.js module is loaded ('node:path' at line 21) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m19 |[0m [36mimport[0m { createReadStream, createWriteStream } [36mfrom[0m [32m"node:fs"[0m
+  [90m20 |[0m [36mimport[0m { mkdir, rm, stat } [36mfrom[0m [32m"node:fs/promises"[0m
+[31m[1m>[0m [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m23 |[0m [36mimport[0m { [33mReadable[0m } [36mfrom[0m [32m"node:stream"[0m
+  [90m24 |[0m [36mimport[0m { finished, pipeline } [36mfrom[0m [32m"node:stream/promises"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/services/hybrid-search-timing.ts:1:1
+A Node.js module is loaded ('node:perf_hooks' at line 1) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+[31m[1m>[0m [90m1 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m2 |[0m
+  [90m3 |[0m [36mexport[0m [36mtype[0m [33mSearchTimingPipelineMode[0m =
+  [90m4 |[0m   | [32m"hybrid"[0m
+
+Ecmascript file had an error
+
+Import traces:
+  #1 [App Route]:
+    ./apps/admin/src/services/hybrid-search-timing.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/app/api/internal/search-eval/search/route.ts
+
+  #2 [Edge Instrumentation]:
+    ./apps/admin/src/services/hybrid-search-timing.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #3 [Instrumentation]:
+    ./apps/admin/src/services/hybrid-search-timing.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #4 [Instrumentation]:
+    ./apps/admin/src/services/hybrid-search-timing.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  #5 [Server Component]:
+    ./apps/admin/src/services/hybrid-search-timing.ts
+    ./apps/admin/src/services/watch-search.service.ts
+    ./apps/admin/src/services/index.ts
+    ./apps/admin/src/app/dashboard/ops-data.ts
+    ./apps/admin/src/app/dashboard/search/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:22:1
+A Node.js module is loaded ('node:perf_hooks' at line 22) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m20 |[0m [36mimport[0m { mkdir, rm, stat } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+[31m[1m>[0m [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m23 |[0m [36mimport[0m { [33mReadable[0m } [36mfrom[0m [32m"node:stream"[0m
+  [90m24 |[0m [36mimport[0m { finished, pipeline } [36mfrom[0m [32m"node:stream/promises"[0m
+  [90m25 |[0m
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup-core.ts:3:1
+A Node.js module is loaded ('node:perf_hooks' at line 3) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m1 |[0m [36mimport[0m { mkdir, open } [36mfrom[0m [32m"node:fs/promises"[0m
+  [90m2 |[0m [36mimport[0m { basename, dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+[31m[1m>[0m [90m3 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m4 |[0m [36mimport[0m { [33mVideoDbBackupError[0m } [36mfrom[0m [32m"@/services/video-db-backup/errors"[0m
+  [90m5 |[0m [36mimport[0m [36mtype[0m { [33mVideoDbBackupFreshnessAvailable[0m } [36mfrom[0m [32m"@/services/video-db-backup/freshness"[0m
+  [90m6 |[0m [36mimport[0m {
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:23:1
+A Node.js module is loaded ('node:stream' at line 23) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m21 |[0m [36mimport[0m { dirname, resolve [36mas[0m resolvePath } [36mfrom[0m [32m"node:path"[0m
+  [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+[31m[1m>[0m [90m23 |[0m [36mimport[0m { [33mReadable[0m } [36mfrom[0m [32m"node:stream"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m24 |[0m [36mimport[0m { finished, pipeline } [36mfrom[0m [32m"node:stream/promises"[0m
+  [90m25 |[0m
+  [90m26 |[0m [36mimport[0m {
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/src/scripts/video-db-backup.ts:24:1
+A Node.js module is loaded ('node:stream/promises' at line 24) which is not supported in the Edge Runtime.
+    Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+  [90m22 |[0m [36mimport[0m { performance } [36mfrom[0m [32m"node:perf_hooks"[0m
+  [90m23 |[0m [36mimport[0m { [33mReadable[0m } [36mfrom[0m [32m"node:stream"[0m
+[31m[1m>[0m [90m24 |[0m [36mimport[0m { finished, pipeline } [36mfrom[0m [32m"node:stream/promises"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m25 |[0m
+  [90m26 |[0m [36mimport[0m {
+  [90m27 |[0m   [36mtype[0m [33mBackupDownloadSignerEnv[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  App Route:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/app/.well-known/workflow/v1/step/route.js
+
+  Edge Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Instrumentation:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+  Server Component:
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/workflows/videoDbBackup.ts
+    ./apps/admin/src/workflows/registry.ts
+    ./apps/admin/src/app/dashboard/workflows/page.tsx
+
+
+./apps/admin/next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  Instrumentation:
+    ./apps/admin/next.config.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Output asset trace:
+  [output]/apps/admin/.next/server/app/.well-known/workflow/v1/step/route.js
+  [output]/apps/admin/.next/server/chunks/_0aazg41._.js
+
+Import trace:
+  Instrumentation:
+    ./apps/admin/next.config.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+./apps/admin/next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Output asset trace:
+  [output]/apps/admin/.next/server/instrumentation.js
+  [output]/apps/admin/.next/server/chunks/[root-of-the-server]__0qd6a8.._.js
+
+Import trace:
+  Instrumentation:
+    ./apps/admin/next.config.ts
+    ./apps/admin/src/scripts/video-db-backup-core.ts
+    ./apps/admin/src/scripts/video-db-backup.ts
+    ./apps/admin/src/services/video-db-backup/job.ts
+    ./apps/admin/src/instrumentation.ts
+
+
+✓ Compiled successfully in 41s
+  Running TypeScript ...
+Failed to type check.
+
+./src/services/studio-authoring/calendar.ts:427:11
+Type error: Variable 'slots' implicitly has type 'any[]' in some locations where its type cannot be determined.
+
+  [90m425 |[0m     [36mconst[0m config = [36mawait[0m calendarSettings(tx, calendarId),
+  [90m426 |[0m       days = calendarDays(config.settings.timeZone)
+[31m[1m>[0m [90m427 |[0m     [36mconst[0m slots = []
+  [90m    |[0m           [31m[1m^[0m
+  [90m428 |[0m     [36mconst[0m weeks = [36mawait[0m tx.studioPlanWeek.findMany({
+  [90m429 |[0m       where: { calendarId },
+  [90m430 |[0m       orderBy: { startDate: [32m"desc"[0m },
+Next.js build worker exited with code: 1 and signal: null
+/home/tataihono/.codex/worktrees/5b8f/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/admin@0.0.1 build: `prisma generate && next build && node scripts/verify-recommendation-workflow-build.mjs && node scripts/verify-studio-calendar-workflow-build.mjs`
+Exit status 1

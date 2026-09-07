@@ -1,0 +1,23 @@
+(node:2279381) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 test /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+> vitest run "src/auth/rate-limit.test.ts" "src/config/env.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/5b8f/forge/apps/admin
+
+stderr | src/auth/rate-limit.test.ts > rateLimitAuthRoute > falls back to local when Redis connect/incr fails
+[ratelimit] event=rate_limit.redis_unavailable keyPrefix=sign-in/email error=redis_not_ready_reconnecting
+
+stderr | src/auth/rate-limit.test.ts > incrementFixedWindow (redis path) > returns source=redis with the INCR count from a live Redis eval
+[redis] event=redis.error message=Owned unit harness denies shared default service ports service=forge-admin
+
+ ✓ src/config/env.test.ts (64 tests) 92ms
+ ✓ src/auth/rate-limit.test.ts (8 tests) 460ms
+
+ Test Files  2 passed (2)
+      Tests  72 passed (72)
+   Start at  11:46:00
+   Duration  1.26s (transform 283ms, setup 34ms, collect 364ms, tests 551ms, environment 0ms, prepare 242ms)
+

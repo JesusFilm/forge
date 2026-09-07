@@ -17,7 +17,8 @@
     "./generation": "./src/generation.ts",
     "./publication": "./src/publication.ts",
     "./render": "./src/render.ts",
-    "./publication-state": "./src/publication-state.ts"
+    "./publication-state": "./src/publication-state.ts",
+    "./calendar": "./src/calendar.ts"
   },
   "scripts": {
     "test": "vitest run",
