@@ -1,5 +1,5 @@
 {
-  "HANDOFF.md": "1eb34f13de9aed0b004e2ee1fbf620ad968bcf27feb03ad8f13956988d43542b",
+  "HANDOFF.md": "0a61adbc151dda05e352768f2a84d0c9dab78021a73fff3ca93f68e25702bed2",
   "README.md": "9eb58786eda368c9e7384a1ea1aab00d20c65aee468905990551372a172005f3",
   "browser/calendar-adapter-source-green.log": "8974f574d70960afeb8d9f8f3d3e086b0dbb6b315ce803cd2ea9f66eb7856951",
   "browser/calendar-adapter-source-red.log": "5d01ff93b2f7c9b181d074b0e7c2a3de29bbe98ce6e66b29c1322221544f3c48",
@@ -16,7 +16,7 @@
   "calendar-pack-union-green.log": "2d87c07f53d8a30ec6203c2cd8ab74338cc2f748d818408adccc91d708bc2b48",
   "calendar-pack-union-red.log": "5db99065fe02d3cceb2f5afe2d038e3717529c75b1f61e80340ddd4c524145bb",
   "calendar-slot-wait-test.log": "89191c6cf4c55d50ebb58b1254eb2079f443d63207b7c4be79e09a53c2d3f942",
-  "integration/README.md": "e383a64daf4980edfc0bcde339e4d9a61098acefa2425f9c37d47e8e256c9a18",
+  "integration/README.md": "caad2acf71474204d3a6c4a79ca9e1ce352bf2380007d9a30ec6bf64a6fac4a4",
   "integration/admin-final-typecheck.log": "ccaecb649f9c9845f3127f7e5e0df2d8ea088fb0429a8c7c60385c81878246f0",
   "integration/admin-full-clean-environment.log": "f40fb9f157fe8dd1a2d5c83d5edcba0fa1c8b0bc9541ee855218f7c476e91c1a",
   "integration/admin-full-tests.log": "8603523d786a817a0f4f8b61552653b2b420057ac304a466437819e8d6e7f0b1",
@@ -34,6 +34,7 @@
   "integration/dispatch-migration.log": "ca255e4cc4afd7adc23e964e44d117648e884d1f38a18fb56044e5e7f0bd6876",
   "integration/final-format.log": "70a61dd5ef9920d85a3fa0c5a25bbe40afbe124eb19751659bc9cdec97f8123c",
   "integration/frozen-install.log": "d9970ee8c31ed6724e6d2c3cc3393643db893771950c1c86bcef104b46257467",
+  "integration/implementation-commit-hooks.log": "3bf2d109b641d00fbf74a4d01f501dfb2c8c5304a5d05fd5b6a9ae51e0311813",
   "integration/manager-final-ui-build.log": "7b2da0377228c6f3ac6ba8605f021e5743515970657c2b75cf98b340f8c5ac47",
   "integration/manager-full-tests.log": "2aaa36c6a5539a66faf332ce6b91e08284a21975d98199001e4889ba5006cf1c",
   "integration/manager-schedule-baseline-build.log": "5f070b3be4a62da8d4f92b756ab60dc799e804dd1f8699f6a0d25b34209ba888",

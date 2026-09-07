@@ -4,7 +4,8 @@ Reviewed dependency base: `038f396e8b7f419ea7e9d969b11ad75b40191b78`.
 Final460 root c6a9ec43 was incorporated once as8dc2d564; its docs correction
 root aa4fc3d8 became038f396e. Prior calendar WIP was backed up byte-for-byte,
 stashed and restored with explicit unions of Prisma models, interactive dispatch
-and portable exports. No sibling WIP, fixtures, credentials or services were used.
+and portable exports. No sibling WIP, fixtures, credentials or runtime services were reused. The
+unintended default-port unit-test access remains separately qualified below.
 
 ## Actual local publication chain
 
@@ -190,3 +191,13 @@ and compressed digests in `compressed-log-identity.json`; decompression restores
 exact bytes. Full originals remain in owned scratch. Raw command logs preserve
 terminal carriage returns/trailing spaces intentionally; source whitespace checks
 exclude those immutable evidence bytes.
+
+## Commit and final fixed-base review
+
+Implementation-only commit: `11872e7de3cca077301db0a3523b64adbc681a08`, parent
+`2a03da7cd701c97e238645d1646592c38eeb88d9`, tree
+`784cd2b121ce70bf8f602c81fb16cbaef839fb0e`. Both independent reviewers verified
+this exact final base/tree, the retirement-base equivalence, formatting-only source
+deltas, absence of generated build artifacts and retained qualifications. No new
+actionable findings. `implementation-commit-hooks.log` records normal ESLint,
+staged Prettier and repository-wide `format:check` passing.

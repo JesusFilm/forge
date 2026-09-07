@@ -1,5 +1,9 @@
 # feat-461 implementation handoff
 
+Implementation commit: `11872e7de3cca077301db0a3523b64adbc681a08`.
+Its exact tree is the final independently reviewed `784cd2b1` snapshot. Normal
+ESLint, staged formatting and repository-wide format hooks all passed.
+
 ## Scope and base
 
 Final reviewed dependency base: `2a03da7cd701c97e238645d1646592c38eeb88d9`, equivalent
