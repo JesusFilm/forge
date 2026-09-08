@@ -430,6 +430,8 @@ reopened `gotquestions/is` with `evaluate=pending` and `status=in-progress` via
 
 ### Final closure — 2026-09-08
 
+[Forge PR #2202](https://github.com/JesusFilm/forge/pull/2202).
+
 The operator's instruction to proceed with steps 1–4 authorized the reviewed
 canonical append and final `gotquestions/is` lifecycle update. These operations
 executed once and their approval is consumed:

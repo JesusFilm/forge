@@ -79,4 +79,4 @@ Validation: 816 unit/CLI/contract tests, 23 PostgreSQL integration checks in an
 isolated database, typecheck, lint, dependency boundaries, schema/drift and
 migration checks, environment/status/dashboard validation, and full formatting.
 
-Forge PR link: pending creation; replace before merge.
+[Forge PR #2202](https://github.com/JesusFilm/forge/pull/2202).
