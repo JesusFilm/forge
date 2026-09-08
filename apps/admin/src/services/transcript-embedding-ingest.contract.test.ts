@@ -319,6 +319,7 @@ function buildContractPrisma() {
     },
     watchSearchCurrentTranscriptPublicationEvent: {
       create: vi.fn(async () => ({ id: "event-1" })),
+      findFirst: vi.fn(async () => null),
     },
     $queryRaw: queryRaw,
     $executeRaw: vi.fn(

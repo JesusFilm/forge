@@ -789,7 +789,7 @@ suite("current transcript publication into Watch Search", () => {
 
   function payload(
     overrides: {
-      mode?: "idempotent" | "force"
+      mode?: "idempotent" | "repair" | "force"
       chunkingVersion?: string
       chunks?: Array<{ text: string; embedding: number[]; tokenCount: number }>
       mastraRunId?: string
@@ -1449,6 +1449,72 @@ suite("current transcript publication into Watch Search", () => {
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
     })
+  }, 180_000)
+
+  it("removes a previously published chunk whose missing canonical row is recreated by repair", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "create-run" }),
+    )
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    const firstEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+    const missingDocumentId = firstEvent.currentDocumentIds[1]!
+    await prisma.videoTranscriptChunk.delete({
+      where: { id: missingDocumentId },
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma,
+        payload({ mode: "repair", mastraRunId: "repair-run" }),
+      ),
+    ).resolves.toMatchObject({ status: "repaired" })
+    const repairEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 2n } },
+      )
+    expect(repairEvent.currentDocumentIds).toHaveLength(2)
+    expect(repairEvent.currentDocumentIds).not.toContain(missingDocumentId)
+    expect(repairEvent.staleDocumentIds).toContain(missingDocumentId)
+
+    const repaired = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(repaired).toMatchObject({
+      status: "published",
+      sourceGeneration: 2n,
+      projectionRevision: 2n,
+      documentCount: 2,
+    })
+    const transcriptCollection =
+      repaired.status === "published" ? repaired.transcriptCollection : ""
+    await expect(
+      typesense.getDocument(transcriptCollection, missingDocumentId),
+    ).resolves.toBeUndefined()
+    for (const id of repairEvent.currentDocumentIds) {
+      await expect(
+        typesense.getDocument(transcriptCollection, id),
+      ).resolves.toMatchObject({ id })
+    }
   }, 180_000)
 
   it("bounds the vector-fingerprint completion transaction for the accepted chunk ceiling", async () => {

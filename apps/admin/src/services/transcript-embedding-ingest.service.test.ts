@@ -62,6 +62,9 @@ function buildPrisma() {
   )
   const executeRaw = vi.fn(async (..._args: unknown[]): Promise<number> => 0)
   const createPublicationEvent = vi.fn(async () => ({ id: "event-1" }))
+  const findPublicationEvent = vi.fn(
+    async (): Promise<{ currentDocumentIds: string[] } | null> => null,
+  )
   const findVideo = vi.fn(
     async (): Promise<{ id: string; coreId: string } | null> => ({
       id: "video-1",
@@ -76,6 +79,7 @@ function buildPrisma() {
     videoEdition: { findFirst: typeof findEdition }
     watchSearchCurrentTranscriptPublicationEvent: {
       create: typeof createPublicationEvent
+      findFirst: typeof findPublicationEvent
     }
     $executeRaw: typeof executeRaw
     $queryRaw: typeof queryRaw
@@ -89,6 +93,7 @@ function buildPrisma() {
     },
     watchSearchCurrentTranscriptPublicationEvent: {
       create: createPublicationEvent,
+      findFirst: findPublicationEvent,
     },
     $executeRaw: executeRaw,
     $queryRaw: queryRaw,
@@ -631,6 +636,65 @@ describe("ingestTranscriptEmbeddings", () => {
 
     expect(result.status).toBe("repaired")
     expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("carries a missing previously published chunk id into repair stale evidence", async () => {
+    const prisma = buildPrisma()
+    const base = payload()
+    const hash = hashFor(base)
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 0,
+    })
+    prisma.watchSearchCurrentTranscriptPublicationEvent.findFirst.mockResolvedValue(
+      { currentDocumentIds: ["still-current", "missing-published"] },
+    )
+    writeTranscriptEmbeddingPayloadMock.mockResolvedValue({
+      transcriptId: "transcript-1",
+      chunksIndexed: 1,
+      embeddingsWritten: 1,
+      currentDocumentIds: ["still-current"],
+      staleDocumentIds: ["writer-stale"],
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        generation: {
+          mode: "repair",
+          generatedAt: "2026-05-25T00:01:00.000Z",
+          mastraRunId: "run-repair-stale-evidence",
+        },
+        source: {
+          ...(payload().source as object),
+          contentHash: hash,
+        },
+      }),
+    )
+
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        currentDocumentIds: ["still-current"],
+        staleDocumentIds: ["writer-stale", "missing-published"],
+      }),
+    })
   })
 
   it("repair mode leaves healthy matching chunks unchanged", async () => {
