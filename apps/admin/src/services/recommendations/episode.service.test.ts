@@ -166,6 +166,94 @@ describe("RecommendationEpisodeService", () => {
     })
   })
 
+  it.each(["canonical", "binding_changed", "not_committed"] as const)(
+    "reconciles a losing standalone claim once: %s",
+    async (disposition) => {
+      const now = new Date("2026-04-20T03:00:00.000Z")
+      const pending = {
+        id: "episode-race",
+        requestId: null,
+        itemId: null,
+        selectionId: null,
+        state: "PENDING",
+        generation: 1,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        handoffExpiresAt: new Date(now.getTime() + 600_000),
+        claimedAt: null,
+        capabilityJti: null,
+        signingKid: null,
+        activeUntil: new Date(now.getTime() + 4 * 3600_000),
+        hardUntil: new Date(now.getTime() + 6 * 3600_000),
+        expiresAt: new Date(now.getTime() + 24 * 3600_000),
+      }
+      const canonical =
+        disposition === "not_committed"
+          ? pending
+          : {
+              ...pending,
+              state: "CLAIMED",
+              capabilityJti: "winner-jti",
+              signingKid: "previous-kid",
+              claimedAt: now,
+              ...(disposition === "binding_changed"
+                ? { sessionDigest: "b".repeat(64) }
+                : {}),
+            }
+      const updateMany = vi.fn(async () => ({ count: 0 }))
+      const findUnique = vi
+        .fn()
+        .mockResolvedValueOnce(pending)
+        .mockResolvedValue(canonical)
+      const transaction = vi.fn(
+        async (work: (tx: Record<string, unknown>) => unknown) =>
+          work({ recommendationPlaybackEpisode: { updateMany } }),
+      )
+      const signEpisodeCapability = vi.fn(
+        async (binding: { jti: string }, replay?: { signingKid: string }) =>
+          `${binding.jti}:${replay?.signingKid}`,
+      )
+      const newId = vi.fn(() => "loser-jti")
+      const service = new RecommendationEpisodeService({
+        prisma: {
+          recommendationSelection: { findUnique: vi.fn(async () => null) },
+          recommendationPlaybackEpisode: { findUnique },
+          $transaction: transaction,
+        } as never,
+        tokenService: {
+          activeKid: "active-kid",
+          verifyDeliveryCapability: vi.fn(),
+          signEpisodeCapability,
+        },
+        now: () => now,
+        newId,
+      })
+      const claim = service.claim({
+        caller,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        claimNonce: "race-claim-nonce-1234567890",
+      })
+      if (disposition === "canonical") {
+        await expect(claim).resolves.toMatchObject({
+          capability: "winner-jti:previous-kid",
+        })
+        expect(signEpisodeCapability).toHaveBeenLastCalledWith(
+          expect.objectContaining({ jti: "winner-jti" }),
+          { issuedAt: now, signingKid: "previous-kid" },
+        )
+      } else {
+        await expect(claim).rejects.toMatchObject({
+          code:
+            disposition === "binding_changed" ? "invalid_binding" : "conflict",
+        })
+      }
+      expect(transaction).toHaveBeenCalledOnce()
+      expect(newId).toHaveBeenCalledOnce()
+      expect(findUnique).toHaveBeenCalledTimes(2)
+    },
+  )
+
   it("rejects selection after its personalized assignment is fenced", async () => {
     const item = {
       id: "item-1",

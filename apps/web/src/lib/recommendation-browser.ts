@@ -1,5 +1,9 @@
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 
+function isDefinitiveRecommendationStatus(status: number): boolean {
+  return [400, 401, 403, 404, 409, 410, 422].includes(status)
+}
+
 export async function withinRecommendationDeadline<T>(
   externalSignal: AbortSignal | null | undefined,
   deadlineMs: number,
@@ -47,6 +51,7 @@ export async function recommendationFetchWithRetry(
   const backoffMs = Math.max(0, Math.min(1_000, options.backoffMs ?? 100))
   let lastError: unknown
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let definitive = false
     try {
       const response = await recommendationFetchWithDeadline(
         url,
@@ -54,11 +59,13 @@ export async function recommendationFetchWithRetry(
         deadlineMs,
       )
       if (!response.ok) {
+        definitive = isDefinitiveRecommendationStatus(response.status)
         throw new RecommendationRuntimeError("request_failed")
       }
       return response
     } catch (error) {
       lastError = error
+      if (definitive) break
       if (attempt + 1 < attempts && backoffMs > 0) {
         await new Promise<void>((resolve) => {
           window.setTimeout(resolve, backoffMs)
@@ -95,7 +102,7 @@ export async function recommendationJsonWithRetry<T = unknown>(
     accept?: (value: T) => boolean
     onAttemptFailure?: (failure: {
       attempt: number
-      reason: "response_invalid" | "transport"
+      reason: "response_invalid" | "transport" | "rejected"
       willRetry: boolean
     }) => void
   } = {},
@@ -108,10 +115,14 @@ export async function recommendationJsonWithRetry<T = unknown>(
     async (signal) => {
       let lastError: unknown
       for (let attempt = 0; attempt < attempts; attempt += 1) {
-        let failureReason: "response_invalid" | "transport" = "transport"
+        let failureReason: "response_invalid" | "transport" | "rejected" =
+          "transport"
         try {
           const response = await fetch(url, { ...init, signal })
           if (!response.ok) {
+            if (isDefinitiveRecommendationStatus(response.status)) {
+              failureReason = "rejected"
+            }
             throw new RecommendationRuntimeError("request_failed")
           }
           const value = (await response.json()) as T
@@ -122,7 +133,10 @@ export async function recommendationJsonWithRetry<T = unknown>(
           return value
         } catch (error) {
           lastError = error
-          const willRetry = !signal.aborted && attempt + 1 < attempts
+          const willRetry =
+            failureReason !== "rejected" &&
+            !signal.aborted &&
+            attempt + 1 < attempts
           options.onAttemptFailure?.({
             attempt: attempt + 1,
             reason: failureReason,

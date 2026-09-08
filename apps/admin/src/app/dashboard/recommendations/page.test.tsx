@@ -4,11 +4,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const requireSessionMock = vi.fn()
 const loadOverviewMock = vi.fn()
+const loadEvidenceTransportMock = vi.fn()
 const loadTracePageMock = vi.fn()
 const loadDetailMock = vi.fn()
 const redirectMock = vi.fn((destination: string) => {
   throw new Error(`REDIRECT:${destination}`)
 })
+
+vi.mock(
+  "@/services/recommendations/admin-ops/evidence-transport.service",
+  () => ({
+    loadEvidenceTransportOverview: () => loadEvidenceTransportMock(),
+  }),
+)
 
 vi.mock("@/auth/session", () => ({
   requireSession: () => requireSessionMock(),
@@ -304,6 +312,13 @@ const overview = {
 describe("Admin Recommendations pages", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadEvidenceTransportMock.mockResolvedValue({
+      state: "unknown",
+      start: overview.window.start,
+      end: overview.window.end,
+      rows: [],
+      suppressed: false,
+    })
     loadOverviewMock.mockResolvedValue(overview)
     loadTracePageMock.mockResolvedValue({
       window: overview.window,
@@ -341,6 +356,12 @@ describe("Admin Recommendations pages", () => {
     })
   })
 
+  it("does not query operational observations before aggregate authorization", async () => {
+    requireSessionMock.mockResolvedValue({ id: "viewer", role: "VIEWER" })
+    await expect(RecommendationsPage()).rejects.toThrow("REDIRECT:/dashboard")
+    expect(loadEvidenceTransportMock).not.toHaveBeenCalled()
+  })
+
   it("renders aggregate truth for EDITOR without requesting or leaking trace data", async () => {
     requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
 
@@ -348,6 +369,9 @@ describe("Admin Recommendations pages", () => {
       await RecommendationsPage({ searchParams: Promise.resolve({}) }),
     )
 
+    expect(loadEvidenceTransportMock).toHaveBeenCalledOnce()
+    expect(html).toContain("Unknown — the shared collector is unavailable")
+    expect(html).toContain("Historical crawler attribution remains uncertain")
     expect(loadOverviewMock).toHaveBeenCalledOnce()
     expect(loadTracePageMock).not.toHaveBeenCalled()
     expect(html).toContain("Zero activity")

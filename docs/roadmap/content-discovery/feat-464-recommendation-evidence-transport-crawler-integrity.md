@@ -3,7 +3,7 @@ id: "feat-464"
 title: "Recommendation evidence transport and crawler integrity"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: ""
 duration: 3
 depends_on:
@@ -138,3 +138,21 @@ If traffic is too low to exercise a criterion, use an authorized production-safe
 ```text
 Use compound-engineering:lfg to implement Forge roadmap ticket feat-464, "Recommendation evidence transport and crawler integrity," from docs/roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md. Work hands-off through implementation, tests, review, commit, push, and an open PR. Preserve the ticket's production evidence snapshot and acceptance gates; do not mark feat-459 or feat-464 complete without a fresh authorized Admin audit and the required production canary.
 ```
+
+## Implementation progress (2026-09-09)
+
+The implementation branch `codex/feat-464-evidence-transport` normalizes Apollo
+binding failures, makes definitive browser failures terminal, bounds PostgreSQL
+contention, rejects recognized crawler evidence before mutation, and exposes
+privacy-bounded transport observations in Admin. See the
+[transport runbook](../../operations/recommendation-evidence-transport.md) for
+configuration, monitor installation, and post-deployment acceptance.
+
+Local validation covers the full Web and Admin unit suites, typechecks, real
+PostgreSQL concurrency, real Redis collection, and a browser Watch-to-Admin
+lifecycle with decoded video and telemetry failure injection. Local fixtures and
+an empty local current-pointer audit do not satisfy production acceptance.
+The two-hour production canary, historical-window reconciliation, monitor
+installation, and fresh authorized production current-pointer audit remain
+outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
+remains fail-closed.

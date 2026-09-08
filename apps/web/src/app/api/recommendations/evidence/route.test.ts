@@ -57,6 +57,17 @@ describe("POST /watch/api/recommendations/evidence", () => {
     })
   })
 
+  it("rejects crawler evidence before any Admin mutation", async () => {
+    const crawlerRequest = request(JSON.stringify(body))
+    crawlerRequest.headers.set("user-agent", "Applebot/0.1")
+    const response = await POST(crawlerRequest)
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      error: "machine_evidence_rejected",
+    })
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
   it("is dynamic/private and forwards the typed U2 mutation with digest-only session identity", async () => {
     expect(dynamic).toBe("force-dynamic")
     expect(revalidate).toBe(0)

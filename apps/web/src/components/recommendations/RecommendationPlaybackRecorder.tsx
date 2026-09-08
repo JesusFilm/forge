@@ -15,16 +15,16 @@ import {
 } from "@/lib/recommendation-contracts"
 import {
   recommendationEventId,
-  recommendationFetchWithDeadline,
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
 import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
+import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
-const REQUEST_DEADLINE_MS = 1_000
+const REQUEST_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
 const MAX_CLAIM_ATTEMPTS = 3
 const CLAIM_RETRY_BACKOFF_MS = 250
 const MAX_EPISODE_FACTS = 128
@@ -104,34 +104,48 @@ function playbackPosition(
   }
 }
 
-class DefinitivePlaybackError extends Error {}
-
-async function postPlayback(body: string, keepalive: boolean) {
-  const response = await recommendationFetchWithDeadline(
-    PLAYBACK_ENDPOINT,
-    {
-      method: "POST",
-      cache: "no-store",
-      credentials: "same-origin",
-      keepalive,
-      headers: { "content-type": "application/json" },
-      body,
-    },
-    REQUEST_DEADLINE_MS,
-  )
-  if (response.ok) return response
-  if (response.status === 409) {
-    let value: { error?: unknown } | null = null
-    try {
-      value = (await response.json()) as { error?: unknown }
-    } catch {
-      // A malformed error body remains a retryable transport failure.
-    }
-    if (value?.error === "playback_binding_invalid") {
-      throw new DefinitivePlaybackError()
-    }
+class DefinitivePlaybackError extends Error {
+  constructor(readonly reason: "binding_invalid" | "admission_rejected") {
+    super()
   }
-  throw new RecommendationRuntimeError("request_failed")
+}
+
+async function postPlayback(
+  body: string,
+  keepalive: boolean,
+): Promise<unknown> {
+  return withinRecommendationDeadline(
+    undefined,
+    REQUEST_DEADLINE_MS,
+    async (signal) => {
+      const response = await fetch(PLAYBACK_ENDPOINT, {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        keepalive,
+        headers: { "content-type": "application/json" },
+        body,
+        signal,
+      })
+      if (response.ok) return response.json()
+      // Authorization/admission rejection cannot improve by replaying a capability.
+      if (response.status === 401 || response.status === 403) {
+        throw new DefinitivePlaybackError("admission_rejected")
+      }
+      if (response.status === 409) {
+        let value: { error?: unknown } | null = null
+        try {
+          value = (await response.json()) as { error?: unknown }
+        } catch {
+          // A malformed error body remains an ambiguous transport failure.
+        }
+        if (value?.error === "playback_binding_invalid") {
+          throw new DefinitivePlaybackError("binding_invalid")
+        }
+      }
+      throw new RecommendationRuntimeError("request_failed")
+    },
+  )
 }
 
 function playbackFactsBody(
@@ -152,6 +166,7 @@ function playbackFactsBody(
 type PlaybackDegradationReason =
   | "body_limit"
   | "binding_invalid"
+  | "admission_rejected"
   | "episode_limit"
   | "integrity_conflict"
   | "pending_claim"
@@ -174,7 +189,11 @@ function reportDegradation(
   )
 }
 
-class DefinitiveClaimError extends Error {}
+class DefinitiveClaimError extends Error {
+  constructor(readonly allowStandaloneFallback: boolean) {
+    super()
+  }
+}
 
 function readRecommendationClaimNonce(): string | null {
   try {
@@ -214,7 +233,9 @@ async function claimRecommendationEpisode(
       })
       if (!response.ok) {
         if ([400, 401, 403, 404, 409, 410, 422].includes(response.status)) {
-          throw new DefinitiveClaimError()
+          throw new DefinitiveClaimError(
+            response.status !== 401 && response.status !== 403,
+          )
         }
         throw new RecommendationRuntimeError("request_failed")
       }
@@ -346,10 +367,10 @@ export function RecommendationPlaybackRecorder({
           const body = playbackFactsBody(episode, mediaId, events)
           let receiptInvalid = false
           try {
-            const response = await postPlayback(body, true)
+            const acknowledgement = await postPlayback(body, true)
             const submittedIds = new Set(events.map((fact) => fact.eventId))
             const receipts = parseRecommendationPlaybackReceipts(
-              await response.json(),
+              acknowledgement,
               submittedIds,
             )
             if (!receipts) {
@@ -421,7 +442,7 @@ export function RecommendationPlaybackRecorder({
                 deliveryAttemptsRef.current.delete(fact.eventId)
               }
               reportDegradation(
-                "binding_invalid",
+                error.reason,
                 dropped.map((fact) => fact.eventId),
               )
               break
@@ -561,8 +582,8 @@ export function RecommendationPlaybackRecorder({
         })
         .catch((error) => {
           if (error instanceof DefinitiveClaimError) {
-            if (allowStandaloneFallback) {
-              clearRecommendationClaimNonce(claimNonce)
+            clearRecommendationClaimNonce(claimNonce)
+            if (allowStandaloneFallback && error.allowStandaloneFallback) {
               void issuePlaybackContext(mediaId)
                 .then((fallbackNonce) => attemptClaim(fallbackNonce, 1, false))
                 .catch(abandonPendingClaim)

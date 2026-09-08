@@ -1,3 +1,4 @@
+import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   asLocaleSlug,
@@ -52,22 +53,6 @@ const DeliveryInput = z
     audioLanguageSlug: z.string().regex(/^[a-z0-9-]{1,64}$/),
   })
   .strict()
-
-const MACHINE_USER_AGENT =
-  /(?:bot|crawler|spider|headless|lighthouse|slurp|bingpreview|facebookexternalhit)/i
-
-function isEligibleHumanRequest(request: Request): boolean {
-  const purpose = [
-    request.headers.get("purpose"),
-    request.headers.get("sec-purpose"),
-  ]
-    .filter(Boolean)
-    .join(";")
-  if (/\b(?:prefetch|prerender)\b/i.test(purpose)) return false
-
-  const userAgent = request.headers.get("user-agent")
-  return userAgent == null || !MACHINE_USER_AGENT.test(userAgent)
-}
 
 function unavailableSemanticDelivery() {
   return {

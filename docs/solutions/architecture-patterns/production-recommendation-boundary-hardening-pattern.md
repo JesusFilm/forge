@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-03"
+last_updated: "2026-09-09"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -21,6 +21,9 @@ tags:
   - "anonymous-profile"
   - "bounded-pilot"
   - "production-boundary"
+  - "apollo-errors"
+  - "serializable-contention"
+  - "evidence-observability"
 related_components:
   - "database"
   - "frontend_stimulus"
@@ -333,3 +336,57 @@ percentage in place.
 - [Manifest identity bound to execution and evidence](bind-eval-manifest-identity-to-execution-and-evidence.md)
 - [Immutable experiment ledger boundary](mastra-seo-experiment-ledger-boundary.md)
 - [Admin trace retention pattern](../platform/admin-search-trace-retention-pattern.md)
+
+## Evidence transport closeout (feat-464, 2026-09-09)
+
+Apollo's default mutation error policy rejects GraphQL failures before returned
+result inspection. Normalize both rejected `CombinedGraphQLErrors.errors` and
+compatible returned/legacy envelopes using `extensions.recommendationCode`,
+never message matching. Claims and facts map proven `invalid_binding` to terminal
+HTTP 409. Authentication and recognized-machine rejection must not trigger a
+standalone context fallback. Ambiguous acknowledgements retain the original nonce,
+event identifiers, timestamps and payload.
+
+The recommendation complete-service deadline remains 1.5 seconds. Evidence transport
+is a distinct acknowledgement contract: provisionally 3 seconds upstream and
+5 seconds in the browser, including acknowledgement-body consumption, based on the
+ticket's measured successful 1.91-second p95. A timed-out mutation may still commit;
+the retry must be idempotent rather than assuming cancellation. The stalled-body
+test must withhold JSON, not merely response headers.
+
+Blocking `pg_advisory_xact_lock` inside a Serializable transaction can establish
+the snapshot before lock acquisition. Queued callers then read stale counters and
+exhaust P2034 recovery. Two callers hid the problem; eight delayed concurrent
+replays reproduced it against PostgreSQL. Ingestion and finalization now use the
+same nonblocking advisory key, roll back busy transactions, and retry acquisition
+outside the transaction under a separate bounded contention budget. Serializable
+isolation, P2034 recovery, sequence CAS, privacy fences and reservation-before-receipt
+insertion remain intact. A losing claim revalidates once and reconstructs the
+committed capability with its original signing key.
+
+Operational observers must not become a new playback dependency. Runtime-allowlist
+fixed enums and bounded counts before logs or Redis. Bound latency, concurrency,
+retention and aggregate cardinality; guard closing a shared client when concurrent
+timeouts race. Use plain `event=… key=value` logging per the existing
+[Railway logsV2 learning](../runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md).
+Missing observations are unknown, never healthy zero. Best-effort counters are not
+authoritative HTTP denominators or committed-fact counts.
+
+Discriminating regression references:
+
+- `apps/web/src/app/api/recommendations/playback/route.test.ts`: rejected Apollo
+  failures and crawler exclusion before mutation.
+- `apps/web/src/components/recommendations/RecommendationPlaybackRecorder.test.tsx`:
+  stalled acknowledgements, exact replay, definitive rejection and playback independence.
+- `apps/admin/src/services/recommendations/playback-episode.db.test.ts`: eight-way
+  replay and claims, mixed late/conflicting facts with concurrent finalization,
+  exact receipt ordinals, immutable original facts and authoritative rebuild equality.
+- `apps/admin/src/services/recommendations/evidence-observability.redis.db.test.ts`:
+  real collector concurrency, expiry and Web/Admin aggregate reconciliation.
+
+These tests verify local mechanisms. They do not establish historical crawler
+ownership: stored browser discovery provenance is not trusted user-agent evidence.
+Do not relabel episodes by timestamps or aggregate APM counts. Preserve bounded
+uncertainty and require the separate production canary and authorized
+zero-ineligible-current-pointer audit before closing feat-464/feat-459 or advancing
+profile ranking. `active-watch-proxy-v1` remains fail-closed.

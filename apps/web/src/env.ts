@@ -154,6 +154,8 @@ function optionalPositiveIntDefault(defaultValue: number) {
 
 export const env = createEnv({
   server: {
+    // Explicit shared Web/Admin operational collector, never the app cache default.
+    RECOMMENDATION_EVIDENCE_REDIS_URL: z.string().url().optional(),
     // Retained for the /api/preview Next.js draft-mode handler. The data
     // layer no longer talks to Strapi; preview-flow migration to admin is
     // a separate future unit.
@@ -333,6 +335,9 @@ export const env = createEnv({
       ),
   },
   runtimeEnv: {
+    RECOMMENDATION_EVIDENCE_REDIS_URL: emptyToUndefined(
+      process.env.RECOMMENDATION_EVIDENCE_REDIS_URL,
+    ),
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
