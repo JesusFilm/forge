@@ -19,6 +19,29 @@ export const TAB_BAR_CLEARANCE_GAP = 12
 export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
 
 /**
+ * The selected tab's colour, forked by platform.
+ *
+ * `#CB333B` is the brand red. On the app ground it reads 3.39:1, and on the
+ * lens 3.11:1 — both under the 4.5:1 AA floor for 10pt text. It sits at a
+ * middling luminance, so it fails against dark and light grounds alike and no
+ * tint on the material can rescue it; only a lighter colour can.
+ *
+ * iOS therefore takes `#F0757B`, the lightest step on the same hue that clears
+ * AA. Android keeps the brand red — its bar is flush and opaque, and this
+ * change must not touch it.
+ *
+ * Reads `Platform.OS` at call time so a test can reach both branches.
+ */
+export const TAB_BAR_ACTIVE_TINT_IOS = "#F0757B"
+export const TAB_BAR_ACTIVE_TINT_ANDROID = "#CB333B"
+
+export function tabBarActiveTint(): string {
+  return Platform.OS === "ios"
+    ? TAB_BAR_ACTIVE_TINT_IOS
+    : TAB_BAR_ACTIVE_TINT_ANDROID
+}
+
+/**
  * The tab screens, in the order `app/(tabs)/_layout.tsx` declares them. The
  * sliding lens derives its position from this, so the two must not drift —
  * `tabBarLensOrder.guard.test.js` pins them together.

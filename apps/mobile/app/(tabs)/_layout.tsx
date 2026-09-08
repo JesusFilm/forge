@@ -3,9 +3,8 @@ import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { TabBarBackground } from "../../src/components/ui/TabBarBackground"
-import { useTabBarStyle } from "../../src/lib/tabBar"
+import { tabBarActiveTint, useTabBarStyle } from "../../src/lib/tabBar"
 
-const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
 const BG_COLOR = "#1c1917"
 
@@ -16,7 +15,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: ACCENT,
+        tabBarActiveTintColor: tabBarActiveTint(),
         tabBarInactiveTintColor: MUTED,
         tabBarStyle,
         // Returned as an ELEMENT, not passed as the component: the bar calls

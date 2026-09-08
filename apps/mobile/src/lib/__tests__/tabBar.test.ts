@@ -6,7 +6,10 @@ import { Platform } from "react-native"
 
 import {
   TAB_BAR_CLEARANCE_GAP,
+  TAB_BAR_ACTIVE_TINT_ANDROID,
+  TAB_BAR_ACTIVE_TINT_IOS,
   TAB_ROUTE_NAMES,
+  tabBarActiveTint,
   tabIndexForSegments,
   TAB_BAR_FLAT_STYLE,
   TAB_BAR_PILL_HEIGHT,
@@ -142,5 +145,20 @@ describe("tabIndexForSegments", () => {
     TAB_ROUTE_NAMES.forEach((name, i) => {
       expect(tabIndexForSegments(["(tabs)", name])).toBe(i)
     })
+  })
+})
+
+describe("tabBarActiveTint", () => {
+  it("lightens the selected label on iOS so it clears AA", () => {
+    setPlatform("ios")
+    expect(tabBarActiveTint()).toBe(TAB_BAR_ACTIVE_TINT_IOS)
+    // #CB333B measured 3.11:1 on the lens; #F0757B measures 5.75:1.
+    expect(TAB_BAR_ACTIVE_TINT_IOS).toBe("#F0757B")
+  })
+
+  it("keeps the brand red on Android, which this change must not touch", () => {
+    setPlatform("android")
+    expect(tabBarActiveTint()).toBe("#CB333B")
+    expect(TAB_BAR_ACTIVE_TINT_ANDROID).toBe("#CB333B")
   })
 })

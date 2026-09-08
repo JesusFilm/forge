@@ -791,10 +791,12 @@ disagree about the bar's size.
   active label from rgb(20,18,17) to rgb(35,33,32), costing that label
   3.49:1 -> 3.11:1 (measured on a flat background, lens on vs off in the same
   cell). Idle labels are untouched at 7.41:1.
-- **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
-  app ground is 3.39:1, and it sits at a middling luminance, so it fails against
-  dark and light grounds alike. Only a colour change fixes it, and
-  `tabBarActiveTintColor` is shared with Android. Untouched deliberately.
+- **The active tint is FORKED by platform** (`tabBarActiveTint()`). `#CB333B`
+  sits at a middling luminance, so it fails AA against dark and light grounds
+  alike — 3.39:1 on the flat bar, 3.11:1 on the lens — and no tint on the
+  material can rescue it. iOS takes `#F0757B`, measured 5.75:1 on the lens;
+  Android keeps the brand red, because its bar is flush and opaque and must
+  stay byte-identical. Both branches are pinned by tests.
 - **`@react-navigation/bottom-tabs` does not resolve from this app.** It runs
   expo-router's vendored fork. Import `useBottomTabBarHeight` from
   `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro.
