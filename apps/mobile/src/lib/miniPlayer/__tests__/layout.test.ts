@@ -5,6 +5,7 @@ import {
   MIN_VIDEO_WIDTH,
   allowedCorners,
   defaultCornerFrame,
+  WINDOW_EDGE_MARGIN,
   miniPlayerCornerFrame,
   miniPlayerCornerFrames,
   miniPlayerMinWidth,
@@ -13,12 +14,14 @@ import {
   type MiniPlayerCorner,
   type MiniPlayerLayoutConfig,
 } from "../layout"
+import { TAB_BAR_OCCUPIED_HEIGHT } from "../../tabBar"
 
-/** An iPhone-shaped screen with a notch, home indicator, and the tab bar. */
+/** An iPhone-shaped screen with a notch, home indicator, and the tab bar.
+ *  The chrome height is READ from production — a literal here would drift. */
 const PHONE: MiniPlayerLayoutConfig = {
   screen: { width: 390, height: 844 },
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
-  chrome: { top: 0, bottom: 49 },
+  chrome: { top: 0, bottom: TAB_BAR_OCCUPIED_HEIGHT },
 }
 
 describe("KTD6 minimum width", () => {
@@ -176,11 +179,25 @@ describe("corner frames", () => {
 
 describe("snap thresholds", () => {
   it("switches side at the midpoint of each axis's own travel", () => {
-    // Midpoints for PHONE: x 113, y 364.
-    expect(snapToCorner(PHONE, { x: 112, y: 363 }).corner).toBe("topLeft")
-    expect(snapToCorner(PHONE, { x: 114, y: 363 }).corner).toBe("topRight")
-    expect(snapToCorner(PHONE, { x: 112, y: 365 }).corner).toBe("bottomLeft")
-    expect(snapToCorner(PHONE, { x: 114, y: 365 }).corner).toBe("bottomRight")
+    // Derived, not hand-copied: the y midpoint moves whenever the tab bar's
+    // reserved height does, and a literal here silently re-tunes the gesture.
+    const topLeft = miniPlayerCornerFrame(PHONE, "topLeft")
+    const bottomRight = miniPlayerCornerFrame(PHONE, "bottomRight")
+    const midX = (topLeft.x + bottomRight.x) / 2
+    const midY = (topLeft.y + bottomRight.y) / 2
+
+    expect(snapToCorner(PHONE, { x: midX - 1, y: midY - 1 }).corner).toBe(
+      "topLeft",
+    )
+    expect(snapToCorner(PHONE, { x: midX + 1, y: midY - 1 }).corner).toBe(
+      "topRight",
+    )
+    expect(snapToCorner(PHONE, { x: midX - 1, y: midY + 1 }).corner).toBe(
+      "bottomLeft",
+    )
+    expect(snapToCorner(PHONE, { x: midX + 1, y: midY + 1 }).corner).toBe(
+      "bottomRight",
+    )
   })
 
   it("honours a caller's snap bias", () => {
@@ -223,5 +240,17 @@ describe("excluded corners", () => {
     const config = { ...PHONE, excludedCorners: corners }
     expect(allowedCorners(config)).toEqual([DEFAULT_CORNER])
     expect(snapToCorner(config, { x: 0, y: 0 }).corner).toBe(DEFAULT_CORNER)
+  })
+})
+
+describe("the resting window clears the floating tab bar", () => {
+  it("leaves exactly WINDOW_EDGE_MARGIN between the window and the bar", () => {
+    const frame = defaultCornerFrame(PHONE)
+    const windowBottom = frame.y + frame.height
+    const barTop =
+      PHONE.screen.height - PHONE.insets.bottom - TAB_BAR_OCCUPIED_HEIGHT
+    // 49 -> 68 on iOS. Without the change the window overlapped by 13pt, in
+    // the DEFAULT resting corner.
+    expect(barTop - windowBottom).toBe(WINDOW_EDGE_MARGIN)
   })
 })
