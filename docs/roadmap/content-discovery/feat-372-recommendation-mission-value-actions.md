@@ -9,6 +9,7 @@ duration: 4
 depends_on:
   - "feat-368"
   - "feat-369"
+  - "feat-464"
 blocks:
   - "feat-374"
   - "feat-375"
