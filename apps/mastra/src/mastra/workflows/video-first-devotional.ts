@@ -170,6 +170,10 @@ const ScriptureSchema = z.object({
 const SourcedSchema = z.object({
   chapter: ChapterSchema,
   scripture: ScriptureSchema,
+  /** The clip's own transcript for its curated window (see
+   *  GeneratedDevotional.clipTranscript) — absent on the fromCache path,
+   *  which skips composeDevotionalContent entirely and so never needs it. */
+  clipTranscript: z.string().optional(),
   fromCache: z.boolean(),
   sequence: z.number(),
   date: z.string(),
@@ -309,6 +313,9 @@ const sourceStep = createStep({
     return {
       chapter: sourced.chapter,
       scripture: sourced.scripture,
+      ...(sourced.clipTranscript
+        ? { clipTranscript: sourced.clipTranscript }
+        : {}),
       fromCache: false,
       sequence,
       date,
@@ -346,6 +353,9 @@ const contentStep = createStep({
         {
           chapter: inputData.chapter,
           scripture: inputData.scripture,
+          ...(inputData.clipTranscript
+            ? { clipTranscript: inputData.clipTranscript }
+            : {}),
           sequence: inputData.sequence,
           date: inputData.date,
           llm: scriptureLlm, // unused: every LLM-using seam is overridden below
@@ -360,7 +370,11 @@ const contentStep = createStep({
     // English and a Russian edition of the same chapter never overwrite each
     // other. This was CLI-only; the workflow had no `lang` at all.
     if (lang !== "en") {
-      const langDir = cacheDirFor(inputData.chapter.index, inputData.sequence, lang)
+      const langDir = cacheDirFor(
+        inputData.chapter.index,
+        inputData.sequence,
+        lang,
+      )
       const cachedLocalized = inputData.regenerate
         ? null
         : await loadCachedDevo(langDir)

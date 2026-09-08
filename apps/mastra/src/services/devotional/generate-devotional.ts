@@ -219,6 +219,16 @@ export async function generateDevotional(
     },
     deps,
   )
+  // Operator-visible signal for whether this run's writer/critic were
+  // actually grounded in the clip's real transcript, or fell back to the
+  // old assumption-only prompt — otherwise a subtitle-fetch failure degrades
+  // silently and "why did retells-scene stop catching anything" has no
+  // answer in the logs.
+  input.log?.(
+    sourced.clipTranscript
+      ? `📝 clip transcript: ${sourced.clipTranscript.length} chars`
+      : "📝 clip transcript: unavailable (writer/critic using the fallback prompt)",
+  )
   return composeDevotionalContent(
     {
       chapter: sourced.chapter,

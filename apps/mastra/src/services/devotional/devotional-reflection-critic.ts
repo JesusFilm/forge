@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { quoteTranscript } from "./subtitle-align"
 
 /**
  * Reflection depth critic — flags a shallow/empty reflection before it ships.
@@ -201,7 +202,7 @@ export async function critiqueReflection(
     "",
     ...(input.clipTranscript
       ? [
-          `WHAT THE CLIP'S OWN AUDIO SAYS, WORD FOR WORD:\n"${input.clipTranscript}"`,
+          `WHAT THE CLIP'S OWN AUDIO SAYS, WORD FOR WORD:\n"${quoteTranscript(input.clipTranscript)}"`,
           "Judge retells-scene against this exact text — a sentence that only",
           "reports something this transcript already says is a retell,",
           "regardless of the general assumption above.",

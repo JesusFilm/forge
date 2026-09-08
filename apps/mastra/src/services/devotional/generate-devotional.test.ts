@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { generateDevotional, stripDashes } from "./generate-devotional"
+import {
+  composeDevotionalContent,
+  generateDevotional,
+  stripDashes,
+} from "./generate-devotional"
+import type { ChapterWithPassage } from "./jesus-film-passages"
 import type { DevotionalLlm } from "./llm"
 import type { ReflectionCorpora } from "./reflection-corpus"
 
@@ -175,6 +180,29 @@ describe("clip transcript", () => {
     )
   })
 
+  it("logs whether this run actually had a transcript to ground the writer/critic in", async () => {
+    const log = vi.fn()
+    await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm, log },
+      {
+        ...deps,
+        fetchTranscript: vi.fn().mockResolvedValue("Peace, be still."),
+      },
+    )
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(/clip transcript: \d+ chars/),
+    )
+
+    log.mockClear()
+    await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm, log },
+      { ...deps, fetchTranscript: vi.fn().mockResolvedValue(undefined) },
+    )
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(/clip transcript: unavailable/),
+    )
+  })
+
   it("leaves the result without a transcript when none is available, with no change to the writer's other inputs", async () => {
     // This is the fallback path every real subtitle-fetch failure takes —
     // must be behavior-identical to a devotional generated before this
@@ -199,6 +227,70 @@ describe("clip transcript", () => {
       { ...deps, fetchTranscript },
     )
     expect(d.clipTranscript).toBeUndefined()
+  })
+
+  it("threads clipTranscript into BOTH halves of a two-act reflection", async () => {
+    // The two-act layout calls `modernize` once per commentary point instead
+    // of once for the whole reflection — this is the branch the plan's own
+    // test scenarios called out as needing separate coverage, since the
+    // single-call assertions above don't exercise it.
+    const twoActChapter: ChapterWithPassage = {
+      index: 33,
+      id: "1_jf6133-0-0",
+      title: "Jesus and Zaccheus",
+      osisRef: "Luke.19.1-Luke.19.10",
+      reference: "Luke 19:1-10",
+      mood: "hope",
+      themes: ["grace", "seeking"],
+      splitActs: true,
+    }
+    const modernize = vi.fn().mockImplementation(async ({ sourceName }) => ({
+      adapted: "Half of the reflection.",
+      attribution: `Adapted from ${sourceName}`,
+      focusReference: "Luke 19:1-10",
+    }))
+    await composeDevotionalContent(
+      {
+        chapter: twoActChapter,
+        scripture: {
+          reference: "Luke 19:10",
+          text: "For the Son of Man came to seek and save the lost.",
+          translation: "WEB",
+          needsCanonicalSource: true,
+        },
+        clipTranscript: "Zacchaeus climbed the sycamore tree to see Jesus.",
+        sequence: 0,
+        date: "d",
+        llm,
+      },
+      {
+        ...deps,
+        corpora: {
+          ...corpora,
+          ryleLuke: [
+            {
+              source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+              reference: "Zacchaeus, Luke 19:1-10",
+              osisRef: "Luke.19.1-Luke.19.10",
+              text:
+                "I. Zacchaeus sought Jesus, climbing a tree to see over the crowd. " +
+                "II. Jesus sought Zacchaeus first, before Zacchaeus had done anything to deserve it. " +
+                "III. The crowd grumbled, but grace does not wait for a man to earn it.",
+            },
+          ],
+        },
+        modernize,
+        pickPoints: vi
+          .fn()
+          .mockResolvedValue({ chosen: [1, 2], reason: "test" }),
+      },
+    )
+    expect(modernize).toHaveBeenCalledTimes(2)
+    for (const call of modernize.mock.calls) {
+      expect(call[0]).toMatchObject({
+        clipTranscript: "Zacchaeus climbed the sycamore tree to see Jesus.",
+      })
+    }
   })
 })
 

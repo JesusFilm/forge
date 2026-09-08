@@ -3,6 +3,7 @@ import { z } from "zod"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_TEXT_LENGTH } from "./types"
 import { checkReflectionVoice } from "./reflection-voice-check"
+import { quoteTranscript } from "./subtitle-align"
 
 /**
  * Reflection modernizer — a dedicated, tightly-bounded agent.
@@ -607,7 +608,7 @@ export async function modernizeReflection(
       ? [
           "",
           "What the clip's own audio says, word for word:",
-          `"${options.clipTranscript}"`,
+          `"${quoteTranscript(options.clipTranscript)}"`,
           "Do not repeat these lines or this sequence of events in your",
           "reflection — say something ABOUT them instead. This is the exact",
           "clip the viewer just watched, not an assumption about it.",

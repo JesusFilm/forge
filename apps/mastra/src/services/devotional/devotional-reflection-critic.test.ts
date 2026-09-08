@@ -89,6 +89,18 @@ describe("critiqueReflection", () => {
     )
   })
 
+  it("treats an empty-string transcript the same as no transcript", async () => {
+    const complete = vi.fn().mockResolvedValue(clean)
+    await critiqueReflection({
+      sceneTitle: "Jesus Feeds 5,000",
+      reflection: "When he feeds you, he fills you.",
+      conclusion: "He fills.",
+      clipTranscript: "",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(complete.mock.calls[0][0].user).not.toMatch(/clip's own audio says/i)
+  })
+
   describe("depthScore is CLAMPED, not rejected", () => {
     // Asserted against the ZOD SCHEMA, which is where the clamp actually runs —
     // `llm.complete()` parses the model's reply through it. Driving these cases

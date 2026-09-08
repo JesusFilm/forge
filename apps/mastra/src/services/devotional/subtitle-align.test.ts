@@ -8,6 +8,7 @@ import {
   findActBreak,
   mapCuesToEditedTimeline,
   parseSubtitles,
+  quoteTranscript,
   removeInternalGaps,
   transcriptForWindow,
 } from "./subtitle-align"
@@ -477,6 +478,27 @@ describe("transcriptForWindow", () => {
   })
 })
 
+describe("quoteTranscript", () => {
+  it("swaps embedded double quotes for single quotes", () => {
+    expect(quoteTranscript(`He said, "come down."`)).toBe(
+      `He said, 'come down.'`,
+    )
+  })
+
+  it("collapses literal newlines to a single space", () => {
+    expect(quoteTranscript("Line one.\nLine two.")).toBe("Line one. Line two.")
+    expect(quoteTranscript("Line one.\r\nLine two.")).toBe(
+      "Line one. Line two.",
+    )
+  })
+
+  it("leaves ordinary text unchanged", () => {
+    expect(quoteTranscript("Once there were two men.")).toBe(
+      "Once there were two men.",
+    )
+  })
+})
+
 describe("arclightMediaInfo", () => {
   function jsonFetch(body: unknown, ok = true, status = 200) {
     return async () =>
@@ -631,5 +653,35 @@ One was a Pharisee, and the other was a tax collector.
     }
     const t = await fetchClipTranscript("m", 3, 15, 529, { fetchFn })
     expect(t).toBeUndefined()
+  })
+
+  it("caps an unusually long transcript instead of returning it in full", async () => {
+    // One cue whose text alone exceeds the cap — realistic worst case is many
+    // back-to-back cues over a long window, but a single oversized cue proves
+    // the same code path with a simpler fixture.
+    const longLine = Array(600).fill("word").join(" ") // ~3000 chars, well over the cap
+    const longSrt = `1\n00:00:00,000 --> 00:05:00,000\n${longLine}\n`
+    const fetchFn = async (url: RequestInfo | URL) => {
+      const u = String(url)
+      if (u.includes("api.arclight.org")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            downloadUrls: { high: { url: "https://dl/high.mp4" } },
+            subtitleUrls: {
+              srt: [{ languageId: 529, url: "https://sub/m.srt" }],
+            },
+          }),
+        } as unknown as Response
+      }
+      return { ok: true, text: async () => longSrt } as unknown as Response
+    }
+    const t = await fetchClipTranscript("m", 0, 300, 529, { fetchFn })
+    expect(t).toBeDefined()
+    expect(t!.length).toBeLessThan(longLine.length)
+    // Truncates on a word boundary, not mid-word.
+    expect(t!.endsWith("word…")).toBe(true)
+    expect(t).not.toMatch(/wor…$/)
   })
 })

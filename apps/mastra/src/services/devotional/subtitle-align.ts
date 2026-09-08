@@ -439,6 +439,18 @@ export function transcriptForWindow(
     .replace(/\s{2,}/g, " ")
 }
 
+/**
+ * Prepare a transcript for interpolation into an LLM prompt as a quoted
+ * block. Subtitle dialogue routinely contains its own quotation marks
+ * ("he said 'come down'"), which would otherwise visually break out of the
+ * wrapping `"…"` the writer and critic prompts both use — swap embedded
+ * double quotes for single ones and collapse any literal newline so the
+ * block reads as one unambiguous line of DATA, never as prompt structure.
+ */
+export function quoteTranscript(text: string): string {
+  return text.replace(/"/g, "'").replace(/\r?\n/g, " ")
+}
+
 export type ArclightMediaInfo = {
   /** Arclight's own download URL (not yet resolved to a specific Mux
    *  rendition — the render pipeline does that separately). */
@@ -477,6 +489,24 @@ export async function arclightMediaInfo(
 }
 
 /**
+ * Cap on the transcript handed into a prompt. Even the longest curated
+ * windows in jesus-film-passages run under 120s of dialogue (~300 words at a
+ * natural speaking rate), so 2000 characters covers every real chapter with
+ * room to spare while bounding a pathological case (a mis-seeded window, or
+ * an unusually cue-dense scene) from dominating the writer/critic prompt's
+ * token budget. Truncates on a word boundary so the model never sees a
+ * transcript that stops mid-word.
+ */
+const MAX_TRANSCRIPT_CHARS = 2000
+
+function capTranscriptLength(text: string): string {
+  if (text.length <= MAX_TRANSCRIPT_CHARS) return text
+  const cut = text.slice(0, MAX_TRANSCRIPT_CHARS)
+  const lastSpace = cut.lastIndexOf(" ")
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim()}…`
+}
+
+/**
  * The clip's own transcript for a curated window — what the reflection
  * pipeline uses to know what the clip actually says instead of assuming.
  *
@@ -509,7 +539,7 @@ export async function fetchClipTranscript(
       edited.startSec,
       edited.lengthSec,
     )
-    return text || undefined
+    return text ? capTranscriptLength(text) : undefined
   } catch {
     return undefined
   }
