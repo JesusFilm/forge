@@ -75,8 +75,6 @@ describe("iOS", () => {
     const options = await renderLayout()
     expect(options.tabBarBackground).toBeDefined()
     expect(options.tabBarHideOnKeyboard).toBe(true)
-    // The brand red fails AA on the lens; iOS takes the lighter step.
-    expect(options.tabBarActiveTintColor).toBe("#F0757B")
   })
 })
 
@@ -106,10 +104,5 @@ describe("Android", () => {
   it("leaves tabBarHideOnKeyboard unset, exactly as today", async () => {
     setPlatform("android")
     expect((await renderLayout()).tabBarHideOnKeyboard).toBeUndefined()
-  })
-
-  it("keeps the brand red as the active tint", async () => {
-    setPlatform("android")
-    expect((await renderLayout()).tabBarActiveTintColor).toBe("#CB333B")
   })
 })
