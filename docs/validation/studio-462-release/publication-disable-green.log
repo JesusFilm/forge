@@ -1,0 +1,12 @@
+(node:2314723) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+ ✓ src/services/studio-authoring/release-controls.db.test.ts (1 test) 498ms
+   ✓ Studio release admission controls > denies a new canonical manual publication while retaining the editable draft  491ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:14:50
+   Duration  1.73s (transform 449ms, setup 18ms, collect 923ms, tests 498ms, environment 0ms, prepare 83ms)

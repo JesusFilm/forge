@@ -1,0 +1,32 @@
+from pathlib import Path
+import hashlib,json,subprocess,re
+root=Path.cwd(); base='1dd20216'
+def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def unchanged(p):return subprocess.check_output(['git','diff',base,'--',':(top)'+p])==b''
+worker='apps/shorts-worker'
+assert unchanged(worker)
+assert not subprocess.check_output(['git','ls-files','apps/manager/src/app/api/shorts'])
+assert not subprocess.check_output(['git','ls-files','apps/manager/src/features/shorts'])
+routes=sorted(str(p) for p in Path('apps/manager/src/app/dashboard/shorts').rglob('page.tsx'))
+assert len(routes)==4 and any('/calendar/' in p for p in routes)
+assert all(unchanged(p) for p in routes)
+verifiers=['apps/admin/scripts/verify-recommendation-workflow-build.mjs','apps/admin/scripts/verify-studio-calendar-workflow-build.mjs']
+build=json.loads(Path('apps/admin/package.json').read_text())['scripts']['build']
+assert all(Path(p).name in build and unchanged(p) for p in verifiers)
+assert unchanged('apps/admin/src/app/api/studio/calendar-worker/route.ts')
+assert unchanged('apps/admin/src/workflows/studioCalendar.ts')
+assert './render-engine' in Path(worker+'/src/devotional-render.ts').read_text()
+assert 'devotional-render' in Path(worker+'/src/routes/jobs.ts').read_text()
+assert 'install-whisper-cpp' in Path(worker+'/scripts/detect-and-trim-snippet.mjs').read_text()
+ledger=Path('/home/tataihono/.local/share/forge/studio-462-release/logs/database-inventory.log').read_text()
+rows=[]
+for line in ledger.splitlines():
+ m=re.match(r'\s*(\d{4}[a-z]?_[^|]+?)\s*\|\s*t\s*\|\s*f\s*\|\s*([a-f0-9]{64})\s*$',line)
+ if m:
+  name,digest=m.groups();file=Path('apps/admin/prisma/migrations')/name/'migration.sql'
+  assert sha(file)==digest,name
+  rows.append(name)
+expected=sorted(p.parent.name for p in Path('apps/admin/prisma/migrations').glob('*/migration.sql'))
+assert rows==expected and len(rows)==102
+record={'baseline':base,'sourceTree':'e94ed4b2503533845d7f27298ae581bc308d7bf1','appliedMigrationCount':len(rows),'migrationChecksumsMatchSource':True,'lastMigration':rows[-1],'migrationsUnchanged':unchanged('apps/admin/prisma/migrations'),'adminBuild':build,'verifiers':{p:sha(p) for p in verifiers},'preservedRoutes':routes,'retiredApiAbsent':True,'retiredUiAbsent':True,'workerTreeUnchanged':True,'devotionalEngineConsumerPreserved':True,'devotionalCliWhisperPreserved':True,'sharedCompositionsUnchanged':unchanged('packages/shorts-compositions'),'studioEditorUnchanged':unchanged('apps/manager/src/features/video-studio'),'qualification':'Static final-integration composition and actual fresh DB ledger. Existing reviewed post-retirement builds are referenced, not rerun. No OCI/deployed assertion.'}
+print(json.dumps(record,indent=2))

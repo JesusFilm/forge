@@ -1,0 +1,29 @@
+{
+  "qualification": "Task-owned Admin build using offline font CSS fixture. No OCI, browser, actual font, provider or deployment claim.",
+  "artifacts": {
+    "apps/admin/.next/BUILD_ID": {
+      "sha256": "566a8cec525fd3a72a1921a42d9834f72eba39e399d94dda85494c102e48e0b5",
+      "bytes": 21
+    },
+    "apps/admin/.next/routes-manifest.json": {
+      "sha256": "e51acdaa9069535c58733bf11bfbcb08cd4f53568f7fa46c0ffb12a931d142a4",
+      "bytes": 17937
+    },
+    "apps/admin/.next/server/app-paths-manifest.json": {
+      "sha256": "9e2e4787c7881fdf72b09806a575bc7059e15cc37c1f44bac84afca1a5f10691",
+      "bytes": 6574
+    },
+    "apps/admin/src/app/.well-known/workflow/v1/manifest.json": {
+      "sha256": "83109f982015f02750546675299d0c47004505e88e5c73318172901cf731647f",
+      "bytes": 35075
+    },
+    "apps/admin/src/app/.well-known/workflow/v1/flow/route.js": {
+      "sha256": "8180b15a6aa327942d51706239fd2bcec4b45e4345a31c72720d6c9188a27c2d",
+      "bytes": 2203672
+    },
+    "apps/admin/src/app/.well-known/workflow/v1/step/route.js": {
+      "sha256": "fb760e2615686f5816496ded76303e3941752614b69efca200c34cb2fa12dbd7",
+      "bytes": 236696
+    }
+  }
+}

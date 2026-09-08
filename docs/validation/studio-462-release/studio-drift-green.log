@@ -1,0 +1,1050 @@
+(node:2306119) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+-- DropForeignKey
+ALTER TABLE "account" DROP CONSTRAINT "account_user_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "bible_citation" DROP CONSTRAINT "bible_citation_bible_book_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "bible_citation" DROP CONSTRAINT "bible_citation_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "country" DROP CONSTRAINT "country_continent_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "country_language" DROP CONSTRAINT "country_language_country_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "country_language" DROP CONSTRAINT "country_language_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "experience_locale" DROP CONSTRAINT "experience_locale_experience_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "keyword" DROP CONSTRAINT "keyword_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "media_asset" DROP CONSTRAINT "media_asset_created_by_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_candidate_run" DROP CONSTRAINT "recommendation_candidate_run_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_candidate_stage_evidence" DROP CONSTRAINT "recommendation_candidate_stage_run_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_capability_submission_budget" DROP CONSTRAINT "recommendation_capability_submission_budget_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_conflict" DROP CONSTRAINT "recommendation_conflict_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_evidence_audit" DROP CONSTRAINT "recommendation_evidence_audit_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment" DROP CONSTRAINT "recommendation_experiment_challenger_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment" DROP CONSTRAINT "recommendation_experiment_control_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_assignment" DROP CONSTRAINT "recommendation_experiment_assignment_experiment_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_assignment" DROP CONSTRAINT "recommendation_experiment_assignment_profile_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" DROP CONSTRAINT "recommendation_experiment_evaluation_experiment_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" DROP CONSTRAINT "recommendation_experiment_evaluation_run_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" DROP CONSTRAINT "recommendation_experiment_evaluation_supersedes_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_evaluation_run" DROP CONSTRAINT "recommendation_experiment_evaluation_run_experiment_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_exposure" DROP CONSTRAINT "recommendation_experiment_exposure_assignment_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_exposure" DROP CONSTRAINT "recommendation_experiment_exposure_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_exposure" DROP CONSTRAINT "recommendation_experiment_exposure_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_experiment_exposure" DROP CONSTRAINT "recommendation_experiment_exposure_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_impression" DROP CONSTRAINT "recommendation_impression_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_impression" DROP CONSTRAINT "recommendation_impression_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_outcome_revision" DROP CONSTRAINT "recommendation_outcome_episode_lineage_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_outcome_revision" DROP CONSTRAINT "recommendation_outcome_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_outcome_revision" DROP CONSTRAINT "recommendation_outcome_revision_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_outcome_revision" DROP CONSTRAINT "recommendation_outcome_supersedes_lineage_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_personalization_decision" DROP CONSTRAINT "recommendation_personalization_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_personalization_decision" DROP CONSTRAINT "recommendation_personalization_projection_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_personalization_decision" DROP CONSTRAINT "recommendation_personalization_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_episode" DROP CONSTRAINT "recommendation_episode_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_episode" DROP CONSTRAINT "recommendation_episode_selection_lineage_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_episode" DROP CONSTRAINT "recommendation_playback_episode_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_fact" DROP CONSTRAINT "recommendation_fact_episode_lineage_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_fact" DROP CONSTRAINT "recommendation_fact_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_playback_fact" DROP CONSTRAINT "recommendation_playback_fact_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_interest" DROP CONSTRAINT "recommendation_profile_interest_generation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" DROP CONSTRAINT "recommendation_profile_contribution_generation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" DROP CONSTRAINT "recommendation_profile_contribution_outcome_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" DROP CONSTRAINT "recommendation_profile_contribution_selection_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_generation" DROP CONSTRAINT "recommendation_profile_projection_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_generation" DROP CONSTRAINT "recommendation_profile_projection_profile_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_pointer" DROP CONSTRAINT "recommendation_profile_projection_pointer_generation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_pointer" DROP CONSTRAINT "recommendation_profile_projection_pointer_profile_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_run" DROP CONSTRAINT "recommendation_profile_projection_run_profile_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_profile_projection_run" DROP CONSTRAINT "recommendation_profile_projection_run_projection_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_approval" DROP CONSTRAINT "recommendation_promotion_approval_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_pointer" DROP CONSTRAINT "recommendation_promotion_pointer_active_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_pointer" DROP CONSTRAINT "recommendation_promotion_pointer_approval_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_pointer" DROP CONSTRAINT "recommendation_promotion_pointer_lkg_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_run" DROP CONSTRAINT "recommendation_promotion_run_approval_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_run" DROP CONSTRAINT "recommendation_promotion_run_evaluation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_promotion_slate_fence" DROP CONSTRAINT "recommendation_promotion_slate_fence_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_rendered_fact" DROP CONSTRAINT "recommendation_render_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_rendered_fact" DROP CONSTRAINT "recommendation_rendered_fact_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_request" DROP CONSTRAINT "recommendation_request_experiment_assignment_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_request" DROP CONSTRAINT "recommendation_request_manifest_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_selection" DROP CONSTRAINT "recommendation_selection_item_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_selection" DROP CONSTRAINT "recommendation_selection_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_served_item" DROP CONSTRAINT "recommendation_served_item_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_serving_control" DROP CONSTRAINT "recommendation_serving_control_manifest_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_decision" DROP CONSTRAINT "recommendation_shadow_decision_evaluation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_evaluation" DROP CONSTRAINT "recommendation_shadow_evaluation_manifest_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_nomination" DROP CONSTRAINT "recommendation_shadow_nomination_run_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_run" DROP CONSTRAINT "recommendation_shadow_run_candidate_run_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_run" DROP CONSTRAINT "recommendation_shadow_run_evaluation_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_run" DROP CONSTRAINT "recommendation_shadow_run_profile_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_shadow_run" DROP CONSTRAINT "recommendation_shadow_run_request_fkey";
+
+-- DropForeignKey
+ALTER TABLE "recommendation_trace_access_audit" DROP CONSTRAINT "recommendation_trace_access_audit_request_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "session" DROP CONSTRAINT "session_user_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video" DROP CONSTRAINT "video_origin_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video" DROP CONSTRAINT "video_primary_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_dub" DROP CONSTRAINT "video_dub_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_dub" DROP CONSTRAINT "video_dub_mux_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_dub" DROP CONSTRAINT "video_dub_video_edition_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_dub" DROP CONSTRAINT "video_dub_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_dub_download" DROP CONSTRAINT "video_dub_download_video_dub_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_image" DROP CONSTRAINT "video_image_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_keyword" DROP CONSTRAINT "video_keyword_keyword_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_keyword" DROP CONSTRAINT "video_keyword_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_locale" DROP CONSTRAINT "video_locale_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_relation" DROP CONSTRAINT "video_relation_child_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_relation" DROP CONSTRAINT "video_relation_parent_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_scene" DROP CONSTRAINT "video_scene_video_edition_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_scene" DROP CONSTRAINT "video_scene_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_scene_locale" DROP CONSTRAINT "video_scene_locale_video_scene_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_study_question" DROP CONSTRAINT "video_study_question_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_study_question" DROP CONSTRAINT "video_study_question_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_subtitle" DROP CONSTRAINT "video_subtitle_language_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_subtitle" DROP CONSTRAINT "video_subtitle_video_edition_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_subtitle" DROP CONSTRAINT "video_subtitle_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_transcript" DROP CONSTRAINT "video_transcript_video_edition_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_transcript" DROP CONSTRAINT "video_transcript_video_id_fkey";
+
+-- DropForeignKey
+ALTER TABLE "video_transcript_chunk" DROP CONSTRAINT "video_transcript_chunk_transcript_id_fkey";
+
+-- DropIndex
+DROP INDEX "recommendation_profile_interest_generation_kind_idx";
+
+-- DropIndex
+DROP INDEX "recommendation_profile_projection_profile_generation_idx";
+
+-- DropIndex
+DROP INDEX "recommendation_profile_projection_session_generation_idx";
+
+-- DropIndex
+DROP INDEX "video_locale_description_trgm_idx";
+
+-- DropIndex
+DROP INDEX "video_locale_title_trgm_idx";
+
+-- DropIndex
+DROP INDEX "video_relation_watch_children_order_idx";
+
+-- DropIndex
+DROP INDEX "video_relation_watch_parents_order_idx";
+
+-- DropIndex
+DROP INDEX "video_transcript_source_kind_idx";
+
+-- DropIndex
+DROP INDEX "video_transcript_source_language_id_idx";
+
+-- AlterTable
+ALTER TABLE "bible_book" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "bible_citation" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "content_revision" ALTER COLUMN "revised_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "applied_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "continent" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "country" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "country_language" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "experience" ALTER COLUMN "archived_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "experience_chat_message" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "experience_chat_thread" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "last_message_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "archived_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "experience_locale" ALTER COLUMN "published_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "keyword" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "language" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "language_fallback" ALTER COLUMN "updated_at" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "media_asset" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "image_enrichment_started_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "image_enrichment_completed_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "media_asset_locale" ALTER COLUMN "generated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "mux_video" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "query_embedding_cache" ALTER COLUMN "updated_at" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "recommendation_candidate_run" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_candidate_stage_evidence" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_capability_submission_budget" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_conflict" ALTER COLUMN "first_seen_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "last_seen_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_evidence_audit" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_experiment" ALTER COLUMN "starts_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "ends_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_experiment_assignment" ALTER COLUMN "assigned_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "fenced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_experiment_evaluation" ALTER COLUMN "window_start" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "window_end" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "input_captured_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "assignment_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "exposure_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "outcome_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "mission_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "eligibility_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "evaluated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_experiment_evaluation_run" ALTER COLUMN "window_start" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "window_end" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "heartbeat_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_experiment_exposure" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "received_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_impression" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "received_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_outcome_revision" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_personalization_decision" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_playback_episode" ALTER COLUMN "active_until" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "hard_until" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "finalization_due_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "finalized_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_playback_fact" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "received_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_profile_interest" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_profile_projection_contribution" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_profile_projection_generation" ALTER COLUMN "input_window_start" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "input_window_end" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "input_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "published_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_profile_projection_pointer" ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_profile_projection_run" ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "heartbeat_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_promotion_approval" ALTER COLUMN "approved_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_promotion_event" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_promotion_pointer" ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_promotion_run" ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "heartbeat_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_promotion_slate_fence" ALTER COLUMN "fenced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_rendered_fact" ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "received_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_request" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "issued_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_retention_run" ALTER COLUMN "oldest_expired_at_after" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "started_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_selection" ALTER COLUMN "handoff_expires_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "occurred_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "received_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_served_item" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_serving_control" ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_shadow_decision" ALTER COLUMN "decided_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_shadow_evaluation" ALTER COLUMN "window_start" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "window_end" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "input_watermark" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_shadow_nomination" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_shadow_run" ALTER COLUMN "claimed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "heartbeat_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "finished_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "input_captured_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_strategy_manifest" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "recommendation_trace_access_audit" ALTER COLUMN "accessed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "sync_locks" ALTER COLUMN "acquired_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "sync_state" ALTER COLUMN "last_synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "user" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "published_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_dub" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_dub_download" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_edition" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_image" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_keyword" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_locale" ALTER COLUMN "published_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "title_tsv" DROP DEFAULT,
+ALTER COLUMN "description_tsv" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "video_origin" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_relation" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_scene" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_scene_locale" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_study_question" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_subtitle" ALTER COLUMN "synced_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_transcript" ALTER COLUMN "generated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "video_transcript_chunk" ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "watch_route_manifest_snapshot" ALTER COLUMN "updated_at" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "watch_seo_manifest_snapshot" ALTER COLUMN "updated_at" DROP DEFAULT;
+
+-- DropTable
+DROP TABLE "account";
+
+-- DropTable
+DROP TABLE "session";
+
+-- DropTable
+DROP TABLE "verification";
+
+-- CreateIndex
+CREATE INDEX "recommendation_profile_interest_generation_kind_idx" ON "recommendation_profile_interest"("generation_id", "kind");
+
+-- CreateIndex
+CREATE INDEX "recommendation_profile_projection_profile_generation_idx" ON "recommendation_profile_projection_generation"("profile_id", "privacy_generation", "state", "generation");
+
+-- CreateIndex
+CREATE INDEX "recommendation_profile_projection_session_generation_idx" ON "recommendation_profile_projection_generation"("session_digest", "state", "generation");
+
+-- CreateIndex
+CREATE INDEX "video_study_question_core_id_idx" ON "video_study_question"("core_id");
+
+-- RenameForeignKey
+ALTER TABLE "recommendation_eligibility_decision" RENAME CONSTRAINT "recommendation_eligibility_content_action_id_fkey" TO "recommendation_eligibility_decision_content_action_id_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "recommendation_eligibility_decision" RENAME CONSTRAINT "recommendation_eligibility_outcome_id_fkey" TO "recommendation_eligibility_decision_outcome_id_fkey";
+
+-- AddForeignKey
+ALTER TABLE "media_asset" ADD CONSTRAINT "media_asset_created_by_id_fkey" FOREIGN KEY ("created_by_id") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "country" ADD CONSTRAINT "country_continent_id_fkey" FOREIGN KEY ("continent_id") REFERENCES "continent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "country_language" ADD CONSTRAINT "country_language_country_id_fkey" FOREIGN KEY ("country_id") REFERENCES "country"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "country_language" ADD CONSTRAINT "country_language_language_id_fkey" FOREIGN KEY ("language_id") REFERENCES "language"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "keyword" ADD CONSTRAINT "keyword_language_id_fkey" FOREIGN KEY ("language_id") REFERENCES "language"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video" ADD CONSTRAINT "video_primary_language_id_fkey" FOREIGN KEY ("primary_language_id") REFERENCES "language"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video" ADD CONSTRAINT "video_origin_id_fkey" FOREIGN KEY ("origin_id") REFERENCES "video_origin"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_locale" ADD CONSTRAINT "video_locale_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_relation" ADD CONSTRAINT "video_relation_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_relation" ADD CONSTRAINT "video_relation_child_id_fkey" FOREIGN KEY ("child_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_keyword" ADD CONSTRAINT "video_keyword_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_keyword" ADD CONSTRAINT "video_keyword_keyword_id_fkey" FOREIGN KEY ("keyword_id") REFERENCES "keyword"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_dub" ADD CONSTRAINT "video_dub_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_dub" ADD CONSTRAINT "video_dub_language_id_fkey" FOREIGN KEY ("language_id") REFERENCES "language"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_dub" ADD CONSTRAINT "video_dub_video_edition_id_fkey" FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_dub" ADD CONSTRAINT "video_dub_mux_video_id_fkey" FOREIGN KEY ("mux_video_id") REFERENCES "mux_video"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_dub_download" ADD CONSTRAINT "video_dub_download_video_dub_id_fkey" FOREIGN KEY ("video_dub_id") REFERENCES "video_dub"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_subtitle" ADD CONSTRAINT "video_subtitle_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_subtitle" ADD CONSTRAINT "video_subtitle_video_edition_id_fkey" FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_subtitle" ADD CONSTRAINT "video_subtitle_language_id_fkey" FOREIGN KEY ("language_id") REFERENCES "language"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_study_question" ADD CONSTRAINT "video_study_question_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_study_question" ADD CONSTRAINT "video_study_question_language_id_fkey" FOREIGN KEY ("language_id") REFERENCES "language"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_image" ADD CONSTRAINT "video_image_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bible_citation" ADD CONSTRAINT "bible_citation_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bible_citation" ADD CONSTRAINT "bible_citation_bible_book_id_fkey" FOREIGN KEY ("bible_book_id") REFERENCES "bible_book"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_scene" ADD CONSTRAINT "video_scene_video_edition_id_fkey" FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_scene" ADD CONSTRAINT "video_scene_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_scene_locale" ADD CONSTRAINT "video_scene_locale_video_scene_id_fkey" FOREIGN KEY ("video_scene_id") REFERENCES "video_scene"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "experience_locale" ADD CONSTRAINT "experience_locale_experience_id_fkey" FOREIGN KEY ("experience_id") REFERENCES "experience"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_transcript" ADD CONSTRAINT "video_transcript_video_edition_id_fkey" FOREIGN KEY ("video_edition_id") REFERENCES "video_edition"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_transcript" ADD CONSTRAINT "video_transcript_video_id_fkey" FOREIGN KEY ("video_id") REFERENCES "video"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "video_transcript_chunk" ADD CONSTRAINT "video_transcript_chunk_transcript_id_fkey" FOREIGN KEY ("transcript_id") REFERENCES "video_transcript"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_serving_control" ADD CONSTRAINT "recommendation_serving_control_manifest_id_fkey" FOREIGN KEY ("manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_request" ADD CONSTRAINT "recommendation_request_manifest_id_fkey" FOREIGN KEY ("manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_request" ADD CONSTRAINT "recommendation_request_experiment_assignment_id_fkey" FOREIGN KEY ("experiment_assignment_id") REFERENCES "recommendation_experiment_assignment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_candidate_run" ADD CONSTRAINT "recommendation_candidate_run_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_personalization_decision" ADD CONSTRAINT "recommendation_personalization_decision_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_personalization_decision" ADD CONSTRAINT "recommendation_personalization_decision_effective_manifest_fkey" FOREIGN KEY ("effective_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_personalization_decision" ADD CONSTRAINT "recommendation_personalization_decision_projection_generat_fkey" FOREIGN KEY ("projection_generation_id") REFERENCES "recommendation_profile_projection_generation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_candidate_stage_evidence" ADD CONSTRAINT "recommendation_candidate_stage_evidence_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "recommendation_candidate_run"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_evaluation" ADD CONSTRAINT "recommendation_shadow_evaluation_manifest_id_fkey" FOREIGN KEY ("manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_run" ADD CONSTRAINT "recommendation_shadow_run_evaluation_id_fkey" FOREIGN KEY ("evaluation_id") REFERENCES "recommendation_shadow_evaluation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_run" ADD CONSTRAINT "recommendation_shadow_run_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_run" ADD CONSTRAINT "recommendation_shadow_run_live_candidate_run_id_fkey" FOREIGN KEY ("live_candidate_run_id") REFERENCES "recommendation_candidate_run"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_run" ADD CONSTRAINT "recommendation_shadow_run_projection_profile_id_fkey" FOREIGN KEY ("projection_profile_id") REFERENCES "recommendation_profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_nomination" ADD CONSTRAINT "recommendation_shadow_nomination_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "recommendation_shadow_run"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_shadow_decision" ADD CONSTRAINT "recommendation_shadow_decision_evaluation_id_fkey" FOREIGN KEY ("evaluation_id") REFERENCES "recommendation_shadow_evaluation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment" ADD CONSTRAINT "recommendation_experiment_control_manifest_id_fkey" FOREIGN KEY ("control_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment" ADD CONSTRAINT "recommendation_experiment_challenger_manifest_id_fkey" FOREIGN KEY ("challenger_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_assignment" ADD CONSTRAINT "recommendation_experiment_assignment_experiment_id_fkey" FOREIGN KEY ("experiment_id") REFERENCES "recommendation_experiment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_assignment" ADD CONSTRAINT "recommendation_experiment_assignment_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "recommendation_profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_exposure" ADD CONSTRAINT "recommendation_experiment_exposure_assignment_id_fkey" FOREIGN KEY ("assignment_id") REFERENCES "recommendation_experiment_assignment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_exposure" ADD CONSTRAINT "recommendation_experiment_exposure_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_exposure" ADD CONSTRAINT "recommendation_experiment_exposure_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_exposure" ADD CONSTRAINT "recommendation_experiment_exposure_effective_manifest_id_fkey" FOREIGN KEY ("effective_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_evaluation_run" ADD CONSTRAINT "recommendation_experiment_evaluation_run_experiment_id_fkey" FOREIGN KEY ("experiment_id") REFERENCES "recommendation_experiment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" ADD CONSTRAINT "recommendation_experiment_evaluation_experiment_id_fkey" FOREIGN KEY ("experiment_id") REFERENCES "recommendation_experiment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" ADD CONSTRAINT "recommendation_experiment_evaluation_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "recommendation_experiment_evaluation_run"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_experiment_evaluation" ADD CONSTRAINT "recommendation_experiment_evaluation_supersedes_id_fkey" FOREIGN KEY ("supersedes_id") REFERENCES "recommendation_experiment_evaluation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_approval" ADD CONSTRAINT "recommendation_promotion_approval_manifest_id_fkey" FOREIGN KEY ("manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_pointer" ADD CONSTRAINT "recommendation_promotion_pointer_active_manifest_id_fkey" FOREIGN KEY ("active_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_pointer" ADD CONSTRAINT "recommendation_promotion_pointer_last_known_good_manifest__fkey" FOREIGN KEY ("last_known_good_manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_pointer" ADD CONSTRAINT "recommendation_promotion_pointer_active_approval_id_fkey" FOREIGN KEY ("active_approval_id") REFERENCES "recommendation_promotion_approval"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_run" ADD CONSTRAINT "recommendation_promotion_run_approval_id_fkey" FOREIGN KEY ("approval_id") REFERENCES "recommendation_promotion_approval"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_run" ADD CONSTRAINT "recommendation_promotion_run_evaluation_id_fkey" FOREIGN KEY ("evaluation_id") REFERENCES "recommendation_experiment_evaluation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_promotion_slate_fence" ADD CONSTRAINT "recommendation_promotion_slate_fence_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_served_item" ADD CONSTRAINT "recommendation_served_item_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_rendered_fact" ADD CONSTRAINT "recommendation_rendered_fact_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_rendered_fact" ADD CONSTRAINT "recommendation_render_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_impression" ADD CONSTRAINT "recommendation_impression_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_impression" ADD CONSTRAINT "recommendation_impression_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_selection" ADD CONSTRAINT "recommendation_selection_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_selection" ADD CONSTRAINT "recommendation_selection_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_episode" ADD CONSTRAINT "recommendation_playback_episode_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_episode" ADD CONSTRAINT "recommendation_episode_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_episode" ADD CONSTRAINT "recommendation_episode_selection_lineage_fkey" FOREIGN KEY ("request_id", "item_id", "selection_id") REFERENCES "recommendation_selection"("request_id", "item_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_fact" ADD CONSTRAINT "recommendation_playback_fact_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_fact" ADD CONSTRAINT "recommendation_fact_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_playback_fact" ADD CONSTRAINT "recommendation_fact_episode_lineage_fkey" FOREIGN KEY ("request_id", "item_id", "episode_id") REFERENCES "recommendation_playback_episode"("request_id", "item_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_outcome_revision" ADD CONSTRAINT "recommendation_outcome_revision_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_outcome_revision" ADD CONSTRAINT "recommendation_outcome_item_request_fkey" FOREIGN KEY ("request_id", "item_id") REFERENCES "recommendation_served_item"("request_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_outcome_revision" ADD CONSTRAINT "recommendation_outcome_episode_lineage_fkey" FOREIGN KEY ("request_id", "item_id", "episode_id") REFERENCES "recommendation_playback_episode"("request_id", "item_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_outcome_revision" ADD CONSTRAINT "recommendation_outcome_supersedes_lineage_fkey" FOREIGN KEY ("request_id", "item_id", "episode_id", "supersedes_id") REFERENCES "recommendation_outcome_revision"("request_id", "item_id", "episode_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_generation" ADD CONSTRAINT "recommendation_profile_projection_generation_manifest_id_fkey" FOREIGN KEY ("manifest_id") REFERENCES "recommendation_strategy_manifest"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_generation" ADD CONSTRAINT "recommendation_profile_projection_generation_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "recommendation_profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_pointer" ADD CONSTRAINT "recommendation_profile_projection_pointer_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "recommendation_profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_pointer" ADD CONSTRAINT "recommendation_profile_projection_pointer_generation_id_fkey" FOREIGN KEY ("generation_id") REFERENCES "recommendation_profile_projection_generation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_run" ADD CONSTRAINT "recommendation_profile_projection_run_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "recommendation_profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_run" ADD CONSTRAINT "recommendation_profile_projection_run_projection_id_fkey" FOREIGN KEY ("projection_id") REFERENCES "recommendation_profile_projection_generation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_interest" ADD CONSTRAINT "recommendation_profile_interest_generation_id_fkey" FOREIGN KEY ("generation_id") REFERENCES "recommendation_profile_projection_generation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" ADD CONSTRAINT "recommendation_profile_projection_contribution_generation__fkey" FOREIGN KEY ("generation_id") REFERENCES "recommendation_profile_projection_generation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" ADD CONSTRAINT "recommendation_profile_projection_contribution_source_outc_fkey" FOREIGN KEY ("source_outcome_id") REFERENCES "recommendation_outcome_revision"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_profile_projection_contribution" ADD CONSTRAINT "recommendation_profile_projection_contribution_source_sele_fkey" FOREIGN KEY ("source_selection_id") REFERENCES "recommendation_selection"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_evidence_audit" ADD CONSTRAINT "recommendation_evidence_audit_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_conflict" ADD CONSTRAINT "recommendation_conflict_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_capability_submission_budget" ADD CONSTRAINT "recommendation_capability_submission_budget_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommendation_trace_access_audit" ADD CONSTRAINT "recommendation_trace_access_audit_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "recommendation_request"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- RenameIndex
+ALTER INDEX "bible_passage_cache_provider_version_id_reference_content_forma" RENAME TO "bible_passage_cache_provider_version_id_reference_content_f_key";
+
+-- RenameIndex
+ALTER INDEX "recommendation_profile_projection_pointer_generation_id_key" RENAME TO "recommendation_profile_projection_pointer_generation_key";
+
+-- RenameIndex
+ALTER INDEX "watch_search_candidate_generation_transcript_identity_idx" RENAME TO "watch_search_candidate_generation_transcript_collection_tra_idx";
+
+-- RenameIndex
+ALTER INDEX "watch_search_candidate_lease_generation_expires_at_idx" RENAME TO "watch_search_candidate_lease_generation_id_expires_at_idx";
+
+-- RenameIndex
+ALTER INDEX "watch_search_candidate_lease_transcript_identity_expires_at_idx" RENAME TO "watch_search_candidate_lease_transcript_collection_transcri_idx";
+
+-- RenameIndex
+ALTER INDEX "watch_search_candidate_qualification_generation_status_created_" RENAME TO "watch_search_candidate_qualification_generation_id_status_c_idx";

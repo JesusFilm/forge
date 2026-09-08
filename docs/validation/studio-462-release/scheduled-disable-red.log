@@ -1,0 +1,45 @@
+(node:2315311) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts (2 tests | 1 failed) 885ms
+   ✓ Studio release admission controls > denies a new canonical manual publication while retaining the editable draft  527ms
+   × Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish 353ms
+     → expected { …(3) } to match object { status: 'RETRY', …(1) }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish
+AssertionError: expected { …(3) } to match object { status: 'RETRY', …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "error": "PUBLICATION_DISABLED",
+-   "status": "RETRY",
++   "status": "BLOCKED",
+  }
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:64:69
+     62|       },
+     63|     })
+     64|     expect(await dispatcher.dispatch(f.authorized.authorizationId)).to…
+       |                                                                     ^
+     65|     const row = await db.studioScheduleAuthorization.findUniqueOrThrow…
+     66|     expect(row.submission).not.toBeNull()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  12:15:21
+   Duration  2.21s (transform 498ms, setup 15ms, collect 999ms, tests 885ms, environment 0ms, prepare 82ms)
+
+undefined
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/release-controls.db.test.ts --maxWorkers=1 --no-file-parallelism

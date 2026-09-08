@@ -1,0 +1,18 @@
+(node:2300018) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Scope: 6 of 27 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+.                                        | +699 ++++++++++++++++++++++++++++++++
+Progress: resolved 699, reused 614, downloaded 0, added 0
+Progress: resolved 699, reused 698, downloaded 0, added 699, done
+. prepare$ husky
+. prepare: Done
+apps/admin postinstall$ prisma generate
+apps/admin postinstall: Prisma schema loaded from prisma/schema.prisma
+apps/admin postinstall: ✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 1.23s
+apps/admin postinstall: ✔ Generated Pothos integration to ./../../node_modules/.pnpm/@pothos+plugin-prisma@4.14.3_@pothos+core@4.12.0_graphql@16.13.1__@prisma+client@6.19.3_prism_sqtyjvequyzsqiijhnyuyfdhlm/node_modules/@pothos/plugin-prisma/generated.d.ts in 815ms
+apps/admin postinstall: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+apps/admin postinstall: Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+apps/admin postinstall: Done
+Done in 9.8s

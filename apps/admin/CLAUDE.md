@@ -2791,3 +2791,17 @@ mutation until feat-460 supplies its catalog/render/approval checks.
 For Studio hosted instructions, OAuth MCP authority, or execution admission, read
 `docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
 root before changing those boundaries.
+
+### Studio release admission controls
+
+`STUDIO_PRODUCTION_ENABLED` and `STUDIO_PUBLICATION_ENABLED` default to `false`.
+The canonical checks live in `src/services/studio-authoring/release-controls.ts`:
+new attempts/experiments/paid runs and execution claims are separate from accepted
+receipts, consumed calls and late settlement. New publication checks follow exact
+receipt lookup, including stored scheduled envelopes. Unpublish and Watch delivery
+reconciliation stay available. Configure all Admin HTTP/workflow replicas and drain
+old processes; process environment is not an instantaneous fleet barrier. See
+`docs/runbooks/studio-release-canary-and-rollback.md` at the repository root for the
+operation map, rollout order and external acceptance gates. Local DB fixtures that
+exercise enabled production/publication must explicitly set both flags to `true`;
+do not change default-off production behavior to accommodate tests.

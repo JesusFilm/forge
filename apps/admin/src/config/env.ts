@@ -279,6 +279,8 @@ export const env = createEnv({
     STUDIO_ENVIRONMENT: z
       .enum(["local", "preview", "production"])
       .default("local"),
+    STUDIO_PRODUCTION_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_PUBLICATION_ENABLED: z.enum(["true", "false"]).default("false"),
     STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
     STUDIO_PUBLIC_PLAYBACK_ORIGIN: z.string().url().optional(),
     STUDIO_MUX_SIGNING_KEY: z.string().optional(),
@@ -738,6 +740,8 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_PRODUCTION_ENABLED: process.env.STUDIO_PRODUCTION_ENABLED,
+    STUDIO_PUBLICATION_ENABLED: process.env.STUDIO_PUBLICATION_ENABLED,
     STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
     STUDIO_PUBLIC_PLAYBACK_ORIGIN: process.env.STUDIO_PUBLIC_PLAYBACK_ORIGIN,
     STUDIO_MUX_SIGNING_KEY: process.env.STUDIO_MUX_SIGNING_KEY,

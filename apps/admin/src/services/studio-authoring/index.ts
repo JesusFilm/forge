@@ -1,3 +1,4 @@
+import { assertStudioProductionEnabled } from "./release-controls"
 import { completeStudioAttempt } from "./completion"
 import { canReviewStudio } from "@/auth/permissions"
 import { resolveStudioPackSources } from "./packs"
@@ -147,6 +148,7 @@ export class StudioAuthoringService {
       const hash = studioHash({ command: "request", actor, input })
       const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
       if (retry) return retry
+      assertStudioProductionEnabled()
       assertEditable(project, input.expectedRevision)
       const revision = await tx.studioProjectRevision.findUniqueOrThrow({
         where: {

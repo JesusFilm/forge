@@ -1,3 +1,4 @@
+import { assertStudioProductionEnabled } from "./release-controls"
 import { StudioProductionPreflightError } from "./errors"
 import { studioAssetReferenceSchema } from "@forge/studio-contracts"
 import { canReviewStudio } from "@/auth/permissions"
@@ -50,6 +51,7 @@ export class StudioExperimentService {
           throw new StudioCommandError("CONFLICT")
         return prior
       }
+      assertStudioProductionEnabled()
       if (
         Date.parse(input.estimate.expiresAt) <= Date.now() ||
         input.maxCostMicros < input.estimate.amountMicros

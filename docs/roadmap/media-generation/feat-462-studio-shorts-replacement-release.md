@@ -52,3 +52,16 @@ Paths marked proposed do not exist yet. Frontmatter dates/durations are planning
 - All plan acceptance scenarios have real evidence; database/source migrations and consumer checks pass.
 - Fresh PR-focused checks, format, builds and worker container smoke pass for touched scope.
 - Lyuba accepts the standalone path and the full Watch path; fallback disables new work without reopening published content.
+
+## Local progress and remaining release gates
+
+Legacy retirement is reviewed in `docs/validation/studio-462-retirement/README.md`.
+The integrated local matrix and evidence are in
+`docs/validation/studio-462-release/README.md` and `acceptance-matrix.md`; the
+reviewable operator procedure is `docs/runbooks/studio-release-canary-and-rollback.md`.
+Fresh owned Postgres replay and Studio Prisma alignment, independent default-off
+production/publication admission controls, and focused regression coverage are
+local evidence. Actual provider/creative/ElevenLabs, object storage, OCI/deployed
+containment/private transport/Mux/revocation, Claude app login, performance and
+Lyuba acceptance plus normal reviewed release remain open. This ticket stays
+in progress; local checks do not waive the original full acceptance contract.

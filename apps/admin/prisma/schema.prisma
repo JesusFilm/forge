@@ -4442,9 +4442,9 @@ model StudioCatalogPack {
 model StudioProductionRun {
   id            String                 @id @default(cuid())
   attemptId     String?                @unique @map("attempt_id") @db.VarChar(128)
-  attempt       StudioAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  attempt       StudioAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   experimentId  String?                @unique @map("experiment_id")
-  experiment    StudioExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  experiment    StudioExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   actor         Json
   maxCostMicros BigInt                 @map("max_cost_micros")
   state         String                 @default("READY")
@@ -4456,7 +4456,7 @@ model StudioProductionRun {
 
 model StudioProductionCall {
   runId         String              @map("run_id")
-  run           StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  run           StudioProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   key           String
   inputDigest   String              @map("input_digest") @db.VarChar(64)
   reserveMicros BigInt              @map("reserve_micros")
@@ -4470,9 +4470,9 @@ model StudioProductionCall {
 model StudioExperimentSelection {
   id           String                    @id @default(cuid())
   experimentId String                    @map("experiment_id")
-  experiment   StudioExperiment          @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  experiment   StudioExperiment          @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   candidateKey String                    @map("candidate_key")
-  candidate    StudioExperimentCandidate @relation(fields: [candidateKey], references: [candidateKey], onDelete: Restrict)
+  candidate    StudioExperimentCandidate @relation(fields: [candidateKey], references: [candidateKey], onDelete: Restrict, onUpdate: NoAction)
   requestKey   String                    @unique @map("request_key")
   inputHash    String                    @map("input_hash")
   asset        Json
@@ -4487,24 +4487,24 @@ model StudioRenderJob {
   leases         StudioRenderLease[]
   executions     StudioRenderExecution[]
   attemptId      String                  @id @map("attempt_id") @db.VarChar(128)
-  attempt        StudioAttempt           @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  attempt        StudioAttempt           @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   snapshot       Json
   state          String                  @default("QUEUED")
   generation     Int                     @default(0)
   leaseId        String?                 @map("lease_id")
   leaseExpiresAt DateTime?               @map("lease_expires_at")
   createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
+  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at")
 
   @@map("studio_render_job")
 }
 
 model StudioRenderExecution {
   readiness   StudioCatalogReadiness[]
-  lease       StudioRenderLease        @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
+  lease       StudioRenderLease        @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
   attemptId   String                   @map("attempt_id") @db.VarChar(128)
   leaseId     String                   @map("lease_id")
-  job         StudioRenderJob          @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict)
+  job         StudioRenderJob          @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
   requestHash String                   @map("request_hash") @db.VarChar(64)
   status      String
   result      Json
@@ -4519,7 +4519,7 @@ model StudioRenderLease {
   retainedAssets StudioRenderRetainedAsset[]
   attemptId      String                      @map("attempt_id") @db.VarChar(128)
   leaseId        String                      @map("lease_id")
-  job            StudioRenderJob             @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict)
+  job            StudioRenderJob             @relation(fields: [attemptId], references: [attemptId], onDelete: Restrict, onUpdate: NoAction)
   generation     Int
   expiresAt      DateTime                    @map("expires_at")
   createdAt      DateTime                    @default(now()) @map("created_at")
@@ -4534,10 +4534,10 @@ model StudioCatalogReadiness {
   id           String                @id @default(cuid())
   sequence     BigInt                @unique @default(autoincrement())
   releaseId    String                @map("release_id")
-  release      StudioCatalogRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  release      StudioCatalogRelease  @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   attemptId    String                @map("attempt_id") @db.VarChar(128)
   leaseId      String                @map("lease_id")
-  execution    StudioRenderExecution @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
+  execution    StudioRenderExecution @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
   proof        Json
   requestHash  String                @map("request_hash")
   checkedAt    DateTime              @map("checked_at")
@@ -4550,13 +4550,13 @@ model StudioCatalogReadiness {
 
 model StudioPublication {
   releaseId       String                 @id @map("release_id")
-  release         StudioCatalogRelease   @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  release         StudioCatalogRelease   @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   projectId       String                 @unique @map("project_id") @db.VarChar(128)
-  project         StudioProject          @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  project         StudioProject          @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   approvalId      String                 @map("approval_id") @db.VarChar(128)
-  approval        StudioApproval         @relation(fields: [approvalId], references: [id], onDelete: Restrict)
+  approval        StudioApproval         @relation(fields: [approvalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   readinessId     String                 @map("readiness_id")
-  readiness       StudioCatalogReadiness @relation(fields: [readinessId], references: [id], onDelete: Restrict)
+  readiness       StudioCatalogReadiness @relation(fields: [readinessId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   publishedAt     DateTime               @map("published_at")
   revokedAt       DateTime?              @map("revoked_at")
   watchDeliveries StudioWatchDelivery[]
@@ -4568,8 +4568,8 @@ model StudioRenderRetainedAsset {
   attemptId      String             @map("attempt_id") @db.VarChar(128)
   leaseId        String             @map("lease_id")
   assetVersionId String             @map("asset_version_id")
-  lease          StudioRenderLease  @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict)
-  assetVersion   StudioAssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Restrict)
+  lease          StudioRenderLease  @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+  assetVersion   StudioAssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   createdAt      DateTime           @default(now()) @map("created_at")
 
   @@id([attemptId, leaseId, assetVersionId])
@@ -4579,23 +4579,23 @@ model StudioRenderRetainedAsset {
 model StudioMuxJob {
   id         String        @id @default(cuid())
   attemptId  String        @unique @map("attempt_id") @db.VarChar(128)
-  attempt    StudioAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  attempt    StudioAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   snapshot   Json
   state      String        @default("PENDING")
   dispatchId String?       @unique @map("dispatch_id")
   assetId    String?       @unique @map("asset_id")
   readiness  Json?
   createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  updatedAt  DateTime      @default(now()) @updatedAt @map("updated_at")
 
   @@map("studio_mux_job")
 }
 
 model StudioWatchDelivery {
   releaseId   String            @map("release_id")
-  publication StudioPublication @relation(fields: [releaseId], references: [releaseId], onDelete: Restrict)
+  publication StudioPublication @relation(fields: [releaseId], references: [releaseId], onDelete: Restrict, onUpdate: NoAction)
   phase       String
-  deliveredAt DateTime          @default(now()) @map("delivered_at") @db.Timestamptz(6)
+  deliveredAt DateTime          @default(dbgenerated("clock_timestamp()")) @map("delivered_at") @db.Timestamptz(6)
 
   @@id([releaseId, phase])
   @@map("studio_watch_delivery")
@@ -4695,7 +4695,7 @@ model StudioScheduleAuthorization {
 
 model StudioScheduleDispatch {
   authorizationId String @id @map("authorization_id") @db.VarChar(128)
-  authorization StudioScheduleAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict)
+  authorization StudioScheduleAuthorization @relation(fields: [authorizationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   state String @default("PENDING") @db.VarChar(16)
   attempts Int @default(0)
   leaseId String? @map("lease_id") @db.Uuid

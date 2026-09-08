@@ -1,0 +1,37 @@
+[
+  {
+    "name": "controls-pg-start",
+    "exit": 0,
+    "seconds": 0.114
+  },
+  {
+    "name": "controls-db-fixture-followup",
+    "exit": 0,
+    "seconds": 6.464
+  },
+  {
+    "name": "controls-admin-typecheck",
+    "exit": 0,
+    "seconds": 20.263
+  },
+  {
+    "name": "controls-manager-typecheck",
+    "exit": 0,
+    "seconds": 20.803
+  },
+  {
+    "name": "controls-contracts-typecheck",
+    "exit": 0,
+    "seconds": 3.33
+  },
+  {
+    "name": "controls-admin-lint",
+    "exit": 1,
+    "seconds": 5.737
+  },
+  {
+    "name": "controls-pg-stop",
+    "exit": 0,
+    "seconds": 0.102
+  }
+]

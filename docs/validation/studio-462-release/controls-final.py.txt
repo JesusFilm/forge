@@ -1,0 +1,35 @@
+import os,subprocess,socket,json,time,hashlib,re
+from pathlib import Path
+base=Path('/home/tataihono/.local/share/forge/studio-462-release')
+pg=Path('/usr/lib/postgresql/18/bin')
+url='postgresql://tataihono@127.0.0.1:55462/forge_studio_462_test'
+env={k:os.environ[k] for k in ['PATH','HOME'] if k in os.environ}
+env.update(STUDIO_TEST_DATABASE_URL=url,STUDIO_PRODUCTION_ENABLED='true',STUDIO_PUBLICATION_ENABLED='true',TMPDIR=str(base/'tmp'),DATABASE_URL=url,CI='1',NEXT_TELEMETRY_DISABLED='1',DD_TRACE_ENABLED='false',OTEL_SDK_DISABLED='true',REDIS_URL='redis://127.0.0.1:54629',ADMIN_SESSION_SECRET='studio462-local-fixture-secret-at-least-32',AUTH_ISSUER_URL='http://127.0.0.1:55469',AUTH_ADMIN_CLIENT_ID='studio462-fixture')
+results=[]
+def run(name,args):
+ start=time.monotonic()
+ with (base/'logs'/f'{name}.log').open('w') as f:r=subprocess.run(args,env=env,stdout=f,stderr=subprocess.STDOUT)
+ results.append(dict(name=name,exit=r.returncode,seconds=round(time.monotonic()-start,3)))
+ (base/'evidence/controls-final-results.json').write_text(json.dumps(results,indent=2)+'\n')
+ print(name,r.returncode,flush=True)
+ if r.returncode:raise RuntimeError(name)
+try:
+ subprocess.run(['ip','link','set','lo','up'],check=True)
+ for port in [5432,6379]:
+  with socket.socket() as s:
+   s.settimeout(.2);assert s.connect_ex(('127.0.0.1',port))!=0
+ with socket.socket() as s:s.bind(('127.0.0.1',55462))
+ assert not (base/'pgdata/postmaster.pid').exists()
+ run('controls-pg-start',[str(pg/'pg_ctl'),'-D',str(base/'pgdata'),'-l',str(base/'logs/postgres.log'),'-o',f'-h 127.0.0.1 -p 55462 -k {base}/tmp','-w','start'])
+ run('controls-admin-tests',['pnpm','--filter','@forge/admin','exec','vitest','run','src/services/studio-authoring/release-controls.db.test.ts','src/services/studio-authoring/release-controls.test.ts','src/services/studio-authoring/calendar-dispatch.test.ts','src/services/studio-authoring/scheduled-publication-adapter.test.ts','src/graphql/schema.test.ts','--maxWorkers=1','--no-file-parallelism'])
+ run('controls-manager-tests',['pnpm','--filter','@forge/manager','exec','vitest','run','src/services/studio-production/runner.test.ts','src/services/studio-production/experiments.test.ts','src/services/studio-production/provider.test.ts','src/services/studio-render-runner.test.ts','src/services/studio-render-mux.test.ts','src/features/video-studio/publication-submission.test.ts','--maxWorkers=1','--no-file-parallelism'])
+ run('controls-contract-tests',['pnpm','--filter','@forge/studio-contracts','exec','vitest','run','src/publication.test.ts','src/calendar.test.ts','--maxWorkers=1','--no-file-parallelism'])
+ run('controls-admin-typecheck',['pnpm','--filter','@forge/admin','typecheck'])
+ run('controls-manager-typecheck',['pnpm','--filter','@forge/manager','typecheck'])
+ run('controls-contracts-typecheck',['pnpm','--filter','@forge/studio-contracts','typecheck'])
+ run('controls-admin-lint',['pnpm','--filter','@forge/admin','exec','eslint','src/config/env.ts','src/services/studio-authoring/release-controls.ts','src/services/studio-authoring/release-controls.test.ts','src/services/studio-authoring/release-controls.db.test.ts','src/services/studio-authoring/calendar-dispatch.ts','src/services/studio-authoring/errors.ts','src/services/studio-authoring/execution.ts','src/services/studio-authoring/experiments.ts','src/services/studio-authoring/index.ts','src/services/studio-authoring/mux-jobs.ts','src/services/studio-authoring/publication.ts','src/services/studio-authoring/render-jobs.ts'])
+ run('controls-manager-lint',['pnpm','--filter','@forge/manager','exec','eslint','src/services/studio-production/runner.test.ts'])
+ run('controls-contract-lint',['pnpm','--filter','@forge/studio-contracts','exec','eslint','src/publication.ts'])
+
+finally:
+ if (base/'pgdata/postmaster.pid').exists():run('controls-pg-stop',[str(pg/'pg_ctl'),'-D',str(base/'pgdata'),'-m','fast','-w','stop'])

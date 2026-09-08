@@ -1,3 +1,4 @@
+import { assertStudioPublicationEnabled } from "./release-controls"
 import {
   studioSchedulePublicationBindingSchema,
   studioPublishSchema,
@@ -74,12 +75,21 @@ export async function publishStudioProject(
     (scheduled && studioHash(input) !== studioHash(scheduled.input))
   )
     throw new ForbiddenError("Trusted schedule binding required")
+  const assertDeliveryWindow = (now: Date) => {
+    if (!input.schedule) return
+    if (Date.parse(input.schedule.dueAt) > now.getTime())
+      throw new StudioCommandError("NOT_DUE")
+    if (Date.parse(input.schedule.latestAllowedAt) < now.getTime())
+      throw new StudioCommandError("DELIVERY_EXPIRED")
+  }
   return db.$transaction(async (tx) => {
     const project = await lockProject(tx, input.projectId)
     const hash = studioHash({ command: "publish", actor, input })
     const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
     if (retry) return retry
     try {
+      if (scheduled) assertDeliveryWindow(new Date())
+      assertStudioPublicationEnabled()
       assertEditable(project, input.expectedRevision)
       const revision = await tx.studioProjectRevision.findUniqueOrThrow({
         where: {
@@ -119,13 +129,6 @@ export async function publishStudioProject(
         ]),
       ].sort()
       const publishedAt = new Date()
-      const assertDeliveryWindow = (now: Date) => {
-        if (!input.schedule) return
-        if (Date.parse(input.schedule.dueAt) > now.getTime())
-          throw new StudioCommandError("NOT_DUE")
-        if (Date.parse(input.schedule.latestAllowedAt) < now.getTime())
-          throw new StudioCommandError("DELIVERY_EXPIRED")
-      }
       if (scheduled) {
         assertDeliveryWindow(publishedAt)
         await scheduled.consume(tx, scheduled.input, publishedAt)
@@ -161,6 +164,7 @@ export async function publishStudioProject(
       // itself is outside this callback; this is not a commit-instant guarantee.
       assertDeliveryWindow(new Date())
       if (assertVerifiedCurrent) assertVerifiedCurrent()
+      assertStudioPublicationEnabled()
       return result
     } catch (error) {
       if (error instanceof StudioCommandError)

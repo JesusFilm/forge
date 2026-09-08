@@ -28,6 +28,7 @@ export type StudioSchedulePublicationBinding = z.infer<
   typeof studioSchedulePublicationBindingSchema
 >
 export const studioPublicationFailureSchema = z.enum([
+  "PUBLICATION_DISABLED",
   "NOT_DUE",
   "CANCELLED",
   "STALE_BINDING",

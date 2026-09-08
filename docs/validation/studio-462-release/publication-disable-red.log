@@ -1,0 +1,44 @@
+(node:2314060) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts (1 test | 1 failed) 492ms
+   × Studio release admission controls > denies a new canonical manual publication while retaining the editable draft 487ms
+     → promise resolved "{ …(3) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > denies a new canonical manual publication while retaining the editable draft
+AssertionError: promise resolved "{ …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "outcome": "ACCEPTED",
++   "projectId": "f7a1ac5d-4d27-4143-a449-bb237027eceb",
++   "revision": 1,
+  }
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:45:7
+     43|       releaseId: f.authorization.releaseId,
+     44|       readinessId: f.readiness.id,
+     45|     })).rejects.toMatchObject({ code: "PUBLICATION_DISABLED" })
+       |       ^
+     46|     expect(await f.commands.read(f.user, f.projectId)).toMatchObject({…
+     47|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  12:14:26
+   Duration  1.67s (transform 424ms, setup 19ms, collect 842ms, tests 492ms, environment 0ms, prepare 85ms)
+
+undefined
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/release-controls.db.test.ts --maxWorkers=1 --no-file-parallelism

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "initdb",
+    "exit": 0,
+    "seconds": 0.648
+  },
+  {
+    "name": "pg-start",
+    "exit": 0,
+    "seconds": 0.11
+  },
+  {
+    "name": "createdb",
+    "exit": 0,
+    "seconds": 0.069
+  },
+  {
+    "name": "migration-replay",
+    "exit": 0,
+    "seconds": 3.062
+  },
+  {
+    "name": "migration-status",
+    "exit": 0,
+    "seconds": 1.902
+  },
+  {
+    "name": "migration-schema-diff",
+    "exit": 0,
+    "seconds": 2.406
+  },
+  {
+    "name": "prisma-generate",
+    "exit": 0,
+    "seconds": 5.229
+  },
+  {
+    "name": "schema-print",
+    "exit": 0,
+    "seconds": 4.225
+  },
+  {
+    "name": "graphql-generate",
+    "exit": 0,
+    "seconds": 1.11
+  },
+  {
+    "name": "database-inventory",
+    "exit": 0,
+    "seconds": 0.024
+  },
+  {
+    "name": "admin-typecheck",
+    "exit": 0,
+    "seconds": 82.44
+  },
+  {
+    "name": "graphql-typecheck",
+    "exit": 0,
+    "seconds": 5.346
+  },
+  {
+    "name": "pg-stop",
+    "exit": 0,
+    "seconds": 0.202
+  }
+]

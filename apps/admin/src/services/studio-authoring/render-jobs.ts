@@ -1,3 +1,4 @@
+import { assertStudioProductionEnabled } from "./release-controls"
 import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
 import { z } from "zod"
 import { completeStudioAttempt } from "./completion"
@@ -205,6 +206,7 @@ export class StudioRenderJobs {
         job.leaseExpiresAt > now
       )
         return { execute: false, leaseId: null }
+      assertStudioProductionEnabled()
       if (
         project.firstPublishedAt ||
         project.currentRevision !== attempt.baseRevision ||

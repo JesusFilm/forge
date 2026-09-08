@@ -14,6 +14,36 @@ const identity: StudioNarrationIdentity = {
   pronunciation: null,
 }
 describe("Explicit narration orchestration", () => {
+  it("does not dispatch or terminalize a run when a new claim is disabled", async () => {
+    const effects: string[] = []
+    await expect(
+      runStudioNarration({
+        segments: [{ itemId: "settle", identity, matches: [] }],
+        reserveMicros: () => 100,
+        port: {
+          cached: async () => null,
+          claim: async () => {
+            throw new NarrationFixtureError("PRODUCTION_DISABLED")
+          },
+          narrate: async () => {
+            effects.push("paid")
+            throw new NarrationFixtureError("Unexpected dispatch")
+          },
+          retain: async () => {
+            effects.push("retain")
+            return { asset: ref, durationMs: 1000 }
+          },
+          finish: async () => {
+            effects.push("finish")
+          },
+          attach: async () => {
+            effects.push("attach")
+          },
+        },
+      }),
+    ).rejects.toThrow("PRODUCTION_DISABLED")
+    expect(effects).toEqual([])
+  })
   it("reuses exact cache matches without touching the paid provider or reserving a call", async () => {
     let paid = 0,
       claims = 0

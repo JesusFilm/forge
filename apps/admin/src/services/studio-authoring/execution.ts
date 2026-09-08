@@ -1,3 +1,4 @@
+import { assertStudioProductionEnabled } from "./release-controls"
 import { studioProductionListSchema } from "@forge/studio-contracts/production"
 import { z } from "zod"
 import type { PrismaClient } from "@prisma/client"
@@ -86,6 +87,7 @@ export class StudioExecutionService {
           throw new StudioExecutionError("CONFLICT")
         return { ...prior, maxCostMicros: Number(prior.maxCostMicros) }
       }
+      assertStudioProductionEnabled()
       if (input.attemptId) {
         const attempt = await tx.studioAttempt.findUniqueOrThrow({
           where: { id: input.attemptId },
@@ -144,17 +146,13 @@ export class StudioExecutionService {
       const context = await tx.studioProductionRun.findUniqueOrThrow({
         where: { id: input.runId },
       })
-      if (context.attemptId) {
-        const attempt = await tx.studioAttempt.findUniqueOrThrow({
-          where: { id: context.attemptId },
-        })
-        assertEditable(
-          await lockProject(tx, attempt.projectId),
-          attempt.baseRevision,
-        )
-        if (!["QUEUED", "RUNNING"].includes(attempt.status))
-          throw new StudioExecutionError("CONFLICT")
-      }
+      const attempt = context.attemptId
+        ? await tx.studioAttempt.findUniqueOrThrow({
+            where: { id: context.attemptId },
+            select: { id: true, projectId: true, baseRevision: true },
+          })
+        : null
+      const project = attempt ? await lockProject(tx, attempt.projectId) : null
       await tx.$queryRaw`SELECT id FROM studio_production_run WHERE id=${input.runId} FOR UPDATE`
       const run = await tx.studioProductionRun.findUniqueOrThrow({
         where: { id: input.runId },
@@ -171,6 +169,15 @@ export class StudioExecutionService {
           execute: false,
           call: { ...prior, reserveMicros: Number(prior.reserveMicros) },
         }
+      }
+      assertStudioProductionEnabled()
+      if (attempt && project) {
+        assertEditable(project, attempt.baseRevision)
+        const currentAttempt = await tx.studioAttempt.findUniqueOrThrow({
+          where: { id: attempt.id },
+        })
+        if (!["QUEUED", "RUNNING"].includes(currentAttempt.status))
+          throw new StudioExecutionError("CONFLICT")
       }
       if (run.state !== "READY") throw new StudioExecutionError("CANCELLED")
       const reserved = run.calls.reduce((n, c) => n + c.reserveMicros, 0n)

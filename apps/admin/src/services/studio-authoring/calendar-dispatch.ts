@@ -20,7 +20,10 @@ export function calendarDispatchFailure(error: unknown) {
     error instanceof StudioPublicationRejected ||
     error instanceof StudioCommandError
   )
-    return { retry: error.code === "NOT_DUE", code: error.code }
+    return {
+      retry: error.code === "NOT_DUE" || error.code === "PUBLICATION_DISABLED",
+      code: error.code,
+    }
   return { retry: true, code: "SUBMISSION_UNKNOWN" }
 }
 const services = {

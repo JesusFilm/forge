@@ -1,3 +1,4 @@
+import { assertStudioProductionEnabled } from "./release-controls"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import { Prisma, type PrismaClient, type StudioMuxJob } from "@prisma/client"
@@ -177,6 +178,7 @@ export class StudioMuxJobs {
     return this.db.$transaction(async (tx) => {
       const { project, job } = await lockMux(tx, id)
       if (job.state !== "PENDING") return { execute: false, dispatchId: null }
+      assertStudioProductionEnabled()
       const { manifest } = muxSnapshotSchema.parse(job.snapshot)
       assertEditable(project, manifest.revision)
       const revision = await tx.studioProjectRevision.findUniqueOrThrow({

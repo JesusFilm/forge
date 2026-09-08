@@ -1,0 +1,22 @@
+{
+  "base": "1dd20216",
+  "sourceFiles": {
+    "apps/admin/.env.example": "9a5f5ca10291c3395d2b88130b428703328c686084463dc0940515083619353b",
+    "apps/admin/CLAUDE.md": "152c98d94241098aad64a161beac36984a59c9bd211e0104342c20f16b3c2bfc",
+    "apps/admin/prisma/schema.prisma": "cf0bc669d966a9718903e3fee68d47809b574448a85e3bdfa2c82d9a970490c1",
+    "apps/admin/src/config/env.ts": "29b68244189a89c7d1c85a7bdad49fff1ebb8b05002ff59ffce555d1527e3cdc",
+    "apps/admin/src/services/studio-authoring/calendar-dispatch.ts": "6ab01aab846716c5b9d22b875f8d25da63df2c26246a59490c55773dc31811e3",
+    "apps/admin/src/services/studio-authoring/errors.ts": "7a05486afe5173f4eb33709187ebf5f06d297a722815598ed3ec10c2d6988f90",
+    "apps/admin/src/services/studio-authoring/execution.ts": "f08ce571903845b5c8642e2408bdb4e2cc91f6923ef23c737d22fdd4048f65c2",
+    "apps/admin/src/services/studio-authoring/experiments.ts": "4ccb78657b1622858b3aeb8ce43e135224a637a40df0cf18883a72855289e6c3",
+    "apps/admin/src/services/studio-authoring/index.ts": "0ddea982c6d8e15c58da341c3d2b35002eed5b4f017140a88ddaeda0f0caf00e",
+    "apps/admin/src/services/studio-authoring/mux-jobs.ts": "926756dd7a7dcaa12285b6944beb2acc3f06e24387446fe9f56765753e15da3a",
+    "apps/admin/src/services/studio-authoring/publication.ts": "af69d9509088e71bb3d24735123179f198e351dc3e94a95584ff92bb6f399064",
+    "apps/admin/src/services/studio-authoring/release-controls.db.test.ts": "789f8a4bdfd28a43d789044850d6bacfb6c1d6dd9964e854c635c2a30d880710",
+    "apps/admin/src/services/studio-authoring/release-controls.test.ts": "fa9b29e0086970f01065bd469db901ac8dee8d5054cd6bd919827f222f9979dd",
+    "apps/admin/src/services/studio-authoring/release-controls.ts": "c2ad272e892d19e6e40dc476ada7f21839c6798555f7f919185865f0728d6b2d",
+    "apps/admin/src/services/studio-authoring/render-jobs.ts": "adab71fee453b7c99cada7fc5562ab970867367479657a7942e4b8f93ebda14a",
+    "apps/manager/src/services/studio-production/runner.test.ts": "48cfd2ff7c29a07f60e682bcf423635f117040917e30b963650ca7102a402a5f",
+    "packages/studio-contracts/src/publication.ts": "c697ed8175fbee5adef0b8cb16b5c6157602a9bbebdbaf65da9bf933b8124fdc"
+  }
+}

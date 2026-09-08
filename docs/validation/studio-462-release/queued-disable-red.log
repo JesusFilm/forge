@@ -1,0 +1,45 @@
+(node:2319474) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+stdout | src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish
+{"event":"watch_route_manifest.generated","contentSlugs":1,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":1,"contentAudioLanguagePairs":1,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":65}
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts (4 tests | 1 failed) 4873ms
+   ✓ Studio release admission controls > denies a new canonical manual publication while retaining the editable draft  1440ms
+   ✓ Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish  1432ms
+   ✓ Studio release admission controls > blocks new paid dispatch without consuming budget and settles already consumed outcomes  1046ms
+   × Studio release admission controls > pauses queued render and Mux claims without spending their identities or retry budget 946ms
+     → promise resolved "{ execute: true, …(2) }" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > pauses queued render and Mux claims without spending their identities or retry budget
+AssertionError: promise resolved "{ execute: true, …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "execute": true,
++   "expiresAt": 1788827870365,
++   "leaseId": "533af0e6-2194-42b5-849a-2d3887bacf16",
+  }
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:135:58
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  12:17:42
+   Duration  7.87s (transform 1.30s, setup 37ms, collect 2.42s, tests 4.87s, environment 0ms, prepare 140ms)
+
+undefined
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/release-controls.db.test.ts --maxWorkers=1 --no-file-parallelism

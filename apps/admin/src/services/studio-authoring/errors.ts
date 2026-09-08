@@ -6,6 +6,7 @@ export class StudioCommandError extends Error {
       | "CONFLICT"
       | "IMMUTABLE"
       | "INVALID"
+      | "PRODUCTION_DISABLED"
       | StudioPublicationFailure,
   ) {
     super(`Studio command rejected: ${code}`)

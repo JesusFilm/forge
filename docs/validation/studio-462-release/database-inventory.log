@@ -1,0 +1,686 @@
+                    migration_name                    | finished | rolled_back |                             checksum
+------------------------------------------------------+----------+-------------+------------------------------------------------------------------
+ 0001_init                                            | t        | f           | 31366403c9bf38e9736ecc3f006939cf22b7d9a9cad710b0da10f5465101ede8
+ 0002_auth                                            | t        | f           | 56eb694fe188ce6002add1c2bf7004fc0f590e4874a7c2fd51abc8dd1acedce8
+ 0003_scene_embeddings                                | t        | f           | 7666708d05a40384486d2ff434c67a59e8b1ffb4c53f616b00af4d817d5c4e46
+ 0004_transcript_embeddings                           | t        | f           | f5283f2d765e6009890343850545c9d3243f273dc21c614187ba4427645c6f0e
+ 0005_media_assets                                    | t        | f           | 96a267861f0bd4b54644902cd9c517d1189d3afb208bcdf4e3f9da324322a18b
+ 0005_r3_experience_cms_dump_snapshot                 | t        | f           | b20e0bd46ed21e4fac2647737f970f353912fce8d4784b9816f3c80ca70e26f2
+ 0006_hybrid_search_gin                               | t        | f           | 342e5994c2cc5f8dce6bd81507c9c05dd14ab5551402810d4f7faaf413adea00
+ 0006_media_folders                                   | t        | f           | 61adcbb28e99a69bbbb9e3ed65e2dabb66ab6decbd06ac64bb3fa924c5948b4b
+ 0007_admin_core_sync_coverage                        | t        | f           | 64764c08a3086abab83e25a4aba70dad9f7e897afea2965f3aadf6eb2d622a9b
+ 0008_reference_locale_rows                           | t        | f           | 4a7e488b467144f8789c3ce27d9189cd488fa6d2473e4be4d54b7987371ce6f9
+ 0009_keyword_first_lexical                           | t        | f           | b8182d370c5b073fb247cd3de4c8f0afba2c89f363bb9e3736eb35420aace71b
+ 0009_workflow_run_ledger                             | t        | f           | bc779eada9f6e495879255be4a5b704456547636813d72b963d4494733963d11
+ 0010_camelcase_tsv_and_description_trigram           | t        | f           | 9883fad1f85ae7abfe23ef983d10a5b3bfaa59888eca634e13279e2b9c79219a
+ 0010_workflow_worker_heartbeat                       | t        | f           | 2ef9c71ad2d8da4fddd44eef20e94d5f54ae62ec623159ea2df22679e46f226c
+ 0011_media_image_enrichment                          | t        | f           | a1ddaa2ebc7a84b87ef8d5bab72be82337429b0b67874cb6c22cedb599fd216c
+ 0012_drop_media_asset_canonical_text                 | t        | f           | 59c93b6718e4e20d2bea8e2ec04319f38545eb3c4dbd5ac4a2bd54b9454eae57
+ 0013_rename_legacy_video_source_column               | t        | f           | c3e81caefe348220c16b010f5d1feb1be104f353056ab8e28b0c7de7a42ee6c0
+ 0014_drop_experience_locale_cms_snapshot             | t        | f           | 309811626c05e1ceefc3c3c9c4b41b02094c05b9d8ccc04bb9d869ccc4b14b7a
+ 0015_partner_api_keys                                | t        | f           | 3501574da552c3a897f5d14c567b3d3e7cda4b3e0505c2dea1ebef83aa9bf01e
+ 0016_manager_membership                              | t        | f           | afcf00ece06002a06ecab2412eecdca8f942b1f28d695848145e8f9b08d86e96
+ 0017_manager_backend_contracts                       | t        | f           | 511ed55a08d16cd2847f599135df9473ee9baac4303149b46706a66534356a2d
+ 0018_transcript_embedding_mastra_provenance          | t        | f           | d1d4cf7df634056259c437ad7a7efac4211aeb2291d2248fd57b8c1804635e71
+ 0019_scene_embedding_mastra_provenance               | t        | f           | 569ed88d3d5cdaa2365f9c693bb29a7ad23ea1d65b77e0e4ab3b2c6135b70aa1
+ 0020_experience_embedding_mastra_provenance          | t        | f           | a7ccb636aaab7f17dff15dcdb2b320455fd0c674fd8452a37aff363fd2b25fb4
+ 0021_admin_search_trace_storage_retention            | t        | f           | b30c8a46ffbc2244b40b45e525dec8afa68b6c8e4e99c3f0049d0536edf64f84
+ 0022_search_trace_query_label_provenance             | t        | f           | edcf720bd6a41829f07a4df006310a0454cfb7fc7799e9824abd07fb358fd0af
+ 0023_search_eval_candidates                          | t        | f           | 884ab49b223cb2954ce574efbc3ecc69a8879fd86ab883f882afb45d1e0c73e6
+ 0024_search_eval_human_promotion                     | t        | f           | 6eea11f892540068df362c4e2dda16cc5e1d4fcb996d86529ad18dad82088efc
+ 0025_watch_route_manifest_snapshot                   | t        | f           | c20b250556c05a1c6c62699949e78d40fcbd804a0eda6396bdd2a4c40f5b8287
+ 0026_video_locale_language_identity                  | t        | f           | 3ae746ebdf22fd174a98e4c98ceae712343d240df55a32ed84b2754309b4a7c3
+ 0026_watch_seo_manifest_snapshot                     | t        | f           | 5f61e832760355f316be18463c187706ef18947158a20bc86a479e83562fb170
+ 0027_video_localized_language_slug_identity          | t        | f           | a36625d4cd661f2ae1e083f5e46592c203404024a1077a074fcb738f57cbc4d4
+ 0028_content_embedding_provider_provenance           | t        | f           | 888b01619c35c396aa0d5830a1952ad4af4bc9642c089c43c8900426e8f33085
+ 0029_experience_chat                                 | t        | f           | 015b48c91e6b8c0922bb29be5b6c23a068a82c775013f9c029c7066999e89aab
+ 0030_mastra_schema                                   | t        | f           | ff40db10e5fb1ee085ad16a2dceb04722c840015c498a9f577db0787e18a60d5
+ 0031_chat_message_produced_by                        | t        | f           | de01f3531b1690663eb356c59a5f2370951fd166f32b886dd23c79ab4021fcf6
+ 0032_video_embedding_qwen                            | t        | f           | aa796e3fc63a1c184506aeaa6cb1122b856cd89a965319595b2ba50abf500aa8
+ 0033_drop_video_embedding_qwen                       | t        | f           | 69d0b1b52c3b5bae5946bf2575bbeaa49c7ac822865663d4d20eaeaf2b008795
+ 0034_enriched_transcript_chunks                      | t        | f           | ab85f6c3ad120aea79deb5f07b4037998614d5cac48d766753564da5e67a83db
+ 0035_watch_video_query_indexes                       | t        | f           | b922c91b450bcb649521a4c3584afe81634518908956f243993bd33b20150eaf
+ 0036_mux_image_derivatives                           | t        | f           | 532297fe277dedf92023160090c74a5e7ff4baeaf0a82aa536fbd84e2e07082b
+ 0037_bible_passage_cache                             | t        | f           | e7a0b061621eba6963de43b439d9c919dd927c0b938a43dd6099a4e14775fec5
+ 0037_watch_events                                    | t        | f           | 856d8f43b5427179f2cde004242c0fe93b6a6549ac4f08c186ddfdd4eb8e9ee7
+ 0038_watch_progress                                  | t        | f           | 7f23190b65152ccdcaffb0f95c6ebc7a783a12240943c5b569d3555e97e27517
+ 0039_video_image_blur_data_url                       | t        | f           | aabe3f4c41b01bb6761a132b44ba3a535d2e3e380bcebb6c010ae3029922bc73
+ 0040_video_and_mux_dominant_color                    | t        | f           | 6b11bf72ddd05c5ff25bfd62ee930f722a28b8c219534701119b5951e73dfeaf
+ 0041_watch_language_inventory_indexes                | t        | f           | 75c1ec51499365d311df824be387bc9302037744a98f3577fae5fd804409a6f6
+ 0042_watch_search_trace_metadata                     | t        | f           | 4d07edd43424d39c2fecba0e43d9d8cc57161783541722f56712ac1729926571
+ 0043_watch_search_events                             | t        | f           | 4bc48c9120a42526a409e952d9d0e9c32af3cab2be858ce8d411a01c36730183
+ 0044_language_fallbacks                              | t        | f           | f8bc9b79f9213700b2bddf31440f7322e77cc7091655586d54e2223fed433118
+ 0045_query_embedding_cache                           | t        | f           | ab4254f07d6680306d3f14f24d1ed32d2d39cc5d46f10d5ab8b2cd6c5ff4e08f
+ 0046_watch_search_availability_indexes               | t        | f           | afbbf7cc5c9f7fb412939de0fe9178626b3297246136b11363a0a7feb4332603
+ 0047_video_locale_search_social_metadata             | t        | f           | be667984cf751183c68794a67d13613c094c7d961ab4d20da072aa2d4cd66ad2
+ 0048_video_restrict_view_platforms                   | t        | f           | fffd0699da0fd14d9d5ca35c7ad864b6e995a5e01cfd2a351a3bb4dabd12b7ca
+ 0048_watch_search_candidate_generations              | t        | f           | eaf3f337580eca227720b3a759440e3e600be7333a98529371e229c1b596a48a
+ 0049_add_seo_experiment_ledger                       | t        | f           | 831f3ba3af420b61812ab988aaec3943f9f6fce933a4b7fa36e5783e41515617
+ 0050_fix_watch_search_candidate_trigger_precedence   | t        | f           | 97781ed5b90f03f34524c1f93846e1fc788a2b1a1ae67837910451c3059b1f73
+ 0051_watch_search_candidate_operator_acceptance      | t        | f           | d793369a82a2236fe5fd67e49e94fc6c5800689c96a11101624085d9d0f3ab12
+ 0052_experience_draft_preview_token                  | t        | f           | 0e4aa6b5bf7e710567e74075e8354ef0aec018a6765a9abd9fe4c413ab9dc0b8
+ 0052_production_semantic_recommendation_tracer       | t        | f           | a7127717025bf4f33898656f77f496b9278dba8a56c7d286931f0315ce750800
+ 0053_recommendation_active_playback_proxy            | t        | f           | 0aac86fa3776909f6f2fa0b6e945c1d6d407870e6f1710d8a453f21fb321cc27
+ 0053_whats_new_feature_vote                          | t        | f           | 2e68ef4077e26959914c46dbd5d72e18ec7554bf2eed5b13a5f22084a1d1ce9a
+ 0054_recommendation_mission_value_actions            | t        | f           | f91a5e0b95acba0a688faae78abad9b29a03c62d42a18a31637d6f9c99f6a55f
+ 0055_recommendation_integrity_eligibility            | t        | f           | 90c85a995d2a259e0b357cd6f62aaf1ad090e0a1ecfc24f54acb1cf1b4827287
+ 0056_consent_aware_recommendation_profile            | t        | f           | a9dac3ad2ac0591ffc3ed8204069f88b34d47615741ba7335cfc5d01aef8e3ea
+ 0057_semantic_control_readiness                      | t        | f           | ece9ee7d1b38c10a12ff4c84b53fccf524d7c69aa35dabea436af2d6154c08bd
+ 0058_recommendation_candidate_platform               | t        | f           | af94e7fd96aad835e0c049727ae33fd6ccedbb87f68fcf19998313db2ca301f6
+ 0059_recommendation_shadow_candidate_evaluation      | t        | f           | 3c126e352cb809bca196d14b49c270dcc9f017c7502b561504496f8f890f56c5
+ 0060_recommendation_experiment_spine                 | t        | f           | 31637a2f1f6ce66a0028e472c8bcc11b5ae7b2f0bd9190bb4afa8e127962131d
+ 0061_recommendation_hybrid_promotion                 | t        | f           | 4e1d04d5ffed409a44de984e98ad7fe2786f545bbf21f1b1ff0de30d8fbe7aa9
+ 0062_recommendation_multi_interest_profile_shadow    | t        | f           | cfb6bd6ba7a0bd154b74669e30ed209ccd2eef342ef2fe43ae5233cbf566ee74
+ 0063_recommendation_live_profile_pilot               | t        | f           | 912fd1503a5716f1af75c08c8349b4904eb90065fb480d861f6f16016db3501d
+ 0064_recommendation_governance_review_guards         | t        | f           | a1aa2efb86364f75568aaffd3b021d8691c236ab992777f416c5adcfdcc2dac5
+ 0065_recommendation_strategy_manifest_immutability   | t        | f           | 117edd69b5f94d68bff86bfafb688c0f0567329be6c2e43d7c3baa2a07ccc17e
+ 0066_recommendation_playback_finalization_repair     | t        | f           | c3cf2259d58b9d9e8cfb365705712dc16983ee806bc2f2d13290480325092a14
+ 0067_recommendation_episode_submission_budget_repair | t        | f           | 45dd0a40c932c7cdae932f42d942ab49e6466429aece77fcfed52f3783ba2a85
+ 0068_recommendation_trace_actor_digest_repair        | t        | f           | 2c7233ee49c146d8d675ef06822927897c80e6207cba0c8ae6b61784467a31ef
+ 0069_recommendation_hybrid_composition               | t        | f           | 6e0afd3a7ee1fde6b7c5c9ee04671dbd1f47c11dc905f7a28bac06e265c5a2db
+ 0070_recommendation_consent_receipts                 | t        | f           | 883b42fda7843b66c8a29c944928a031ee02729aaaef067bb996f37ca951161d
+ 0071_recommendation_assignment_generation_key        | t        | f           | 353fae78fab60b55b442f06f0929fcc47c709df0f1cbddf906e53c9b928980d6
+ 0072_studio_authoring                                | t        | f           | d964e551bdab8c5f35e3aea127281effd2b3d288101284e35080ab6c97e11cfa
+ 0073_studio_content_assets                           | t        | f           | 539b392eea7d8c8f7e96a62c64cd82f191eca4cf3ae4f09b1f2abcedc059419b
+ 0074_studio_asset_retention                          | t        | f           | d885f87bfa5b3e89e06992bcc2299aa205da6f7dd9369b8fe3a3011ab96626ae
+ 0075_studio_pack_usage                               | t        | f           | 75386c19d22cd70d892cc66eab961d3a098afb944322d46d533d0b243d012505
+ 0076_studio_source_snapshots                         | t        | f           | d25152f8da2d7586dda6dd82098340f967af794ded5bf1b864f3b9595b9138fc
+ 0077_studio_transfers_experiments                    | t        | f           | c677211d2364d63feaf031520086bcd2e2a6fdbcf21f6c2163df8e512e8e5bcc
+ 0078_studio_source_dependency_guards                 | t        | f           | 444f0c7b3219249e06358ccb8da6994765b06daa3154b47ad246ed049557ab51
+ 0078a_studio_source_revision_guard                   | t        | f           | d9a21feabae30eb5b6c43d51abeb6a03342d28512b8e247bf556761802460594
+ 0079_studio_catalog_identity                         | t        | f           | c52e1db0a69e9a605bc186c6651fc0fc1f39b83d16ad3a29f7dd5aee532ec18e
+ 0080_studio_production_execution                     | t        | f           | 782f1fffd24aeff74821ce4a098275bd6565e88d6e27b220eb015fcaa9cb8d22
+ 0081_studio_unknown_provider_cost                    | t        | f           | c96f321152d82d2044a8e3674b07d2c5431c8bc0dfc3d7dd484803e6ce7ec37c
+ 0082_studio_experiment_selection                     | t        | f           | e33c8f3b761cfe32deba08391fb92a895e98ec01b4e633ae05e77a76c32b4d75
+ 0083_studio_render_leases                            | t        | f           | 322a9ef15510406c14738df4ccf8a5d86e1e8bc56d7a8e517a02429b6eeb5093
+ 0084_studio_render_execution_results                 | t        | f           | 5a08c08e11cf9dabbb1c21c94338bfe254894a54cc0584c42e4f98ec7597f3f9
+ 0085_studio_publication_admission                    | t        | f           | 8097c0e3cee516a4674e4015af7f330ff87eec5f8027d76c9a43e43373a6bf3d
+ 0086_studio_render_retained_assets                   | t        | f           | 0bd84e9f5b3186603c0db8002df6b4672e012638a8d73e61568f6f689b4036e6
+ 0087_studio_mux_processing                           | t        | f           | 77888377a407a2d9854d00bd3940247cf5e8428fc109c42f73f2c045b5fe6694
+ 0088_studio_calendar                                 | t        | f           | a557596d61ffc69675082eb4075ba1c36215856e369513934cc18b6f14794138
+ 0089_studio_calendar_history                         | t        | f           | 8ceca5c2312db9a3a5b732c8feffe252b4ea84acbfef846ed431482f004b5a84
+ 0090_studio_planner_dispatch                         | t        | f           | b3e4500d270b2a1953d433dd1e34fbd81e778cbb00885c2ece1eb3b5e2e86101
+ 0091_studio_calendar_week_provenance                 | t        | f           | 0e023e92d2d4cb896d7546a043c8314e4a433457a3718a01b04b7baef3ecc941
+ 0092_studio_schedule_dispatch                        | t        | f           | 9df2fac2cea4123e3f210642f0b096dfb28fe7ec7dbc8e6699034b9efde4b59e
+(102 rows)
+
+          table_name           |     column_name     |          data_type          | is_nullable
+-------------------------------+---------------------+-----------------------------+-------------
+ content_pack                  | id                  | text                        | NO
+ content_pack                  | current_revision    | integer                     | NO
+ content_pack_revision         | id                  | text                        | NO
+ content_pack_revision         | pack_id             | text                        | NO
+ content_pack_revision         | number              | integer                     | NO
+ content_pack_revision         | document            | jsonb                       | NO
+ content_pack_revision         | actor               | jsonb                       | NO
+ content_pack_revision         | idempotency_key     | text                        | NO
+ content_pack_revision         | input_hash          | text                        | NO
+ content_pack_revision         | created_at          | timestamp without time zone | NO
+ studio_approval               | id                  | character varying           | NO
+ studio_approval               | project_id          | character varying           | NO
+ studio_approval               | revision            | integer                     | NO
+ studio_approval               | kind                | character varying           | NO
+ studio_approval               | dependency_hash     | character varying           | NO
+ studio_approval               | actor               | jsonb                       | NO
+ studio_approval               | render_attempt_id   | character varying           | YES
+ studio_approval               | created_at          | timestamp without time zone | NO
+ studio_asset_transfer         | token_hash          | text                        | NO
+ studio_asset_transfer         | kind                | text                        | NO
+ studio_asset_transfer         | principal           | jsonb                       | NO
+ studio_asset_transfer         | payload             | jsonb                       | NO
+ studio_asset_transfer         | expires_at          | timestamp without time zone | NO
+ studio_asset_usage            | owner_type          | text                        | NO
+ studio_asset_usage            | owner_id            | text                        | NO
+ studio_asset_usage            | version_id          | text                        | NO
+ studio_asset_version          | id                  | text                        | NO
+ studio_asset_version          | asset_id            | text                        | NO
+ studio_asset_version          | media_asset_id      | text                        | NO
+ studio_asset_version          | digest              | text                        | NO
+ studio_asset_version          | role                | text                        | NO
+ studio_asset_version          | metadata            | jsonb                       | NO
+ studio_asset_version          | actor               | jsonb                       | NO
+ studio_asset_version          | request_key         | text                        | NO
+ studio_asset_version          | request_hash        | text                        | NO
+ studio_asset_version          | created_at          | timestamp without time zone | NO
+ studio_attempt                | id                  | character varying           | NO
+ studio_attempt                | project_id          | character varying           | NO
+ studio_attempt                | base_revision       | integer                     | NO
+ studio_attempt                | kind                | character varying           | NO
+ studio_attempt                | status              | character varying           | NO
+ studio_attempt                | input_hash          | character varying           | NO
+ studio_attempt                | actor               | jsonb                       | NO
+ studio_attempt                | instructions        | jsonb                       | NO
+ studio_attempt                | result              | jsonb                       | YES
+ studio_attempt                | job_reference       | character varying           | YES
+ studio_attempt                | completed_by        | jsonb                       | YES
+ studio_attempt                | created_at          | timestamp without time zone | NO
+ studio_attempt                | updated_at          | timestamp without time zone | NO
+ studio_calendar               | id                  | character varying           | NO
+ studio_calendar               | version             | integer                     | NO
+ studio_calendar               | settings            | jsonb                       | NO
+ studio_calendar_command       | calendar_id         | character varying           | NO
+ studio_calendar_command       | key                 | character varying           | NO
+ studio_calendar_command       | input_hash          | character varying           | NO
+ studio_calendar_command       | result              | jsonb                       | NO
+ studio_catalog_derivation     | release_id          | text                        | NO
+ studio_catalog_derivation     | item_id             | text                        | NO
+ studio_catalog_derivation     | source_snapshot_id  | text                        | NO
+ studio_catalog_derivation     | start_ms            | integer                     | NO
+ studio_catalog_derivation     | end_ms              | integer                     | NO
+ studio_catalog_derivation     | start_frame         | integer                     | NO
+ studio_catalog_derivation     | duration_in_frames  | integer                     | NO
+ studio_catalog_pack           | release_id          | text                        | NO
+ studio_catalog_pack           | pack_revision_id    | text                        | NO
+ studio_catalog_readiness      | id                  | text                        | NO
+ studio_catalog_readiness      | sequence            | bigint                      | NO
+ studio_catalog_readiness      | release_id          | text                        | NO
+ studio_catalog_readiness      | attempt_id          | character varying           | NO
+ studio_catalog_readiness      | lease_id            | text                        | NO
+ studio_catalog_readiness      | proof               | jsonb                       | NO
+ studio_catalog_readiness      | request_hash        | text                        | NO
+ studio_catalog_readiness      | checked_at          | timestamp without time zone | NO
+ studio_catalog_readiness      | expires_at          | timestamp without time zone | NO
+ studio_catalog_release        | id                  | text                        | NO
+ studio_catalog_release        | project_id          | character varying           | NO
+ studio_catalog_release        | revision            | integer                     | NO
+ studio_catalog_release        | render_attempt_id   | character varying           | NO
+ studio_catalog_release        | idempotency_key     | text                        | NO
+ studio_catalog_release        | request_hash        | text                        | NO
+ studio_catalog_release        | video_id            | text                        | NO
+ studio_catalog_release        | dub_id              | text                        | NO
+ studio_catalog_release        | edition_id          | text                        | NO
+ studio_catalog_release        | mux_id              | text                        | NO
+ studio_catalog_release        | snapshot            | jsonb                       | NO
+ studio_catalog_release        | created_at          | timestamp without time zone | NO
+ studio_command                | project_id          | character varying           | NO
+ studio_command                | idempotency_key     | character varying           | NO
+ studio_command                | input_hash          | character varying           | NO
+ studio_command                | actor               | jsonb                       | NO
+ studio_command                | result              | jsonb                       | NO
+ studio_command                | created_at          | timestamp without time zone | NO
+ studio_component_version      | id                  | text                        | NO
+ studio_component_version      | declaration         | jsonb                       | NO
+ studio_experiment             | id                  | text                        | NO
+ studio_experiment             | request             | jsonb                       | NO
+ studio_experiment             | actor               | jsonb                       | NO
+ studio_experiment             | request_key         | text                        | NO
+ studio_experiment             | request_hash        | text                        | NO
+ studio_experiment_candidate   | id                  | text                        | NO
+ studio_experiment_candidate   | experiment_id       | text                        | NO
+ studio_experiment_candidate   | asset               | jsonb                       | NO
+ studio_experiment_candidate   | provider_request_id | text                        | YES
+ studio_experiment_candidate   | actual_cost_micros  | bigint                      | YES
+ studio_experiment_candidate   | candidate_key       | text                        | NO
+ studio_experiment_candidate   | actor               | jsonb                       | NO
+ studio_experiment_selection   | id                  | text                        | NO
+ studio_experiment_selection   | experiment_id       | text                        | NO
+ studio_experiment_selection   | candidate_key       | text                        | NO
+ studio_experiment_selection   | request_key         | text                        | NO
+ studio_experiment_selection   | input_hash          | text                        | NO
+ studio_experiment_selection   | asset               | jsonb                       | NO
+ studio_experiment_selection   | actor               | jsonb                       | NO
+ studio_experiment_selection   | created_at          | timestamp without time zone | NO
+ studio_mux_job                | id                  | text                        | NO
+ studio_mux_job                | attempt_id          | character varying           | NO
+ studio_mux_job                | snapshot            | jsonb                       | NO
+ studio_mux_job                | state               | text                        | NO
+ studio_mux_job                | dispatch_id         | text                        | YES
+ studio_mux_job                | asset_id            | text                        | YES
+ studio_mux_job                | readiness           | jsonb                       | YES
+ studio_mux_job                | created_at          | timestamp without time zone | NO
+ studio_mux_job                | updated_at          | timestamp without time zone | NO
+ studio_plan_slot              | id                  | character varying           | NO
+ studio_plan_slot              | calendar_id         | character varying           | NO
+ studio_plan_slot              | date                | character varying           | NO
+ studio_plan_slot              | version             | integer                     | NO
+ studio_plan_slot              | title               | character varying           | NO
+ studio_plan_slot              | theme               | text                        | NO
+ studio_plan_slot              | manual              | boolean                     | NO
+ studio_plan_slot              | pack_revision_id    | text                        | YES
+ studio_plan_slot              | project_id          | character varying           | YES
+ studio_plan_slot              | provenance          | jsonb                       | YES
+ studio_plan_week              | calendar_id         | character varying           | NO
+ studio_plan_week              | start_date          | character varying           | NO
+ studio_plan_week              | pack_revision_id    | text                        | YES
+ studio_plan_week              | theme               | text                        | NO
+ studio_plan_week              | provenance          | jsonb                       | YES
+ studio_planning_run           | id                  | character varying           | NO
+ studio_planning_run           | calendar_id         | character varying           | NO
+ studio_planning_run           | occurrence          | character varying           | NO
+ studio_planning_run           | version             | integer                     | NO
+ studio_planning_run           | input               | jsonb                       | NO
+ studio_planning_run           | result              | jsonb                       | YES
+ studio_planning_run           | status              | character varying           | NO
+ studio_planning_run           | created_at          | timestamp without time zone | NO
+ studio_planning_run           | finished_at         | timestamp without time zone | YES
+ studio_planning_run           | actor               | jsonb                       | YES
+ studio_production_call        | run_id              | text                        | NO
+ studio_production_call        | key                 | text                        | NO
+ studio_production_call        | input_digest        | character varying           | NO
+ studio_production_call        | reserve_micros      | bigint                      | NO
+ studio_production_call        | state               | text                        | NO
+ studio_production_call        | result              | jsonb                       | YES
+ studio_production_run         | id                  | text                        | NO
+ studio_production_run         | attempt_id          | character varying           | YES
+ studio_production_run         | experiment_id       | text                        | YES
+ studio_production_run         | actor               | jsonb                       | NO
+ studio_production_run         | max_cost_micros     | bigint                      | NO
+ studio_production_run         | state               | text                        | NO
+ studio_production_run         | created_at          | timestamp without time zone | NO
+ studio_project                | id                  | character varying           | NO
+ studio_project                | current_revision    | integer                     | NO
+ studio_project                | owner_id            | character varying           | NO
+ studio_project                | lifecycle           | character varying           | NO
+ studio_project                | first_published_at  | timestamp without time zone | YES
+ studio_project                | unpublished_at      | timestamp without time zone | YES
+ studio_project                | created_at          | timestamp without time zone | NO
+ studio_project_revision       | project_id          | character varying           | NO
+ studio_project_revision       | number              | integer                     | NO
+ studio_project_revision       | document            | jsonb                       | NO
+ studio_project_revision       | actor               | jsonb                       | NO
+ studio_project_revision       | created_at          | timestamp without time zone | NO
+ studio_publication            | release_id          | text                        | NO
+ studio_publication            | project_id          | character varying           | NO
+ studio_publication            | approval_id         | character varying           | NO
+ studio_publication            | readiness_id        | text                        | NO
+ studio_publication            | published_at        | timestamp without time zone | NO
+ studio_publication            | revoked_at          | timestamp without time zone | YES
+ studio_render_execution       | attempt_id          | character varying           | NO
+ studio_render_execution       | lease_id            | text                        | NO
+ studio_render_execution       | request_hash        | character varying           | NO
+ studio_render_execution       | status              | text                        | NO
+ studio_render_execution       | result              | jsonb                       | NO
+ studio_render_execution       | admitted            | boolean                     | NO
+ studio_render_execution       | created_at          | timestamp without time zone | NO
+ studio_render_job             | attempt_id          | character varying           | NO
+ studio_render_job             | snapshot            | jsonb                       | NO
+ studio_render_job             | state               | text                        | NO
+ studio_render_job             | generation          | integer                     | NO
+ studio_render_job             | lease_id            | text                        | YES
+ studio_render_job             | lease_expires_at    | timestamp without time zone | YES
+ studio_render_job             | created_at          | timestamp without time zone | NO
+ studio_render_job             | updated_at          | timestamp without time zone | NO
+ studio_render_lease           | attempt_id          | character varying           | NO
+ studio_render_lease           | lease_id            | text                        | NO
+ studio_render_lease           | generation          | integer                     | NO
+ studio_render_lease           | expires_at          | timestamp without time zone | NO
+ studio_render_lease           | created_at          | timestamp without time zone | NO
+ studio_render_retained_asset  | attempt_id          | character varying           | NO
+ studio_render_retained_asset  | lease_id            | text                        | NO
+ studio_render_retained_asset  | asset_version_id    | text                        | NO
+ studio_render_retained_asset  | created_at          | timestamp without time zone | NO
+ studio_schedule_authorization | id                  | character varying           | NO
+ studio_schedule_authorization | slot_id             | character varying           | NO
+ studio_schedule_authorization | version             | integer                     | NO
+ studio_schedule_authorization | project_id          | character varying           | NO
+ studio_schedule_authorization | revision            | integer                     | NO
+ studio_schedule_authorization | approval_id         | character varying           | NO
+ studio_schedule_authorization | render_attempt_id   | character varying           | NO
+ studio_schedule_authorization | release_id          | character varying           | NO
+ studio_schedule_authorization | operator_id         | text                        | NO
+ studio_schedule_authorization | due_at              | timestamp without time zone | NO
+ studio_schedule_authorization | latest_allowed_at   | timestamp without time zone | NO
+ studio_schedule_authorization | revoked_at          | timestamp without time zone | YES
+ studio_schedule_authorization | consumed_at         | timestamp without time zone | YES
+ studio_schedule_authorization | submission          | jsonb                       | YES
+ studio_schedule_authorization | outcome             | character varying           | YES
+ studio_schedule_dispatch      | authorization_id    | character varying           | NO
+ studio_schedule_dispatch      | state               | character varying           | NO
+ studio_schedule_dispatch      | attempts            | integer                     | NO
+ studio_schedule_dispatch      | lease_id            | uuid                        | YES
+ studio_schedule_dispatch      | lease_expires_at    | timestamp with time zone    | YES
+ studio_schedule_dispatch      | next_attempt_at     | timestamp with time zone    | NO
+ studio_schedule_dispatch      | last_error          | character varying           | YES
+ studio_source_snapshot        | id                  | text                        | NO
+ studio_source_snapshot        | video_id            | text                        | NO
+ studio_source_snapshot        | dub_id              | text                        | NO
+ studio_source_snapshot        | edition_id          | text                        | NO
+ studio_source_snapshot        | track_id            | text                        | NO
+ studio_source_snapshot        | download_id         | text                        | NO
+ studio_source_snapshot        | snapshot            | jsonb                       | NO
+ studio_source_snapshot        | request_key         | text                        | NO
+ studio_source_snapshot        | request_hash        | text                        | NO
+ studio_watch_delivery         | release_id          | text                        | NO
+ studio_watch_delivery         | phase               | text                        | NO
+ studio_watch_delivery         | delivered_at        | timestamp with time zone    | NO
+(237 rows)
+
+           conrelid            |                         conname                          |                                                                                                                                                               pg_get_constraintdef
+-------------------------------+----------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ studio_project                | studio_current_revision_fk                               | FOREIGN KEY (id, current_revision) REFERENCES studio_project_revision(project_id, number) DEFERRABLE INITIALLY DEFERRED
+ studio_project                | studio_project_check                                     | CHECK (((((lifecycle)::text = 'DRAFT'::text) AND (first_published_at IS NULL) AND (unpublished_at IS NULL)) OR (((lifecycle)::text = 'PUBLISHED'::text) AND (first_published_at IS NOT NULL) AND (unpublished_at IS NULL)) OR (((lifecycle)::text = 'UNPUBLISHED'::text) AND (first_published_at IS NOT NULL) AND (unpublished_at IS NOT NULL))))
+ studio_project                | studio_project_created_at_not_null                       | NOT NULL created_at
+ studio_project                | studio_project_current_revision_check                    | CHECK ((current_revision > 0))
+ studio_project                | studio_project_current_revision_not_null                 | NOT NULL current_revision
+ studio_project                | studio_project_id_not_null                               | NOT NULL id
+ studio_project                | studio_project_lifecycle_check                           | CHECK (((lifecycle)::text = ANY ((ARRAY['DRAFT'::character varying, 'PUBLISHED'::character varying, 'UNPUBLISHED'::character varying])::text[])))
+ studio_project                | studio_project_lifecycle_not_null                        | NOT NULL lifecycle
+ studio_project                | studio_project_owner_id_not_null                         | NOT NULL owner_id
+ studio_project                | studio_project_pkey                                      | PRIMARY KEY (id)
+ studio_project_revision       | studio_project_revision_actor_not_null                   | NOT NULL actor
+ studio_project_revision       | studio_project_revision_created_at_not_null              | NOT NULL created_at
+ studio_project_revision       | studio_project_revision_document_check                   | CHECK ((octet_length((document)::text) <= 524288))
+ studio_project_revision       | studio_project_revision_document_not_null                | NOT NULL document
+ studio_project_revision       | studio_project_revision_number_check                     | CHECK ((number > 0))
+ studio_project_revision       | studio_project_revision_number_not_null                  | NOT NULL number
+ studio_project_revision       | studio_project_revision_pkey                             | PRIMARY KEY (project_id, number)
+ studio_project_revision       | studio_project_revision_project_id_fkey                  | FOREIGN KEY (project_id) REFERENCES studio_project(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_project_revision       | studio_project_revision_project_id_not_null              | NOT NULL project_id
+ studio_command                | studio_command_actor_not_null                            | NOT NULL actor
+ studio_command                | studio_command_created_at_not_null                       | NOT NULL created_at
+ studio_command                | studio_command_idempotency_key_not_null                  | NOT NULL idempotency_key
+ studio_command                | studio_command_input_hash_not_null                       | NOT NULL input_hash
+ studio_command                | studio_command_pkey                                      | PRIMARY KEY (project_id, idempotency_key)
+ studio_command                | studio_command_project_id_fkey                           | FOREIGN KEY (project_id) REFERENCES studio_project(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_command                | studio_command_project_id_not_null                       | NOT NULL project_id
+ studio_command                | studio_command_result_not_null                           | NOT NULL result
+ studio_attempt                | studio_attempt_actor_not_null                            | NOT NULL actor
+ studio_attempt                | studio_attempt_base_revision_not_null                    | NOT NULL base_revision
+ studio_attempt                | studio_attempt_created_at_not_null                       | NOT NULL created_at
+ studio_attempt                | studio_attempt_id_not_null                               | NOT NULL id
+ studio_attempt                | studio_attempt_input_hash_not_null                       | NOT NULL input_hash
+ studio_attempt                | studio_attempt_instructions_not_null                     | NOT NULL instructions
+ studio_attempt                | studio_attempt_kind_check                                | CHECK (((kind)::text = ANY ((ARRAY['GENERATION'::character varying, 'NARRATION'::character varying, 'RENDER'::character varying])::text[])))
+ studio_attempt                | studio_attempt_kind_not_null                             | NOT NULL kind
+ studio_attempt                | studio_attempt_pkey                                      | PRIMARY KEY (id)
+ studio_attempt                | studio_attempt_project_id_base_revision_fkey             | FOREIGN KEY (project_id, base_revision) REFERENCES studio_project_revision(project_id, number) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_attempt                | studio_attempt_project_id_not_null                       | NOT NULL project_id
+ studio_attempt                | studio_attempt_result_check                              | CHECK ((octet_length((result)::text) <= 65536))
+ studio_attempt                | studio_attempt_status_check                              | CHECK (((status)::text = ANY ((ARRAY['QUEUED'::character varying, 'RUNNING'::character varying, 'SUCCEEDED'::character varying, 'FAILED'::character varying, 'CANCELLED'::character varying, 'STALE'::character varying])::text[])))
+ studio_attempt                | studio_attempt_status_not_null                           | NOT NULL status
+ studio_attempt                | studio_attempt_updated_at_not_null                       | NOT NULL updated_at
+ studio_approval               | studio_approval_actor_check                              | CHECK (((actor ->> 'kind'::text) = 'human'::text))
+ studio_approval               | studio_approval_actor_not_null                           | NOT NULL actor
+ studio_approval               | studio_approval_check                                    | CHECK (((((kind)::text = 'SCRIPT'::text) AND (render_attempt_id IS NULL)) OR (((kind)::text = 'PUBLICATION'::text) AND (render_attempt_id IS NOT NULL))))
+ studio_approval               | studio_approval_created_at_not_null                      | NOT NULL created_at
+ studio_approval               | studio_approval_dependency_hash_not_null                 | NOT NULL dependency_hash
+ studio_approval               | studio_approval_id_not_null                              | NOT NULL id
+ studio_approval               | studio_approval_kind_check                               | CHECK (((kind)::text = ANY ((ARRAY['SCRIPT'::character varying, 'PUBLICATION'::character varying])::text[])))
+ studio_approval               | studio_approval_kind_not_null                            | NOT NULL kind
+ studio_approval               | studio_approval_pkey                                     | PRIMARY KEY (id)
+ studio_approval               | studio_approval_project_id_not_null                      | NOT NULL project_id
+ studio_approval               | studio_approval_project_id_revision_fkey                 | FOREIGN KEY (project_id, revision) REFERENCES studio_project_revision(project_id, number) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_approval               | studio_approval_render_attempt_id_fkey                   | FOREIGN KEY (render_attempt_id) REFERENCES studio_attempt(id)
+ studio_approval               | studio_approval_revision_not_null                        | NOT NULL revision
+ studio_asset_version          | studio_asset_version_actor_not_null                      | NOT NULL actor
+ studio_asset_version          | studio_asset_version_asset_id_not_null                   | NOT NULL asset_id
+ studio_asset_version          | studio_asset_version_created_at_not_null                 | NOT NULL created_at
+ studio_asset_version          | studio_asset_version_digest_not_null                     | NOT NULL digest
+ studio_asset_version          | studio_asset_version_id_not_null                         | NOT NULL id
+ studio_asset_version          | studio_asset_version_media_asset_id_fkey                 | FOREIGN KEY (media_asset_id) REFERENCES media_asset(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_asset_version          | studio_asset_version_media_asset_id_not_null             | NOT NULL media_asset_id
+ studio_asset_version          | studio_asset_version_metadata_not_null                   | NOT NULL metadata
+ studio_asset_version          | studio_asset_version_pkey                                | PRIMARY KEY (id)
+ studio_asset_version          | studio_asset_version_request_hash_not_null               | NOT NULL request_hash
+ studio_asset_version          | studio_asset_version_request_key_not_null                | NOT NULL request_key
+ studio_asset_version          | studio_asset_version_role_not_null                       | NOT NULL role
+ studio_asset_usage            | studio_asset_usage_owner_id_not_null                     | NOT NULL owner_id
+ studio_asset_usage            | studio_asset_usage_owner_type_not_null                   | NOT NULL owner_type
+ studio_asset_usage            | studio_asset_usage_pkey                                  | PRIMARY KEY (owner_type, owner_id, version_id)
+ studio_asset_usage            | studio_asset_usage_version_id_fkey                       | FOREIGN KEY (version_id) REFERENCES studio_asset_version(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_asset_usage            | studio_asset_usage_version_id_not_null                   | NOT NULL version_id
+ studio_component_version      | studio_component_version_declaration_not_null            | NOT NULL declaration
+ studio_component_version      | studio_component_version_id_not_null                     | NOT NULL id
+ studio_component_version      | studio_component_version_pkey                            | PRIMARY KEY (id)
+ studio_source_snapshot        | studio_source_snapshot_download_id_fkey                  | FOREIGN KEY (download_id) REFERENCES video_dub_download(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_source_snapshot        | studio_source_snapshot_download_id_not_null              | NOT NULL download_id
+ studio_source_snapshot        | studio_source_snapshot_dub_id_fkey                       | FOREIGN KEY (dub_id) REFERENCES video_dub(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_source_snapshot        | studio_source_snapshot_dub_id_not_null                   | NOT NULL dub_id
+ studio_source_snapshot        | studio_source_snapshot_edition_id_fkey                   | FOREIGN KEY (edition_id) REFERENCES video_edition(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_source_snapshot        | studio_source_snapshot_edition_id_not_null               | NOT NULL edition_id
+ studio_source_snapshot        | studio_source_snapshot_id_not_null                       | NOT NULL id
+ studio_source_snapshot        | studio_source_snapshot_pkey                              | PRIMARY KEY (id)
+ studio_source_snapshot        | studio_source_snapshot_request_hash_not_null             | NOT NULL request_hash
+ studio_source_snapshot        | studio_source_snapshot_request_key_not_null              | NOT NULL request_key
+ studio_source_snapshot        | studio_source_snapshot_snapshot_not_null                 | NOT NULL snapshot
+ studio_source_snapshot        | studio_source_snapshot_track_id_fkey                     | FOREIGN KEY (track_id) REFERENCES video_subtitle(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_source_snapshot        | studio_source_snapshot_track_id_not_null                 | NOT NULL track_id
+ studio_source_snapshot        | studio_source_snapshot_video_id_fkey                     | FOREIGN KEY (video_id) REFERENCES video(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_source_snapshot        | studio_source_snapshot_video_id_not_null                 | NOT NULL video_id
+ studio_asset_transfer         | studio_asset_transfer_expires_at_not_null                | NOT NULL expires_at
+ studio_asset_transfer         | studio_asset_transfer_kind_not_null                      | NOT NULL kind
+ studio_asset_transfer         | studio_asset_transfer_payload_not_null                   | NOT NULL payload
+ studio_asset_transfer         | studio_asset_transfer_pkey                               | PRIMARY KEY (token_hash)
+ studio_asset_transfer         | studio_asset_transfer_principal_not_null                 | NOT NULL principal
+ studio_asset_transfer         | studio_asset_transfer_token_hash_not_null                | NOT NULL token_hash
+ studio_experiment             | studio_experiment_actor_not_null                         | NOT NULL actor
+ studio_experiment             | studio_experiment_id_not_null                            | NOT NULL id
+ studio_experiment             | studio_experiment_pkey                                   | PRIMARY KEY (id)
+ studio_experiment             | studio_experiment_request_hash_not_null                  | NOT NULL request_hash
+ studio_experiment             | studio_experiment_request_key_not_null                   | NOT NULL request_key
+ studio_experiment             | studio_experiment_request_not_null                       | NOT NULL request
+ studio_experiment_candidate   | studio_experiment_candidate_actor_not_null               | NOT NULL actor
+ studio_experiment_candidate   | studio_experiment_candidate_asset_not_null               | NOT NULL asset
+ studio_experiment_candidate   | studio_experiment_candidate_candidate_key_not_null       | NOT NULL candidate_key
+ studio_experiment_candidate   | studio_experiment_candidate_experiment_id_fkey           | FOREIGN KEY (experiment_id) REFERENCES studio_experiment(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_experiment_candidate   | studio_experiment_candidate_experiment_id_not_null       | NOT NULL experiment_id
+ studio_experiment_candidate   | studio_experiment_candidate_id_not_null                  | NOT NULL id
+ studio_experiment_candidate   | studio_experiment_candidate_pkey                         | PRIMARY KEY (id)
+ studio_catalog_release        | studio_catalog_release_created_at_not_null               | NOT NULL created_at
+ studio_catalog_release        | studio_catalog_release_dub_id_fkey                       | FOREIGN KEY (dub_id) REFERENCES video_dub(id) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_dub_id_key                        | UNIQUE (dub_id)
+ studio_catalog_release        | studio_catalog_release_dub_id_not_null                   | NOT NULL dub_id
+ studio_catalog_release        | studio_catalog_release_edition_id_fkey                   | FOREIGN KEY (edition_id) REFERENCES video_edition(id) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_edition_id_key                    | UNIQUE (edition_id)
+ studio_catalog_release        | studio_catalog_release_edition_id_not_null               | NOT NULL edition_id
+ studio_catalog_release        | studio_catalog_release_id_not_null                       | NOT NULL id
+ studio_catalog_release        | studio_catalog_release_idempotency_key_not_null          | NOT NULL idempotency_key
+ studio_catalog_release        | studio_catalog_release_mux_id_fkey                       | FOREIGN KEY (mux_id) REFERENCES mux_video(id) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_mux_id_key                        | UNIQUE (mux_id)
+ studio_catalog_release        | studio_catalog_release_mux_id_not_null                   | NOT NULL mux_id
+ studio_catalog_release        | studio_catalog_release_pkey                              | PRIMARY KEY (id)
+ studio_catalog_release        | studio_catalog_release_project_id_idempotency_key_key    | UNIQUE (project_id, idempotency_key)
+ studio_catalog_release        | studio_catalog_release_project_id_not_null               | NOT NULL project_id
+ studio_catalog_release        | studio_catalog_release_project_id_revision_fkey          | FOREIGN KEY (project_id, revision) REFERENCES studio_project_revision(project_id, number) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_render_attempt_id_fkey            | FOREIGN KEY (render_attempt_id) REFERENCES studio_attempt(id) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_render_attempt_id_key             | UNIQUE (render_attempt_id)
+ studio_catalog_release        | studio_catalog_release_render_attempt_id_not_null        | NOT NULL render_attempt_id
+ studio_catalog_release        | studio_catalog_release_request_hash_not_null             | NOT NULL request_hash
+ studio_catalog_release        | studio_catalog_release_revision_not_null                 | NOT NULL revision
+ studio_catalog_release        | studio_catalog_release_snapshot_not_null                 | NOT NULL snapshot
+ studio_catalog_release        | studio_catalog_release_video_id_fkey                     | FOREIGN KEY (video_id) REFERENCES video(id) ON DELETE RESTRICT
+ studio_catalog_release        | studio_catalog_release_video_id_key                      | UNIQUE (video_id)
+ studio_catalog_release        | studio_catalog_release_video_id_not_null                 | NOT NULL video_id
+ studio_catalog_derivation     | studio_catalog_derivation_check                          | CHECK ((end_ms > start_ms))
+ studio_catalog_derivation     | studio_catalog_derivation_duration_in_frames_check       | CHECK ((duration_in_frames > 0))
+ studio_catalog_derivation     | studio_catalog_derivation_duration_in_frames_not_null    | NOT NULL duration_in_frames
+ studio_catalog_derivation     | studio_catalog_derivation_end_ms_not_null                | NOT NULL end_ms
+ studio_catalog_derivation     | studio_catalog_derivation_item_id_not_null               | NOT NULL item_id
+ studio_catalog_derivation     | studio_catalog_derivation_pkey                           | PRIMARY KEY (release_id, item_id)
+ studio_catalog_derivation     | studio_catalog_derivation_release_id_fkey                | FOREIGN KEY (release_id) REFERENCES studio_catalog_release(id) ON DELETE RESTRICT
+ studio_catalog_derivation     | studio_catalog_derivation_release_id_not_null            | NOT NULL release_id
+ studio_catalog_derivation     | studio_catalog_derivation_source_snapshot_id_fkey        | FOREIGN KEY (source_snapshot_id) REFERENCES studio_source_snapshot(id) ON DELETE RESTRICT
+ studio_catalog_derivation     | studio_catalog_derivation_source_snapshot_id_not_null    | NOT NULL source_snapshot_id
+ studio_catalog_derivation     | studio_catalog_derivation_start_frame_check              | CHECK ((start_frame >= 0))
+ studio_catalog_derivation     | studio_catalog_derivation_start_frame_not_null           | NOT NULL start_frame
+ studio_catalog_derivation     | studio_catalog_derivation_start_ms_check                 | CHECK ((start_ms >= 0))
+ studio_catalog_derivation     | studio_catalog_derivation_start_ms_not_null              | NOT NULL start_ms
+ studio_catalog_pack           | studio_catalog_pack_pack_revision_id_fkey                | FOREIGN KEY (pack_revision_id) REFERENCES content_pack_revision(id) ON DELETE RESTRICT
+ studio_catalog_pack           | studio_catalog_pack_pack_revision_id_not_null            | NOT NULL pack_revision_id
+ studio_catalog_pack           | studio_catalog_pack_pkey                                 | PRIMARY KEY (release_id, pack_revision_id)
+ studio_catalog_pack           | studio_catalog_pack_release_id_fkey                      | FOREIGN KEY (release_id) REFERENCES studio_catalog_release(id) ON DELETE RESTRICT
+ studio_catalog_pack           | studio_catalog_pack_release_id_not_null                  | NOT NULL release_id
+ studio_production_run         | studio_production_run_actor_not_null                     | NOT NULL actor
+ studio_production_run         | studio_production_run_attempt_id_fkey                    | FOREIGN KEY (attempt_id) REFERENCES studio_attempt(id) ON DELETE RESTRICT
+ studio_production_run         | studio_production_run_attempt_id_key                     | UNIQUE (attempt_id)
+ studio_production_run         | studio_production_run_check                              | CHECK (((((attempt_id IS NOT NULL))::integer + ((experiment_id IS NOT NULL))::integer) = 1))
+ studio_production_run         | studio_production_run_created_at_not_null                | NOT NULL created_at
+ studio_production_run         | studio_production_run_experiment_id_fkey                 | FOREIGN KEY (experiment_id) REFERENCES studio_experiment(id) ON DELETE RESTRICT
+ studio_production_run         | studio_production_run_experiment_id_key                  | UNIQUE (experiment_id)
+ studio_production_run         | studio_production_run_id_not_null                        | NOT NULL id
+ studio_production_run         | studio_production_run_max_cost_micros_check              | CHECK (((max_cost_micros >= 0) AND (max_cost_micros <= 100000000)))
+ studio_production_run         | studio_production_run_max_cost_micros_not_null           | NOT NULL max_cost_micros
+ studio_production_run         | studio_production_run_pkey                               | PRIMARY KEY (id)
+ studio_production_run         | studio_production_run_state_check                        | CHECK ((state = ANY (ARRAY['READY'::text, 'CANCELLED'::text, 'COMPLETED'::text])))
+ studio_production_run         | studio_production_run_state_not_null                     | NOT NULL state
+ studio_production_call        | studio_production_call_input_digest_not_null             | NOT NULL input_digest
+ studio_production_call        | studio_production_call_key_check                         | CHECK ((length(key) <= 128))
+ studio_production_call        | studio_production_call_key_not_null                      | NOT NULL key
+ studio_production_call        | studio_production_call_pkey                              | PRIMARY KEY (run_id, key)
+ studio_production_call        | studio_production_call_reserve_micros_check              | CHECK ((reserve_micros >= 0))
+ studio_production_call        | studio_production_call_reserve_micros_not_null           | NOT NULL reserve_micros
+ studio_production_call        | studio_production_call_run_id_fkey                       | FOREIGN KEY (run_id) REFERENCES studio_production_run(id) ON DELETE RESTRICT
+ studio_production_call        | studio_production_call_run_id_not_null                   | NOT NULL run_id
+ studio_production_call        | studio_production_call_state_check                       | CHECK ((state = ANY (ARRAY['RUNNING'::text, 'COMPLETED'::text, 'FAILED'::text, 'AMBIGUOUS'::text])))
+ studio_production_call        | studio_production_call_state_not_null                    | NOT NULL state
+ studio_experiment_selection   | studio_experiment_selection_actor_not_null               | NOT NULL actor
+ studio_experiment_selection   | studio_experiment_selection_asset_not_null               | NOT NULL asset
+ studio_experiment_selection   | studio_experiment_selection_candidate_key_fkey           | FOREIGN KEY (candidate_key) REFERENCES studio_experiment_candidate(candidate_key) ON DELETE RESTRICT
+ studio_experiment_selection   | studio_experiment_selection_candidate_key_not_null       | NOT NULL candidate_key
+ studio_experiment_selection   | studio_experiment_selection_created_at_not_null          | NOT NULL created_at
+ studio_experiment_selection   | studio_experiment_selection_experiment_id_fkey           | FOREIGN KEY (experiment_id) REFERENCES studio_experiment(id) ON DELETE RESTRICT
+ studio_experiment_selection   | studio_experiment_selection_experiment_id_not_null       | NOT NULL experiment_id
+ studio_experiment_selection   | studio_experiment_selection_id_not_null                  | NOT NULL id
+ studio_experiment_selection   | studio_experiment_selection_input_hash_not_null          | NOT NULL input_hash
+ studio_experiment_selection   | studio_experiment_selection_pkey                         | PRIMARY KEY (id)
+ studio_experiment_selection   | studio_experiment_selection_request_key_key              | UNIQUE (request_key)
+ studio_experiment_selection   | studio_experiment_selection_request_key_not_null         | NOT NULL request_key
+ studio_render_job             | studio_render_job_attempt_id_fkey                        | FOREIGN KEY (attempt_id) REFERENCES studio_attempt(id) ON DELETE RESTRICT
+ studio_render_job             | studio_render_job_attempt_id_not_null                    | NOT NULL attempt_id
+ studio_render_job             | studio_render_job_created_at_not_null                    | NOT NULL created_at
+ studio_render_job             | studio_render_job_generation_check                       | CHECK (((generation >= 0) AND (generation <= 3)))
+ studio_render_job             | studio_render_job_generation_not_null                    | NOT NULL generation
+ studio_render_job             | studio_render_job_pkey                                   | PRIMARY KEY (attempt_id)
+ studio_render_job             | studio_render_job_snapshot_not_null                      | NOT NULL snapshot
+ studio_render_job             | studio_render_job_state_check                            | CHECK ((state = ANY (ARRAY['QUEUED'::text, 'RUNNING'::text, 'COMPLETED'::text, 'CANCELLED'::text, 'FAILED'::text])))
+ studio_render_job             | studio_render_job_state_not_null                         | NOT NULL state
+ studio_render_job             | studio_render_job_updated_at_not_null                    | NOT NULL updated_at
+ studio_render_lease           | studio_render_lease_attempt_id_fkey                      | FOREIGN KEY (attempt_id) REFERENCES studio_render_job(attempt_id) ON DELETE RESTRICT
+ studio_render_lease           | studio_render_lease_attempt_id_generation_key            | UNIQUE (attempt_id, generation)
+ studio_render_lease           | studio_render_lease_attempt_id_not_null                  | NOT NULL attempt_id
+ studio_render_lease           | studio_render_lease_created_at_not_null                  | NOT NULL created_at
+ studio_render_lease           | studio_render_lease_expires_at_not_null                  | NOT NULL expires_at
+ studio_render_lease           | studio_render_lease_generation_check                     | CHECK (((generation >= 1) AND (generation <= 3)))
+ studio_render_lease           | studio_render_lease_generation_not_null                  | NOT NULL generation
+ studio_render_lease           | studio_render_lease_lease_id_not_null                    | NOT NULL lease_id
+ studio_render_lease           | studio_render_lease_pkey                                 | PRIMARY KEY (attempt_id, lease_id)
+ studio_render_execution       | studio_render_execution_admitted_not_null                | NOT NULL admitted
+ studio_render_execution       | studio_render_execution_attempt_id_fkey                  | FOREIGN KEY (attempt_id) REFERENCES studio_render_job(attempt_id) ON DELETE RESTRICT
+ studio_render_execution       | studio_render_execution_attempt_id_lease_id_fkey         | FOREIGN KEY (attempt_id, lease_id) REFERENCES studio_render_lease(attempt_id, lease_id) ON DELETE RESTRICT
+ studio_render_execution       | studio_render_execution_attempt_id_not_null              | NOT NULL attempt_id
+ studio_render_execution       | studio_render_execution_created_at_not_null              | NOT NULL created_at
+ studio_render_execution       | studio_render_execution_lease_id_not_null                | NOT NULL lease_id
+ studio_render_execution       | studio_render_execution_pkey                             | PRIMARY KEY (attempt_id, lease_id)
+ studio_render_execution       | studio_render_execution_request_hash_not_null            | NOT NULL request_hash
+ studio_render_execution       | studio_render_execution_result_not_null                  | NOT NULL result
+ studio_render_execution       | studio_render_execution_status_check                     | CHECK ((status = ANY (ARRAY['SUCCEEDED'::text, 'FAILED'::text, 'CANCELLED'::text])))
+ studio_render_execution       | studio_render_execution_status_not_null                  | NOT NULL status
+ studio_catalog_readiness      | studio_catalog_readiness_attempt_id_lease_id_fkey        | FOREIGN KEY (attempt_id, lease_id) REFERENCES studio_render_execution(attempt_id, lease_id) ON DELETE RESTRICT
+ studio_catalog_readiness      | studio_catalog_readiness_attempt_id_not_null             | NOT NULL attempt_id
+ studio_catalog_readiness      | studio_catalog_readiness_check                           | CHECK ((expires_at > checked_at))
+ studio_catalog_readiness      | studio_catalog_readiness_checked_at_not_null             | NOT NULL checked_at
+ studio_catalog_readiness      | studio_catalog_readiness_expires_at_not_null             | NOT NULL expires_at
+ studio_catalog_readiness      | studio_catalog_readiness_id_not_null                     | NOT NULL id
+ studio_catalog_readiness      | studio_catalog_readiness_lease_id_not_null               | NOT NULL lease_id
+ studio_catalog_readiness      | studio_catalog_readiness_pkey                            | PRIMARY KEY (id)
+ studio_catalog_readiness      | studio_catalog_readiness_proof_check                     | CHECK ((octet_length((proof)::text) <= 32768))
+ studio_catalog_readiness      | studio_catalog_readiness_proof_not_null                  | NOT NULL proof
+ studio_catalog_readiness      | studio_catalog_readiness_release_id_fkey                 | FOREIGN KEY (release_id) REFERENCES studio_catalog_release(id) ON DELETE RESTRICT
+ studio_catalog_readiness      | studio_catalog_readiness_release_id_not_null             | NOT NULL release_id
+ studio_catalog_readiness      | studio_catalog_readiness_request_hash_not_null           | NOT NULL request_hash
+ studio_catalog_readiness      | studio_catalog_readiness_sequence_key                    | UNIQUE (sequence)
+ studio_catalog_readiness      | studio_catalog_readiness_sequence_not_null               | NOT NULL sequence
+ studio_publication            | studio_publication_approval_id_fkey                      | FOREIGN KEY (approval_id) REFERENCES studio_approval(id) ON DELETE RESTRICT
+ studio_publication            | studio_publication_approval_id_not_null                  | NOT NULL approval_id
+ studio_publication            | studio_publication_committed                             | TRIGGER DEFERRABLE INITIALLY DEFERRED
+ studio_publication            | studio_publication_pkey                                  | PRIMARY KEY (release_id)
+ studio_publication            | studio_publication_project_id_fkey                       | FOREIGN KEY (project_id) REFERENCES studio_project(id) ON DELETE RESTRICT
+ studio_publication            | studio_publication_project_id_key                        | UNIQUE (project_id)
+ studio_publication            | studio_publication_project_id_not_null                   | NOT NULL project_id
+ studio_publication            | studio_publication_published_at_not_null                 | NOT NULL published_at
+ studio_publication            | studio_publication_readiness_id_fkey                     | FOREIGN KEY (readiness_id) REFERENCES studio_catalog_readiness(id) ON DELETE RESTRICT
+ studio_publication            | studio_publication_readiness_id_not_null                 | NOT NULL readiness_id
+ studio_publication            | studio_publication_release_id_fkey                       | FOREIGN KEY (release_id) REFERENCES studio_catalog_release(id) ON DELETE RESTRICT
+ studio_publication            | studio_publication_release_id_not_null                   | NOT NULL release_id
+ studio_watch_delivery         | studio_watch_delivery_delivered_at_not_null              | NOT NULL delivered_at
+ studio_watch_delivery         | studio_watch_delivery_phase_check                        | CHECK ((phase = ANY (ARRAY['published'::text, 'revoked'::text])))
+ studio_watch_delivery         | studio_watch_delivery_phase_not_null                     | NOT NULL phase
+ studio_watch_delivery         | studio_watch_delivery_pkey                               | PRIMARY KEY (release_id, phase)
+ studio_watch_delivery         | studio_watch_delivery_release_id_fkey                    | FOREIGN KEY (release_id) REFERENCES studio_publication(release_id) ON DELETE RESTRICT
+ studio_watch_delivery         | studio_watch_delivery_release_id_not_null                | NOT NULL release_id
+ studio_render_retained_asset  | studio_render_retained_asset_asset_version_id_fkey       | FOREIGN KEY (asset_version_id) REFERENCES studio_asset_version(id) ON DELETE RESTRICT
+ studio_render_retained_asset  | studio_render_retained_asset_asset_version_id_not_null   | NOT NULL asset_version_id
+ studio_render_retained_asset  | studio_render_retained_asset_attempt_id_lease_id_fkey    | FOREIGN KEY (attempt_id, lease_id) REFERENCES studio_render_lease(attempt_id, lease_id) ON DELETE RESTRICT
+ studio_render_retained_asset  | studio_render_retained_asset_attempt_id_not_null         | NOT NULL attempt_id
+ studio_render_retained_asset  | studio_render_retained_asset_created_at_not_null         | NOT NULL created_at
+ studio_render_retained_asset  | studio_render_retained_asset_lease_id_not_null           | NOT NULL lease_id
+ studio_render_retained_asset  | studio_render_retained_asset_pkey                        | PRIMARY KEY (attempt_id, lease_id, asset_version_id)
+ studio_mux_job                | studio_mux_job_asset_id_key                              | UNIQUE (asset_id)
+ studio_mux_job                | studio_mux_job_attempt_id_fkey                           | FOREIGN KEY (attempt_id) REFERENCES studio_attempt(id) ON DELETE RESTRICT
+ studio_mux_job                | studio_mux_job_attempt_id_key                            | UNIQUE (attempt_id)
+ studio_mux_job                | studio_mux_job_attempt_id_not_null                       | NOT NULL attempt_id
+ studio_mux_job                | studio_mux_job_created_at_not_null                       | NOT NULL created_at
+ studio_mux_job                | studio_mux_job_dispatch_id_key                           | UNIQUE (dispatch_id)
+ studio_mux_job                | studio_mux_job_id_not_null                               | NOT NULL id
+ studio_mux_job                | studio_mux_job_pkey                                      | PRIMARY KEY (id)
+ studio_mux_job                | studio_mux_job_snapshot_not_null                         | NOT NULL snapshot
+ studio_mux_job                | studio_mux_job_state_check                               | CHECK ((state = ANY (ARRAY['PENDING'::text, 'DISPATCHING'::text, 'AMBIGUOUS'::text, 'PROCESSING'::text, 'READY'::text, 'FAILED'::text])))
+ studio_mux_job                | studio_mux_job_state_not_null                            | NOT NULL state
+ studio_mux_job                | studio_mux_job_updated_at_not_null                       | NOT NULL updated_at
+ studio_calendar               | studio_calendar_id_not_null                              | NOT NULL id
+ studio_calendar               | studio_calendar_pkey                                     | PRIMARY KEY (id)
+ studio_calendar               | studio_calendar_settings_not_null                        | NOT NULL settings
+ studio_calendar               | studio_calendar_version_not_null                         | NOT NULL version
+ studio_calendar               | studio_calendar_version_positive                         | CHECK ((version > 0))
+ studio_plan_slot              | studio_plan_slot_calendar_id_fkey                        | FOREIGN KEY (calendar_id) REFERENCES studio_calendar(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_plan_slot              | studio_plan_slot_calendar_id_not_null                    | NOT NULL calendar_id
+ studio_plan_slot              | studio_plan_slot_date_not_null                           | NOT NULL date
+ studio_plan_slot              | studio_plan_slot_id_not_null                             | NOT NULL id
+ studio_plan_slot              | studio_plan_slot_manual_not_null                         | NOT NULL manual
+ studio_plan_slot              | studio_plan_slot_pack_revision_id_fkey                   | FOREIGN KEY (pack_revision_id) REFERENCES content_pack_revision(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_plan_slot              | studio_plan_slot_pkey                                    | PRIMARY KEY (id)
+ studio_plan_slot              | studio_plan_slot_project_id_fkey                         | FOREIGN KEY (project_id) REFERENCES studio_project(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_plan_slot              | studio_plan_slot_theme_not_null                          | NOT NULL theme
+ studio_plan_slot              | studio_plan_slot_title_not_null                          | NOT NULL title
+ studio_plan_slot              | studio_plan_slot_version_not_null                        | NOT NULL version
+ studio_plan_slot              | studio_slot_version_nonnegative                          | CHECK ((version >= 0))
+ studio_plan_week              | studio_plan_week_calendar_id_fkey                        | FOREIGN KEY (calendar_id) REFERENCES studio_calendar(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_plan_week              | studio_plan_week_calendar_id_not_null                    | NOT NULL calendar_id
+ studio_plan_week              | studio_plan_week_pack_revision_id_fkey                   | FOREIGN KEY (pack_revision_id) REFERENCES content_pack_revision(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_plan_week              | studio_plan_week_pkey                                    | PRIMARY KEY (calendar_id, start_date)
+ studio_plan_week              | studio_plan_week_start_date_not_null                     | NOT NULL start_date
+ studio_plan_week              | studio_plan_week_theme_not_null                          | NOT NULL theme
+ studio_calendar_command       | studio_calendar_command_calendar_id_fkey                 | FOREIGN KEY (calendar_id) REFERENCES studio_calendar(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_calendar_command       | studio_calendar_command_calendar_id_not_null             | NOT NULL calendar_id
+ studio_calendar_command       | studio_calendar_command_input_hash_not_null              | NOT NULL input_hash
+ studio_calendar_command       | studio_calendar_command_key_not_null                     | NOT NULL key
+ studio_calendar_command       | studio_calendar_command_pkey                             | PRIMARY KEY (calendar_id, key)
+ studio_calendar_command       | studio_calendar_command_result_not_null                  | NOT NULL result
+ studio_planning_run           | studio_planning_run_calendar_id_fkey                     | FOREIGN KEY (calendar_id) REFERENCES studio_calendar(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_planning_run           | studio_planning_run_calendar_id_not_null                 | NOT NULL calendar_id
+ studio_planning_run           | studio_planning_run_created_at_not_null                  | NOT NULL created_at
+ studio_planning_run           | studio_planning_run_id_not_null                          | NOT NULL id
+ studio_planning_run           | studio_planning_run_input_not_null                       | NOT NULL input
+ studio_planning_run           | studio_planning_run_occurrence_not_null                  | NOT NULL occurrence
+ studio_planning_run           | studio_planning_run_pkey                                 | PRIMARY KEY (id)
+ studio_planning_run           | studio_planning_run_status_not_null                      | NOT NULL status
+ studio_planning_run           | studio_planning_run_version_not_null                     | NOT NULL version
+ studio_schedule_authorization | studio_schedule_authorization_approval_id_fkey           | FOREIGN KEY (approval_id) REFERENCES studio_approval(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_approval_id_not_null       | NOT NULL approval_id
+ studio_schedule_authorization | studio_schedule_authorization_due_at_not_null            | NOT NULL due_at
+ studio_schedule_authorization | studio_schedule_authorization_id_not_null                | NOT NULL id
+ studio_schedule_authorization | studio_schedule_authorization_latest_allowed_at_not_null | NOT NULL latest_allowed_at
+ studio_schedule_authorization | studio_schedule_authorization_operator_id_fkey           | FOREIGN KEY (operator_id) REFERENCES "user"(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_operator_id_not_null       | NOT NULL operator_id
+ studio_schedule_authorization | studio_schedule_authorization_pkey                       | PRIMARY KEY (id)
+ studio_schedule_authorization | studio_schedule_authorization_project_id_not_null        | NOT NULL project_id
+ studio_schedule_authorization | studio_schedule_authorization_project_id_revision_fkey   | FOREIGN KEY (project_id, revision) REFERENCES studio_project_revision(project_id, number) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_release_id_fkey            | FOREIGN KEY (release_id) REFERENCES studio_catalog_release(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_release_id_not_null        | NOT NULL release_id
+ studio_schedule_authorization | studio_schedule_authorization_render_attempt_id_fkey     | FOREIGN KEY (render_attempt_id) REFERENCES studio_attempt(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_render_attempt_id_not_null | NOT NULL render_attempt_id
+ studio_schedule_authorization | studio_schedule_authorization_revision_not_null          | NOT NULL revision
+ studio_schedule_authorization | studio_schedule_authorization_slot_id_fkey               | FOREIGN KEY (slot_id) REFERENCES studio_plan_slot(id) ON UPDATE CASCADE ON DELETE RESTRICT
+ studio_schedule_authorization | studio_schedule_authorization_slot_id_not_null           | NOT NULL slot_id
+ studio_schedule_authorization | studio_schedule_authorization_version_not_null           | NOT NULL version
+ studio_schedule_authorization | studio_schedule_window                                   | CHECK (((version > 0) AND (latest_allowed_at >= due_at) AND (latest_allowed_at <= (due_at + '1 day'::interval))))
+ studio_schedule_dispatch      | studio_schedule_dispatch_attempts_check                  | CHECK ((attempts >= 0))
+ studio_schedule_dispatch      | studio_schedule_dispatch_attempts_not_null               | NOT NULL attempts
+ studio_schedule_dispatch      | studio_schedule_dispatch_authorization_id_fkey           | FOREIGN KEY (authorization_id) REFERENCES studio_schedule_authorization(id) ON DELETE RESTRICT
+ studio_schedule_dispatch      | studio_schedule_dispatch_authorization_id_not_null       | NOT NULL authorization_id
+ studio_schedule_dispatch      | studio_schedule_dispatch_check                           | CHECK (((lease_id IS NULL) = (lease_expires_at IS NULL)))
+ studio_schedule_dispatch      | studio_schedule_dispatch_next_attempt_at_not_null        | NOT NULL next_attempt_at
+ studio_schedule_dispatch      | studio_schedule_dispatch_pkey                            | PRIMARY KEY (authorization_id)
+ studio_schedule_dispatch      | studio_schedule_dispatch_state_check                     | CHECK (((state)::text = ANY ((ARRAY['PENDING'::character varying, 'RUNNING'::character varying, 'RETRY'::character varying, 'ACCEPTED'::character varying, 'BLOCKED'::character varying])::text[])))
+ studio_schedule_dispatch      | studio_schedule_dispatch_state_not_null                  | NOT NULL state
+(336 rows)

@@ -1,0 +1,5 @@
+Captured diagnostic from the first focused typecheck (exit2), before the ACK fixture correction:
+
+src/services/studio-authoring/release-controls.db.test.ts(161,36): error TS2345: Argument of type Mock<() => Promise<{ status: "sent"; }>> is not assignable to the revalidation emitter. Property httpStatus is missing in type { status: "sent"; } but required in type { status: "sent"; httpStatus: number; }.
+
+The followup log records the corrected successful typecheck; this is a retained diagnostic transcription, not a replacement raw stdout log.

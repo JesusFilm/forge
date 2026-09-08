@@ -1,0 +1,112 @@
+(node:2322670) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts (5 tests | 3 failed) 2908ms
+   ✓ Studio release admission controls > denies a new canonical manual publication while retaining the editable draft  694ms
+   × Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish 529ms
+     → expected StudioPublicationRejected: Studio command… { code: '…' } to match object { code: 'DELIVERY_EXPIRED' }
+(1 matching property omitted from actual)
+   ✓ Studio release admission controls > blocks new paid dispatch without consuming budget and settles already consumed outcomes  515ms
+   × Studio release admission controls > pauses queued render and Mux claims without spending their identities or retry budget 600ms
+     →
+Invalid `tx.studioMuxJob.update()` invocation in
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin/src/services/studio-authoring/mux-jobs.ts:234:30
+
+  231 if (job.assetId === assetId) return job
+  232 if (!["DISPATCHING", "AMBIGUOUS"].includes(job.state))
+  233   throw new StudioCommandError("CONFLICT")
+→ 234 return tx.studioMuxJob.update(
+Unique constraint failed on the fields: (`asset_id`)
+   × Studio release admission controls > rechecks a terminalized attempt after waiting for the project lock, without blocking consumed replay 563ms
+     → expected { value: { execute: true, …(1) } } to match object { error: { code: 'CONFLICT' } }
+(3 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish
+AssertionError: expected StudioPublicationRejected: Studio command… { code: '…' } to match object { code: 'DELIVERY_EXPIRED' }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "DELIVERY_EXPIRED",
++ StudioPublicationRejected {
++   "code": "PUBLICATION_DISABLED",
+  }
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:81:5
+     79|     vi.useFakeTimers({ toFake: ["Date"] })
+     80|     vi.setSystemTime(row.latestAllowedAt.getTime() + 1)
+     81|     await expect(publishPreparedStudioProject(db, f.worker, row.submis…
+       |     ^
+     82|     vi.useRealTimers()
+     83|     controls.publication = "true"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > pauses queued render and Mux claims without spending their identities or retry budget
+PrismaClientKnownRequestError:
+Invalid `tx.studioMuxJob.update()` invocation in
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin/src/services/studio-authoring/mux-jobs.ts:234:30
+
+  231 if (job.assetId === assetId) return job
+  232 if (!["DISPATCHING", "AMBIGUOUS"].includes(job.state))
+  233   throw new StudioCommandError("CONFLICT")
+→ 234 return tx.studioMuxJob.update(
+Unique constraint failed on the fields: (`asset_id`)
+ ❯ ei.handleRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13
+ ❯ ei.handleAndLogRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12
+ ❯ ei.request ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12
+ ❯ a ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24
+ ❯ Proxy._transactionWithCallback ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:165:5
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > rechecks a terminalized attempt after waiting for the project lock, without blocking consumed replay
+AssertionError: expected { value: { execute: true, …(1) } } to match object { error: { code: 'CONFLICT' } }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "error": {
+-     "code": "CONFLICT",
++   "value": {
++     "call": {
++       "inputDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
++       "key": "must-not-dispatch",
++       "reserveMicros": 10,
++       "result": null,
++       "runId": "cmtrx9s1200562c96r9iq2zbs",
++       "state": "RUNNING",
++     },
++     "execute": true,
+    },
+  }
+
+ ❯ src/services/studio-authoring/release-controls.db.test.ts:199:30
+    197|       expect(waiting).toBe(true)
+    198|       release();await holder
+    199|       expect(await observed).toMatchObject({ error: { code: "CONFLICT"…
+       |                              ^
+    200|       expect((await execution.read(f.user, run.id)).calls).toHaveLengt…
+    201|       controls.production="false"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 2 passed (5)
+   Start at  12:19:23
+   Duration  4.76s (transform 746ms, setup 29ms, collect 1.45s, tests 2.91s, environment 0ms, prepare 99ms)
+
+undefined
+/home/tataihono/.codex/worktrees/629b/forge/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/studio-authoring/release-controls.db.test.ts --maxWorkers=1 --no-file-parallelism

@@ -1,0 +1,16 @@
+(node:2316140) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/tataihono/.codex/worktrees/629b/forge/apps/admin
+
+stdout | src/services/studio-authoring/release-controls.db.test.ts > Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish
+{"event":"watch_route_manifest.generated","contentSlugs":1,"oneSegmentSlugs":0,"homepageLocales":0,"parentSlugs":0,"parentChildPairs":0,"audioLanguageSlugs":1,"contentAudioLanguagePairs":1,"episodeAudioLanguagePairs":0,"nestedContainerAudioLanguagePairs":0,"durationMs":55}
+
+ ✓ src/services/studio-authoring/release-controls.db.test.ts (2 tests) 1363ms
+   ✓ Studio release admission controls > denies a new canonical manual publication while retaining the editable draft  537ms
+   ✓ Studio release admission controls > holds a stored scheduled envelope while disabled and preserves accepted retry after unpublish  812ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  12:15:37
+   Duration  2.65s (transform 490ms, setup 20ms, collect 947ms, tests 1.36s, environment 0ms, prepare 81ms)

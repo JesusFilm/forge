@@ -1,0 +1,9 @@
+{
+  "uid": 1000,
+  "networkNamespace": "net:[4026532718]",
+  "portsDenied": [5432, 6379],
+  "ownedPortAvailable": 55462,
+  "database": "postgresql://tataihono@127.0.0.1:55462/forge_studio_462_test",
+  "freshCluster": true,
+  "telemetryDisabled": true
+}

@@ -1,0 +1,18 @@
+import os,subprocess,socket,sys
+from pathlib import Path
+base=Path('/home/tataihono/.local/share/forge/studio-462-release');pg=Path('/usr/lib/postgresql/18/bin')
+label=sys.argv[1]; args=sys.argv[2:]
+env={k:os.environ[k] for k in ['PATH','HOME'] if k in os.environ}
+env.update(TMPDIR=str(base/'tmp'),CI='1',DATABASE_URL='postgresql://tataihono@127.0.0.1:55462/forge_studio_462_test',STUDIO_TEST_DATABASE_URL='postgresql://tataihono@127.0.0.1:55462/forge_studio_462_test',STUDIO_PRODUCTION_ENABLED='true',STUDIO_PUBLICATION_ENABLED='true',NEXT_TELEMETRY_DISABLED='1',DD_TRACE_ENABLED='false',OTEL_SDK_DISABLED='true',REDIS_URL='redis://127.0.0.1:54629',ADMIN_SESSION_SECRET='studio462-local-fixture-secret-at-least-32',AUTH_ISSUER_URL='http://127.0.0.1:55469',AUTH_ADMIN_CLIENT_ID='studio462-fixture')
+subprocess.run(['ip','link','set','lo','up'],check=True)
+for port in [5432,6379]:
+ with socket.socket() as s:
+  s.settimeout(.2);assert s.connect_ex(('127.0.0.1',port))!=0
+with socket.socket() as s:s.bind(('127.0.0.1',55462))
+assert not (base/'pgdata/postmaster.pid').exists()
+subprocess.run([str(pg/'pg_ctl'),'-D',str(base/'pgdata'),'-l',str(base/'logs/postgres.log'),'-o',f'-h 127.0.0.1 -p 55462 -k {base}/tmp','-w','start'],env=env,check=True,stdout=subprocess.DEVNULL)
+try:
+ with (base/'logs'/f'{label}.log').open('w') as f:r=subprocess.run(args,env=env,stdout=f,stderr=subprocess.STDOUT)
+ print(label,'exit',r.returncode)
+finally:subprocess.run([str(pg/'pg_ctl'),'-D',str(base/'pgdata'),'-m','fast','-w','stop'],env=env,check=True,stdout=subprocess.DEVNULL)
+sys.exit(r.returncode)
