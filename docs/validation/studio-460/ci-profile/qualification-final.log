@@ -1,0 +1,14 @@
+Studio native normal qualification: {"pid": 1, "net": "net:[4026532636]", "interfaces": ["lo"], "label": "bwrap//&unpriv_bwrap (enforce)", "effective": "0000000000000000", "permitted": "0000000000000000", "ambient": "0000000000000000", "alternates": [{"pid": 2, "net": "net:[4026532636]", "interfaces": ["lo"], "label": "bwrap//&unpriv_bwrap (enforce)", "effective": "0000000000000000", "permitted": "0000000000000000", "ambient": "0000000000000000"}, {"pid": 3, "net": "net:[4026532636]", "interfaces": ["lo"], "label": "bwrap//&unpriv_bwrap (enforce)", "effective": "0000000000000000", "permitted": "0000000000000000", "ambient": "0000000000000000"}], "escape": 1}
+✔ CI refuses a payload outside the enforced child profile or retaining setup capabilities (1.524361ms)
+✔ actual payload and alternate execs retain zero capabilities/private network and refuse forged qualification (133.802712ms)
+✔ the fixed capability qualification rejects a successful private mount and a missing requested capability (0.424178ms)
+✔ missing Bubblewrap fails before running security fixtures with an actionable diagnostic (1.730401ms)
+✔ unsupported version and denied namespaces refuse rather than skipping security tests (0.558214ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 213.585571

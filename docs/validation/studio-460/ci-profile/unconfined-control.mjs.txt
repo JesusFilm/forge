@@ -1,0 +1,16 @@
+import { spawnSync } from 'node:child_process'
+import { checkNativeTestPrerequisites, validateNativeProbe } from '/home/tataihono/.cache/forge-studio-460-ci-network/apps/studio-render/scripts/check-native-test-prerequisites.mjs'
+import { readlinkSync } from 'node:fs'
+let args, options
+checkNativeTestPrerequisites((command, arguments_, opts) => {
+  if(arguments_.at(-1)==='normal'){args=arguments_;options=opts}
+  return spawnSync(command,arguments_,opts)
+},false)
+const capArgs=[...args]
+for(const key of ['--uid','--gid'])capArgs[capArgs.indexOf(key)+1]='0'
+capArgs.splice(capArgs.indexOf('--cap-drop')+2,0,'--cap-add','CAP_SYS_ADMIN')
+capArgs[capArgs.length-1]='capability-denial'
+const denied=spawnSync('/usr/bin/bwrap',capArgs,options)
+console.log(JSON.stringify({qualification:'unconfined control; private namespace only',status:denied.status,stdout:denied.stdout,stderr:denied.stderr}))
+if(denied.status!==0)process.exit(1)
+validateNativeProbe(JSON.parse(denied.stdout),readlinkSync('/proc/self/ns/net'),false,true)

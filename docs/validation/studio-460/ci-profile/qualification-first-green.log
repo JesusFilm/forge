@@ -1,0 +1,11 @@
+✔ CI refuses a payload outside the enforced child profile or retaining setup capabilities (1.434454ms)
+✔ missing Bubblewrap fails before running security fixtures with an actionable diagnostic (1.704122ms)
+✔ unsupported version and denied namespaces refuse rather than skipping security tests (0.566161ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.909892

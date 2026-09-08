@@ -1,0 +1,25 @@
+file:///home/tataihono/.cache/forge-studio-460-ci-network/apps/studio-render/test/native-profile.test.mjs:3
+import { validateNativeProbe } from "../scripts/check-native-test-prerequisites.mjs"
+         ^^^^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../scripts/check-native-test-prerequisites.mjs' does not provide an export named 'validateNativeProbe'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:455:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:553:5)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.20.0
+✖ apps/studio-render/test/native-profile.test.mjs (56.749543ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.979273
+
+✖ failing tests:
+
+test at apps/studio-render/test/native-profile.test.mjs:1:1
+✖ apps/studio-render/test/native-profile.test.mjs (56.749543ms)
+  'test failed'
