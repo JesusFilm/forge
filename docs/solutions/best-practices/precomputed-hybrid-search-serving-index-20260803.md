@@ -292,6 +292,14 @@ modest. Each import batch still needs exact response-line count and success
 validation, followed by independent document and normalized-vector readback
 over the complete chunk set.
 
+Derive a replacement event's stale-document evidence from both the canonical
+rows removed during that write and the immediately preceding event's current
+document ids. Repair mode exists specifically for incomplete canonical chunk
+sets: if a previously published chunk row is already missing, the row-level
+delete query cannot rediscover its old Typesense id. The prior identity-only
+event can, so carry that old id forward whenever it is absent from the repaired
+current set.
+
 Fingerprint numeric fields at the storage width of the serving schema.
 Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
 values enter JavaScript as 64-bit numbers. Normalize both the canonical input
