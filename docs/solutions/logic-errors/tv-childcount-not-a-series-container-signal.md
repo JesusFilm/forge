@@ -1,6 +1,6 @@
 ---
 title: "TV misroutes feature films with chapter children to the series screen — a record's own children are not a container signal"
-module: "apps/tv — series/watch routing (apps/mobile has a related, still-unfixed variant at src/lib/isSeriesRecord.ts)"
+module: "apps/tv — series/watch routing (apps/mobile fixed the same rule separately in #1980)"
 date: "2026-07-28"
 problem_type: logic_error
 category: logic-errors
@@ -92,15 +92,57 @@ Label-only also matches where the decision is made. Routing happens on a press, 
 
 **A wrong glossary entry actively teaches future agents the wrong rule.** `CONCEPTS.md` had encoded the defective rule as canonical vocabulary — "a Video whose label is SERIES or COLLECTION, **or any record with children**". An agent that greps the glossary before touching routing would have re-derived the exact predicate this fix deleted. The entry is corrected on this branch to say series-shaped means the label is SERIES or COLLECTION, full stop, with children explicitly called out as not evidence. Treat the glossary correction as part of the fix, not as follow-up paperwork.
 
+**Superseded 2026-09-08.** The `Series-Shaped` entry was later widened to
+label-_first_: children decide for a record that arrives with no label at all,
+and the entry now notes that clients do not all agree in that one case. That
+change followed `apps/mobile`, which kept a children fallback for unlabelled
+records where TV deleted it. `apps/tv` still implements the strict reading
+(`isSeriesLabel(null) === false`), so TV code witnesses a narrower rule than the
+glossary entry now states.
+
 **Regression tests for catalog-shaped bugs should use real catalog rows.** A synthetic `{ label: "FEATURE_FILM", childCount: 1 }` fixture proves the branch shape and nothing about the data. The real titles and their real child counts also document _why_ the rule is what it is, so the next reader sees that JESUS has 61 children and is still one film.
 
 **When narrowing a predicate, survey the corpus before you narrow.** The "109 records with children, 55 SERIES / 44 COLLECTION / 8 FEATURE_FILM / 2 SHORT_FILM" breakdown is what turned "label-only feels right" into "label-only loses nothing." Without it, deleting the `childCount` clause is a guess about unlabeled containers that may or may not exist.
 
 ## Status and remaining exposure
 
-Shipped in **PR #1767** (`fix(tv): show feature films as films, not series`), which is **OPEN and unmerged** as of this writing — CI green, branch `fix/tv-feature-film-series-label`. Nothing described here is reachable from `main` yet.
+Shipped in **PR #1767** (`fix(tv): show feature films as films, not series`), **merged to `main` on 2026-07-28** as `c94d40d22`, from branch `fix/tv-feature-film-series-label`. Everything described here is live on `main`. Re-verified 2026-09-08: every `apps/tv` citation above still holds line-exact, and `apps/tv/src/lib/isSeriesRecord.ts` still exports `isSeriesLabel` and nothing else.
 
-**`apps/mobile` carries a related variant, live** — but do not port this fix mechanically. `apps/mobile/src/lib/isSeriesRecord.ts` retains both `isSeriesRecord` (label OR `episodes.length > 0`) and `isSeriesSearchResult` (label OR `childCount > 0`). Live consumers are the search route in `apps/mobile/app/(tabs)/watch.tsx` and Home cards in `apps/mobile/src/components/home/HomeCard.tsx`; the redirect in `apps/mobile/app/watch/[slug].tsx` uses `isSeriesRecord`, while `apps/mobile/src/components/home/HomeScreen.tsx` routes on `isSeriesLabel` alone — the same two-predicate asymmetry TV just removed. Mobile's lean `/watch` fragment omits children, so `episodes` is `[]` there today and that path is _incidentally_ label-only; the bug is latent and one fragment widening away from waking up.
+**`apps/mobile` fixed the same rule separately — updated 2026-09-08.** Mobile
+PR #1980 made both of its predicates label-FIRST rather than deleting them:
+`apps/mobile/src/lib/isSeriesRecord.ts:30-36` (`isSeriesRecord`) and `:42-48`
+(`isSeriesSearchResult`) classify a labelled record by its label alone, and
+consult children only for a record carrying no label at all. So a labelled
+feature film can no longer misroute on either client, and the latent bug this
+section used to warn about is closed.
+
+Two corrections to what this section said before:
+
+- It claimed mobile's `/watch` fragment omits children. It does not, and did not
+  when this was written: `watchVideoFragment` selects `children`
+  (`apps/mobile/src/lib/queries.ts:214`). The reason `isSeriesRecord` sees an
+  empty `episodes` on that path is that `normalizeVideo` hardcodes
+  `episodes: []` (`apps/mobile/src/lib/normalizeVideo.ts:383`); only
+  `normalizeSeries` fills it (`:447`). The conclusion held, the mechanism named
+  was wrong — so "one fragment widening away" was never the live risk.
+- The two-predicate asymmetry survives, but narrowed.
+  `apps/mobile/src/components/home/HomeScreen.tsx:294` still routes on
+  `isSeriesLabel` alone while the other surfaces use the label-first pair. Since
+  #1980 those can disagree in exactly one case: an UNLABELLED record with
+  children, which `isSeriesLabel` calls a leaf and the pair calls a container.
+  TV has no such case — `isSeriesLabel(null)` is `false` and TV never consults
+  children.
+
+Mobile's live consumers are now the search route
+(`apps/mobile/app/(tabs)/watch.tsx:153`), Home cards
+(`apps/mobile/src/components/home/HomeCard.tsx:87`), the `/watch` redirect
+(`apps/mobile/app/watch/[slug].tsx:190`), and — added 2026-09-08 — the search
+grid's preview gate and duration chip
+(`apps/mobile/src/components/search/previewCycle.ts:30`,
+`SearchResultCard.tsx:56`). Those last two were written with a hand-rolled
+`childCount > 0` and corrected before they shipped; that near-miss is recorded as
+a worked instance in
+`docs/solutions/best-practices/shared-predicate-partial-rollout-gap-20260810.md`.
 
 Two constraints make the mobile port a different job, not a copy-paste:
 
@@ -114,6 +156,7 @@ Mobile's `isSeriesLabel` also case-folds over lowercase literals, whereas TV's i
 - `docs/solutions/architecture-patterns/cross-client-hero-parity-eligibility-gate.md` — prior art for the correct rule on the same entity: the home-hero eligibility gate already drops COLLECTION/SERIES by label alone and deliberately keeps feature films. The principle was right there; this bug is what happens when a second surface derives it independently and gets it wrong.
 - `docs/solutions/logic-errors/tv-home-orientation-field-overloaded-card-shape-signal.md` — different bug, same meta-pattern: one field silently overloaded as a signal it does not actually carry.
 - `docs/solutions/database-issues/prisma-video-relation-inverted-back-references-20260514.md` — admin's `Video.parents`/`Video.children` `@relation` labels are inverted on `main` (deliberately deferred). Not the cause of this bug, but it is why `buildChildren` self-filters and dedupes rather than trusting the relation, so the chapter rail is correct both before and after that fix.
-- `docs/solutions/architecture-patterns/tv-home-single-admin-experience-migration-20260712.md` — contains a now-stale parenthetical asserting that a real `childCount` implies correct series routing.
-- `docs/solutions/performance-issues/tv-mobile-series-detail-overfetch-and-childdublanguages-index-20260619.md` — benchmarks `jesus` as a legitimate series-detail load. Post-fix `jesus` no longer reaches that screen, so its example is historical; its composite-index recommendation still applies to genuine high-fan-out series.
+- `docs/solutions/architecture-patterns/tv-home-single-admin-experience-migration-20260712.md` — its `childCount` parenthetical was corrected in place and now cites this doc; `childCount` there feeds only the meta-label noun.
+- `docs/solutions/performance-issues/tv-mobile-series-detail-overfetch-and-childdublanguages-index-20260619.md` — benchmarks `jesus` as a legitimate series-detail load. It carries its own dated banner marking that example TV-historical, and its composite-index recommendation still applies to genuine high-fan-out series. **Its banner is now half stale:** it says "Mobile routing is unchanged: its home shelf and search results still send `jesus` to `/series` via `childCount`", which #1980 ended. That doc needs its own refresh.
+- `docs/solutions/best-practices/shared-predicate-partial-rollout-gap-20260810.md` — the 2026-09-08 worked instance covers the near-miss where new mobile search code re-derived this predicate by hand instead of calling it.
 - Root `CLAUDE.md`'s mocked-shape-vs-real-contract discipline covers the testing half: the real-catalog fixture table is the production-contract companion to the synthetic branch-shape cases.
