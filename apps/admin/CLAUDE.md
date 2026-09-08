@@ -1204,12 +1204,15 @@ and is idempotent by default. Explicit modes are `idempotent`, `repair`,
   stale deletion starts remove and verify the complete affected id set under
   the same publication lock before retry. An incomplete attempt must not leave
   a newly public transcript searchable. Claims are generation/token fenced,
-  bounded failures enter `DEAD_LETTER` without losing repair evidence, and a
-  later source generation can coalesce that evidence. A canonical
-  transcript/video cascade appends identity-only `LIFECYCLE` cleanup before
-  deleting the parent; publication events therefore deliberately have no
-  transcript foreign key and retain transcript, video, edition, language,
-  contract, chunking, and exact document identity. A thrown final
+  and the next live worker dead-letters an attempt-exhausted crashed claim
+  before making another external call. Bounded failures enter `DEAD_LETTER`
+  without losing repair evidence, and a later source generation can coalesce
+  that evidence. A canonical transcript/video cascade appends identity-only
+  `LIFECYCLE` cleanup before deleting the parent, combining incremental event
+  evidence with canonical chunk ids published only by a full rebuild;
+  publication events therefore deliberately have no transcript foreign key
+  and retain transcript, video, edition, language, contract, chunking, and
+  exact document identity. A thrown final
   PostgreSQL commit is reconciled from the durable event and projection rows
   before compensation because the commit acknowledgement may be lost after a
   successful commit; an unavailable reconciliation preserves the claim and

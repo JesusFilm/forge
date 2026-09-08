@@ -300,6 +300,20 @@ delete query cannot rediscover its old Typesense id. The prior identity-only
 event can, so carry that old id forward whenever it is absent from the repaired
 current set.
 
+Canonical deletion cleanup must also read the current chunk ids before the
+database cascade removes them. A full transcript rebuild publishes those exact
+chunk ids without creating incremental event rows, so event history alone is
+not a complete lifecycle ledger. A `BEFORE DELETE` trigger can union canonical
+chunk ids with all retained event ids, persist that identity-only lifecycle
+work without a parent foreign key, and then let the cascade proceed.
+
+Enforce a retry ceiling both when releasing a caught failure and when reclaiming
+an expired claim. A process crash bypasses the normal failure-release path; if
+the next worker only increments the attempt count, repeated crashes or failed
+compensation can remain `CLAIMED` forever. The next live claimant must move an
+already exhausted row to dead letter before making another external call while
+leaving its immutable cleanup ids intact.
+
 Fingerprint numeric fields at the storage width of the serving schema.
 Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
 values enter JavaScript as 64-bit numbers. Normalize both the canonical input

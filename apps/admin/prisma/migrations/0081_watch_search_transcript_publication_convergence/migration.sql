@@ -24,6 +24,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   latest_event record;
+  current_projection record;
   lifecycle_generation bigint;
   lifecycle_contract_id text;
   lifecycle_chunking_version text;
@@ -39,43 +40,65 @@ BEGIN
   ORDER BY source_generation DESC, created_at DESC
   LIMIT 1;
 
-  -- A transcript that has never emitted publication evidence cannot own a
-  -- Typesense document through this pipeline, so there is no cleanup to queue.
-  IF NOT FOUND THEN
-    RETURN OLD;
-  END IF;
+  SELECT
+    content_embedding_contract_id,
+    transcript_chunking_version
+  INTO current_projection
+  FROM watch_search_current_transcript_projection
+  WHERE id = 'watch-search-current-transcript-projection';
 
   SELECT COALESCE(
-    array_agg(DISTINCT document_id ORDER BY document_id),
+    array_agg(document_id ORDER BY document_id),
     ARRAY[]::text[]
   )
   INTO cleanup_document_ids
-  FROM watch_search_current_transcript_publication_event event
-  CROSS JOIN LATERAL unnest(
-    event.current_document_ids || event.stale_document_ids
-  ) AS document_id
-  WHERE event.transcript_id = OLD.id;
+  FROM (
+    -- Full transcript rebuilds publish canonical chunk ids without creating an
+    -- incremental event. Read them before the parent cascade removes the only
+    -- exact identity available for lifecycle cleanup.
+    SELECT chunk.id AS document_id
+    FROM video_transcript_chunk chunk
+    WHERE chunk.transcript_id = OLD.id
+
+    UNION
+
+    SELECT document_id
+    FROM watch_search_current_transcript_publication_event event
+    CROSS JOIN LATERAL unnest(
+      event.current_document_ids || event.stale_document_ids
+    ) AS document_id
+    WHERE event.transcript_id = OLD.id
+  ) evidence;
+
+  IF cardinality(cleanup_document_ids) = 0 THEN
+    RETURN OLD;
+  END IF;
 
   lifecycle_generation := GREATEST(
     OLD.source_generation,
-    latest_event.source_generation
+    COALESCE(latest_event.source_generation, OLD.source_generation)
   ) + 1;
   lifecycle_contract_id := COALESCE(
+    current_projection.content_embedding_contract_id,
+    latest_event.content_embedding_contract_id,
     (
-      SELECT content_embedding_contract_id
-      FROM watch_search_current_transcript_projection
-      WHERE id = 'current'
-    ),
-    latest_event.content_embedding_contract_id
+      SELECT active_contract_id
+      FROM content_embedding_contract_pointer
+      WHERE id = 'content-embedding-contract-pointer'
+    )
   );
   lifecycle_chunking_version := COALESCE(
-    (
-      SELECT transcript_chunking_version
-      FROM watch_search_current_transcript_projection
-      WHERE id = 'current'
-    ),
-    latest_event.transcript_chunking_version
+    current_projection.transcript_chunking_version,
+    latest_event.transcript_chunking_version,
+    OLD.chunking_version
   );
+
+  -- Legacy transcripts without a compatible projection cannot be safely
+  -- assigned to the active Typesense collection. They were not eligible for a
+  -- successful full rebuild; leave their canonical delete unblocked.
+  IF lifecycle_contract_id IS NULL OR lifecycle_chunking_version IS NULL THEN
+    RETURN OLD;
+  END IF;
 
   INSERT INTO watch_search_current_transcript_publication_event (
     id,

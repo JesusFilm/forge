@@ -61,6 +61,7 @@ type ClaimablePublicationRow = {
   workKind: "publication" | "lifecycle"
   leaseGeneration: number
   attemptCount: number
+  lastErrorCode: string | null
   createdAt: Date
 }
 
@@ -485,6 +486,7 @@ async function claimNextTranscriptPublicationBatch(
         work_kind AS "workKind",
         lease_generation AS "leaseGeneration",
         attempt_count AS "attemptCount",
+        last_error_code AS "lastErrorCode",
         created_at AS "createdAt"
       FROM watch_search_current_transcript_publication_event
       WHERE transcript_id = ${transcriptId}
@@ -496,6 +498,25 @@ async function claimNextTranscriptPublicationBatch(
 
     const latest = rows[0]!
     const eventIds = rows.map((row) => row.id)
+    // A worker can disappear after claiming but before it reaches the normal
+    // failure-release path. Let the next live worker enforce the attempt bound
+    // instead of reclaiming a poison event forever.
+    if (latest.attemptCount >= MAX_PUBLICATION_ATTEMPTS) {
+      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
+        where: { id: { in: eventIds } },
+        data: {
+          status: "DEAD_LETTER",
+          leaseTokenHash: null,
+          leaseExpiresAt: null,
+          nextAttemptAt: null,
+          lastErrorCode:
+            latest.lastErrorCode ?? "publication_attempts_exhausted",
+          deadLetteredAt: now,
+          updatedAt: now,
+        },
+      })
+      return null
+    }
     // Include immutable deletion evidence from older events that another
     // worker has already claimed. A newer generation can win the shared index
     // lock before that worker starts, and the newer transition may no longer
@@ -1277,12 +1298,12 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
               affectedDocumentIds,
             )
           } catch (cleanupError) {
-            // Preserve the claim fence when compensating cleanup cannot be
-            // verified. Clearing it here would advertise the event as safely
-            // retryable even though this attempt may still have visible
-            // documents in Typesense. A later worker can reclaim the event
-            // after its lease expires and repeat the full idempotent publish.
-            releaseClaimedBatchOnFailure = false
+            // Preserve the in-flight fence until expiry while automatic repair
+            // remains possible. On the final bounded attempt, transition to
+            // dead letter immediately and retain the same exact id evidence for
+            // operator-driven repair.
+            releaseClaimedBatchOnFailure =
+              batch.attemptCount >= MAX_PUBLICATION_ATTEMPTS
             throw new AggregateError(
               [error, cleanupError],
               "transcript publication failed and fail-closed Typesense cleanup did not complete",
