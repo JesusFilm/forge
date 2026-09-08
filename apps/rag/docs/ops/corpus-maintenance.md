@@ -80,6 +80,25 @@ If and only if the registry entry selects `fetchStrategy: "firecrawl"`, ensure
 is injected into the operator process; it is not copied into Railway merely to
 run acquisition. A source using plain HTTP does not require Firecrawl.
 
+### Sitemap discovery and article scope
+
+Registered `crawl.sitemaps` authorize discovery transport within each sitemap's
+origin and parent directory, including child sitemap entries and redirects.
+For example, `/islenska/icelandic.xml` authorizes discovery under `/islenska/`
+on that exact origin; it does not authorize `/sitemap.xml` or another language.
+The existing protocol, credential, redirect-count, and private-address guards
+still apply. Register any additional required sitemap namespace explicitly.
+
+Article `allow`, `block`, and `articleHints` remain the content-selection rules.
+Do not expand an article allow-list merely to admit its XML sitemap: article-only
+patterns previously rejected GotQuestions and Cru discovery before any content
+URLs could be resolved. Regression coverage must connect `discoverUrls` to the
+real HTTP adapter, because a fake fetcher can bypass the destination guard.
+
+If discovery logs a sitemap fetch error and resolves zero URLs, treat that as
+failed discovery rather than evidence that the source is empty or fully acquired.
+The command continues past individual sitemap failures to process siblings.
+
 ## Index and reindex
 
 An ordinary index drains pending staging rows. Start with a source and limit:

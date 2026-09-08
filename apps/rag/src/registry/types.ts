@@ -43,6 +43,9 @@ export interface CrawlPolicy {
   /**
    * Sitemap URLs (or paths against `baseUrl`) to discover content URLs from.
    * A `<sitemapindex>` is auto-recursed into its child `<sitemap>` entries.
+   * Discovery fetches, redirects, and children stay within the origin and
+   * parent directory of a registered sitemap. Article `allow` patterns do not
+   * authorize sitemap transport; they still filter discovered content URLs.
    * Presence of this field makes the source a discovery crawl.
    */
   sitemaps?: string[]

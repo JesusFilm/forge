@@ -10,10 +10,10 @@ database into Admin.
 
 ## Status (September 9, 2026)
 
-- **Total tickets:** 22
-- **Complete:** 16
+- **Total tickets:** 24
+- **Complete:** 17
 - **In progress:** 1
-- **Not started:** 5
+- **Not started:** 6
 - **Blocked:** 0
 
 ## Feature Index
@@ -42,6 +42,9 @@ database into Admin.
 | [feat-463](feat-463-rag-baseline-concerns-investigation.md)       | —                                                             | Investigate baseline recall, coverage, and language-label concerns | not-started | [#2189](https://github.com/JesusFilm/forge/pull/2189)                                                        |
 | [feat-466](feat-466-gotquestions-icelandic-slice.md)              | —                                                             | Complete the local GotQuestions Icelandic slice                    | complete    | [#2202](https://github.com/JesusFilm/forge/pull/2202)                                                        |
 | [feat-467](feat-467-gotquestions-icelandic-negative-retrieval.md) | —                                                             | Investigate the Icelandic off-topic retrieval hit                  | not-started | [#2202](https://github.com/JesusFilm/forge/pull/2202)                                                        |
+| [feat-468](feat-468-rag-sitemap-discovery-policy.md)              | —                                                             | Separate sitemap discovery from article policy                     | complete    | —                                                                                                            |
+
+| [feat-469](feat-469-rag-redirected-sitemap-relative-children.md) | — | Resolve sitemap children after redirects | not-started | — |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
