@@ -1,0 +1,23 @@
+apps/studio-render/src/vm/config.mjs 57ms
+apps/studio-render/src/vm/controller.mjs 43ms (unchanged)
+apps/studio-render/src/vm/cycle-artifacts.mjs 7ms
+apps/studio-render/src/vm/cycle-state.mjs 34ms
+apps/studio-render/src/vm/docker-runtime.mjs 43ms
+apps/studio-render/src/vm/errors.mjs 4ms
+apps/studio-render/src/vm/host-command.mjs 20ms (unchanged)
+apps/studio-render/src/vm/job-api.mjs 25ms (unchanged)
+apps/studio-render/src/vm/job-scope.mjs 16ms
+apps/studio-render/src/vm/journal.mjs 23ms
+apps/studio-render/src/vm/launch-gate.mjs 7ms
+apps/studio-render/src/vm/profile.mjs 5ms
+apps/studio-render/src/vm/staging.mjs 9ms (unchanged)
+apps/studio-render/src/vm/supervisor.mjs 31ms
+apps/studio-render/test/vm-errors.test.mjs 3ms
+apps/manager/src/services/studio-render-pool-auth.test.ts 73ms (unchanged)
+apps/manager/src/services/studio-render-pool-auth.ts 45ms (unchanged)
+apps/manager/src/services/studio-render-pool-claim.ts 19ms
+apps/manager/src/services/studio-render-pool-errors.ts 3ms (unchanged)
+apps/manager/src/services/studio-render-pool-gateway.test.ts 49ms (unchanged)
+apps/manager/src/services/studio-render-pool-gateway.ts 51ms
+apps/manager/src/services/studio-render-pool-http.test.ts 12ms (unchanged)
+apps/manager/src/services/studio-render-pool-http.ts 18ms (unchanged)

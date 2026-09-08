@@ -75,3 +75,31 @@ USER 1000:1000
 ENV PORT=3330
 EXPOSE 3330
 ENTRYPOINT ["/opt/studio-render/native/entrypoint"]
+
+# Dedicated VM targets: OCI itself owns the only process/mount/network namespace.
+# No nested Bubblewrap, API listener or credentials enter these disposable jobs.
+FROM runtime-base AS job-base
+COPY --from=build /app/apps/studio-render/dist/guard /runtime/guard
+COPY --from=build /app/apps/studio-render/dist/sandbox-init /runtime/init
+COPY --from=build /codec /codec
+RUN mkdir -p /input && cp /usr/local/bin/node /runtime/node \
+    && find /usr /runtime /codec -xdev -type f -perm /6000 -exec chmod a-s {} +
+USER 1000:1000
+WORKDIR /input
+ENTRYPOINT ["/runtime/guard"]
+
+FROM job-base AS render-job
+COPY --from=build /app/apps/studio-render/dist/child.mjs /runtime/child.mjs
+COPY --from=build /app/apps/studio-render/dist/bundle /bundle
+COPY --from=build /runtime-deps/node_modules /deps
+COPY --from=build /app/apps/studio-render/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64 /browser
+USER root
+RUN ln -s /deps/@remotion/renderer/dist/index.js /runtime/renderer.cjs
+USER 1000:1000
+
+FROM job-base AS verify-job
+COPY --from=build /app/apps/studio-render/dist/verify.mjs /runtime/child.mjs
+
+# Preserve the previous default target for explicit historical qualification.
+# VM installation requires named render-job and verify-job targets.
+FROM runtime AS default

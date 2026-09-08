@@ -1,0 +1,47 @@
+{
+  "paths": [
+    "/opt/forge-studio/current/vm-watchdog",
+    "/opt/forge-studio/qualification/vm-watchdog-candidate"
+  ],
+  "differences": [
+    {
+      "section": ".note.gnu.build-id",
+      "installed": {
+        "flags": 2,
+        "size": 36,
+        "hash": "cb5eaec0c52bc79eb94e4ef44aba458aca5bf8a73275d1a17e30bc4e73ac3e8c"
+      },
+      "candidate": {
+        "flags": 2,
+        "size": 36,
+        "hash": "daeb8d461fa99cfc4d902add0f90ad3aedba64c0fe12290f3d2a16726e01bc4b"
+      }
+    },
+    {
+      "section": ".strtab",
+      "installed": {
+        "flags": 0,
+        "size": 988,
+        "hash": "0e0217529a79a28a077076c2b39092c05a177f658ffc29b3c5367d5758130ca7"
+      },
+      "candidate": {
+        "flags": 0,
+        "size": 998,
+        "hash": "97fb9e681fc4ca72f9e1d6bc3f9ce4e144953ebe269f11f33886d25ff27c8571"
+      }
+    },
+    {
+      "section": ".symtab",
+      "installed": {
+        "flags": 0,
+        "size": 1488,
+        "hash": "1a1dfb2e6e1a65e2a285503d37dc3401a9de19513d81358fce8f8e8d2f0b63cc"
+      },
+      "candidate": {
+        "flags": 0,
+        "size": 1488,
+        "hash": "e30acdc06326b29b799a277a3f667ac9252a6164f04d2da0e2b5b546a64e9e88"
+      }
+    }
+  ]
+}

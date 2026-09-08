@@ -1,0 +1,28 @@
+✔ missing approved image fails local preflight without a create or registry pull (2.676001ms)
+✔ consumed operation cannot create/start again; one fresh phase persists fences before calls (1.311161ms)
+✔ restart reconciliation retires an exact discovered container but quarantines an unresolved absent create (1.163115ms)
+✖ known CID outside the expected label projection cannot be mistaken for retired (1.15552ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 119.223184
+
+✖ failing tests:
+
+test at apps/studio-render/test/vm-runtime.test.mjs:51:1
+✖ known CID outside the expected label projection cannot be mistaken for retired (1.15552ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-runtime.test.mjs:55:2)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /Known container/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

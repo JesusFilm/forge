@@ -1,0 +1,17 @@
+{"state":"idle"}
+MainPID=22099
+NRestarts=1
+ActiveState=active
+{"id":"3b1a8f967a7140daae786262ada71038","receipt":{"admitted":true}}
+Sep 09 01:04:51 forge-render-01 systemd[1]: forge-studio-supervisor.service: Consumed 2.847s CPU time, 40.7M memory peak, 0B memory swap peak.
+Sep 09 01:08:45 forge-render-01 systemd[1]: Starting forge-studio-supervisor.service - Forge scoped outbound Studio worker...
+Sep 09 01:08:45 forge-render-01 systemd[1]: Started forge-studio-supervisor.service - Forge scoped outbound Studio worker.
+Sep 09 01:09:24 forge-render-01 systemd[1]: forge-studio-supervisor.service: Deactivated successfully.
+Sep 09 01:09:24 forge-render-01 systemd[1]: forge-studio-supervisor.service: Consumed 3.084s CPU time, 24.6M memory peak, 0B memory swap peak.
+Sep 09 01:10:58 forge-render-01 systemd[1]: Starting forge-studio-supervisor.service - Forge scoped outbound Studio worker...
+Sep 09 01:10:58 forge-render-01 systemd[1]: Started forge-studio-supervisor.service - Forge scoped outbound Studio worker.
+Sep 09 01:11:00 forge-render-01 systemd[1]: forge-studio-supervisor.service: Main process exited, code=killed, status=9/KILL
+Sep 09 01:11:00 forge-render-01 systemd[1]: forge-studio-supervisor.service: Failed with result 'signal'.
+Sep 09 01:11:05 forge-render-01 systemd[1]: forge-studio-supervisor.service: Scheduled restart job, restart counter is at 1.
+Sep 09 01:11:05 forge-render-01 systemd[1]: Starting forge-studio-supervisor.service - Forge scoped outbound Studio worker...
+Sep 09 01:11:05 forge-render-01 systemd[1]: Started forge-studio-supervisor.service - Forge scoped outbound Studio worker.

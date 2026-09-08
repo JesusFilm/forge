@@ -1,0 +1,34 @@
+✔ production requires HTTPS; fixture HTTP is loopback-only and credentials cannot be in URLs (1.860555ms)
+✔ lost claim response retries the exact identity that was durable before network (83.467818ms)
+✔ redirect is refused without forwarding credentials or exposing response text (14.81335ms)
+✔ hung responses are bounded and preserve the request for reconciliation (72.256582ms)
+✔ lease operations never send the host worker key and require an exact-lease transport capability (6.779109ms)
+✔ lost finish response replays the durably sealed record on restart without a new retain or execution (33.141033ms)
+✖ non-OK streaming responses are cancelled promptly without consuming or exposing error bytes (113.864611ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 462.599286
+
+✖ failing tests:
+
+test at apps/studio-render/test/vm-api.test.mjs:91:1
+✖ non-OK streaming responses are cancelled promptly without consuming or exposing error bytes (113.864611ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-api.test.mjs:100:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

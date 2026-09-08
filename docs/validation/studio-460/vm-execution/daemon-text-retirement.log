@@ -1,0 +1,11 @@
+{"state":"drained"}
+MainPID=0
+ActiveState=inactive
+job-cgroup-absent
+monitor-ready
+monitor-stop
+expired
+watchdog-ready
+membership.json
+cancelled
+retired

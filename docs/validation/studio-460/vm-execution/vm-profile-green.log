@@ -1,0 +1,11 @@
+✔ disposable render has only exact readonly input and no runtime authority (2.312868ms)
+✔ verifier gets a separate input inventory and the unchanged deadline (0.43308ms)
+✔ mutable image refs, arbitrary identities and unknown phases fail closed (0.540487ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 82.46724

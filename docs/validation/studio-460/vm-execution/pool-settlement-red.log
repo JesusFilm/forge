@@ -1,0 +1,30 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager[39m
+
+ [31m❯[39m src/services/studio-render-pool-auth.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 18[2mms[22m[39m
+   [32m✓[39m scoped render pool authority[2m > [22mauthenticates only the dedicated worker secret, deriving identity from configuration[32m 6[2mms[22m[39m
+   [32m✓[39m scoped render pool authority[2m > [22mbinds a signed capability to the exact immutable lease and rejects tampering or another worker[32m 4[2mms[22m[39m
+   [32m✓[39m scoped render pool authority[2m > [22mexpires capability transport and permits bounded fresh retention authority without extending the original lease[32m 1[2mms[22m[39m
+[31m   [31m×[31m accepts only broker-signed exact terminal records and preserves them beyond lease expiry for receipt replay[39m[32m 5[2mms[22m[39m
+[31m     → auth.sealSettlement is not a function[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-render-pool-auth.test.ts[2m > [22maccepts only broker-signed exact terminal records and preserves them beyond lease expiry for receipt replay
+[31m[1mTypeError[22m: auth.sealSettlement is not a function[39m
+[36m [2m❯[22m src/services/studio-render-pool-auth.test.ts:[2m36:23[22m[39m
+    [90m 34| [39m  [35mconst[39m auth [33m=[39m [35mnew[39m [33mStudioRenderPoolAuth[39m(config)
+    [90m 35| [39m  const record = { attemptId: assignment.attemptId, leaseId: assignmen…
+    [90m 36| [39m  const sealed = auth.sealSettlement(assignment, "c".repeat(64), recor…
+    [90m   | [39m                      [31m^[39m
+    [90m 37| [39m  expect(auth.settlement(sealed)).toEqual({ audience: "studio-render-s…
+    [90m 38| [39m  expect(() => auth.settlement(sealed + "x")).toThrow("authorization r…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 00:16:10
+[2m   Duration [22m 766ms[2m (transform 122ms, setup 27ms, collect 218ms, tests 18ms, environment 0ms, prepare 112ms)[22m
+

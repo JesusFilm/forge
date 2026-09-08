@@ -1,0 +1,134 @@
+{
+  "attemptId": "cmtspxxej00012cilosi5gmpx",
+  "attemptStatus": "CANCELLED",
+  "jobState": "CANCELLED",
+  "generation": 1,
+  "snapshot": {
+    "document": {
+      "fps": 30,
+      "items": [
+        {
+          "id": "caption",
+          "kind": "text",
+          "text": "VM daemon fixture",
+          "trackId": "caption",
+          "properties": {
+            "color": "#ffffff",
+            "fontSize": 18
+          },
+          "startFrame": 0,
+          "durationInFrames": 30
+        }
+      ],
+      "title": "VM cancellation during retained upload",
+      "width": 320,
+      "height": 180,
+      "tracks": [
+        {
+          "id": "caption",
+          "kind": "caption"
+        }
+      ],
+      "version": 1,
+      "language": "english",
+      "components": [],
+      "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+      "packRevisionIds": [],
+      "durationInFrames": 30
+    },
+    "revision": 1,
+    "inputHash": "38cb9d0daea1384dc9fc4a59dbc002e6628659ba02fd45871499a6429441de1a",
+    "projectId": "e8291931-461a-420a-8025-6f3bbe946d62",
+    "executionProfile": {
+      "id": "studio-render-1/900s-2cpu-2g-128p-96child-128m",
+      "cpu": 2,
+      "jobMs": 900000,
+      "leaseMs": 1200000,
+      "uploadMs": 10000,
+      "childPids": 96,
+      "requestMs": 920000,
+      "swapBytes": 0,
+      "memoryBytes": 2147483648,
+      "outputBytes": 134217728,
+      "retentionMs": 60000,
+      "retirementMs": 2000,
+      "aggregatePids": 128,
+      "preparationMs": 90000,
+      "nativeCleanupMs": 1000,
+      "retentionTransferMs": 45000,
+      "terminalRecordingMs": 15000
+    }
+  },
+  "execution": {
+    "attemptId": "cmtspxxej00012cilosi5gmpx",
+    "leaseId": "78660d1f-b229-4865-966c-ae21e0fe9e9a",
+    "requestHash": "afda51f69f3007dd11d2b460fd77a5763b24ebf7aca495e22138b920fa71c68b",
+    "status": "SUCCEEDED",
+    "result": {
+      "assets": [
+        {
+          "digest": "462cb8e26821cf4be1b5e3828b5a38059bfb55e36a48faeca730a6cc314101fd",
+          "assetId": "d0fceea0-a87f-4e1f-96dc-8ecf0168b96d",
+          "versionId": "cmtspyrrl00052cilwxpjpni4"
+        },
+        {
+          "digest": "9611231dfda63d21f22b541a5c3a21e596e379b825fc2f11dff2029f8e99708e",
+          "assetId": "c44a82d2-e98f-43ef-8847-e25fadd612f5",
+          "versionId": "cmtspyuw000092cilkhbdelhx"
+        },
+        {
+          "digest": "e68674b4ec15aa9fe4e93c8645760d44cdec176eac2874183e1712192b7718fa",
+          "assetId": "6d0fa2a1-3571-4e6b-8fde-66ecd17ae4a8",
+          "versionId": "cmtspyuwu000d2cily5jeja5a"
+        }
+      ],
+      "manifest": {
+        "digest": "e68674b4ec15aa9fe4e93c8645760d44cdec176eac2874183e1712192b7718fa",
+        "assetId": "6d0fa2a1-3571-4e6b-8fde-66ecd17ae4a8",
+        "versionId": "cmtspyuwu000d2cily5jeja5a"
+      },
+      "costMicros": null,
+      "diagnostic": "Contained render independently decoded and retained"
+    },
+    "admitted": false,
+    "createdAt": "2026-09-08T13:42:47.616Z"
+  },
+  "assets": [
+    {
+      "id": "cmtspyrrl00052cilwxpjpni4",
+      "digest": "462cb8e26821cf4be1b5e3828b5a38059bfb55e36a48faeca730a6cc314101fd",
+      "role": "render",
+      "media": {
+        "id": "cmtspyrrg00032cil988gi3f2",
+        "mimeType": "video/mp4",
+        "objectKey": "media-assets/b250017d-9751-4293-838a-a0e1587c2fcc/original/cmtspxxej00012cilosi5gmpx.mp4",
+        "backend": "LOCAL",
+        "bytes": 47725
+      }
+    },
+    {
+      "id": "cmtspyuw000092cilkhbdelhx",
+      "digest": "9611231dfda63d21f22b541a5c3a21e596e379b825fc2f11dff2029f8e99708e",
+      "role": "manifest",
+      "media": {
+        "id": "cmtspyuvy00072cilgnts3wcx",
+        "mimeType": "application/json",
+        "objectKey": "media-assets/ba3b89d5-83df-4374-8bed-9ff7885726cd/original/cmtspxxej00012cilosi5gmpx-codec.json",
+        "backend": "LOCAL",
+        "bytes": 350
+      }
+    },
+    {
+      "id": "cmtspyuwu000d2cily5jeja5a",
+      "digest": "e68674b4ec15aa9fe4e93c8645760d44cdec176eac2874183e1712192b7718fa",
+      "role": "manifest",
+      "media": {
+        "id": "cmtspyuws000b2cilrjt6ohh5",
+        "mimeType": "application/json",
+        "objectKey": "media-assets/8d492c49-23bd-4187-b6c7-397fe891330c/original/cmtspxxej00012cilosi5gmpx-render.json",
+        "backend": "LOCAL",
+        "bytes": 737
+      }
+    }
+  ]
+}

@@ -2,8 +2,11 @@ import { env } from "@/config/env"
 import { StudioCommandError } from "./errors"
 
 /** Process configuration takes effect on restart; it is not an instantaneous fleet barrier. */
+export function studioProductionEnabled() {
+  return env.STUDIO_PRODUCTION_ENABLED === "true"
+}
 export function assertStudioProductionEnabled() {
-  if (env.STUDIO_PRODUCTION_ENABLED !== "true")
+  if (!studioProductionEnabled())
     throw new StudioCommandError("PRODUCTION_DISABLED")
 }
 export function assertStudioPublicationEnabled() {

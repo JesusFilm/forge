@@ -1,0 +1,19 @@
+Running as unit: forge-studio-watchdog-dddddddddddddddddddddddddddddd04.service; invocation ID: 80c44299406f440595fa8ec40cedb5a1
+Failed to stop forge-studio-watchdog-dddddddddddddddddddddddddddddd04.service: Unit forge-studio-watchdog-dddddddddddddddddddddddddddddd04.service not loaded.
+{
+  "id": "dddddddddddddddddddddddddddddd04",
+  "recorded": {
+    "bootId": "6d321e26-0576-4ad0-89a2-c92cd4ff9f9f",
+    "deadlineMs": 2029619,
+    "cgroupInode": "15502"
+  },
+  "scope": "pre-start gate refusal only; no unresolved Docker operation is made safe by removing a slice",
+  "before": "admitted",
+  "groupAbsent": true,
+  "after": "refused",
+  "error": "Error: ENOENT: no such file or directory, stat '/sys/fs/cgroup/forge.slice/forge-studio.slice/forge-studio-jdddddddddddddddddddddddddddddd04.slice'",
+  "markerExists": false,
+  "watchdog": "Result=success\nActiveState=inactive\n",
+  "recreatedInode": "15649",
+  "recreatedError": "Error: Execution cgroup identity changed"
+}

@@ -1,0 +1,7 @@
+apps/admin/src/services/studio-authoring/render-jobs.ts 206ms
+apps/admin/src/services/studio-authoring/render-assignment.db.test.ts 56ms
+apps/studio-render/src/vm/journal.mjs 67ms
+apps/studio-render/src/vm/profile.mjs 8ms (unchanged)
+apps/studio-render/test/vm-journal.test.mjs 32ms
+apps/studio-render/test/vm-profile.test.mjs 7ms
+docs/plans/2026-09-08-001-feat-studio-vm-execution-plan.md 66ms (unchanged)

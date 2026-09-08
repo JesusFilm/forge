@@ -1,0 +1,18 @@
+✔ missing approved image fails local preflight without a create or registry pull (2.630974ms)
+✔ consumed operation cannot create/start again; one fresh phase persists fences before calls (1.343815ms)
+✔ restart reconciliation retires an exact discovered container but quarantines an unresolved absent create (9.45126ms)
+✔ known CID outside the expected label projection cannot be mistaken for retired (0.900424ms)
+✔ all reconciliation calls retain the same absolute retirement deadline (1.530439ms)
+✔ crash after exact Docker removal recovers the missing removed receipt (1.410486ms)
+✔ truthy malformed complete/retired records never skip an unfinished cycle (117.396726ms)
+✔ completion requires exact retirement prerequisites and a persisted sealed record (22.520191ms)
+✔ a scoped retirement marker cannot bypass missing runtime reconciliation (14.770926ms)
+✔ large artifacts survive unresolved work and are pruned only after validated retirement and receipt (34.547476ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 279.129347

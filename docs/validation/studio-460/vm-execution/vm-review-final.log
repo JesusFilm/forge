@@ -1,0 +1,42 @@
+✔ production requires HTTPS; fixture HTTP is loopback-only and credentials cannot be in URLs (1.772115ms)
+✔ lost claim response retries the exact identity that was durable before network (76.927954ms)
+✔ redirect is refused without forwarding credentials or exposing response text (26.821507ms)
+✔ hung responses are bounded and preserve the request for reconciliation (67.981126ms)
+✔ lease operations never send the host worker key and require an exact-lease transport capability (7.684955ms)
+✔ lost finish response replays the durably sealed record on restart without a new retain or execution (25.360009ms)
+✔ non-OK streaming responses are cancelled promptly without consuming or exposing error bytes (116.439071ms)
+✔ host commands return bounded output and explicit unsuccessful exits (106.027842ms)
+✔ overflow and caller cancellation terminate the exact client and never report runtime retirement (1108.576301ms)
+✔ absolute retirement deadline includes client termination and cannot reset a further cleanup window (200.622851ms)
+✔ only typed unconfirmed failures restart; matching message text cannot reopen a quarantined worker (3.807445ms)
+✔ claim identity is durable before transport and reused after restart (43.22836ms)
+✔ duplicate assignment preserves original deadline and refuses changed lease or image (26.878565ms)
+✔ two processes can consume each Docker operation only once, including ambiguous restart (106.174679ms)
+✔ torn claim, assignment and operation records refuse execution and remain preserved (60.371359ms)
+✔ operation admission refuses a persisted old-boot clock even without another claim response (12.924129ms)
+✔ valid JSON with malformed binding or unconfirmed CID still refuses execution (44.141694ms)
+✔ failed confirmation preserves its temporary persistence evidence (7.171471ms)
+✔ late storage completion consumes the intent but never returns launch admission after expiry (191.589211ms)
+✔ disposable render has only exact readonly input and no runtime authority (2.563132ms)
+✔ verifier gets a separate input inventory and the unchanged deadline (0.360602ms)
+✔ mutable image refs, arbitrary identities and unknown phases fail closed (0.510768ms)
+✔ missing approved image fails local preflight without a create or registry pull (2.761439ms)
+✔ consumed operation cannot create/start again; one fresh phase persists fences before calls (1.224276ms)
+✔ restart reconciliation retires an exact discovered container but quarantines an unresolved absent create (16.054798ms)
+✔ known CID outside the expected label projection cannot be mistaken for retired (0.701849ms)
+✔ all reconciliation calls retain the same absolute retirement deadline (1.921754ms)
+✔ crash after exact Docker removal recovers the missing removed receipt (1.730922ms)
+✔ stages only exact hashed bounded flat inputs, never paths or substituted bytes (3.422487ms)
+✔ the verifier sees only admitted output and expected dimensions, never render sources or filesystem (1.635575ms)
+✔ truthy malformed complete/retired records never skip an unfinished cycle (138.59141ms)
+✔ completion requires exact retirement prerequisites and a persisted sealed record (33.681317ms)
+✔ a scoped retirement marker cannot bypass missing runtime reconciliation (22.089144ms)
+✔ large artifacts survive unresolved work and are pruned only after validated retirement and receipt (37.618572ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1708.272533

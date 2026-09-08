@@ -1,0 +1,5 @@
+{"binding":{"poolId":"vm460-fixture-pool","workerId":"vm460-fixture-worker","dispatchId":"221c5bb1-4a23-4e3b-9291-eaa710b4e16c","attemptId":"cmtslieoi00012czx79vq5b92","leaseId":"963f3ef7-acbf-4211-a0a1-6a44e4288864","expiresAt":1788873688673,"bootId":"6d321e26-0576-4ad0-89a2-c92cd4ff9f9f","renderImage":"sha256:1f5545cad34fdfb4945bae4fce19322037366ee43fadf7555dcf3e9cdc61bcbb","verifyImage":"sha256:75f306ada316ce00494423b37edd371dc663ffd4f72a20248edd81b6b8342182"},"deadlineMs":7440058}
+{"digest":"bc9e7d20cf513ea20f1a164b7b8697f81f247308de4cc2f29e76d329a89a4d84","bytes":45705,"inputHash":"bece5a912c0c21a3aa84ed5fc4f846c476cac6432517e5828f4d088c49ad165c"}
+{"state":"drained"}
+MainPID=0
+ActiveState=inactive

@@ -4,7 +4,10 @@ import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { StudioBoundaryError, type StudioCaller } from "@forge/studio-server"
 import { studioIdSchema } from "@forge/studio-contracts"
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import {
+  STUDIO_RENDER_PROFILE,
+  studioRenderAssignmentSchema,
+} from "@forge/studio-contracts/render"
 import { StudioMuxJobs, studioMuxJobSnapshot } from "./mux-jobs"
 import { StudioCatalogService } from "./catalog"
 import { StudioCatalogReadinessService } from "./catalog-readiness"
@@ -32,6 +35,8 @@ export const studioRenderRpcSchema = z
       "enqueue",
       "context",
       "claim",
+      "assigned",
+      "claim-assigned",
       "finish",
       "owns",
       "asset",
@@ -170,6 +175,16 @@ export async function executeStudioRender(
         studioIdSchema.parse(request.input),
         STUDIO_RENDER_PROFILE.leaseMs,
       )
+    case "assigned":
+      return jobs.assigned(worker, request.input)
+    case "claim-assigned": {
+      const input = studioRenderAssignmentSchema
+        .extend({ attemptId: studioIdSchema })
+        .strict()
+        .parse(request.input)
+      const { attemptId, ...assignment } = input
+      return jobs.claimAssigned(worker, attemptId, assignment)
+    }
     case "finish":
       return jobs.finish(worker, request.input)
     case "owns": {

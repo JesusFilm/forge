@@ -1,0 +1,19 @@
+OWNED_FIXTURE_READY 127.0.0.1:45360
+StudioRenderRetentionError: Render retention incomplete
+    at retainStudioRenderOutput (/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/src/services/studio-render-retention.ts:95:11)
+    at async Server.<anonymous> (/home/tataihono/.cache/forge-studio-460-vm/poll-fixture.cts:52:17) {
+  result: {
+    assets: [],
+    costMicros: null,
+    diagnostic: 'Render retention incomplete; retained assets preserved'
+  }
+}
+StudioRenderRetentionError: Render retention incomplete
+    at retainStudioRenderOutput (/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/src/services/studio-render-retention.ts:95:11)
+    at async Server.<anonymous> (/home/tataihono/.cache/forge-studio-460-vm/poll-fixture.cts:52:17) {
+  result: {
+    assets: [],
+    costMicros: null,
+    diagnostic: 'Render retention incomplete; retained assets preserved'
+  }
+}

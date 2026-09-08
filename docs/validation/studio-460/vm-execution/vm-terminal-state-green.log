@@ -1,0 +1,11 @@
+✔ truthy malformed complete/retired records never skip an unfinished cycle (39.058729ms)
+✔ completion requires exact retirement prerequisites and a persisted sealed record (28.746515ms)
+✔ a scoped retirement marker cannot bypass missing runtime reconciliation (17.328513ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 181.511062

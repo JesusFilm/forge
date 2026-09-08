@@ -1,0 +1,24 @@
+✔ production requires HTTPS; fixture HTTP is loopback-only and credentials cannot be in URLs (1.952956ms)
+✔ lost claim response retries the exact identity that was durable before network (99.756537ms)
+✔ redirect is refused without forwarding credentials or exposing response text (31.437419ms)
+✔ hung responses are bounded and preserve the request for reconciliation (75.950638ms)
+✔ lease operations never send the host worker key and require an exact-lease transport capability (7.850299ms)
+✔ lost finish response replays the durably sealed record on restart without a new retain or execution (32.169104ms)
+✔ non-OK streaming responses are cancelled promptly without consuming or exposing error bytes (113.300273ms)
+✔ only typed unconfirmed failures restart; matching message text cannot reopen a quarantined worker (2.1898ms)
+✔ claim identity is durable before transport and reused after restart (35.86855ms)
+✔ duplicate assignment preserves original deadline and refuses changed lease or image (67.288436ms)
+✔ two processes can consume each Docker operation only once, including ambiguous restart (146.072086ms)
+✔ torn claim, assignment and operation records refuse execution and remain preserved (81.312589ms)
+✔ operation admission refuses a persisted old-boot clock even without another claim response (40.710894ms)
+✔ valid JSON with malformed binding or unconfirmed CID still refuses execution (74.338569ms)
+✔ failed confirmation preserves its temporary persistence evidence (7.312171ms)
+✔ late storage completion consumes the intent but never returns launch admission after expiry (210.74767ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 777.146442

@@ -1,0 +1,12 @@
+import json,subprocess,time
+from pathlib import Path
+root=Path('/home/tataihono/.cache/forge-studio-460-vm')
+ready=root/'evidence/daemon-upload-cancel-ready.json'
+end=time.monotonic()+120
+while not ready.exists():
+ if time.monotonic()>end: raise SystemExit('Upload boundary not observed')
+ time.sleep(.1)
+start=time.time()
+result=subprocess.run([str(root/'ssh-vm'),'sudo -n python3 /home/forge/studio-build/supervisor-review/apps/studio-render/ops/switch-supervisor.py cedd3e68111bdc2361de8a5ecd53ffa3d8fc588f76ffd31034f5977a8e18fe48'],capture_output=True,text=True,timeout=120)
+(root/'evidence/daemon-active-update.json').write_text(json.dumps({'uploadBoundary':json.loads(ready.read_text()),'switchStarted':start,'switchFinished':time.time(),'code':result.returncode,'stdout':result.stdout,'stderr':result.stderr},indent=2))
+raise SystemExit(result.returncode)

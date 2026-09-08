@@ -1,0 +1,105 @@
+✖ claim identity is durable before transport and reused after restart (9.716047ms)
+✖ duplicate assignment preserves original deadline and refuses changed lease or image (3.756368ms)
+✖ two processes can consume each Docker operation only once, including ambiguous restart (2.762541ms)
+✖ torn claim, assignment and operation records refuse execution and remain preserved (2.312333ms)
+✖ operation admission refuses a persisted old-boot clock even without another claim response (2.503016ms)
+✖ valid JSON with malformed binding or unconfirmed CID still refuses execution (2.128257ms)
+✖ failed confirmation preserves its temporary persistence evidence (2.978471ms)
+✖ late storage completion consumes the intent but never returns launch admission after expiry (2.531112ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.811634
+
+✖ failing tests:
+
+test at apps/studio-render/test/vm-journal.test.mjs:20:1
+✖ claim identity is durable before transport and reused after restart (9.716047ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:22:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+
+test at apps/studio-render/test/vm-journal.test.mjs:33:1
+✖ duplicate assignment preserves original deadline and refuses changed lease or image (3.756368ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:35:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at apps/studio-render/test/vm-journal.test.mjs:80:1
+✖ two processes can consume each Docker operation only once, including ambiguous restart (2.762541ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:82:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at apps/studio-render/test/vm-journal.test.mjs:144:1
+✖ torn claim, assignment and operation records refuse execution and remain preserved (2.312333ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:152:21)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at apps/studio-render/test/vm-journal.test.mjs:174:1
+✖ operation admission refuses a persisted old-boot clock even without another claim response (2.503016ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:176:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at apps/studio-render/test/vm-journal.test.mjs:200:1
+✖ valid JSON with malformed binding or unconfirmed CID still refuses execution (2.128257ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:203:21)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at apps/studio-render/test/vm-journal.test.mjs:214:1
+✖ failed confirmation preserves its temporary persistence evidence (2.978471ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /failed record read/. Input:
+  
+  "ReferenceError: Cannot access 'value' before initialization"
+  
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:219:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: ReferenceError: Cannot access 'value' before initialization
+        at UnreadableJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+        at async UnreadableJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:219:3)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+    expected: /failed record read/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at apps/studio-render/test/vm-journal.test.mjs:223:1
+✖ late storage completion consumes the intent but never returns launch admission after expiry (2.531112ms)
+  ReferenceError: Cannot access 'value' before initialization
+      at VmJournal.writeOnce (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:94:43)
+      at async VmJournal.claimRequest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs:120:23)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-journal.test.mjs:225:19)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)

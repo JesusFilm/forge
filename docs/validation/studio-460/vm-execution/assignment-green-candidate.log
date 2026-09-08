@@ -1,0 +1,43 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin[39m
+
+ [31m❯[39m src/services/studio-authoring/render-assignment.db.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1620[2mms[22m[39m
+   [32m✓[39m immutable outbound render assignment[2m > [22mreplays one immutable lease after a lost response and rejects changed dispatch binding[32m 188[2mms[22m[39m
+   [32m✓[39m immutable outbound render assignment[2m > [22mserializes duplicate dispatches and two workers competing for one attempt[32m 94[2mms[22m[39m
+   [33m[2m✓[22m[39m immutable outbound render assignment[2m > [22mnever issues fresh work for an expired or completed dispatch replay [33m 1145[2mms[22m[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled[39m[32m 78[2mms[22m[39m
+[31m     → promise resolved "{ execute: true, …(2) }" instead of rejecting[39m
+   [32m✓[39m immutable outbound render assignment[2m > [22mrechecks terminalization after the actual project lock wait[32m 108[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled
+[31m[1mAssertionError[22m: promise resolved "{ execute: true, …(2) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "execute": true,[39m
+[31m+   "expiresAt": 1788868740473,[39m
+[31m+   "leaseId": "67bb7bd2-bb4c-4bf3-b469-35b9f7235474",[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m74:76[22m[39m
+    [90m 72| [39m    vi[33m.[39m[34mstubEnv[39m([32m"STUDIO_PRODUCTION_ENABLED"[39m[33m,[39m [32m"false"[39m)
+    [90m 73| [39m    [35mtry[39m {
+    [90m 74| [39m      await expect(jobs.claimAssigned(worker, next.attemptId, next.bin…
+    [90m   | [39m                                                                           [31m^[39m
+    [90m 75| [39m      await expect(jobs.claimAssigned(worker, attemptId, binding)).rej…
+    [90m 76| [39m      expect((await jobs.read(worker, next.attemptId)).leases).toHaveL…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 23:38:57
+[2m   Duration [22m 2.74s[2m (transform 383ms, setup 18ms, collect 698ms, tests 1.62s, environment 0ms, prepare 125ms)[22m
+

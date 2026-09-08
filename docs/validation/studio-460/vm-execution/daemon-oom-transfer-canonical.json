@@ -1,0 +1,97 @@
+{
+  "attemptId": "cmtsp1c5o00012cn4kza1l02j",
+  "attemptStatus": "FAILED",
+  "jobState": "COMPLETED",
+  "generation": 1,
+  "snapshot": {
+    "document": {
+      "fps": 30,
+      "items": [
+        {
+          "id": "pressure",
+          "kind": "component",
+          "trackId": "visual",
+          "properties": {},
+          "startFrame": 0,
+          "durationInFrames": 30,
+          "componentVersionId": "pressure-v1"
+        }
+      ],
+      "title": "VM owned memory pressure fixture",
+      "width": 320,
+      "height": 180,
+      "tracks": [
+        {
+          "id": "visual",
+          "kind": "visual"
+        }
+      ],
+      "version": 1,
+      "language": "english",
+      "components": [
+        {
+          "code": {
+            "digest": "2b425922661aa762d7e207e7e743a91332390b89d0659f561e7713029a544f3f",
+            "assetId": "cb4ca601-8e09-4a75-ba8b-2b6420cf1e5a",
+            "versionId": "cmtsoyjzx00032cfkvr6h1a8p"
+          },
+          "width": 320,
+          "assets": [],
+          "height": 180,
+          "controls": {},
+          "duration": {
+            "maxFrames": 30,
+            "minFrames": 1
+          },
+          "versionId": "pressure-v1",
+          "dependencies": [
+            {
+              "name": "react",
+              "version": "19.2.4"
+            }
+          ],
+          "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16"
+        }
+      ],
+      "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+      "packRevisionIds": [],
+      "durationInFrames": 30
+    },
+    "revision": 1,
+    "inputHash": "52155af00ef87d6167803743538330e1900717b4857de662dce31555b890abf0",
+    "projectId": "0b71b78f-9b24-4deb-a304-0168786759ea",
+    "executionProfile": {
+      "id": "studio-render-1/900s-2cpu-2g-128p-96child-128m",
+      "cpu": 2,
+      "jobMs": 900000,
+      "leaseMs": 1200000,
+      "uploadMs": 10000,
+      "childPids": 96,
+      "requestMs": 920000,
+      "swapBytes": 0,
+      "memoryBytes": 2147483648,
+      "outputBytes": 134217728,
+      "retentionMs": 60000,
+      "retirementMs": 2000,
+      "aggregatePids": 128,
+      "preparationMs": 90000,
+      "nativeCleanupMs": 1000,
+      "retentionTransferMs": 45000,
+      "terminalRecordingMs": 15000
+    }
+  },
+  "execution": {
+    "attemptId": "cmtsp1c5o00012cn4kza1l02j",
+    "leaseId": "459e5c41-0679-49bc-b95c-70fb42473cc8",
+    "requestHash": "8f1ea0344fff03bf1c494ba6896811a5879cf7a253e39bfd790f8a01ccf02549",
+    "status": "FAILED",
+    "result": {
+      "assets": [],
+      "costMicros": null,
+      "diagnostic": "Render execution failed"
+    },
+    "admitted": true,
+    "createdAt": "2026-09-08T13:17:07.110Z"
+  },
+  "assets": []
+}

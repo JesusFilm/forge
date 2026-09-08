@@ -1,0 +1,10 @@
+{
+  "job": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeee01",
+  "observed": {},
+  "violations": [],
+  "elapsed": 0.0004329179998876498,
+  "retired": true
+}
+Result=success
+ExecMainStatus=0
+ba915300feb8 buildx_buildkit_studio4600 Exited (1) 47 seconds ago

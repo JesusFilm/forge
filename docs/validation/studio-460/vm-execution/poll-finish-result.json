@@ -1,0 +1,33 @@
+{
+  "finished": {
+    "admitted": true
+  },
+  "result": {
+    "assets": [
+      {
+        "assetId": "cfbd0a38-1511-42a4-924b-e0e42464dc92",
+        "versionId": "cmtsmgbd900032cj9zrxcabuh",
+        "digest": "3299965b7682aaca7f9ad80c67891ec3f9c2f75d31d53f41642ab080b96af1ec"
+      },
+      {
+        "assetId": "a431b9cc-a6b0-4e57-b893-bf814b5e3643",
+        "versionId": "cmtsmgbed00072cj979r2lnr2",
+        "digest": "d2bca415c56940e35b7747994dfbebb73e2ef6f47316933711e23d8db8fc37cd"
+      },
+      {
+        "assetId": "fb6a6f57-8148-40f8-8014-f41ef0efba22",
+        "versionId": "cmtsmgbey000b2cj9e9j6tqah",
+        "digest": "036eae1cbec694de63c101af297e3474774afac605bc5cee0c30670ed5e32a14"
+      }
+    ],
+    "manifest": {
+      "assetId": "fb6a6f57-8148-40f8-8014-f41ef0efba22",
+      "versionId": "cmtsmgbey000b2cj9e9j6tqah",
+      "digest": "036eae1cbec694de63c101af297e3474774afac605bc5cee0c30670ed5e32a14"
+    },
+    "costMicros": null,
+    "diagnostic": "Contained render independently decoded and retained"
+  },
+  "attemptId": "cmtsm2h2z00012cdcymdt0nv8",
+  "leaseId": "369c34ac-369b-40ee-9745-b7403a334652"
+}

@@ -1,0 +1,10 @@
+/home/tataihono/.cache/forge-studio-460-vm/poll-fixture.mts:5
+import { StudioAuthoringService } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/index.ts'
+         ^
+SyntaxError: The requested module '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/index.ts' does not provide an export named 'StudioAuthoringService'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:455:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:553:5)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.20.0

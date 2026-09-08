@@ -1,0 +1,12 @@
+✔ production requires HTTPS; fixture HTTP is loopback-only and credentials cannot be in URLs (1.635ms)
+✔ lost claim response retries the exact identity that was durable before network (82.601102ms)
+✔ redirect is refused without forwarding credentials or exposing response text (14.489273ms)
+✔ hung responses are bounded and preserve the request for reconciliation (62.000608ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 285.591984

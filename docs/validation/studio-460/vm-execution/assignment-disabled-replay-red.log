@@ -1,0 +1,36 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin[39m
+
+ [31m❯[39m src/services/studio-authoring/render-assignment.db.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m6 skipped[39m[2m)[22m[33m 390[2mms[22m[39m
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mreplays one immutable lease after a lost response and rejects changed dispatch binding
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mserializes duplicate dispatches and two workers competing for one attempt
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mdoes not assign two live attempts to the same pool worker
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mfinds the original assignment before a broker selects another candidate
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mnever issues fresh work for an expired or completed dispatch replay
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled[39m[33m 367[2mms[22m[39m
+[31m     → Studio command rejected: PRODUCTION_DISABLED[39m
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mrechecks terminalization after the actual project lock wait
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled
+[31m[1mStudioCommandError[22m: Studio command rejected: PRODUCTION_DISABLED[39m
+[36m [2m❯[22m assertStudioProductionEnabled src/services/studio-authoring/release-controls.ts:[2m7:11[22m[39m
+    [90m  5| [39m[35mexport[39m [35mfunction[39m [34massertStudioProductionEnabled[39m() {
+    [90m  6| [39m  [35mif[39m (env[33m.[39m[33mSTUDIO_PRODUCTION_ENABLED[39m [33m!==[39m [32m"true"[39m)
+    [90m  7| [39m    [35mthrow[39m [35mnew[39m [33mStudioCommandError[39m([32m"PRODUCTION_DISABLED"[39m)
+    [90m   | [39m          [31m^[39m
+    [90m  8| [39m}
+    [90m  9| [39m[35mexport[39m [35mfunction[39m [34massertStudioPublicationEnabled[39m() {
+[90m [2m❯[22m src/services/studio-authoring/render-jobs.ts:[2m258:9[22m[39m
+[90m [2m❯[22m Proxy._transactionWithCallback ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:[2m722:18[22m[39m
+[90m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m194:14[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m6 skipped[39m[90m (7)[39m
+[2m   Start at [22m 00:08:22
+[2m   Duration [22m 1.88s[2m (transform 549ms, setup 23ms, collect 941ms, tests 390ms, environment 0ms, prepare 119ms)[22m
+

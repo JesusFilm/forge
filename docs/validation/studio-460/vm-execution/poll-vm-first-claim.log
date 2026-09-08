@@ -1,0 +1,11 @@
+file:///home/forge/studio-build/job-api.mjs:75
+      throw new Error("Job API request unconfirmed")
+            ^
+
+Error: Job API request unconfirmed
+    at VmJobApi.json (file:///home/forge/studio-build/job-api.mjs:75:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async VmJobApi.claim (file:///home/forge/studio-build/job-api.mjs:34:22)
+    at async file:///home/forge/studio-build/poll-once.mjs:6:14
+
+Node.js v22.22.3

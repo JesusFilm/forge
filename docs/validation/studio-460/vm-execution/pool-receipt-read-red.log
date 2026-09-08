@@ -1,0 +1,34 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager[39m
+
+ [31m❯[39m src/services/studio-render-pool-gateway.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 109[2mms[22m[39m
+   [32m✓[39m derives claim identity from dedicated worker authentication and returns only an exact-lease capability[32m 16[2mms[22m[39m
+   [32m✓[39m refuses worker-key access to input and refuses changed canonical lease/hash before materialization[32m 2[2mms[22m[39m
+   [32m✓[39m rechecks ownership after preparation; cancellation during downloads exposes no input[32m 5[2mms[22m[39m
+   [32m✓[39m preserves an ineligible historical claim capability for reconciliation without preparing inputs[32m 3[2mms[22m[39m
+   [32m✓[39m seals partial retention after timeout and submits the exact record despite lost ownership[32m 7[2mms[22m[39m
+   [32m✓[39m refuses client-authored terminal assets and cross-lease signed settlement[32m 2[2mms[22m[39m
+   [32m✓[39m rejects terminalized or edited assignments even when the older job-only ownership predicate remains true[32m 3[2mms[22m[39m
+[31m   [31m×[31m reads the exact accepted receipt after a recording window, without another canonical mutation[39m[32m 70[2mms[22m[39m
+[31m     → f.gateway.receipt is not a function[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-render-pool-gateway.test.ts[2m > [22mreads the exact accepted receipt after a recording window, without another canonical mutation
+[31m[1mTypeError[22m: f.gateway.receipt is not a function[39m
+[36m [2m❯[22m src/services/studio-render-pool-gateway.test.ts:[2m104:26[22m[39m
+    [90m102| [39m    [35mthrow[39m [35mnew[39m [33mError[39m([32m"No mutation permitted"[39m)
+    [90m103| [39m  })
+    [90m104| [39m  await expect(f.gateway.receipt(f.token, envelope, new AbortControlle…
+    [90m   | [39m                         [31m^[39m
+    [90m105| [39m  expect(f.call.mock.calls.every(([command]) => ["assigned", "context"…
+    [90m106| [39m})
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 00:39:30
+[2m   Duration [22m 838ms[2m (transform 181ms, setup 22ms, collect 271ms, tests 109ms, environment 0ms, prepare 89ms)[22m
+

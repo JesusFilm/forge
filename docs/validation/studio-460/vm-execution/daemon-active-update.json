@@ -1,0 +1,12 @@
+{
+  "uploadBoundary": {
+    "at": 1788874963495,
+    "projectId": "e8291931-461a-420a-8025-6f3bbe946d62",
+    "attemptId": "cmtspxxej00012cilosi5gmpx"
+  },
+  "switchStarted": 1788874963.4983842,
+  "switchFinished": 1788874968.673412,
+  "code": 0,
+  "stdout": "Selected release cedd3e68111bdc2361de8a5ecd53ffa3d8fc588f76ffd31034f5977a8e18fe48; left drained and inactive\n",
+  "stderr": ""
+}

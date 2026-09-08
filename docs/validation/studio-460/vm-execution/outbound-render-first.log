@@ -1,0 +1,32 @@
+Running as unit: forge-studio-watchdog-1b6b9461829841b5a42ef6da12500c3a.service; invocation ID: 80b71e76b4af436d9172df4724ca8d3a
+file:///home/forge/studio-build/job-api.mjs:75
+      throw new Error("Job API request unconfirmed")
+            ^
+
+Error: Job API request unconfirmed
+    at VmJobApi.json (file:///home/forge/studio-build/job-api.mjs:75:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///home/forge/studio-build/outbound-render-proof.mjs:65:119
+
+Node.js v22.22.3
+observed 32 samples 154
+{"error":"Error: Command failed: systemd-run --unit=forge-studio-controller-1b6b9461829841b5a42ef6da12500c3a --wait --pipe --quiet --service-type=exec --property=Slice=forge-studio-j1b6b9461829841b5a42ef6da12500c3a.slice --property=KillMode=control-group --property=TimeoutStopSec=2s --property=LimitNOFILE=256 --property=LimitFSIZE=134217728 /opt/forge-studio/qualification/node /home/forge/studio-build/outbound-render-proof.mjs --child\nfile:///home/forge/studio-build/job-api.mjs:75\n      throw new Error(\"Job API request unconfirmed\")\n            ^\n\nError: Job API request unconfirmed\n    at VmJobApi.json (file:///home/forge/studio-build/job-api.mjs:75:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///home/forge/studio-build/outbound-render-proof.mjs:65:119\n\nNode.js v22.22.3\n","containers":["869ec8028524dc8dcd851ff12b33d28ac43ac371a29221cf449f11f9e05bcd61","acbb371794c5a8888b8fdef3e8c18189aa4c33a607dcbbb8c83ab5ff4c91447f"],"watchdog":"Result=success\nActiveState=inactive\n","remaining":""}
+file:///home/forge/studio-build/outbound-render-proof.mjs:39
+ if(error)throw Error(error);
+                ^
+
+Error: Error: Command failed: systemd-run --unit=forge-studio-controller-1b6b9461829841b5a42ef6da12500c3a --wait --pipe --quiet --service-type=exec --property=Slice=forge-studio-j1b6b9461829841b5a42ef6da12500c3a.slice --property=KillMode=control-group --property=TimeoutStopSec=2s --property=LimitNOFILE=256 --property=LimitFSIZE=134217728 /opt/forge-studio/qualification/node /home/forge/studio-build/outbound-render-proof.mjs --child
+file:///home/forge/studio-build/job-api.mjs:75
+      throw new Error("Job API request unconfirmed")
+            ^
+
+Error: Job API request unconfirmed
+    at VmJobApi.json (file:///home/forge/studio-build/job-api.mjs:75:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///home/forge/studio-build/outbound-render-proof.mjs:65:119
+
+Node.js v22.22.3
+
+    at file:///home/forge/studio-build/outbound-render-proof.mjs:39:17
+
+Node.js v22.22.3

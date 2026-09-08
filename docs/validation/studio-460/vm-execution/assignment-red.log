@@ -1,0 +1,85 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin[39m
+
+ [31m❯[39m src/services/studio-authoring/render-assignment.db.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 289[2mms[22m[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mreplays one immutable lease after a lost response and rejects changed dispatch binding[39m[32m 135[2mms[22m[39m
+[31m     → jobs.claimAssigned is not a function[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mserializes duplicate dispatches and two workers competing for one attempt[39m[32m 22[2mms[22m[39m
+[31m     → jobs.claimAssigned is not a function[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mnever issues fresh work for an expired or completed dispatch replay[39m[32m 22[2mms[22m[39m
+[31m     → jobs.claimAssigned is not a function[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled[39m[32m 21[2mms[22m[39m
+[31m     → jobs.claimAssigned is not a function[39m
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mrechecks terminalization after the actual project lock wait[39m[32m 83[2mms[22m[39m
+[31m     → (intermediate value).claimAssigned is not a function[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mreplays one immutable lease after a lost response and rejects changed dispatch binding
+[31m[1mTypeError[22m: jobs.claimAssigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m35:30[22m[39m
+    [90m 33| [39m  it("replays one immutable lease after a lost response and rejects ch…
+    [90m 34| [39m    [35mconst[39m { attemptId[33m,[39m jobs[33m,[39m binding } [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m 35| [39m    [35mconst[39m first [33m=[39m [35mawait[39m jobs[33m.[39m[34mclaimAssigned[39m(worker[33m,[39m attemptId[33m,[39m binding)
+    [90m   | [39m                             [31m^[39m
+    [90m 36| [39m    [34mexpect[39m(first[33m.[39mexecute)[33m.[39m[34mtoBe[39m([35mtrue[39m)
+    [90m 37| [39m    // Discard the first response: a fresh service instance must find …
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mserializes duplicate dispatches and two workers competing for one attempt
+[31m[1mTypeError[22m: jobs.claimAssigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m47:47[22m[39m
+    [90m 45| [39m  it("serializes duplicate dispatches and two workers competing for on…
+    [90m 46| [39m    [35mconst[39m { attemptId[33m,[39m jobs[33m,[39m binding } [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m 47| [39m    const duplicate = await Promise.all([jobs.claimAssigned(worker, at…
+    [90m   | [39m                                              [31m^[39m
+    [90m 48| [39m    [34mexpect[39m(duplicate[[34m0[39m])[33m.[39m[34mtoEqual[39m(duplicate[[34m1[39m])
+    [90m 49| [39m    [35mconst[39m next [33m=[39m [35mawait[39m [34mfixture[39m()
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mnever issues fresh work for an expired or completed dispatch replay
+[31m[1mTypeError[22m: jobs.claimAssigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m59:30[22m[39m
+    [90m 57| [39m  it("never issues fresh work for an expired or completed dispatch rep…
+    [90m 58| [39m    [35mconst[39m { attemptId[33m,[39m jobs[33m,[39m binding } [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m 59| [39m    const first = await jobs.claimAssigned(worker, attemptId, binding,…
+    [90m   | [39m                             [31m^[39m
+    [90m 60| [39m    [35mawait[39m [35mnew[39m [33mPromise[39m((done) [33m=>[39m [34msetTimeout[39m(done[33m,[39m [34m1050[39m))
+    [90m 61| [39m    expect(await jobs.claimAssigned(worker, attemptId, binding)).toMat…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled
+[31m[1mTypeError[22m: jobs.claimAssigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m70:16[22m[39m
+    [90m 68| [39m  it("stops new assignment and replay execution when production is dis…
+    [90m 69| [39m    [35mconst[39m { attemptId[33m,[39m jobs[33m,[39m binding } [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m 70| [39m    [35mawait[39m jobs[33m.[39m[34mclaimAssigned[39m(worker[33m,[39m attemptId[33m,[39m binding)
+    [90m   | [39m               [31m^[39m
+    [90m 71| [39m    [35mconst[39m next [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m 72| [39m    vi[33m.[39m[34mstubEnv[39m([32m"STUDIO_PRODUCTION_ENABLED"[39m[33m,[39m [32m"false"[39m)
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mrechecks terminalization after the actual project lock wait
+[31m[1mTypeError[22m: (intermediate value).claimAssigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m87:51[22m[39m
+    [90m 85| [39m      [35mawait[39m db[33m.[39m[34m$transaction[39m([35masync[39m (tx) [33m=>[39m {
+    [90m 86| [39m        await tx.$queryRaw`SELECT id FROM studio_project WHERE id=${pr…
+    [90m 87| [39m        pending = new StudioRenderJobs(contender).claimAssigned(worker…
+    [90m   | [39m                                                  [31m^[39m
+    [90m 88| [39m        [35mlet[39m blocked [33m=[39m [35mfalse[39m
+    [90m 89| [39m        [35mconst[39m deadline [33m=[39m [33mDate[39m[33m.[39m[34mnow[39m() [33m+[39m [34m2000[39m
+[90m [2m❯[22m Proxy._transactionWithCallback ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:[2m722:18[22m[39m
+[90m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m85:7[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[90m (5)[39m
+[2m   Start at [22m 23:38:00
+[2m   Duration [22m 1.34s[2m (transform 345ms, setup 15ms, collect 657ms, tests 289ms, environment 0ms, prepare 82ms)[22m
+

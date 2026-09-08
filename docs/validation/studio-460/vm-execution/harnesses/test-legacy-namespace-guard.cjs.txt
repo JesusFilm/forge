@@ -1,0 +1,13 @@
+require('./test-owned-network.cjs');
+const cp=require('node:child_process');const spawn=cp.spawn;
+const guard='/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/dist/guard';
+const preload='/home/tataihono/.cache/forge-studio-460-vm/test-owned-network.cjs';
+cp.spawn=function(file,args,options){
+ if(file===guard && args[4]==='/usr/bin/bwrap' && args.includes('--unshare-all')){
+  const end=args.indexOf('--',5);if(end<0)throw Error('Missing namespace terminator');
+  args=[...args.slice(0,end),'--ro-bind',preload,preload,...args.slice(end)];
+  options={...options,env:{...process.env,...options?.env,NODE_OPTIONS:'--require '+preload}};
+ }
+ return spawn.call(this,file,args,options);
+};
+require('node:module').syncBuiltinESMExports();

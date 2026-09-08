@@ -57,3 +57,16 @@ The resumed local OCI build succeeded with manifest `sha256:e56e7028a265aa550d51
 The current `isolation.mjs` fresh `--proc /proc` does not explicitly replay every OCI proc file/directory mask or read-only path. Bubblewrap's partial built-in restrictions are not equivalent to the complete outer policy. Earlier unmasked host namespace tests therefore do not prove OCI-equivalent child proc protections. Any future child-private proc arrangement must apply and verify the complete applicable policy before authored code, exclude ancestor PIDs, and prevent remount/unmask escape. The read-only assessment records a required trusted bootstrap ordering capability that has not been established on Railway; no exposure change or alternate architecture is implemented.
 
 Still required: resolution of the fresh-proc failure without weakening protections and exact-image render/codec/cancel/OOM/restart/escape tests; any independently reviewed PID fallback before changing the strict128 cgroup gate; observed deployed limits and PID1 behavior; and920-second private execution transport verification. Public edge timeouts are not the transport contract. No functioning deployed renderer or actual provider acceptance is claimed here.
+
+## Selected dedicated VM execution targets
+
+The authorized dedicated VM uses the `render-job` and `verify-job` targets. Docker
+creates each private namespace and applies OCI masks before its fixed entrypoint;
+these targets do not invoke the nested Bubblewrap service. The legacy default
+image and its failed nested-proc evidence remain unchanged historical boundaries.
+The trusted host supervisor, outside both containers, retains runtime authority,
+original cumulative deadline and canonical outbound assignment. See
+`apps/studio-render/ops/README.md` and
+`docs/validation/studio-460/vm-execution/README.md` for exact locally tested image
+identities, actual membership, update/rollback, qualifications and open release
+gates. No publishing workflow or production deployment is implied.

@@ -1,0 +1,18 @@
+(node:542543) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/manager@0.0.1 test /home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager
+> vitest run "src/services/studio-render-pool-auth.test.ts" "src/services/studio-render-pool-gateway.test.ts" "src/services/studio-render-pool-http.test.ts"
+
+
+ RUN  v3.2.4 /home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager
+
+ ✓ src/services/studio-render-pool-auth.test.ts (4 tests) 18ms
+ ✓ src/services/studio-render-pool-gateway.test.ts (8 tests) 64ms
+ ✓ src/services/studio-render-pool-http.test.ts (2 tests) 137ms
+
+ Test Files  3 passed (3)
+      Tests  14 passed (14)
+   Start at  01:40:18
+   Duration  1.01s (transform 338ms, setup 57ms, collect 1.07s, tests 219ms, environment 1ms, prepare 320ms)
+

@@ -1,0 +1,8 @@
+import {mkdtemp,mkdir,rm} from 'node:fs/promises'
+import {createServer} from 'node:http'
+import {VmJournal} from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/journal.mjs'
+import {VmJobApi} from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/src/vm/job-api.mjs'
+const parent=await mkdtemp('/home/tataihono/.cache/forge-studio-460-vm/claim-sync-'),directory=parent+'/cycle';await mkdir(directory,{mode:0o700});
+const server=createServer((req,res)=>{req.resume();req.on('end',()=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({execute:false,assignment:null,capability:null}))})});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+try{const api=new VmJobApi({endpoint:'http://127.0.0.1:'+server.address().port,fixtureHttp:true,poolId:'owned',workerId:'owned',token:'owned-trace-fixture-token-0000000000000000'});await api.claim(new VmJournal(directory));console.log(JSON.stringify({parent,directory,claimed:true}))}
+finally{await new Promise(resolve=>server.close(resolve));await rm(parent,{recursive:true,force:true})}

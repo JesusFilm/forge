@@ -1,0 +1,17 @@
+{
+  "identity": {
+    "id": "0cb92336fd2946ef8ef8859234e011a4",
+    "slice": "forge-studio-j0cb92336fd2946ef8ef8859234e011a4.slice",
+    "directory": "/var/lib/forge-studio/jobs/0cb92336fd2946ef8ef8859234e011a4",
+    "cgroup": "/sys/fs/cgroup/forge.slice/forge-studio.slice/forge-studio-j0cb92336fd2946ef8ef8859234e011a4.slice"
+  },
+  "groupExists": false,
+  "labeledContainers": "",
+  "complete": {
+    "id": "0cb92336fd2946ef8ef8859234e011a4",
+    "receipt": {
+      "admitted": false
+    }
+  },
+  "state": "MainPID=0\nActiveState=inactive\n"
+}

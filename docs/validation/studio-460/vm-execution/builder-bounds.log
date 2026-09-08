@@ -1,0 +1,9 @@
+buildx_buildkit_studio4600
+actual builder PID=3752 cgroup=/system.slice/docker-ba915300feb89b1ed22a12e9790b1b1809959748773494e113df42852dd4a419.scope/init
+/system.slice/docker-ba915300feb89b1ed22a12e9790b1b1809959748773494e113df42852dd4a419.scope
+cpu.max=200000 100000
+memory.max=2147483648
+memory.swap.max=0
+pids.max=512
+cgroup.procs=/system.slice/docker-ba915300feb89b1ed22a12e9790b1b1809959748773494e113df42852dd4a419.scope/init
+cpu.max=cat: /sys/fs/cgroup/system.slice/docker-ba915300feb89b1ed22a12e9790b1b1809959748773494e113df42852dd4a419.scope/init/cpu.max: No such file or directory

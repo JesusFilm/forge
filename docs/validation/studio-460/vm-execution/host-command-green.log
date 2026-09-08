@@ -1,0 +1,10 @@
+✔ host commands return bounded output and explicit unsuccessful exits (125.255601ms)
+✔ overflow and caller cancellation terminate the exact client and never report runtime retirement (1106.507432ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1316.707625

@@ -1,0 +1,7 @@
+"/buildx_buildkit_studio4600" "exited" 0 {} "moby/buildkit@sha256:6c2fa84a6b61ccd72899dde4239f8d5717f05f9a8ca6f3cad185fb1a95a94de3"
+
+File: /opt/forge-studio/qualification/vm-watchdog-candidate
+
+String dump of section '.comment':
+  [     0]  GCC: (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+

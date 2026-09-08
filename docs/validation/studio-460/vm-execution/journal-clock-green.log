@@ -1,0 +1,12 @@
+✔ claim identity is durable before transport and reused after restart (26.049774ms)
+✔ duplicate assignment preserves original deadline and refuses changed lease or image (20.425764ms)
+✔ two processes can consume each Docker operation only once, including ambiguous restart (92.663766ms)
+✔ torn claim, assignment and operation records refuse execution and remain preserved (37.240125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 271.688162

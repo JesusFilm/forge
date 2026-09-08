@@ -2,6 +2,16 @@ import { z } from "zod"
 import { studioDigestSchema, studioIdSchema } from "./index"
 import { studioPreviewSchema } from "./preview"
 
+/** Worker/pool identity is supplied by the authenticated broker configuration;
+ * only dispatchId originates in the VM's durable pre-request journal. */
+export const studioRenderAssignmentSchema = z
+  .object({
+    poolId: studioIdSchema,
+    workerId: studioIdSchema,
+    dispatchId: z.uuid(),
+  })
+  .strict()
+
 /** Versioned execution contract. Changing a bound requires a new profile ID. */
 export const STUDIO_RENDER_PROFILE = Object.freeze({
   id: "studio-render-1/900s-2cpu-2g-128p-96child-128m",

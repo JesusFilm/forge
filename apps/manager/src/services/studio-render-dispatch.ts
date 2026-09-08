@@ -5,17 +5,14 @@ import {
   studioDocumentSchema,
   studioIdSchema,
   studioDigestSchema,
-  type StudioAssetReference,
 } from "@forge/studio-contracts"
 import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
-import { studioCatalogRenderManifestSchema } from "@forge/studio-contracts/catalog"
-import { createStudioAssetBroker } from "./studio-broker"
+import { retainStudioRenderOutput } from "./studio-render-retention"
 import { studioRenderClient } from "./studio-render-transport"
 import { prepareStudioRenderInput } from "./studio-render-input"
 import { executeStudioRenderRequest } from "./studio-render-execution"
 import {
   runStudioRenderJob,
-  StudioRenderRetentionError,
   StudioRenderRunError,
   type StudioRenderRunPort,
 } from "./studio-render-runner"
@@ -100,80 +97,15 @@ function renderPort(parent: AbortSignal): StudioRenderRunPort {
           )
           return {
             retain: async (retentionSignal) => {
-              const assets = createStudioAssetBroker(
+              return retainStudioRenderOutput(
                 studioRenderClient(retentionSignal).assets,
-                retentionSignal,
-              )
-              const retained: StudioAssetReference[] = []
-              const recorded = {
+                snapshot,
                 attemptId,
                 leaseId,
-                profileId: STUDIO_RENDER_PROFILE.id,
-                inputHash: snapshot.inputHash,
-              }
-              try {
-                const rendered = await assets.register(
-                  `${attemptId}.mp4`,
-                  "video/mp4",
-                  "render",
-                  output,
-                  [],
-                  recorded,
-                )
-                retained.push(rendered)
-                const codec = await assets.register(
-                  `${attemptId}-codec.json`,
-                  "application/json",
-                  "manifest",
-                  Buffer.from(JSON.stringify(proof)),
-                  [rendered],
-                  recorded,
-                )
-                retained.push(codec)
-                const document = snapshot.document
-                const manifest = studioCatalogRenderManifestSchema.parse({
-                  version: 1,
-                  projectId: snapshot.projectId,
-                  revision: snapshot.revision,
-                  renderAttemptId: attemptId,
-                  inputHash: snapshot.inputHash,
-                  output: rendered,
-                  language: document.language,
-                  runtimeVersion: document.runtimeVersion,
-                  width: document.width,
-                  height: document.height,
-                  fps: document.fps,
-                  durationInFrames: document.durationInFrames,
-                  verification: {
-                    status: "verified",
-                    verifierVersion: proof.verifierVersion,
-                    outputDigest: proof.outputDigest,
-                  },
-                })
-                const reference = await assets.register(
-                  `${attemptId}-render.json`,
-                  "application/json",
-                  "manifest",
-                  Buffer.from(JSON.stringify(manifest)),
-                  [rendered, codec],
-                  recorded,
-                )
-                retained.push(reference)
-                return {
-                  assets: retained,
-                  manifest: reference,
-                  costMicros: null,
-                  diagnostic:
-                    "Contained render independently decoded and retained",
-                }
-              } catch {
-                throw new StudioRenderRetentionError({
-                  assets: retained,
-                  costMicros: null,
-                  diagnostic:
-                    "Render retention incomplete; retained assets preserved",
-                })
-              }
+                output,
+                proof,
+                retentionSignal,
+              )
             },
           }
         },

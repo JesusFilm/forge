@@ -1,0 +1,20 @@
+(node:569198) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/manager@0.0.1 build /home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager
+> next build
+
+Discovering workflow directives 2311ms
+Created steps bundle 584ms
+Created intermediate workflow bundle 486ms
+Creating webhook route
+Creating manifest...
+Created manifest with 26 steps, 3 workflows, and 0 classes 340ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+▲ Next.js 16.2.4 (Turbopack)
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/manager@0.0.1 build: `next build`
+Exit status 143

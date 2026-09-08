@@ -1,0 +1,17 @@
+/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/.tmp/vm-pool-broker.cjs:234
+    throw new Error(
+          ^
+
+Error: MANAGER_SESSION_SECRET, AUTH_ISSUER_URL, AUTH_MANAGER_CLIENT_ID, ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET are required when Manager auth is enabled
+    at Object.<anonymous> (/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/.tmp/vm-pool-broker.cjs:234:11)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object.transformer (/home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at input (/home/tataihono/.cache/forge-studio-460-vm/poll-fixture.cts:10:42)
+    at Object.<anonymous> (/home/tataihono/.cache/forge-studio-460-vm/poll-fixture.cts:75:62)
+
+Node.js v24.20.0

@@ -1,5 +1,11 @@
-import { assertStudioProductionEnabled } from "./release-controls"
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import {
+  assertStudioProductionEnabled,
+  studioProductionEnabled,
+} from "./release-controls"
+import {
+  STUDIO_RENDER_PROFILE,
+  studioRenderAssignmentSchema as assignmentSchema,
+} from "@forge/studio-contracts/render"
 import { z } from "zod"
 import { completeStudioAttempt } from "./completion"
 import { randomUUID } from "node:crypto"
@@ -26,6 +32,7 @@ function requireWorker(user: Principal | null) {
   if (studioActor(user).kind !== "service")
     throw new ForbiddenError("Trusted render worker required")
 }
+type RenderAssignment = z.infer<typeof assignmentSchema>
 async function lockRenderAttempt(
   tx: Prisma.TransactionClient,
   attemptId: string,
@@ -183,18 +190,101 @@ export class StudioRenderJobs {
     user: Principal | null,
     rawId: string,
     leaseMs: number = STUDIO_RENDER_PROFILE.leaseMs,
-    now = new Date(),
+    now?: Date,
+  ) {
+    return this.claimIssued(user, rawId, leaseMs, now)
+  }
+  /** Internal broker seam. The outbound gateway authenticates pool/worker; a VM
+   * token never becomes a Principal or receives this generic service interface.
+   * Dispatch UUID must be durable before the first network request. */
+  async claimAssigned(
+    user: Principal | null,
+    rawId: string,
+    rawAssignment: unknown,
+    leaseMs: number = STUDIO_RENDER_PROFILE.leaseMs,
+  ) {
+    return this.claimIssued(
+      user,
+      rawId,
+      leaseMs,
+      undefined,
+      assignmentSchema.parse(rawAssignment),
+    )
+  }
+  /** Immutable receipt lookup only. The broker must still call claimAssigned
+   * for current eligibility; this read neither assigns nor authorizes work. */
+  async assigned(user: Principal | null, rawAssignment: unknown) {
+    requireWorker(user)
+    const assignment = assignmentSchema.parse(rawAssignment)
+    const issued = await this.db.studioRenderLease.findUnique({
+      where: { dispatchId: assignment.dispatchId },
+      select: {
+        attemptId: true,
+        leaseId: true,
+        poolId: true,
+        workerId: true,
+        dispatchId: true,
+        expiresAt: true,
+      },
+    })
+    if (
+      issued &&
+      (issued.poolId !== assignment.poolId ||
+        issued.workerId !== assignment.workerId)
+    )
+      throw new StudioCommandError("CONFLICT")
+    return issued
+  }
+  private async claimIssued(
+    user: Principal | null,
+    rawId: string,
+    leaseMs: number,
+    clock?: Date,
+    assignment?: RenderAssignment,
   ) {
     requireWorker(user)
     const attemptId = studioIdSchema.parse(rawId)
     if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 3600000)
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
+      // All assigned claims take dispatch, then worker, then project/job locks.
+      // UUID scope is global: changing pool/worker cannot reuse an issued dispatch.
+      if (assignment) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`studio-render-dispatch:${assignment.dispatchId}`},0))`
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`studio-render-worker:${JSON.stringify([assignment.poolId, assignment.workerId])}`},0))`
+      }
+      const issued = assignment
+        ? await tx.studioRenderLease.findUnique({
+            where: { dispatchId: assignment.dispatchId },
+          })
+        : null
+      if (
+        issued &&
+        (issued.poolId !== assignment?.poolId ||
+          issued.workerId !== assignment?.workerId ||
+          issued.attemptId !== attemptId)
+      )
+        throw new StudioCommandError("CONFLICT")
       const { project, attempt } = await lockRenderAttempt(tx, attemptId)
       await tx.$queryRaw`SELECT attempt_id FROM studio_render_job WHERE attempt_id=${attemptId} FOR UPDATE`
       const job = await tx.studioRenderJob.findUniqueOrThrow({
         where: { attemptId },
       })
+      const now = clock ?? new Date()
+      if (issued) {
+        return {
+          execute:
+            studioProductionEnabled() &&
+            issued.leaseId === job.leaseId &&
+            issued.expiresAt > now &&
+            job.state === "RUNNING" &&
+            attempt.status === "RUNNING" &&
+            !project.firstPublishedAt &&
+            project.currentRevision === attempt.baseRevision,
+          leaseId: issued.leaseId,
+          expiresAt: issued.expiresAt.getTime(),
+        }
+      }
       if (
         !["QUEUED", "RUNNING"].includes(job.state) ||
         !["QUEUED", "RUNNING"].includes(attempt.status)
@@ -207,6 +297,17 @@ export class StudioRenderJobs {
       )
         return { execute: false, leaseId: null }
       assertStudioProductionEnabled()
+      if (assignment) {
+        const active = await tx.$queryRaw<{ attempt_id: string }[]>`
+          SELECT l.attempt_id FROM studio_render_lease l
+          JOIN studio_render_job j ON j.attempt_id=l.attempt_id AND j.lease_id=l.lease_id
+          JOIN studio_attempt a ON a.id=l.attempt_id
+          WHERE l.pool_id=${assignment.poolId} AND l.worker_id=${assignment.workerId}
+            AND l.expires_at>(${now}::timestamptz AT TIME ZONE 'UTC')
+            AND j.state='RUNNING' AND a.status='RUNNING'
+          LIMIT 1`
+        if (active.length) return { execute: false, leaseId: null }
+      }
       if (
         project.firstPublishedAt ||
         project.currentRevision !== attempt.baseRevision ||
@@ -246,6 +347,7 @@ export class StudioRenderJobs {
           leaseId,
           generation: job.generation + 1,
           expiresAt: new Date(now.getTime() + leaseMs),
+          ...assignment,
         },
       })
       await tx.studioRenderJob.update({

@@ -4524,9 +4524,13 @@ model StudioRenderLease {
   expiresAt      DateTime                    @map("expires_at")
   createdAt      DateTime                    @default(now()) @map("created_at")
   execution      StudioRenderExecution?
+  poolId         String?                     @map("pool_id") @db.VarChar(128)
+  workerId       String?                     @map("worker_id") @db.VarChar(128)
+  dispatchId     String?                     @unique @map("dispatch_id") @db.Uuid
 
   @@id([attemptId, leaseId])
   @@unique([attemptId, generation])
+  @@index([poolId, workerId, expiresAt])
   @@map("studio_render_lease")
 }
 

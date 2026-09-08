@@ -1,0 +1,13 @@
+✔ missing approved image fails local preflight without a create or registry pull (2.63743ms)
+✔ consumed operation cannot create/start again; one fresh phase persists fences before calls (1.562709ms)
+✔ restart reconciliation retires an exact discovered container but quarantines an unresolved absent create (8.473085ms)
+✔ known CID outside the expected label projection cannot be mistaken for retired (0.963276ms)
+✔ all reconciliation calls retain the same absolute retirement deadline (1.504456ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.944803

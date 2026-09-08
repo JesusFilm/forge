@@ -1,0 +1,1134 @@
+(node:547639) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/manager@0.0.1 test /home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager[39m
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mruns audio cleanup and persists original and cleaned audio artifacts when enabled
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mruns audio cleanup and persists original and cleaned audio artifacts when enabled
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when required audio cleanup fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstderr[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when required audio cleanup fails
+[22m[39m{"event":"audio_cleanup_failed_before_transcription","jobId":"job-1","error":"ElevenLabs offline"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when required audio cleanup fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"ElevenLabs offline"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mstill creates audio review artifacts when mux upload fails later
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mstill creates audio review artifacts when mux upload fails later
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Mux offline"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when partial audio artifact persistence fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstderr[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when partial audio artifact persistence fails
+[22m[39m{"event":"audio_cleanup_artifact_manifest_failed","jobId":"job-1","error":"artifact manifest write failed"}
+
+[90mstderr[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when partial audio artifact persistence fails
+[22m[39m{"event":"audio_cleanup_failed_before_transcription","jobId":"job-1","error":"ElevenLabs offline"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails before transcription when partial audio artifact persistence fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"ElevenLabs offline"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpersists artifact manifest entries in two workflow phases without dropping prior metadata
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpersists artifact manifest entries in two workflow phases without dropping prior metadata
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+ [32m✓[39m src/app/api/jobs/[id]/mux-sync/override/route.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/services/smartCrop.test.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mlaunches Mastra transcript embeddings without requiring legacy document id targeting
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mlaunches Mastra transcript embeddings without requiring legacy document id targeting
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mapplies source transcript scripture corrections before downstream fan-out
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mdispatches per-item and returns started results with a managerJobId
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"6a7590c2-5287-4836-b1a6-3f7733ac15da"}
+{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"bf5621c6-d574-4462-be68-44fd7ab1c3b9"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"6a7590c2-5287-4836-b1a6-3f7733ac15da","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"6a7590c2-5287-4836-b1a6-3f7733ac15da","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"bf5621c6-d574-4462-be68-44fd7ab1c3b9","queueDepth":1,"activeDispatches":1}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"bf5621c6-d574-4462-be68-44fd7ab1c3b9","queueDepth":0,"activeDispatches":2,"dispatchConcurrency":3}
+{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"6a7590c2-5287-4836-b1a6-3f7733ac15da"}
+{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"bf5621c6-d574-4462-be68-44fd7ab1c3b9"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mapplies source transcript scripture corrections before downstream fan-out
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mmarks structured transcript failed when correction artifact persistence fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mmarks structured transcript failed when correction artifact persistence fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"correction report write failed"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mqueues accepted dispatches behind a bounded process-local concurrency cap
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"812279df-bf57-49e1-b470-b00a3caba36e"}
+{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"8770bbba-d16e-47ec-9e9a-38f4cd52f054"}
+{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":3,"coreId":"c-3","managerJobId":"0da474a9-cc1a-4101-8607-b942bef2c67c"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"812279df-bf57-49e1-b470-b00a3caba36e","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"812279df-bf57-49e1-b470-b00a3caba36e","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"8770bbba-d16e-47ec-9e9a-38f4cd52f054","queueDepth":1,"activeDispatches":1}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":3,"coreId":"c-3","managerJobId":"0da474a9-cc1a-4101-8607-b942bef2c67c","queueDepth":2,"activeDispatches":1}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps the embeddings step successful when Mastra ingest succeeds
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps the embeddings step successful when Mastra ingest succeeds
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mruns optional scene analysis without syncing scene embeddings
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mruns optional scene analysis without syncing scene embeddings
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mdoes not fail the enrichment job when optional scene analysis fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mdoes not fail the enrichment job when optional scene analysis fails
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mqueues accepted dispatches behind a bounded process-local concurrency cap
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"812279df-bf57-49e1-b470-b00a3caba36e"}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"8770bbba-d16e-47ec-9e9a-38f4cd52f054","queueDepth":1,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mqueues accepted dispatches behind a bounded process-local concurrency cap
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"8770bbba-d16e-47ec-9e9a-38f4cd52f054"}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":3,"coreId":"c-3","managerJobId":"0da474a9-cc1a-4101-8607-b942bef2c67c","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mqueues accepted dispatches behind a bounded process-local concurrency cap
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":3,"coreId":"c-3","managerJobId":"0da474a9-cc1a-4101-8607-b942bef2c67c"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mstill runs embeddings with transcript-only fallback when metadata fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mstill runs embeddings with transcript-only fallback when metadata fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Metadata extraction produced no usable fields"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpasses the resolved transcription language to metadata generation instead of the raw request language
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpasses the resolved transcription language to metadata generation instead of the raw request language
+[22m[39m{"event":"workflow_complete","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mmarks transcription as failed and clears currentStep when transcription throws
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mmarks transcription as failed and clears currentStep when transcription throws
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"subtitle fetch failed"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpersists transcription routing metadata before failing when ElevenLabs errors
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mpersists transcription routing metadata before failing when ElevenLabs errors
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"audio isolation failed"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the translation step and job when all target languages fail
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the translation step and job when all target languages fail
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Mastra subtitle enrichment failed (all_languages_failed): Subtitle enrichment failed for all target languages."}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps Mastra translation details when artifact persistence fails after the run
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps Mastra translation details when artifact persistence fails after the run
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Failed to persist artifact manifest for job job-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps Mastra embeddings failure correlation without persisting transcript text
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mkeeps Mastra embeddings failure correlation without persisting transcript text
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Mastra transcript embedding failed for assetId=asset-1: provider_failed"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the chapters step and job when chapter extraction returns no usable output
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the chapters step and job when chapter extraction returns no usable output
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Chapter extraction produced no chapters"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the chapters step and job when chapters-vtt writing fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the chapters step and job when chapters-vtt writing fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"VTT write failed"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the workflow when artifact persistence fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails the workflow when artifact persistence fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Failed to persist artifact manifest for job job-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails a parallel step instead of marking it completed when artifact persistence fails
+[22m[39m{"event":"workflow_start","jobId":"job-1","assetId":"asset-1"}
+
+[90mstdout[2m | src/workflows/videoEnrichment.test.ts[2m > [22m[2mrunVideoEnrichment[2m > [22m[2mfails a parallel step instead of marking it completed when artifact persistence fails
+[22m[39m{"event":"workflow_error","jobId":"job-1","error":"Failed to persist artifact manifest for job job-1"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mshares the concurrency cap across separate requests and trigger kinds
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"46b262f1-2d30-4a3f-afd7-fc5af34ff8da"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"46b262f1-2d30-4a3f-afd7-fc5af34ff8da","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"46b262f1-2d30-4a3f-afd7-fc5af34ff8da","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mshares the concurrency cap across separate requests and trigger kinds
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"10390c84-e00a-49ca-a879-cf6de63bf552"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"10390c84-e00a-49ca-a879-cf6de63bf552","queueDepth":1,"activeDispatches":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mshares the concurrency cap across separate requests and trigger kinds
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"46b262f1-2d30-4a3f-afd7-fc5af34ff8da"}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"10390c84-e00a-49ca-a879-cf6de63bf552","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mshares the concurrency cap across separate requests and trigger kinds
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"10390c84-e00a-49ca-a879-cf6de63bf552"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mkeeps scheduled after work pending until this request's queued jobs settle
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"07be1580-8391-4828-94e0-76521a328f7a"}
+{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"b239dd69-860b-4e04-beb6-d5d9a716a28a"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"07be1580-8391-4828-94e0-76521a328f7a","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"07be1580-8391-4828-94e0-76521a328f7a","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"b239dd69-860b-4e04-beb6-d5d9a716a28a","queueDepth":1,"activeDispatches":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mkeeps scheduled after work pending until this request's queued jobs settle
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"07be1580-8391-4828-94e0-76521a328f7a"}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"b239dd69-860b-4e04-beb6-d5d9a716a28a","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mkeeps scheduled after work pending until this request's queued jobs settle
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":2,"coreId":"c-2","managerJobId":"b239dd69-860b-4e04-beb6-d5d9a716a28a"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mreturns a retryable 503 instead of accepting work when the dispatch queue is full
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"a0b8aa93-3332-40ca-ae56-15e6ea9fe21c"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"a0b8aa93-3332-40ca-ae56-15e6ea9fe21c","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"a0b8aa93-3332-40ca-ae56-15e6ea9fe21c","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mreturns a retryable 503 instead of accepting work when the dispatch queue is full
+[22m[39m{"event":"admin-trigger.dispatch.queue_full","kind":"transcript","itemCount":1,"queueDepth":0,"activeDispatches":1,"maxPendingDispatches":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mdoes not spend queue capacity on validation_failed, not_found, or already_in_flight rows
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"059006dc-3bef-42ab-a6b0-d7c2a578dcd1"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"059006dc-3bef-42ab-a6b0-d7c2a578dcd1","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":1,"coreId":"c-1","managerJobId":"059006dc-3bef-42ab-a6b0-d7c2a578dcd1","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+ [32m✓[39m src/services/stageClone.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/workflows/videoEnrichment.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mforwards Admin video id without reintroducing legacy document id targeting
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"ebb96d5b-e650-4329-9f38-8c011ac75702"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"ebb96d5b-e650-4329-9f38-8c011ac75702","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"ebb96d5b-e650-4329-9f38-8c011ac75702","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mforwards Admin video id without reintroducing legacy document id targeting
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"ebb96d5b-e650-4329-9f38-8c011ac75702"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mstarts scene-analysis when admin returns null subtitleUrl and mux can generate subtitles
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":6,"coreId":"c-no-sub","managerJobId":"6faf4c82-c75e-4579-88e4-dda4eb17fc1f"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":6,"coreId":"c-no-sub","managerJobId":"6faf4c82-c75e-4579-88e4-dda4eb17fc1f","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":6,"coreId":"c-no-sub","managerJobId":"6faf4c82-c75e-4579-88e4-dda4eb17fc1f","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mstarts scene-analysis when admin returns null subtitleUrl and mux can generate subtitles
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":6,"coreId":"c-no-sub","managerJobId":"6faf4c82-c75e-4579-88e4-dda4eb17fc1f"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mdispatches requested target locale media and language for localized scene analysis
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":42,"coreId":"c-es","managerJobId":"728f4579-6d17-48d5-b16b-29e6f375c8e2"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":42,"coreId":"c-es","managerJobId":"728f4579-6d17-48d5-b16b-29e6f375c8e2","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":42,"coreId":"c-es","managerJobId":"728f4579-6d17-48d5-b16b-29e6f375c8e2","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mdispatches requested target locale media and language for localized scene analysis
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":42,"coreId":"c-es","managerJobId":"728f4579-6d17-48d5-b16b-29e6f375c8e2"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mfalls back to videoLabel='unknown' when admin returns null label
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":8,"coreId":"c-no-label","managerJobId":"20d0b43f-088e-4ca7-8221-30c50ff95289"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":8,"coreId":"c-no-label","managerJobId":"20d0b43f-088e-4ca7-8221-30c50ff95289","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":8,"coreId":"c-no-label","managerJobId":"20d0b43f-088e-4ca7-8221-30c50ff95289","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — happy path[2m > [22m[2mfalls back to videoLabel='unknown' when admin returns null label
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":8,"coreId":"c-no-label","managerJobId":"20d0b43f-088e-4ca7-8221-30c50ff95289"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — admin lookup failures[2m > [22m[2mreturns 503 with reason=config_missing when admin envelope is config_missing
+[22m[39m{"event":"admin-trigger.admin-lookup.error","kind":"scene-analysis","reason":"config_missing","messages":["ADMIN_GRAPHQL_URL not set"],"coreIdCount":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — admin lookup failures[2m > [22m[2mreturns 502 with reason=admin_unreachable on network_error envelope
+[22m[39m{"event":"admin-trigger.admin-lookup.error","kind":"scene-analysis","reason":"network_error","messages":["admin GraphQL request timed out after 15000ms"],"coreIdCount":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — admin lookup failures[2m > [22m[2mreturns 502 with reason=admin_unreachable on graphql_error envelope
+[22m[39m{"event":"admin-trigger.admin-lookup.error","kind":"scene-analysis","reason":"graphql_error","messages":["Not authorized to resolve Query.videosByCoreIds"],"coreIdCount":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — admin lookup failures[2m > [22m[2mreturns 502 with reason=admin_unreachable on parse_error envelope
+[22m[39m{"event":"admin-trigger.admin-lookup.error","kind":"scene-analysis","reason":"parse_error","messages":["admin GraphQL endpoint returned invalid JSON"],"coreIdCount":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2msecond call with same kind+assetId returns already_in_flight with the same managerJobId
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"35f2c6e2-4162-4663-95c4-d3443f9d3796"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"35f2c6e2-4162-4663-95c4-d3443f9d3796","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"35f2c6e2-4162-4663-95c4-d3443f9d3796","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mdifferent kinds for same assetId do NOT collide
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"a85af160-36fc-464c-b7f8-737b8ef79757"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"a85af160-36fc-464c-b7f8-737b8ef79757","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":7,"coreId":"c-1","managerJobId":"a85af160-36fc-464c-b7f8-737b8ef79757","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mdifferent kinds for same assetId do NOT collide
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":7,"coreId":"c-1","managerJobId":"7334763a-047a-455c-ad83-4eac614ca67c"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":7,"coreId":"c-1","managerJobId":"7334763a-047a-455c-ad83-4eac614ca67c","queueDepth":1,"activeDispatches":1}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":7,"coreId":"c-1","managerJobId":"7334763a-047a-455c-ad83-4eac614ca67c","queueDepth":0,"activeDispatches":2,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mkeeps queued items in-flight before their dispatch starts
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"cc839f17-145c-4a7b-a5c4-1175c19428bb"}
+{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"6b477fd1-ce13-49ce-b781-9c4b14bebaef"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"cc839f17-145c-4a7b-a5c4-1175c19428bb","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"cc839f17-145c-4a7b-a5c4-1175c19428bb","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"6b477fd1-ce13-49ce-b781-9c4b14bebaef","queueDepth":1,"activeDispatches":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mkeeps queued items in-flight before their dispatch starts
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":1,"coreId":"c-1","managerJobId":"cc839f17-145c-4a7b-a5c4-1175c19428bb"}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"6b477fd1-ce13-49ce-b781-9c4b14bebaef","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mkeeps queued items in-flight before their dispatch starts
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":2,"coreId":"c-2","managerJobId":"6b477fd1-ce13-49ce-b781-9c4b14bebaef"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mdoes not prune queued or running jobs by the old TTL while dispatch is unresolved
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":77,"coreId":"c-1","managerJobId":"d1fb2561-0fae-4041-9d59-cd41dbaed2f3"}
+{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":77,"coreId":"c-1","managerJobId":"d1fb2561-0fae-4041-9d59-cd41dbaed2f3","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":77,"coreId":"c-1","managerJobId":"d1fb2561-0fae-4041-9d59-cd41dbaed2f3","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":1}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch REJECTS (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"c0a057a6-c675-4023-99c2-a67c4c49f3d8"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"c0a057a6-c675-4023-99c2-a67c4c49f3d8","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"c0a057a6-c675-4023-99c2-a67c4c49f3d8","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch REJECTS (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.error","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"c0a057a6-c675-4023-99c2-a67c4c49f3d8","error":"pipeline blew up"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch REJECTS (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"a336d4f0-4a7e-4562-98df-ebec8a88f5ab"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"a336d4f0-4a7e-4562-98df-ebec8a88f5ab","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"a336d4f0-4a7e-4562-98df-ebec8a88f5ab","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch REJECTS (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":99,"coreId":"c-1","managerJobId":"a336d4f0-4a7e-4562-98df-ebec8a88f5ab"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot when dispatch throws SYNCHRONOUSLY (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"dfc3bc09-8e64-4660-b9ee-62012151a709"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"dfc3bc09-8e64-4660-b9ee-62012151a709","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"dfc3bc09-8e64-4660-b9ee-62012151a709","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+{"event":"admin-trigger.dispatch.error","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"dfc3bc09-8e64-4660-b9ee-62012151a709","error":"synchronous dispatch failure"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot when dispatch throws SYNCHRONOUSLY (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"3f605cff-3da7-4e1d-8a2c-50d90c0c399e"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"3f605cff-3da7-4e1d-8a2c-50d90c0c399e","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"3f605cff-3da7-4e1d-8a2c-50d90c0c399e","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot when dispatch throws SYNCHRONOUSLY (sad-path slot leak guard)
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":50,"coreId":"c-1","managerJobId":"3f605cff-3da7-4e1d-8a2c-50d90c0c399e"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch resolves
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"804c6a8d-3b6c-41b1-bc63-f4a4a539d2f1"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"804c6a8d-3b6c-41b1-bc63-f4a4a539d2f1","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"804c6a8d-3b6c-41b1-bc63-f4a4a539d2f1","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch resolves
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"804c6a8d-3b6c-41b1-bc63-f4a4a539d2f1"}
+
+[90mstderr[2m | src/lib/admin-trigger-route.test.ts[2m > [22m[2mprocessAdminTriggerRequest — idempotency[2m > [22m[2mreleases the slot after the dispatch resolves
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"79e7deec-ac46-4567-b1b3-c3c4c9bd15ef"}
+{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"79e7deec-ac46-4567-b1b3-c3c4c9bd15ef","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":8,"coreId":"c-1","managerJobId":"79e7deec-ac46-4567-b1b3-c3c4c9bd15ef","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+ [32m✓[39m src/lib/admin-trigger-route.test.ts [2m([22m[2m38 tests[22m[2m)[22m[32m 118[2mms[22m[39m
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mcreates the asset once and records it before readiness is observed
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mcreates the asset once and records it before readiness is observed
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mcreates the asset once and records it before readiness is observed
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mresumes polling a recorded pending asset instead of creating a duplicate
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mresumes polling a recorded pending asset instead of creating a duplicate
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mshort-circuits on a ready record without any Mux calls
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mshort-circuits on a ready record without any Mux calls
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mrecreates a fresh asset when the recorded asset errored
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mrecreates a fresh asset when the recorded asset errored
+[22m[39m[smart-crop] event=mux_output_recreate jobId=job-loc assetId=asset456 muxAssetId=mux_errored reason=errored
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mrecreates a fresh asset when the recorded asset errored
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — mux output idempotency[2m > [22m[2mrecreates a fresh asset when the recorded asset errored
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mskips the QA step on frame_host_not_allowed and continues to mux output
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mskips the QA step on frame_host_not_allowed and continues to mux output
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mskips the QA step on frame_host_not_allowed and continues to mux output
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mstill fails the job on a genuine QA verdict fail
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mstill fails the job on a genuine QA verdict fail
+[22m[39m[smart-crop] event=workflow_error jobId=job-loc error=Smart Crop QA verdict: fail (1 issue)
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mfails (not retries) on non-config QA brokenness via FatalError when retryable:false
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — QA advisory degradation[2m > [22m[2mfails (not retries) on non-config QA brokenness via FatalError when retryable:false
+[22m[39m[smart-crop] event=workflow_error jobId=job-loc error=mastra smart-crop QA failed (provider_invalid_output): model returned junk [mastraRunId=run-qa-invalid]
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mfails the job with an operator-actionable message when the gate fails
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mfails the job with an operator-actionable message when the gate fails
+[22m[39m[smart-crop] event=workflow_error jobId=job-loc error=Alignment confidence gates failed: overall confidence 0.4 < 0.85
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mreuses an existing map only when provenance matches
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mreuses an existing map only when provenance matches
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mreuses an existing map only when provenance matches
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes when the canonical plan was regenerated after the map
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes when the canonical plan was regenerated after the map
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes when the canonical plan was regenerated after the map
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes legacy maps without provenance
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes legacy maps without provenance
+[22m[39m[smart-crop] event=mux_output_created jobId=job-loc assetId=asset456 muxAssetId=mux_new
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mrecomputes legacy maps without provenance
+[22m[39m[smart-crop] event=workflow_complete jobId=job-loc
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mfails deterministically when canonical and localized dimensions differ
+[22m[39m[smart-crop] event=workflow_start kind=localized jobId=job-loc assetId=asset456 canonicalAssetId=asset123 language=uk
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropLocalized — alignment[2m > [22m[2mfails deterministically when canonical and localized dimensions differ
+[22m[39m[smart-crop] event=workflow_error jobId=job-loc error=source_dimensions_mismatch: canonical 1920x1080 != localized 1280x720 (canonical asset123 vs localized asset456) — canonical crop plans are pixel-space-specific; re-run the canonical plan against a matching master
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mresumes from the checkpoint instead of re-paying completed batches
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mresumes from the checkpoint instead of re-paying completed batches
+[22m[39m[smart-crop] event=plan_checkpoint_resume jobId=job-can assetId=asset123 completedBatches=2 totalBatches=3
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mresumes from the checkpoint instead of re-paying completed batches
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mkeeps completed batches when provider recovery exhausts, then resumes on operator retry
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mkeeps completed batches when provider recovery exhausts, then resumes on operator retry
+[22m[39m[smart-crop] event=workflow_error jobId=job-can error=mastra smart-crop plan failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-rate-limit]
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mkeeps completed batches when provider recovery exhausts, then resumes on operator retry
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mkeeps completed batches when provider recovery exhausts, then resumes on operator retry
+[22m[39m[smart-crop] event=plan_checkpoint_resume jobId=job-can assetId=asset123 completedBatches=1 totalBatches=3
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mkeeps completed batches when provider recovery exhausts, then resumes on operator retry
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mstarts fresh when the checkpoint belongs to a regenerated fingerprint
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mstarts fresh when the checkpoint belongs to a regenerated fingerprint
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mcheckpoints after every successful batch
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mcheckpoints after every successful batch
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mrecomputes a malformed existing plan artifact instead of skipping
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mrecomputes a malformed existing plan artifact instead of skipping
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mcreates a repair attempt for a crop-affecting QA warning
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mcreates a repair attempt for a crop-affecting QA warning
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mpreserves the Mastra run id when repair recovery exhausts
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mpreserves the Mastra run id when repair recovery exhausts
+[22m[39m[smart-crop] event=workflow_error jobId=job-can error=mastra smart-crop repair failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-repair-limit]
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mdoes not repair a report-only QA warning
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mrunSmartCropCanonical — plan checkpointing[2m > [22m[2mdoes not repair a report-only QA warning
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mkeeps Manager-to-Mastra network errors retryable
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mkeeps Manager-to-Mastra network errors retryable
+[22m[39m[smart-crop] event=workflow_error jobId=job-can error=mastra smart-crop plan failed (network_error)
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mmaps retryable:false envelope failures to FatalError (no SDK retry)
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mmaps retryable:false envelope failures to FatalError (no SDK retry)
+[22m[39m[smart-crop] event=workflow_error jobId=job-can error=crop-worker fingerprint failed (timeout): crop-worker job wj_1 did not complete within 1800000ms
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mkeeps retryable:true envelope failures as SmartCropStepError (SDK retries)
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstderr[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mstep error classification (FatalError vs SmartCropStepError)[2m > [22m[2mkeeps retryable:true envelope failures as SmartCropStepError (SDK retries)
+[22m[39m[smart-crop] event=workflow_error jobId=job-can error=crop-worker fingerprint failed (network_error): socket hang up
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mforce retry[2m > [22m[2mregenerates the QA artifact (and every other step) when force is set
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mforce retry[2m > [22m[2mregenerates the QA artifact (and every other step) when force is set
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mforce retry[2m > [22m[2mrepairs a stored canonical fail verdict on a plain (force:false) retry
+[22m[39m[smart-crop] event=workflow_start kind=canonical jobId=job-can assetId=asset123
+
+[90mstdout[2m | src/workflows/smartCrop.test.ts[2m > [22m[2mforce retry[2m > [22m[2mrepairs a stored canonical fail verdict on a plain (force:false) retry
+[22m[39m[smart-crop] event=workflow_complete jobId=job-can
+
+ [32m✓[39m src/workflows/smartCrop.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+[90mstdout[2m | src/services/transcription.test.ts[2m > [22m[2mtranscription[2m > [22m[2mpolls until a generated subtitle track is ready
+[22m[39m{"event":"transcription_waiting_for_subtitles","muxAssetId":"mux-asset-1","attempt":1,"waitedMs":1}
+
+[90mstdout[2m | src/services/transcription.test.ts[2m > [22m[2mtranscription[2m > [22m[2mkeeps waiting for the requested language instead of selecting a ready wrong-language track
+[22m[39m{"event":"transcription_waiting_for_subtitles","muxAssetId":"mux-asset-1","attempt":1,"waitedMs":0}
+
+[90mstdout[2m | src/services/transcription.test.ts[2m > [22m[2mtranscription[2m > [22m[2mtranscribes an admin-supplied subtitle URL without polling Mux
+[22m[39m{"event":"subtitle_fetch_start","host":"cdn.jesusfilm.org","path":"/subtitles.vtt"}
+
+[90mstdout[2m | src/services/transcription.test.ts[2m > [22m[2mtranscription[2m > [22m[2mtranscribes an admin-supplied subtitle URL without polling Mux
+[22m[39m{"event":"subtitle_fetch_complete","host":"cdn.jesusfilm.org","contentLength":96}
+
+ [32m✓[39m src/services/transcription.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m src/app/api/enrich/route.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m src/features/jobs/review-player/load-job-review-context.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/lib/state.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+[90mstderr[2m | src/app/api/jobs/[id]/transcription/rerun/route.test.ts[2m > [22m[2mPOST /api/jobs/[id]/transcription/rerun[2m > [22m[2mreturns a failed job payload when workflow dispatch fails
+[22m[39mTranscription rerun failed for job job-1: Error: workflow offline
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/app/api/jobs/[id]/transcription/rerun/route.test.ts:277:37
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+
+ [32m✓[39m src/app/api/jobs/[id]/transcription/rerun/route.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m src/backend/admin-client.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m src/features/jobs/live-jobs-realtime.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/lib/admin-video-lookup.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+[90mstdout[2m | src/services/chapters.test.ts[2m > [22m[2mgenerateChapters[2m > [22m[2mnormalizes out-of-order output, derives endSeconds, and drops invalid rows
+[22m[39m{"event":"chapters_normalization_applied","assetId":"asset-1","rawCount":5,"normalizedCount":3,"droppedInvalidRows":0,"droppedDuplicateRows":1,"droppedGenericTitleRows":1}
+
+[90mstdout[2m | src/services/chapters.test.ts[2m > [22m[2mgenerateChapters[2m > [22m[2mdrops later chapter anchors that exceed the transcript duration
+[22m[39m{"event":"chapters_normalization_applied","assetId":"asset-1","rawCount":2,"normalizedCount":1,"droppedInvalidRows":1,"droppedDuplicateRows":0,"droppedGenericTitleRows":0}
+
+[90mstdout[2m | src/services/chapters.test.ts[2m > [22m[2mgenerateChapters[2m > [22m[2mthrows instead of writing a chapters artifact when no usable rows remain
+[22m[39m{"event":"chapters_normalization_applied","assetId":"asset-1","rawCount":1,"normalizedCount":0,"droppedInvalidRows":0,"droppedDuplicateRows":0,"droppedGenericTitleRows":1}
+
+[90mstdout[2m | src/services/chapters.test.ts[2m > [22m[2mgenerateChapters[2m > [22m[2mwrites only bounded chapter timestamps when the llm returns an out-of-bounds anchor
+[22m[39m{"event":"chapters_normalization_applied","assetId":"asset-1","rawCount":2,"normalizedCount":1,"droppedInvalidRows":1,"droppedDuplicateRows":0,"droppedGenericTitleRows":0}
+
+ [32m✓[39m src/services/chapters.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns a correctly typed SceneAnalysis
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns a correctly typed SceneAnalysis
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mbuilds description with themes first
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mbuilds description with themes first
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns token counts
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns token counts
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mcalls the shared structured output helper with multimodal content
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mcalls the shared structured output helper with multimodal content
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2maccumulates usage counts reported by the shared helper
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2maccumulates usage counts reported by the shared helper
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstderr[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_helper_failed","startSeconds":0,"attempt":1,"error":"malformed response"}
+
+ [32m✓[39m src/services/mastra-smart-crop.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_1 attempt=1
+
+[90mstderr[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_lost kind=render assetId=asset-1 workerJobId=wj_1 attempt=1
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_3 attempt=2
+
+[90mstderr[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_lost kind=render assetId=asset-1 workerJobId=wj_3 attempt=2
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_5 attempt=3
+
+[90mstderr[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mresubmits when the worker loses the job, bounded twice
+[22m[39m[crop-worker] event=job_lost kind=render assetId=asset-1 workerJobId=wj_5 attempt=3
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mwaits out queue_full responses and resubmits until accepted
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=1 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mwaits out queue_full responses and resubmits until accepted
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=2 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mwaits out queue_full responses and resubmits until accepted
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_after_wait attempt=1
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=1 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=2 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=3 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=4 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=5 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=6 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=7 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=8 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=9 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mfails with queue_full only after exhausting the bounded waits
+[22m[39m[crop-worker] event=queue_full_wait kind=render assetId=asset-1 retry=10 waitMs=30000
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mrecovers when a resubmitted job completes
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_retry attempt=1
+
+[90mstderr[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mrecovers when a resubmitted job completes
+[22m[39m[crop-worker] event=job_lost kind=render assetId=asset-1 workerJobId=wj_retry attempt=1
+
+[90mstdout[2m | src/services/crop-worker.test.ts[2m > [22m[2mrunCropWorkerJob[2m > [22m[2mrecovers when a resubmitted job completes
+[22m[39m[crop-worker] event=job_submitted kind=render assetId=asset-1 workerJobId=wj_retry attempt=2
+
+ [32m✓[39m src/services/crop-worker.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/approve/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/approve[2m > [22m[2mapproves the plan recording the session actor in the qa block
+[22m[39m[smart-crop] event=plan_review jobId=job-1 assetId=asset123 action=approve attempt=0
+
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/approve/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/approve[2m > [22m[2mrecords the api-key service id for bearer-authenticated callers
+[22m[39m[smart-crop] event=plan_review jobId=job-1 assetId=asset123 action=approve attempt=0
+
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/approve/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/approve[2m > [22m[2mapproves the selected repaired attempt and copies it to the canonical plan
+[22m[39m[smart-crop] event=plan_review jobId=job-1 assetId=asset123 action=approve attempt=1
+
+ [32m✓[39m src/features/agents/automation-runner.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/approve/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/approve[2m > [22m[2mrejects the plan with qa.status rejected
+[22m[39m[smart-crop] event=plan_review jobId=job-1 assetId=asset123 action=reject attempt=0
+
+ [32m✓[39m src/app/api/smart-crop/jobs/[id]/approve/route.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m src/features/seo/seo-admin-client.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m src/services/mux-sync/index.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+[90mstderr[2m | src/app/api/automations/[id]/dry-run/route.test.ts[2m > [22m[2mPOST /api/automations/[id]/dry-run[2m > [22m[2mbest-effort marks the run failed when completion persistence throws
+[22m[39m[api/automations/dry-run] Failed to run automation: Error: database timeout
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/app/api/automations/[id]/dry-run/route.test.ts:224:30
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+
+ [32m✓[39m src/app/api/automations/[id]/dry-run/route.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstderr[2m | src/app/api/smart-crop/jobs/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs[2m > [22m[2mmarks the job failed and returns 500 when the launch throws
+[22m[39m[smart-crop] event=launch_failed jobId=job-1 error=workflow runtime down
+
+ [32m✓[39m src/app/api/smart-crop/jobs/route.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/lib/job-artifacts.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m src/services/audioCleanup.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/lib/transcription-routing-report.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/services/mux.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-pool-gateway.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+[90mstderr[2m | src/app/api/jobs/route.test.ts[2m > [22m[2mGET /api/jobs[2m > [22m[2mreturns 502 when the job list cannot be loaded
+[22m[39mFailed to list Manager jobs: Error: admin down
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/app/api/jobs/route.test.ts:157:48
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+
+[90mstderr[2m | src/app/api/jobs/route.test.ts[2m > [22m[2mGET /api/jobs[2m > [22m[2mreturns 502 when the job count cannot be loaded
+[22m[39mFailed to list Manager jobs: Error: admin down
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/app/api/jobs/route.test.ts:168:41
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+
+[90mstderr[2m | src/app/api/jobs/route.test.ts[2m > [22m[2mPOST /api/jobs[2m > [22m[2mreturns a launch failure response when workflow dispatch fails
+[22m[39mEnrichment failed for job job-1: Error: workflow offline
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/app/api/jobs/route.test.ts:335:37
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8)
+
+ [32m✓[39m src/app/api/jobs/route.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m src/features/coverage/language-selection.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/lib/auth.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 404[2mms[22m[39m
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches runSceneAnalysisPipeline with the resolved fields
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"a91052ea-89da-4edf-af1b-0ba2d3c55ea5"}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches runSceneAnalysisPipeline with the resolved fields
+[22m[39m{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"a91052ea-89da-4edf-af1b-0ba2d3c55ea5","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"a91052ea-89da-4edf-af1b-0ba2d3c55ea5","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches runSceneAnalysisPipeline with the resolved fields
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"a91052ea-89da-4edf-af1b-0ba2d3c55ea5"}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches scene-analysis without subtitleUrl so the pipeline can fall back to Mux subtitles
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"69a66068-c793-49bc-a1f9-9213f2d94d13"}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches scene-analysis without subtitleUrl so the pipeline can fall back to Mux subtitles
+[22m[39m{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"69a66068-c793-49bc-a1f9-9213f2d94d13","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"69a66068-c793-49bc-a1f9-9213f2d94d13","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mdispatches scene-analysis without subtitleUrl so the pipeline can fall back to Mux subtitles
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"69a66068-c793-49bc-a1f9-9213f2d94d13"}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mpasses targetLocale through to the localized scene pipeline
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"83759899-4c8f-47b6-a240-ad769906cfcd"}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mpasses targetLocale through to the localized scene pipeline
+[22m[39m{"event":"admin-trigger.dispatch.queued","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"83759899-4c8f-47b6-a240-ad769906cfcd","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"83759899-4c8f-47b6-a240-ad769906cfcd","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/app/api/admin-trigger/scene-analysis/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/scene-analysis[2m > [22m[2mpasses targetLocale through to the localized scene pipeline
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"scene-analysis","assetId":42,"coreId":"core-A","managerJobId":"83759899-4c8f-47b6-a240-ad769906cfcd"}
+
+ [32m✓[39m src/app/api/admin-trigger/scene-analysis/route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":2,"frameCount":3,"shiftedStart":9,"shiftedEnd":51,"reason":"bad_frames_retry"}
+
+[90mstderr[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_helper_failed","startSeconds":0,"attempt":2,"error":"malformed response"}
+
+ [32m✓[39m src/features/jobs/review-player/review-player-presenter.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/features/coverage/enrich-selection.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-input.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 122[2mms[22m[39m
+ [32m✓[39m src/cms/gateway.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 362[2mms[22m[39m
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/retry/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/retry[2m > [22m[2mresets failed steps, appends a retry note, and relaunches
+[22m[39m[smart-crop] event=retry_accepted jobId=job-1 force=false
+
+[90mstderr[2m | src/app/api/smart-crop/jobs/[id]/retry/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/retry[2m > [22m[2mreturns 500 and marks the job failed when the relaunch throws
+[22m[39m[smart-crop] event=retry_launch_failed jobId=job-1 error=runtime down
+
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/retry/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/retry[2m > [22m[2mthreads force:true from the optional body to the relaunch
+[22m[39m[smart-crop] event=retry_accepted jobId=job-1 force=true
+
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/retry/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/retry[2m > [22m[2mkeeps force:false for an explicit empty body
+[22m[39m[smart-crop] event=retry_accepted jobId=job-1 force=false
+
+[90mstdout[2m | src/app/api/smart-crop/jobs/[id]/retry/route.test.ts[2m > [22m[2mPOST /api/smart-crop/jobs/[id]/retry[2m > [22m[2mrejects a concurrent duplicate retry with 409 already_in_flight
+[22m[39m[smart-crop] event=retry_accepted jobId=job-1 force=false
+
+ [32m✓[39m src/app/api/smart-crop/jobs/[id]/retry/route.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+ [32m✓[39m src/lib/admin-embed-trigger.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/features/smart-crop/smart-crop-plan-player.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/services/metadata.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/app/api/auth/callback/route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 344[2mms[22m[39m
+ [32m✓[39m src/features/video-studio/editor-session.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/services/elevenlabs-transcription.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/services/mastra-subtitle-enrichment.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/features/seo/seo-run-detail.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+[90mstderr[2m | src/services/openrouter.test.ts[2m > [22m[2mcreateStructuredOpenrouterOutput[2m > [22m[2mthrows when the structured payload fails schema validation
+[22m[39m{"event":"structured_output_validation_failed","context":"test-context","errors":[{"expected":"number","code":"invalid_type","path":["count"],"message":"Invalid input: expected number, received undefined"}]}
+
+ [32m✓[39m src/services/openrouter.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/services/studio-production/experiments.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+[90mstdout[2m | src/services/storage-stream.test.ts
+[22m[39m{"event":"storage_write_start","key":"shorts-stream-test-1788875068170/shorts-clip-v1.mp4","backend":"local","contentType":"video/mp4"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mcomposes transcribe → Mastra transcript embeddings and forwards source fields
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"42","muxAssetId":"mux-A","language":"en"}
+
+[90mstdout[2m | src/services/storage-stream.test.ts
+[22m[39m{"event":"storage_write_complete","key":"shorts-stream-test-1788875068170/shorts-clip-v1.mp4","backend":"local"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mcomposes transcribe → Mastra transcript embeddings and forwards source fields
+[22m[39m{"event":"transcript_only_pipeline_complete","assetId":"42","durationMs":2,"language":"en","embeddingStatus":"created","totalChunks":1,"totalTokens":1,"embeddingDimensions":1536,"mastraRunId":"run-1"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mfalls back to language='auto' when caller omits languageCode
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"7","muxAssetId":"mux-B","language":"auto"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mfalls back to language='auto' when caller omits languageCode
+[22m[39m{"event":"transcript_only_pipeline_complete","assetId":"7","durationMs":0,"language":"en","embeddingStatus":"created","totalChunks":1,"totalTokens":1,"embeddingDimensions":1536,"mastraRunId":"run-1"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2muses the supplied subtitle URL instead of polling Mux when available
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"42","muxAssetId":"mux-A","language":"en"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2muses the supplied subtitle URL instead of polling Mux when available
+[22m[39m{"event":"transcript_only_pipeline_complete","assetId":"42","durationMs":1,"language":"en","embeddingStatus":"created","totalChunks":1,"totalTokens":1,"embeddingDimensions":1536,"mastraRunId":"run-1"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mthrows when the transcript is empty
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"9","muxAssetId":"mux-C","language":"auto"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mthrows when the transcript is too short
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"9","muxAssetId":"mux-C","language":"auto"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mpropagates errors from transcribe
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"1","muxAssetId":"mux-X","language":"auto"}
+
+[90mstdout[2m | src/workflows/transcriptOnlyPipeline.test.ts[2m > [22m[2mrunTranscriptOnlyPipeline[2m > [22m[2mpropagates product failures from Mastra
+[22m[39m{"event":"transcript_only_pipeline_start","assetId":"1","muxAssetId":"mux-X","language":"auto"}
+
+ [32m✓[39m src/workflows/transcriptOnlyPipeline.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/services/storage-stream.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m src/services/mastra-transcript-embeddings.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/app/api/smart-crop/videos/[coreId]/route.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/config/env.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 256[2mms[22m[39m
+ [32m✓[39m src/services/studio-production/runner.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/app/api/studio/production/route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m src/features/smart-crop/smart-crop-presenter.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m src/services/transcript-scripture-correction.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/features/jobs/review-player/review-context-refresh-key.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/services/mastra-transcript-scripture-correction.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/app/api/videos/route.mock.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m src/features/agents/automation-store.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/app/api/jobs/[id]/events/route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2muses an existing subtitle URL when available
+[22m[39m{"event":"scene_pipeline_start","videoId":42,"assetId":"42"}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2muses an existing subtitle URL when available
+[22m[39m{"event":"scene_pipeline_complete","videoId":42,"assetId":"42","sceneCount":1,"totalInputTokens":11,"totalOutputTokens":7}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2mfalls back to Mux transcription when admin has no subtitle URL
+[22m[39m{"event":"scene_pipeline_start","videoId":42,"assetId":"42"}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2mfalls back to Mux transcription when admin has no subtitle URL
+[22m[39m{"event":"scene_pipeline_complete","videoId":42,"assetId":"42","sceneCount":1,"totalInputTokens":11,"totalOutputTokens":7}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2muses requested localized subtitle and provenance inputs for scene analysis
+[22m[39m{"event":"scene_pipeline_start","videoId":42,"assetId":"42"}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2muses requested localized subtitle and provenance inputs for scene analysis
+[22m[39m{"event":"scene_pipeline_complete","videoId":42,"assetId":"42","sceneCount":1,"totalInputTokens":11,"totalOutputTokens":7}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2mtranscribes the requested localized mux asset when target subtitles are missing
+[22m[39m{"event":"scene_pipeline_start","videoId":42,"assetId":"42"}
+
+[90mstdout[2m | src/workflows/sceneAnalysisPipeline.test.ts[2m > [22m[2mrunSceneAnalysisPipeline[2m > [22m[2mtranscribes the requested localized mux asset when target subtitles are missing
+[22m[39m{"event":"scene_pipeline_complete","videoId":42,"assetId":"42","sceneCount":1,"totalInputTokens":11,"totalOutputTokens":7}
+
+ [32m✓[39m src/workflows/sceneAnalysisPipeline.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/services/studio-agent/chat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m src/features/coverage/coverage-report-model.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/app/api/seo/proposals/[id]/approve/route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/features/seo/seo-presenter.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m src/app/api/seo/reconciliation/[id]/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/app/api/automations/runs/[id]/enqueue/route.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdispatches runTranscriptOnlyPipeline with stringified assetId + bcp47
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"5208e018-d06e-43f7-b116-5c33f242345b"}
+
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdispatches runTranscriptOnlyPipeline with stringified assetId + bcp47
+[22m[39m{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"5208e018-d06e-43f7-b116-5c33f242345b","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"5208e018-d06e-43f7-b116-5c33f242345b","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdispatches runTranscriptOnlyPipeline with stringified assetId + bcp47
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"5208e018-d06e-43f7-b116-5c33f242345b"}
+
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdoes not require subtitleUrl for transcript-only dispatch
+[22m[39m{"event":"admin-trigger.dispatch.accepted","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"80f67468-ec45-4fee-9878-c45675376efd"}
+
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdoes not require subtitleUrl for transcript-only dispatch
+[22m[39m{"event":"admin-trigger.dispatch.queued","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"80f67468-ec45-4fee-9878-c45675376efd","queueDepth":1,"activeDispatches":0}
+{"event":"admin-trigger.dispatch.running","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"80f67468-ec45-4fee-9878-c45675376efd","queueDepth":0,"activeDispatches":1,"dispatchConcurrency":3}
+
+[90mstderr[2m | src/app/api/admin-trigger/transcript/route.test.ts[2m > [22m[2mPOST /api/admin-trigger/transcript[2m > [22m[2mdoes not require subtitleUrl for transcript-only dispatch
+[22m[39m{"event":"admin-trigger.dispatch.complete","kind":"transcript","assetId":99,"coreId":"core-A","managerJobId":"80f67468-ec45-4fee-9878-c45675376efd"}
+
+ [32m✓[39m src/app/api/admin-trigger/transcript/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":3,"frameCount":3,"shiftedStart":18,"shiftedEnd":42,"reason":"bad_frames_retry"}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":0,"outputTokens":0}
+
+[90mstderr[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mreturns empty analysis when the shared helper fails on all retries
+[22m[39m{"event":"scene_analysis_helper_failed","startSeconds":0,"attempt":3,"error":"malformed response"}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mretries when the helper reports bad frames before succeeding
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstderr[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mretries when the helper reports bad frames before succeeding
+[22m[39m{"event":"scene_analysis_bad_frames","startSeconds":0,"attempt":1,"hasContent":false}
+
+ [32m✓[39m src/lib/admin-trigger-auth.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+[90mstdout[2m | src/services/subtitles.test.ts[2m > [22m[2mfetchSubtitleText[2m > [22m[2maccepts valid jesusfilm.org subdomains
+[22m[39m{"event":"subtitle_fetch_start","host":"api-media-core.jesusfilm.org","path":"/test.vtt"}
+
+[90mstdout[2m | src/services/subtitles.test.ts[2m > [22m[2mfetchSubtitleText[2m > [22m[2maccepts valid jesusfilm.org subdomains
+[22m[39m{"event":"subtitle_fetch_complete","host":"api-media-core.jesusfilm.org","contentLength":45}
+
+[90mstdout[2m | src/services/subtitles.test.ts[2m > [22m[2mfetchSubtitleText[2m > [22m[2mthrows on non-OK response
+[22m[39m{"event":"subtitle_fetch_start","host":"api-media-core.jesusfilm.org","path":"/test.vtt"}
+
+[90mstdout[2m | src/services/subtitles.test.ts[2m > [22m[2mfetchSubtitleText[2m > [22m[2mthrows when content-length exceeds limit
+[22m[39m{"event":"subtitle_fetch_start","host":"api-media-core.jesusfilm.org","path":"/large.vtt"}
+
+ [32m✓[39m src/services/subtitles.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/app/dashboard/jobs/page.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/services/studio-production/provider.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/app/api/seo/lessons/[id]/review/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-execution.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 90[2mms[22m[39m
+ [32m✓[39m src/services/sceneBoundaries.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/app/api/automations/route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mretries when the helper reports bad frames before succeeding
+[22m[39m{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":2,"frameCount":3,"shiftedStart":9,"shiftedEnd":51,"reason":"bad_frames_retry"}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeScene[2m > [22m[2mretries when the helper reports bad frames before succeeding
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":250,"outputTokens":30}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mprocesses all scenes and returns aggregated result
+[22m[39m{"event":"scene_analysis_batch_start","assetId":"asset123","sceneCount":2}
+{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mprocesses all scenes and returns aggregated result
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mprocesses all scenes and returns aggregated result
+[22m[39m{"event":"scene_analysis_start","startSeconds":60,"endSeconds":null,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mprocesses all scenes and returns aggregated result
+[22m[39m{"event":"scene_analysis_complete","startSeconds":60,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mprocesses all scenes and returns aggregated result
+[22m[39m{"event":"scene_analysis_batch_complete","assetId":"asset123","sceneCount":2,"totalInputTokens":31200,"totalOutputTokens":1600}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores source artifacts with source provenance via writeArtifact
+[22m[39m{"event":"scene_analysis_batch_start","assetId":"asset456","sceneCount":2}
+{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores source artifacts with source provenance via writeArtifact
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores source artifacts with source provenance via writeArtifact
+[22m[39m{"event":"scene_analysis_start","startSeconds":60,"endSeconds":null,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores source artifacts with source provenance via writeArtifact
+[22m[39m{"event":"scene_analysis_complete","startSeconds":60,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores source artifacts with source provenance via writeArtifact
+[22m[39m{"event":"scene_analysis_batch_complete","assetId":"asset456","sceneCount":2,"totalInputTokens":31200,"totalOutputTokens":1600}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores localized artifacts separately with raw localized provenance
+[22m[39m{"event":"scene_analysis_batch_start","assetId":"asset789","sceneCount":2}
+{"event":"scene_analysis_start","startSeconds":0,"endSeconds":60,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores localized artifacts separately with raw localized provenance
+[22m[39m{"event":"scene_analysis_complete","startSeconds":0,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores localized artifacts separately with raw localized provenance
+[22m[39m{"event":"scene_analysis_start","startSeconds":60,"endSeconds":null,"attempt":1,"frameCount":3}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores localized artifacts separately with raw localized provenance
+[22m[39m{"event":"scene_analysis_complete","startSeconds":60,"inputQuality":"good","inputTokens":15600,"outputTokens":800}
+
+[90mstdout[2m | src/services/sceneAnalysis.test.ts[2m > [22m[2manalyzeAllScenes[2m > [22m[2mstores localized artifacts separately with raw localized provenance
+[22m[39m{"event":"scene_analysis_batch_complete","assetId":"asset789","sceneCount":2,"totalInputTokens":31200,"totalOutputTokens":1600}
+
+ [32m✓[39m src/services/sceneAnalysis.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 7036[2mms[22m[39m
+   [33m[2m✓[22m[39m analyzeScene[2m > [22mreturns empty analysis when the shared helper fails on all retries [33m 6006[2mms[22m[39m
+   [33m[2m✓[22m[39m analyzeScene[2m > [22mretries when the helper reports bad frames before succeeding [33m 1004[2mms[22m[39m
+ [32m✓[39m src/features/video-studio/preview-state.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/app/api/jobs/events/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/features/jobs/jobs-table-presenter.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/features/agents/eligibility.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/app/login/page.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/app/api/seo/proposals/[id]/reject/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-runner.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 2025[2mms[22m[39m
+   [33m[2m✓[22m[39m aborts execution when the durable lease is lost [33m 2006[2mms[22m[39m
+ [32m✓[39m src/lib/admin-manager-session.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [32m✓[39m src/app/dashboard/agents/page.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/features/jobs/review-player/review-player-card.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/lib/enrich-language.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/app/dashboard/jobs/[id]/page.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/lib/transcript-scripture-correction.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/features/agents/automation-store.mock.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/lib/mux-sync-report.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/seo-route-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m src/lib/workflow-steps.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+[90mstderr[2m | src/lib/job-events.test.ts[2m > [22m[2mjob-events[2m > [22m[2mkeeps fan-out best-effort when one subscriber throws
+[22m[39m[job-events] listener failed: Error: listener exploded
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/lib/job-events.test.ts:78:13
+    at mockCall (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest/spy[24m/dist/index.js:96:15)
+    at spy (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80)
+    at publishJobEvent [90m(/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/lib/job-events.ts:76:7[90m)[39m
+    at [90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/[39msrc/lib/job-events.test.ts:85:18
+    at Proxy.assertThrows (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:2767:5)
+    at Proxy.methodWrapper (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:1686:25)
+    at Proxy.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+expect@3.2.4/node_modules/[4m@vitest/expect[24m/dist/index.js:1088:12)
+    at Proxy.overwritingMethodWrapper (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:1735:33)
+    at Proxy.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/node_modules/[4m.pnpm[24m/@vitest+expect@3.2.4/node_modules/[4m@vitest/expect[24m/dist/index.js:1420:16)
+
+ [32m✓[39m src/lib/job-events.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/lib/mux-language.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/app/api/jobs/[id]/review-context/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/app/api/jobs/[id]/route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/features/smart-crop/smart-crop-picker.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/services/studio-agent/generation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/cms/mock-store.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m src/features/jobs/live-job-steps-table.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m src/features/coverage/enrich-action-controls.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-pool-auth.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m src/features/agents/automation-run-history.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m src/services/studio-publication-prepare.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-pool-http.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 137[2mms[22m[39m
+ [32m✓[39m src/features/video-studio/publication-submission.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m src/features/jobs/mux-sync-presenter.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/app/api/coverage-snapshots/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/features/jobs/collapsible-step-row.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/lib/seo-approval-assertion.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/services/studio-mux-runner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/app/api/studio/publication/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/app/api/auth/login/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 320[2mms[22m[39m
+ [32m✓[39m src/app/api/studio/command/route.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m src/features/agents/automation-validation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/app/api/auth/mock-login/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 520[2mms[22m[39m
+   [33m[2m✓[22m[39m GET /api/auth/mock-login[2m > [22msets a local Manager session and redirects to the requested local path [33m 331[2mms[22m[39m
+ [32m✓[39m src/lib/mux-environment.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/lib/manager-theme.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/lib/state-create.mock.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/lib/state-create.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 314[2mms[22m[39m
+   [33m[2m✓[22m[39m createJob[2m > [22mcreates jobs through Admin GraphQL [33m 312[2mms[22m[39m
+ [32m✓[39m src/features/seo/seo-workspace.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+ [32m✓[39m src/app/api/auth/logout/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 250[2mms[22m[39m
+ [32m✓[39m src/app/api/studio/calendar-production/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m src/features/shell/manager-shell-user-menu.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/services/studio-render-mux.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/lib/vtt.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/lib/mux-sync-override.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/workflows/jobStateSteps.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/features/jobs/review-player/review-player-metadata.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/app/api/automations/[id]/status/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/features/coverage/selected-video-stack.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/app/api/admin-embeds/scene/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/services/studio-agent/transport.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [2m[90m↓[39m[22m src/services/studio-production/audio.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m src/features/agents/schedule-summary.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m src/lib/seo-csrf.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/app/api/enrich/route.mock.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+[90mstderr[2m | src/services/studio-mux-dispatch.test.ts[2m > [22m[2misolates a failed candidate and advances a bounded cursor beyond processing work
+[22m[39m[studio-mux] Candidate unresolved; retained state requires reconciliation
+
+ [32m✓[39m src/services/studio-mux-dispatch.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/features/jobs/job-error-log-section.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m src/backend/studio-client.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/lib/oauth-client.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/features/coverage/language-flags.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/features/jobs/live-job-detail-header.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m src/app/api/admin-trigger/studio-publication/route.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m src/app/api/languages/route.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/features/shell/dashboard-route-skeleton.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/app/design/page.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/features/coverage/coverage-empty-state.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/middleware.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/services/cmsClient.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m src/features/agents/automation-list-presenter.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/enrichment-materialization.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/app/api/videos/route.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/features/jobs/job-detail-href.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/features/seo/seo-runs-page.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/features/shell/manager-theme-sync.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m158 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (159)[39m
+[2m      Tests [22m [1m[32m964 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (966)[39m
+[2m   Start at [22m 01:44:21
+[2m   Duration [22m 18.36s[2m (transform 9.01s, setup 826ms, collect 44.03s, tests 16.75s, environment 757ms, prepare 16.49s)[22m
+

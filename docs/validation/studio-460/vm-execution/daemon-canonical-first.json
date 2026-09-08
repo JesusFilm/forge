@@ -1,0 +1,116 @@
+{
+  "attemptId": "cmtslieoi00012czx79vq5b92",
+  "attemptStatus": "SUCCEEDED",
+  "jobState": "COMPLETED",
+  "generation": 1,
+  "snapshot": {
+    "document": {
+      "fps": 30,
+      "items": [],
+      "title": "Worker assignment",
+      "width": 320,
+      "height": 180,
+      "tracks": [],
+      "version": 1,
+      "language": "english",
+      "components": [],
+      "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+      "packRevisionIds": [],
+      "durationInFrames": 30
+    },
+    "revision": 1,
+    "inputHash": "bece5a912c0c21a3aa84ed5fc4f846c476cac6432517e5828f4d088c49ad165c",
+    "projectId": "e0f68c9c-5cbf-4d6b-b5e7-8462c9940a39",
+    "executionProfile": {
+      "id": "studio-render-1/900s-2cpu-2g-128p-96child-128m",
+      "cpu": 2,
+      "jobMs": 900000,
+      "leaseMs": 1200000,
+      "uploadMs": 10000,
+      "childPids": 96,
+      "requestMs": 920000,
+      "swapBytes": 0,
+      "memoryBytes": 2147483648,
+      "outputBytes": 134217728,
+      "retentionMs": 60000,
+      "retirementMs": 2000,
+      "aggregatePids": 128,
+      "preparationMs": 90000,
+      "nativeCleanupMs": 1000,
+      "retentionTransferMs": 45000,
+      "terminalRecordingMs": 15000
+    }
+  },
+  "execution": {
+    "attemptId": "cmtslieoi00012czx79vq5b92",
+    "leaseId": "963f3ef7-acbf-4211-a0a1-6a44e4288864",
+    "requestHash": "c9ed2cc0b4916351060d609f145b9c714f886a78614a16a79641de0be7c34ce8",
+    "status": "SUCCEEDED",
+    "result": {
+      "assets": [
+        {
+          "digest": "bc9e7d20cf513ea20f1a164b7b8697f81f247308de4cc2f29e76d329a89a4d84",
+          "assetId": "859ca32e-3e70-48e2-995c-ff7f29738a72",
+          "versionId": "cmtsohuml00052cg76ftcqhjl"
+        },
+        {
+          "digest": "fe1e88391bda749deaba6708ca4a0338d21976eaa9ff63288ab471824ee9fab8",
+          "assetId": "7a0643f9-2b24-48ee-a09c-729dc896fe83",
+          "versionId": "cmtsohund00092cg7lorotscq"
+        },
+        {
+          "digest": "c7ca5dead970852d0b87a8a6860a94d3cfdbc24cdfe6ad19116dcd65a9496a05",
+          "assetId": "4c4ea9a7-7e5d-4684-9806-633a1023e5b5",
+          "versionId": "cmtsohuny000d2cg7ep6eb9q2"
+        }
+      ],
+      "manifest": {
+        "digest": "c7ca5dead970852d0b87a8a6860a94d3cfdbc24cdfe6ad19116dcd65a9496a05",
+        "assetId": "4c4ea9a7-7e5d-4684-9806-633a1023e5b5",
+        "versionId": "cmtsohuny000d2cg7ep6eb9q2"
+      },
+      "costMicros": null,
+      "diagnostic": "Contained render independently decoded and retained"
+    },
+    "admitted": true,
+    "createdAt": "2026-09-08T13:01:34.497Z"
+  },
+  "assets": [
+    {
+      "id": "cmtsohuml00052cg76ftcqhjl",
+      "digest": "bc9e7d20cf513ea20f1a164b7b8697f81f247308de4cc2f29e76d329a89a4d84",
+      "role": "render",
+      "media": {
+        "id": "cmtsohumh00032cg7uamqycmf",
+        "mimeType": "video/mp4",
+        "objectKey": "media-assets/8cb0a57a-6b35-4a91-9c74-98109eb85052/original/cmtslieoi00012czx79vq5b92.mp4",
+        "backend": "LOCAL",
+        "bytes": 45705
+      }
+    },
+    {
+      "id": "cmtsohund00092cg7lorotscq",
+      "digest": "fe1e88391bda749deaba6708ca4a0338d21976eaa9ff63288ab471824ee9fab8",
+      "role": "manifest",
+      "media": {
+        "id": "cmtsohunb00072cg7rt2jm919",
+        "mimeType": "application/json",
+        "objectKey": "media-assets/f32431fe-91ef-429b-8460-0b66e4c593ce/original/cmtslieoi00012czx79vq5b92-codec.json",
+        "backend": "LOCAL",
+        "bytes": 350
+      }
+    },
+    {
+      "id": "cmtsohuny000d2cg7ep6eb9q2",
+      "digest": "c7ca5dead970852d0b87a8a6860a94d3cfdbc24cdfe6ad19116dcd65a9496a05",
+      "role": "manifest",
+      "media": {
+        "id": "cmtsohunx000b2cg7fedhf11t",
+        "mimeType": "application/json",
+        "objectKey": "media-assets/656bdb51-213f-4d74-ab8b-da6f5ba2c6d2/original/cmtslieoi00012czx79vq5b92-render.json",
+        "backend": "LOCAL",
+        "bytes": 737
+      }
+    }
+  ]
+}

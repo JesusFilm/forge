@@ -1,0 +1,33 @@
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin[39m
+
+ [31m❯[39m src/services/studio-authoring/render-assignment.db.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m6 skipped[39m[2m)[22m[32m 119[2mms[22m[39m
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mreplays one immutable lease after a lost response and rejects changed dispatch binding
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mserializes duplicate dispatches and two workers competing for one attempt
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mdoes not assign two live attempts to the same pool worker
+[31m   [31m×[31m immutable outbound render assignment[2m > [22mfinds the original assignment before a broker selects another candidate[39m[32m 113[2mms[22m[39m
+[31m     → jobs.assigned is not a function[39m
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mnever issues fresh work for an expired or completed dispatch replay
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mstops new assignment and replay execution when production is disabled
+   [2m[90m↓[39m[22m immutable outbound render assignment[2m > [22mrechecks terminalization after the actual project lock wait
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/studio-authoring/render-assignment.db.test.ts[2m > [22mimmutable outbound render assignment[2m > [22mfinds the original assignment before a broker selects another candidate
+[31m[1mTypeError[22m: jobs.assigned is not a function[39m
+[36m [2m❯[22m src/services/studio-authoring/render-assignment.db.test.ts:[2m151:23[22m[39m
+    [90m149| [39m  it("finds the original assignment before a broker selects another ca…
+    [90m150| [39m    [35mconst[39m { attemptId[33m,[39m jobs[33m,[39m binding } [33m=[39m [35mawait[39m [34mfixture[39m()
+    [90m151| [39m    [34mexpect[39m([35mawait[39m jobs[33m.[39m[34massigned[39m(worker[33m,[39m binding))[33m.[39m[34mtoBeNull[39m()
+    [90m   | [39m                      [31m^[39m
+    [90m152| [39m    [35mconst[39m issued [33m=[39m [35mawait[39m jobs[33m.[39m[34mclaimAssigned[39m(worker[33m,[39m attemptId[33m,[39m binding)
+    [90m153| [39m    expect(await new StudioRenderJobs(db).assigned(worker, binding)).t…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m6 skipped[39m[90m (7)[39m
+[2m   Start at [22m 23:47:15
+[2m   Duration [22m 1.28s[2m (transform 442ms, setup 15ms, collect 816ms, tests 119ms, environment 0ms, prepare 88ms)[22m
+

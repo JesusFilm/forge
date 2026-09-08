@@ -71,3 +71,19 @@ Status remains in progress: exact OCI-image/deployed containment and real Mux
 acceptance require separately authorized external steps. The local rootless image
 builder's missing privileged UID/GID mapping helpers do not waive runtime proof.
 No provider, infrastructure or production operation is authorized by this entry.
+
+## Dedicated VM checkpoint (2026-09-09)
+
+The user selected and authorized the dedicated Proxmox VM at10.2.1.100. The
+outbound scoped pool gateway extends canonical leases with reserved migration0093;
+calendar ownership remains0088–0091. The VM runs one credential-free disposable
+render container and a separate verifier under the original cumulative deadline.
+Actual render/retention/finish, cancellation, supervisor restart, OOM recovery,
+watchdog expiry restart and drain/update/rollback evidence is recorded in
+`docs/validation/studio-460/vm-execution/README.md`. Installation and future
+PR-to-main release inputs are in `apps/studio-render/ops/README.md`.
+
+The earlier OCI nested-proc failure remains historical evidence; the selected VM
+uses outer OCI namespaces and preserves masks. Production connection, durable
+codec publication/storage qualification and actual provider acceptance remain
+open. This checkpoint does not mark full460 complete or authorize production.

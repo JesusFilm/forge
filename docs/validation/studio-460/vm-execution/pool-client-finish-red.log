@@ -1,0 +1,24 @@
+✔ production requires HTTPS; fixture HTTP is loopback-only and credentials cannot be in URLs (1.903138ms)
+✔ lost claim response retries the exact identity that was durable before network (84.903807ms)
+✔ redirect is refused without forwarding credentials or exposing response text (15.059746ms)
+✔ hung responses are bounded and preserve the request for reconciliation (71.021366ms)
+✔ lease operations never send the host worker key and require an exact-lease transport capability (5.565257ms)
+✖ lost finish response replays the durably sealed record on restart without a new retain or execution (1.700567ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 311.854635
+
+✖ failing tests:
+
+test at apps/studio-render/test/vm-api.test.mjs:71:1
+✖ lost finish response replays the durably sealed record on restart without a new retain or execution (1.700567ms)
+  TypeError: api.finish is not a function
+      at TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/vm-api.test.mjs:84:28)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)

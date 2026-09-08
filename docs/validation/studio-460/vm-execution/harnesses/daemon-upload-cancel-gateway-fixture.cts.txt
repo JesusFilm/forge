@@ -1,0 +1,60 @@
+import { StudioRenderJobs } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/render-jobs.ts'
+import { StudioRenderPoolAuth, StudioRenderPoolGateway, createStudioPoolHandler } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/.tmp/vm-pool-gateway.cjs'
+import { createServer } from 'node:http'
+import { Readable } from 'node:stream'
+import { StudioTransferService } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/transfers.ts'
+import { randomUUID, timingSafeEqual, createHash } from 'node:crypto'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { PrismaClient } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/node_modules/@prisma/client/default.js'
+import { StudioAuthoringService } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/index.ts'
+import { executeStudioRender } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/admin/src/services/studio-authoring/render-rpc.ts'
+import { claimStudioPoolRender } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/src/services/studio-render-pool-claim.ts'
+import { prepareStudioRenderInput } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/.tmp/vm-pool-gateway.cjs'
+import { retainStudioRenderOutput } from '/home/tataihono/.cache/forge-studio-460-image-worktree/apps/manager/.tmp/vm-pool-gateway.cjs'
+import { STUDIO_RUNTIME_VERSION } from '/home/tataihono/.cache/forge-studio-460-image-worktree/packages/studio-contracts/src/preview.ts'
+async function main() {
+const root='/home/tataihono/.cache/forge-studio-460-vm'
+const url='postgresql://tataihono@127.0.0.1:55460/forge_studio_460_fresh'
+if(process.env.DATABASE_URL!==url)throw Error('Owned DB required')
+const config=existsSync(root+'/poll-config.json')?JSON.parse(readFileSync(root+'/poll-config.json','utf8')):{endpoint:'http://127.0.0.1:45360/owned',fixtureHttp:true,token:'owned-poll-'+randomUUID()+randomUUID(),poolId:'vm460-fixture-pool',workerId:'vm460-fixture-worker'}
+writeFileSync(root+'/poll-config.json',JSON.stringify(config),{mode:0o600})
+const db=new PrismaClient({datasources:{db:{url}}})
+const commands=new StudioAuthoringService(db),human={id:'vm460-fixture-owner',role:'ADMIN' as const,studioAuthority:'interactive' as const}
+const caller={sub:'studio-render-worker',authority:'delegated' as const,clientId:'studio-render',scopes:['studio:render:execute']}
+const previous=existsSync(root+'/evidence/daemon-upload-cancel-fixture-identity.json')?JSON.parse(readFileSync(root+'/evidence/daemon-upload-cancel-fixture-identity.json','utf8')):null
+const projectId=previous?.projectId??randomUUID()
+const document={version:1,title:'VM cancellation during retained upload',language:'english',runtimeVersion:STUDIO_RUNTIME_VERSION,width:320,height:180,fps:30,durationInFrames:30,tracks:[{id:'caption',kind:'caption'}],components:[],packRevisionIds:[],items:[{id:'caption',kind:'text',trackId:'caption',startFrame:0,durationInFrames:30,text:'VM daemon fixture',properties:{fontSize:18,color:'#ffffff'}}]}
+if(!previous)await commands.create(human,{projectId,expectedRevision:0,idempotencyKey:randomUUID(),document})
+const attempt=previous??await commands.request(human,{projectId,expectedRevision:1,idempotencyKey:randomUUID(),kind:'RENDER',instructions:[]})
+writeFileSync(root+'/evidence/daemon-upload-cancel-fixture-identity.json',JSON.stringify({projectId,attemptId:attempt.attemptId,scope:'owned canonical text fixture, no provider'},null,2)+'\n')
+
+const signingPath=root+'/pool-fixture-signing.json'
+if(!existsSync(signingPath))writeFileSync(signingPath,JSON.stringify({key:randomUUID()+randomUUID()}),{mode:0o600})
+const auth=new StudioRenderPoolAuth({poolId:config.poolId,workerId:config.workerId,workerKey:config.token,capabilityKey:JSON.parse(readFileSync(signingPath,'utf8')).key})
+const canonical=async(command,input)=>{const value=await executeStudioRender(db,caller,{action:'render-worker',command,input});return command==='pending'?(value as string[]).filter(id=>id===attempt.attemptId):value}
+const assets=(action,input)=>canonical(action,input)
+const gateway=new StudioRenderPoolGateway(auth,{
+ allowNewClaims:()=>true,
+ call:canonical,
+ prepare:(snapshot,signal)=>prepareStudioRenderInput(assets,snapshot.projectId,snapshot.document,'owned-fixture-no-source-key',signal),
+ retain:(snapshot,assignment,output,proof,signal)=>retainStudioRenderOutput(assets,snapshot,assignment.attemptId,assignment.leaseId,output,proof,signal)
+})
+const handle=createStudioPoolHandler(auth,gateway)
+let loseFinish=true;let cancelledUpload=false
+const server=createServer(async(req,res)=>{
+ try{
+  const transfer=req.url?.match(/^\/api\/studio\/assets\/transfer\/([a-f0-9]{64})$/)
+  if(req.method==='PUT'&&transfer){const result=await new StudioTransferService(db).upload(transfer[1],Readable.toWeb(req));if(!cancelledUpload){cancelledUpload=true;console.log('UPLOAD_COMMITTED_RESPONSE_PENDING');await new StudioRenderJobs(db).cancel(human,{projectId,expectedRevision:1,idempotencyKey:randomUUID(),attemptId:attempt.attemptId});console.log('CANONICAL_CANCEL_DURING_UPLOAD');writeFileSync(root+'/evidence/daemon-upload-cancel-ready.json',JSON.stringify({at:Date.now(),projectId,attemptId:attempt.attemptId}));await new Promise(resolve=>setTimeout(resolve,4000));console.log('UPLOAD_RESPONSE_RELEASED_AFTER_CANCEL')}res.setHeader('content-type','application/json');res.end(JSON.stringify(result));return}
+  const route=req.url?.match(/^\/owned\/(claim|input|owns|retain|finish|receipt)$/)
+  if(req.method!=='POST'||!route){res.writeHead(404);res.end();return}
+  const stop=new AbortController();req.once('aborted',()=>stop.abort());res.once('close',()=>{if(!res.writableFinished)stop.abort()})
+  const request=new Request('http://127.0.0.1:45360'+req.url,{method:'POST',headers:req.headers,body:Readable.toWeb(req),duplex:'half',signal:stop.signal})
+  const response=await handle(request,route[1])
+  if(route[1]==='finish'&&response.ok&&loseFinish){loseFinish=false;console.log('CANONICAL_FINISH_RESPONSE_DROPPED');res.destroy();return}
+  res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()))
+ }catch(error){console.error(error instanceof Error?error.name:'failure');res.writeHead(409);res.end('unconfirmed')}
+})
+server.requestTimeout=10000;server.headersTimeout=10000
+server.listen(45360,'127.0.0.1',()=>console.log('OWNED_PRODUCTION_GATEWAY_READY 127.0.0.1:45360'))
+}
+main().catch(error=>{console.error(error instanceof Error?error.name:'failure');process.exitCode=1})

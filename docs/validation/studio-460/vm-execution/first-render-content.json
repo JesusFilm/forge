@@ -1,0 +1,15 @@
+{
+  "outputSha256": "41f8109d80b4477b3eeb9e42acf0a49b3acb8df7f51bd7f1d6f5ef5ac0f565a5",
+  "bluePixel": [
+    0,
+    0,
+    254
+  ],
+  "customGreenPixel": [
+    0,
+    254,
+    1
+  ],
+  "audioRms": 0.04320420032864528,
+  "audioSamples": 50176
+}

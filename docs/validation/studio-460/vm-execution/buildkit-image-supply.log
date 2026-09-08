@@ -1,0 +1,32 @@
+v0.33.0: Pulling from moby/buildkit
+7c681a5187e5: Pulling fs layer
+79330c0ded89: Pulling fs layer
+40bb10b2669a: Pulling fs layer
+e6f31ffc071e: Pulling fs layer
+74777c122f12: Pulling fs layer
+76cc2b5840ce: Pulling fs layer
+b0fff6ef8f0d: Pulling fs layer
+b0fff6ef8f0d: Download complete
+7c681a5187e5: Download complete
+79330c0ded89: Download complete
+40bb10b2669a: Download complete
+e6f31ffc071e: Download complete
+44136fa355b3: Download complete
+e6f31ffc071e: Pull complete
+065287e0e785: Download complete
+eadb54eaec69: Download complete
+ad0c71d12630: Download complete
+44136fa355b3: Download complete
+76cc2b5840ce: Download complete
+b0fff6ef8f0d: Pull complete
+79330c0ded89: Pull complete
+76cc2b5840ce: Pull complete
+b49ea1108a48: Download complete
+74777c122f12: Download complete
+40bb10b2669a: Pull complete
+74777c122f12: Pull complete
+7c681a5187e5: Pull complete
+Digest: sha256:6c2fa84a6b61ccd72899dde4239f8d5717f05f9a8ca6f3cad185fb1a95a94de3
+Status: Downloaded newer image for moby/buildkit:v0.33.0
+docker.io/moby/buildkit:v0.33.0
+["moby/buildkit@sha256:6c2fa84a6b61ccd72899dde4239f8d5717f05f9a8ca6f3cad185fb1a95a94de3"]
