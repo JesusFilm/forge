@@ -57,7 +57,7 @@ revocation support must remain available throughout deployment and rollback.
 
 1. Set Admin `STUDIO_PRODUCTION_ENABLED=false` and
    `STUDIO_PUBLICATION_ENABLED=false` in the reviewed rollout configuration.
-   Land/review shared schemas and additive Admin migrations through0093. Generate
+   Land/review shared schemas and additive Admin migration `0094_studio`. Generate
    Prisma, Admin SDL and `@forge/admin-graphql` in the same reviewed state. Normal
    Admin predeploy runs the existing migration-deploy wrapper. Verify the **target**
    ledger after deployment; local empty replay is not the deployed ledger. Do not
@@ -76,7 +76,7 @@ revocation support must remain available throughout deployment and rollback.
    Provision/verify Workflow Postgres schema through the normal runtime setup.
 4. Deploy the private preview receiver on its distinct registrable site. For final
    rendering, deploy the authenticated Manager `/api/studio/render-pool` receiver
-   after Admin0093 and before any VM assignment. Keep `STUDIO_RENDER_POOL_ENABLED`
+   after Admin migration `0094_studio` and before any VM assignment. Keep `STUDIO_RENDER_POOL_ENABLED`
    false. Complete the reviewed image/bundle supply and inactive install in the VM
    ops contract; preload approved digests outside claim execution. Use outbound
    HTTPS without redirects; fixture HTTP on literal127.0.0.1 is not production proof.

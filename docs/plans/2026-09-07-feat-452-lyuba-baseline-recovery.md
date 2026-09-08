@@ -97,8 +97,8 @@ connectors, reflection, conclusion and questions/prayer. A custom settle line
 changes the hash for every example. These hashes intentionally cover effective
 speech only: a future paid-cache key must also bind language, provider/model,
 voice/settings and pronunciation versions. They are not a replacement production
-cache implementation. `derive-fixtures.mjs` recreates the expectations;
-`verify-fixtures.mjs` verifies them without rewriting expected values.
+cache implementation. The one-off derivation and verification scripts were removed
+after recovery; the retained fixture data is unchanged.
 
 [background.json](fixtures/studio-lyuba-baseline/background.json) preserves these
 reconciled rules with synthetic timing vectors:
@@ -152,7 +152,10 @@ old filesystem runner. feat-455 and feat-458 own subsequent generation reuse;
 canonical approval invariants belong to the approved Studio command model.
 No new implementation ticket is needed for gaps already assigned by that plan.
 
-## Reproduction and validation
+## Historical recovery and validation
+
+The one-off inventory and verification scripts have been removed. Commands and
+results in this section document the completed recovery, not a current runbook.
 
 Use a persistent directory outside disposable checkouts for `<preserve>`; use
 `<recovered>` for its detached checkout of `a5df24451b2e55b27de98d4f54ba9f78eb9a43fa`.
@@ -160,7 +163,6 @@ Never source the old `.env.local`, call generation CLIs, or run a renderer for
 this recovery procedure.
 
 ```bash
-python3 docs/plans/fixtures/studio-lyuba-baseline/inventory.py '<supplied ZIP>' '<preserve>' '<temporary output>'
 git clone --bare '<preserve>/fork.bundle' '<new bare clone>'
 git --git-dir='<new bare clone>' worktree add --detach '<recovered>' a5df24451b2e55b27de98d4f54ba9f78eb9a43fa
 ```
@@ -192,8 +194,6 @@ pnpm exec tsc --noEmit
 # From recovered/packages/shorts-compositions:
 pnpm exec vitest run --maxWorkers=2
 pnpm exec tsc --noEmit
-# From this checkout, with tsx available:
-pnpm exec tsx docs/plans/fixtures/studio-lyuba-baseline/verify-fixtures.mjs '<recovered>'
 ```
 
 Actual results: initial focused run **470 passed / 7 failed** on missing corpus;

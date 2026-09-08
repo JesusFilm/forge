@@ -8,7 +8,7 @@ tags: [studio, catalog, core-sync, identity, provenance]
 
 A generated render has Forge Video, locale, Dub, Edition and Mux identities with
 MANAGER ownership. Its missing Core identity is null, never a fabricated Core ID.
-Migration `0079_studio_catalog_identity` preserves the existing unique indexes and
+Migration `0094_studio` preserves the existing unique indexes and
 requires nonblank real Core IDs for CORE Video/Dub/Edition rows. Historical
 MANAGER rows may retain real Core IDs; ownership, not nullability, controls sync.
 

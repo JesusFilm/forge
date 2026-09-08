@@ -124,26 +124,12 @@ preview is intentionally a different rendition and has Player controls over it;
 it is not asserted pixel-identical. Source time is additionally checked against
 the video's decoded-frame callback after seeking.
 
-## Reproduce
+## Historical proof tooling
 
-Requirements: Linux, working user systemd/cgroup v2 CPU/memory/pids delegation,
-Bubblewrap/user namespaces, ffmpeg, ordinary Google Chrome, and internet for the
-public Forge fixture. The example host used Node 24.20.0 and ffmpeg 7.0.2. The
-renderer installs its pinned Headless Shell through `ensureBrowser` before entering
-the isolated job. No environment file is loaded by either proof command.
-
-```bash
-pnpm install --frozen-lockfile --filter @forge/shorts-worker...
-pnpm --filter @forge/shorts-worker studio:proof /tmp/forge-studio-proof /path/to/ffmpeg /usr/bin/google-chrome
-pnpm --filter @forge/shorts-worker exec tsx scripts/studio-proof/forge.ts /tmp/forge-studio-real /tmp/forge-studio-proof/bundle /path/to/ffmpeg /usr/bin/google-chrome
-```
-
-Run those sequentially: the first builds the fixed host; the second reuses it.
-Both write `report.json`, input manifests, MP4s and PNGs into their explicit output
-directory. The synthetic command also renders the saved/reloaded text/color edit
-under `edited/`. Outputs are local verification artifacts, not committed media.
-The real script admits a small exact set of observed CDN hosts; if Mux changes its
-CDN routing it fails closed and requires reviewing that allowlist.
+The one-off proof CLI and output-checking scripts were removed during PR cleanup.
+The results above describe the historical prototype, not an executable runbook.
+Current rendering and verification use the maintained
+[VM execution tooling](../../../apps/studio-render/ops/README.md).
 
 ## Release prerequisites and limits
 
