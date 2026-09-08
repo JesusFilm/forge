@@ -21,7 +21,10 @@ export default function TabLayout() {
         tabBarStyle,
         // Returned as an ELEMENT, not passed as the component: the bar calls
         // tabBarBackground(), so hooks would otherwise land in ITS render.
-        tabBarBackground: () => <TabBarBackground />,
+        // Omitted entirely off iOS: an element is non-null whatever it renders,
+        // and that alone forces the bar's own fill transparent.
+        tabBarBackground:
+          Platform.OS === "ios" ? () => <TabBarBackground /> : undefined,
         // A floating pill glued to the keyboard's top edge reads as a bug.
         // Unset on Android, exactly as today.
         tabBarHideOnKeyboard: Platform.OS === "ios" ? true : undefined,

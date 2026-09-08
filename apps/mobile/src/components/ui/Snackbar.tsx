@@ -12,6 +12,8 @@ type SnackbarProps = {
   visible: boolean
   onDismiss: () => void
   duration?: number
+  /** Lift clear of the floating iOS tab bar. Only the tab routes have one. */
+  clearsTabBar?: boolean
 }
 
 export function Snackbar({
@@ -19,9 +21,12 @@ export function Snackbar({
   visible,
   onDismiss,
   duration = 3000,
+  clearsTabBar = false,
 }: SnackbarProps) {
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
+  // Opt-in: the watch and series routes mount this too, and they have no bar.
+  const clearance = clearsTabBar ? tabBarClearance : 0
   const typography = useTypography()
   const translateY = useRef(new Animated.Value(100)).current
   const opacity = useRef(new Animated.Value(0)).current
@@ -80,7 +85,7 @@ export function Snackbar({
       style={[
         styles.container,
         {
-          bottom: insets.bottom + 16 + tabBarClearance,
+          bottom: insets.bottom + 16 + clearance,
           transform: [{ translateY }],
           opacity,
         },

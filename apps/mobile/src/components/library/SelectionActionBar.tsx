@@ -5,12 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
-import {
-  TAB_BAR_PILL_HEIGHT,
-  TAB_BAR_PILL_LIFT,
-  TAB_BAR_PILL_RADIUS,
-  TAB_BAR_PILL_SIDE_MARGIN,
-} from "../../lib/tabBar"
+import { tabBarPillShape } from "../../lib/tabBar"
 import { TabBarBackground } from "../ui/TabBarBackground"
 
 const BAR_BG = "rgba(12, 12, 13, 0.94)"
@@ -40,12 +35,7 @@ export function SelectionActionBar({
   const isPill = Platform.OS === "ios"
   const shape = isPill
     ? {
-        height: TAB_BAR_PILL_HEIGHT,
-        marginBottom: insets.bottom + TAB_BAR_PILL_LIFT,
-        marginHorizontal:
-          TAB_BAR_PILL_SIDE_MARGIN + Math.max(insets.left, insets.right),
-        borderRadius: TAB_BAR_PILL_RADIUS,
-        overflow: "hidden" as const,
+        ...tabBarPillShape(insets),
         paddingTop: 0,
         paddingBottom: 0,
         backgroundColor: undefined,
@@ -55,7 +45,7 @@ export function SelectionActionBar({
 
   return (
     <View style={[styles.bar, shape]}>
-      {isPill && <TabBarBackground />}
+      {isPill && <TabBarBackground lens={false} />}
       {hasFailed && (
         <Pressable
           onPress={onRetryFailed}

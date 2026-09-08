@@ -15,6 +15,7 @@ import {
   TAB_BAR_PILL_RADIUS,
   TAB_BAR_PILL_SIDE_MARGIN,
 } from "../../../lib/tabBar"
+import { TabBarLens } from "../../ui/TabBarLens"
 import { SelectionActionBar } from "../SelectionActionBar"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({
@@ -25,6 +26,7 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
 }))
 jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
+jest.mock("../../ui/TabBarLens", () => ({ TabBarLens: () => null }))
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
   isLiquidGlassAvailable: () => true,
@@ -130,5 +132,15 @@ describe("both action buttons fit the capsule on iOS", () => {
     const styles = await buttonStyles()
     expect(new Set(styles.map((s) => s.backgroundColor)).size).toBe(2)
     styles.forEach((s) => expect(s.height).toBe(48))
+  })
+})
+
+describe("the tab selector", () => {
+  it("is NOT drawn on the selection bar, which has no tabs", async () => {
+    // The bar borrows the tab capsule's material; it must not borrow the
+    // sliding cell indicator with it -- it draws Retry/Delete, not four tabs.
+    setPlatform("ios")
+    const renderer = await render(true)
+    expect(renderer.root.findAll((n) => n.type === TabBarLens)).toHaveLength(0)
   })
 })

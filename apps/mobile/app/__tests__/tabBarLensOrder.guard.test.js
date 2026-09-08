@@ -26,7 +26,22 @@ function sharedTabOrder() {
   return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1])
 }
 
+/** expo-router appends undeclared app/(tabs)/* files as extra tabs, so the
+ *  filesystem — not the <Tabs.Screen> list — decides how many cells the bar
+ *  renders. The lens divides its width by TAB_ROUTE_NAMES.length. */
+function routeFilesInGroup() {
+  return fs
+    .readdirSync(path.join(ROOT, "app/(tabs)"))
+    .filter((f) => /\.[jt]sx?$/.test(f) && !f.startsWith("_"))
+    .map((f) => f.replace(/\.[jt]sx?$/, ""))
+    .sort()
+}
+
 describe("the lens order matches the rendered tab order", () => {
+  it("covers every route file in the group, declared or not", () => {
+    expect(routeFilesInGroup()).toEqual([...sharedTabOrder()].sort())
+  })
+
   it("declares the same names in the same order", () => {
     const declared = declaredTabOrder()
     expect(declared.length).toBeGreaterThan(0)

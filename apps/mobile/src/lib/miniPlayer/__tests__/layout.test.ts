@@ -14,7 +14,11 @@ import {
   type MiniPlayerCorner,
   type MiniPlayerLayoutConfig,
 } from "../layout"
-import { TAB_BAR_OCCUPIED_HEIGHT } from "../../tabBar"
+import {
+  TAB_BAR_OCCUPIED_HEIGHT,
+  TAB_BAR_PILL_HEIGHT,
+  TAB_BAR_PILL_LIFT,
+} from "../../tabBar"
 
 /** An iPhone-shaped screen with a notch, home indicator, and the tab bar.
  *  The chrome height is READ from production — a literal here would drift. */
@@ -244,13 +248,34 @@ describe("excluded corners", () => {
 })
 
 describe("the resting window clears the floating tab bar", () => {
-  it("leaves exactly WINDOW_EDGE_MARGIN between the window and the bar", () => {
+  // The gap is WINDOW_EDGE_MARGIN by construction whenever chrome.bottom and
+  // the bar top come from the same constant, so asserting it against PHONE
+  // alone proves nothing. Pin the constant, then show the assertion can fail.
+  it("reserves the pill's full occupied height on iOS", () => {
+    expect(TAB_BAR_OCCUPIED_HEIGHT).toBe(
+      TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT,
+    )
+  })
+
+  it("overlaps the pill when the reservation is left at the old 49", () => {
+    const stale = { ...PHONE, chrome: { top: 0, bottom: 49 } }
+    const frame = defaultCornerFrame(stale)
+    const windowBottom = frame.y + frame.height
+    // The bar top is derived from the PILL, not from the stale reservation.
+    const barTop =
+      stale.screen.height -
+      stale.insets.bottom -
+      (TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT)
+    expect(barTop - windowBottom).toBeLessThan(0)
+  })
+
+  it("leaves WINDOW_EDGE_MARGIN once the reservation matches the pill", () => {
     const frame = defaultCornerFrame(PHONE)
     const windowBottom = frame.y + frame.height
     const barTop =
-      PHONE.screen.height - PHONE.insets.bottom - TAB_BAR_OCCUPIED_HEIGHT
-    // 49 -> 68 on iOS. Without the change the window overlapped by 13pt, in
-    // the DEFAULT resting corner.
+      PHONE.screen.height -
+      PHONE.insets.bottom -
+      (TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT)
     expect(barTop - windowBottom).toBe(WINDOW_EDGE_MARGIN)
   })
 })

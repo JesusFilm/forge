@@ -14,7 +14,13 @@ import { TabBarLens } from "./TabBarLens"
  * element flips the bar's own backgroundColor to transparent, and off iOS
  * GlassView is a bare transparent View, so the bar would vanish.
  */
-export function TabBarBackground() {
+type TabBarBackgroundProps = {
+  /** The sliding selector. Off for surfaces that borrow the capsule but have
+   *  no tabs — the Library selection bar draws Retry/Delete, not a tab row. */
+  lens?: boolean
+}
+
+export function TabBarBackground({ lens = true }: TabBarBackgroundProps = {}) {
   if (Platform.OS !== "ios") return null
 
   // isGlassEffectAPIAvailable guards iOS 26 betas that crash without it.
@@ -27,7 +33,7 @@ export function TabBarBackground() {
           colorScheme="dark"
           tintColor={TAB_BAR_MATERIAL_TINT}
         />
-        <TabBarLens />
+        {lens && <TabBarLens />}
       </>
     )
   }
@@ -39,7 +45,7 @@ export function TabBarBackground() {
         intensity={60}
         tint="dark"
       />
-      <TabBarLens />
+      {lens && <TabBarLens />}
     </>
   )
 }

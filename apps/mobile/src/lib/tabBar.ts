@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { Platform, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -41,18 +42,33 @@ export const TAB_BAR_LENS_DURATION_MS = 260
 export const TAB_BAR_LENS_FILL = "rgba(255, 255, 255, 0.05)"
 export const TAB_BAR_LENS_BORDER = "rgba(255, 255, 255, 0.38)"
 
+/** The expo-router group the tab screens live in. */
+export const TAB_GROUP_SEGMENT = "(tabs)"
+
 /**
- * Which tab the lens should sit over, from expo-router's segments. The group
- * segment alone means the index route, and anything unrecognised parks the
- * lens on the first tab rather than sliding somewhere arbitrary.
+ * Which tab the lens should sit over, from expo-router's segments.
+ *
+ * The scan starts AFTER the group marker. `app/watch/[slug].tsx` is a sibling
+ * of the group on the root stack, so a pushed video route emits the bare
+ * segment `watch` — the same name the Discover tab has. Scanning the whole
+ * array matched it and slid the lens to Discover on every video open.
+ *
+ * `null` means "not on a tab": the caller holds its current cell rather than
+ * moving. Returning 0 there would be just as wrong, only towards Home.
  */
-export function tabIndexForSegments(segments: readonly string[]): number {
-  for (let i = segments.length - 1; i >= 0; i--) {
+export function tabIndexForSegments(
+  segments: readonly string[],
+): number | null {
+  const group = segments.indexOf(TAB_GROUP_SEGMENT)
+  if (group < 0) return null
+
+  for (let i = segments.length - 1; i > group; i--) {
     const found = TAB_ROUTE_NAMES.indexOf(
       segments[i] as (typeof TAB_ROUTE_NAMES)[number],
     )
     if (found >= 0) return found
   }
+  // The group segment alone is the index route.
   return 0
 }
 
@@ -60,13 +76,18 @@ export function tabIndexForSegments(segments: readonly string[]): number {
  * Space the bar occupies ABOVE the safe-area inset. The mini player reserves
  * this. Android keeps its present (already 7pt optimistic) value — correcting
  * it here would move the Android window and read as a regression.
+ *
+ * The constant resolves the platform once at import, which is correct at
+ * runtime and unreachable from a test. The pure function beside it is how
+ * both branches get pinned.
  */
-export const TAB_BAR_OCCUPIED_HEIGHT =
-  Platform.select({
-    ios: TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT,
-    android: 56,
-    default: 49,
-  }) ?? 49
+export function tabBarOccupiedHeightFor(platform: string): number {
+  if (platform === "ios") return TAB_BAR_PILL_HEIGHT + TAB_BAR_PILL_LIFT
+  if (platform === "android") return 56
+  return 49
+}
+
+export const TAB_BAR_OCCUPIED_HEIGHT = tabBarOccupiedHeightFor(Platform.OS)
 
 /** Android's bar, unchanged. The Library screen restores exactly this. */
 export const TAB_BAR_FLAT_STYLE: ViewStyle = {
@@ -74,29 +95,56 @@ export const TAB_BAR_FLAT_STYLE: ViewStyle = {
   borderTopColor: "transparent",
 }
 
-/**
- * The navigator's `tabBarStyle`. A hook because the pill's lift is measured
- * from the safe area, and it reads `Platform.OS` at call time so a test can
- * reach both branches.
- */
-export function useTabBarStyle(): ViewStyle {
-  const insets = useSafeAreaInsets()
-  if (Platform.OS !== "ios") return TAB_BAR_FLAT_STYLE
+export type TabBarInsets = {
+  bottom: number
+  left: number
+  right: number
+}
 
+/**
+ * Where the capsule sits. The ONE place this formula lives — the navigator's
+ * bar and the Library selection bar both compose it, so they cannot drift.
+ */
+export function tabBarPillShape(insets: TabBarInsets) {
   return {
-    position: "absolute",
     height: TAB_BAR_PILL_HEIGHT,
     marginBottom: insets.bottom + TAB_BAR_PILL_LIFT,
     marginHorizontal:
       TAB_BAR_PILL_SIDE_MARGIN + Math.max(insets.left, insets.right),
     borderRadius: TAB_BAR_PILL_RADIUS,
-    overflow: "hidden",
+    overflow: "hidden" as const,
+  }
+}
+
+/**
+ * The navigator's `tabBarStyle`. A hook because the pill's lift is measured
+ * from the safe area, and it reads `Platform.OS` at call time so a test can
+ * reach both branches.
+ *
+ * Split in two on purpose: `tabBarStyleFor` is the pure computation both
+ * platforms' tests exercise directly, and the hook is the memoized wrapper.
+ * The Library screen holds the hook's result in two effect dependency arrays,
+ * so a fresh object every render re-ran `setOptions` on every unrelated render.
+ */
+export function tabBarStyleFor(insets: TabBarInsets): ViewStyle {
+  if (Platform.OS !== "ios") return TAB_BAR_FLAT_STYLE
+  return {
+    position: "absolute",
+    ...tabBarPillShape(insets),
     // The bar puts `insets.bottom` INSIDE a numeric height, and it draws an
     // unconditional hairline. Both would eat the capsule.
     paddingBottom: 0,
     paddingHorizontal: 0,
     borderTopWidth: 0,
   }
+}
+
+export function useTabBarStyle(): ViewStyle {
+  const { bottom, left, right } = useSafeAreaInsets()
+  return useMemo(
+    () => tabBarStyleFor({ bottom, left, right }),
+    [bottom, left, right],
+  )
 }
 
 /**

@@ -5,7 +5,7 @@
  * No re-require after flipping Platform.OS: every platform read in the layout
  * happens during render, so a fresh render is enough.
  */
-import { act, type ReactElement } from "react"
+import { act } from "react"
 import { Platform } from "react-native"
 
 import {
@@ -88,17 +88,12 @@ describe("Android", () => {
     })
   })
 
-  it("supplies no material, so the bar keeps its own fill", async () => {
+  it("supplies NO tabBarBackground option, so the bar keeps its own fill", async () => {
     setPlatform("android")
-    const options = await renderLayout()
-    // tabBarBackground returns an ELEMENT now (so the lens gets its own hook
-    // slot), so render it — the null-ness lives inside the component.
-    const material = options.tabBarBackground as () => ReactElement
-    let rendered!: TestInstance
-    await act(async () => {
-      rendered = TestRenderer.create(material())
-    })
-    expect(rendered.toJSON()).toBeNull()
+    // An element is non-null whatever it renders, and merely supplying the
+    // option forces the bar's backgroundColor transparent. Android's opacity
+    // must not rest on tabBarStyle alone.
+    expect((await renderLayout()).tabBarBackground).toBeUndefined()
   })
 
   it("leaves tabBarHideOnKeyboard unset, exactly as today", async () => {

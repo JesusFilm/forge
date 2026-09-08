@@ -423,6 +423,7 @@ export default function LibraryScreen() {
       />
 
       <Snackbar
+        clearsTabBar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
         onDismiss={() => setToastMessage(null)}

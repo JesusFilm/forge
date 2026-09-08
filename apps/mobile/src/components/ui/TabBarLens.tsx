@@ -19,7 +19,12 @@ import {
  * padding, so a segment is exactly the measured width divided by the tab count.
  */
 export function TabBarLens() {
-  const index = tabIndexForSegments(useSegments())
+  const routeIndex = tabIndexForSegments(useSegments())
+  // A pushed route (a video over the tabs) reports null. Hold the cell we were
+  // on rather than sliding somewhere arbitrary while the bar is still visible.
+  const heldIndex = useRef(0)
+  if (routeIndex !== null) heldIndex.current = routeIndex
+  const index = heldIndex.current
   const [width, setWidth] = useState(0)
   const translateX = useRef(new Animated.Value(0)).current
   // The first position is a jump, not a slide: a cold launch onto any tab but
