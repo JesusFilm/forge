@@ -51,6 +51,29 @@ describe("Watch search title normalization", () => {
       "l évangile",
     )
   })
+
+  it.each([
+    "sq-aln",
+    "ar-arq",
+    "ar-shu",
+    "ar-arz",
+    "ar-mey",
+    "ar-acm",
+    "ar-ary",
+    "ar-ajp",
+    "ar-apd",
+    "ar-aeb",
+    "nan-CN-46",
+    "ar-ayp",
+    "sw-swc",
+  ])("falls back safely for production legacy locale %s", (locale) => {
+    expect(normalizeWatchSearchTitle("The BibleProject", locale)).toMatchObject(
+      {
+        normalized: "the bible project",
+        core: "bible project",
+      },
+    )
+  })
 })
 
 describe("automatic Watch search ranking modes", () => {
