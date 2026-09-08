@@ -1183,9 +1183,9 @@ A child Video of a series that is a work in its own right — watchable and mean
 
 ### Series-Shaped
 
-The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. The test is label-only — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. There is no separate series type in the schema, and every entry point (search, home cards, deep links) applies the same rule.
 
-Children are deliberately **not** part of the test. A feature film may carry its own Chapters as children while remaining one playable item, so presence of children says nothing about whether a record is a container. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
+A label decides alone. A record that carries a label is classified by that label and by nothing else, so a feature film that owns its Chapters stays one playable item — for a labelled record, having children is never evidence of series-shape. Children decide only for a record that arrives with no label at all, and that lone case is where surfaces are not guaranteed to agree — a stricter reading treats an unlabelled record as not series-shaped rather than consulting its children. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
 
 ### First Rail Ready
 
