@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  _internal,
-  critiqueReflection,
-} from "./devotional-reflection-critic"
+import { _internal, critiqueReflection } from "./devotional-reflection-critic"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 /**
@@ -53,6 +50,43 @@ describe("critiqueReflection", () => {
     expect(r.depthScore).toBe(2)
     expect(r.issues[0].kind).toBe("tautology")
     expect(r.skipped).toBeFalsy()
+  })
+
+  it("passes the clip's real transcript to the model when given", async () => {
+    const complete = vi.fn().mockResolvedValue(clean)
+    await critiqueReflection({
+      sceneTitle: "Pharisee and Tax Collector",
+      reflection: "A humble heart welcomes God's grace.",
+      conclusion: "Humility, not performance.",
+      clipTranscript:
+        "Once there were two men who went up to the temple to pray.",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const user = complete.mock.calls[0][0].user
+    expect(user).toContain(
+      "Once there were two men who went up to the temple to pray.",
+    )
+    expect(user).toMatch(/judge retells-scene against this exact text/i)
+  })
+
+  it("omits the transcript block entirely when clipTranscript isn't given, leaving the prompt unchanged", async () => {
+    const complete = vi.fn().mockResolvedValue(clean)
+    await critiqueReflection({
+      sceneTitle: "Jesus Feeds 5,000",
+      reflection: "When he feeds you, he fills you.",
+      conclusion: "He fills.",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const user = complete.mock.calls[0][0].user
+    expect(user).toBe(
+      [
+        "SCENE: Jesus Feeds 5,000",
+        "",
+        "REFLECTION:\nWhen he feeds you, he fills you.",
+        "",
+        "CLOSING TAKEAWAY: He fills.",
+      ].join("\n"),
+    )
   })
 
   describe("depthScore is CLAMPED, not rejected", () => {
@@ -140,6 +174,50 @@ describe("critiqueReflection", () => {
         llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
       }),
     ).rejects.toThrow(TypeError)
+  })
+
+  it("parses a retells-scene verdict, the kind the owner rejects on", async () => {
+    // The rule lives in the prompt, but a kind missing from the zod enum would
+    // make every such verdict a parse error instead of a rejection — which is
+    // how the whole check would go quietly dead.
+    const complete = vi.fn().mockResolvedValue({
+      solid: false,
+      depthScore: 2,
+      issues: [
+        {
+          kind: "retells-scene",
+          severity: "high",
+          problem: "most sentences only report what the viewer just watched",
+          suggestion: "say something about the events instead of listing them",
+        },
+      ],
+      summary: "narration, not a point",
+    })
+    const out = await critiqueReflection({
+      sceneTitle: "scene",
+      reflection: "text",
+      conclusion: "c",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(out.solid).toBe(false)
+    expect(out.depthScore).toBe(2)
+    expect(out.issues[0].kind).toBe("retells-scene")
+  })
+
+  it("keeps the no-retelling budget in the prompt", () => {
+    // Without a stated threshold this degraded into taste, and the writer's own
+    // prompt used to license unlimited retelling after the opening.
+    const complete = vi.fn().mockResolvedValue(clean)
+    return critiqueReflection({
+      sceneTitle: "scene",
+      reflection: "text",
+      conclusion: "c",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    }).then(() => {
+      const system = complete.mock.calls[0][0].system as string
+      expect(system).toMatch(/retells-scene/)
+      expect(system).toMatch(/half or more/)
+    })
   })
 
   it("states the 1-5 range in the prompt, since the schema cannot enforce it", () => {

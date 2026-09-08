@@ -17,7 +17,13 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
  */
 
 export type ReflectionIssue = {
-  kind: "tautology" | "repetition" | "obvious" | "ungrounded" | "no-single-idea"
+  kind:
+    | "tautology"
+    | "repetition"
+    | "obvious"
+    | "ungrounded"
+    | "no-single-idea"
+    | "retells-scene"
   severity: "high" | "medium" | "low"
   problem: string
   suggestion: string
@@ -55,11 +61,15 @@ const Schema = z
     // `validation` error, silently skipping the whole check. An out-of-range
     // score is a scale misread, not a reason to lose the critique, so pull it
     // back into range and keep the issues the critic actually found.
-    depthScore: z.number().int().transform((n) => Math.min(5, Math.max(1, n))),
+    depthScore: z
+      .number()
+      .int()
+      .transform((n) => Math.min(5, Math.max(1, n))),
     issues: z.array(
       z.object({
         kind: z.enum([
           "tautology",
+          "retells-scene",
           "repetition",
           "obvious",
           "ungrounded",
@@ -98,6 +108,7 @@ const JSON_SCHEMA = {
               type: "string",
               enum: [
                 "tautology",
+                "retells-scene",
                 "repetition",
                 "obvious",
                 "ungrounded",
@@ -127,6 +138,16 @@ const SYSTEM_PROMPT = [
   "- obvious: a conclusion no one would dispute or learn from (feeding = being fed).",
   "- ungrounded: leans on a concrete image with no antecedent ('the leftovers'",
   "  when leftovers were never set up).",
+  "- retells-scene: narrates the events the viewer HAS JUST WATCHED instead of",
+  "  saying something about them. This is the most common way a reflection ends",
+  "  up worthless here: the video already showed the scene, so a sentence whose",
+  "  only content is what happened ('a priest came by and saw him, then a Levite",
+  "  came by and saw him') spends the viewer's attention on nothing. Count the",
+  "  sentences that only REPORT scene events. If they are half or more of the",
+  "  reflection, set solid=false and cap depthScore at 2, however elegant the",
+  "  prose is. Referring to a detail in order to say something about it is fine",
+  "  and necessary; a run of narration is not. Owner-rejected twice on exactly",
+  "  this, both times after this check had passed the text as solid.",
   "- no-single-idea: a scattered list of UNRELATED points with no throughline.",
   "  Do NOT flag this just because the reflection covers more than one point —",
   "  classic commentators (e.g. Ryle) often build 2-3 CONNECTED points toward one",
@@ -163,6 +184,13 @@ export type CritiqueReflectionInput = {
   reflection: string
   conclusion: string
   llm: DevotionalLlm
+  /** The clip's own transcript for its curated window (see
+   *  `fetchClipTranscript` in subtitle-align.ts). When present, the
+   *  retells-scene check judges against what the clip ACTUALLY says instead
+   *  of the SYSTEM_PROMPT's blanket "the viewer HAS JUST WATCHED" assumption
+   *  — accurate for some chapters, not for others whose curated window skips
+   *  parts of the passage the model would otherwise assume were shown. */
+  clipTranscript?: string
 }
 
 export async function critiqueReflection(
@@ -171,6 +199,15 @@ export async function critiqueReflection(
   const user = [
     `SCENE: ${input.sceneTitle}`,
     "",
+    ...(input.clipTranscript
+      ? [
+          `WHAT THE CLIP'S OWN AUDIO SAYS, WORD FOR WORD:\n"${input.clipTranscript}"`,
+          "Judge retells-scene against this exact text — a sentence that only",
+          "reports something this transcript already says is a retell,",
+          "regardless of the general assumption above.",
+          "",
+        ]
+      : []),
     `REFLECTION:\n${input.reflection}`,
     "",
     `CLOSING TAKEAWAY: ${input.conclusion}`,
