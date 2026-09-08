@@ -18,7 +18,7 @@ ADD COLUMN "dead_lettered_at" timestamptz;
 -- Publication events are a repair ledger, not children of the canonical
 -- transcript. A BEFORE DELETE trigger appends exact lifecycle cleanup evidence
 -- while the transcript and its historical publication ids are still visible.
-CREATE OR REPLACE FUNCTION enqueue_watch_search_transcript_lifecycle_cleanup()
+CREATE OR REPLACE FUNCTION "public".enqueue_watch_search_transcript_lifecycle_cleanup()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -35,7 +35,7 @@ BEGIN
     transcript_chunking_version,
     source_generation
   INTO latest_event
-  FROM watch_search_current_transcript_publication_event
+  FROM "public".watch_search_current_transcript_publication_event
   WHERE transcript_id = OLD.id
   ORDER BY source_generation DESC, created_at DESC
   LIMIT 1;
@@ -44,7 +44,7 @@ BEGIN
     content_embedding_contract_id,
     transcript_chunking_version
   INTO current_projection
-  FROM watch_search_current_transcript_projection
+  FROM "public".watch_search_current_transcript_projection
   WHERE id = 'watch-search-current-transcript-projection';
 
   SELECT COALESCE(
@@ -57,13 +57,13 @@ BEGIN
     -- incremental event. Read them before the parent cascade removes the only
     -- exact identity available for lifecycle cleanup.
     SELECT chunk.id AS document_id
-    FROM video_transcript_chunk chunk
+    FROM "public".video_transcript_chunk chunk
     WHERE chunk.transcript_id = OLD.id
 
     UNION
 
     SELECT document_id
-    FROM watch_search_current_transcript_publication_event event
+    FROM "public".watch_search_current_transcript_publication_event event
     CROSS JOIN LATERAL unnest(
       event.current_document_ids || event.stale_document_ids
     ) AS document_id
@@ -83,7 +83,7 @@ BEGIN
     latest_event.content_embedding_contract_id,
     (
       SELECT active_contract_id
-      FROM content_embedding_contract_pointer
+      FROM "public".content_embedding_contract_pointer
       WHERE id = 'content-embedding-contract-pointer'
     )
   );
@@ -100,7 +100,7 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  INSERT INTO watch_search_current_transcript_publication_event (
+  INSERT INTO "public".watch_search_current_transcript_publication_event (
     id,
     transcript_id,
     video_id,
@@ -139,6 +139,6 @@ END;
 $$;
 
 CREATE TRIGGER "video_transcript_enqueue_watch_search_lifecycle_cleanup"
-BEFORE DELETE ON "video_transcript"
+BEFORE DELETE ON "public"."video_transcript"
 FOR EACH ROW
-EXECUTE FUNCTION enqueue_watch_search_transcript_lifecycle_cleanup();
+EXECUTE FUNCTION "public".enqueue_watch_search_transcript_lifecycle_cleanup();

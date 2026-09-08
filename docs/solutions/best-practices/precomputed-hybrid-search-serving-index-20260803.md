@@ -306,6 +306,9 @@ chunk ids without creating incremental event rows, so event history alone is
 not a complete lifecycle ledger. A `BEFORE DELETE` trigger can union canonical
 chunk ids with all retained event ids, persist that identity-only lifecycle
 work without a parent foreign key, and then let the cascade proceed.
+Schema-qualify every relation the trigger reads or writes: PostgreSQL resolves
+unqualified names against the deleting session's search path, where a temporary
+table could otherwise shadow the durable ledger and suppress canonical cleanup.
 
 Enforce a retry ceiling both when releasing a caught failure and when reclaiming
 an expired claim. A process crash bypasses the normal failure-release path; if

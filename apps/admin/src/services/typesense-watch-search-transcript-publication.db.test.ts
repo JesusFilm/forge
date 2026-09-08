@@ -3598,6 +3598,62 @@ suite("current transcript publication into Watch Search", () => {
     ])
   }, 180_000)
 
+  it("persists lifecycle cleanup in the canonical schema when the deleting session shadows its ledger", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "lifecycle-shadow" }),
+    )
+    await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    const transcript = await prisma.videoTranscript.findFirstOrThrow()
+    const publicationEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+
+    const deletingSession = new Client({ connectionString: databaseUrl })
+    await deletingSession.connect()
+    try {
+      // PostgreSQL resolves unqualified relation names in a trigger function
+      // against the caller session's search path. A same-named temp table must
+      // not be able to divert the immutable cleanup evidence out of public.
+      await deletingSession.query(`
+        CREATE TEMP TABLE watch_search_current_transcript_publication_event
+        (LIKE public.watch_search_current_transcript_publication_event INCLUDING ALL)
+      `)
+      await deletingSession.query("DELETE FROM public.video WHERE id = $1", [
+        "video-1",
+      ])
+      const shadowRows = await deletingSession.query(
+        "SELECT work_kind FROM pg_temp.watch_search_current_transcript_publication_event",
+      )
+      expect(shadowRows.rows).toEqual([])
+    } finally {
+      await deletingSession.end()
+    }
+
+    const lifecycleEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { workKind: "LIFECYCLE" } },
+      )
+    expect(lifecycleEvent).toMatchObject({
+      transcriptId: transcript.id,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      language: "en",
+      workKind: "LIFECYCLE",
+      status: "PENDING",
+    })
+    expect(new Set(lifecycleEvent.staleDocumentIds)).toEqual(
+      new Set(publicationEvent.currentDocumentIds),
+    )
+  }, 180_000)
+
   it("captures lifecycle ids for a transcript published only by a full rebuild", async () => {
     await ingestTranscriptEmbeddings(
       prisma,
