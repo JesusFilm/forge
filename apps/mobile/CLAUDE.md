@@ -814,13 +814,20 @@ disagree about the bar's size.
   `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
   frosting. The branch selection and props ARE covered — see
   `TabBarBackground.test.tsx` — and `tabBar.test.ts` computes the composited
-  WCAG ratio, so lowering `TAB_BAR_MATERIAL_TINT` now fails a test.
+  WCAG ratio from the tint's full `rgba()` -- colour AND alpha, since
+  compositing a hard-coded black scored a WHITE tint 4.79:1 while it measures
+  1.52:1 -- so changing `TAB_BAR_MATERIAL_TINT` either way now fails a test.
   `tabBarClearance.guard.test.js` is an ENUMERATION of six surfaces, not a
   sweep — a seventh scroller escapes it silently. Add a row whenever you add
-  one; it checks the clearance is APPLIED, not merely imported.
+  one. It checks the clearance is APPLIED, not merely imported, and it strips
+  `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
+  and satisfied the naive pattern on its own.
 - **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
-  comments before matching, because a commented-out import still satisfies a
-  bare regex, and it compares the assigned token rather than using a lookahead.
+  comments before matching -- LEADING and TRAILING, because a trailing
+  `// from "../../lib/tabBar"` beside a hand-copied number is a live revert --
+  and it compares the assigned token rather than using a lookahead, whose
+  `\s*` can match zero characters and slip past the value it was told to
+  reject.
 - **A fade is not available.** `GlassView` renders nothing inside a layer whose
   opacity an ancestor animates, so hide-on-scroll would force `PlatformBlur` on
   every iOS version and change the look on both platforms.

@@ -197,10 +197,17 @@ describe("label contrast floors", () => {
   function over(fg: number[], alpha: number, bg: number[]): number[] {
     return fg.map((c, i) => Math.round(alpha * c + (1 - alpha) * bg[i]))
   }
-  function alphaOf(rgba: string): number {
-    const m = rgba.match(/rgba\([^)]*,\s*([\d.]+)\s*\)/)
+  /** The whole colour, not just the alpha: compositing a hard-coded black
+   *  would score a WHITE tint 4.79:1 while it actually measures 1.52:1. */
+  function parseRgba(rgba: string): { rgb: number[]; alpha: number } {
+    const m = rgba.match(
+      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/,
+    )
     if (!m) throw new Error(`not an rgba() value: ${rgba}`)
-    return Number(m[1])
+    return {
+      rgb: [Number(m[1]), Number(m[2]), Number(m[3])],
+      alpha: Number(m[4]),
+    }
   }
 
   /** #a8a29e -- tabBarInactiveTintColor. */
@@ -213,22 +220,27 @@ describe("label contrast floors", () => {
     expect(ratio(IDLE_LABEL, WORST_MEASURED_GROUND)).toBeLessThan(4.5)
   })
 
+  it("would reject a tint of the wrong COLOUR, not just the wrong alpha", () => {
+    // A white tint at the shipped alpha lightens the ground instead of
+    // darkening it. Reading only the alpha scored this as passing.
+    const white = parseRgba("rgba(255, 255, 255, 0.3)")
+    const ground = over(white.rgb, white.alpha, WORST_MEASURED_GROUND)
+    expect(ratio(IDLE_LABEL, ground)).toBeLessThan(4.5)
+  })
+
   it("clears AA for the idle label once TAB_BAR_MATERIAL_TINT is applied", () => {
     // Lowering the shipped alpha fails this. The prose beside the constant
     // claimed 4.79:1 but nothing computed it.
-    const ground = over(
-      [0, 0, 0],
-      alphaOf(TAB_BAR_MATERIAL_TINT),
-      WORST_MEASURED_GROUND,
-    )
+    const tint = parseRgba(TAB_BAR_MATERIAL_TINT)
+    const ground = over(tint.rgb, tint.alpha, WORST_MEASURED_GROUND)
     expect(ratio(IDLE_LABEL, ground)).toBeGreaterThanOrEqual(4.5)
   })
 
   it("keeps the lens rim-weighted so it cannot darken the active label", () => {
     // The fill is what costs the active label contrast; the rim is free.
-    expect(alphaOf(TAB_BAR_LENS_FILL)).toBeLessThanOrEqual(0.06)
-    expect(alphaOf(TAB_BAR_LENS_BORDER)).toBeGreaterThan(
-      alphaOf(TAB_BAR_LENS_FILL),
+    expect(parseRgba(TAB_BAR_LENS_FILL).alpha).toBeLessThanOrEqual(0.06)
+    expect(parseRgba(TAB_BAR_LENS_BORDER).alpha).toBeGreaterThan(
+      parseRgba(TAB_BAR_LENS_FILL).alpha,
     )
   })
 })

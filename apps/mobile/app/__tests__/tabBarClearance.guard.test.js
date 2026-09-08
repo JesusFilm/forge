@@ -11,6 +11,9 @@ const ROOT = path.resolve(__dirname, "../..")
 const CLEARANCE = /useTabBarClearance/
 // Presence of the identifier is not application: three of these surfaces use
 // the value twice, so dropping only the offset term would leave it "used".
+// scrollIndicatorInsets={{ bottom: tabBarClearance }} contains "bottom: ..."
+// and would satisfy a naive pattern -- which is the exact "used twice" case
+// this pin exists to close. Strip that prop before matching.
 const APPLIED = /(paddingBottom|bottom):[^\n]*(tabBarClearance|clearance)/
 
 /** Comments do not run. A commented-out call must not satisfy the guard. */
@@ -18,8 +21,13 @@ function stripComments(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split("\n")
-    .filter((line) => !line.trim().startsWith("//"))
+    .map((line) => line.replace(/\/\/.*$/, ""))
     .join("\n")
+}
+
+/** The scroll-indicator inset is cosmetic; it must not stand in for padding. */
+function stripIndicatorInsets(source) {
+  return source.replace(/scrollIndicatorInsets=\{\{[^}]*\}\}/g, "")
 }
 
 const SURFACES = [
@@ -37,7 +45,7 @@ describe("every scroll surface clears the floating tab bar", () => {
     expect(fs.existsSync(full)).toBe(true)
     const source = stripComments(fs.readFileSync(full, "utf8"))
     expect(source).toMatch(CLEARANCE)
-    expect(source).toMatch(APPLIED)
+    expect(stripIndicatorInsets(source)).toMatch(APPLIED)
   })
 
   it("would reject a surface that imports the hook without applying it", () => {
@@ -47,8 +55,11 @@ describe("every scroll surface clears the floating tab bar", () => {
     expect(decoy).not.toMatch(APPLIED)
   })
 
-  it("would reject a commented-out call", () => {
+  it("would reject a commented-out call, leading or trailing", () => {
     expect(stripComments("// const x = useTabBarClearance()")).not.toMatch(
+      CLEARANCE,
+    )
+    expect(stripComments("const y = 1 // useTabBarClearance()")).not.toMatch(
       CLEARANCE,
     )
   })

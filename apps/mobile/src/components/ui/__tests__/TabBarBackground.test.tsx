@@ -12,6 +12,7 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import { PlatformBlur } from "../PlatformBlur"
 import { TAB_BAR_MATERIAL_TINT } from "../../../lib/tabBar"
+import { TabBarLens } from "../TabBarLens"
 import { TabBarBackground } from "../TabBarBackground"
 
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
@@ -33,6 +34,7 @@ const mockGlass = (
   }
 ).__state
 jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
+jest.mock("./../TabBarLens", () => ({ TabBarLens: () => null }))
 jest.mock("../PlatformBlur", () => ({
   PlatformBlur: () => null,
 }))
@@ -93,5 +95,24 @@ describe("TabBarBackground", () => {
     expect(
       (await renderMaterial()).root.findAll((n) => n.type === PlatformBlur),
     ).toHaveLength(1)
+  })
+})
+
+describe("the sliding lens", () => {
+  it("is drawn by DEFAULT, so flipping the prop's default fails here", async () => {
+    // The navigator passes no `lens` prop. Without this, `lens = true` could
+    // be changed to `lens = false` and delete the feature with a green suite.
+    setPlatform("ios")
+    const renderer = await renderMaterial()
+    expect(renderer.root.findAll((n) => n.type === TabBarLens)).toHaveLength(1)
+  })
+
+  it("is omitted when a caller opts out", async () => {
+    setPlatform("ios")
+    let r!: TestInstance
+    await act(async () => {
+      r = TestRenderer.create(<TabBarBackground lens={false} />)
+    })
+    expect(r.root.findAll((n) => n.type === TabBarLens)).toHaveLength(0)
   })
 })

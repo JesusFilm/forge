@@ -18,16 +18,20 @@ const MUST_IMPORT_THE_SHARED_HEIGHT = [
 ]
 
 /** Comments do not run: a commented-out import must not satisfy a positive
- *  pin, and a hand-copied constant must not hide behind one. */
+ *  pin, and a hand-copied constant must not hide behind one. Trailing comments
+ *  count too -- `const H = 68 // TAB_BAR_OCCUPIED_HEIGHT` is a live revert. */
+function stripped(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((line) => line.replace(/\/\/.*$/, ""))
+    .join("\n")
+}
+
 function read(relative) {
   const full = path.join(ROOT, relative)
   expect(fs.existsSync(full)).toBe(true)
-  return fs
-    .readFileSync(full, "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("//"))
-    .join("\n")
+  return stripped(fs.readFileSync(full, "utf8"))
 }
 
 describe("the tab bar has one source of truth", () => {
@@ -63,5 +67,13 @@ describe("PlaybackHost re-exports rather than re-declaring", () => {
     ]) {
       expect(assignedValue(decoy)).not.toBe("TAB_BAR_OCCUPIED_HEIGHT")
     }
+  })
+})
+
+describe("comment stripping", () => {
+  it("removes trailing comments, not just whole-line ones", () => {
+    const decoy = 'const H = 68 // import { X } from "../../lib/tabBar"'
+    expect(decoy).toMatch(SHARED_MODULE)
+    expect(stripped(decoy)).not.toMatch(SHARED_MODULE)
   })
 })

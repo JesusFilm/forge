@@ -30,15 +30,20 @@ function sharedTabOrder() {
  *  filesystem — not the <Tabs.Screen> list — decides how many cells the bar
  *  renders. The lens divides its width by TAB_ROUTE_NAMES.length. */
 function routeFilesInGroup() {
+  // A tab may be a FILE (watch.tsx) or a DIRECTORY holding a nested stack
+  // (watch/_layout.tsx) -- the normal expo-router shape once a tab grows one.
+  // A file-only scan cannot see the second, and the lens would then divide its
+  // width by the wrong cell count.
   return fs
-    .readdirSync(path.join(ROOT, "app/(tabs)"))
-    .filter((f) => /\.[jt]sx?$/.test(f) && !f.startsWith("_"))
-    .map((f) => f.replace(/\.[jt]sx?$/, ""))
+    .readdirSync(path.join(ROOT, "app/(tabs)"), { withFileTypes: true })
+    .filter((e) => !e.name.startsWith("_"))
+    .filter((e) => e.isDirectory() || /\.[jt]sx?$/.test(e.name))
+    .map((e) => e.name.replace(/\.[jt]sx?$/, ""))
     .sort()
 }
 
 describe("the lens order matches the rendered tab order", () => {
-  it("covers every route file in the group, declared or not", () => {
+  it("covers every route in the group, file or directory, declared or not", () => {
     expect(routeFilesInGroup()).toEqual([...sharedTabOrder()].sort())
   })
 
