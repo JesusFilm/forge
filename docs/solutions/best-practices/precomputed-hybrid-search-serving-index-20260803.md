@@ -348,13 +348,16 @@ changed transcript cannot certify the identity of the untouched corpus.
 
 An external JSONL mutation may apply some or all documents before its response
 or the later database completion fails. Once the first upsert begins, treat any
-subsequent definite failure as potentially visible partial publication. While
-still holding the publication lock, delete the union of the event's current and
-stale document ids and independently verify their absence before releasing the
-event for retry. This deliberately prefers a temporary transcript-search gap
-over a fail-open `publiclyVisible` document when canonical publication state
-drifted during readback. If compensating cleanup also fails, surface both
-failures and never advance the durable projection or complete the event.
+subsequent definite failure as potentially visible partial publication. If a
+current-document upsert fails, remove and verify the current ids but preserve
+the exact stale ids: the stale documents are still the last verified version
+and stale deletion must not start until every current upsert succeeds. Once
+stale deletion has started, compensate the union of current and stale document
+ids and independently verify their absence before releasing the event for
+retry. This deliberately prefers a temporary transcript-search gap over a
+fail-open `publiclyVisible` document when canonical publication state drifted
+during readback. If compensating cleanup also fails, surface both failures and
+never advance the durable projection or complete the event.
 
 A thrown PostgreSQL commit is not always a definite failure: the server can
 commit the atomic projection/event transaction and lose its acknowledgement on
