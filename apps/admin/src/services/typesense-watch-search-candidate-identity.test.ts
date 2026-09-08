@@ -21,7 +21,7 @@ describe("candidateWatchSearchIndexContractRevision", () => {
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v2")
+    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v3")
   })
 
   it("invalidates generations built before the curation projection", () => {

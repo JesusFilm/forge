@@ -732,7 +732,7 @@ describe("TypesenseWatchSearchService", () => {
       generationId: "generation-1",
       indexContractRevision: "revision-1",
       ...transcriptCompatibility,
-      rankingRevision: "title-and-brand-v2",
+      rankingRevision: WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
       transcriptProjectionRevision: "7",
       activeTranscriptProjectionRevision: null,
       evaluationRevision: "none:operator-accepted:launch-1",
@@ -1249,7 +1249,8 @@ describe("TypesenseWatchSearchService", () => {
 
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
-      rankingImplementation: "title-and-brand-v2",
+      rankingImplementation:
+        WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
       rankingMode: "TITLE_AND_BRAND",
       rankingAnchor: {
         compactCore: "bibleproject",
@@ -2791,7 +2792,7 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.hasMore).toBe(true)
   })
 
-  it("applies exact editorial curations only to metadata and keeps a curated result on the default page", async () => {
+  it("applies exact editorial curations only to metadata and keeps a curated result on the first page", async () => {
     const organic = Array.from({ length: 25 }, (_value, index) => ({
       ...catalogDocument,
       id: `organic-${index.toString().padStart(2, "0")}`,
@@ -2864,8 +2865,20 @@ describe("TypesenseWatchSearchService", () => {
       targetLanguageSlug: "french",
       limit: 10,
     })
-    expect(customPage.results.map(({ id }) => id)).toEqual(
-      organic.slice(0, 10).map(({ id }) => id),
+    expect(customPage.results.map(({ id }) => id)).toEqual([
+      ...organic.slice(0, 9).map(({ id }) => id),
+      intro.id,
+    ])
+
+    vi.clearAllMocks()
+    const secondCustomPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "french",
+      limit: 10,
+      offset: 10,
+    })
+    expect(secondCustomPage.results.map(({ id }) => id)).toEqual(
+      organic.slice(9, 19).map(({ id }) => id),
     )
 
     vi.clearAllMocks()

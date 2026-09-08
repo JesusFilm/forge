@@ -4,15 +4,15 @@ export const WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION = "legacy-rrf"
 /**
  * Application-side ranking identity for the Candidate lane.
  *
- * v2 adds the `container` watchability tier to the rank ladder, which sorts
- * between `target_subtitle` and `related_language`. That changes which member
- * represents a canonical group, so a qualification recorded against v1 no
- * longer describes this behaviour. Bumping the identity forces requalification
- * while leaving the physical collections — whose field manifest is unchanged —
- * valid; the separate application revision is deliberately NOT bumped.
+ * v3 keeps exact editorial curations inside the caller's first-page window,
+ * including Watch's 10-result page, while preserving fusion order for every
+ * other result. This changes application-side ranking and pagination, so a
+ * qualification recorded against v2 no longer describes the behavior. The
+ * physical collection fields are unchanged, therefore the separate index
+ * contract revision is deliberately NOT bumped.
  */
 export const WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION =
-  "title-and-brand-v2"
+  "title-and-brand-v3"
 
 export type WatchSearchRankingImplementation =
   | typeof WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
