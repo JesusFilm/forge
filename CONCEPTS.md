@@ -1353,6 +1353,16 @@ The handoff and the app's departure are not simultaneous, and which comes first 
 
 Closing the window ends playback, while expanding it returns the same playback to the app. Both raise the same signal from the window, so they are told apart by what follows rather than by the signal itself, and a video the viewer paused inside the window stays paused through either. Only a surface armed for automatic entry can be handed off, and a video that was not playing is never handed off at all.
 
+## App navigation chrome
+
+### Material Tint
+
+A flat colour laid on a translucent material — glass or blur — so that text on that material keeps its contrast over arbitrary content behind it. Distinct from a scrim, which is laid over bare content and carries the whole contrast burden by itself.
+
+The distinction decides the shape of the contrast curve, so a scrim's rule cannot be reused here. A material has already moved the ground away from the text before the tint is applied, so darkening it further moves the ground further away and contrast rises for every increase in the tint's opacity. A minimum is therefore computable and any value above it is safe. Over a bare backdrop on the far side of the text, the same sweep instead drags the ground through the text's own luminance, so contrast collapses to nothing at the crossing and only recovers well beyond it — which reads as a forbidden middle and a much higher floor. Both effects are artefacts of the backdrop, not properties of the tint, so the floor must be derived over the stack the pixels actually pass through, against the brightest content the app can put behind it.
+
+A tint fixes only the text it darkens the ground beneath. Text at a middling luminance fails against dark and light grounds alike, so no tint rescues it and only a colour change does.
+
 ## Offline downloads
 
 ### Download Record

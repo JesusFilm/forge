@@ -784,7 +784,11 @@ disagree about the bar's size.
   3.35:1, under the 4.5:1 AA floor. **A tint on the material is not the same
   problem as a tint over bare content:** the material has already darkened the
   ground, so contrast rises monotonically with alpha and there is no bad middle
-  value to avoid. 0.26 is the computed minimum; 0.30 ships.
+  value to avoid. 0.26 is the computed minimum; 0.30 ships. The plan's original
+  floor of 0.78 came from a sweep over a bare white backdrop, which crosses the
+  label's own luminance and invents both the bad middle and a 3x-too-high
+  minimum — see
+  `docs/solutions/best-practices/contrast-floor-must-be-derived-over-the-real-compositing-stack.md`.
 - **The selected tab carries a sliding lens** (`TabBarLens.tsx`). It derives its
   cell from `useSegments()` — neither `@react-navigation/native` nor a
   navigation-state hook resolves from this app — and animates `translateX` on
