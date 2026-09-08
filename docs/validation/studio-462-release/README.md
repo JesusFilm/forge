@@ -152,12 +152,14 @@ Mastra3031 and root integrated contracts20 remain predecessor results, not this
 slice's test counts. Historical Admin full-run failures, shared-default-port
 incident and unresolved performance are explicitly retained in the matrix.
 
-## Remaining operational gates
+## Operational gates at the original verification baseline
 
-Actual object storage, creative quality/ElevenLabs, real Mux, exact OCI image,
+At that baseline, actual object storage, creative quality/ElevenLabs, real Mux, exact OCI image,
 deployed process containment/private transport/cache/revocation, actual Claude
 app login, Lyuba acceptance, current target configuration and normal reviewed
-release remain open. Source/host protocol fixtures cannot satisfy them. All paid
+release remained open. The dated VM update below supersedes only the stated local
+image/runtime milestones. Source/host protocol fixtures cannot satisfy unrelated
+external gates. All paid
 batches remain closed. No fresh broad performance measurements were run.
 
 The two new controls have local source/DB proof, not deployed fleet proof. The
@@ -167,3 +169,38 @@ instantaneous stop is claimed. Per-calendar planning, native agent admission and
 Manager Mux creation controls remain separate. Stored scheduled envelopes now
 pass the canonical publication gate before new visibility; exact accepted retries
 remain observation-only after unpublish.
+
+## 2026-09-09 reviewed VM documentation update
+
+Aligned cleanly through the five reviewed root commits after equivalent root
+`bb6ed63f`; no duplicate prerequisite patches. Fixed local review base
+`08c69c4ebde7be71f2c6751bf64e14fa746c78d8` equals root
+`a13dace2cdf3135353020ee59d6459fc506c9b2c`, tree
+`a58514a14a9c4787807509a6621223a0db23dfbc` verified before edits.
+
+Read-only evidence sources are
+[VM handoff](../studio-460/vm-execution/HANDOFF.md),
+[VM qualification](../studio-460/vm-execution/README.md),
+[independent VM review](../studio-460/vm-execution/REVIEW.md),
+[retained-worker image evidence](../studio-460/worker-shutdown/README.md), and
+[VM ops contract](../../../apps/studio-render/ops/README.md).
+The acceptance matrix now records their exact source/image/host-bundle and failure
+qualifications. The runbook uses the outbound dedicated-VM model, additive0093,
+scoped HTTPS pool authority and inactive install/drain sequence, with minimal named
+next actions. Task460 owns hosted CI/ops tooling; this phase edits no such source.
+
+Actual corrected worker OCI idle/active cancellation and actual VM direct-image /
+daemon / OOM / restart / late-retention milestones are established on the recorded
+owned substrates. They are not production storage/HTTPS/provider or full operator
+acceptance. Final host bundle has idle rollout proof; composition evidence uses the
+preceding bundle and unchanged job images. Historical231s is separate, and diagnostic
+entrypoint/20s-deadline probes are not product-path or900s acceptance.
+
+No suites, builds, migration replay, historical audit or external operation was
+performed in this documentation phase. Original logs/results/source hashes retain
+their original baseline and bytes; only the changed README/matrix entries in this
+directory's manifest are refreshed. Independent docs review and normal hooks are
+required for this change. Overall feat462 remains in progress: durable bucket,
+reviewed hosted release supply, intended HTTPS/key/configuration and activation,
+creative/ElevenLabs/Mux, actual Claude login, public revocation, performance, Lyuba
+and normal release acceptance are still open. Closed paid batches remain closed.

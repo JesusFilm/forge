@@ -51,3 +51,18 @@ records process-start activation/drain limitations and expiry without substituti
 Real owned-DB regressions cover canonical denial, zero-budget dispatch, continued
 settlement and two-connection lock-wait revalidation. Native/provider/image/deployed
 proof remains external. Fixed review baseline remains1dd20216 for this whole slice.
+
+## 2026-09-09 bounded VM acceptance documentation
+
+Approved ordered root alignment:5f4cb768,5a9505cc,a144ac95,f9e7165c,a13dace2,
+excluding equivalent bb6ed63f/d6d1b59b. Clean resulting local base
+`08c69c4ebde7be71f2c6751bf64e14fa746c78d8` has reviewed tree
+`a58514a14a9c4787807509a6621223a0db23dfbc`.
+
+Edit only this plan,462 acceptance matrix/README and their manifest entries, and
+`docs/runbooks/studio-release-canary-and-rollback.md`. Coordinate the runbook with
+460; it owns VM ops, hosted CI/release tooling and its new validation/plan. Record
+exact current VM/worker milestones and evidence limits, replace superseded receiver
+model, and prepare minimal named external actions. Preserve all historical logs and
+qualifications. Independent Standards/Spec docs review and normal hooks follow; no
+suites/builds/audits/external operations. Full release stays incomplete.

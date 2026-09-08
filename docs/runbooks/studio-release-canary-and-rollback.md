@@ -19,25 +19,35 @@ sizes/checksums, source Video/Dub/Edition/language/track digests, project/revisi
 approvals, attempts, release ID, provider request/asset/playback IDs and costs.
 Do not store secrets or persistent signed resource URLs in the report.
 
-Proposed execution service is `studio-render` in existing Forge project
-`98952497-a4d9-4714-8fe8-0cdbff3147c9`; actual service/environment IDs are **not yet
-provisioned or verified**. Begin in an explicitly selected nonproduction
-environment. Root supplies the actual target; do not infer it from a local CLI link.
-Production changes use reviewed PRs to main and normal Railway deployment only.
-Never `railway up`, a local-worktree redeploy, or a direct redeploy shortcut.
+Current execution model (reviewed root `a13dace2`, 2026-09-09) is a dedicated VM
+that polls Manager outbound over HTTPS and launches separate immutable renderer
+and verifier containers. It supersedes the proposed Railway renderer receiver.
+The trusted host has Docker authority and one scoped worker key; job containers
+have no credentials, socket or network. Preview remains a separate boundary.
+
+The owned VM fixture at `10.2.1.100` is not a production deployment. Its selected
+service is drained/inactive/boot-disabled, with loopback fixture configuration and
+Admin local asset storage. Root supplies the intended target/configuration; do not
+infer it from a CLI link or this fixture. The authoritative installation contract
+is [VM ops](../../apps/studio-render/ops/README.md); task460 owns its hosted CI and
+release-tooling followup. At this fixed base, hosted image publication is planned,
+not an existing workflow. Production application changes use reviewed PRs to main
+and normal Railway deployment. VM images/bundles require the corresponding reviewed
+release and named pull/install/activation approval. Never `railway up`, a local
+worktree redeploy or an arbitrary PR runner on the VM.
 
 ## Blocking dependencies and owners
 
-| Owner to coordinate             | Required proof before enabling its dependent path                                                                                                                                                                                                   |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Root + repository release owner | Authorize retention of the original codec archive named in `apps/studio-render/IMAGE.md`, including exact checksum; record immutable asset identity and independent download verification. No upload has happened here.                             |
-| Root + OCI/platform operator    | Authorized Linux-amd64 builder, exact image build/digest and HTTP-driven Chromium/font/media/render/codec/timeout/cancel/OOM/restart/escape tests. No builder installation or remote run is part of local verification.                             |
-| Platform operator               | Dedicated credential-free service: observed 2CPU/2GiB/no-swap/128 aggregate tasks, one job, PID1 retirement, read-only image paths, bounded scratch, no credentials/egress/mount escape. UID/NPROC hypothesis is not an approved fallback.          |
-| Storage operator                | Actual private object-storage write/read/hash/current-auth/expiry/Range/HEAD/restart and immutable asset-version retention. Keep all132 originals unchanged; use copies and new identities. No archive migration or automatic deletion.             |
-| Root + provider account owner   | Separate fresh limits for creative LLM evaluation, ElevenLabs narration/music/voice, and one real Mux ingest; target account/environment, cost cap and approved exact request/prompt/tool versions. A tool-schema digest is not paid authorization. |
-| Auth/Manager operator           | Current interactive membership and revoked/insufficient-scope denial; intended OAuth resource/environment and actual Claude Code app login with scoped delegated operations. Broad Manager API keys never reach browser/model/external Claude.      |
-| Watch/platform operator         | Receiver deployment, strict delivery receipts, public CDN/service-worker/private/no-store behavior, exact resource revocation with stale DOM and previously issued URLs, current source restrictions.                                               |
-| Lyuba + root                    | Dated standalone/manual and full hosted/MCP/audio/component/Watch/calendar acceptance; creative quality and performance qualifications resolved or explicitly returned for remediation.                                                             |
+| Owner to coordinate             | Required proof before enabling its dependent path                                                                                                                                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root + repository release owner | Approve durable checksum-verified versioned codec supply from IMAGE.md; the original archive is absent and upstream versioned retention is14days. Record immutable approved supply/readback; never substitute latest. Task460 owns reviewed hosted CI image/bundle publication tooling. |
+| Root + OCI/platform operator    | Use reviewed VM image/bundle evidence with its exact identities and limits; approve hosted release digests and intended VM pull/install. Existing local image proof does not establish hosted publication, final-bundle composition or production configuration.                        |
+| Platform operator               | Record intended outbound HTTPS/key/configuration and original deadline/retention behavior; preserve measured2CPU/2GiB/no-swap/128 aggregate tasks plus96 untrusted child limit, native watchdog ownership, no job credentials/network, and exact physical retirement. No cgroup waiver. |
+| Storage operator                | Actual private object-storage write/read/hash/current-auth/expiry/Range/HEAD/restart and immutable asset-version retention. Keep all132 originals unchanged; use copies and new identities. No archive migration or automatic deletion.                                                 |
+| Root + provider account owner   | Separate fresh limits for creative LLM evaluation, ElevenLabs narration/music/voice, and one real Mux ingest; target account/environment, cost cap and approved exact request/prompt/tool versions. A tool-schema digest is not paid authorization.                                     |
+| Auth/Manager operator           | Current interactive membership and revoked/insufficient-scope denial; intended OAuth resource/environment and actual Claude Code app login with scoped delegated operations. Broad Manager API keys never reach browser/model/external Claude.                                          |
+| Watch/platform operator         | Receiver deployment, strict delivery receipts, public CDN/service-worker/private/no-store behavior, exact resource revocation with stale DOM and previously issued URLs, current source restrictions.                                                                                   |
+| Lyuba + root                    | Dated standalone/manual and full hosted/MCP/audio/component/Watch/calendar acceptance; creative quality and performance qualifications resolved or explicitly returned for remediation.                                                                                                 |
 
 ## Receiver before sender
 
@@ -47,7 +57,7 @@ revocation support must remain available throughout deployment and rollback.
 
 1. Set Admin `STUDIO_PRODUCTION_ENABLED=false` and
    `STUDIO_PUBLICATION_ENABLED=false` in the reviewed rollout configuration.
-   Land/review shared schemas and additive Admin migrations through0092. Generate
+   Land/review shared schemas and additive Admin migrations through0093. Generate
    Prisma, Admin SDL and `@forge/admin-graphql` in the same reviewed state. Normal
    Admin predeploy runs the existing migration-deploy wrapper. Verify the **target**
    ledger after deployment; local empty replay is not the deployed ledger. Do not
@@ -64,12 +74,17 @@ revocation support must remain available throughout deployment and rollback.
    `scripts/verify-studio-calendar-workflow-build.mjs`; calendar requires both
    planner and publication workflow/step IDs, not instrumentation-only discovery.
    Provision/verify Workflow Postgres schema through the normal runtime setup.
-4. Deploy private preview and exact contained-render receiver before configuring
-   Manager broker URLs. Preview uses a distinct registrable site. Executor receives
-   only the approved public-key/port startup inputs, never storage/provider keys.
-   Verify the 900s cumulative profile, 920s private request and 1200s durable lease,
-   including broken connections and fresh-container recovery. Public edge timeout
-   behavior is not private-transport evidence.
+4. Deploy the private preview receiver on its distinct registrable site. For final
+   rendering, deploy the authenticated Manager `/api/studio/render-pool` receiver
+   after Admin0093 and before any VM assignment. Keep `STUDIO_RENDER_POOL_ENABLED`
+   false. Complete the reviewed image/bundle supply and inactive install in the VM
+   ops contract; preload approved digests outside claim execution. Use outbound
+   HTTPS without redirects; fixture HTTP on literal127.0.0.1 is not production proof.
+   Verify the900s shared render/verifier deadline inside the1200s lease,90s input,
+   10s upload and persisted60s settlement window (45s retention/15s terminal record).
+   The previous920s inbound renderer request is not the new VM transport contract.
+   Configure/verify the approved endpoint and scoped keys before separately
+   authorizing activation. No public renderer listener or Docker TCP socket.
 5. Deploy native Mastra Studio receiver with scoped authoritative native store,
    public verification keys and admission secret before enabling Manager generation.
    `STUDIO_AGENT_ENABLED=false` remains the initial posture. Generic Editor shadow
@@ -86,16 +101,18 @@ revocation support must remain available throughout deployment and rollback.
 
 Configuration names are source contracts, not claims about current deployed values:
 
-| Boundary                    | Required configuration / authority                                                                                                                                                                                     |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin canonical state       | `DATABASE_URL`, `STUDIO_PRODUCTION_ENABLED`, `STUDIO_PUBLICATION_ENABLED`, appropriate `STUDIO_ENVIRONMENT` (`production` in production), `STUDIO_INTERACTIVE_PUBLIC_KEYS`, existing Auth and membership configuration |
-| Manager → Admin/native      | Manager `STUDIO_INTERACTIVE_KEY_ID`/`STUDIO_INTERACTIVE_PRIVATE_KEY`, existing authenticated Admin/native adapter origins and service transport; receiver public-key map matches key ID                                |
-| Native Studio               | `STUDIO_ADMIN_URL`, `STUDIO_AGENT_ENABLED`, `STUDIO_ADMISSION_SECRET`, `STUDIO_INTERACTIVE_PUBLIC_KEYS`, native Postgres-backed Editor storage                                                                         |
-| Preview/render              | Manager `STUDIO_PREVIEW_ORIGIN`, `STUDIO_PREVIEW_SERVICE_URL`, `STUDIO_PREVIEW_API_KEY`, `STUDIO_RENDER_SERVICE_URL`, `STUDIO_RENDER_PRIVATE_KEY`; image/codec identities and receiver public key                      |
-| Actual audio/storage        | Approved `ELEVENLABS_API_KEY` in trusted broker only; existing private storage configuration and registry permissions; no executor secrets                                                                             |
-| Mux creation vs observation | `STUDIO_MUX_INGEST_ENABLED`, `STUDIO_ASSET_INGEST_ORIGIN`, trusted broker Mux configuration; distinguish creation permission from same-asset observation                                                               |
-| Playback and delivery       | Admin `STUDIO_PUBLIC_PLAYBACK_ORIGIN`, `STUDIO_MUX_SIGNING_KEY`, `STUDIO_MUX_PRIVATE_KEY`, `WEB_REVALIDATE_URL`, `WEB_REVALIDATE_TOKEN`; matching Watch receiver and private/no-store routing                          |
-| Admin timers → Manager      | `MANAGER_API_BASE_URL`, `MANAGER_TRIGGER_API_KEY`; HTTPS outside explicitly local mode, both Manager trigger routes deployed first; Workflow Postgres runtime configured                                               |
+| Boundary                    | Required configuration / authority                                                                                                                                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin canonical state       | `DATABASE_URL`, `STUDIO_PRODUCTION_ENABLED`, `STUDIO_PUBLICATION_ENABLED`, appropriate `STUDIO_ENVIRONMENT` (`production` in production), `STUDIO_INTERACTIVE_PUBLIC_KEYS`, existing Auth and membership configuration                      |
+| Manager → Admin/native      | Manager `STUDIO_INTERACTIVE_KEY_ID`/`STUDIO_INTERACTIVE_PRIVATE_KEY`, existing authenticated Admin/native adapter origins and service transport; receiver public-key map matches key ID                                                     |
+| Native Studio               | `STUDIO_ADMIN_URL`, `STUDIO_AGENT_ENABLED`, `STUDIO_ADMISSION_SECRET`, `STUDIO_INTERACTIVE_PUBLIC_KEYS`, native Postgres-backed Editor storage                                                                                              |
+| Preview                     | Manager `STUDIO_PREVIEW_ORIGIN`, `STUDIO_PREVIEW_SERVICE_URL`, `STUDIO_PREVIEW_API_KEY`; separate preview service authority                                                                                                                 |
+| Manager VM pool             | `STUDIO_RENDER_POOL_ENABLED=false`, `STUDIO_RENDER_POOL_ID`, `STUDIO_RENDER_WORKER_ID`, dedicated `STUDIO_RENDER_WORKER_KEY`, separate `STUDIO_RENDER_CAPABILITY_KEY`; generic keys/OAuth/cookies do not authorize pool work                |
+| Trusted VM host             | Root-owned0600 `/etc/forge-studio/worker.json`: version, enabled:false, endpoint, token, poolId, workerId, fixtureHttp:false, renderImage, verifyImage. Exact schema and install/switch operations in VM ops; no secrets in images/evidence |
+| Actual audio/storage        | Approved `ELEVENLABS_API_KEY` in trusted broker only; existing private storage configuration and registry permissions; no executor secrets                                                                                                  |
+| Mux creation vs observation | `STUDIO_MUX_INGEST_ENABLED`, `STUDIO_ASSET_INGEST_ORIGIN`, trusted broker Mux configuration; distinguish creation permission from same-asset observation                                                                                    |
+| Playback and delivery       | Admin `STUDIO_PUBLIC_PLAYBACK_ORIGIN`, `STUDIO_MUX_SIGNING_KEY`, `STUDIO_MUX_PRIVATE_KEY`, `WEB_REVALIDATE_URL`, `WEB_REVALIDATE_TOKEN`; matching Watch receiver and private/no-store routing                                               |
+| Admin timers → Manager      | `MANAGER_API_BASE_URL`, `MANAGER_TRIGGER_API_KEY`; HTTPS outside explicitly local mode, both Manager trigger routes deployed first; Workflow Postgres runtime configured                                                                    |
 
 ## Disable controls: what each actually stops
 
@@ -107,6 +124,15 @@ Configuration names are source contracts, not claims about current deployed valu
 | Cancel an unconsumed scheduled authorization through the calendar UI                       | Revokes that exact schedule with version/idempotency checks. Inspect canonical state if cancellation races publication. An accepted publication needs authorized unpublish; cancellation cannot reverse an accepted receipt.                                 |
 | Current operator membership/scoped delegation revocation                                   | Canonical admission/current publication eligibility recheck prevents unauthorized actions. Operational blast radius is broader than a dedicated production switch; do not treat it as a silent substitute for a fleet control.                               |
 | Canonical **Unpublish permanently**                                                        | Removes public visibility and denies subsequent old resource requests while retaining bytes/history/permanent lock. It never restores draft/edit/clone/replacement/republish capability.                                                                     |
+
+The Manager pool switch and VM `enabled:false`/durable drain stop new pool
+admission, independently of publication. Apply configuration through the reviewed
+ops procedure; do not replace or erase a running journal. Historical assignment
+lookup, ownership and signed terminal receipt recovery must remain usable. A claim
+replay marked `execute:true` permits resuming that same issued assignment only,
+never another container start; disabled new-work controls cannot create a lease.
+Drain/update waits for physical retirement and canonical settlement. Unconfirmed
+work refuses switching. Do not disable recovery endpoints to stop new claims.
 
 **Canonical independent controls now implemented:** Admin
 `STUDIO_PRODUCTION_ENABLED=false` rejects new generation/narration/render attempt
@@ -145,6 +171,37 @@ publication authority. `DEVOTIONAL_NEW_RUNS_ENABLED` remains legacy-only.
 Do not disable canonical playback authorization or the revocation/delivery
 reconciler as a substitute for stopping new production. Already published items
 must keep current access enforcement and unpublish recovery available.
+
+## Minimal next actions and evidence
+
+These are named dependencies for root to coordinate, not operations performed by
+this documentation update. Preserve the owned fixture and previous evidence.
+
+1. **Task460/release owner:** finish reviewable hosted CI and durable codec supply;
+   record source/main commit, codec checksum, two approved OCI digests, bundle
+   manifest/toolchain/SHA and provenance. Approve actual publication separately.
+2. **Root/platform:** name intended VM/Manager/Admin environment and scoped worker
+   identity; approve immutable pull/inactive install and HTTPS configuration using
+   VM ops. Retain effective config identities without secrets, TLS/origin/redirect
+   checks, wrong-key/pool/worker denial, and original assignment/deadline recovery.
+3. **Storage owner:** verify approved Admin bucket configuration and one new fixture
+   object's write/hash/private read, Range/expiry/current authorization and read
+   after service restart. Actual `RAILWAY_S3_BUCKET` originals use
+   `media-assets/{assetId}/original/{filename}`; `.tmp/media-assets` is local fallback
+   and does not pass durability. Keep all132 recovered originals untouched.
+4. **Root/platform/operator:** approve bounded activation with production/publication
+   controls still independently held. Record one final-bundle representative
+   composition through intended HTTPS/storage, exact render/verifier identities,
+   retained receipt and native retirement. Reuse specific established VM failure
+   proofs where applicable; do not relabel preceding-bundle, direct-image or
+   diagnostic evidence as this run. Qualify required long/multiple-cut output and
+   deadline/transport limits. Record drain/update/rollback on the approved target.
+5. **Root/provider owner and Lyuba:** separately authorize exact creative/ElevenLabs
+   and Mux requests/caps; execute the operator sequence below with actual Claude app
+   login, paid-audio reuse/cost evidence and current auth. Then verify publication,
+   Watch playback/export and subsequent-request revocation; signed URL lifetime is
+   insufficient. Record agreed loading/performance observations and dated Lyuba
+   acceptance. Unresolved results remain open; no paid batch is reopened here.
 
 ## Operator canary sequence
 
@@ -211,6 +268,15 @@ accepted publication remains permanently immutable. If publication succeeded,
 use canonical unpublish when authorized, then verify actual subsequent-request
 revocation and delivery reconciliation. Never edit the latch, fake a receipt,
 clone for correction, replace bytes or republish the same project.
+
+For the VM, use only the reviewed ops drain/switch procedure and approved prior
+bundle/images. Running assignments keep their original digest, boot identity,
+lease and deadline. A1200s bounded drain is not new execution time; unconfirmed
+journals refuse switching. Keep old images/releases and small journals. Rollback
+leaves the service inactive/drained unless activation is separately authorized;
+never delete torn journals to regain capacity. Key rotation must preserve terminal
+signature verification for historical receipts. No production activation or
+rollback was executed by this documentation phase.
 
 Keep additive schema and retained assets/history. Roll back application code only
 through a reviewed PR/main normal deployment to a version compatible with the
