@@ -58,10 +58,9 @@ run") documents that a local run with no reachable Postgres must set
 `MASTRA_STORAGE_BACKEND=memory` or it crashes at boot — and that under
 `memory`, ai-chat memory is explicitly "process-lifetime in-memory (wiped on
 restart)". The ai-chat lane's own store
-(`apps/mastra/src/mastra/ai-chat-memory.ts`,
-`resolveAiChatMemoryBackend()` at `apps/mastra/src/config/env.ts:1578-1580`) follows the same backend
-unless `AI_CHAT_MEMORY_BACKEND` overrides it. Deployed Mastra persists to
-Postgres; a typical local dev loop does not.
+(`apps/mastra/src/mastra/ai-chat-memory.ts`) follows that same
+`MASTRA_STORAGE_BACKEND` selection. Deployed Mastra persists to Postgres; a
+typical local dev loop does not.
 
 1. **Treat local `mastra dev` thread fixtures as ephemeral.** Any restart of
    the local dev server — deliberate, crash-triggered, or FILE-WATCH-triggered
@@ -115,11 +114,9 @@ different ordering would have preserved for free.
 - Any matrix or checklist that includes a step to stop/restart the local
   mastra dev process for ANY reason.
 - Not applicable to a deployed Mastra environment or a local run pointed at a
-  real Postgres `DATABASE_URL` — both persist across restarts. One deployed
-  exception: `AI_CHAT_MEMORY_BACKEND=memory` is permitted in production as the
-  seeker-persistence kill-switch, and it puts ai-chat memory on an
-  `InMemoryStore` (`apps/mastra/src/mastra/ai-chat-memory.ts`), so while it is
-  set a deployed restart or redeploy wipes threads exactly as described here.
+  real Postgres `DATABASE_URL` — both persist across restarts. Production
+  rejects `MASTRA_STORAGE_BACKEND=memory`; there is no production in-memory
+  exception for ai-chat.
 
 ## Examples
 
@@ -147,7 +144,5 @@ before A/B are done consuming the fixture set.
   selection.
 - `apps/mastra/src/config/env.ts:302` — the `MASTRA_STORAGE_BACKEND` default
   (`"postgres"`).
-- `apps/mastra/src/config/env.ts:1578-1580` — `resolveAiChatMemoryBackend()`,
-  the `AI_CHAT_MEMORY_BACKEND` override lever.
 - `apps/mastra/src/mastra/ai-chat-memory.ts` — the ai-chat lane's own
-  backend-aware storage.
+  storage, selected directly by `MASTRA_STORAGE_BACKEND`.

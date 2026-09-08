@@ -13,9 +13,11 @@
  * GATES (KTD4) — the run proceeds only when ALL hold, each miss its own
  * counted skip enum, checked before any pool/model construction:
  *   - `AI_CHAT_TITLE_REPAIR_ENABLED === "true"` (default-off arming flag);
- *   - `SEEKER_ROUTE_ENABLED === "true"` — the lane-wide kill switch: darkening
- *     the ai-chat lane must also stop this sweep's scheduled content egress;
- *     `AI_CHAT_TITLE_REPAIR_ENABLED` stays the fine-grained lever;
+ *   - `SEEKER_ROUTE_ENABLED === "true"` — the custom Forge-route incident
+ *     control also stops this sweep's scheduled content egress;
+ *     `AI_CHAT_TITLE_REPAIR_ENABLED` stays the fine-grained lever. The native
+ *     Mastra `/api/agents/seekerAgent` surface is contained separately by the
+ *     gateway and network boundary;
  *   - `AI_GATEWAY_CHAT_API_KEY` present AND the effective gateway base URL
  *     passing the feat-440 host allowlist — the sweep is GATEWAY-ONLY (KD3):
  *     conversation content never goes to the free OpenRouter pool from here,
@@ -28,9 +30,9 @@
  *     `isAiGatewaySeekerEnabled()`: that flag is feat-237's seeker
  *     incident-rollback lever, and coupling it in would disable title repair
  *     during exactly the outage that strands threads;
- *   - `resolveAiChatMemoryBackend() === "postgres"` AND `canAiChatDataPersist()`
- *     — the memory kill-switch must stop the sweep's content egress, not just
- *     writes (kill-switch completeness follows data lifetime);
+ *   - `canAiChatDataPersist()` — the shared Mastra backend must be Postgres;
+ *     local shared-memory mode stops the sweep before content egress or
+ *     durable-store construction;
  *   - `env.DATABASE_URL` set explicitly — no `getMastraDatabaseUrl()` localhost
  *     fallback (the erasure CLI's wrong-database rationale). There is
  *     deliberately NO `NODE_ENV` rung: default-off + explicit DATABASE_URL
@@ -94,7 +96,6 @@ import {
   isAllowedAiGatewayChatBaseUrl,
   isSeekerRouteEnabled,
   isTitleRepairEnabled,
-  resolveAiChatMemoryBackend,
 } from "../../config/env"
 import { AI_CHAT_RETENTION_DAYS } from "../ai-chat-retention"
 import { AI_CHAT_SCHEMA_NAME, getAiChatMemory } from "../ai-chat-memory"
@@ -173,7 +174,6 @@ const titleRepairSkipReasonSchema = z.enum([
   "lane_disabled",
   "gateway_unconfigured",
   "backend_not_postgres",
-  "persistence_unavailable",
   "database_url_missing",
 ])
 export type TitleRepairSkipReason = z.infer<typeof titleRepairSkipReasonSchema>
@@ -270,8 +270,7 @@ export function resolveTitleRepairSkip(): TitleRepairSkipReason | null {
     logEvent("gateway_base_url_not_allowed", {})
     return "gateway_unconfigured"
   }
-  if (resolveAiChatMemoryBackend() !== "postgres") return "backend_not_postgres"
-  if (!canAiChatDataPersist()) return "persistence_unavailable"
+  if (!canAiChatDataPersist()) return "backend_not_postgres"
   if (env.DATABASE_URL === undefined) return "database_url_missing"
   return null
 }

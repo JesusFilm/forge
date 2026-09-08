@@ -27,18 +27,17 @@ const mockEnv = vi.hoisted(() => {
   const state = {
     env: {
       DATABASE_URL: undefined as string | undefined,
+      MASTRA_STORAGE_BACKEND: "memory" as "postgres" | "memory",
       AI_GATEWAY_CHAT_API_KEY: undefined as string | undefined,
       AI_GATEWAY_CHAT_BASE_URL: undefined as string | undefined,
       AI_GATEWAY_CHAT_MODEL: undefined as string | undefined,
       AI_GATEWAY_SEEKER_ENABLED: undefined as string | undefined,
     },
-    aiChatBackend: "memory" as "postgres" | "memory",
     // Mirror the real `getMastraDatabaseUrl()`: DATABASE_URL with the local
     // fallback so resolution never returns undefined.
     getMastraDatabaseUrl: () =>
       state.env.DATABASE_URL ??
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
-    resolveAiChatMemoryBackend: () => state.aiChatBackend,
     isAiGatewaySeekerEnabled: () =>
       state.env.AI_GATEWAY_SEEKER_ENABLED === "true",
   }
@@ -49,7 +48,6 @@ vi.mock("../config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../config/env")>()),
   env: mockEnv.env,
   getMastraDatabaseUrl: mockEnv.getMastraDatabaseUrl,
-  resolveAiChatMemoryBackend: mockEnv.resolveAiChatMemoryBackend,
   isAiGatewaySeekerEnabled: mockEnv.isAiGatewaySeekerEnabled,
 }))
 
@@ -86,7 +84,7 @@ vi.mock("@mastra/memory", async () => {
 afterEach(() => {
   __resetAiChatMemoryForTesting()
   __resetAiChatStorageForTesting()
-  mockEnv.aiChatBackend = "memory"
+  mockEnv.env.MASTRA_STORAGE_BACKEND = "memory"
   mockEnv.env.DATABASE_URL = undefined
   mockEnv.env.AI_GATEWAY_CHAT_API_KEY = undefined
   mockEnv.env.AI_GATEWAY_CHAT_BASE_URL = undefined
@@ -105,10 +103,47 @@ const GEMMA_FALLBACK_CHAIN = [
 ]
 
 describe("ai-chat memory (feat-208)", () => {
-  it("returns a singleton Memory instance", () => {
+  it("keeps a prepared thread available through the process-local singleton", async () => {
     const first = getAiChatMemory()
     const second = getAiChatMemory()
+
     expect(first).toBe(second)
+    expect(first.storage).toBeInstanceOf(InMemoryStore)
+    expect(postgresStoreSpy).not.toHaveBeenCalled()
+
+    const now = new Date()
+    await first.saveThread({
+      thread: {
+        id: "singleton-thread",
+        resourceId: "singleton-resource",
+        title: "Singleton thread",
+        metadata: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    await first.saveMessages({
+      messages: [
+        {
+          id: "singleton-message",
+          role: "user",
+          threadId: "singleton-thread",
+          resourceId: "singleton-resource",
+          createdAt: now,
+          content: {
+            format: 2,
+            parts: [{ type: "text", text: "Remember this" }],
+            content: "Remember this",
+          },
+        },
+      ],
+    })
+
+    const recalled = await second.recall({
+      threadId: "singleton-thread",
+      resourceId: "singleton-resource",
+    })
+    expect(recalled.messages.map(({ id }) => id)).toEqual(["singleton-message"])
   })
 
   it("returns a fresh instance after __resetAiChatMemoryForTesting", () => {
@@ -117,19 +152,26 @@ describe("ai-chat memory (feat-208)", () => {
     expect(getAiChatMemory()).not.toBe(first)
   })
 
-  it("uses an InMemoryStore under the memory backend (local dev / kill-switch path)", () => {
+  it("uses an InMemoryStore under the memory backend (local dev / CI path)", () => {
     const memory = buildAiChatMemory({ getBackend: () => "memory" })
     expect(memory.storage).toBeInstanceOf(InMemoryStore)
+    expect(memory.storage.id).toBe("ai-chat-memory-storage")
     expect(postgresStoreSpy).not.toHaveBeenCalled()
   })
 
-  it("uses a PostgresStore in the dedicated ai_chat schema under the postgres backend", () => {
+  it("reuses the dedicated ai_chat PostgresStore with its stable identity and pool cap", () => {
     buildAiChatMemory({ getBackend: () => "postgres" })
+    buildAiChatMemory({ getBackend: () => "postgres" })
+
+    // Memory wraps the store for each instance; the constructor census is the
+    // non-vacuous proof that both wrappers delegate to one cached store.
     expect(postgresStoreSpy).toHaveBeenCalledTimes(1)
     const options = postgresStoreSpy.mock.calls[0]?.[0] as {
+      id?: string
       schemaName?: string
       max?: number
     }
+    expect(options.id).toBe("ai-chat-storage")
     expect(options.schemaName).toBe("ai_chat")
     expect(options.max).toBe(5)
   })
@@ -251,10 +293,8 @@ describe("ai-chat memory (feat-208)", () => {
     expect(model.modelId).toBe("google/gemma-4-31b-it:free")
   })
 
-  it("honors the injectable backend seam on the singleton path", () => {
-    // The default singleton resolves through the mocked env (memory here) —
-    // proving getBackend defaults to resolveAiChatMemoryBackend.
-    mockEnv.aiChatBackend = "postgres"
+  it("uses the shared storage backend on the default singleton path", () => {
+    mockEnv.env.MASTRA_STORAGE_BACKEND = "postgres"
     __resetAiChatMemoryForTesting()
     getAiChatMemory()
     expect(postgresStoreSpy).toHaveBeenCalledTimes(1)
