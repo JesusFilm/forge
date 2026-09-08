@@ -1,0 +1,29 @@
+Local release preparation; no hosted tools or artifact publishing executed.
+Recorded UTC checkpoint: 2026-09-08T15:01:17Z (2026-09-09 Pacific/Auckland).
+Python 3.14.4; PyYAML 6.0.3 (already installed local validation dependencies).
+
+ORAS v1.3.0 official archive:
+https://github.com/oras-project/oras/releases/download/v1.3.0/oras_1.3.0_linux_amd64.tar.gz
+Published checksum source:
+https://github.com/oras-project/oras/releases/download/v1.3.0/oras_1.3.0_checksums.txt
+Archive SHA256: 6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64
+Extracted oras executable SHA256: 040e140304b7dbdd9b40dacd798e2303cea44ad84eeb210750afdf15f1dcf8b4
+Executable hash derived from the checksum-verified archive; no claim of a separately published binary checksum.
+
+Actionlint v1.7.7 official archive:
+https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+Published checksum source:
+https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_checksums.txt
+Archive SHA256: 023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757
+Extracted executable SHA256: 9f7dedb4e23f89f2922073d1a6720405b7b520d4f5832ebb96f0d55a2958886c
+Used only for source workflow validation, with shellcheck/pyflakes adapters disabled.
+
+Pinned workflow actions:
+actions/checkout 11d5960a326750d5838078e36cf38b85af677262 (existing reviewed rag-pages.yml pin)
+actions/upload-artifact ea165f8d65b6e75b540449e92b4886f43607fa02 (official repository refs/tags/v4 read)
+docker/setup-buildx-action 8d2750c68a42422c14e847fe6c8ac0403b4cbd6f (official repository refs/tags/v3 read)
+actions/download-artifact d3f86a106a0bac45b974a628896c90dbdf5c8093 was inspected during preparation but is NOT used: the final publisher validates its own bounded ZIP before extraction.
+
+BuildKit image reuses reviewed VM build identity:
+moby/buildkit@sha256:6c2fa84a6b61ccd72899dde4239f8d5717f05f9a8ca6f3cad185fb1a95a94de3
+No new builder/runtime/image qualification was performed in this release-tooling phase.

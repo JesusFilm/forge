@@ -100,6 +100,23 @@ USER 1000:1000
 FROM job-base AS verify-job
 COPY --from=build /app/apps/studio-render/dist/verify.mjs /runtime/child.mjs
 
+# Host-only release export. This target does not contain pool/registry credentials
+# and is never started as an authored execution container.
+FROM ${NODE_IMAGE} AS host-package
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /source/apps/studio-render
+COPY apps/studio-render/native/vm-watchdog.c native/vm-watchdog.c
+COPY apps/studio-render/src/vm src/vm
+COPY apps/studio-render/ops/package-supervisor.py ops/package-supervisor.py
+COPY apps/studio-render/ops/forge-studio-supervisor.service ops/forge-studio-supervisor.service
+RUN mkdir /export \
+    && gcc -O2 -Wall -Wextra -Werror native/vm-watchdog.c -o /tmp/vm-watchdog \
+    && python3 ops/package-supervisor.py --node /usr/local/bin/node --watchdog /tmp/vm-watchdog --output /export/supervisor.tar \
+    && cd /export && sha256sum supervisor.tar > SHA256SUMS
+FROM scratch AS host-bundle
+COPY --from=host-package /export/ /
+
 # Preserve the previous default target for explicit historical qualification.
 # VM installation requires named render-job and verify-job targets.
 FROM runtime AS default

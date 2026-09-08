@@ -1,0 +1,19 @@
+Preparing supervisor.tar
+Uploading 26a746cc9298 supervisor.tar
+Uploaded  26a746cc9298 supervisor.tar
+Uploading 44136fa355b3 application/vnd.oci.empty.v1+json
+Uploaded  44136fa355b3 application/vnd.oci.empty.v1+json
+Uploading 498305508f11 application/vnd.oci.image.manifest.v1+json
+Uploaded  498305508f11 application/vnd.oci.image.manifest.v1+json
+Pushed [oci-layout] /home/tataihono/.cache/forge-studio-460-release/offline-oci/layout:candidate
+ArtifactType: application/vnd.jesusfilm.studio.host.v1
+Digest: sha256:498305508f116f5db09cb628196207515cfff4028819776968736f85f5ab8cc4
+Copying 26a746cc9298 supervisor.tar
+Copying 44136fa355b3 application/vnd.oci.empty.v1+json
+Copied  44136fa355b3 application/vnd.oci.empty.v1+json
+Copied  26a746cc9298 supervisor.tar
+Copying 498305508f11 application/vnd.oci.image.manifest.v1+json
+Copied  498305508f11 application/vnd.oci.image.manifest.v1+json
+Copied [oci-layout] /home/tataihono/.cache/forge-studio-460-release/offline-oci/host.oci.tar@sha256:498305508f116f5db09cb628196207515cfff4028819776968736f85f5ab8cc4 => [oci-layout] /home/tataihono/.cache/forge-studio-460-release/offline-oci/copy:candidate
+Digest: sha256:498305508f116f5db09cb628196207515cfff4028819776968736f85f5ab8cc4
+{"scope": "inert offline OCI artifact copy; no registry or runtime image", "manifest": "sha256:498305508f116f5db09cb628196207515cfff4028819776968736f85f5ab8cc4", "payload": "26a746cc92985920b1e50f270f727936d9ff80fac7d1d0cbf23015199a940f8d"}

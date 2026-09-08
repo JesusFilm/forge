@@ -1,0 +1,50 @@
+...FFFFF
+======================================================================
+FAIL: test_mutable_foreign_and_changed_supply_identities_are_refused (__main__.ApprovedReleaseRecord.test_mutable_foreign_and_changed_supply_identities_are_refused) (group='images', key='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-record.test.py", line 58, in test_mutable_foreign_and_changed_supply_identities_are_refused
+    with self.assertRaises(module.ReleaseRefused):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReleaseRefused not raised
+
+======================================================================
+FAIL: test_mutable_foreign_and_changed_supply_identities_are_refused (__main__.ApprovedReleaseRecord.test_mutable_foreign_and_changed_supply_identities_are_refused) (group='images', key='verify')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-record.test.py", line 58, in test_mutable_foreign_and_changed_supply_identities_are_refused
+    with self.assertRaises(module.ReleaseRefused):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReleaseRefused not raised
+
+======================================================================
+FAIL: test_mutable_foreign_and_changed_supply_identities_are_refused (__main__.ApprovedReleaseRecord.test_mutable_foreign_and_changed_supply_identities_are_refused) (group='codec', key='archiveSha256')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-record.test.py", line 58, in test_mutable_foreign_and_changed_supply_identities_are_refused
+    with self.assertRaises(module.ReleaseRefused):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReleaseRefused not raised
+
+======================================================================
+FAIL: test_mutable_foreign_and_changed_supply_identities_are_refused (__main__.ApprovedReleaseRecord.test_mutable_foreign_and_changed_supply_identities_are_refused) (group='bundle', key='size')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-record.test.py", line 58, in test_mutable_foreign_and_changed_supply_identities_are_refused
+    with self.assertRaises(module.ReleaseRefused):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReleaseRefused not raised
+
+======================================================================
+FAIL: test_mutable_foreign_and_changed_supply_identities_are_refused (__main__.ApprovedReleaseRecord.test_mutable_foreign_and_changed_supply_identities_are_refused) (group='source', key='ref')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-record.test.py", line 58, in test_mutable_foreign_and_changed_supply_identities_are_refused
+    with self.assertRaises(module.ReleaseRefused):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReleaseRefused not raised
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+FAILED (failures=5)

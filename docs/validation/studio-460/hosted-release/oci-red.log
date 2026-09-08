@@ -1,0 +1,41 @@
+EEEE
+======================================================================
+ERROR: test_changed_blob_foreign_path_and_wrong_manifest_refused (__main__.InertOCI.test_changed_blob_foreign_path_and_wrong_manifest_refused) (options={'escape': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-oci.test.py", line 51, in test_changed_blob_foreign_path_and_wrong_manifest_refused
+    artifacts.verify_oci_archive(path, digest, image=True)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'artifacts' has no attribute 'verify_oci_archive'
+
+======================================================================
+ERROR: test_changed_blob_foreign_path_and_wrong_manifest_refused (__main__.InertOCI.test_changed_blob_foreign_path_and_wrong_manifest_refused) (options={'corrupt': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-oci.test.py", line 51, in test_changed_blob_foreign_path_and_wrong_manifest_refused
+    artifacts.verify_oci_archive(path, digest, image=True)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'artifacts' has no attribute 'verify_oci_archive'
+
+======================================================================
+ERROR: test_changed_blob_foreign_path_and_wrong_manifest_refused (__main__.InertOCI.test_changed_blob_foreign_path_and_wrong_manifest_refused) (options={})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-oci.test.py", line 51, in test_changed_blob_foreign_path_and_wrong_manifest_refused
+    artifacts.verify_oci_archive(path, digest, image=True)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'artifacts' has no attribute 'verify_oci_archive'
+
+======================================================================
+ERROR: test_exact_archive_is_validated_without_extraction (__main__.InertOCI.test_exact_archive_is_validated_without_extraction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-oci.test.py", line 40, in test_exact_archive_is_validated_without_extraction
+    self.assertEqual(artifacts.verify_oci_archive(path, digest, image=True), digest)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'artifacts' has no attribute 'verify_oci_archive'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+
+FAILED (errors=4)

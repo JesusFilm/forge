@@ -87,3 +87,14 @@ The earlier OCI nested-proc failure remains historical evidence; the selected VM
 uses outer OCI namespaces and preserves masks. Production connection, durable
 codec publication/storage qualification and actual provider acceptance remain
 open. This checkpoint does not mark full460 complete or authorize production.
+
+## Hosted release preparation checkpoint (2026-09-09)
+
+The default-disabled hosted candidate/publisher workflow and trusted root-selected
+inactive VM update/rollback tools are specified in
+`apps/studio-render/ops/release/README.md`. Local focused validation and independent
+review are recorded in `docs/validation/studio-460/hosted-release/README.md`.
+Actual environment/reviewer setup, durable codec supply, hosted image/bundle
+qualification, publication and named VM/production activation remain external
+gates. Source preparation does not waive full460 provider/storage/public-release
+acceptance or mark this ticket complete.

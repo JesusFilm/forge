@@ -1,0 +1,65 @@
+EEEEE
+======================================================================
+ERROR: test_approved_selection_preloads_and_installs_inactive_then_drains_before_switch (__main__.SelectedReleaseApplication.test_approved_selection_preloads_and_installs_inactive_then_drains_before_switch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 52, in test_approved_selection_preloads_and_installs_inactive_then_drains_before_switch
+    self.run_release(host)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 39, in run_release
+    return release.apply_selected(raw, approved or hashlib.sha256(raw).hexdigest(),
+           ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'studio_release' has no attribute 'apply_selected'
+
+======================================================================
+ERROR: test_disabled_or_mismatched_selection_cannot_acquire_or_install (__main__.SelectedReleaseApplication.test_disabled_or_mismatched_selection_cannot_acquire_or_install) (options={'enabled': False})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 47, in test_disabled_or_mismatched_selection_cannot_acquire_or_install
+    self.run_release(host, **options)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 39, in run_release
+    return release.apply_selected(raw, approved or hashlib.sha256(raw).hexdigest(),
+           ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'studio_release' has no attribute 'apply_selected'
+
+======================================================================
+ERROR: test_disabled_or_mismatched_selection_cannot_acquire_or_install (__main__.SelectedReleaseApplication.test_disabled_or_mismatched_selection_cannot_acquire_or_install) (options={'target': 'different-vm'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 47, in test_disabled_or_mismatched_selection_cannot_acquire_or_install
+    self.run_release(host, **options)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 39, in run_release
+    return release.apply_selected(raw, approved or hashlib.sha256(raw).hexdigest(),
+           ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'studio_release' has no attribute 'apply_selected'
+
+======================================================================
+ERROR: test_disabled_or_mismatched_selection_cannot_acquire_or_install (__main__.SelectedReleaseApplication.test_disabled_or_mismatched_selection_cannot_acquire_or_install) (options={'approved': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 47, in test_disabled_or_mismatched_selection_cannot_acquire_or_install
+    self.run_release(host, **options)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 39, in run_release
+    return release.apply_selected(raw, approved or hashlib.sha256(raw).hexdigest(),
+           ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'studio_release' has no attribute 'apply_selected'
+
+======================================================================
+ERROR: test_unconfirmed_drain_never_selects_or_activates (__main__.SelectedReleaseApplication.test_unconfirmed_drain_never_selects_or_activates)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 59, in test_unconfirmed_drain_never_selects_or_activates
+    self.run_release(host)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/test/release-apply.test.py", line 39, in run_release
+    return release.apply_selected(raw, approved or hashlib.sha256(raw).hexdigest(),
+           ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'studio_release' has no attribute 'apply_selected'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (errors=5)
