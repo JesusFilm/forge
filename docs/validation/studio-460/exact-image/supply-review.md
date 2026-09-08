@@ -17,3 +17,7 @@ This review covers codec supply only, not future packaging fixes or unperformed 
 Independent Spec follow-up against the same fixed base found no actionable factual or acceptance gaps. The reviewer matched export identity, module-resolution evidence and HTTP422/proc EPERM; confirmed incomplete child mask replay and unimplemented bootstrap assessment remain explicit. Worker results were outside this review because its image build was still active.
 
 Independent Standards follow-up against the same base also found no actionable violations. It confirmed empirical claims and explicit limits, retained deployment boundaries, and no new abstraction requirement. Worker results and tooling formatting were excluded.
+
+## Membership correction review
+
+Independent Standards review found no actionable issues in the withdrawal. Spec identified three residual prose claims about actual bounded startup/whole-build limits; these now distinguish mounted-file acceptance and configured build-driver scope limits from unverified executor membership. Raw logs remain unchanged. The separate worker smoke accounting finding prompted this correction; corrected runtime proof remains pending.

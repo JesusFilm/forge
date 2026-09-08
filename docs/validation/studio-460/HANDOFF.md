@@ -2,9 +2,13 @@
 
 Status: local implementation and release preparation; **full feature acceptance remains open**. Ticket remains in progress. No provider spending, production writes, infrastructure changes, registry uploads, push, merge or deployment occurred.
 
+## Runtime evidence correction
+
+Both renderer and worker runtime containment qualification is withdrawn: rootless runc created an unbounded sibling cgroup, while the harness exposed bounded launcher-scope files. Actual worker membership proves the mismatch; renderer used the same pattern and had already exited. Historical startup/module/HTTP results remain observations, not bounded execution proof. Build-driver scope bounds also do not prove Dockerfile executor bounds without membership evidence. See `exact-image/README.md` and `runtime-membership-red.json`. Corrected OCI placement and actual process/ancestor accounting are required; no masks or numeric limits are relaxed.
+
 ## Resumed local image work
 
-The authorized local image continuation uses reviewed base `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe`, without replaying earlier prerequisites. Newly installed mapping helpers permit the pinned rootless OCI builder. The execution image now builds and starts under native PID1 with actual bounded cgroups; final renderer/Chromium/codec resolution passes. Signed HTTP rendering fails at the fresh child proc mount, with outer OCI protections preserved. Complete child mask replay is also not established by the existing recipe. See `exact-image/README.md` and its read-only boundary assessment; full exact-image and deployed/provider acceptance remain open.
+The authorized local image continuation uses reviewed base `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe`, without replaying earlier prerequisites. Newly installed mapping helpers permit the pinned rootless OCI builder. The execution image now builds and starts under native PID1, but its mounted limits did not prove actual bounded cgroup membership; final renderer/Chromium/codec resolution passes. Signed HTTP rendering fails at the fresh child proc mount, with outer OCI protections preserved. Complete child mask replay is also not established by the existing recipe. See `exact-image/README.md` and its read-only boundary assessment; full exact-image and deployed/provider acceptance remain open.
 
 ## Integration base and owned scope
 

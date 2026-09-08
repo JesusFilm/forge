@@ -1,4 +1,4 @@
-c2efe8d406f8f20c280e1405df2097c3c0fcd39c5b22e1fbdf200c6118bdd443  docs/validation/studio-460/HANDOFF.md
+29862a17e61b86223bd6024a5ea1ed96151544f6f5b3910bbe75e3b8ae2cc254  docs/validation/studio-460/HANDOFF.md
 457cb2f193ba43363d3e49e2dc734cf690ebd55ffdf567aa1f0c2a978d7696a5  docs/validation/studio-460/browser-insertion/README.md
 0ff4eb66ed2170baa6caaa41d2b8eab1d735e75159deb35c6ed2e84243b42f2d  docs/validation/studio-460/browser-insertion/SHA256SUMS
 0f6d180d7b9e88859317da9bc855dc7ee2d7635f181ec9169571babb6ceb89ed  docs/validation/studio-460/browser-insertion/browser-codec.json
@@ -13,7 +13,7 @@ f30fb26049e2d2737acba904e40a87319e0a047546ef597871afb3b769fa9a2c  docs/validatio
 1ff685c191d5944c8a68d97007d8b63598335311f788e5a520499467209e9549  docs/validation/studio-460/containment/supervisor-loss-green.log
 3df8e99186804d23f1d5f3957426f689c58470b0bcfdb7b50bda844b06c03d62  docs/validation/studio-460/containment/supervisor-loss-red.log
 2ea097dca67d3803cc2764407aa3e907ae1d6f7d4d581dd0c5152b327efb4e4a  docs/validation/studio-460/containment/teardown-targeted.log
-952bd9ab1bef630d191c4c154df5e91931fd158550ab6be010e4dd917e4597f6  docs/validation/studio-460/exact-image/README.md
+861ec41c40f1605ef540a17b67a107f6298a44d661e5164cdc462acd087e3e73  docs/validation/studio-460/exact-image/README.md
 d26f08db24e235b820f95ebf1106807b13500f9e9cfa1f6def67404620f7b6e8  docs/validation/studio-460/exact-image/build-budget-final.json
 540aa65d8d13647f79940954a41c06d41fa34de8143e5896aa31de7607ba8081  docs/validation/studio-460/exact-image/build-budget.json
 1c8a7912b27e999360885cfadf916604d662d8eaad0bce1753811219aec52b1c  docs/validation/studio-460/exact-image/build-first.log
@@ -43,15 +43,17 @@ a20ae095a45fb67a02ac54981951281b6b7c4cc279148ff10cf1b9450ca08e2a  docs/validatio
 aa9a0e78c7a58f501f1267dade7039669e563c95b8c9b0841f191d462b706b3c  docs/validation/studio-460/exact-image/image-startup2.log
 c1354fd0436fc6bf2d2026485ff40bcb26e1e6e23767549f643010110ef5dcab  docs/validation/studio-460/exact-image/image-startup3.log
 dbfdb99ad85c528089444b8e25ab0bc4ef2373f8563573370c61723fa75c9be9  docs/validation/studio-460/exact-image/image-trace-attach.log
-1bef79e4005d2259bcc359de4cd9f032589157540fdaf3503c6c87eb2414a19f  docs/validation/studio-460/exact-image/proc-boundary-assessment.md
+2aec6f7c6e4ffc5ad60af85aa3ee44eea64b06d51da6ff0e7ff629d640f44610  docs/validation/studio-460/exact-image/proc-boundary-assessment.md
+2928228ae0d18750c9b5518fc87d47f79398d605d1e7a4b47b20cb5ceb6ab1b3  docs/validation/studio-460/exact-image/runtime-membership-red.json
 6cc85fc127e4f9241e2d80a23e75ce5a7662bfcf352657fa196a424abd60a31d  docs/validation/studio-460/exact-image/subordinate-mapping.log
 842d4b32065a3dc84733f4e8b943f3e324cc7d44ba5da228bd9622185310f76f  docs/validation/studio-460/exact-image/supply-format.log
-607457c51ac0292720b7759849e7ed1f7ee4a243d3193c1ade0999b576c7c413  docs/validation/studio-460/exact-image/supply-review.md
+47e38679e701075556ab61577c48db6f44950219476e96598c53c44ea0639f40  docs/validation/studio-460/exact-image/supply-review.md
 31c6261ed915e2be621f0de3e5232f7516638f6c763475d61eb357703da917ba  docs/validation/studio-460/exact-image/unpack-image.log
 2bff0447ec87f734981186810b679ed8d72e08b849e84aa36e5a9077c496c191  docs/validation/studio-460/exact-image/unreviewed-stage-rejected.log
 8231344f518752ff9a2519020a475795ff475551b2236dc9afc26afba156faeb  docs/validation/studio-460/exact-image/versioned-binary-hashes.log
 786c06ad4b81c70226be04ea3979ee17c33df4f5eef538e4f8458854e6feddd6  docs/validation/studio-460/exact-image/versioned-stage-green.log
 c0dfa70c481289b216fafeca97ce4ab35073bd318b9afd5e63b508a53cbad7db  docs/validation/studio-460/exact-image/versioned-stage-red.log
+ee870ae3fdeb7f651fe94e25aef9cdaaa0343ae795666ae64cf157f1bfff8e19  docs/validation/studio-460/exact-image/worker-runtime-state-red.json
 a26a15948cc20a9bc8f498bce09cddc4c7b57b4a11813b6e669d653b4195e8e5  docs/validation/studio-460/final-checks/admin-build-final.log
 5845bffb86bddd0d0ba6b214f63d4bcc00fa28df3d19df16b2b25048a030c981  docs/validation/studio-460/final-checks/admin-environment-qualification.log
 6b594d08ae0b9b3537c4695861eeb200cf51d8c17a3b3ef27988840484c133b4  docs/validation/studio-460/final-checks/admin-full-final.log

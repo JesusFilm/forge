@@ -2,6 +2,14 @@
 
 Base: `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe`. The user authorized local builds/tests and installed uidmap. No image push, asset upload, remote runner, provider call or deployment occurred. Feat-460 remains in progress.
 
+## Correction: runtime cgroup qualification withdrawn
+
+The subsequent actual `/proc/<pid>/cgroup` check found rootless runc placed the worker Node in an unbounded sibling (`studio460-worker-image1`), while its launcher occupied bounded `studio460-worker-image1.scope`. The read-only cgroup mount pointed at the launcher. `runtime-membership-red.json` and `worker-runtime-state-red.json` preserve that mismatch and actual `max` limits. The earlier low memory/CPU scope counters were not the composition process accounting.
+
+**Runtime containment qualification is withdrawn for both images.** The renderer used the same harness pattern and its process had already exited before this check; startup accepting the mounted files did not establish actual bounded membership. Image build/export identities, observed startup/module/HTTP/still results and the renderer fresh-proc failure remain observations, but none establishes contained execution. Keep the old logs as recorded; do not reinterpret them as corrected proof.
+
+Build driver scopes were bounded, but actual BuildKit OCI executor membership was not captured. Those scope counters do not establish enforced bounds across Dockerfile RUN processes. Builder membership must be audited separately; no retroactive whole-build budget claim is made. A corrected local OCI configuration must set actual cgroupsPath/resources and prove init/Node/Chromium/verifier membership plus ancestor limits before/during/after work, preserving all masks and numeric limits. No image or product change has been made for this harness correction.
+
 ## Execution image result
 
 **Build, native PID1 startup and runtime dependency resolution passed. Actual signed HTTP rendering failed before authored execution.** The fresh child proc mount returned `EPERM`; this is not a functioning contained renderer. The exact-image output/codec/cancellation/OOM/recovery matrix remains open behind that failure. Earlier native and full-length proofs remain historical evidence, not substitutes for this matrix.
@@ -22,9 +30,9 @@ The historical original archive and `/tmp` runtime disappeared during the toolin
 
 The first resumed daemon launch failed in a user service namespace. A user scope preserved the caller context; later attempts exposed default OTEL and runc state paths under unwritable `/run`. Owned paths corrected those local tooling issues. `buildkit-*.log`, `build-first.log` and `build-mapped.log` preserve those failures. The runc wrapper changes only its state root.
 
-Build-only limits:2CPU,2GiB, no swap,512tasks. `build-budget-final.json` records no OOM kills; the kernel memory peak slightly exceeds the nominal limit during accounting/reclaim. This does not change the production execution task limit. Native execution requires2CPU,2GiB, no swap,128aggregate tasks and the unchanged900s profile.
+Configured build-driver scope limits:2CPU,2GiB, no swap,512tasks. Actual OCI executor bounds were not verified. `build-budget-final.json` records no OOM kills; the kernel memory peak slightly exceeds the nominal limit during accounting/reclaim. This does not change the production execution task limit. The intended native execution profile requires2CPU,2GiB, no swap,128aggregate tasks and the unchanged900s profile.
 
-An unsupported local systemd `MemoryOOMGroup` property rejected the first runtime launch. The next launch correctly failed closed because default rootless cgroup mounting exposed ancestor `max` files. Mounting the actual owned bounded leaf read-only made the native checks pass (`image-health2.log`). No synthetic budget files or relaxed admission checks were used. This local runtime configuration must not be assumed to match Railway.
+An unsupported local systemd `MemoryOOMGroup` property rejected the first runtime launch. The next launch correctly failed closed because default rootless cgroup mounting exposed ancestor `max` files. Mounting the bounded launcher leaf read-only made the native checks pass, but did not correspond to actual container membership as the later correction establishes (`image-health2.log`). No synthetic budget files or relaxed admission checks were used. This local runtime configuration must not be assumed to match Railway.
 
 ## Proc boundary remains unresolved
 
