@@ -38,6 +38,7 @@ const UPSERT_BATCH_SIZE = 100
 const STALE_DELETE_BATCH_SIZE = 100
 const BASE_RETRY_DELAY_MS = 5_000
 const MAX_RETRY_DELAY_MS = 5 * 60_000
+export const MAX_PUBLICATION_ATTEMPTS = 8
 const POLL_MS = 5_000
 const COMPLETION_TRANSACTION_MAX_WAIT_MS = 10_000
 const COMPLETION_TRANSACTION_TIMEOUT_MS = 30_000
@@ -57,8 +58,10 @@ type ClaimablePublicationRow = {
   sourceContentHash: string | null
   currentDocumentIds: string[]
   staleDocumentIds: string[]
+  workKind: "publication" | "lifecycle"
   leaseGeneration: number
   attemptCount: number
+  lastErrorCode: string | null
   createdAt: Date
 }
 
@@ -74,6 +77,7 @@ type ClaimedPublicationBatch = {
   sourceContentHash: string | null
   currentDocumentIds: string[]
   staleDocumentIds: string[]
+  workKind: "publication" | "lifecycle"
   leaseGeneration: number
   attemptCount: number
   leaseToken: string
@@ -81,7 +85,14 @@ type ClaimedPublicationBatch = {
 }
 
 type OutstandingStaleDocumentEvidenceRow = {
+  currentDocumentIds: string[]
   staleDocumentIds: string[]
+}
+
+type PublicationLeaseContention = {
+  leaseKind: "COMPARISON" | "EVALUATION"
+  retryAt: Date
+  blockedDurationMs: number
 }
 
 type CanonicalTranscriptDocumentRow = {
@@ -433,7 +444,7 @@ function eligibleCurrentEventWhere(now: Date) {
 
 function claimableTranscriptBatchWhere(now: Date) {
   return Prisma.sql`
-    status != 'completed'
+    status IN ('pending', 'claimed')
     AND NOT (
       status = 'claimed'
       AND lease_expires_at > ${now}
@@ -472,8 +483,10 @@ async function claimNextTranscriptPublicationBatch(
         source_content_hash AS "sourceContentHash",
         current_document_ids AS "currentDocumentIds",
         stale_document_ids AS "staleDocumentIds",
+        work_kind AS "workKind",
         lease_generation AS "leaseGeneration",
         attempt_count AS "attemptCount",
+        last_error_code AS "lastErrorCode",
         created_at AS "createdAt"
       FROM watch_search_current_transcript_publication_event
       WHERE transcript_id = ${transcriptId}
@@ -485,6 +498,25 @@ async function claimNextTranscriptPublicationBatch(
 
     const latest = rows[0]!
     const eventIds = rows.map((row) => row.id)
+    // A worker can disappear after claiming but before it reaches the normal
+    // failure-release path. Let the next live worker enforce the attempt bound
+    // instead of reclaiming a poison event forever.
+    if (latest.attemptCount >= MAX_PUBLICATION_ATTEMPTS) {
+      await tx.watchSearchCurrentTranscriptPublicationEvent.updateMany({
+        where: { id: { in: eventIds } },
+        data: {
+          status: "DEAD_LETTER",
+          leaseTokenHash: null,
+          leaseExpiresAt: null,
+          nextAttemptAt: null,
+          lastErrorCode:
+            latest.lastErrorCode ?? "publication_attempts_exhausted",
+          deadLetteredAt: now,
+          updatedAt: now,
+        },
+      })
+      return null
+    }
     // Include immutable deletion evidence from older events that another
     // worker has already claimed. A newer generation can win the shared index
     // lock before that worker starts, and the newer transition may no longer
@@ -492,20 +524,26 @@ async function claimNextTranscriptPublicationBatch(
     const outstandingStaleEvidence = await tx.$queryRaw<
       OutstandingStaleDocumentEvidenceRow[]
     >(Prisma.sql`
-      SELECT stale_document_ids AS "staleDocumentIds"
+      SELECT
+        current_document_ids AS "currentDocumentIds",
+        stale_document_ids AS "staleDocumentIds"
       FROM watch_search_current_transcript_publication_event
       WHERE transcript_id = ${transcriptId}
         AND status != 'completed'
     `)
     const staleDocumentIds = [
       ...new Set(
-        outstandingStaleEvidence.flatMap((row) => row.staleDocumentIds),
+        outstandingStaleEvidence.flatMap((row) => [
+          ...(latest.workKind === "lifecycle" ? row.currentDocumentIds : []),
+          ...row.staleDocumentIds,
+        ]),
       ),
     ]
     const leaseGeneration =
       rows.reduce((max, row) => Math.max(max, row.leaseGeneration), 0) + 1
-    const attemptCount =
-      rows.reduce((max, row) => Math.max(max, row.attemptCount), 0) + 1
+    // A newer canonical generation is a fresh repair opportunity. Older
+    // poison work contributes immutable cleanup ids, not its failure budget.
+    const attemptCount = latest.attemptCount + 1
     const leaseToken = randomUUID()
     const leaseTokenHash = createHash("sha256").update(leaseToken).digest("hex")
     const leaseExpiresAt = new Date(
@@ -544,12 +582,44 @@ async function claimNextTranscriptPublicationBatch(
       sourceContentHash: latest.sourceContentHash,
       currentDocumentIds: latest.currentDocumentIds,
       staleDocumentIds,
+      workKind: latest.workKind,
       leaseGeneration,
       attemptCount,
       leaseToken,
       leaseExpiresAt,
     }
   })
+}
+
+async function hasEligibleTranscriptPublication(
+  prisma: PrismaClient,
+  now: Date,
+): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ eligible: boolean }>>(Prisma.sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM watch_search_current_transcript_publication_event
+      WHERE ${eligibleCurrentEventWhere(now)}
+    ) AS eligible
+  `)
+  return rows[0]?.eligible === true
+}
+
+async function loadPublicationLeaseContention(
+  prisma: PrismaClient,
+  now: Date,
+): Promise<PublicationLeaseContention | null> {
+  const lease = await prisma.watchSearchCandidateLease.findFirst({
+    where: { expiresAt: { gt: now } },
+    orderBy: { expiresAt: "desc" },
+    select: { kind: true, expiresAt: true },
+  })
+  if (!lease) return null
+  return {
+    leaseKind: lease.kind,
+    retryAt: lease.expiresAt,
+    blockedDurationMs: Math.max(0, lease.expiresAt.getTime() - now.getTime()),
+  }
 }
 
 async function loadCanonicalTranscriptSnapshot(
@@ -764,10 +834,24 @@ async function completeTranscriptPublicationBatch(
   try {
     return await prisma.$transaction(
       async (tx) => {
-        const canonical = await loadCanonicalTranscriptSnapshot(tx, batch)
-        const latestCanonicalFingerprint = sha256(
-          canonical.documents.map(normalizeTranscriptDocument),
-        )
+        let latestCanonicalFingerprint: string
+        if (batch.workKind === "lifecycle") {
+          const canonical = await tx.videoTranscript.findUnique({
+            where: { id: batch.transcriptId },
+            select: { id: true },
+          })
+          if (canonical) {
+            throw new WatchSearchTranscriptPublicationError(
+              "canonical transcript was recreated before lifecycle cleanup completion",
+            )
+          }
+          latestCanonicalFingerprint = sha256([])
+        } else {
+          const canonical = await loadCanonicalTranscriptSnapshot(tx, batch)
+          latestCanonicalFingerprint = sha256(
+            canonical.documents.map(normalizeTranscriptDocument),
+          )
+        }
         if (latestCanonicalFingerprint !== input.projectedFingerprint) {
           throw new WatchSearchTranscriptPublicationError(
             "canonical transcript projection changed before publication completion",
@@ -789,6 +873,7 @@ async function completeTranscriptPublicationBatch(
           nextAttemptAt: null,
           lastErrorCode: null,
           completedAt: now,
+          completedProjectionRevision: projection.projectionRevision,
           updatedAt: now,
         }
         const completed =
@@ -850,6 +935,7 @@ async function completeTranscriptPublicationBatch(
             id: true,
             status: true,
             completedAt: true,
+            completedProjectionRevision: true,
             leaseGeneration: true,
             leaseTokenHash: true,
           },
@@ -862,7 +948,9 @@ async function completeTranscriptPublicationBatch(
           events.length !== batch.eventIds.length ||
           completeEvents.length !== batch.eventIds.length ||
           completeEvents.some(
-            (event) => event.completedAt?.getTime() !== now.getTime(),
+            (event) =>
+              event.completedAt?.getTime() !== now.getTime() ||
+              event.completedProjectionRevision == null,
           )
         ) {
           throw new WatchSearchTranscriptPublicationError(
@@ -873,13 +961,19 @@ async function completeTranscriptPublicationBatch(
           await prisma.watchSearchCurrentTranscriptProjection.findUnique({
             where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
           })
+        const completedProjectionRevision =
+          completeEvents[0]!.completedProjectionRevision!
         if (
+          completeEvents.every(
+            (event) =>
+              event.completedProjectionRevision === completedProjectionRevision,
+          ) &&
           projection?.transcriptCollection === input.transcriptCollection &&
           projection.contentEmbeddingContractId ===
             input.contentEmbeddingContractId &&
           projection.transcriptChunkingVersion ===
             input.transcriptChunkingVersion &&
-          projection.projectionRevision >= 1n
+          projection.projectionRevision === completedProjectionRevision
         ) {
           return {
             transcriptCollection: projection.transcriptCollection,
@@ -924,6 +1018,7 @@ async function releaseTranscriptPublicationBatch(
   const leaseTokenHash = createHash("sha256")
     .update(batch.leaseToken)
     .digest("hex")
+  const shouldDeadLetter = batch.attemptCount >= MAX_PUBLICATION_ATTEMPTS
   await prisma.watchSearchCurrentTranscriptPublicationEvent.updateMany({
     where: {
       id: { in: batch.eventIds },
@@ -932,16 +1027,17 @@ async function releaseTranscriptPublicationBatch(
       leaseTokenHash,
     },
     data: {
-      status: "PENDING",
+      status: shouldDeadLetter ? "DEAD_LETTER" : "PENDING",
       leaseTokenHash: null,
       leaseExpiresAt: null,
       // Back off a poison transcript long enough for later healthy events to
       // become the oldest eligible work instead of letting one permanent
       // projection error monopolize every worker tick.
-      nextAttemptAt: new Date(
-        now.getTime() + publicationRetryDelayMs(batch.attemptCount),
-      ),
+      nextAttemptAt: shouldDeadLetter
+        ? null
+        : new Date(now.getTime() + publicationRetryDelayMs(batch.attemptCount)),
       lastErrorCode: errorCode,
+      deadLetteredAt: shouldDeadLetter ? now : null,
       updatedAt: now,
     },
   })
@@ -1027,8 +1123,10 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
   withIndexLock?: IndexLockRunner
 }): Promise<
   | { status: "idle" }
+  | ({ status: "blocked" } & PublicationLeaseContention)
   | {
       status: "published"
+      workKind: "publication" | "lifecycle"
       transcriptId: string
       sourceGeneration: bigint
       projectionRevision: bigint
@@ -1045,6 +1143,19 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
 
   try {
     const result = await withIndexLock(async () => {
+      if (!(await hasEligibleTranscriptPublication(prisma, now))) {
+        return { status: "idle" as const }
+      }
+      // Candidate evaluation is immutable evidence over one exact transcript
+      // projection. Observe its lease before claiming anything: contention is
+      // scheduling information, not a failed publication attempt.
+      const contention = await loadPublicationLeaseContention(prisma, now)
+      if (contention) {
+        console.info(
+          `[watch-search-transcript-publication] event=watch_search_transcript_publication_blocked lease_kind=${contention.leaseKind.toLowerCase()} blocked_duration_ms=${contention.blockedDurationMs} retry_at=${contention.retryAt.toISOString()}`,
+        )
+        return { status: "blocked" as const, ...contention }
+      }
       // Claim only after the session-level publication lock is held. This
       // prevents a losing publisher or rebuild contender from rewriting an
       // event lease that the lock owner is still processing. The lock remains
@@ -1054,12 +1165,8 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
       claimedBatch = batch
       let transcriptCollection: string | null = null
       let typesenseMutationStarted = false
+      let staleDeletionStarted = false
       try {
-        if (input.generations) {
-          await input.generations.assertCurrentPublicationAllowed({
-            rebuildTranscripts: false,
-          })
-        }
         const profile = await freezeCurrentWatchSearchProfile(input.typesense)
         transcriptCollection = profile.binding.transcript
         const transcriptCollectionSchema =
@@ -1085,17 +1192,23 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
             transcriptChunkingVersion: batch.transcriptChunkingVersion,
           },
         )
-        const canonical = await loadCanonicalTranscriptSnapshot(prisma, batch)
+        const canonical =
+          batch.workKind === "publication"
+            ? await loadCanonicalTranscriptSnapshot(prisma, batch)
+            : null
         // Import endpoints may apply a prefix of a JSONL request before
-        // returning an error. From this point onward, every failure must
-        // therefore fail closed by removing the complete affected transcript
-        // set while the shared publication lock is still held.
+        // returning an error. Remove current ids on that path, but retain the
+        // exact stale ids until every current upsert has succeeded. Once stale
+        // deletion begins, compensation covers the complete affected set.
         typesenseMutationStarted = true
-        await upsertCurrentTranscriptDocuments(
-          input.typesense,
-          transcriptCollection,
-          canonical.documents,
-        )
+        if (canonical) {
+          await upsertCurrentTranscriptDocuments(
+            input.typesense,
+            transcriptCollection,
+            canonical.documents,
+          )
+        }
+        staleDeletionStarted = true
         await deleteStaleTranscriptDocuments(
           input.typesense,
           transcriptCollection,
@@ -1104,7 +1217,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         const projected = await readBackTranscriptDocuments(
           input.typesense,
           transcriptCollection,
-          canonical.documents.map((document) => document.id),
+          canonical?.documents.map((document) => document.id) ?? [],
         )
         await assertStaleDocumentsRemoved(
           input.typesense,
@@ -1120,7 +1233,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
           )
         }
         const canonicalFingerprint = sha256(
-          canonical.documents.map(normalizeTranscriptDocument),
+          canonical?.documents.map(normalizeTranscriptDocument) ?? [],
         )
         const projectedFingerprint = sha256(projected)
         if (canonicalFingerprint !== projectedFingerprint) {
@@ -1141,11 +1254,13 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         )
         return {
           status: "published" as const,
+          workKind: batch.workKind,
           transcriptId: batch.transcriptId,
-          sourceGeneration: canonical.sourceGeneration,
+          sourceGeneration:
+            canonical?.sourceGeneration ?? batch.sourceGeneration,
           projectionRevision: projection.projectionRevision,
           transcriptCollection,
-          documentCount: canonical.documents.length,
+          documentCount: canonical?.documents.length ?? 0,
         }
       } catch (error) {
         if (
@@ -1163,7 +1278,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
           const affectedDocumentIds = [
             ...new Set([
               ...batch.currentDocumentIds,
-              ...batch.staleDocumentIds,
+              ...(staleDeletionStarted ? batch.staleDocumentIds : []),
             ]),
           ]
           try {
@@ -1178,12 +1293,12 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
               affectedDocumentIds,
             )
           } catch (cleanupError) {
-            // Preserve the claim fence when compensating cleanup cannot be
-            // verified. Clearing it here would advertise the event as safely
-            // retryable even though this attempt may still have visible
-            // documents in Typesense. A later worker can reclaim the event
-            // after its lease expires and repeat the full idempotent publish.
-            releaseClaimedBatchOnFailure = false
+            // Preserve the in-flight fence until expiry while automatic repair
+            // remains possible. On the final bounded attempt, transition to
+            // dead letter immediately and retain the same exact id evidence for
+            // operator-driven repair.
+            releaseClaimedBatchOnFailure =
+              batch.attemptCount >= MAX_PUBLICATION_ATTEMPTS
             throw new AggregateError(
               [error, cleanupError],
               "transcript publication failed and fail-closed Typesense cleanup did not complete",
@@ -1211,30 +1326,35 @@ function scheduleNextWorkerRun(
   typesense: TypesenseClient,
   prisma: PrismaClient,
   generations: TypesenseWatchSearchCandidateGenerationService,
+  delayMs = POLL_MS,
 ): void {
   const state = workerState()
   state.timer = setTimeout(async () => {
     state.timer = undefined
     if (state.running) {
-      scheduleNextWorkerRun(typesense, prisma, generations)
+      scheduleNextWorkerRun(typesense, prisma, generations, delayMs)
       return
     }
     state.running = true
+    let nextDelayMs = POLL_MS
     try {
-      await publishOneCurrentTranscriptToWatchSearch({
+      const result = await publishOneCurrentTranscriptToWatchSearch({
         prisma,
         typesense,
         generations,
       })
+      if (result.status === "blocked") {
+        nextDelayMs = Math.max(POLL_MS, result.blockedDurationMs + 1)
+      }
     } catch (error) {
       console.warn(
         `[watch-search-transcript-publication] event=worker_tick_failed error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
       )
     } finally {
       state.running = false
-      scheduleNextWorkerRun(typesense, prisma, generations)
+      scheduleNextWorkerRun(typesense, prisma, generations, nextDelayMs)
     }
-  }, POLL_MS)
+  }, delayMs)
   state.timer.unref?.()
 }
 

@@ -300,6 +300,23 @@ delete query cannot rediscover its old Typesense id. The prior identity-only
 event can, so carry that old id forward whenever it is absent from the repaired
 current set.
 
+Canonical deletion cleanup must also read the current chunk ids before the
+database cascade removes them. A full transcript rebuild publishes those exact
+chunk ids without creating incremental event rows, so event history alone is
+not a complete lifecycle ledger. A `BEFORE DELETE` trigger can union canonical
+chunk ids with all retained event ids, persist that identity-only lifecycle
+work without a parent foreign key, and then let the cascade proceed.
+Schema-qualify every relation the trigger reads or writes: PostgreSQL resolves
+unqualified names against the deleting session's search path, where a temporary
+table could otherwise shadow the durable ledger and suppress canonical cleanup.
+
+Enforce a retry ceiling both when releasing a caught failure and when reclaiming
+an expired claim. A process crash bypasses the normal failure-release path; if
+the next worker only increments the attempt count, repeated crashes or failed
+compensation can remain `CLAIMED` forever. The next live claimant must move an
+already exhausted row to dead letter before making another external call while
+leaving its immutable cleanup ids intact.
+
 Fingerprint numeric fields at the storage width of the serving schema.
 Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
 values enter JavaScript as 64-bit numbers. Normalize both the canonical input
@@ -331,13 +348,16 @@ changed transcript cannot certify the identity of the untouched corpus.
 
 An external JSONL mutation may apply some or all documents before its response
 or the later database completion fails. Once the first upsert begins, treat any
-subsequent definite failure as potentially visible partial publication. While
-still holding the publication lock, delete the union of the event's current and
-stale document ids and independently verify their absence before releasing the
-event for retry. This deliberately prefers a temporary transcript-search gap
-over a fail-open `publiclyVisible` document when canonical publication state
-drifted during readback. If compensating cleanup also fails, surface both
-failures and never advance the durable projection or complete the event.
+subsequent definite failure as potentially visible partial publication. If a
+current-document upsert fails, remove and verify the current ids but preserve
+the exact stale ids: the stale documents are still the last verified version
+and stale deletion must not start until every current upsert succeeds. Once
+stale deletion has started, compensate the union of current and stale document
+ids and independently verify their absence before releasing the event for
+retry. This deliberately prefers a temporary transcript-search gap over a
+fail-open `publiclyVisible` document when canonical publication state drifted
+during readback. If compensating cleanup also fails, surface both failures and
+never advance the durable projection or complete the event.
 
 A thrown PostgreSQL commit is not always a definite failure: the server can
 commit the atomic projection/event transaction and lose its acknowledgement on
