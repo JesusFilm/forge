@@ -54,8 +54,7 @@ const DEFAULT_VITEST_DATABASE_URL =
   "postgresql://test:test@localhost:5432/forge_admin_test"
 const hasRealDatabaseUrl =
   !!baseDatabaseUrl && baseDatabaseUrl !== DEFAULT_VITEST_DATABASE_URL
-const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID =
-  "semantic-transcript-pgvector-v2"
+const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID = `${ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id}-alternate`
 const TYPESENSE_OPERATOR_KEY = "test-operator-key"
 const TYPESENSE_SEARCH_KEY = "test-search-key"
 

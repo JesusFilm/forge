@@ -171,6 +171,12 @@ Using a full deployment identity here makes a healthy generation incompatible
 after unrelated Admin changes; see
 [Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).
 
+Tests that simulate a content-embedding contract rotation must derive a
+distinct alternate identity from the current contract seed. A hardcoded
+anticipated next-version id eventually becomes the active id, stops exercising
+the drift path, and can let the test fall through into unrelated publication
+side effects.
+
 The private page at `/dashboard/search/compare` runs one normalized query
 against frozen current and candidate profiles. Each side records its own result
 or error, so candidate failure cannot hide the current result. Candidate work
