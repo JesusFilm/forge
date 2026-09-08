@@ -11,6 +11,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { PlatformBlur } from "../PlatformBlur"
+import { TAB_BAR_MATERIAL_TINT } from "../../../lib/tabBar"
 import { TabBarBackground } from "../TabBarBackground"
 
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
@@ -62,6 +63,9 @@ describe("TabBarBackground", () => {
     expect(found[0].props.colorScheme).toBe("dark")
     // Inside a pressable, isInteractive flashes white on remount.
     expect(found[0].props.isInteractive).toBeUndefined()
+    // Measured floor: untinted, bright content drops the idle labels to
+    // 3.35:1, below AA. Blur removes detail, not luminance.
+    expect(found[0].props.tintColor).toBe(TAB_BAR_MATERIAL_TINT)
   })
 
   it("falls back to blur when the design is unavailable (iOS below 26)", async () => {

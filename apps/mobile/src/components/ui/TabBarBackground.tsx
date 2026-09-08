@@ -5,7 +5,7 @@ import {
   isLiquidGlassAvailable,
 } from "expo-glass-effect"
 
-import { TAB_BAR_PILL_RADIUS } from "../../lib/tabBar"
+import { TAB_BAR_MATERIAL_TINT, TAB_BAR_PILL_RADIUS } from "../../lib/tabBar"
 import { PlatformBlur } from "./PlatformBlur"
 
 /**
@@ -23,11 +23,18 @@ export function TabBarBackground() {
         style={styles.material}
         glassEffectStyle="regular"
         colorScheme="dark"
+        tintColor={TAB_BAR_MATERIAL_TINT}
       />
     )
   }
 
-  return <PlatformBlur style={styles.material} intensity={60} tint="dark" />
+  return (
+    <PlatformBlur
+      style={[styles.material, { backgroundColor: TAB_BAR_MATERIAL_TINT }]}
+      intensity={60}
+      tint="dark"
+    />
+  )
 }
 
 const styles = StyleSheet.create({
