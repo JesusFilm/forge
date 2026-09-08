@@ -1,0 +1,16 @@
+✔ execution hides credentials and host files, blocks namespace escape and rejects writable input (961.521498ms)
+✔ lost supervisor is fatal even when cancellation raced with teardown (111.073953ms)
+✔ render libraries see at most two CPUs and children cannot widen their inherited affinity (117.307704ms)
+✔ credential-free Node PID1 fatal retires detached processes (352.167705ms)
+✔ credential-free Node PID1 shutdown retires detached processes (361.877345ms)
+✔ namespace launcher death tears down all descendants before the next job (338.817478ms)
+✔ namespace namespace-init death tears down all descendants before the next job (325.734216ms)
+✔ injected parent fcntl setup failure reaps detached descendants within deadline (530.411674ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1284.097904

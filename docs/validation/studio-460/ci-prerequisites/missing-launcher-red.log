@@ -1,0 +1,70 @@
+✖ execution hides credentials and host files, blocks namespace escape and rejects writable input (834.694786ms)
+✔ lost supervisor is fatal even when cancellation raced with teardown (110.768673ms)
+✖ render libraries see at most two CPUs and children cannot widen their inherited affinity (15.387379ms)
+✖ credential-free Node PID1 fatal retires detached processes (26.571715ms)
+✖ credential-free Node PID1 shutdown retires detached processes (16.15369ms)
+✖ namespace launcher death tears down all descendants before the next job (185.813817ms)
+✖ namespace namespace-init death tears down all descendants before the next job (180.369413ms)
+✔ injected parent fcntl setup failure reaps detached descendants within deadline (517.555793ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 2
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1044.307948
+
+✖ failing tests:
+
+test at apps/studio-render/test/isolation.test.mjs:10:1
+✖ execution hides credentials and host files, blocks namespace escape and rejects writable input (834.694786ms)
+  Error: Studio execution FAILED: 
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/src/isolation.mjs:160:11)
+      at ChildProcess.emit (node:events:514:28)
+      at maybeClose (node:internal/child_process:1141:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {
+    code: 'FAILED'
+  }
+
+test at apps/studio-render/test/isolation.test.mjs:95:1
+✖ render libraries see at most two CPUs and children cannot widen their inherited affinity (15.387379ms)
+  Error: Studio execution FAILED: 
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/src/isolation.mjs:160:11)
+      at ChildProcess.emit (node:events:514:28)
+      at maybeClose (node:internal/child_process:1141:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {
+    code: 'FAILED'
+  }
+
+test at apps/studio-render/test/lifecycle.test.mjs:10:3
+✖ credential-free Node PID1 fatal retires detached processes (26.571715ms)
+  Error
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/test/lifecycle.test.mjs:81:45)
+      at ChildProcess.wrapper (node:events:639:12)
+      at ChildProcess.emit (node:events:514:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at apps/studio-render/test/lifecycle.test.mjs:10:3
+✖ credential-free Node PID1 shutdown retires detached processes (16.15369ms)
+  Error
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/test/lifecycle.test.mjs:81:45)
+      at ChildProcess.wrapper (node:events:639:12)
+      at ChildProcess.emit (node:events:514:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at apps/studio-render/test/teardown.test.mjs:52:3
+✖ namespace launcher death tears down all descendants before the next job (185.813817ms)
+  Error: launcher exited before fixture readiness
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/test/teardown.test.mjs:116:22)
+      at ChildProcess.wrapper (node:events:639:12)
+      at ChildProcess.emit (node:events:514:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)
+
+test at apps/studio-render/test/teardown.test.mjs:52:3
+✖ namespace namespace-init death tears down all descendants before the next job (180.369413ms)
+  Error: launcher exited before fixture readiness
+      at ChildProcess.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-evidence/missing-launcher/apps/studio-render/test/teardown.test.mjs:116:22)
+      at ChildProcess.wrapper (node:events:639:12)
+      at ChildProcess.emit (node:events:514:28)
+      at ChildProcess._handle.onexit (node:internal/child_process:295:12)

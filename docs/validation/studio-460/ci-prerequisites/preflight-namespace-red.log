@@ -1,0 +1,30 @@
+✔ missing Bubblewrap fails before running security fixtures with an actionable diagnostic (1.331482ms)
+✖ unsupported version and denied namespaces refuse rather than skipping security tests (0.864607ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.681455
+
+✖ failing tests:
+
+test at apps/studio-render/test/prerequisites.test.mjs:12:1
+✖ unsupported version and denied namespaces refuse rather than skipping security tests (0.864607ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/test/prerequisites.test.mjs:15:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /namespace.*Operation not permitted/s,
+    operator: 'throws',
+    diff: 'simple'
+  }

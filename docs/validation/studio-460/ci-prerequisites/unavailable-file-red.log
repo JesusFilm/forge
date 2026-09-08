@@ -1,0 +1,139 @@
+✖ execution hides credentials and host files, blocks namespace escape and rejects writable input (849.704149ms)
+✖ lost supervisor is fatal even when cancellation raced with teardown (11.826994ms)
+✖ render libraries see at most two CPUs and children cannot widen their inherited affinity (5.844903ms)
+✖ credential-free Node PID1 fatal retires detached processes (9.314075ms)
+✖ credential-free Node PID1 shutdown retires detached processes (8.41994ms)
+✖ namespace launcher death tears down all descendants before the next job (188.919966ms)
+✖ namespace namespace-init death tears down all descendants before the next job (176.560996ms)
+✖ injected parent fcntl setup failure reaps detached descendants within deadline (505.473239ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3954.103262
+
+✖ failing tests:
+
+test at apps/studio-render/test/isolation.test.mjs:10:1
+✖ execution hides credentials and host files, blocks namespace escape and rejects writable input (849.704149ms)
+  Error: spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    path: '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    spawnargs: [ '3000', '4096', '65536', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--disable-userns', '--assert-userns-disabled', '--die-with-parent', '--new-session', '--clearenv', '--uid', '1000', '--gid', '1000', '--cap-drop', 'ALL', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--symlink', 'usr/bin', '/bin', '--proc', '/proc', '--dev', '/dev', '--size', '8388608', '--tmpfs', '/dev/shm', '--size', '268435456', '--tmpfs', '/tmp', '--ro-bind', '/home/tataihono/.local/lib/nodejs/node-v24.20.0-linux-x64/bin/node', '/runtime/node', '--ro-bind', '/tmp/studio460-isolation-xcIJ94/child.mjs', '/runtime/child.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/sandbox-init', '/runtime/init', '--ro-bind', '/tmp/studio460-isolation-xcIJ94/input', '/input', '--chdir', '/input', '--', '/runtime/init' ]
+  }
+
+test at apps/studio-render/test/isolation.test.mjs:49:1
+✖ lost supervisor is fatal even when cancellation raced with teardown (11.826994ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'EACCES'
+  -   code: 'ISOLATION_LOST'
+    }
+  
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/test/isolation.test.mjs:85:9)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: spawn /tmp/studio460-lost-supervisor-KfCd7s/guard EACCES
+        at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+        at onErrorNT (node:internal/child_process:525:16)
+        at process.processTicksAndRejections (node:internal/process/task_queues:90:21),
+    expected: { code: 'ISOLATION_LOST' },
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at apps/studio-render/test/isolation.test.mjs:95:1
+✖ render libraries see at most two CPUs and children cannot widen their inherited affinity (5.844903ms)
+  Error: spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    path: '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    spawnargs: [ '3000', '4096', '65536', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--disable-userns', '--assert-userns-disabled', '--die-with-parent', '--new-session', '--clearenv', '--uid', '1000', '--gid', '1000', '--cap-drop', 'ALL', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--symlink', 'usr/bin', '/bin', '--proc', '/proc', '--dev', '/dev', '--size', '8388608', '--tmpfs', '/dev/shm', '--size', '268435456', '--tmpfs', '/tmp', '--ro-bind', '/home/tataihono/.local/lib/nodejs/node-v24.20.0-linux-x64/bin/node', '/runtime/node', '--ro-bind', '/tmp/studio460-affinity-63KY0z/child.mjs', '/runtime/child.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/sandbox-init', '/runtime/init', '--ro-bind', '/tmp/studio460-affinity-63KY0z', '/input', '--chdir', '/input', '--', '/runtime/init' ]
+  }
+
+test at apps/studio-render/test/lifecycle.test.mjs:10:3
+✖ credential-free Node PID1 fatal retires detached processes (9.314075ms)
+  Error: spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    path: '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    spawnargs: [ '2000', '4096', '1024', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--as-pid-1', '--die-with-parent', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--proc', '/proc', '--dev', '/dev', '--ro-bind', '/home/tataihono/.local/lib/nodejs/node-v24.20.0-linux-x64/bin/node', '/runtime/node', '--ro-bind', '/tmp/studio460-pid1-mXz56q/main.mjs', '/runtime/main.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/src/lifecycle.mjs', '/runtime/lifecycle.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/src/budget.mjs', '/runtime/budget.mjs', '--', '/runtime/node', '/runtime/main.mjs' ]
+  }
+
+test at apps/studio-render/test/lifecycle.test.mjs:10:3
+✖ credential-free Node PID1 shutdown retires detached processes (8.41994ms)
+  Error: spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    path: '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/dist/guard',
+    spawnargs: [ '2000', '4096', '1024', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--as-pid-1', '--die-with-parent', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--proc', '/proc', '--dev', '/dev', '--ro-bind', '/home/tataihono/.local/lib/nodejs/node-v24.20.0-linux-x64/bin/node', '/runtime/node', '--ro-bind', '/tmp/studio460-pid1-L0kCCv/main.mjs', '/runtime/main.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/src/lifecycle.mjs', '/runtime/lifecycle.mjs', '--ro-bind', '/home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/src/budget.mjs', '/runtime/budget.mjs', '--', '/runtime/node', '/runtime/main.mjs' ]
+  }
+
+test at apps/studio-render/test/teardown.test.mjs:52:3
+✖ namespace launcher death tears down all descendants before the next job (188.919966ms)
+  Error: spawn /tmp/studio460-death-O41i2p/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /tmp/studio460-death-O41i2p/guard',
+    path: '/tmp/studio460-death-O41i2p/guard',
+    spawnargs: [ '2000', '4096', '1024', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--die-with-parent', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--proc', '/proc', '--dev', '/dev', '--', '/usr/bin/python3', '-c', "import os,time\np=os.fork()\nif not p:\n os.setsid()\n if os.fork(): os._exit(0)\n os.close(1);os.close(2)\n time.sleep(30)\nelse:\n time.sleep(.1)\n print('ready',flush=True)\n time.sleep(30)" ]
+  }
+
+test at apps/studio-render/test/teardown.test.mjs:52:3
+✖ namespace namespace-init death tears down all descendants before the next job (176.560996ms)
+  Error: spawn /tmp/studio460-death-0cpFVp/guard EACCES
+      at ChildProcess._handle.onexit (node:internal/child_process:287:19)
+      at onErrorNT (node:internal/child_process:525:16)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'spawn /tmp/studio460-death-0cpFVp/guard',
+    path: '/tmp/studio460-death-0cpFVp/guard',
+    spawnargs: [ '2000', '4096', '1024', '--', '/usr/bin/bwrap', '--unshare-all', '--unshare-user', '--die-with-parent', '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64', '--proc', '/proc', '--dev', '/dev', '--', '/usr/bin/python3', '-c', "import os,time\np=os.fork()\nif not p:\n os.setsid()\n if os.fork(): os._exit(0)\n os.close(1);os.close(2)\n time.sleep(30)\nelse:\n time.sleep(.1)\n print('ready',flush=True)\n time.sleep(30)" ]
+  }
+
+test at apps/studio-render/test/teardown.test.mjs:163:1
+✖ injected parent fcntl setup failure reaps detached descendants within deadline (505.473239ms)
+  Error: ENOENT: no such file or directory, open '/tmp/studio460-death-xDDqoh/descendant'
+      at readFileSync (node:fs:484:20)
+      at TestContext.<anonymous> (file:///home/tataihono/.cache/forge-studio-460-ci-worktree/apps/studio-render/test/teardown.test.mjs:208:26)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/tmp/studio460-death-xDDqoh/descendant'
+  }

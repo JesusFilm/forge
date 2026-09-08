@@ -40,7 +40,7 @@ beforeAll(async () => {
   const preload = join(directory, "clock.mjs")
   await writeFile(
     preload,
-    `import {readFileSync} from "node:fs"; Date.now = () => Number(readFileSync(${JSON.stringify(clock)}, "utf8"));`,
+    `import {readFileSync} from "node:fs"; Date.now = () => Number(readFileSync(process.env.STUDIO_PREVIEW_TEST_CLOCK, "utf8"));`,
   )
   const port = await new Promise<number>((resolve, reject) => {
     const probe = createServer()
@@ -65,6 +65,7 @@ beforeAll(async () => {
   child = spawn(process.execPath, ["--import", preload, "dist/server.mjs"], {
     env: {
       ...process.env,
+      STUDIO_PREVIEW_TEST_CLOCK: clock,
       PORT: String(port),
       STUDIO_PREVIEW_PUBLIC_ORIGIN: origin,
       STUDIO_MANAGER_ORIGIN: "http://studio456.localhost:3456",
