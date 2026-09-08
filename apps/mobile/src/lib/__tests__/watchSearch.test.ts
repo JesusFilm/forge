@@ -35,6 +35,7 @@ function row(overrides: Partial<WatchSearchResultItem> = {}) {
     score: 0.9,
     label: "featureFilm",
     childCount: 0,
+    durationSeconds: 384,
     ...overrides,
   } as WatchSearchResultItem
 }
@@ -148,7 +149,22 @@ describe("mapWatchSearchResult", () => {
       score: 0.9,
       label: "featureFilm",
       childCount: 0,
+      durationSeconds: 384,
     })
+  })
+
+  // The result card's chip branches on exactly this pair: a series row
+  // carries a childCount and no duration, a leaf video the reverse.
+  it("keeps a series row's absent duration distinct from a leaf's", () => {
+    const series = mapWatchSearchResult(
+      row({ durationSeconds: null, childCount: 6 }),
+    )
+    expect(series?.durationSeconds).toBeNull()
+    expect(series?.childCount).toBe(6)
+
+    const leaf = mapWatchSearchResult(row())
+    expect(leaf?.durationSeconds).toBe(384)
+    expect(leaf?.childCount).toBe(0)
   })
 
   // Each of these is separately load-bearing: the card renders title, the

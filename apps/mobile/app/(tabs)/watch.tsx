@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native"
 
-import { useRouter } from "expo-router"
+import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
@@ -42,6 +42,7 @@ import {
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
+import { useSearchPreviewCycle } from "../../src/components/search/useSearchPreviewCycle"
 import {
   REVEAL_FALLBACK_MS,
   entranceDelayMs,
@@ -619,10 +620,40 @@ export default function DiscoverScreen() {
     if (awaitingRevealRef.current) releaseLoadingMore()
   }, [releaseLoadingMore])
 
+  // The grid's preview turn walks these. A stable ref because FlatList
+  // throws if onViewableItemsChanged changes identity between renders.
+  const [visibleIndices, setVisibleIndices] = useState<number[]>([])
+  const handleViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      setVisibleIndices(
+        viewableItems
+          .map((entry) => entry.index)
+          .filter((i): i is number => i != null),
+      )
+    },
+  ).current
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current
+
+  const isFocused = useIsFocused()
+
+  const previewIndex = useSearchPreviewCycle({
+    results,
+    visibleIndices,
+    // A pass belongs to one settled result set: never while a search is
+    // in flight, and never over an error's stale results.
+    // isFocused matters: expo-router Tabs keeps a blurred screen mounted, so
+    // without it the pass keeps spending Mux fetches for an invisible grid.
+    enabled: isFocused && !loading && !error && results.length > 0,
+    passKey: searchRequestIdRef.current,
+  })
+
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
       <SearchResultCard
         result={item}
+        previewActive={index === previewIndex}
         entranceDelay={entranceDelayMs(index, batchStartRef.current)}
         onSelect={handleSelectResult}
         onPressIn={handlePrefetch}
@@ -633,7 +664,7 @@ export default function DiscoverScreen() {
         }
       />
     ),
-    [handleSelectResult, handlePrefetch, handleBatchRevealed],
+    [handleSelectResult, handlePrefetch, handleBatchRevealed, previewIndex],
   )
 
   const keyExtractor = useCallback(
@@ -719,6 +750,8 @@ export default function DiscoverScreen() {
               keyExtractor={keyExtractor}
               numColumns={2}
               keyboardDismissMode="on-drag"
+              onViewableItemsChanged={handleViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: 32 + tabBarClearance },

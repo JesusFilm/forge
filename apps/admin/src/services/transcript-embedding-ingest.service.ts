@@ -817,6 +817,21 @@ export async function ingestTranscriptEmbeddings(
               "transcript write did not return a transcript id",
             )
           }
+          const previousPublicationEvent =
+            await tx.watchSearchCurrentTranscriptPublicationEvent.findFirst({
+              where: { transcriptId: writeResult.transcriptId },
+              orderBy: { sourceGeneration: "desc" },
+              select: { currentDocumentIds: true },
+            })
+          const currentDocumentIds = new Set(writeResult.currentDocumentIds)
+          const staleDocumentIds = [
+            ...new Set([
+              ...writeResult.staleDocumentIds,
+              ...(previousPublicationEvent?.currentDocumentIds ?? []).filter(
+                (id) => !currentDocumentIds.has(id),
+              ),
+            ]),
+          ]
           await tx.watchSearchCurrentTranscriptPublicationEvent.create({
             data: {
               transcriptId: writeResult.transcriptId,
@@ -828,7 +843,7 @@ export async function ingestTranscriptEmbeddings(
               sourceGeneration: nextSourceGeneration,
               sourceContentHash: hash,
               currentDocumentIds: writeResult.currentDocumentIds,
-              staleDocumentIds: writeResult.staleDocumentIds,
+              staleDocumentIds,
             },
           })
 

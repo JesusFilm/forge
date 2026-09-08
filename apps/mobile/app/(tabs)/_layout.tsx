@@ -48,14 +48,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="watch"
         options={{
-          title: "Discover",
+          title: "Search",
           headerShown: true,
-          headerTitle: "Discover",
+          headerTitle: "Search",
           headerStyle: { backgroundColor: BG_COLOR },
           headerTintColor: "#f5f5f4",
           headerShadowVisible: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color as string} />
+            <Ionicons name="search" size={size} color={color as string} />
           ),
         }}
       />

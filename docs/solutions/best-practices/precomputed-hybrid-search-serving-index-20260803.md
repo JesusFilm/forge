@@ -171,6 +171,12 @@ Using a full deployment identity here makes a healthy generation incompatible
 after unrelated Admin changes; see
 [Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).
 
+Tests that simulate a content-embedding contract rotation must derive a
+distinct alternate identity from the current contract seed. A hardcoded
+anticipated next-version id eventually becomes the active id, stops exercising
+the drift path, and can let the test fall through into unrelated publication
+side effects.
+
 The private page at `/dashboard/search/compare` runs one normalized query
 against frozen current and candidate profiles. Each side records its own result
 or error, so candidate failure cannot hide the current result. Candidate work
@@ -285,6 +291,14 @@ vectors to exceed a safe request-body size even though its chunk count looks
 modest. Each import batch still needs exact response-line count and success
 validation, followed by independent document and normalized-vector readback
 over the complete chunk set.
+
+Derive a replacement event's stale-document evidence from both the canonical
+rows removed during that write and the immediately preceding event's current
+document ids. Repair mode exists specifically for incomplete canonical chunk
+sets: if a previously published chunk row is already missing, the row-level
+delete query cannot rediscover its old Typesense id. The prior identity-only
+event can, so carry that old id forward whenever it is absent from the repaired
+current set.
 
 Fingerprint numeric fields at the storage width of the serving schema.
 Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON

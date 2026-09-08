@@ -73,6 +73,23 @@ function muxStillUrl(
 }
 
 /**
+ * Looping animated preview (Mux `animated.webp`) from a playback ID; null if
+ * missing or non-alphanumeric. Drawn by expo-image — NOT a video view, so it
+ * costs no decoder and stays clear of the root-owned-player rule.
+ *
+ * SYNC: apps/tv `getMuxAnimatedPreviewUrl` + apps/web `resolveMuxAnimatedPreviewUrl`.
+ * The 448/8 params are deliberately identical: Mux transcodes per (id, params)
+ * then CDN-caches, so matching them rides a cache the other clients already
+ * warmed. A novel size costs a ~4.5s cold transcode on first request.
+ */
+export function muxAnimatedPreviewFromPlaybackId(
+  playbackId: string | null | undefined,
+): string | null {
+  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
+  return `https://image.mux.com/${playbackId}/animated.webp?start=2&end=6&width=448&fps=8`
+}
+
+/**
  * Extract the Mux playback ID from a stored HLS URL; null if not a Mux stream.
  * Lets callers compare sources by asset identity, since stored `hls` may differ
  * in shape from a rebuilt URL.

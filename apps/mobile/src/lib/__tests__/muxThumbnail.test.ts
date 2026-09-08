@@ -2,6 +2,7 @@ import {
   deriveMuxThumbnailUrl,
   extractMuxPlaybackId,
   isSameMuxAsset,
+  muxAnimatedPreviewFromPlaybackId,
   muxHlsUrlFromPlaybackId,
   muxThumbnailAtSecond,
   muxThumbnailFromPlaybackId,
@@ -139,6 +140,31 @@ describe("extractMuxPlaybackId", () => {
     const id = extractMuxPlaybackId(url)
     expect(id).not.toBeNull()
     expect(muxHlsUrlFromPlaybackId(id)).toBe(url)
+  })
+})
+
+describe("muxAnimatedPreviewFromPlaybackId", () => {
+  // Byte-for-byte: the 448/8 params are shared with apps/tv and apps/web so all
+  // three ride one warm Mux CDN entry. A novel size is a cold transcode.
+  it("builds the shared animated-preview URL", () => {
+    expect(muxAnimatedPreviewFromPlaybackId("abc123XYZ")).toBe(
+      "https://image.mux.com/abc123XYZ/animated.webp?start=2&end=6&width=448&fps=8",
+    )
+  })
+
+  // The id is admin-supplied, so it is validated before interpolation or a
+  // tainted value could redirect the request to another host or path.
+  it.each(["evil.com/x", "ab cd", "a/../b", "a?b=1", "a#f"])(
+    "returns null for a non-alphanumeric id (%s)",
+    (id) => {
+      expect(muxAnimatedPreviewFromPlaybackId(id)).toBeNull()
+    },
+  )
+
+  it("returns null for a missing id", () => {
+    expect(muxAnimatedPreviewFromPlaybackId(null)).toBeNull()
+    expect(muxAnimatedPreviewFromPlaybackId(undefined)).toBeNull()
+    expect(muxAnimatedPreviewFromPlaybackId("")).toBeNull()
   })
 })
 

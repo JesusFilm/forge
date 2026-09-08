@@ -9,6 +9,7 @@ duration: 6
 depends_on:
   - "feat-376"
   - "feat-386"
+  - "feat-464"
 blocks:
   - "feat-381"
   - "feat-447"
@@ -89,3 +90,9 @@ The ticket is not complete until these results are visible and reconcilable in t
 - The first day production audit found that the initial reconciliation scheduler run lost a deployment registration race and terminated with `WorkflowNotRegisteredError`. It also exposed the playback replay-receipt and session-binding failures addressed by the closeout hotfix.
 - The closeout hotfix adds a five-minute scheduler watchdog that reconciles terminal runtime state and restarts under the existing advisory lock. Regression coverage proves recovery when a runtime fails after `start()` has already returned.
 - This ticket remains `in-progress` until the hotfix is deployed, reconciliation converges, and a fresh authorized Admin audit reports zero current pointers with ineligible lineage, as required by the Admin Evidence Gate. No pre-deploy result is being represented as production closure.
+
+## Post-Deploy Update — 2026-09-08
+
+- The deployed hotfix eliminated the replay-receipt `P2002` collision and restored the five-minute reconciliation cadence in the reviewed production window.
+- The same fixed-window audit found residual Web-to-Admin timeout/error-normalization failures, exhausted playback write conflicts, and successful recognized-crawler traffic on the human playback evidence path.
+- `feat-464` now owns that transport, crawler-integrity, observability, and production-canary work. This ticket remains blocked until `feat-464` is complete and the fresh authorized Admin audit proves zero current pointers with ineligible lineage.

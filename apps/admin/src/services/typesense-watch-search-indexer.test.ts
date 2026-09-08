@@ -1043,6 +1043,7 @@ describe("Typesense Watch Search indexer", () => {
   })
 
   it("pins one transcript contract and aborts before aliases move when compatibility rotates", async () => {
+    const rotatedContractId = `${ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id}-rotated`
     let contractReads = 0
     const queryRaw = vi.fn(async (query: unknown) => {
       const sql = rawSqlText(query)
@@ -1055,7 +1056,7 @@ describe("Typesense Watch Search indexer", () => {
           query,
           contractReads === 1
             ? ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id
-            : "semantic-transcript-pgvector-v2",
+            : rotatedContractId,
         )
       }
       const compatibility = transcriptCompatibilityQueryResult(query)
