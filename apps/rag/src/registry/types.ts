@@ -60,6 +60,8 @@ export interface CrawlPolicy {
   requestDelayMs: number
   /** Safety cap on pages fetched per run. */
   maxPages: number
+  /** Optional exact inventory gate, checked before resume-skip or truncation. */
+  expectedPages?: number
   /** Drop a page whose extracted text is shorter than this many characters. */
   minContentLength: number
 }
@@ -80,5 +82,7 @@ export interface SourceEntry {
     enabled: false
     reason: string
   }
+  /** Explicit opt-in path slices; the default crawl stays unchanged. */
+  pathCrawls?: Record<string, CrawlPolicy>
   crawl: CrawlPolicy
 }

@@ -1199,11 +1199,20 @@ and is idempotent by default. Explicit modes are `idempotent`, `repair`,
   Search transcript field contract, including grouping/visibility facets and
   the 1,536-dimension vector declaration; document readback alone cannot prove
   that the real reader can query an incorrectly shaped collection. Once an
-  external mutation starts,
-  any later definite validation or completion failure removes and verifies
-  absence of the affected current and stale document ids under the same
-  publication lock before the event is released for retry; an incomplete
-  attempt must not leave a newly public transcript searchable. A thrown final
+  external mutation starts, a failed JSONL upsert removes current ids but keeps
+  exact stale ids until every current upsert has succeeded; failures after
+  stale deletion starts remove and verify the complete affected id set under
+  the same publication lock before retry. An incomplete attempt must not leave
+  a newly public transcript searchable. Claims are generation/token fenced,
+  and the next live worker dead-letters an attempt-exhausted crashed claim
+  before making another external call. Bounded failures enter `DEAD_LETTER`
+  without losing repair evidence, and a later source generation can coalesce
+  that evidence. A canonical transcript/video cascade appends identity-only
+  `LIFECYCLE` cleanup before deleting the parent, combining incremental event
+  evidence with canonical chunk ids published only by a full rebuild;
+  publication events therefore deliberately have no transcript foreign key
+  and retain transcript, video, edition, language, contract, chunking, and
+  exact document identity. A thrown final
   PostgreSQL commit is reconciled from the durable event and projection rows
   before compensation because the commit acknowledgement may be lost after a
   successful commit; an unavailable reconciliation preserves the claim and

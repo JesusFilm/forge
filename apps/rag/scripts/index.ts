@@ -1,3 +1,4 @@
+import { canonicalPrefix } from "./lib/path-scope.js"
 import { ingestPending } from "../src/indexing/index.js"
 import { parseIndexArgs } from "./lib/maintenance-args.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
@@ -5,7 +6,7 @@ import { getSource } from "../src/registry/index.js"
 import { RagOperationalError } from "../src/contracts/index.js"
 
 async function main() {
-  const argv = process.argv.slice(2)
+  const argv = process.argv.slice(process.argv[2] === "--" ? 3 : 2)
   const production = argv.includes("--production")
   const args = parseIndexArgs(argv)
   if (production) installProductionEnvironment(process.env, args.apply)
@@ -14,12 +15,16 @@ async function main() {
       "argument_invalid",
       `unknown source '${args.source}'`,
     )
+  const canonicalUrlPrefix = args.source
+    ? canonicalPrefix(getSource(args.source)!, args.pathPrefix)
+    : undefined
   const { wire } = await import("../src/main.js")
   const wiring = wire()
   try {
     if (!args.apply) {
       const candidates = await wiring.rawDocumentReader.listPending({
         sourceKey: args.source,
+        canonicalUrlPrefix,
         limit: args.limit,
         includeIngested: args.force,
         targetEmbeddingModel:
@@ -29,6 +34,7 @@ async function main() {
         JSON.stringify({
           dryRun: true,
           source: args.source ?? "all",
+          canonicalUrlPrefix,
           candidateCount: candidates.length,
           candidateIds: candidates.map(({ id }) => id),
           embeddingModel: wiring.embedder.model,
@@ -45,6 +51,7 @@ async function main() {
       },
       {
         sourceKey: args.source,
+        canonicalUrlPrefix,
         limit: args.limit,
         concurrency: args.concurrency,
         force: args.force,
