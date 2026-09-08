@@ -19,10 +19,15 @@ import {
   _internals as transcriptEmbeddingIngestInternals,
   ingestTranscriptEmbeddings,
 } from "./transcript-embedding-ingest.service"
-import { TypesenseClient, TypesenseRequestError } from "./typesense-client"
+import {
+  TypesenseClient,
+  TypesenseImportError,
+  TypesenseRequestError,
+} from "./typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
 import {
+  MAX_PUBLICATION_ATTEMPTS,
   publishOneCurrentTranscriptToWatchSearch,
   WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID,
   WatchSearchTranscriptPublicationCompletionIndeterminateError,
@@ -107,6 +112,7 @@ class ControlledTypesenseServer {
   private readonly collections = new Map<string, StoredCollection>()
   private readonly aliases = new Map<string, string>()
   private readonly curationSets = new Map<string, Record<string, unknown>>()
+  private nextImportFailureIndex: number | null = null
   private server = createServer(this.handleRequest.bind(this))
   url = ""
 
@@ -131,6 +137,11 @@ class ControlledTypesenseServer {
     this.collections.clear()
     this.aliases.clear()
     this.curationSets.clear()
+    this.nextImportFailureIndex = null
+  }
+
+  failNextImportAt(index: number): void {
+    this.nextImportFailureIndex = index
   }
 
   private async readBody(request: IncomingMessage): Promise<string> {
@@ -456,7 +467,19 @@ class ControlledTypesenseServer {
       }
       const body = await this.readBody(request)
       const lines = body.split("\n").filter(Boolean)
-      for (const line of lines) {
+      const failureIndex = this.nextImportFailureIndex
+      this.nextImportFailureIndex = null
+      const results: string[] = []
+      for (const [index, line] of lines.entries()) {
+        if (index === failureIndex) {
+          results.push(
+            JSON.stringify({
+              success: false,
+              error: "controlled JSONL document failure",
+            }),
+          )
+          continue
+        }
         const document = JSON.parse(line) as Record<string, unknown>
         // Typesense `float` and `float[]` fields store IEEE-754 single
         // precision values. Model that boundary so publication fingerprint
@@ -475,11 +498,9 @@ class ControlledTypesenseServer {
             : {}),
         }
         collection.documents.set(String(storedDocument.id), storedDocument)
+        results.push(JSON.stringify({ success: true }))
       }
-      this.text(
-        response,
-        lines.map(() => JSON.stringify({ success: true })).join("\n"),
-      )
+      this.text(response, results.join("\n"))
       return
     }
     if (request.method === "PUT" && pathname.startsWith("/aliases/")) {
@@ -909,6 +930,25 @@ suite("current transcript publication into Watch Search", () => {
     })
   }
 
+  function prismaWithFailedCompletionTransaction(): PrismaClient {
+    let transactionCount = 0
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "$transaction") {
+          return async (...args: unknown[]) => {
+            transactionCount += 1
+            if (transactionCount === 2) {
+              throw new Error("simulated PostgreSQL completion failure")
+            }
+            return Reflect.apply(target.$transaction, target, args)
+          }
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   function prismaRequiringBoundedCompletionTransaction(): PrismaClient {
     let transactionCount = 0
     return new Proxy(prisma, {
@@ -998,7 +1038,6 @@ suite("current transcript publication into Watch Search", () => {
     expect(rows.map((row) => row.name)).toEqual([
       "watch_search_transcript_pub_status_retry_created_idx",
       "watch_search_transcript_pub_transcript_generation_key",
-      "watch_search_transcript_pub_transcript_id_fkey",
       "watch_search_transcript_pub_transcript_status_created_idx",
     ])
     expect(rows.every((row) => Buffer.byteLength(row.name, "utf8") <= 63)).toBe(
@@ -2763,6 +2802,409 @@ suite("current transcript publication into Watch Search", () => {
         event.currentDocumentIds[0]!,
       ),
     ).resolves.toBeUndefined()
+  }, 180_000)
+
+  it("stops before stale deletion when one JSONL result fails, then converges on retry", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "jsonl-initial" }),
+    )
+    await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    const initialEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({
+        mode: "force",
+        mastraRunId: "jsonl-replacement",
+        generatedAt: "2026-09-03T00:10:00.000Z",
+        chunks: [{ text: "Newest canonical chunk", embedding, tokenCount: 3 }],
+      }),
+    )
+    const replacementEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 2n } },
+      )
+    const exactStaleId = initialEvent.currentDocumentIds[1]!
+    expect(replacementEvent.staleDocumentIds).toContain(exactStaleId)
+
+    typesenseServer.failNextImportAt(0)
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toBeInstanceOf(TypesenseImportError)
+
+    await expect(
+      typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, exactStaleId),
+    ).resolves.toMatchObject({ id: exactStaleId })
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUniqueOrThrow({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+        select: { projectionRevision: true },
+      }),
+    ).resolves.toEqual({ projectionRevision: 1n })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: replacementEvent.id },
+        select: { status: true, attemptCount: true, completedAt: true },
+      }),
+    ).resolves.toEqual({
+      status: "PENDING",
+      attemptCount: 1,
+      completedAt: null,
+    })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:00:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 2n,
+      projectionRevision: 2n,
+    })
+    await expect(
+      typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, exactStaleId),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
+  it("replays external success after a rolled-back database completion and advances one revision", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "db-failure-replay" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma: prismaWithFailedCompletionTransaction(),
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow("simulated PostgreSQL completion failure")
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).resolves.toBeNull()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:00:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: {
+          status: true,
+          attemptCount: true,
+          completedProjectionRevision: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "COMPLETED",
+      attemptCount: 2,
+      completedProjectionRevision: 1n,
+    })
+  }, 180_000)
+
+  it("treats evaluation-lease contention as mutation-free scheduling information", async () => {
+    const now = new Date("2026-09-08T00:00:00.000Z")
+    const expiresAt = new Date(now.getTime() + 30_000)
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "lease-contention" }),
+    )
+    const transcriptSchema = watchTranscriptCollectionSchema("fixture")
+    const catalogSchema = watchCatalogCollectionSchema("fixture")
+    const availabilitySchema = watchAvailabilityCollectionSchema("fixture")
+    const lexicalSchema = watchLexicalCollectionSchema("fixture")
+    await prisma.watchSearchCandidateGeneration.create({
+      data: {
+        id: "candidate-evaluation-contention",
+        state: "READY",
+        indexContractRevision: "watch-search-index-v1",
+        contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 0n,
+        sourceEpoch: "fixture-source",
+        sourceDigests: { fixture: "sha256:fixture" },
+        catalogCollection: catalogSchema.name,
+        availabilityCollection: availabilitySchema.name,
+        lexicalCollection: lexicalSchema.name,
+        transcriptCollection: transcriptSchema.name,
+        catalogFields: catalogSchema.fields,
+        availabilityFields: availabilitySchema.fields,
+        lexicalFields: lexicalSchema.fields,
+        transcriptFields: transcriptSchema.fields,
+        ownedCollections: [
+          catalogSchema.name,
+          availabilitySchema.name,
+          lexicalSchema.name,
+        ],
+        sharedCollections: [transcriptSchema.name],
+      },
+    })
+    await prisma.watchSearchCandidateLease.create({
+      data: {
+        resourceKey: "evaluation-contention",
+        kind: "EVALUATION",
+        holderToken: "evaluation-holder",
+        generationId: "candidate-evaluation-contention",
+        indexContractRevision: "watch-search-index-v1",
+        contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptCollection: transcriptSchema.name,
+        transcriptProjectionRevision: 0n,
+        currentBindings: [
+          catalogSchema.name,
+          availabilitySchema.name,
+          lexicalSchema.name,
+          transcriptSchema.name,
+        ],
+        acquiredAt: now,
+        renewedAt: now,
+        expiresAt,
+      },
+    })
+
+    const blocked = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      now,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(blocked).toEqual({
+      status: "blocked",
+      leaseKind: "EVALUATION",
+      retryAt: expiresAt,
+      blockedDurationMs: 30_000,
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
+        select: {
+          status: true,
+          attemptCount: true,
+          leaseGeneration: true,
+          leaseTokenHash: true,
+          leaseExpiresAt: true,
+          lastErrorCode: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "PENDING",
+      attemptCount: 0,
+      leaseGeneration: 0,
+      leaseTokenHash: null,
+      leaseExpiresAt: null,
+      lastErrorCode: null,
+    })
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date(expiresAt.getTime() + 1),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+  }, 180_000)
+
+  it("dead-letters bounded failures without dropping repair evidence", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "dead-letter" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.update({
+      where: { id: event.id },
+      data: { attemptCount: MAX_PUBLICATION_ATTEMPTS - 1 },
+    })
+    const incompatibleSchema = watchTranscriptCollectionSchema("dead-letter")
+    incompatibleSchema.fields = incompatibleSchema.fields.map((field) =>
+      field.name === "canonicalVideoId" ? { ...field, facet: false } : field,
+    )
+    await typesense.createCollection(incompatibleSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      incompatibleSchema.name,
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/reader contract/i)
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: {
+          status: true,
+          attemptCount: true,
+          currentDocumentIds: true,
+          staleDocumentIds: true,
+          deadLetteredAt: true,
+          nextAttemptAt: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "DEAD_LETTER",
+      attemptCount: MAX_PUBLICATION_ATTEMPTS,
+      currentDocumentIds: event.currentDocumentIds,
+      staleDocumentIds: event.staleDocumentIds,
+      deadLetteredAt: expect.any(Date),
+      nextAttemptAt: null,
+    })
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:00:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toEqual({ status: "idle" })
+  }, 180_000)
+
+  it("preserves exact lifecycle cleanup evidence across the canonical video cascade", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "lifecycle-delete" }),
+    )
+    const initial = await publishOneCurrentTranscriptToWatchSearch({
+      prisma,
+      typesense,
+      generations,
+      withIndexLock: (run) =>
+        withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+    })
+    expect(initial).toMatchObject({
+      status: "published",
+      workKind: "publication",
+      projectionRevision: 1n,
+    })
+    const transcript = await prisma.videoTranscript.findFirstOrThrow()
+    const publicationEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { sourceGeneration: 1n } },
+      )
+    for (const id of publicationEvent.currentDocumentIds) {
+      await expect(
+        typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, id),
+      ).resolves.toMatchObject({ id })
+    }
+
+    await prisma.video.delete({ where: { id: "video-1" } })
+
+    await expect(
+      prisma.videoTranscript.findUnique({ where: { id: transcript.id } }),
+    ).resolves.toBeNull()
+    const lifecycleEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow(
+        { where: { workKind: "LIFECYCLE" } },
+      )
+    expect(lifecycleEvent).toMatchObject({
+      transcriptId: transcript.id,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      language: "en",
+      contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+      transcriptChunkingVersion: "mastra-v1",
+      sourceGeneration: 2n,
+      currentDocumentIds: [],
+      status: "PENDING",
+    })
+    expect(new Set(lifecycleEvent.staleDocumentIds)).toEqual(
+      new Set(publicationEvent.currentDocumentIds),
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      workKind: "lifecycle",
+      transcriptId: transcript.id,
+      sourceGeneration: 2n,
+      projectionRevision: 2n,
+      documentCount: 0,
+    })
+    for (const id of publicationEvent.currentDocumentIds) {
+      await expect(
+        typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, id),
+      ).resolves.toBeUndefined()
+    }
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+        orderBy: { sourceGeneration: "asc" },
+        select: {
+          sourceGeneration: true,
+          status: true,
+          completedProjectionRevision: true,
+        },
+      }),
+    ).resolves.toEqual([
+      {
+        sourceGeneration: 1n,
+        status: "COMPLETED",
+        completedProjectionRevision: 1n,
+      },
+      {
+        sourceGeneration: 2n,
+        status: "COMPLETED",
+        completedProjectionRevision: 2n,
+      },
+    ])
   }, 180_000)
 
   it("does not claim an event when the caller's publication lock database is busy", async () => {
