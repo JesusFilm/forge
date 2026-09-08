@@ -183,16 +183,20 @@ Do not set `isInteractive`. Inside a pressable it flashes white on remount. See
 `isGlassEffectAPIAvailable()` exists because some iOS 26 beta builds crash
 without it (expo/expo#40911). The app calls neither guard today.
 
-## Clearance — eight surfaces
+## Clearance — seven surfaces
 
 The navigator adds no padding when the bar leaves the flow. The screen container
 simply grows to full height. Each surface below adds `useTabBarClearance()`,
 which is 0 on Android.
 
+Only **list-level** padding takes the clearance.
+`HomeMissionSection.tsx:191` holds `paddingBottom: 24`, but that is spacing
+inside one feed item. The `HomeScreen` content container already clears the
+whole feed, so adding the clearance in both places would double-count it.
+
 | Surface                                            | Today                | Hidden without the fix                                          |
 | -------------------------------------------------- | -------------------- | --------------------------------------------------------------- |
-| `src/components/home/HomeScreen.tsx:389`           | 48                   | the bottom of the mission rail                                  |
-| `src/components/home/HomeMissionSection.tsx:191`   | 24                   | the last feed item                                              |
+| `src/components/home/HomeScreen.tsx:389`           | 48                   | the bottom of the feed, including the mission rail              |
 | `app/(tabs)/watch.tsx:840`                         | 32                   | the last result row, the `Load more` button and the retry block |
 | `src/components/search/BrowseTopics.tsx:62`        | 24                   | the bottom row of topic cards                                   |
 | `app/(tabs)/library.tsx:498`                       | 24                   | the last download row                                           |
