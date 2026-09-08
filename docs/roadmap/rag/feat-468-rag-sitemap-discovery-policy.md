@@ -68,4 +68,6 @@ The transport/filter distinction and testing lesson are retained in the existing
 `apps/rag/docs/ops/corpus-maintenance.md` runbook.
 
 Validation: 840 tests passed, 2 skipped; typecheck, lint, dependency boundaries,
-and lifecycle schema checks passed. Repository formatting runs before commit.
+and lifecycle schema checks passed. Repository formatting passed before commit.
+
+[Forge PR #2210](https://github.com/JesusFilm/forge/pull/2210).
