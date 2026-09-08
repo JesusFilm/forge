@@ -18,7 +18,8 @@ key; they never become language-specific source keys.
   a concrete resume hint. The next branch starts from current `origin/main`.
 - A fresh session resumes with: “Resume the GotQuestions multilingual campaign
   from `apps/rag/docs/slices/gotquestions-multilingual.md`.” The current `$slice`
-  launcher is used for English, not for this same-source campaign.
+  launcher is used for English and the explicitly authorized Icelandic exception;
+  the remaining same-source campaign stays deferred.
 - AI performs inventory, acquisition, label audits, retrieval smoke tests, and
   corpus-grounded eval drafting in bulk. The operator reviews consolidated
   exception/eval packets and gates writes and production promotion.
@@ -48,6 +49,29 @@ key; they never become language-specific source keys.
   totals, and only anomalies are surfaced for review.
 - Production is never automatic: local verification, merge, and explicit
   promotion approval remain separate gates.
+
+## Standalone exception ledger
+
+| Language | Path                  | State                              | Resume evidence                                                                          |
+| -------- | --------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| `en`     | flat English articles | complete (existing slice)          | [English record](./gotquestions.md)                                                      |
+| `is`     | `/islenska/`          | complete locally (all four stages) | [Icelandic resume section](./gotquestions.md#icelandic-standalone-exception--2026-09-08) |
+
+On 2026-09-08 the operator explicitly overrode batch-only rollout for Icelandic.
+Its one-sitemap inventory is 51 articles plus the excluded landing page. This is
+not a campaign start. Later batches must reconcile this ledger and the Icelandic
+resume section, skipping completed work and resuming any unfinished stage.
+Icelandic lifecycle closure initially used the three-query retrieval check as
+proportional evaluation. The operator then requested a dedicated golden eval
+stage on 2026-09-08. That evaluation is now complete: delegated precedent review
+resolved 22 disagreements as 9 additions and 13 exclusions, yielding six reviewed
+cases and 26 relevant pairs. The operator approved their canonical append and
+final lifecycle closure. The 431-case canonical rerun found relevant documents
+within the top three for all six Icelandic cases, with coverage 0.769. One
+reproduced off-topic false positive is retained in `feat-467`; no identity-matched
+historical regression pass is available or claimed. See the canonical results
+and final closure in the Icelandic slice record.
+All other translations remain deferred.
 
 ## Resume hint
 

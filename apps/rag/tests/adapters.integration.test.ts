@@ -191,6 +191,38 @@ describe("Prisma-backed RAG adapters", () => {
     ).resolves.toEqual([])
   })
 
+  it("applies literal path boundaries before limits in normal and forced reads", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    for (const slug of [
+      "english/article.html",
+      "islenska-other/article.html",
+      "isXYZ/article.html",
+      "islenska/article.html",
+      "is_%/article.html",
+    ]) {
+      await rawStore.putRawDocument(raw(`Fixture ${slug}`, slug))
+    }
+    for (const path of ["islenska/", "is_%/"]) {
+      for (const mode of [
+        {},
+        { includeIngested: true },
+        { includeIngested: true, targetEmbeddingModel: "fixture/new" },
+      ]) {
+        const selected = await rawReader.listPending({
+          sourceKey: key,
+          canonicalUrlPrefix: `${prefix}${path}`,
+          limit: 1,
+          ...mode,
+        })
+        expect(selected.map(({ canonicalUrl }) => canonicalUrl)).toEqual([
+          `${prefix}${path}article.html`,
+        ])
+      }
+    }
+    expect(await rawReader.listPending({ sourceKey: key })).toHaveLength(5)
+  })
+
   it("atomically replaces chunks, preserves language, and retrieves the fixture", async () => {
     const sourceId = await writes.upsertSource(source)
     await writes.replaceDocument(document("v1", "en"), [

@@ -280,6 +280,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       sourceKey?: string
       limit?: number
       includeIngested?: boolean
+      canonicalUrlPrefix?: string
       targetEmbeddingModel?: string
     } = {},
   ): Promise<PendingRawDocument[]> {
@@ -292,6 +293,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
             r.index_attempted_at, r.index_attempted_model
           FROM raw_documents r
           WHERE (${options.sourceKey ?? null}::text IS NULL OR r.source_key = ${options.sourceKey ?? null})
+          AND (${options.canonicalUrlPrefix ?? null}::text IS NULL OR starts_with(r.canonical_url, ${options.canonicalUrlPrefix ?? null}::text))
           ORDER BY r.source_key, r.canonical_url, r.fetched_at DESC, r.id DESC
         )
         SELECT r.id
@@ -319,6 +321,11 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       where: {
         id: eligibleIds ? { in: eligibleIds } : undefined,
         sourceKey: options.sourceKey,
+        canonicalUrl: options.canonicalUrlPrefix
+          ? {
+              startsWith: options.canonicalUrlPrefix.replace(/[\\%_]/g, "\\$&"),
+            }
+          : undefined,
         ingestedAt: options.includeIngested ? undefined : null,
       },
       orderBy: [{ fetchedAt: "asc" }, { id: "asc" }],

@@ -15,8 +15,9 @@ registry, corpus revision, embedding model, query instruction, top-k, score
 floor, and metric implementation all match. The two-percent gate is relative:
 an exact two-percent regression passes; anything beyond it fails.
 
-The retained 2026-08-06 control ran 416 cases. The source golden file now has 425:
-the nine final `gq-*` cases were appended after that run. Therefore the historical
+The retained 2026-08-06 control ran 416 cases. The source golden file now has 431:
+nine English GotQuestions cases and six reviewed Icelandic cases were appended
+after that run. Therefore the historical
 control is comparable only with `--case-set control-2026-08-06`, which selects the
 first 416 cases while hashing their canonical content and selected ordered ID
 set. Later append-only additions therefore do not invalidate the retained

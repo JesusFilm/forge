@@ -242,7 +242,8 @@ function requireLang(doc: Document, source: string, lang: string): void {
 // ── argv parsing ─────────────────────────────────────────────────────────────
 
 export function parseArgv(argv: string[]): Command {
-  const [sub, ...rest] = argv
+  const [sub, ...rawRest] = argv
+  const rest = rawRest[0] === "--" ? rawRest.slice(1) : rawRest
   switch (sub) {
     case "check":
       return { kind: "check" }
