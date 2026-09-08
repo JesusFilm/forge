@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Standards review — Studio replay and deadlines
 
 Reviewed the working-tree diff against `a319a068fc2d79684c1ad1824387c2b8a45ca0dc`, including untracked run-budget and execution tests and `dispatch_guard_v2.py`. Prior paid evidence and earlier feature scope were not re-audited.

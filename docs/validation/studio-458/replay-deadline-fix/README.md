@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Native replay and deadline correction
 
 Fixed review base: `a319a068fc2d79684c1ad1824387c2b8a45ca0dc`. This unpaid correction is separate from the immutable closed paid comparison in `../model-comparison-1/`. It does not authorize any provider run, prompt change, media operation or application of proposals.

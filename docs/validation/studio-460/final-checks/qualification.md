@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Final-suite environment qualification
 
 The first full Admin run passed 6,170 tests and failed two unchanged environment-dependent cases. Its explicit owned PostgreSQL URL did not match env.test.ts's placeholder expectation. rate-limit.test.ts expected Redis connection failure at localhost:6379 but received source=redis. The loopback-only guard did not deny that non-owned port; one expiring test rate-limit counter may have been incremented. No shared key inspection, cleanup or service stop was performed. This uncertainty is preserved rather than presenting the run as green.

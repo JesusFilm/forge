@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Feat-460 implementation handoff
 
 Status: local implementation and release preparation; **full feature acceptance remains open**. Ticket remains in progress. No provider spending, production writes, infrastructure changes, registry uploads, push, merge or deployment occurred.

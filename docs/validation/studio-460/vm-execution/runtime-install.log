@@ -1,93 +1,0 @@
-Reading package lists...
-Building dependency tree...
-Reading state information...
-Suggested packages:
-  cgroupfs-mount | cgroup-lite docker-model-plugin
-Recommended packages:
-  docker-ce-rootless-extras pigz docker-compose-plugin
-The following NEW packages will be installed:
-  containerd.io docker-buildx-plugin docker-ce docker-ce-cli
-0 upgraded, 4 newly installed, 0 to remove and 0 not upgraded.
-Need to get 81.5 MB of archives.
-After this operation, 323 MB of additional disk space will be used.
-Get:1 https://download.docker.com/linux/ubuntu noble/stable amd64 containerd.io amd64 2.3.4-2~ubuntu.24.04~noble [22.4 MB]
-Get:2 https://download.docker.com/linux/ubuntu noble/stable amd64 docker-ce-cli amd64 5:29.8.0-1~ubuntu.24.04~noble [17.6 MB]
-Get:3 https://download.docker.com/linux/ubuntu noble/stable amd64 docker-ce amd64 5:29.8.0-1~ubuntu.24.04~noble [24.3 MB]
-Get:4 https://download.docker.com/linux/ubuntu noble/stable amd64 docker-buildx-plugin amd64 0.37.0-1~ubuntu.24.04~noble [17.3 MB]
-Fetched 81.5 MB in 7s (11.2 MB/s)
-Selecting previously unselected package containerd.io.
-(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 106691 files and directories currently installed.)
-Preparing to unpack .../containerd.io_2.3.4-2~ubuntu.24.04~noble_amd64.deb ...
-Unpacking containerd.io (2.3.4-2~ubuntu.24.04~noble) ...
-Selecting previously unselected package docker-ce-cli.
-Preparing to unpack .../docker-ce-cli_5%3a29.8.0-1~ubuntu.24.04~noble_amd64.deb ...
-Unpacking docker-ce-cli (5:29.8.0-1~ubuntu.24.04~noble) ...
-Selecting previously unselected package docker-ce.
-Preparing to unpack .../docker-ce_5%3a29.8.0-1~ubuntu.24.04~noble_amd64.deb ...
-Unpacking docker-ce (5:29.8.0-1~ubuntu.24.04~noble) ...
-Selecting previously unselected package docker-buildx-plugin.
-Preparing to unpack .../docker-buildx-plugin_0.37.0-1~ubuntu.24.04~noble_amd64.deb ...
-Unpacking docker-buildx-plugin (0.37.0-1~ubuntu.24.04~noble) ...
-Setting up docker-buildx-plugin (0.37.0-1~ubuntu.24.04~noble) ...
-Setting up containerd.io (2.3.4-2~ubuntu.24.04~noble) ...
-Created symlink /etc/systemd/system/multi-user.target.wants/containerd.service → /usr/lib/systemd/system/containerd.service.
-Setting up docker-ce-cli (5:29.8.0-1~ubuntu.24.04~noble) ...
-Setting up docker-ce (5:29.8.0-1~ubuntu.24.04~noble) ...
-Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
-Created symlink /etc/systemd/system/sockets.target.wants/docker.socket → /usr/lib/systemd/system/docker.socket.
-Processing triggers for man-db (2.12.0-4build2) ...
-
-Running kernel seems to be up-to-date.
-
-No services need to be restarted.
-
-No containers need to be restarted.
-
-No user sessions are running outdated binaries.
-
-No VM guests are running outdated hypervisor (qemu) binaries on this host.
-active
-
-Installed runtime versions
-containerd.io 2.3.4-2~ubuntu.24.04~noble
-docker-buildx-plugin 0.37.0-1~ubuntu.24.04~noble
-docker-ce 5:29.8.0-1~ubuntu.24.04~noble
-docker-ce-cli 5:29.8.0-1~ubuntu.24.04~noble
-Client: Docker Engine - Community
- Version:           29.8.0
- API version:       1.56
- Go version:        go1.26.8
- Git commit:        88096ef
- Built:             Thu Sep  3 21:50:08 2026
- OS/Arch:           linux/amd64
- Context:           default
-
-Server: Docker Engine - Community
- Engine:
-  Version:          29.8.0
-  API version:      1.56 (minimum version 1.40)
-  Go version:       go1.26.8
-  Git commit:       3ce5872
-  Built:            Thu Sep  3 21:50:08 2026
-  OS/Arch:          linux/amd64
-  Experimental:     false
- containerd:
-  Version:          v2.3.4
-  GitCommit:        db8809540e1a7a9da5d518876894933ff55692ab
- runc:
-  Version:          1.5.1
-  GitCommit:        v1.5.1-0-g8f2685a4
- docker-init:
-  Version:          0.19.0
-  GitCommit:        de40ad0
-["name=apparmor,profile=default","name=seccomp,profile=builtin","name=cgroupns"] systemd 2
-
-Listening sockets
-Netid State  Recv-Q Send-Q   Local Address:Port Peer Address:PortProcess                                                
-udp   UNCONN 0      0           127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=642,fd=16))             
-udp   UNCONN 0      0        127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=642,fd=14))             
-udp   UNCONN 0      0      10.2.1.100%eth0:68        0.0.0.0:*    users:(("systemd-network",pid=741,fd=21))             
-tcp   LISTEN 0      4096        127.0.0.54:53        0.0.0.0:*    users:(("systemd-resolve",pid=642,fd=17))             
-tcp   LISTEN 0      4096     127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=642,fd=15))             
-tcp   LISTEN 0      4096           0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=976,fd=3),("systemd",pid=1,fd=201))
-tcp   LISTEN 0      4096              [::]:22           [::]:*    users:(("sshd",pid=976,fd=4),("systemd",pid=1,fd=202))

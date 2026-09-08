@@ -1,3 +1,0 @@
-{"state":"idle"}
-cat: /sys/fs/cgroup/forge.slice/forge-studio.slice/forge-studio-j8c91ef4b5a9643458d1fefd0b997eb36.slice/memory.events: No such file or directory
-cat: /sys/fs/cgroup/forge.slice/forge-studio.slice/forge-studio-j8c91ef4b5a9643458d1fefd0b997eb36.slice/memory.peak: No such file or directory

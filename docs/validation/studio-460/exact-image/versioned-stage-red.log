@@ -1,9 +1,0 @@
-file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/scripts/stage-codec.mjs:23
-    throw new CodecInputError("Codec archive does not match reviewed bytes")
-          ^
-
-CodecInputError: Codec archive does not match reviewed bytes
-    at file:///home/tataihono/.cache/forge-studio-460-image-worktree/apps/studio-render/scripts/stage-codec.mjs:23:11
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-
-Node.js v24.20.0

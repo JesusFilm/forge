@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Built Watch playback and permanent revocation — local protocol evidence
 
 The production Manager browser saved and enqueued a five-second text composition. Real contained Chromium execution, independent codec verification and canonical retention completed. The durable Mux adapter consumed one intent against an owned loopback protocol fixture, received signed-only readiness and staged the hidden catalog release. Browser review, trusted interactive approval, fresh readiness and atomic publication then succeeded.

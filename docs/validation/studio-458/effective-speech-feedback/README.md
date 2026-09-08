@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Canonical effective-speech feedback
 
 Fixed reviewed base: `5a17a9da11f1c19ef369e6b629bae10aa87b2b6f`. Approved proposal SHA256 `90a2b497ac53b9a15b65454eb55b2ddda48c68b953ccdc622f3054ee44d7194e` is retained in `approved-proposal.body`. Root corrected the description to “after all operations have executed”: this is the final projection, not intermediate snapshots. Feature 458 remains in progress.

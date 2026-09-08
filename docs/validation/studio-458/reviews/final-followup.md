@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Final review follow-up
 
 Fixed reviewed base: `2855e26512ebfacd78bee987e1cda3f66d738774`. Independent Standards and Spec agents reviewed the working-tree diff against this base, including intent-to-add implementation files. No implementation commits existed at review time.

@@ -1,3 +1,0 @@
-(node:1416552) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-{"agentVersionId":"fe4a08bb-6626-413e-bd5d-71f88e8e0727","blockVersionId":"b0afa872-cfb6-4ece-a01e-ee66f3557e6a","digest":"38c8149a1c22d7008160ab2f91a26914f84349a4b3489fd657fcab5eb200f5ec","bytes":6394}

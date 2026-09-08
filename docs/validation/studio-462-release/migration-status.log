@@ -1,8 +1,0 @@
-(node:2301371) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-Prisma schema loaded from prisma/schema.prisma
-Datasource "db": PostgreSQL database "forge_studio_462_test", schema "public" at "127.0.0.1:55462"
-
-102 migrations found in prisma/migrations
-
-Database schema is up to date!

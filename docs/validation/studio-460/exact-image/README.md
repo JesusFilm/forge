@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Resumed local exact-image validation
 
 Base: `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe`. The user authorized local builds/tests and installed uidmap. No image push, asset upload, remote runner, provider call or deployment occurred. Feat-460 remains in progress.

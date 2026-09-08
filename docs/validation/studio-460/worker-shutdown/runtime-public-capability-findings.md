@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Public runtime capability findings — read-only
 
 Checked Railway public config reference, start-command, pre-deploy and Node signal troubleshooting pages on2026-09-08. Retained fetched markdown in evidence. No account API/CLI, support message, deployment or exposure experiment.

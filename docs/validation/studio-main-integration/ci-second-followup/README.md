@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Second CI: bounded mobile timing and profile fixture repair
 
 Fixed base: `009cad4283515fb823568473f6a1ee6026aae9a1`. Root supplied actual run 34283722315 failures: mobile job 102254581297 (2965 passed, one failed) and Admin schema job 102254581035 (the next two profile fixture cases failed with `42P01`). This follow-up contains test changes only, plus plan/evidence. Product queries, migrations, timing constants, controls and publication/transcript contracts remain unchanged.

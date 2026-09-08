@@ -1,9 +1,0 @@
-
-> @forge/admin@0.0.1 typecheck /home/tataihono/.codex/worktrees/8b33/forge/apps/admin
-> tsc --noEmit
-
-src/services/studio-authoring/property-feedback.test.ts(119,51): error TS2322: Type '{ privateKeyName: string; fontSize?: undefined; color?: undefined; } | { fontSize: number; privateKeyName?: undefined; color?: undefined; } | { color: string; privateKeyName?: undefined; fontSize?: undefined; }' is not assignable to type 'Record<string, string | number | boolean>'.
-  Type '{ privateKeyName: string; fontSize?: undefined; color?: undefined; }' is not assignable to type 'Record<string, string | number | boolean>'.
-    Property 'fontSize' is incompatible with index signature.
-      Type 'undefined' is not assignable to type 'string | number | boolean'.
- ELIFECYCLE  Command failed with exit code 2.

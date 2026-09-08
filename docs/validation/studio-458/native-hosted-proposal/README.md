@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Native-hosted comparison proposal and unpaid guard proof
 
 No paid dispatch is authorized by these files. `proposal.body` is the immutable

@@ -1,8 +1,0 @@
-{
-  "stopOwnedManagerPID": 1522214,
-  "managerPort": 3588,
-  "priorRoute": 4188,
-  "temporaryLiveRoute": 4189,
-  "restoreAtBatchClosure": true,
-  "otherServicesUnchanged": true
-}

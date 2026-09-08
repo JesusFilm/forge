@@ -1,5 +1,0 @@
-supervisor {"pid":1,"realUid":1000,"effectiveUid":1000,"status":{"Uid":"1000\t1000\t1000\t1000","Gid":"1000\t1000\t1000\t1000","CapInh":"0000000000000000","CapPrm":"0000000000000000","CapEff":"0000000000000000","CapBnd":"000001ffffffffff","CapAmb":"0000000000000000","NoNewPrivs":"1"},"limits":["Max processes             128                  128                  processes "]}
-child {"realUid":1000,"effectiveUid":1000,"status":{"Uid":"1000\t1000\t1000\t1000","Gid":"1000\t1000\t1000\t1000","CapInh":"0000000000000000","CapPrm":"0000000000000000","CapEff":"0000000000000000","CapBnd":"0000000000000000","CapAmb":"0000000000000000","NoNewPrivs":"1"},"limit":[96,96],"pthreadCount":24,"forkChildren":41,"forkErrno":11,"denied":{"uid":true,"hard-limit":true,"userns":{"result":-1,"errno":1},"clone-userns":{"result":-1,"errno":1},"clone3":{"result":-1,"errno":38}}}
-namespaceTasksPeak 127
-repeat pressure recovered
-pressure result { code: 0, signal: null }

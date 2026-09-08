@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent held-out content overlap audit
 
 The exact ch33 source excerpt does **not** occur in any of the 19 retained outgoing paid requests or the unchanged effective instructions, either as raw source bytes, a decoded JSON string substring, or the full normalized word sequence. There are **zero shared contiguous phrases of eight or more words**. The longest shared span is only three words in 15 requests; it is two words in the other four requests and in the instructions.

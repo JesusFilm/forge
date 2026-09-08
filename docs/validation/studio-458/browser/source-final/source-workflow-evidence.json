@@ -1,9 +1,0 @@
-{
-  "stages": [
-    "generation-preview",
-    "applied"
-  ],
-  "pageErrors": [],
-  "serviceWorkers": "allow",
-  "providerMode": "deterministic interception; no paid calls"
-}

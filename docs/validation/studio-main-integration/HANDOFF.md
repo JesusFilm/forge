@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Reviewed Studio/main merge handoff
 
 The local integration is ready for a two-parent merge commit and root fast-forward. This does not complete feat-462 or authorize release execution.

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Preregistered evaluation — no generation authorized
 
 Compare mini and GPT-5.4 on the same reviewed field/type feedback code, immutable

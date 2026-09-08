@@ -1,7 +1,0 @@
-{
-  "at": "2026-09-07T19:06:52.954366+00:00",
-  "reason": "Consumed ambiguous claim; batch closed without remaining slots",
-  "stopOwnedNativePID": 1558140,
-  "stopOwnedManagerPID": 1558465,
-  "restoreRoute": 4188
-}

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent editorial assessment: Birch, Dune, Flint
 
 Reviewed only the supplied `evaluation.md`, `Birch.json`, `Dune.json`, and `Flint.json`. Model labels were hidden; no model identity was inferred. The assessment compares the exact supplied source with the actual speech, not the output's self-ratings. This is an assistant editorial review, not a human acceptance decision. Prior task context includes the case criteria; this is label-blinded, not a fully naive or case-blind assessment.

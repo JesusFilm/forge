@@ -1,6 +1,0 @@
-import {readFileSync,writeFileSync} from 'node:fs'
-import {execFileSync} from 'node:child_process'
-const status=readFileSync('/proc/self/status','utf8').split('\n').filter(x=>/^(Name|Pid|PPid|Uid|Gid|Cap|NoNewPrivs|Seccomp|Cpus_allowed_list):/.test(x));
-console.log(JSON.stringify({status,limits:readFileSync('/proc/self/limits','utf8'),mountinfo:readFileSync('/proc/self/mountinfo','utf8'),proc:readFileSync('/proc/net/route','utf8'),environmentNames:Object.keys(process.env)}));
-try{writeFileSync('/runtime/owned-write-test','x');console.log('ROOT_WRITE_UNEXPECTED')}catch(error){console.log(JSON.stringify({rootWrite:error.code}))}
-execFileSync('/input/probe',{stdio:'inherit'});

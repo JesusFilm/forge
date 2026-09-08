@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Local native startup and image qualification
 
 The current native entrypoint rendered and independently verified a short composition in the owned namespace harness. The matching PID1 context rejected an ordinary unsealed record. The sealed record is evidence plus independent kernel checks, not cryptographic launcher identity. These results do not certify an OCI image or Railway deployment.

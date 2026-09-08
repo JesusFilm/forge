@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Same-release scheduled preparation and final publication
 
 Local evidence against full460 base `4109b02c31242f1b0ca8c4975b6fada0eb2f3d87`. This is unreviewed full460 implementation evidence, not a separately released dependency.

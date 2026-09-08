@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Local PID1 and aggregate PID candidate
 
 These owned-local probes do not certify an OCI image or Railway deployment. Production `verifyExecutionBudget` still requires an enforced cgroup PID ceiling of 128. The candidate diagnostics are deliberately outside the production configuration. The full231-second composition was not rerendered.

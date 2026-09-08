@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Canonical proposal field/type feedback correction
 
 Fixed review base: `2554442afcd0be5209789ff46c22a9b11ee434da` (closed paid

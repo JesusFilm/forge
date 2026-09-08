@@ -1,6 +1,0 @@
-{"variant":"baseline","pair":0,"cache":"cold","controlsMs":1464.6560430000002,"previewMs":2260.4387589999997,"lcp":1024,"cls":0,"javascriptBytes":257891,"pageErrors":[]}
-{"variant":"baseline","pair":0,"cache":"warm","controlsMs":229.364238999995,"previewMs":1017.6887520000018,"lcp":248,"cls":0,"javascriptBytes":0,"pageErrors":[]}
-{"variant":"baseline","pair":1,"cache":"cold","controlsMs":514.2598740000103,"previewMs":1308.0341800000024,"lcp":508,"cls":0,"javascriptBytes":257891,"pageErrors":[]}
-{"variant":"baseline","pair":1,"cache":"warm","controlsMs":230.20537199999671,"previewMs":1029.7944169999973,"lcp":252,"cls":0,"javascriptBytes":0,"pageErrors":[]}
-{"variant":"baseline","pair":2,"cache":"cold","controlsMs":502.2167129999725,"previewMs":1296.4900179999822,"lcp":500,"cls":0,"javascriptBytes":257891,"pageErrors":[]}
-{"variant":"baseline","pair":2,"cache":"warm","controlsMs":441.9677770000126,"previewMs":1239.3200470000156,"lcp":388,"cls":0,"javascriptBytes":0,"pageErrors":[]}

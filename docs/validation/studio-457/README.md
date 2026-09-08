@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Feat-457 validation
 
 Reviewed prerequisite: `e12643ecc76c30f73722848195a62d66865f7a90` (root-integrated

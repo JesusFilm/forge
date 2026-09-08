@@ -1,6 +1,0 @@
-{
-  "args": ["pnpm", "--filter", "@forge/admin", "build"],
-  "exit": 0,
-  "seconds": 220.60591122800543,
-  "namespace": "net:[4026532543]"
-}

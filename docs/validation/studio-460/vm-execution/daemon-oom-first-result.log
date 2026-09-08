@@ -1,3 +1,0 @@
-{"state":"idle"}
-cat: /sys/fs/cgroup/forge.slice/forge-studio.slice/forge-studio-j470afef99eb048d782998be92553be2c.slice/memory.events: No such file or directory
-{"id":"470afef99eb048d782998be92553be2c","receipt":{"admitted":true}}

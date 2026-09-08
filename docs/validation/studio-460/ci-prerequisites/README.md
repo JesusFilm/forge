@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # PR 2205 native test host contract
 
 2026-09-09. Fixed base `56258cff495248f8f94e1a57ba5d34643f61af3a`.

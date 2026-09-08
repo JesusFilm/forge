@@ -1,1 +1,0 @@
-PASS: default DB, unowned local TCP, external TCP and unowned Unix denied; same-process owned listener allowed only during lifetime.

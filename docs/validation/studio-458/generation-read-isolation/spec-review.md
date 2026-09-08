@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Spec review — generation-read command isolation
 
 Fixed base: `779eb26e706919780b9b5956b1337d0038678aaf`; reviewed working diff and new `generation.read.test.ts` against the approved proposal (`d76e66c8f9a227c077ba1937cdec213ddfb5b8974201bcc2901006836683c029`).

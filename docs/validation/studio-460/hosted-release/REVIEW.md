@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent fixed-base review
 
 Base `97e747ce328b73af72e960202c7b813725f288e6`; root equivalent `a13dace2`. HEAD remained at that base during review, so the reviewers used the working diff against it, including intent-to-add new files. No prerequisite was duplicated. Reviewed sources: new workflow, Docker host export target, release scripts/config, focused tests and scoped plan. The existing runtime was outside this review.

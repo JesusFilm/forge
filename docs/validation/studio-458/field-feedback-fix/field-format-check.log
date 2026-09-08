@@ -1,6 +1,0 @@
-
-> forge@ format:check /home/tataihono/.codex/worktrees/8b33/forge
-> prettier --check .
-
-Checking formatting...
-All matched files use Prettier code style!

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Startup cgroup membership correction
 
 Review base `407851c06fb492960858c2fa47a93c93f8e1881b`. Historical containment qualification remains withdrawn; this directory records the focused admission correction and new verification separately. No proc masks, numeric runtime limits, provider permissions or deployment gates are relaxed.

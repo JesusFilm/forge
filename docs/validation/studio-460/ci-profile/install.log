@@ -1,8 +1,0 @@
-(node:849834) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-Scope: 3 of 27 workspace projects
-Lockfile is up to date, resolution step is skipped
-Progress: resolved 1, reused 0, downloaded 0, added 0
-.                                        | +548 ++++++++++++++++++++++++++++++++
-Progress: resolved 548, reused 537, downloaded 0, added 548, done
-Done in 1.9s

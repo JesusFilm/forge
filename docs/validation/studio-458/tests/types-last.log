@@ -1,9 +1,0 @@
-(node:1394482) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-Scope: 3 of 26 workspace projects
-packages/studio-contracts typecheck$ tsc --noEmit
-packages/studio-contracts typecheck: Done
-apps/mastra typecheck$ tsc --noEmit
-apps/manager typecheck$ tsc --noEmit
-apps/mastra typecheck: Done
-apps/manager typecheck: Done

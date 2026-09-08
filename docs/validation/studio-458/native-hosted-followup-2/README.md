@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Closed native-hosted follow-up 2
 
 The authorized batch is CLOSED: two cases, seven requests, USD 0.0791718

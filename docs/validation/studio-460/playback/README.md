@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Studio public playback — work in progress
 
 These are local proofs, not a deployed Watch or Mux acceptance claim. No generation/provider writes or infrastructure operations were performed. The later, explicitly authorized public image compatibility sample is recorded below.

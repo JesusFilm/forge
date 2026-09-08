@@ -1,3 +1,0 @@
-{"binding":{"poolId":"vm460-fixture-pool","workerId":"vm460-fixture-worker","dispatchId":"3b1a8f96-7a71-40da-ae78-6262ada71038","attemptId":"cmtsotef000012cut76qir1l7","leaseId":"0fa6cec4-d232-421d-87bf-c3c04f4e13f1","expiresAt":1788874259327,"bootId":"6d321e26-0576-4ad0-89a2-c92cd4ff9f9f","renderImage":"sha256:1f5545cad34fdfb4945bae4fce19322037366ee43fadf7555dcf3e9cdc61bcbb","verifyImage":"sha256:75f306ada316ce00494423b37edd371dc663ffd4f72a20248edd81b6b8342182"},"deadlineMs":8010730}
-render-start-intent.json
-render-create-intent.json

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Spec review — replay/deadline correction
 
 Fixed base: `a319a068fc2d79684c1ad1824387c2b8a45ca0dc`; reviewed working diff and new budget/guard tests. Read-only source review; no tests or providers run.

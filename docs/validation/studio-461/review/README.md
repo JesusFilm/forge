@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent calendar review checkpoint
 
 Fixed reviewed base: `2d4d9bb8fe544335a32778043936b38f5ca5a0c3`.

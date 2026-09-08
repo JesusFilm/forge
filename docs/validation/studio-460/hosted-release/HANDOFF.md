@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Hosted release tooling handoff
 
 Integrate only this phase's final implementation commit, based on `97e747ce328b73af72e960202c7b813725f288e6` (root `a13dace2` equivalent). Do not duplicate runtime prerequisites or the separately integrated462 docs commit. Root's current docs tree can receive this non-overlapping source/tooling delta; the common runbook was not edited.

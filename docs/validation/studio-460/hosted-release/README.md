@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Hosted release preparation evidence
 
 Fixed source base: `97e747ce328b73af72e960202c7b813725f288e6`, tree `a58514a14a9c4787807509a6621223a0db23dfbc`, root equivalent `a13dace2`. Root later integrated the independent five-file462 runbook update as `bdb13723`; this phase did not duplicate that prerequisite or edit its runbook.

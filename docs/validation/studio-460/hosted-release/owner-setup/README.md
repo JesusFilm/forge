@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Authorized owner setup recorded 2026-09-09
 
 Fixed base `1e5c892e08977a50308fccdb275d0c00d224404c`. This bounded follow-up records root's user-authorized external setup; this task performed only local configuration, evidence reads and validation. Earlier absence/unprovisioned statements in the parent release preparation are historical, not the current owner-setup state.

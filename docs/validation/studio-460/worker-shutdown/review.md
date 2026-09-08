@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent fixed-base review
 
 Base: `0cbddfd2e494b010a38c887b56f4e787eeeace7f` (root equivalent `a144ac95`). Standards and Spec reviewers ran independently; neither ran builds or tests. Final source and evidence reviews report no actionable findings.

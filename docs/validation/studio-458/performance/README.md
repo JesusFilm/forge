@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Loading measurements
 
 Files prefixed `preliminary-dev-admin-` are intermediate baseline measurements against a development Admin backend. They are not comparable to the final built-Admin measurements and must not be used as a matched before/after claim. Both final sides use the same built Admin, viewport, browser context and `serviceWorkers: allow`; those results are recorded below.

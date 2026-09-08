@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Spec review — canonical effective-speech feedback
 
 Fixed base: `5a17a9da11f1c19ef369e6b629bae10aa87b2b6f`; reviewed working diff and added projection/native/hash tests against the approved proposal and final “after all operations have executed” wording.

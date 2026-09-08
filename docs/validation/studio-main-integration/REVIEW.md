@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent merge review
 
 Source snapshot: `2694af595e5024c413e0f387d48d9e7d46637db1`, compared with raw merge tree `749f9a7ae4da237033c97a1efddb3cb84f59d776` and both fixed parents recorded in README. Reviewers worked independently and did not rerun validation.

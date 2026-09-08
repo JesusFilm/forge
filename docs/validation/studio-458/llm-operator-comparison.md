@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Fixed saved-case operator comparison
 
 Four authorized requests returned HTTP 200 from OpenAI through OpenRouter. Exact outbound requests, responses, generation IDs, duration and returned usage/cost are retained. No retries or extra requests were made. These are real provider outputs, not mocked quality evidence. The batch is insufficient to establish the full product acceptance criteria.

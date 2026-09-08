@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Retained devotional worker exact-image smoke
 
 The unchanged reviewed worker Dockerfile at `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe` built successfully with the same pinned local BuildKit0.33.0, ordinary OCI sandbox/native snapshotter and full subordinate mappings. No worker application, dependency or image recipe was changed. This evidence follows the separately reviewed codec/image qualification commit `258f786f97ab0fd27f9457ee2d06756d72a37729`.

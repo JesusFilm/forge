@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Studio/current-main integration evidence — 2026-09-09
 
 This is bounded local integration qualification, not Studio release acceptance. The merge preserves both exact parents: Studio `3ee2451a8ee717fe090890cc03446ee5d2bf6a01` and main `1ce69015e0e2fe7273e092fa14afdfaea5a06cc3`, common base `3f9c8833914fc96f5a6ec73cf043fc4cedf9fee9`. The raw conflict tree was `749f9a7ae4da237033c97a1efddb3cb84f59d776`; independently reviewed source snapshot was `2694af595e5024c413e0f387d48d9e7d46637db1`. The eventual commit must retain both parents and be integrated by fast-forward, never cherry-pick.

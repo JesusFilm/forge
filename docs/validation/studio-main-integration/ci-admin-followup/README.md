@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # PR 2205 Admin and owned-harness CI follow-up
 
 Fixed base: `56258cff495248f8f94e1a57ba5d34643f61af3a`. This implementation-only follow-up addresses CI jobs 102248973053 (Admin lint), 102248972593 (delivery DB fixture), 102248973021 (release-controls unit test) and the owned loading-harness finding in CodeQL check 102248731414. Root provided exact CI logs; no CI rerun or external action was performed here.

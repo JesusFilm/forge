@@ -1,6 +1,0 @@
-data: {"id":"dry-0-0","object":"chat.completion.chunk","created":0,"model":"openai/gpt-5.4-mini","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"dry-call-0","type":"function","function":{"name":"readProject","arguments":"{}"}}]},"finish_reason":null}]}
-
-data: {"id":"dry-0-0","object":"chat.completion.chunk","created":0,"model":"openai/gpt-5.4-mini","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
-
-data: [DONE]
-

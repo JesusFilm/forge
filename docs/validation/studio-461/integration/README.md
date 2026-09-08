@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Calendar scheduling integration
 
 Reviewed dependency base: `038f396e8b7f419ea7e9d969b11ad75b40191b78`.

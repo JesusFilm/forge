@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Shared preview runtime regression — interim evidence
 
 The Studio composition moved into `packages/shorts-compositions/src/studio` so

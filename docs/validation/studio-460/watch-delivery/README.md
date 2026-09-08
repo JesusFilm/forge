@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Durable Watch delivery — interim verification
 
 Publication and permanent revocation are the atomic durable work records. The new append-only `studio_watch_delivery` table records successful delivery of each release phase. Missing current-phase acknowledgement remains pending across restart; an old publish response cannot acknowledge revocation.

@@ -1,8 +1,0 @@
-{
-  "proposalSHA256": "8bf886ca002a8cb8cd8293738ea3c12ada844e99bbebed5993edfce7eb4ebf7c",
-  "parentProposalSHA256": "acc28d6896a79578906d57a299895dc20e3dd3952d992b306af861def4578719",
-  "ceilingUSD": 2,
-  "maximumRuns": 2,
-  "maximumRequests": 10,
-  "authorization": "Explicit coordinator paid LLM follow-up 2 release; no other actions authorized"
-}

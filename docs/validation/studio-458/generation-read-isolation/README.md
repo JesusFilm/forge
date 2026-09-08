@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Generation-read original-command isolation
 
 Fixed base: `779eb26e706919780b9b5956b1337d0038678aaf` (root integrated equivalent `999b81e95351afb01184a941f6f150b165b8aeca`). Approved proposal SHA256 `d76e66c8f9a227c077ba1937cdec213ddfb5b8974201bcc2901006836683c029` is retained unchanged in `approved-proposal.body`.

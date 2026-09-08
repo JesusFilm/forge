@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Browser performance baseline
 
 Isolated headless installed Google Chrome; loopback; no CPU/network throttling; fresh context and cleared HTTP cache for cold, same-context second document navigation for warm. Server already warm. Mock images.jesusfilm.org DNS disabled in isolated browser because seed URLs are placeholders; no request interception or cache-disabling routing. Three pairs per route. Auth issued by local fixture, no production credentials. Readiness is measured upper bound through an actual menu interaction, including automation overhead. 1000ms observation after interaction. No media fixture/seek baseline.

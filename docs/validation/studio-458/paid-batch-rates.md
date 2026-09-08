@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Feat-458 fixed paid evidence proposal (not authorized)
 
 Exact request texts and settings: `paid-batch-proposal.body`, SHA256 `ed14838710ebfd88add275ad70cdacf50551353047f8802b2fa905fbfb24693a`. No paid request has been sent. Proposed category ceilings ($2 LLM, $2 narration, $2 music, $4 voice) are authorization ceilings, never reported billed costs.

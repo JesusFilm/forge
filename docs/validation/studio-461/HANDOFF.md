@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # feat-461 implementation handoff
 
 Implementation commit: `11872e7de3cca077301db0a3523b64adbc681a08`.

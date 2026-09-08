@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # feat-462 local legacy retirement
 
 Fixed base: `aa4fc3d8a7989f2e809decfe63c2ace2f22aa51f`. Root released only this

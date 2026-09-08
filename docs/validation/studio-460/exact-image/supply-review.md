@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent narrow supply review
 
 Fixed base: bb6ed63f30b326f468fd7eb8cdf866a022db8ffe. WIP scope: apps/studio-render/Dockerfile, scripts/stage-codec.mjs, IMAGE.md. Reviewers independently read diff and requirements; no tests/builds/edits performed.

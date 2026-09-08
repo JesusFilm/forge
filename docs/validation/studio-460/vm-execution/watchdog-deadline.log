@@ -1,6 +1,0 @@
-active
-controller SSH exited; original deadline froze slice; independent watchdog still active
-bash: line 13:  8371 Killed                  sh -c 'echo $$ > "$1/cgroup.procs"; touch "$2/late-executed"' sh "$cg" "$state"
-late PID8371 killed without executing post-attachment marker
-Result=success
-ExecMainStatus=0

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # VM execution handoff
 
 Status: local implementation and review in final validation; full feat-460 remains in progress. Fixed base `5f460b6daf3b7f43b389925e25604babcb43099a`, root-equivalent `f9e7165c358dbd622429ba94f663a9f0b9dc02b2`. No predecessor commits belong in this implementation sequence.

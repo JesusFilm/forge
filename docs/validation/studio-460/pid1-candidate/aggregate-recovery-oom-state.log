@@ -1,8 +1,0 @@
-ActiveState=failed
-SubState=failed
-Result=oom-kill
-OOMPolicy=stop
-ControlGroup=
-MemoryPeak=2147483648
-CPUUsageNSec=4914556000
-TasksCurrent=[not set]

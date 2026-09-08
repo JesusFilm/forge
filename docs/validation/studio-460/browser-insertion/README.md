@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Library insertion and browser render — bounded evidence
 
 The initial browser render succeeded with an **empty composition**: the library text insertion threw while reading a missing first track. That result is retained as empty-composition evidence only.

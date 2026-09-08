@@ -1,7 +1,0 @@
-{
-  "originalSSE": "docs/validation/studio-458/model-comparison-1/live/request-0-1-response.body",
-  "originalSSESHA256": "41f2ef97bb7c814d1be3ebe96a138c8c7236bc097dae8eac49bbebde10e23365",
-  "extractedProposalSHA256": "bdbf09e5189d278b9fcf3a7f427769c021da3c2c56471cc9a78aef83925ee387",
-  "extraction": "Concatenated delta.tool_calls function arguments by index; selected proposeEdits. No changes to original bytes.",
-  "retainedPreviewCommand": "Existing applyOperations alias mutates speech within returned proposal.command; use original SSE for intent, retained document for final speech."
-}

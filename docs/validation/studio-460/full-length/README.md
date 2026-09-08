@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Full-length contained composition proof (WIP)
 
 2026-09-08. This is local runtime evidence, not Railway deployment, provider generation/Mux readiness, or final Watch acceptance.

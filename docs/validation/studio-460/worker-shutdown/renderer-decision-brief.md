@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Decision needed: where safe Studio exports run
 
 The editor and publication work can be retained. The remaining export problem is that the intended container prevents creating the extra private process filesystem required by the current renderer. More repetitions of the same test cannot establish a missing platform capability. No support request or infrastructure change has been made.

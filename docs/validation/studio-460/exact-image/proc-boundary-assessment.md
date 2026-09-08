@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Read-only proc-boundary assessment
 
 Current image: manifest sha256:e56e7028a265aa550d51fb19991ff889d400c262f2c31f7182f58814b3a77d70. Build, native startup accepting mounted finite-limit files whose correspondence to actual process membership was unproven, and renderer/Chromium/codec resolution passed. Actual signed rendering failed before child code, at Bubblewrap's fresh proc mount. No proc exposure experiment, outer mask removal, supervisor-proc bind, host policy change or redesign has been performed.

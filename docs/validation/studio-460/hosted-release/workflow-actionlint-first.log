@@ -1,4 +1,0 @@
-.github/workflows/studio-release.yml:23:26: context "runner" is not allowed here. available contexts are "github", "inputs", "matrix", "needs", "secrets", "strategy", "vars". see https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability for more details [expression]
-   |
-23 |       DOCKER_CONFIG: ${{ runner.temp }}/studio-release/docker-public
-   |                          ^~~~~~~~~~~

@@ -1,8 +1,0 @@
-health 200
-{"phase":"admitted","workerJobId":"wj_f1c9d07c-4d7f-4a4d-8cab-8e85a47e5498","status":"queued"}
-{"status":"running","message":"Loading devotional render input","progress":0.01}
-{"status":"running","message":"Preparing devotional clip","progress":0.09}
-{"status":"running","message":"Preparing devotional background","progress":0.12}
-{"status":"running","message":"Bundling devotional composition","progress":0.16}
-{"status":"running","message":"Rendering portrait 0%","progress":0.2}
-{"status":"running","message":"Rendering portrait 5%","progress":0.21500000000000002}

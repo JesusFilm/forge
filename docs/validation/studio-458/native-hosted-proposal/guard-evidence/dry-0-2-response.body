@@ -1,6 +1,0 @@
-data: {"id":"dry-0-2","object":"chat.completion.chunk","created":0,"model":"openai/gpt-5.4-mini","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"dry-call-2","type":"function","function":{"name":"proposeEdits","arguments":"{\"summary\":\"Dry transport fixture: retain script for later real quality comparison\",\"operations\":[{\"kind\":\"set-title\",\"title\":\"ch19-seq102 — native creative verification\"}]}"}}]},"finish_reason":null}]}
-
-data: {"id":"dry-0-2","object":"chat.completion.chunk","created":0,"model":"openai/gpt-5.4-mini","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
-
-data: [DONE]
-

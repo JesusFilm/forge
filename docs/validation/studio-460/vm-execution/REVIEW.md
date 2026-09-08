@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Independent fixed-base review
 
 Base `5f460b6daf3b7f43b389925e25604babcb43099a`. The implementation was uncommitted: reviewers used `git diff 5f460b6 --` plus the full `git ls-files --others --exclude-standard` source/test/ops/migration/plan inventory. An empty HEAD three-dot diff was not substituted for WIP review. Canonical feat-460 ticket and approved VM plan were the spec; root/Admin/Manager guides supplied standards.

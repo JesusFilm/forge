@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Idle worker TERM diagnosis
 
 Exact unchanged worker manifest20854aca5ebd7ad6f8335bc1b2396f309a5154a8ff89ea7caabc19b3a5d09961. No product edit/rebuild/provider request. Actual leaf2CPU/2GiB/no swap/128 with original masks. Only health used for each worker.

@@ -1,2 +1,0 @@
-Running as unit: forge-studio-watchdog-eeeeeeeeeeeeeeeeeeeeeeeeeeeeee01.service; invocation ID: e16a103c55ae4f11aa8d8db42d621954
-{"bytes":49816,"digest":"41f8109d80b4477b3eeb9e42acf0a49b3acb8df7f51bd7f1d6f5ef5ac0f565a5","proof":{"version":1,"verifierVersion":"studio-codec-1/ffmpeg-n9.0.1-27-g9b0578816c-20260907","outputDigest":"41f8109d80b4477b3eeb9e42acf0a49b3acb8df7f51bd7f1d6f5ef5ac0f565a5","video":{"codec":"h264","width":320,"height":180,"fps":30,"frames":30,"durationMs":1000},"audio":{"codec":"aac","sampleRate":48000,"channels":2,"durationMs":1045.333},"decoded":true}}

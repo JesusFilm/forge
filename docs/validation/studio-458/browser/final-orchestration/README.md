@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Built local orchestration evidence
 
 Manager build 4 and Admin build 1, isolated Studio 458 database, opaque preview sandbox, normal page-error observation and Playwright `serviceWorkers: allow`.

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Studio 456 operator checkpoint
 
 Fixed implementation base: `65836fc0fb85dad733a3de84792e3d4731a968aa`.

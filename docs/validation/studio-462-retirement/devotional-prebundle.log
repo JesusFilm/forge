@@ -1,8 +1,0 @@
-(node:2223663) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-
-> @forge/shorts-worker@0.0.1 prebundle /home/tataihono/.codex/worktrees/629b/forge/apps/shorts-worker
-> tsx scripts/prebundle.ts "/home/tataihono/.local/share/forge/studio-462-retirement/devotional-bundle"
-
-[shorts-worker] event=prebundle_started entryPoint=/home/tataihono/.codex/worktrees/629b/forge/packages/shorts-compositions/src/devotional/entry.ts outDir=/home/tataihono/.local/share/forge/studio-462-retirement/devotional-bundle
-[shorts-worker] event=prebundle_complete serveUrl=/home/tataihono/.local/share/forge/studio-462-retirement/devotional-bundle

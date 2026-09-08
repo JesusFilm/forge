@@ -1,6 +1,0 @@
-{
-  "action": "Restart task-owned built Manager only to point at unpaid guarded native runtime4189; restore4188 after dry completion. No DB/Redis/preview/storage cleanup.",
-  "pid": 1398202,
-  "cwd": "/home/tataihono/.codex/worktrees/8b33/forge/apps/manager/.next/standalone/apps/manager",
-  "port": 3588
-}

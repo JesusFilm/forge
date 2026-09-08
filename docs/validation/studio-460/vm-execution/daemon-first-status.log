@@ -1,8 +1,0 @@
-MainPID=15017
-ExecMainStatus=0
-ActiveState=active
-SubState=running
-{"state":"assigned","dispatchId":"57cb319c-dd4b-4af4-8d5e-849ba4433be7","attemptId":"cmtsliepy00052czxk5dwcgg5"}
-Sep 09 01:01:28 forge-render-01 systemd[1]: Starting forge-studio-supervisor.service - Forge scoped outbound Studio worker...
-Sep 09 01:01:28 forge-render-01 systemd[1]: Started forge-studio-supervisor.service - Forge scoped outbound Studio worker.
-c27c1006c0ec forge-studio-57cb319cdd4b4af48d5e849ba4433be7-render

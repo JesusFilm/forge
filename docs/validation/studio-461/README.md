@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Studio calendar validation — local implementation
 
 Local calendar implementation and the actual scheduled publication → Watch → unpublish → exact retry chain are verified against reviewed final feat-460. See `integration/README.md` for exact bindings, tests, retained failures and review outcomes. Overall acceptance remains **incomplete** because performance findings and external/provider qualifications remain open; no paid generation or deployment is represented here.

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Closed paired model comparison 1
 
 The batch is closed. No repeat, replacement, remaining slot, or media execution is authorized. The immutable bound proposal is `verified-bound-proposal.body`, SHA256 `f1aac2780903fdd16ccfb9aad7af0de7a6de7ee7036534253a8c320ba0e947c4`. Original transport/bridge/native snapshots and reviewed helpers remain byte-preserved; the later replay/deadline correction is separate.

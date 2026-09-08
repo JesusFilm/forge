@@ -1,7 +1,0 @@
-{
-  "at": "2026-09-07T19:16:25.123Z",
-  "status": 401,
-  "body": "",
-  "purpose": "Distinguish global receiving429 from authenticated session quota429; invalid literal credential cannot create a session",
-  "providers": 0
-}

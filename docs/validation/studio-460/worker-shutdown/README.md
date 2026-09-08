@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Retained worker bounded shutdown
 
 Fixed review base `0cbddfd2e494b010a38c887b56f4e787eeeace7f` (root equivalent `a144ac95`). Feature460 remains in progress; this change does not resolve the separate generated-code renderer proc boundary or authorize external operations.

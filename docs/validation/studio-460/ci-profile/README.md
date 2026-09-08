@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Renderer CI AppArmor qualification
 
 2026-09-09; fixed base `009cad4283515fb823568473f6a1ee6026aae9a1`.

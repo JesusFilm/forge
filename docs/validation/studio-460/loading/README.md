@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Matched local Manager and Core Watch loading
 
 Baseline commit `4109b02c31242f1b0ca8c4975b6fada0eb2f3d87` was built in its own worktree with frozen dependencies; no WIP package links were used. Current Manager and Watch were production builds. Six rounds alternated baseline/current order, each with a fresh Chromium context, 1440×1000 viewport and loopback-only network. Measurements capture readiness, navigation, paint, long tasks and encoded script bytes. The first round includes colder server caches; these samples are not a general production speed benchmark.

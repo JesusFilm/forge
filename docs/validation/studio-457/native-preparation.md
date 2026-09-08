@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # feat-457 preparation findings
 
 Preparation only, 2026-09-07. No tracked implementation edits, no shared database access, no paid providers, no push/deploy/upload. Implementation gate remains closed pending reviewed455/456 and coordinator release.

@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Closed follow-up 2: partial editorial improvement, acceptance still incomplete
 
 Two exact saved cases used seven provider requests (ch19 four, ch31 three).

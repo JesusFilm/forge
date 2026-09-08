@@ -1,3 +1,5 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
 # Dedicated VM execution qualification
 
 Fixed source review base: `5f460b6daf3b7f43b389925e25604babcb43099a` (root equivalent `f9e7165c358dbd622429ba94f663a9f0b9dc02b2`). Feat-460 remains in progress. This evidence covers the authorized dedicated VM and owned local API/database; production, paid providers and image publication remain off.

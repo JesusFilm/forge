@@ -1,9 +1,0 @@
-{
-  "args": [
-    "node",
-    "docs/validation/studio-main-integration/ci-admin-followup/harness-response.test.cjs"
-  ],
-  "exit": 1,
-  "seconds": 0.04752274599741213,
-  "namespace": "net:[4026532629]"
-}
