@@ -109,6 +109,9 @@ retention, erasure, ownership, or thread-key contracts.
 
 ## Resolution
 
+**Shipped:** 2026-09-08 via [PR #2203](https://github.com/JesusFilm/forge/pull/2203)
+(`refactor(mastra): use one AI chat storage policy`).
+
 - Removed `AI_CHAT_MEMORY_BACKEND` from application configuration and made
   `MASTRA_STORAGE_BACKEND` the sole AI-chat storage selector. Postgres mode
   still uses the dedicated `ai_chat` schema; local and CI memory mode still
