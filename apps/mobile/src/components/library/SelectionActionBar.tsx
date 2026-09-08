@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
 import { feedback } from "../../styles/shared"
+import { tabBarPillShape } from "../../lib/tabBar"
+import { TabBarBackground } from "../ui/TabBarBackground"
 
 const BAR_BG = "rgba(12, 12, 13, 0.94)"
 const BAR_BORDER = "rgba(255, 255, 255, 0.09)"
@@ -28,13 +30,28 @@ export function SelectionActionBar({
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets()
 
+  // The bar stands in for the tab bar, so on iOS it takes the same box as the
+  // pill. Android keeps its flush, full-width bar exactly as it was.
+  const isPill = Platform.OS === "ios"
+  const shape = isPill
+    ? {
+        ...tabBarPillShape(insets),
+        paddingTop: 0,
+        paddingBottom: 0,
+        backgroundColor: undefined,
+        borderTopWidth: 0,
+      }
+    : { paddingBottom: insets.bottom + 14 }
+
   return (
-    <View style={[styles.bar, { paddingBottom: insets.bottom + 14 }]}>
+    <View style={[styles.bar, shape]}>
+      {isPill && <TabBarBackground lens={false} />}
       {hasFailed && (
         <Pressable
           onPress={onRetryFailed}
           style={({ pressed }) => [
             styles.button,
+            isPill && styles.pillButton,
             styles.ghostButton,
             pressed && feedback.pressed,
           ]}
@@ -50,6 +67,7 @@ export function SelectionActionBar({
         disabled={count === 0}
         style={({ pressed }) => [
           styles.button,
+          isPill && styles.pillButton,
           styles.dangerButton,
           count === 0 && styles.buttonDisabled,
           pressed && feedback.pressed,
@@ -93,6 +111,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  pillButton: {
+    height: 40,
+    borderRadius: 20,
   },
   ghostButton: {
     backgroundColor: GHOST_BG,

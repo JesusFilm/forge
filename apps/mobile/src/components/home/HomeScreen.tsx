@@ -33,6 +33,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { useTabBarClearance } from "../../lib/tabBar"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
@@ -84,6 +85,7 @@ const HERO_SWIPE_COMMIT_PX = 40
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets()
+  const tabBarClearance = useTabBarClearance()
   const navigation = useNavigation()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
@@ -386,9 +388,9 @@ export function HomeScreen() {
       // Hero-less degraded render: feed starts below the absolute header
       // instead of leaving a hero-sized hole.
       paddingTop: heroVisible ? heroHeight : insets.top + HEADER_ALLOWANCE,
-      paddingBottom: 48,
+      paddingBottom: 48 + tabBarClearance,
     }),
-    [heroVisible, heroHeight, insets.top],
+    [heroVisible, heroHeight, insets.top, tabBarClearance],
   )
 
   // ── States (R12: never a blank screen) ─────────────────────────────────────

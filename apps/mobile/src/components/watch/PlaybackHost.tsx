@@ -43,6 +43,7 @@ import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { TAB_BAR_OCCUPIED_HEIGHT } from "../../lib/tabBar"
 import {
   DEFAULT_CORNER,
   defaultCornerFrame,
@@ -133,15 +134,10 @@ const EXIT_RELEASE_SLACK_MS = 250
  *  releases its pending resume and reverts the tier (R8's failure path). */
 export const QUALITY_SWAP_TIMEOUT_MS = 8000
 
-/** Chrome heights the window may not cover (R7), read from `app/_layout.tsx`
- *  and `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the
- *  corner geometry already subtracts. The bottom reservation applies on every
- *  route so the window keeps one height across pushes. */
-export const TAB_BAR_CONTENT_HEIGHT = Platform.select({
-  ios: 49,
-  android: 56,
-  default: 49,
-})
+/** Chrome heights the window may not cover (R7). Both exclude the safe-area
+ *  inset, which the corner geometry already subtracts. The bottom reservation
+ *  applies on every route so the window keeps one height across pushes. */
+export const TAB_BAR_CONTENT_HEIGHT = TAB_BAR_OCCUPIED_HEIGHT
 const NATIVE_HEADER_HEIGHT = Platform.select({
   ios: 44,
   android: 56,
@@ -1243,8 +1239,9 @@ function ActivePlaybackHost({
   const handleExpand = useCallback(() => {
     const current = getMiniPlayerStore().getSnapshot().session
     if (current == null) return
-    // The push drops the tab bar before the rect arrives, so the corner frame
-    // re-derives lower mid-expand. Pin the on-screen frames for the grow.
+    // The bottom reservation is constant on every route (owner decision
+    // 2026-08-19), so a push never re-derives the corner frame. Pin the
+    // on-screen frames anyway, so the grow starts from what the viewer sees.
     expandHoldRef.current = {
       windowFrame: defaultCornerFrame(layoutConfigRef.current),
       cornerFrame: miniPlayerCornerFrame(

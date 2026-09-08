@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BackHandler,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,7 @@ import {
 import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { TAB_BAR_STYLE } from "./_layout"
+import { useTabBarClearance, useTabBarStyle } from "../../src/lib/tabBar"
 
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
 import { DownloadRow } from "../../src/components/library/DownloadRow"
@@ -58,6 +59,8 @@ const HINT_VISIBLE_MS = 4000
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets()
+  const tabBarStyle = useTabBarStyle()
+  const tabBarClearance = useTabBarClearance()
   const typography = useTypography()
   const router = useRouter()
   const navigation = useNavigation()
@@ -89,6 +92,9 @@ export default function LibraryScreen() {
     INITIAL_SELECTION_STATE,
   )
   const { selecting, selected } = selectionState
+  // On iOS the selection pill occupies the same box as the tab pill, so one
+  // clearance covers both states. On Android the hidden bar leaves the old gap.
+  const selectionPad = selecting && Platform.OS === "android" ? 120 : 24
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -115,9 +121,9 @@ export default function LibraryScreen() {
   // whenever selection turns off, on blur (switching tabs), and on unmount.
   useEffect(() => {
     navigation.setOptions({
-      tabBarStyle: selecting ? { display: "none" } : TAB_BAR_STYLE,
+      tabBarStyle: selecting ? { display: "none" } : tabBarStyle,
     })
-  }, [selecting, navigation])
+  }, [selecting, navigation, tabBarStyle])
 
   useEffect(() => {
     const unsubscribeBlur = navigation.addListener("blur", () => {
@@ -125,9 +131,9 @@ export default function LibraryScreen() {
     })
     return () => {
       unsubscribeBlur()
-      navigation.setOptions({ tabBarStyle: TAB_BAR_STYLE })
+      navigation.setOptions({ tabBarStyle })
     }
-  }, [navigation])
+  }, [navigation, tabBarStyle])
 
   // R20: prune selected slugs the provider no longer has; auto-exit when empty.
   // Keyed ONLY on offlineRecords (selectionState via ref) — reacting to the
@@ -351,7 +357,7 @@ export default function LibraryScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            selecting && styles.scrollContentSelecting,
+            { paddingBottom: selectionPad + tabBarClearance },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -417,6 +423,7 @@ export default function LibraryScreen() {
       />
 
       <Snackbar
+        clearsTabBar
         message={toastMessage ?? ""}
         visible={toastMessage != null}
         onDismiss={() => setToastMessage(null)}
@@ -495,9 +502,5 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  scrollContentSelecting: {
-    paddingBottom: 120,
   },
 })
