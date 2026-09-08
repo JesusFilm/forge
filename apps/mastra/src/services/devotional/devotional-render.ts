@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { createWriteStream } from "node:fs"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
@@ -13,6 +13,7 @@ import {
   type ProducedDevotionalAudio,
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
+import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import {
   cacheDirFor,
   loadCachedAudio,
@@ -44,12 +45,14 @@ import { buildDevotionalAgentLlms } from "./devotional-models"
 import {
   EN_LOCALE,
   localeFor,
+  settleLineFor,
   type DevotionalLang,
   type DevotionalLocale,
 } from "./devotional-locale"
 import { localizeDevotional } from "./localize-devotional"
 import { applyStressOverrides } from "./speakify-tts"
 import {
+  arclightMediaInfo,
   findActBreak,
   fetchEditedWindow,
   mapCuesToEditedTimeline,
@@ -266,22 +269,43 @@ async function arclightClipInfo(
   mediaId: string,
   languageId = 529,
 ): Promise<ArclightClipInfo> {
-  const r = await fetch(
-    `https://api.arclight.org/v2/media-components/${mediaId}/languages/${languageId}?platform=web`,
-    { signal: AbortSignal.timeout(METADATA_TIMEOUT_MS) },
+  const { downloadApiUrl, subtitleUrl } = await arclightMediaInfo(
+    mediaId,
+    languageId,
   )
-  if (!r.ok) throw new Error(`Arclight ${mediaId}: HTTP ${r.status}`)
-  const j = (await r.json()) as {
-    downloadUrls?: Record<string, { url: string }>
-    subtitleUrls?: Record<string, Array<{ languageId: number; url: string }>>
-  }
-  const downloadUrl = j.downloadUrls?.high?.url ?? j.downloadUrls?.low?.url
-  if (!downloadUrl) throw new Error(`Arclight ${mediaId}: no downloadUrls`)
-  // Subtitle track for the SAME language (for clip-window alignment).
-  const subtitleUrl = j.subtitleUrls?.srt?.find(
-    (t) => t.languageId === languageId,
-  )?.url
+  if (!downloadApiUrl) throw new Error(`Arclight ${mediaId}: no downloadUrls`)
+  const downloadUrl = await bestMuxRendition(downloadApiUrl)
   return { downloadUrl, subtitleUrl }
+}
+
+/**
+ * Arclight's `downloadUrls.high` is 720p even when Mux is serving a 1080p
+ * rendition of the same asset (the HLS master for JESUS lists 1920x1080 at
+ * ~6.2 Mbps against 1280x720 at ~2.6 Mbps). Every cut pays for that twice: the
+ * 16:9 cut upscales the whole frame, and the 9:16 cut scales a centre crop of a
+ * 1280-wide source up to a 1080-wide frame, so the film is the softest thing in
+ * a video whose text is rendered natively.
+ *
+ * Mux serves fixed-name renditions at `/{playbackId}/{name}.mp4`, so ask for
+ * 1080p directly and keep the API's answer when it isn't published. Best
+ * effort by design: a probe failure means the original URL, never a broken
+ * render.
+ */
+async function bestMuxRendition(apiUrl: string): Promise<string> {
+  const m = /^https:\/\/stream\.mux\.com\/([A-Za-z0-9]+)\/[^/]+\.mp4/.exec(
+    apiUrl,
+  )
+  if (!m) return apiUrl
+  const candidate = `https://stream.mux.com/${m[1]}/1080p.mp4`
+  try {
+    const r = await fetch(candidate, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
+    })
+    return r.ok ? candidate : apiUrl
+  } catch {
+    return apiUrl
+  }
 }
 
 async function download(url: string, dest: string): Promise<void> {
@@ -320,6 +344,28 @@ async function download(url: string, dest: string): Promise<void> {
     throw err
   }
 }
+
+/**
+ * x264 settings for every INTERMEDIATE encode in this module (the trimmed clip,
+ * the concatenated segments, the background pass). These files are transient:
+ * Remotion decodes them and re-encodes the final video, so any loss here is
+ * baked into the output and then compressed a second time.
+ *
+ * The old `-preset veryfast` with no `-crf` meant the default CRF 23 at the
+ * second-fastest preset, on the 75 seconds of film the viewer actually watches.
+ * CRF 18 at `medium` is visually transparent for an intermediate and costs a
+ * few seconds of ffmpeg time on a step measured in seconds, against a render
+ * measured in minutes. `yuv420p` is stated rather than inherited so a source
+ * with 4:2:2 chroma can't produce a file some players refuse.
+ */
+const INTERMEDIATE_X264 = [
+  "-preset",
+  "medium",
+  "-crf",
+  "18",
+  "-pix_fmt",
+  "yuv420p",
+]
 
 /** Spawn ffmpeg with `args`, capturing stderr for the error message and
  *  watchdog-killing a hung encode so it can't wedge the run. Shared by every
@@ -373,8 +419,7 @@ function trimClip(
     src,
     "-c:v",
     "libx264",
-    "-preset",
-    "veryfast",
+    ...INTERMEDIATE_X264,
   ]
   if (speed !== 1) args.push("-vf", `setpts=PTS/${speed}`)
   const af: string[] = []
@@ -545,8 +590,7 @@ async function concatWithSeamXfade(
     "[a]",
     "-c:v",
     "libx264",
-    "-preset",
-    "veryfast",
+    ...INTERMEDIATE_X264,
     "-c:a",
     "aac",
     dest,
@@ -611,8 +655,7 @@ function trimClipSegments(
     "[a]",
     "-c:v",
     "libx264",
-    "-preset",
-    "veryfast",
+    ...INTERMEDIATE_X264,
     "-c:a",
     "aac",
     dest,
@@ -629,7 +672,32 @@ function runRender(
   musicVol: number,
   xfadeSec: number,
   videoAudioLevel: number,
-  cover: { dateLabel?: string; titleFirst?: boolean } = {},
+  // One options bag rather than a tail of positionals: the list had reached
+  // eleven arguments, four of them optional, and every new render knob made the
+  // single call site harder to read than the flags it forwards.
+  opts: {
+    coverDateLabel?: string
+    /** Leave the cover's date slot out entirely (no date, no label). */
+    hideCoverDate?: boolean
+    coverTitleFirst?: boolean
+    textFont?: "sans" | "serif"
+    videoFilter?: string
+    /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
+     *  One frame of rasterization each, so a layout can be checked for the
+     *  price of a few seconds rather than a full encode. */
+    stills?: number
+    /** Same, at exactly these frame numbers. */
+    stillsFrames?: string
+    /** Grain tile size in px; smaller reads as finer film grain. */
+    grainSizePx?: number
+    /** Tint + blend for the grain noise; see the composition schema. */
+    grainFilter?: string
+    grainBlend?: string
+    /** Multiplier on every card's background blur. */
+    blurScale?: number
+    /** Render only this slice of the timeline, "start-end" in frames. */
+    frameRange?: string
+  } = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn(
@@ -650,8 +718,20 @@ function runRender(
         // does NOT bleed into the reflection. Music is not ducked (plays through
         // quietly as a bed).
         `--video-audio=${videoAudioLevel}`,
-        ...(cover.dateLabel ? [`--cover-date-label=${cover.dateLabel}`] : []),
-        ...(cover.titleFirst ? ["--cover-title-first=true"] : []),
+        ...(opts.coverDateLabel
+          ? [`--cover-date-label=${opts.coverDateLabel}`]
+          : []),
+        ...(opts.hideCoverDate ? ["--hide-cover-date=true"] : []),
+        ...(opts.frameRange ? [`--frame-range=${opts.frameRange}`] : []),
+        ...(opts.coverTitleFirst ? ["--cover-title-first=true"] : []),
+        ...(opts.textFont ? [`--text-font=${opts.textFont}`] : []),
+        ...(opts.videoFilter ? [`--vfilter=${opts.videoFilter}`] : []),
+        ...(opts.stills ? [`--stills=${opts.stills}`] : []),
+        ...(opts.stillsFrames ? [`--stills-frames=${opts.stillsFrames}`] : []),
+        ...(opts.grainSizePx ? [`--grain-size=${opts.grainSizePx}`] : []),
+        ...(opts.grainFilter ? [`--grain-filter=${opts.grainFilter}`] : []),
+        ...(opts.grainBlend ? [`--grain-blend=${opts.grainBlend}`] : []),
+        ...(opts.blurScale ? [`--blur-scale=${opts.blurScale}`] : []),
       ],
       { stdio: "inherit", cwd: REPO_ROOT },
     )
@@ -701,6 +781,35 @@ export function devotionalVideoFilename(input: {
   const lang = input.lang === "en" ? "" : `-${input.lang}`
   const aspect = input.aspect === "wide" ? "-wide" : ""
   return `${slug}-seq${input.sequence}${ep}${lang}${aspect}.mp4`
+}
+
+/**
+ * The first name in `dir` that is not taken: `name.mp4`, then `name-v2.mp4`,
+ * `name-v3.mp4`, …
+ *
+ * Owner rule: a re-render must NEVER replace the previous file. Re-rendering
+ * the same chapter to compare two treatments used to overwrite the cut she had
+ * already reviewed, so the comparison was gone by the time the new render
+ * finished.
+ */
+export async function nextFreePath(
+  dir: string,
+  filename: string,
+): Promise<string> {
+  const ext = path.extname(filename)
+  const base = filename.slice(0, filename.length - ext.length)
+  // Bounded: at some point a directory of 200 takes is the real problem.
+  for (let n = 1; n < 200; n++) {
+    const candidate = path.join(dir, n === 1 ? filename : `${base}-v${n}${ext}`)
+    try {
+      await stat(candidate)
+    } catch {
+      return candidate
+    }
+  }
+  throw new Error(
+    `${dir} already holds 199 renders of ${base}${ext} — clear some out first`,
+  )
 }
 
 export type RenderOptions = {
@@ -757,6 +866,56 @@ export type RenderOptions = {
   locale?: DevotionalLocale
   /** Progress log; defaults to console.log. */
   log?: (msg: string) => void
+  /** Playback speed for the video card's clip (pitch-preserved). Default 1.12;
+   *  clamped to 1–1.3 because past that the dubbed dialogue reads as hurried. */
+  videoSpeed?: number
+  /** Open the video card SILENT for this many seconds, showing the "Let's
+   *  watch" line, before the clip's audio eases in. The window is pulled the
+   *  same amount EARLIER in the film so the silent opening is extra footage
+   *  rather than the first seconds of the scene playing unheard. */
+  mutedLeadSec?: number
+  /** Show the cover's spoken settle line on screen under the hook. */
+  showSettleLine?: boolean
+  /** Typeface for the spoken-text cards: "sans" (Inter, default) or "serif". */
+  textFont?: "sans" | "serif"
+  /** CSS filter applied to the video card's footage. The `grain` style grades
+   *  nothing, which left the film reading bright and yellow (owner) — pass a
+   *  muted grade here to bring it back without switching to an orange
+   *  split-tone style. */
+  videoFilter?: string
+  /** Stop right after the manifest and staged clip/background files are
+   *  written, before the Remotion MP4 encode — the expensive step. Leaves the
+   *  stage directory intact (normally deleted in a `finally`) so a caller can
+   *  build a fast still-frame preview or just play the trimmed clip directly,
+   *  instead of waiting on a full render to see the same thing. */
+  stopBeforeRender?: boolean
+  /** Review preview: render N evenly spaced PNG stills INSTEAD of the MP4.
+   *  Costs one frame of rasterization each — seconds, not minutes — which is
+   *  what makes "show me screenshots before you render the whole thing" a
+   *  reasonable request to make on every layout change. */
+  stills?: number
+  /** Same, at exactly these frame numbers (comma-separated). Use when the card
+   *  boundaries are known and an even split would land mid-crossfade. */
+  stillsFrames?: string
+  /** Render only a SLICE of the timeline as a real MP4, "start-end" in frames.
+   *  Stills cannot show motion, and the opening beats — the logo stamp, the
+   *  stepper's travelling light, a verse unfolding under the voice — are all
+   *  motion. A twelfth of the encode answers the same question. */
+  frameRange?: string
+  /** Grain tile size in px (default 260). See `grainSizePx` in the composition
+   *  schema for why the tile size, not opacity, is the lever. */
+  grainSizePx?: number
+  /** Tint + blend for the grain noise. */
+  grainFilter?: string
+  grainBlend?: string
+  /** Multiplier on every card's background blur (default 1). */
+  blurScale?: number
+  /**
+   * Put the spoken lead-ins on their own STEPPER cards (READ / WATCH /
+   * REFLECT / PRAY) instead of inline on the host cards, and render that
+   * screen between the stages. Off keeps the previous running order exactly.
+   */
+  steps?: boolean
 }
 
 /**
@@ -785,8 +944,9 @@ export async function renderDevotionalVideo(
     `${WEEKDAYS[now.getDay()]} · ${MONTHS[now.getMonth()]} ${now.getDate()}`
 
   const stage = await mkdtemp(path.join(tmpdir(), "devo-render-"))
+  let keepStage = false
   try {
-    return await renderInStage(devo, audio, options, {
+    const result = await renderInStage(devo, audio, options, {
       stage,
       style,
       layout,
@@ -794,10 +954,19 @@ export async function renderDevotionalVideo(
       locale,
       log,
     })
+    // Deliberately skip cleanup only on this successful, intentional
+    // early-exit — the caller asked to stop before the encode specifically to
+    // use what's in `stage`, and owns removing it when done. A thrown error
+    // still falls through to the cleanup below.
+    keepStage = options.stopBeforeRender === true
+    return result
   } finally {
-    // Always remove the temp tree (full film download + trimmed clips + audio):
-    // the video-first flow renders TWICE per run, so a leak fills /tmp fast.
-    await rm(stage, { recursive: true, force: true }).catch(() => {})
+    if (!keepStage) {
+      // Always remove the temp tree (full film download + trimmed clips +
+      // audio): the video-first flow renders TWICE per run, so a leak fills
+      // /tmp fast.
+      await rm(stage, { recursive: true, force: true }).catch(() => {})
+    }
   }
 }
 
@@ -821,27 +990,66 @@ async function renderInStage(
   const full = path.join(stage, "full.mp4")
   const clip = path.join(stage, "clip.mp4")
   const clipInfo = await arclightClipInfo(devo.clip.id, locale.filmLanguageId)
+  log(
+    `source ${clipInfo.downloadUrl.split("/").pop()} for ${devo.clip.id} ` +
+      `(Arclight's own "high" is 720p; a 1080p Mux rendition is used when published)`,
+  )
   await download(clipInfo.downloadUrl, full)
   const fullDur = await probeDuration(full)
   // Every JESUS-film chapter ends with ~8s of QR code + titles — never show it.
   const TRAILER = 8
   const usableDur = Math.max(1, fullDur - TRAILER)
-  // Extra footage past each card's on-screen time so the video keeps playing
-  // through the crossfade instead of freezing on its last frame.
-  const MARGIN = 3
+  /**
+   * Extra footage past the card's on-screen time so the picture keeps moving
+   * through the dissolve into the next card instead of freezing on its last
+   * frame.
+   *
+   * DERIVED, not a constant. It used to be a flat 3s, which was fine until the
+   * card was allowed to end 1.5s after the last spoken line (the fix for "the
+   * film's closing words are inaudible"). That change spent the whole 3s on the
+   * tail pad and left the crossfade nothing to play, so the Good Samaritan's
+   * last frame held for over a second — the exact freeze the margin exists to
+   * prevent, reintroduced by the fix for the neighbouring bug.
+   *
+   * So the margin now covers BOTH: the tail pad, the seam, and a little slack.
+   * On-screen seconds cost `× VIDEO_SPEED` of source.
+   */
+  const SEAM_SEC = options.xfadeSec ?? 1.2
+  const TAIL_PAD_SEC = 1.5
   // The JESUS film is old and slow; play the video-card clip a touch faster so
   // it's less draggy. Pitch-preserved (atempo), so ~1.12× is imperceptible in
   // the dialogue. The on-screen duration shrinks by the same factor.
-  const VIDEO_SPEED = 1.12
+  // Overridable per render: how draggy a scene feels is a judgement about THAT
+  // scene, and 1.12 is only the default that suited the ones tuned so far.
+  // Clamped to what atempo keeps natural — past ~1.3 the dialogue starts to
+  // sound hurried even with pitch preserved.
+  const VIDEO_SPEED = Math.min(1.3, Math.max(1, options.videoSpeed ?? 1.12))
+  const window = passageForChapter(devo.clip.index, options.episode)
   // Owner rule: the "clear" video card (before it cuts to blurred-background
   // text cards) must stay in this range — long enough to feel like a real
   // scene, never so long it drags. Without a cap this was set to the FULL
   // trimmed clip length (~60-70s+ for some chapters), not a highlight window.
-  const MIN_VIDEO_CARD_SEC = 30
-  const MAX_VIDEO_CARD_SEC = 60
+  // Only ever pads a SHORT card UP; the available-footage clamp below still has
+  // the final say, so this can never outrun the clip. Lowered from 30 once the
+  // parable series brought in scenes that are simply short — the Parable of the
+  // Lamp is 28s of dialogue end to end. At 30 such a card was padded two
+  // seconds past its own last line and into the NEXT scene's footage; at 24 it
+  // ends on its own words. Owner rule for these: don't speed them up either.
+  const MIN_VIDEO_CARD_SEC = 24
+  // Per-chapter override: a scene whose dialogue runs longer than the default
+  // ceiling would otherwise have its closing lines fall outside the card
+  // entirely (ch14's runs 74s), which reads as the film being cut off.
+  const MAX_VIDEO_CARD_SEC = window?.maxVideoCardSec ?? 60
+  // A silent lead is EXTRA time in front of the scene, so it raises the ceiling
+  // rather than eating into the footage the card was allowed to show.
+  const leadSecForCap = Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
+  /** Same value, named for the manifest hand-off further down. */
+  const mutedLeadForManifest = leadSecForCap
   const clampVideoCardSec = (sec: number) =>
-    Math.min(MAX_VIDEO_CARD_SEC, Math.max(MIN_VIDEO_CARD_SEC, sec))
-  const window = passageForChapter(devo.clip.index, options.episode)
+    Math.min(
+      MAX_VIDEO_CARD_SEC + leadSecForCap,
+      Math.max(MIN_VIDEO_CARD_SEC, sec),
+    )
   // Assigned by every branch below (two-act split, single clip, or the
   // no-curated-window fallback); the assertion after the block proves it
   // rather than letting a sentinel 0 reach the manifest.
@@ -884,6 +1092,9 @@ async function renderInStage(
         {
           ...(window.minGapSec != null ? { minGapSec: window.minGapSec } : {}),
           ...(window.maxGapSec != null ? { maxGapSec: window.maxGapSec } : {}),
+          ...(window.leadingBufferSec != null
+            ? { leadingBufferSec: window.leadingBufferSec }
+            : {}),
         },
       )
       if (edited) {
@@ -910,7 +1121,25 @@ async function renderInStage(
     // Clamp every segment to the usable range, then append MARGIN of extra
     // (uncut) trailing footage so the clip keeps rolling through the
     // crossfade/fade instead of freezing or cutting off mid-word.
-    const clamped = clipSegments
+    // SILENT LEAD: pull the window EARLIER by the lead so the muted opening is
+    // extra footage, not the first seconds of the scene playing unheard. The
+    // lead is on-screen time, so it costs `lead × speed` of source.
+    const mutedLead = Math.max(0, Math.min(4, options.mutedLeadSec ?? 0))
+    const withLead =
+      mutedLead > 0 && clipSegments.length > 0
+        ? (() => {
+            const [first, ...rest] = clipSegments
+            const room = Math.min(mutedLead * VIDEO_SPEED, first.startSec)
+            return [
+              {
+                startSec: first.startSec - room,
+                lengthSec: first.lengthSec + room,
+              },
+              ...rest,
+            ]
+          })()
+        : clipSegments
+    const clamped = withLead
       .map((s) => {
         const startSec = Math.min(s.startSec, usableDur - 1)
         const lengthSec = Math.min(s.lengthSec, usableDur - startSec)
@@ -919,9 +1148,16 @@ async function renderInStage(
       .filter((s) => s.lengthSec > 0.1)
     const onScreenSec = clamped.reduce((sum, s) => sum + s.lengthSec, 0)
     const last = clamped[clamped.length - 1]
+    // Footage past the window's end, for the tail pad and the dissolve to play
+    // over. Generous on purpose: unused margin costs only a slightly longer
+    // clip.mp4, while too little margin freezes the last frame. It can be
+    // generous ONLY because the card's length is chosen from the WINDOW's own
+    // lines (see `lineLimit`), so extra margin can no longer drag the card into
+    // dialogue the curated window deliberately left out.
+    const marginWanted = (TAIL_PAD_SEC + SEAM_SEC + 2) * VIDEO_SPEED
     const marginAvailable = Math.max(
       0,
-      Math.min(MARGIN, usableDur - (last.startSec + last.lengthSec)),
+      Math.min(marginWanted, usableDur - (last.startSec + last.lengthSec)),
     )
     const trimSegments =
       marginAvailable > 0
@@ -1008,10 +1244,11 @@ async function renderInStage(
       // 30s of card against 26.8s of sped-up footage froze for three seconds
       // before the reflection took over.
       const playableSec = onScreenSec / VIDEO_SPEED
-      videoCardSec = Math.min(clampVideoCardSec(playableSec), playableSec)
       // Captions must follow the SAME edit as the picture: cut-out pauses shift
       // later lines earlier, and the speed-up compresses every timestamp. Map
       // against `trimSegments` (exactly what was encoded into clip.mp4).
+      // Mapped BEFORE the card length is chosen, because the last line that
+      // finishes inside the cap is what decides where the card may end.
       if (sourceCues.length > 0) {
         videoCaptions = shiftCaptions(
           mapCuesToEditedTimeline(sourceCues, trimSegments, VIDEO_SPEED),
@@ -1019,6 +1256,62 @@ async function renderInStage(
         )
         log(
           `captions: ${videoCaptions.length} cue(s) mapped onto the edited clip`,
+        )
+      }
+      // END AFTER A FINISHED LINE, WITH ROOM FOR THE FADE. The cap (60s + any
+      // silent lead) exists so the clip never drags, but applied as a raw
+      // number it cut the card mid-sentence: a 74s clip was shown for 62.5s and
+      // the film's last words were never heard.
+      //
+      // Ending exactly ON the last line was the SECOND half of that bug (owner
+      // reported it a third time: "Go in peace" inaudible). The card carries a
+      // 0.5s audio fade-out and dissolves into the reflection over the xfade,
+      // so a card that ends when the dialogue ends fades out ON the closing
+      // words. TAIL_PAD_SEC buys silence for the fade to land on — spent from
+      // the trailing MARGIN footage, which is uncut and already encoded, so
+      // this cannot run past the end of clip.mp4.
+      const playableWithMarginSec =
+        (onScreenSec + marginAvailable) / VIDEO_SPEED
+      // The card must END far enough from the last frame for the dissolve to
+      // have moving picture to play. Ending AT the footage's end is what froze
+      // the Good Samaritan's final frame for over a second.
+      const seamCeilingSec = playableWithMarginSec - SEAM_SEC - 0.2
+      const cap = clampVideoCardSec(playableSec)
+      // Which lines is the card allowed to wait for?
+      //
+      // The CURATED WINDOW's lines, and no others. This used to allow anything
+      // inside `playableWithMarginSec`, which quietly included the trailing
+      // margin — so for the Good Samaritan the "last line" the card waited for
+      // was a line from the margin, past the window's chosen ending, and
+      // holding for it ate the very footage the dissolve needed. The window
+      // decides the content; the margin only feeds the seam.
+      //
+      // The 0.4s of slack absorbs a subtitle cue that ends just past the window
+      // edge, since cues do not land exactly on it: dropping a real closing
+      // line over a fractional overrun is how "Go in peace" went missing.
+      const lineLimit = Math.min(cap, playableSec) + 0.4
+      const lineEnd = videoCaptions
+        .filter((c) => c.endSec <= lineLimit)
+        .reduce((max, c) => Math.max(max, c.endSec), 0)
+      // MIN_VIDEO_CARD_SEC still applies (a short scene is held so it reads as
+      // a scene), and the footage available is still the hard ceiling — that is
+      // what stops the picture freezing on the last frame.
+      const wanted =
+        lineEnd > 0 ? Math.max(lineEnd + TAIL_PAD_SEC, MIN_VIDEO_CARD_SEC) : cap
+      videoCardSec = Math.min(wanted, seamCeilingSec)
+      log(
+        `video card ${videoCardSec.toFixed(1)}s (last line ends ${lineEnd.toFixed(1)}s, ` +
+          `cap ${cap.toFixed(1)}s, ${playableWithMarginSec.toFixed(1)}s of footage, ` +
+          `seam ceiling ${seamCeilingSec.toFixed(1)}s)`,
+      )
+      // The two bugs this balances pull in opposite directions, so say when the
+      // seam won and the last line had to be given up — otherwise a future
+      // "the last words are cut off" report has nothing to read.
+      if (lineEnd > 0 && wanted > seamCeilingSec) {
+        log(
+          `⚠️  the scene's last line (${lineEnd.toFixed(1)}s) does not fit before ` +
+            `the ${SEAM_SEC.toFixed(1)}s dissolve; widen clipLengthSec for this ` +
+            `chapter if the closing words matter`,
         )
       }
     }
@@ -1041,6 +1334,9 @@ async function renderInStage(
       file,
       durationSec: await probeDuration(path.join(stage, file)),
       text: s.text,
+      ...(s.audio.words && s.audio.words.length > 0
+        ? { words: s.audio.words }
+        : {}),
     })
     n++
   }
@@ -1066,6 +1362,20 @@ async function renderInStage(
       ? undefined
       : (occasionFor(devo.date, locale.lang) ?? undefined),
     videoCaptions,
+    ...(options.showSettleLine
+      ? {
+          settleLine: settleLineFor(devo.sequence, options.settleLine ?? null),
+        }
+      : {}),
+    ...(mutedLeadForManifest > 0
+      ? {
+          // The silent opening stays (the clip's own sound eases in), but the
+          // caption does NOT ride the film any more: "Let's watch" now lands on
+          // the scripture card, zooming in as the voice says it, and repeating
+          // it over the first seconds of the clip read as a duplicate.
+          mutedLeadSec: mutedLeadForManifest,
+        }
+      : {}),
     ...(act2Info ? { act2: { ...act2Info, captions: act2Captions } } : {}),
   })
 
@@ -1227,20 +1537,38 @@ async function renderInStage(
     JSON.stringify(manifest, null, 2) + "\n",
   )
 
+  if (options.stopBeforeRender) {
+    // Return the STAGE dir, not a video path — same string-shaped return as
+    // always, so callers that never set this option see no change at all.
+    log(
+      `stopped before render — manifest + staged files left in ${stage} ` +
+        `(clip.mp4, bg.mp4, per-segment audio, manifest.json)`,
+    )
+    return stage
+  }
+
   await mkdir(options.outDir, { recursive: true })
   const aspect = options.aspect ?? "portrait"
   const comp = aspect === "wide" ? "devotional-wide" : "devotional"
-  const videoPath = path.join(
-    options.outDir,
-    devotionalVideoFilename({
-      clipTitle: devo.clip.title,
-      sequence: devo.sequence,
-      lang: locale.lang,
-      aspect,
-      ...(options.episode ? { episode: options.episode } : {}),
-    }),
+  const filename = devotionalVideoFilename({
+    clipTitle: devo.clip.title,
+    sequence: devo.sequence,
+    lang: locale.lang,
+    aspect,
+    ...(options.episode ? { episode: options.episode } : {}),
+  })
+  // Stills write PNGs derived from this name and never produce the MP4, so a
+  // preview must NOT burn the next free version number — it would leave a gap
+  // and name the stills after a video that does not exist.
+  const stillsOnly = Boolean(options.stills || options.stillsFrames)
+  const videoPath = stillsOnly
+    ? path.join(options.outDir, filename)
+    : await nextFreePath(options.outDir, filename)
+  log(
+    stillsOnly
+      ? `stills (${aspect}) → ${videoPath.replace(/\.mp4$/, "")}-still-NN.png`
+      : `render (${aspect}) → ${videoPath}`,
   )
-  log(`render (${aspect}) → ${videoPath}`)
   await runRender(
     path.join(stage, "manifest.json"),
     videoPath,
@@ -1251,10 +1579,24 @@ async function renderInStage(
     options.xfadeSec ?? 1.2,
     options.videoAudioLevel ?? 0.55,
     {
-      // Owner rules for the devotional cover: never a date, and the hook is
-      // read before the mark animates.
-      dateLabel: options.coverDateLabel ?? "Today's Devotional",
-      titleFirst: options.coverTitleFirst ?? false,
+      // Owner rules for the devotional cover: never a date, and nothing in
+      // the date's slot either — the "Today's Devotional" label that used to
+      // fill it wiped open after the mark had already settled, which is the
+      // beat she asked to end the opening on. Logo, title, credit, nothing
+      // else. An explicit label still overrides.
+      ...(options.coverDateLabel
+        ? { coverDateLabel: options.coverDateLabel }
+        : { hideCoverDate: true }),
+      coverTitleFirst: options.coverTitleFirst ?? false,
+      ...(options.textFont ? { textFont: options.textFont } : {}),
+      ...(options.videoFilter ? { videoFilter: options.videoFilter } : {}),
+      ...(options.stills ? { stills: options.stills } : {}),
+      ...(options.stillsFrames ? { stillsFrames: options.stillsFrames } : {}),
+      ...(options.frameRange ? { frameRange: options.frameRange } : {}),
+      ...(options.grainSizePx ? { grainSizePx: options.grainSizePx } : {}),
+      ...(options.grainFilter ? { grainFilter: options.grainFilter } : {}),
+      ...(options.grainBlend ? { grainBlend: options.grainBlend } : {}),
+      ...(options.blurScale ? { blurScale: options.blurScale } : {}),
     },
   )
   return videoPath
@@ -1306,12 +1648,31 @@ export type PrepareAndRenderInput = RenderOptions & {
    *  standalone devotional. Caches under its own dir, so episodes of the same
    *  scene do not overwrite one another. */
   episode?: number
+  /** Swap real ElevenLabs narration for timed silence (see
+   *  `createSilentVoiceover`) and skip both the human-approval gate and the
+   *  LLM quality critics — they're non-deterministic and shouldn't block a
+   *  design-only preview. Renders the REAL pipeline (clip alignment, gap
+   *  removal, speed, background, cover) with zero TTS spend, to check layout
+   *  and card splitting before paying for a voice. */
+  silentPreview?: boolean
+  /** Words/sec used to size the silent voiceover's duration estimate. See
+   *  `createSilentVoiceover`'s doc comment for where the default was measured. */
+  silentPreviewWordsPerSec?: number
+  /** Request ElevenLabs' per-word alignment for every narration segment, so
+   *  each card reveals its text word by word exactly in step with the voice
+   *  instead of at a guessed pace. Cards whose audio gets re-timed after
+   *  synthesis keep the old reveal. */
+  wordTimings?: boolean
 }
 
 export type RenderedDevotional = {
   devotional: GeneratedDevotional
   /** null when `reviewOnly` stopped the run before any audio or video work. */
   videoPath: string | null
+  /** Set only when `stopBeforeRender` stopped the run after staging, before
+   *  the Remotion encode — the directory holding clip.mp4, bg.mp4, per-segment
+   *  audio and manifest.json. */
+  previewStageDir?: string
 }
 
 /**
@@ -1408,6 +1769,28 @@ export async function produceNarration(
     suppressOccasion?: boolean
     musicFile?: string
     settleLine?: string
+    /**
+     * Write the produced segments into the persistent audio cache. Default
+     * true; pass FALSE for anything synthetic.
+     *
+     * A silent preview used to persist its own silence here, and because the
+     * reuse key is (role, text, voice) — all three identical to the real thing
+     * — the very next run reported "reused 16 cached segment(s)" and staged a
+     * devotional with no narration at all. Nothing in the logs said otherwise;
+     * the only symptom was -91 dB. Whatever produced the audio, if it is not
+     * the real voice it must not enter the cache the real render reads.
+     */
+    persist?: boolean
+    /** Drop-in replacement for the real ElevenLabs call — see
+     *  `createSilentVoiceover` for the silent-preview use case. */
+    voiceover?: NonNullable<
+      Parameters<typeof produceDevotionalAudio>[1]
+    >["voiceover"]
+    /** Ask for ElevenLabs' per-word alignment so cards can reveal their text
+     *  in step with the voice. */
+    withTimestamps?: boolean
+    /** Emit step segments (the stepper screen's own narration). */
+    steps?: boolean
   },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
@@ -1416,15 +1799,53 @@ export async function produceNarration(
   if (opts.reuse) {
     const cached = await loadCachedAudio(cacheDir, devo.voice)
     if (cached) {
-      try {
-        assertNarrationComplete(cached)
-        log("reusing cached audio")
-        return cached
-      } catch {
+      // THE TEXT MUST MATCH, not merely be present.
+      //
+      // This whole-bundle shortcut used to check only that every segment
+      // EXISTED. So after an approved edit to the conclusion, the cards showed
+      // the new line while the voice kept reading the old one — the render was
+      // "complete", nothing warned, and the mismatch was only visible by
+      // opening the cache by hand. The same trap swallowed the change to the
+      // spoken connector ("Let's bring this to God"): any devotional with a
+      // full cache would never have said it.
+      //
+      // The per-segment path below is already keyed on text, so a mismatch just
+      // falls through to it and re-synthesises the segments that actually
+      // changed.
+      const wanted = buildNarrationSegments(devo, locale, {
+        suppressOccasion: opts.suppressOccasion ?? false,
+        ...(opts.settleLine ? { settleLine: opts.settleLine } : {}),
+        ...(opts.steps ? { steps: true } : {}),
+      })
+      // Compare what the voice SAYS, not what the card shows.
+      //
+      // This used to compare the display text, which a reflection card keeps
+      // identical whether or not its spoken connector is there — so moving
+      // "Reflect on this." onto its own step card looked like no change at
+      // all, and the cached reflection kept saying it. Segments cached before
+      // the spoken text was recorded compare as changed, which is the honest
+      // reading: what they say is unknown.
+      const cachedSpoken = new Map(cached.segments.map((s) => [s.id, s.spoken]))
+      const changed = wanted.filter(
+        (w) => (cachedSpoken.get(w.id) ?? "").trim() !== w.text.trim(),
+      )
+      if (changed.length > 0) {
         log(
-          "⚠️  cached audio is INCOMPLETE — re-producing the missing segments " +
-            "(the complete ones are reused, so only the gaps cost credits)",
+          `📝 text changed since the cached narration (${changed
+            .map((c) => c.id)
+            .join(", ")}) — re-producing those segments`,
         )
+      } else {
+        try {
+          assertNarrationComplete(cached)
+          log("reusing cached audio")
+          return cached
+        } catch {
+          log(
+            "⚠️  cached audio is INCOMPLETE — re-producing the missing segments " +
+              "(the complete ones are reused, so only the gaps cost credits)",
+          )
+        }
       }
     }
   }
@@ -1462,6 +1883,9 @@ export async function produceNarration(
       // Pace certain cards (scripture + last reflection slower; closing slower
       // + padded so it doesn't end abruptly).
       pace: slowAndPad,
+      ...(opts.voiceover ? { voiceover: opts.voiceover } : {}),
+      ...(opts.withTimestamps ? { withTimestamps: true } : {}),
+      ...(opts.steps ? { steps: true } : {}),
     },
     locale,
   )
@@ -1473,7 +1897,7 @@ export async function produceNarration(
   // Guard BEFORE persisting: an incomplete result must not reach the cache,
   // where three other callers would later read it back as usable.
   assertNarrationComplete(audio)
-  await saveCachedAudio(cacheDir, audio)
+  if (opts.persist !== false) await saveCachedAudio(cacheDir, audio)
   return audio
 }
 
@@ -1490,10 +1914,11 @@ export function printDevotionalForReview(
   devo: GeneratedDevotional,
   locale: DevotionalLocale,
   cacheDir: string,
-  opts: { suppressOccasion?: boolean } = {},
+  opts: { suppressOccasion?: boolean; steps?: boolean } = {},
 ): string {
   const spoken = buildNarrationSegments(devo, locale, {
     suppressOccasion: opts.suppressOccasion ?? false,
+    ...(opts.steps ? { steps: true } : {}),
   })
   const rule = "─".repeat(72)
   const lines = [
@@ -1623,8 +2048,11 @@ export async function prepareAndRenderDevotional(
   // it lost: text approved yesterday failed coherence today and refused to
   // render. Critics are LLM calls, so their verdict is not stable across runs.
   // Skipping them here also saves three calls on every re-render.
+  // The fingerprint follows the SPOKEN text, so moving the lead-ins onto step
+  // cards is a change the owner re-approves rather than one that slips through.
   const spoken = buildNarrationSegments(devo, locale, {
     suppressOccasion: input.suppressOccasion ?? false,
+    ...(input.steps ? { steps: true } : {}),
   }).map((s) => s.text)
   let approval = await approvalState(cacheDir, spoken)
   if (approval !== "approved" && input.approveText) {
@@ -1638,8 +2066,11 @@ export async function prepareAndRenderDevotional(
   // The critics only ever read text, so running them here instead of after the
   // render means a bad devotional costs three cheap LLM calls rather than a
   // full ElevenLabs narration plus a multi-minute Remotion render.
+  // silentPreview bypasses both this gate and the human-approval gate below —
+  // this run is design-only (no TTS spend), and the critics are LLM calls
+  // that shouldn't block a preview on their own non-determinism.
   const review =
-    approval === "approved"
+    approval === "approved" || input.silentPreview
       ? { blocking: [] as string[] }
       : await reviewDevotionalText({
           devotional: devo,
@@ -1669,7 +2100,7 @@ export async function prepareAndRenderDevotional(
   // been approved. `--review` opts IN to reading it; nothing opts out of having
   // read it, because the only way past is an approval bound to the text's own
   // fingerprint. Forgetting a flag then costs nothing instead of a narration.
-  if (input.reviewOnly || approval !== "approved") {
+  if (!input.silentPreview && (input.reviewOnly || approval !== "approved")) {
     log(
       printDevotionalForReview(devo, locale, cacheDir, {
         suppressOccasion: input.suppressOccasion ?? false,
@@ -1686,19 +2117,51 @@ export async function prepareAndRenderDevotional(
 
   // A voice override always regenerates audio (cached audio is a different voice).
   const reuseAudio =
-    !input.regenerate && !input.regenerateAudio && !input.voiceOverride
+    !input.regenerate &&
+    !input.regenerateAudio &&
+    !input.voiceOverride &&
+    !input.silentPreview
   const audio = await produceNarration(devo, locale, {
     cacheDir,
     suppressOccasion: input.suppressOccasion ?? false,
     ...(input.musicFile ? { musicFile: input.musicFile } : {}),
     ...(input.settleLine ? { settleLine: input.settleLine } : {}),
     reuse: reuseAudio,
+    ...(input.steps ? { steps: true } : {}),
+    // Silence is never cacheable: see `persist` on produceNarration.
+    persist: !input.silentPreview,
+    ...(input.silentPreview
+      ? {
+          voiceover: createSilentVoiceover(
+            input.silentPreviewWordsPerSec ?? 2.51,
+          ),
+        }
+      : {}),
+    // Silent previews have no real speech to align to, so never ask for
+    // timestamps there.
+    ...(input.wordTimings && !input.silentPreview
+      ? { withTimestamps: true }
+      : {}),
     log,
   })
 
-  const videoPath = await renderDevotionalVideo(devo, audio, {
+  const result = await renderDevotionalVideo(devo, audio, {
     ...input,
     locale,
+    // A chapter may carry its own grain tint (sunlit scenes need a brighter
+    // noise than the dark-interior default). An explicit flag still wins, so
+    // the override can be compared against on the command line.
+    ...(input.grainFilter
+      ? { grainFilter: input.grainFilter }
+      : passageForChapter(devo.clip.index, input.episode)?.grainFilter
+        ? {
+            grainFilter: passageForChapter(devo.clip.index, input.episode)!
+              .grainFilter,
+          }
+        : {}),
   })
-  return { devotional: devo, videoPath }
+  if (input.stopBeforeRender) {
+    return { devotional: devo, videoPath: null, previewStageDir: result }
+  }
+  return { devotional: devo, videoPath: result }
 }

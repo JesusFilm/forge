@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   alignWindow,
+  arclightMediaInfo,
+  fetchClipTranscript,
   fetchEditedWindow,
   findActBreak,
   mapCuesToEditedTimeline,
@@ -472,5 +474,162 @@ describe("transcriptForWindow", () => {
     const t = transcriptForWindow(shuffled, 40, 55)
     expect(t.indexOf("искал видеть")).toBeLessThan(t.indexOf("смоковницу"))
     expect(t.indexOf("смоковницу")).toBeLessThan(t.indexOf("Половину имения"))
+  })
+})
+
+describe("arclightMediaInfo", () => {
+  function jsonFetch(body: unknown, ok = true, status = 200) {
+    return async () =>
+      ({ ok, status, json: async () => body }) as unknown as Response
+  }
+
+  it("returns the download URL and the matching-language subtitle URL", async () => {
+    const info = await arclightMediaInfo("1_jf6119-0-0", 529, {
+      fetchFn: jsonFetch({
+        downloadUrls: { high: { url: "https://dl/high.mp4" } },
+        subtitleUrls: {
+          srt: [
+            { languageId: 3934, url: "https://sub/ru.srt" },
+            { languageId: 529, url: "https://sub/en.srt" },
+          ],
+        },
+      }),
+    })
+    expect(info.downloadApiUrl).toBe("https://dl/high.mp4")
+    expect(info.subtitleUrl).toBe("https://sub/en.srt")
+  })
+
+  it("falls back to the low-quality download URL when high is absent", async () => {
+    const info = await arclightMediaInfo("m", 529, {
+      fetchFn: jsonFetch({
+        downloadUrls: { low: { url: "https://dl/low.mp4" } },
+      }),
+    })
+    expect(info.downloadApiUrl).toBe("https://dl/low.mp4")
+  })
+
+  it("returns no subtitleUrl when the language has no published track", async () => {
+    const info = await arclightMediaInfo("m", 529, {
+      fetchFn: jsonFetch({
+        downloadUrls: { high: { url: "https://dl/high.mp4" } },
+        subtitleUrls: {
+          srt: [{ languageId: 3934, url: "https://sub/ru.srt" }],
+        },
+      }),
+    })
+    expect(info.subtitleUrl).toBeUndefined()
+  })
+
+  it("throws on a non-OK response", async () => {
+    await expect(
+      arclightMediaInfo("m", 529, { fetchFn: jsonFetch({}, false, 404) }),
+    ).rejects.toThrow(/HTTP 404/)
+  })
+})
+
+describe("fetchClipTranscript", () => {
+  const SUBTITLE_SRT = `1
+00:00:03,000 --> 00:00:10,000
+Once there were two men who went up to the temple to pray.
+
+2
+00:00:10,000 --> 00:00:18,000
+One was a Pharisee, and the other was a tax collector.
+`
+
+  function fetchFor(mediaId: string) {
+    // One fetchFn standing in for BOTH calls fetchClipTranscript makes (the
+    // Arclight metadata lookup, then the subtitle track itself) — routed by URL.
+    return async (url: RequestInfo | URL) => {
+      const u = String(url)
+      if (u.includes("api.arclight.org")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            downloadUrls: { high: { url: "https://dl/high.mp4" } },
+            subtitleUrls: {
+              srt: [{ languageId: 529, url: `https://sub/${mediaId}.srt` }],
+            },
+          }),
+        } as unknown as Response
+      }
+      return { ok: true, text: async () => SUBTITLE_SRT } as unknown as Response
+    }
+  }
+
+  it("returns the real transcript for the curated window", async () => {
+    const t = await fetchClipTranscript("1_jf6107-0-0", 3, 15, 529, {
+      fetchFn: fetchFor("1_jf6107-0-0"),
+    })
+    expect(t).toBe(
+      "Once there were two men who went up to the temple to pray. One was a Pharisee, and the other was a tax collector.",
+    )
+  })
+
+  it("returns undefined when no subtitle track is published", async () => {
+    const fetchFn = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          downloadUrls: { high: { url: "https://dl/high.mp4" } },
+          // no subtitleUrls at all
+        }),
+      }) as unknown as Response
+    const t = await fetchClipTranscript("m", 3, 15, 529, { fetchFn })
+    expect(t).toBeUndefined()
+  })
+
+  it("returns undefined when the Arclight metadata fetch fails", async () => {
+    const fetchFn = async () =>
+      ({ ok: false, status: 500 }) as unknown as Response
+    const t = await fetchClipTranscript("m", 3, 15, 529, { fetchFn })
+    expect(t).toBeUndefined()
+  })
+
+  it("returns undefined when the subtitle track itself fails to fetch", async () => {
+    const fetchFn = async (url: RequestInfo | URL) => {
+      const u = String(url)
+      if (u.includes("api.arclight.org")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            downloadUrls: { high: { url: "https://dl/high.mp4" } },
+            subtitleUrls: {
+              srt: [{ languageId: 529, url: "https://sub/m.srt" }],
+            },
+          }),
+        } as unknown as Response
+      }
+      return { ok: false, status: 404 } as unknown as Response
+    }
+    const t = await fetchClipTranscript("m", 3, 15, 529, { fetchFn })
+    expect(t).toBeUndefined()
+  })
+
+  it("returns undefined rather than an empty string when the track has no cues", async () => {
+    const fetchFn = async (url: RequestInfo | URL) => {
+      const u = String(url)
+      if (u.includes("api.arclight.org")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            downloadUrls: { high: { url: "https://dl/high.mp4" } },
+            subtitleUrls: {
+              srt: [{ languageId: 529, url: "https://sub/m.srt" }],
+            },
+          }),
+        } as unknown as Response
+      }
+      // A track with no cues at all: fetchEditedWindow still returns an
+      // (empty) window rather than null, so this exercises transcriptForWindow
+      // finding nothing to join, not the "fetch failed" path above.
+      return { ok: true, text: async () => "" } as unknown as Response
+    }
+    const t = await fetchClipTranscript("m", 3, 15, 529, { fetchFn })
+    expect(t).toBeUndefined()
   })
 })

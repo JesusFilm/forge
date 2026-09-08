@@ -22,6 +22,7 @@ import {
   type ChapterWithPassage,
 } from "./jesus-film-passages"
 import { modernizeReflection } from "./reflection-modernizer"
+import { fetchClipTranscript } from "./subtitle-align"
 import { pickReflectionPoints } from "./reflection-point-picker"
 import { commentaryPreamble, splitCommentaryPoints } from "./reflection-points"
 import { pickReflectionHighlights } from "./reflection-highlighter"
@@ -67,6 +68,12 @@ export type GeneratedDevotional = {
   /** Short cover/hook line. */
   title: string
   scripture: ScriptureRef
+  /** The clip's own transcript for its curated window — what the writer and
+   *  the retells-scene critic use to know what the clip actually says instead
+   *  of assuming it matches the full passage. Best-effort: absent when no
+   *  subtitle track was published or the fetch failed, in which case every
+   *  consumer falls back to its pre-existing, transcript-free behavior. */
+  clipTranscript?: string
   reflection: {
     text: string
     /** Original source, e.g. "Matthew Henry, Commentary on the Whole Bible". */
@@ -107,6 +114,7 @@ export const GeneratedDevotionalSchema = z.object({
   clip: z.object({ index: z.number(), id: z.string(), title: z.string() }),
   passage: z.object({ reference: z.string(), osisRef: z.string() }),
   title: z.string(),
+  clipTranscript: z.string().optional(),
   scripture: z.object({
     reference: z.string(),
     text: z.string(),
@@ -168,6 +176,9 @@ export type GenerateDevotionalDeps = {
   pickSpurgeon?: typeof pickBestSpurgeon
   /** Picks the accent phrase per reflection chunk (defaults to the real one). */
   pickHighlights?: typeof pickReflectionHighlights
+  /** Fetches the clip's real transcript for its curated window (defaults to
+   *  the real one). Best-effort by contract — see `fetchClipTranscript`. */
+  fetchTranscript?: typeof fetchClipTranscript
 }
 
 export type GenerateDevotionalInput = {
@@ -212,6 +223,9 @@ export async function generateDevotional(
     {
       chapter: sourced.chapter,
       scripture: sourced.scripture,
+      ...(sourced.clipTranscript
+        ? { clipTranscript: sourced.clipTranscript }
+        : {}),
       sequence: input.sequence,
       date: input.date,
       llm: input.llm,
@@ -228,6 +242,9 @@ export async function generateDevotional(
 export type SourcedDevotional = {
   chapter: ChapterWithPassage
   scripture: ScriptureRef
+  /** The clip's own transcript for its curated window — see
+   *  `GeneratedDevotional.clipTranscript`. Best-effort; absent on any failure. */
+  clipTranscript?: string
 }
 
 export async function sourceClipAndScripture(
@@ -246,15 +263,36 @@ export async function sourceClipAndScripture(
     throw new Error(`no passage mapping for chapter ${input.chapterIndex}`)
   }
   const selectScripture = deps.selectScripture ?? selectScriptureForPassage
-  const scripture = await selectScripture({
-    reference: chapter.reference,
-    llm: input.llms?.scripture ?? input.llm,
-  })
+  const fetchTranscript = deps.fetchTranscript ?? fetchClipTranscript
+  // Devotionals are always WRITTEN in English first regardless of the eventual
+  // target locale (see apps/mastra/CLAUDE.md), so this always asks for the
+  // English track — the same 529 every other generation-time step assumes.
+  // Runs alongside scripture selection rather than after it: neither depends
+  // on the other's result, and the transcript fetch is best-effort, so it
+  // cannot make this stage any less reliable than it already was.
+  //
+  // The real `fetchClipTranscript` never throws (see subtitle-align.ts), but
+  // generation must not depend on every future or injected implementation
+  // honoring that by convention — best-effort means best-effort even against
+  // a misbehaving dependency, so a rejection here degrades to "no transcript"
+  // exactly like every other failure mode this function already tolerates.
+  const [scripture, clipTranscript] = await Promise.all([
+    selectScripture({
+      reference: chapter.reference,
+      llm: input.llms?.scripture ?? input.llm,
+    }),
+    fetchTranscript(
+      chapter.id,
+      chapter.clipStartSec ?? 0,
+      chapter.clipLengthSec ?? 60,
+    ).catch(() => undefined),
+  ])
   return {
     chapter: input.commentaryOverride
       ? { ...chapter, commentary: input.commentaryOverride }
       : chapter,
     scripture,
+    ...(clipTranscript ? { clipTranscript } : {}),
   }
 }
 
@@ -263,6 +301,9 @@ export async function sourceClipAndScripture(
 export type ComposeContentInput = {
   chapter: ChapterWithPassage
   scripture: ScriptureRef
+  /** The clip's own transcript for its curated window — see
+   *  `GeneratedDevotional.clipTranscript`. */
+  clipTranscript?: string
   /** Monotonic counter driving voice + reflection-source rotation. */
   sequence: number
   /** YYYY-MM-DD. */
@@ -431,6 +472,9 @@ export async function composeDevotionalContent(
         // sentence tying its point back. Written blind, the two halves read
         // as competing claims (grace vs works) rather than one argument.
         ...(i > 0 ? { precedingHalf: halves[i - 1] } : {}),
+        ...(input.clipTranscript
+          ? { clipTranscript: input.clipTranscript }
+          : {}),
         llm: input.llms?.modernize ?? input.llm,
         ...(input.log ? { log: input.log } : {}),
       })
@@ -459,6 +503,7 @@ export async function composeDevotionalContent(
       scriptureReference: scripture.reference,
       scriptureText: scripture.text,
       approxWords: input.approxWords ?? 170,
+      ...(input.clipTranscript ? { clipTranscript: input.clipTranscript } : {}),
       llm: input.llms?.modernize ?? input.llm,
       ...(input.log ? { log: input.log } : {}),
     })
@@ -505,6 +550,7 @@ export async function composeDevotionalContent(
     clip: { index: chapter.index, id: chapter.id, title: chapter.title },
     passage: { reference: chapter.reference, osisRef: chapter.osisRef },
     title: stripDashes(copy.title),
+    ...(input.clipTranscript ? { clipTranscript: input.clipTranscript } : {}),
     scripture,
     reflection: {
       text: reflectionText,

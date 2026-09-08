@@ -62,6 +62,10 @@ const deps = {
     .fn()
     .mockImplementation(async ({ candidates }) => candidates[0] ?? null),
   pickHighlights: vi.fn().mockResolvedValue([]),
+  // Best-effort by contract (see subtitle-align.ts's fetchClipTranscript) —
+  // stubbed to "no transcript available" so these tests stay hermetic and
+  // exercise the same fallback every real subtitle-fetch failure takes.
+  fetchTranscript: vi.fn().mockResolvedValue(undefined),
 }
 
 describe("generateDevotional", () => {
@@ -142,6 +146,59 @@ describe("generateDevotional", () => {
         deps,
       ),
     ).rejects.toThrow(/no passage mapping/)
+  })
+})
+
+describe("clip transcript", () => {
+  it("fetches the transcript for the chapter's own curated window, in English", async () => {
+    const fetchTranscript = vi.fn().mockResolvedValue(undefined)
+    await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      { ...deps, fetchTranscript },
+    )
+    expect(fetchTranscript).toHaveBeenCalledWith(
+      expect.any(String), // chapter.id — an Arclight media id, not asserted verbatim here
+      2, // ch19's clipStartSec
+      106, // ch19's clipLengthSec
+    )
+  })
+
+  it("threads a fetched transcript into the writer and onto the result", async () => {
+    const fetchTranscript = vi.fn().mockResolvedValue("Peace, be still.")
+    const d = await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      { ...deps, fetchTranscript },
+    )
+    expect(d.clipTranscript).toBe("Peace, be still.")
+    expect(deps.modernize).toHaveBeenCalledWith(
+      expect.objectContaining({ clipTranscript: "Peace, be still." }),
+    )
+  })
+
+  it("leaves the result without a transcript when none is available, with no change to the writer's other inputs", async () => {
+    // This is the fallback path every real subtitle-fetch failure takes —
+    // must be behavior-identical to a devotional generated before this
+    // feature existed.
+    const d = await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      deps, // shared deps' fetchTranscript already resolves undefined
+    )
+    expect(d.clipTranscript).toBeUndefined()
+    const call = (deps.modernize as ReturnType<typeof vi.fn>).mock.calls.at(-1)
+    expect(call?.[0]).not.toHaveProperty("clipTranscript")
+  })
+
+  it("does not fail generation when the transcript fetch itself rejects", async () => {
+    // fetchClipTranscript's own contract is "never throws" (see
+    // subtitle-align.ts), but generation degrades to "no transcript" even if
+    // a dependency violates that, rather than trusting the contract by
+    // convention alone.
+    const fetchTranscript = vi.fn().mockRejectedValue(new Error("boom"))
+    const d = await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      { ...deps, fetchTranscript },
+    )
+    expect(d.clipTranscript).toBeUndefined()
   })
 })
 

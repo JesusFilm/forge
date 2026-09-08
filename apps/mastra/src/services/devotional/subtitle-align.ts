@@ -438,3 +438,79 @@ export function transcriptForWindow(
     .join(" ")
     .replace(/\s{2,}/g, " ")
 }
+
+export type ArclightMediaInfo = {
+  /** Arclight's own download URL (not yet resolved to a specific Mux
+   *  rendition — the render pipeline does that separately). */
+  downloadApiUrl?: string
+  /** Subtitle track URL for the SAME language, if one is published. */
+  subtitleUrl?: string
+}
+
+/**
+ * Raw Arclight media-component lookup. The shared first step behind both the
+ * render pipeline's clip download (`devotional-render.ts`'s `arclightClipInfo`,
+ * which also resolves the Mux rendition) and the generation-time transcript
+ * fetch below — moved here so neither has to duplicate the request/parse.
+ * Throws on a non-OK response; callers decide how to treat that.
+ */
+export async function arclightMediaInfo(
+  mediaId: string,
+  languageId = 529,
+  deps: FetchAlignedDeps = {},
+): Promise<ArclightMediaInfo> {
+  const fetchFn = deps.fetchFn ?? fetch
+  const r = await fetchFn(
+    `https://api.arclight.org/v2/media-components/${mediaId}/languages/${languageId}?platform=web`,
+    { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+  )
+  if (!r.ok) throw new Error(`Arclight ${mediaId}: HTTP ${r.status}`)
+  const j = (await r.json()) as {
+    downloadUrls?: Record<string, { url: string }>
+    subtitleUrls?: Record<string, Array<{ languageId: number; url: string }>>
+  }
+  const downloadApiUrl = j.downloadUrls?.high?.url ?? j.downloadUrls?.low?.url
+  const subtitleUrl = j.subtitleUrls?.srt?.find(
+    (t) => t.languageId === languageId,
+  )?.url
+  return { downloadApiUrl, subtitleUrl }
+}
+
+/**
+ * The clip's own transcript for a curated window — what the reflection
+ * pipeline uses to know what the clip actually says instead of assuming.
+ *
+ * Best-effort end to end, and deliberately swallows every failure mode
+ * itself (no subtitle track published, Arclight unreachable, fetch/parse
+ * failure) rather than asking each caller to repeat the same try/catch: a
+ * caller either gets a usable transcript string or `undefined`, and treats
+ * both the same way it already treats "no video" — this is the single entry
+ * point the generation pipeline uses to go from a media id to real clip text.
+ */
+export async function fetchClipTranscript(
+  mediaId: string,
+  windowStartSec: number,
+  windowLenSec: number,
+  languageId = 529,
+  deps: FetchAlignedDeps = {},
+): Promise<string | undefined> {
+  try {
+    const { subtitleUrl } = await arclightMediaInfo(mediaId, languageId, deps)
+    if (!subtitleUrl) return undefined
+    const edited = await fetchEditedWindow(
+      subtitleUrl,
+      windowStartSec,
+      windowLenSec,
+      deps,
+    )
+    if (!edited) return undefined
+    const text = transcriptForWindow(
+      edited.cues,
+      edited.startSec,
+      edited.lengthSec,
+    )
+    return text || undefined
+  } catch {
+    return undefined
+  }
+}
