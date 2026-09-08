@@ -50,6 +50,53 @@ describe("modernizeReflection", () => {
     )
   })
 
+  it("passes the clip's real transcript to the model when given, telling it not to repeat those lines", async () => {
+    const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
+    await modernizeReflection({
+      sourceText: "x",
+      focusReference: "Luke 18:9-14",
+      sourceName: "Ryle",
+      clipTranscript:
+        "Once there were two men who went up to the temple to pray.",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const user = complete.mock.calls[0][0].user
+    expect(user).toContain(
+      "Once there were two men who went up to the temple to pray.",
+    )
+    expect(user).toMatch(/do not repeat these lines/i)
+  })
+
+  it("omits the transcript block entirely when clipTranscript isn't given, leaving every other line unchanged", async () => {
+    const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
+    await modernizeReflection({
+      sourceText: "Thou art with me, saith the Lord.",
+      focusReference: "Luke 8:22-25",
+      sourceName: "Matthew Henry, Commentary on the Whole Bible",
+      approxWords: 80,
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    // Same assertions as the very first test in this file — proves the
+    // fallback path is byte-for-byte the same prompt as before this feature.
+    const user = complete.mock.calls[0][0].user
+    expect(user).toContain("Thou art with me")
+    expect(user).toContain("Luke 8:22-25")
+    expect(user).toContain("about 80 words")
+    expect(user).not.toMatch(/clip's own audio says/i)
+  })
+
+  it("treats an empty-string transcript the same as no transcript", async () => {
+    const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
+    await modernizeReflection({
+      sourceText: "x",
+      focusReference: "Luke 18:9-14",
+      sourceName: "Ryle",
+      clipTranscript: "",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(complete.mock.calls[0][0].user).not.toMatch(/clip's own audio says/i)
+  })
+
   it("omits the quoted-verse line entirely when scriptureReference/Text aren't given", async () => {
     const complete = vi.fn().mockResolvedValue({ adapted: "Modernized." })
     await modernizeReflection({
@@ -58,7 +105,9 @@ describe("modernizeReflection", () => {
       sourceName: "Ryle",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
     })
-    expect(complete.mock.calls[0][0].user).not.toContain("Quoted verse shown on screen")
+    expect(complete.mock.calls[0][0].user).not.toContain(
+      "Quoted verse shown on screen",
+    )
   })
 
   it("defaults to ~90 words when unspecified", async () => {
@@ -102,9 +151,9 @@ describe("modernizeReflection", () => {
   })
 
   it("does NOT retry when the output is already clean of the banned phrase", async () => {
-    const complete = vi
-      .fn()
-      .mockResolvedValue({ adapted: "Christ intercedes for you at God's right hand." })
+    const complete = vi.fn().mockResolvedValue({
+      adapted: "Christ intercedes for you at God's right hand.",
+    })
     const r = await modernizeReflection({
       sourceText: "x",
       focusReference: "Luke 8:22-25",
@@ -186,9 +235,9 @@ describe("length caps", () => {
   })
 
   it("does NOT retry when the draft is within both caps", async () => {
-    const complete = vi
-      .fn()
-      .mockResolvedValue({ adapted: "One short faithful sentence about grace." })
+    const complete = vi.fn().mockResolvedValue({
+      adapted: "One short faithful sentence about grace.",
+    })
     await modernizeReflection({
       sourceText: "x",
       focusReference: "Luke 19:1-10",
@@ -219,11 +268,16 @@ describe("length caps", () => {
 
   it("caps sentence count independently of words (each sentence becomes a card)", async () => {
     // 30 very short sentences: only 90 words, but far too many cards.
-    const choppy = Array.from({ length: 30 }, (_, i) => `Point ${i} is here.`).join(" ")
+    const choppy = Array.from(
+      { length: 30 },
+      (_, i) => `Point ${i} is here.`,
+    ).join(" ")
     const complete = vi
       .fn()
       .mockResolvedValueOnce({ adapted: choppy })
-      .mockResolvedValueOnce({ adapted: "Two fuller sentences. That is better." })
+      .mockResolvedValueOnce({
+        adapted: "Two fuller sentences. That is better.",
+      })
     await modernizeReflection({
       sourceText: "x",
       focusReference: "Luke 19:1-10",

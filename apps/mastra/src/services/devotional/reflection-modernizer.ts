@@ -206,10 +206,20 @@ export const SYSTEM_PROMPT = [
   "  something that is TRUE NOW — about God, about grace, about what people",
   "  are like. Present tense. The viewer has just watched the scene and does",
   "  not need it established.",
-  "- Everything after the opening may retell the scene as much as the",
-  "  argument needs. Narration that CARRIES a point is not recap; the author's",
-  "  best passages walk through the events precisely because that is where the",
-  "  point lives. The rule is only about where you start.",
+  "- After the opening, narration that CARRIES a point is not recap; the",
+  "  author's best passages walk through the events precisely because that is",
+  "  where the point lives. But narration is never the POINT, and this bullet",
+  "  used to say the rule was 'only about where you start' — which read as",
+  "  permission to retell the whole scene from sentence three onward, and that",
+  "  is exactly what got two reflections rejected by the owner. So: if half or",
+  "  more of your sentences do nothing but report what happened, the reflection",
+  "  is worthless here, because the viewer has just watched it happen.",
+  "- What to reach for instead is the author's REASONING about the events: the",
+  "  motives he imputes to the people in the scene, the excuses he puts in",
+  "  their mouths, the distinction he draws that the scene alone would not",
+  "  give you, the objection he stops to answer. That material is why we adapt",
+  "  a commentator at all rather than describing the video. Touch a scene",
+  "  detail in order to say something about it, never to establish it.",
   "",
   "THE LAST PARAGRAPH LEAVES THE VIEWER WITH HOPE.",
   "- Whatever the author was arguing, the closing paragraph is what the viewer",
@@ -468,6 +478,15 @@ export type ModernizeReflectionOptions = {
   /** Surfaces the voice-repair attempts, which are otherwise invisible: the
    *  operator sees only the final text and cannot tell it took three calls. */
   log?: (msg: string) => void
+  /** The clip's own transcript for its curated window (see
+   *  `fetchClipTranscript` in subtitle-align.ts). When present, tells the
+   *  model exactly which lines/beats the clip already delivered — instead of
+   *  the SYSTEM_PROMPT's blanket "the viewer has JUST WATCHED this scene"
+   *  assumption, which is accurate for some chapters and not others (a
+   *  hand-curated window can skip parts of the passage the film shows). The
+   *  static instruction's other guidance (present tense, insight-not-plot)
+   *  still applies either way, so this is additive, not a replacement. */
+  clipTranscript?: string
 }
 
 export type ModernizedReflection = {
@@ -582,6 +601,16 @@ export async function modernizeReflection(
           "by CONNECTING to it (see the ONE BRIDGE SENTENCE rule), then develop",
           "your own point. Do not restate it and do not contradict it.",
           `FIRST HALF ALREADY HEARD:\n${options.precedingHalf}`,
+        ]
+      : []),
+    ...(options.clipTranscript
+      ? [
+          "",
+          "What the clip's own audio says, word for word:",
+          `"${options.clipTranscript}"`,
+          "Do not repeat these lines or this sequence of events in your",
+          "reflection — say something ABOUT them instead. This is the exact",
+          "clip the viewer just watched, not an assumption about it.",
         ]
       : []),
     `Target length: about ${approxWords} words across 2–3 short paragraphs (a ~60–75 second spoken reflection).`,
