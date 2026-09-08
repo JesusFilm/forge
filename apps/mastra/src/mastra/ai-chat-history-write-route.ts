@@ -40,19 +40,19 @@
  * 2026-08-28). The dist-pin test in `ai-chat-history-write-route.test.ts`
  * fails the suite on any bump that widens that gate.
  *
- * SAME STORE BY CONSTRUCTION (plan KTD4): the ownership read and the SQL
+ * SAME STORE BY CONSTRUCTION (plan KTD5): the ownership read and the SQL
  * write must target the same Postgres. Ownership resolves through
  * `resolveOwnedExistingThread` over a module-cached Memory built DIRECTLY
  * over `getAiChatStorage()` (the retention/erasure construction), never the
- * backend-resolved `getAiChatMemory()` — under the `AI_CHAT_MEMORY_BACKEND=
- * memory` kill-switch that is an InMemoryStore, and a lookup over it would
- * answer a false `thread_not_found` for a thread that exists in Postgres. The
- * pool's connection string comes from the same `getMastraDatabaseUrl()`
+ * backend-resolved `getAiChatMemory()` — in shared-memory mode that uses an
+ * InMemoryStore, and a lookup over it would answer a false `thread_not_found`
+ * for a thread that exists in Postgres. The pool's connection string comes
+ * from the same `getMastraDatabaseUrl()`
  * resolver `buildAiChatStorage` uses, so read and write cannot diverge. And
  * BEFORE any store or pool construction the route checks
- * `resolveAiChatMemoryBackend() === "postgres"`, otherwise 503
- * `writes_disabled`: the kill-switch reverts writes, a title is user-authored
- * content landing in Postgres, and refusing with a distinct reason is honest.
+ * `env.MASTRA_STORAGE_BACKEND === "postgres"`, otherwise 503
+ * `writes_disabled`: local shared-memory history has no durable row to rename,
+ * and refusing with a distinct reason is honest.
  * This deliberately diverges from title-repair's explicit `env.DATABASE_URL`
  * refusal (and from the erasure tool's): that rationale protects a scheduled
  * BULK job from a wrong-database target, while this route's target is by
@@ -76,7 +76,7 @@
 import { Memory } from "@mastra/memory"
 import { Pool } from "pg"
 
-import { getMastraDatabaseUrl, resolveAiChatMemoryBackend } from "../config/env"
+import { env, getMastraDatabaseUrl } from "../config/env"
 
 import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
 import { AI_CHAT_SCHEMA_NAME, getAiChatStorage } from "./ai-chat-memory"
@@ -146,9 +146,9 @@ export type AiChatHistoryRenameRouteOutcome = { status: number; body: unknown }
 /**
  * Handler input. Seams mirror the read routes': `getEnabled` / `getServiceKeys`
  * forward to the admission module's defaults (a registration passes neither),
- * `getBackend` defaults to the env resolver, `getMemory` / `getPool` default
- * to the module-cached persisted-store Memory and the lazy pool, `budgetMs`
- * makes the timeout branch deterministic.
+ * `getBackend` defaults to the shared env backend, `getMemory` / `getPool`
+ * default to the module-cached persisted-store Memory and the lazy pool,
+ * `budgetMs` makes the timeout branch deterministic.
  */
 export type AiChatHistoryRenameHandlerInput = {
   authHeader: string | null | undefined
@@ -208,7 +208,7 @@ let cachedRenameMemory: AiChatRenameMemory | null = null
 
 /**
  * The Memory the ownership read runs over: built DIRECTLY over the persisted
- * `ai_chat` store (see the header — never the kill-switch-resolved Memory).
+ * `ai_chat` store (see the header — never the backend-resolved Memory).
  * Lazy singleton wrapping the PostgresStore singleton, so no extra pool.
  */
 function getPersistedAiChatRenameMemory(): AiChatRenameMemory {
@@ -267,7 +267,7 @@ export async function handleAiChatHistoryRenameRequest({
   readJson,
   getEnabled,
   getServiceKeys,
-  getBackend = resolveAiChatMemoryBackend,
+  getBackend = () => env.MASTRA_STORAGE_BACKEND,
   getMemory = getPersistedAiChatRenameMemory,
   getPool = getAiChatRenamePool,
   budgetMs = TIME_BUDGET_MS.historyRead,
@@ -292,9 +292,9 @@ export async function handleAiChatHistoryRenameRequest({
     return jsonOutcome(403, { reason: "resource_forbidden" })
   }
 
-  // KTD4: the kill-switch reverts writes. Refuse with a distinct reason
-  // BEFORE any Memory or pool is constructed — a lookup over the swapped-in
-  // InMemoryStore would answer a false thread_not_found instead.
+  // KTD5: shared-memory mode has no durable row to rename. Refuse BEFORE any
+  // Memory or pool is constructed; an in-memory lookup could falsely report
+  // thread_not_found for a row that exists in Postgres.
   if (getBackend() !== "postgres") {
     console.warn(
       "[ai-chat-history] event=rename_refused reason=writes_disabled",

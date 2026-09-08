@@ -339,10 +339,6 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false"),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
-  // Optional per-surface override for the ai-chat lane's Memory backend
-  // (feat-208). Unset → follows MASTRA_STORAGE_BACKEND. `.optional()` so the
-  // kill-switch adds zero required-at-boot env vars.
-  AI_CHAT_MEMORY_BACKEND: z.enum(["postgres", "memory"]).optional(),
   // Default-off arming flag for the daily ai-chat title-repair sweep
   // (feat-405, KTD4): the `title-repair` workflow's scheduled and manual runs
   // are counted skips unless this is exactly `"true"`. Optional + no default.
@@ -979,7 +975,6 @@ export const env = envSchema.parse({
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
-  AI_CHAT_MEMORY_BACKEND: emptyToUndefined(process.env.AI_CHAT_MEMORY_BACKEND),
   AI_CHAT_TITLE_REPAIR_ENABLED: emptyToUndefined(
     process.env.AI_CHAT_TITLE_REPAIR_ENABLED,
   ),
@@ -2145,8 +2140,10 @@ export function isSeekerVideoEnabled(): boolean {
  * mirrors the settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling): flipping this
  * off stops NEW chips; already-stored questions keep replaying on reopened
  * threads. Retraction levers, in order: this flag off → `SEEKER_ROUTE_ENABLED`
- * off (darkens the whole lane) → thread purge. Default-off: uses the repo's
- * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * off (darkens the custom Forge routes) → thread purge. The native Mastra
+ * `/api/agents/seekerAgent` surface is contained separately by the gateway and
+ * network boundary. Default-off: uses the repo's string-boolean convention
+ * (matching `SEEKER_ROUTE_ENABLED`), NOT JS
  * truthiness — `"false"` (or any other value, including the retired prototype
  * mode literals) keeps generation off.
  */
@@ -2161,7 +2158,9 @@ export function isSeekerFollowUpsEnabled(): boolean {
  * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
  * truthiness — `"false"` (or any other value) keeps the sweep skipping.
  * This is the fine-grained lever; `SEEKER_ROUTE_ENABLED=false` darkens the
- * whole ai-chat lane including this sweep (the sweep gates on both).
+ * custom Forge routes and skips this sweep (the sweep gates on both). It does
+ * not govern the native Mastra `/api/agents/seekerAgent` surface, which is
+ * contained by the gateway and network boundary.
  */
 export function isTitleRepairEnabled(): boolean {
   return env.AI_CHAT_TITLE_REPAIR_ENABLED === "true"
@@ -2194,28 +2193,12 @@ export function isLangfuseTracingEnabled(): boolean {
 }
 
 /**
- * Backend for the ai-chat lane's Memory (feat-208): the per-surface override
- * when set, else the runtime storage backend. `memory` is the local/test path;
- * `postgres` (the production default) persists to the `ai_chat` schema. Unlike
- * MASTRA_STORAGE_BACKEND, `memory` here is allowed in production — it is the
- * documented kill-switch to revert seeker persistence without a code deploy.
- */
-export function resolveAiChatMemoryBackend(): "postgres" | "memory" {
-  return env.AI_CHAT_MEMORY_BACKEND ?? env.MASTRA_STORAGE_BACKEND
-}
-
-/**
- * Whether persisted ai-chat rows can exist in Postgres: true when EITHER the
- * runtime storage backend or the ai-chat override is postgres. Gates the
- * retention purge — deliberately NOT `resolveAiChatMemoryBackend()`: the
- * kill-switch (`AI_CHAT_MEMORY_BACKEND=memory`) reverts WRITES only and must
- * never pause retention on conversations already stored in `ai_chat`.
+ * Whether the shared backend can persist ai-chat rows in Postgres. Kept as a
+ * named predicate for lifecycle consumers that must avoid durable-store
+ * construction during local and CI memory runs.
  */
 export function canAiChatDataPersist(): boolean {
-  return (
-    env.MASTRA_STORAGE_BACKEND === "postgres" ||
-    env.AI_CHAT_MEMORY_BACKEND === "postgres"
-  )
+  return env.MASTRA_STORAGE_BACKEND === "postgres"
 }
 
 export function getFirecrawlConfig(): FirecrawlConfig {

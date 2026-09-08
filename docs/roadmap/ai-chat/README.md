@@ -11,10 +11,10 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (September 7, 2026)
+## Status (September 8, 2026)
 
-- **Total tickets:** 64
-- ✅ **Complete:** 56
+- **Total tickets:** 65
+- ✅ **Complete:** 57
 - 🟡 **In progress:** 1
 - 🔵 **Not started:** 7
 - 🔴 **Blocked:** 0
@@ -87,3 +87,4 @@ from the main DS Year 1 roadmap.
 | [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md)              | Sidebar: untitled threads show a date label until you open them              | jian wei | P2       | 2026-09-01 | 2    | ✅ complete    | [#2089](https://github.com/JesusFilm/forge/pull/2089)                                                        |
 | [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | ✅ complete    | [#2115](https://github.com/JesusFilm/forge/pull/2115)                                                        |
 | [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2179](https://github.com/JesusFilm/forge/pull/2179), [#2181](https://github.com/JesusFilm/forge/pull/2181) |
+| [feat-464](feat-464-retire-ai-chat-memory-override.md)                        | Retire the AI-chat memory override                                           | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2203](https://github.com/JesusFilm/forge/pull/2203)                                                        |

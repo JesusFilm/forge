@@ -74,10 +74,11 @@ Ruled and settled, so it can be cited rather than re-litigated:
   documented-partial semantics are accepted. No `getVideoEnabled` seam was
   built on the replay route.
 - **The levers that do exist**, in escalation order: `SEEKER_VIDEO_ENABLED=false`
-  stops new declarations; `SEEKER_ROUTE_ENABLED=false` retracts everything by
-  darkening the whole ai-chat lane (sends **and** history); purging the affected
-  threads removes the stored rows (the per-resource deletion runbook lives in
-  `apps/mastra/CLAUDE.md`).
+  stops new declarations; `SEEKER_ROUTE_ENABLED=false` darkens the custom
+  Forge send and history routes, while native `/api/agents/seekerAgent`
+  remains separately contained by the Mastra gateway and network boundary;
+  purging the affected threads removes the stored rows (the per-resource
+  deletion runbook lives in `apps/mastra/CLAUDE.md`).
 - **Named revisit triggers:** widening the audience beyond the dogfood roster
   (the feat-236 era), or any incident class that requires visual retraction of
   already-featured videos.

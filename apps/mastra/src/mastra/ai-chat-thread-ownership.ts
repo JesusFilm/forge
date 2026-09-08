@@ -40,10 +40,10 @@ export const USER_RESOURCE_PREFIX = "user:"
  * resource contract — rather than in `agents/seeker-route.ts`, because
  * `ai-chat-erasure.ts` (feat-337) must refuse this exact key without importing
  * the route module: that module runs `buildSeekerAgent()` at module scope, so
- * importing it would eagerly construct the whole seeker agent (including the
- * kill-switch-resolved Memory the erasure module deliberately bypasses) just to
- * read a string. `seeker-route.ts` re-exports it, so existing importers and
- * test pins are unaffected.
+ * importing it would eagerly construct the whole seeker agent (including its
+ * runtime-selected Memory, which the erasure module deliberately bypasses)
+ * just to read a string. `seeker-route.ts` re-exports it, so existing importers
+ * and test pins are unaffected.
  *
  * Erasure boundary (feat-337 R2): key equality does NOT bound this key's blast
  * radius to one subject — many individuals' turns share it — so the erasure
