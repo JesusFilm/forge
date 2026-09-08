@@ -34,6 +34,62 @@ TAB_BAR_CLEARANCE_GAP    12    breathing room between the last row and the pill
 TAB_BAR_OCCUPIED_HEIGHT  68    iOS = height + lift; android stays 56
 ```
 
+## Decisions
+
+### D1 — The label-contrast floor is set by measurement, not chosen up front
+
+A frosted pill puts the tab labels over whatever the page is showing. The repo's
+standing position is that blur carries no contrast:
+`src/lib/bibleCardTreatment.ts:8-20` records `FROSTED_TINT` as "the FLOOR, not a
+preference … Blur cannot help — it removes DETAIL, not luminance."
+
+Measured contrast of the two label colours against the ground behind them:
+
+| Ground behind the pill         | Active `#CB333B` | Idle `#a8a29e` |
+| ------------------------------ | ---------------- | -------------- |
+| App ground `#1c1917` (today)   | **3.39:1**       | 6.93:1         |
+| White video frame, no tint     | 5.15:1           | **2.52:1**     |
+| White frame, black tint α 0.30 | **2.46:1**       | **1.20:1**     |
+| White frame, black tint α 0.45 | **1.53:1**       | **1.33:1**     |
+| White frame, black tint α 0.55 | **1.09:1**       | **1.88:1**     |
+| White frame, black tint α 0.70 | **1.64:1**       | **3.35:1**     |
+| White frame, black tint α 0.78 | **2.28:1**       | 4.65:1         |
+
+Two non-obvious results follow, and both must survive into the implementation:
+
+1. **A mid-range tint is the worst possible choice.** α 0.45 lands the ground at
+   mid-grey, where _both_ labels sit near 1.3:1. A floor must go dark enough to
+   pass (α ≥ 0.78 for the idle label) or not be applied at all. Reaching for
+   "about half" makes the page less readable than no tint.
+2. **No tint floor can rescue the active label.** `#CB333B` has a middling
+   luminance, so it fails against dark and light grounds alike. At α 0.78 it
+   reads 2.28:1, which is _worse_ than the 3.39:1 it has today. Only changing the
+   colour fixes it, and that is D2.
+
+**The decision:** do not ship a guessed tint. Task 7 measures the real ground
+behind the pill on Home, then applies this rule:
+
+- Idle labels measure ≥ 4.5:1 → ship no tint. The glass stays clean.
+- Idle labels measure < 4.5:1 → apply a black tint at **α 0.78 or higher** on the
+  `PlatformBlur` path, and re-measure. Never an intermediate value.
+- The `GlassView` path is measured **separately**. iOS 26's material adapts its
+  own contrast, so it may already pass where the blur fallback does not. Do not
+  assume the two paths need the same treatment.
+
+### D2 — The active tint fails AA today; fixing it is deliberately out of scope
+
+`tabBarActiveTintColor` is `#CB333B` on `#1c1917` at 10pt: **3.39:1**, against a
+WCAG AA requirement of 4.5:1 for text that size. This is true on `main` today and
+is not caused by this change.
+
+It is not fixed here because `tabBarActiveTintColor` is shared with Android, and
+this change is bound by "Android must be byte-identical to today". Raising it
+would need either a platform fork of the brand colour, which is worse, or a
+product decision to change the brand red app-wide.
+
+Record it in the Task 7 findings and hand it on. A readable sibling on the same
+hue is `#e05a61` (4.79:1) if the product owner wants one.
+
 ## File Structure
 
 | File                                                             | Responsibility                                                                                                       |
@@ -1381,7 +1437,23 @@ Boot an iOS 26 simulator, open the app, and screenshot each of the four tabs.
 
 Confirm: the pill floats clear of the home indicator; the material is frosted, not flat; content is visible through it while scrolling.
 
-Home matters most — it is the only tab whose backdrop is moving video. Read the label contrast there. If the 10pt labels wash out over a bright frame, add a `tintColor` floor to the `GlassView` in `TabBarBackground.tsx`, following the reasoning in `src/lib/bibleCardTreatment.ts:8-20`: blur removes detail, not luminance, so only a tint raises contrast.
+Home matters most — it is the only tab whose backdrop is moving video.
+
+**Measure the label contrast; do not judge it by eye.** Screenshot Home with the hero on a bright frame, then sample the pixels behind the labels:
+
+```bash
+xcrun simctl io booted screenshot /tmp/home.png
+ffmpeg -y -i /tmp/home.png -pix_fmt rgb24 -f rawvideo /tmp/home.rgb
+# read the bytes under the pill, then compute the ratio against #a8a29e
+```
+
+Apply the **D1** rule to what you measure:
+
+- Idle labels ≥ 4.5:1 → ship no tint. The glass stays clean.
+- Idle labels < 4.5:1 → set `tintColor="rgba(0,0,0,0.78)"` on the `PlatformBlur` path only, then re-measure. **Never an intermediate alpha** — α 0.45 measures 1.33:1, which is worse than no tint at all.
+- Measure the `GlassView` path separately. iOS 26's material adapts its own contrast and may already pass where the fallback does not.
+
+Record the measured numbers in the commit message. Also record the **D2** finding — the active `#CB333B` label is 3.39:1 today and no tint can fix it — and hand it on rather than fixing it here.
 
 - [ ] **Step 3: Verify on iOS 18 — the blur fallback**
 
