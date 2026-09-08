@@ -70,11 +70,42 @@ Two non-obvious results follow, and both must survive into the implementation:
 behind the pill on Home, then applies this rule:
 
 - Idle labels measure ≥ 4.5:1 → ship no tint. The glass stays clean.
-- Idle labels measure < 4.5:1 → apply a black tint at **α 0.78 or higher** on the
-  `PlatformBlur` path, and re-measure. Never an intermediate value.
+- Idle labels measure < 4.5:1 → add a black tint and re-measure. **See the
+  addendum below: the α 0.78 figure was wrong for a tint on the material.**
 - The `GlassView` path is measured **separately**. iOS 26's material adapts its
   own contrast, so it may already pass where the blur fallback does not. Do not
   assume the two paths need the same treatment.
+
+### D1 addendum — corrected by measurement, 2026-09-08
+
+**The α ≥ 0.78 figure does not apply to a tint placed on the material.** The
+table it came from composites black over a _white_ backdrop with no material in
+between, which is why the middle of that range reads worst. A tint set on the
+`GlassView` or the `PlatformBlur` lands on ground the material has _already_
+darkened, and from a dark starting point the idle contrast rises
+**monotonically** with alpha. There is no bad middle to avoid.
+
+Measured on the iPhone 17 Pro Max simulator, Home feed, bright backdrop
+(luminance 0.804), sampling the capsule interior beside the labels:
+
+| Tint                 | Worst ground  | Idle `#a8a29e`            |
+| -------------------- | ------------- | ------------------------- |
+| none                 | rgb(86,74,77) | **3.35:1** — fails        |
+| α 0.20               | rgb(69,59,62) | 4.27:1 — fails            |
+| α 0.26               | —             | 4.50:1 — computed minimum |
+| **α 0.30 (shipped)** | rgb(60,52,54) | **4.79:1** — passes       |
+
+A controlled A/B at one scroll position moved the ground from rgb(60,43,42) to
+rgb(23,23,19), and the contrast from 5.30:1 to 7.13:1. Every tinted position
+measured passes, the worst being 5.08:1.
+
+`TAB_BAR_MATERIAL_TINT` in `src/lib/tabBar.ts` holds the value; the glass test
+pins it.
+
+**Residual:** the single brightest frame was measured _untinted_ at 3.35:1, and
+its tinted result is a computation (4.79:1) rather than a re-measurement — the
+feed could not be scrolled back to that exact position. Every other position was
+measured on both sides.
 
 ### D2 — The active tint fails AA today; fixing it is deliberately out of scope
 

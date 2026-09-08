@@ -753,6 +753,52 @@ the app's own `#1c1917` instead of the platform contrast scrim.
   pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
   No replacement scrim ships yet.
 
+## Tab bar — a floating pill on iOS, a flush bar on Android
+
+`src/lib/tabBar.ts` owns every number. The navigator, the Library screen, the
+mini player and six scroll surfaces all read it from there, so no two files can
+disagree about the bar's size.
+
+- **`tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
+  (`BottomTabBar.js:220` sets it, `:258` appends yours). So an opaque fill in
+  `tabBarStyle` hides the glass, silently. iOS must set no `backgroundColor`;
+  Android must keep `#1c1917`.
+- **`tabBarBackground` must return `null` on Android.** A non-null element flips
+  the bar's fill to transparent, and off iOS `GlassView` is a bare transparent
+  `View` — so an unguarded glass pill is an invisible bar.
+- **The pill's lift is measured from the safe area, never from the screen
+  edge.** `getTabBarHeight` returns a numeric `height` verbatim and never adds
+  the inset, so a screen-edge margin would make the mini player's reservation
+  differ on every device. Verified on the iPhone 17 Pro Max simulator: the
+  predicted capsule top `956 - 34 - 68 = 854pt` matched the measured edge.
+- **`paddingBottom: 0` is required.** The bar puts `insets.bottom` INSIDE a
+  numeric height, so the home indicator would otherwise eat the pill's content.
+- **The material carries a measured tint floor** (`TAB_BAR_MATERIAL_TINT`,
+  `rgba(0,0,0,0.3)`). Untinted, a bright Home backdrop drops the idle labels to
+  3.35:1, under the 4.5:1 AA floor. **A tint on the material is not the same
+  problem as a tint over bare content:** the material has already darkened the
+  ground, so contrast rises monotonically with alpha and there is no bad middle
+  value to avoid. 0.26 is the computed minimum; 0.30 ships.
+- **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
+  app ground is 3.39:1, and it sits at a middling luminance, so it fails against
+  dark and light grounds alike. Only a colour change fixes it, and
+  `tabBarActiveTintColor` is shared with Android. Untouched deliberately.
+- **`@react-navigation/bottom-tabs` does not resolve from this app.** It runs
+  expo-router's vendored fork. Import `useBottomTabBarHeight` from
+  `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro.
+- **No test can see this work.** Every render suite mocks `GlassView` and
+  `PlatformBlur` to `() => null`. `tabBarClearance.guard.test.js` is an
+  ENUMERATION of six surfaces, not a sweep — a seventh scroller escapes it
+  silently. Add a row whenever you add one.
+- **A fade is not available.** `GlassView` renders nothing inside a layer whose
+  opacity an ancestor animates, so hide-on-scroll would force `PlatformBlur` on
+  every iOS version and change the look on both platforms.
+- **Fast Refresh does not reliably apply changes to the material.** A branch
+  swap looked applied and measured identically to the previous run; a magenta
+  probe proved the old code was still live. Terminate and relaunch the dev
+  client, and prove the reload landed with an unmistakable colour before
+  trusting any measurement.
+
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see
