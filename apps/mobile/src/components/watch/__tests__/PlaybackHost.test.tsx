@@ -2235,6 +2235,7 @@ describe("the dismissal exit (R6)", () => {
   })
 
   it("fades a top-corner dismissal rather than dragging it down the screen", async () => {
+    jest.useFakeTimers()
     const id = attachSlot()
     const renderer = await renderHost()
     await startPlayback()
@@ -2262,6 +2263,14 @@ describe("the dismissal exit (R6)", () => {
     expect((exitCall?.[1] as { toValue: number }).toValue).toBe(0)
     // And it does not travel: the translation stays home.
     expect(exitTranslation(renderer).__getValue()).toBe(0)
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(
+      renderer.root.findAll((node) => node.props.testID === "playback-exit"),
+    ).toHaveLength(0)
   })
 
   it("slides a bottom-corner dismissal from the corner it occupies", async () => {

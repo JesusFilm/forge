@@ -1,0 +1,18 @@
+diff --git a/apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx b/apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx
+index 1dacb84f..1f84617e 100644
+--- a/apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx
++++ b/apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx
+@@ -2251,6 +2251,13 @@ describe("the dismissal exit (R6)", () => {
+ 
+     await dismiss()
+ 
++    // DIAGNOSTIC ONLY: reproduce CI observation after the real exit deadline.
++    await act(async () => {
++      await new Promise<void>((resolve) => {
++        require("node:timers").setTimeout(resolve, EXIT_DURATION_MS + 1000)
++      })
++    })
++
+     // Sliding a top-corner window out the bottom drags it across the whole
+     // screen, over the content the viewer is looking at. It fades in place.
+     const exitCall = timingSpy.mock.calls.find(

@@ -206,6 +206,17 @@ async function installDeterministicCatalogFixture(
       id text PRIMARY KEY, core_id text, slug text NOT NULL,
       deleted_at timestamp, restrict_view_platforms text[] NOT NULL DEFAULT '{}'
     );
+      -- Read-model fixture for the canonical Studio visibility predicate.
+      -- Core rows have no release; Studio rows require live publication authority.
+      CREATE TABLE studio_project (id text PRIMARY KEY, lifecycle text NOT NULL);
+      CREATE TABLE studio_catalog_release (
+        id text PRIMARY KEY, project_id text NOT NULL REFERENCES studio_project(id),
+        video_id text NOT NULL UNIQUE REFERENCES video(id)
+      );
+      CREATE TABLE studio_publication (
+        release_id text PRIMARY KEY REFERENCES studio_catalog_release(id),
+        revoked_at timestamptz
+      );
     CREATE TABLE video_relation (parent_id text, child_id text);
     CREATE TABLE video_transcript (
       id text PRIMARY KEY, video_id text NOT NULL, video_edition_id text NOT NULL,
@@ -415,6 +426,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "mux_video",
           "video_dub",
           "video_image",
+          "studio_project",
+          "studio_catalog_release",
+          "studio_publication",
         ]) {
           await admin.query(
             `CREATE VIEW "${schema}"."${table}" AS SELECT * FROM public."${table}"`,
@@ -575,6 +589,22 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(warmCandidate?.presentation.videoTitle).toBe(
           coldCandidate?.presentation.videoTitle,
         )
+        // The actual profile retriever must retain canonical Studio visibility.
+        await prisma.$executeRaw`INSERT INTO studio_project (id, lifecycle) VALUES ('fixture-studio', 'DRAFT')`
+        await prisma.$executeRaw`INSERT INTO studio_catalog_release (id, project_id, video_id) VALUES ('fixture-release', 'fixture-studio', 'ci-profile-candidate-b')`
+        const candidateIds = async () =>
+          (await retrieve()).result?.nominations.map(
+            (candidate) => candidate.targetMediaId,
+          )
+        expect(await candidateIds()).not.toContain("ci-profile-candidate-b")
+        await prisma.$executeRaw`INSERT INTO studio_publication (release_id) VALUES ('fixture-release')`
+        expect(await candidateIds()).not.toContain("ci-profile-candidate-b")
+        await prisma.$executeRaw`UPDATE studio_project SET lifecycle = 'PUBLISHED' WHERE id = 'fixture-studio'`
+        expect(await candidateIds()).toContain("ci-profile-candidate-b")
+        await prisma.$executeRaw`UPDATE studio_publication SET revoked_at = now() WHERE release_id = 'fixture-release'`
+        const revokedIds = await candidateIds()
+        expect(revokedIds).not.toContain("ci-profile-candidate-b")
+        expect(revokedIds).toContain("ci-profile-candidate-a")
         expect(coldCandidate?.presentation.durationSeconds).toBe(181)
         expect(
           cold.result?.nominations.find(

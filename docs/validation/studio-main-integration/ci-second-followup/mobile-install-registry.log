@@ -1,0 +1,30 @@
+(node:841072) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Scope: 3 of 27 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+.                                        | +353 ++++++++++++++++++++++++++++++++
+Progress: resolved 353, reused 346, downloaded 0, added 19
+Progress: resolved 353, reused 346, downloaded 6, added 352
+Progress: resolved 353, reused 346, downloaded 7, added 352
+Progress: resolved 353, reused 346, downloaded 7, added 353, done
+.../mobile-react-native-session-replay postinstall$ node scripts/set-ios-rn-version.js
+.../@datadog/mobile-react-native postinstall$ node scripts/replace-react-require.js # Use node to execute the script for Windows, see https://github.com/DataDog/dd-sdk-reactnative/issues/358
+.../node_modules/msw postinstall$ node -e "import('./config/scripts/postinstall.js').catch(() => void 0)"
+.../mobile-react-native-session-replay postinstall: Done
+.../@datadog/mobile-react-native postinstall: [datadog] postinstall replace-react-require starts
+.../@datadog/mobile-react-native postinstall: [datadog] found react version 192
+.../@datadog/mobile-react-native postinstall: [datadog] postinstall replace-react-require end
+.../node_modules/prisma preinstall$ node scripts/preinstall-entry.js
+.../@datadog/mobile-react-native postinstall: Done
+.../node_modules/msw postinstall: Done
+.../node_modules/prisma preinstall: Done
+.../node_modules/@prisma/client postinstall$ node scripts/postinstall.js
+.../node_modules/@prisma/client postinstall: prisma:warn We could not find your Prisma schema in the default locations (see: https://pris.ly/d/prisma-schema-location).
+.../node_modules/@prisma/client postinstall: If you have a Prisma schema file in a custom path, you will need to run
+.../node_modules/@prisma/client postinstall: `prisma generate --schema=./path/to/your/schema.prisma` to generate Prisma Client.
+.../node_modules/@prisma/client postinstall: If you do not have a Prisma schema file yet, you can ignore this message.
+.../node_modules/@prisma/client postinstall: Done
+. prepare$ husky
+. prepare: Done
+Done in 15.9s

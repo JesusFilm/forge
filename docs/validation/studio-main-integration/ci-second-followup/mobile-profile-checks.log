@@ -1,0 +1,20 @@
+[90mapps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx[39m 492ms (unchanged)
+apps/admin/src/services/recommendations/candidates/profile-candidate.db.test.ts 59ms
+[90mapps/admin/src/services/recommendations/profiles/profile-projection.service.db.test.ts[39m 41ms (unchanged)
+[90mdocs/plans/2026-09-09-mobile-dismissal-test-timing.md[39m 26ms (unchanged)
+(node:844450) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:844507) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:844539) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/mobile@1.0.0 typecheck /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/mobile
+> tsc --noEmit
+
+(node:844321) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 typecheck /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin
+> tsc --noEmit
+

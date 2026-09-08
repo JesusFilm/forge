@@ -1,0 +1,10 @@
+{
+  "args": [
+    "bash",
+    "-c",
+    "pnpm exec prettier --write apps/mobile/src/components/watch/__tests__/PlaybackHost.test.tsx apps/admin/src/services/recommendations/candidates/profile-candidate.db.test.ts apps/admin/src/services/recommendations/profiles/profile-projection.service.db.test.ts docs/plans/2026-09-09-mobile-dismissal-test-timing.md && pnpm --filter @forge/mobile exec eslint src/components/watch/__tests__/PlaybackHost.test.tsx && pnpm --filter @forge/admin exec eslint src/services/recommendations/candidates/profile-candidate.db.test.ts src/services/recommendations/profiles/profile-projection.service.db.test.ts && pnpm --filter @forge/mobile typecheck && pnpm --filter @forge/admin typecheck"
+  ],
+  "exit": 0,
+  "seconds": 120.44545062399993,
+  "namespace": "net:[4026532629]"
+}

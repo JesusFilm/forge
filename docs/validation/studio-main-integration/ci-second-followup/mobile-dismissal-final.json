@@ -1,0 +1,15 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/mobile",
+    "exec",
+    "jest",
+    "src/components/watch/__tests__/PlaybackHost.test.tsx",
+    "--runInBand",
+    "--testNamePattern=the dismissal exit"
+  ],
+  "exit": 0,
+  "seconds": 3.851629850003519,
+  "namespace": "net:[4026532859]"
+}

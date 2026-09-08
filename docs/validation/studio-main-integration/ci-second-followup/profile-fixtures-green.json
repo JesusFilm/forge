@@ -1,0 +1,16 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/admin",
+    "exec",
+    "vitest",
+    "run",
+    "src/services/recommendations/candidates/profile-candidate.db.test.ts",
+    "src/services/recommendations/profiles/profile-projection.service.db.test.ts",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 0,
+  "seconds": 4.58191230900411
+}
