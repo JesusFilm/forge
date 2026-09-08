@@ -975,6 +975,41 @@ suite("current transcript publication into Watch Search", () => {
     })
   }
 
+  function prismaWithClaimTakeoverBeforeCompletion(
+    eventId: string,
+  ): PrismaClient {
+    let transactionCount = 0
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "$transaction") {
+          return async (...args: unknown[]) => {
+            transactionCount += 1
+            if (transactionCount === 2) {
+              const takeover =
+                await target.watchSearchCurrentTranscriptPublicationEvent.updateMany(
+                  {
+                    where: { id: eventId, status: "CLAIMED" },
+                    data: {
+                      leaseGeneration: { increment: 1 },
+                      leaseTokenHash: "newer-worker-token-hash",
+                      leaseExpiresAt: new Date("2100-01-01T00:00:00.000Z"),
+                      attemptCount: { increment: 1 },
+                    },
+                  },
+                )
+              if (takeover.count !== 1) {
+                throw new Error("simulated claim takeover did not win")
+              }
+            }
+            return Reflect.apply(target.$transaction, target, args)
+          }
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   function prismaRequiringBoundedCompletionTransaction(): PrismaClient {
     let transactionCount = 0
     return new Proxy(prisma, {
@@ -1763,6 +1798,88 @@ suite("current transcript publication into Watch Search", () => {
       leaseTokenHash: null,
       leaseExpiresAt: null,
       completedAt: expect.any(Date),
+    })
+  }, 180_000)
+
+  it("fences an expired worker after claim takeover without deleting the newer owner's output", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "claim-takeover" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma: prismaWithClaimTakeoverBeforeCompletion(event.id),
+        typesense,
+        generations,
+        // The first claim is already expired when the controlled takeover is
+        // injected immediately before its completion transaction.
+        now: new Date("2000-01-01T00:00:00.000Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toBeInstanceOf(
+      WatchSearchTranscriptPublicationCompletionIndeterminateError,
+    )
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).resolves.toBeNull()
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: {
+          status: true,
+          attemptCount: true,
+          leaseGeneration: true,
+          leaseTokenHash: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "CLAIMED",
+      attemptCount: 2,
+      leaseGeneration: 2,
+      leaseTokenHash: "newer-worker-token-hash",
+    })
+    for (const id of event.currentDocumentIds) {
+      await expect(
+        typesense.getDocument(TYPESENSE_WATCH_TRANSCRIPT_ALIAS, id),
+      ).resolves.toMatchObject({ id })
+    }
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        now: new Date("2100-01-01T00:00:00.001Z"),
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
+    })
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: {
+          status: true,
+          attemptCount: true,
+          leaseGeneration: true,
+          completedProjectionRevision: true,
+        },
+      }),
+    ).resolves.toEqual({
+      status: "COMPLETED",
+      attemptCount: 3,
+      leaseGeneration: 3,
+      completedProjectionRevision: 1n,
     })
   }, 180_000)
 
