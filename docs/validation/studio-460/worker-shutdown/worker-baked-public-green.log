@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /home/tataihono/.cache/forge-studio-460-image-worktree/apps/shorts-worker
+
+ ✓ src/devotional-render.test.ts (16 tests) 213ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  16:55:50
+   Duration  853ms (transform 202ms, setup 0ms, collect 317ms, tests 213ms, environment 0ms, prepare 84ms)
+

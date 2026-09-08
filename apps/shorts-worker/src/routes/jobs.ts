@@ -61,6 +61,7 @@ export function jobDedupeKey(body: JobRequest): string {
 
 export type JobsRouteOptions = {
   queue: JobQueue
+  isStopping?: () => boolean
   auth?: ValidateBearerOptions
   /** Controls production source and signed-transfer validation. */
   nodeEnv?: string
@@ -83,6 +84,7 @@ function toStatusBody(job: JobRecord): JobStatusBody {
 
 export function createJobsRoute({
   queue,
+  isStopping = () => false,
   auth = {},
   nodeEnv = env.NODE_ENV,
   allowedSourceHosts = parseAllowedHosts(
@@ -185,9 +187,11 @@ export function createJobsRoute({
 
     if (!outcome.ok) {
       console.warn(
-        `[shorts-worker] event=job_rejected reason=queue_full kind=${body.kind} jobId=${body.jobId ?? "-"}`,
+        `[shorts-worker] event=job_rejected reason=${outcome.reason} kind=${body.kind} jobId=${body.jobId ?? "-"}`,
       )
-      sendJson(response, 409, { error: "queue_full" })
+      sendJson(response, outcome.reason === "shutting_down" ? 503 : 409, {
+        error: outcome.reason,
+      })
       return
     }
 
@@ -216,6 +220,10 @@ export function createJobsRoute({
   ): Promise<boolean> {
     if (request.method === "POST" && url.pathname === "/jobs") {
       if (!authorize(request, response)) return true
+      if (isStopping()) {
+        sendJson(response, 503, { error: "shutting_down" })
+        return true
+      }
       await submitJob(request, response)
       return true
     }

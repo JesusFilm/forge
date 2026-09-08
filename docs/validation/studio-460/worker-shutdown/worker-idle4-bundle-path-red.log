@@ -1,0 +1,2 @@
+Running as unit: studio460-worker-idle4.scope; invocation ID: 3854d844a1a348a6beee919ad1de5f8b
+time="2026-09-08T16:21:12+12:00" level=error msg="runc run failed: invalid rootfs: stat /home/tataihono/.cache/forge-studio-460-image-runtime/worker-idle4/rootfs: no such file or directory"

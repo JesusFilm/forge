@@ -1,0 +1,7 @@
+Running as unit: studio460-worker-lifecycle3-active.scope; invocation ID: 361fd1cc160a4551b918319dcdfab45e
+{"phase":"local-fixture-ready","sourceDigest":"c6a821c2efe17da84f293e047f847240ac6d19cb70a2089eb10e1c31681fee78","sourceBytes":6298398,"voiceBytes":24428}
+shorts-worker listening on :34761
+[shorts-worker] event=job_submitted workerJobId=wj_f1c9d07c-4d7f-4a4d-8cab-8e85a47e5498 kind=devotional-render jobId=- assetId=lifecycle-output
+[shorts-worker] event=job_started workerJobId=wj_f1c9d07c-4d7f-4a4d-8cab-8e85a47e5498 kind=devotional-render
+[shorts-worker] event=job_submitted workerJobId=wj_b91d612a-87c7-4c49-aa42-f2fc0fec6a54 kind=devotional-render jobId=- assetId=lifecycle-output-queued
+[shorts-worker] event=shutdown result=drained

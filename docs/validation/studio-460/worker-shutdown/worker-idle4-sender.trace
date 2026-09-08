@@ -1,0 +1,4 @@
+--- SIGURG {si_signo=SIGURG, si_code=SI_TKILL, si_pid=177055, si_uid=0} ---
+pidfd_send_signal(7, 0, NULL, 0)        = 0
+pidfd_send_signal(7, SIGTERM, NULL, 0)  = 0
++++ exited with 0 +++

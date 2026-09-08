@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/tataihono/.cache/forge-studio-460-image-runtime/inspect-worker-lifecycle.py", line 15, in <module>
+    value=(t/'cgroup').read_text().strip();r['threads'][p.name+':'+t.name]=value
+          ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 789, in read_text
+    return f.read()
+           ~~~~~~^^
+ProcessLookupError: [Errno 3] No such process

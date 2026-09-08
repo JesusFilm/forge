@@ -28,6 +28,7 @@ export type RenderEngine = {
     timeoutInMilliseconds: number
   }): Promise<EngineComposition>
   renderMedia(options: {
+    signal?: AbortSignal
     composition: EngineComposition
     serveUrl: string
     codec: "h264"
@@ -71,23 +72,34 @@ export function createDefaultRenderEngine(): RenderEngine {
       return composition as unknown as EngineComposition
     },
     async renderMedia(options) {
-      const { renderMedia } = await import("@remotion/renderer")
-      return renderMedia({
-        composition: options.composition as unknown as Parameters<
-          typeof renderMedia
-        >[0]["composition"],
-        serveUrl: options.serveUrl,
-        codec: options.codec,
-        outputLocation: options.outputLocation,
-        inputProps: options.inputProps,
-        puppeteerInstance: options.puppeteerInstance as unknown as Parameters<
-          typeof renderMedia
-        >[0]["puppeteerInstance"],
-        concurrency: options.concurrency,
-        offthreadVideoCacheSizeInBytes: options.offthreadVideoCacheSizeInBytes,
-        timeoutInMilliseconds: options.timeoutInMilliseconds,
-        onProgress: options.onProgress,
-      })
+      const { renderMedia, makeCancelSignal } =
+        await import("@remotion/renderer")
+      const cancellation = options.signal ? makeCancelSignal() : undefined
+      const cancel = () => cancellation?.cancel()
+      options.signal?.addEventListener("abort", cancel, { once: true })
+      if (options.signal?.aborted) cancel()
+      try {
+        return await renderMedia({
+          cancelSignal: cancellation?.cancelSignal,
+          composition: options.composition as unknown as Parameters<
+            typeof renderMedia
+          >[0]["composition"],
+          serveUrl: options.serveUrl,
+          codec: options.codec,
+          outputLocation: options.outputLocation,
+          inputProps: options.inputProps,
+          puppeteerInstance: options.puppeteerInstance as unknown as Parameters<
+            typeof renderMedia
+          >[0]["puppeteerInstance"],
+          concurrency: options.concurrency,
+          offthreadVideoCacheSizeInBytes:
+            options.offthreadVideoCacheSizeInBytes,
+          timeoutInMilliseconds: options.timeoutInMilliseconds,
+          onProgress: options.onProgress,
+        })
+      } finally {
+        options.signal?.removeEventListener("abort", cancel)
+      }
     },
   }
 }

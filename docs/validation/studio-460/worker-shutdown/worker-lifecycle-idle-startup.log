@@ -1,0 +1,3 @@
+Running as unit: studio460-worker-lifecycle-idle.scope; invocation ID: e218453466c44d66a48a788fac6cccb5
+shorts-worker listening on :34761
+[shorts-worker] event=shutdown result=drained

@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto"
 import { env } from "./config/env.js"
-import { toJobErrorBody } from "./errors.js"
+import { toJobErrorBody, WorkerCleanupError } from "./errors.js"
 import type {
   JobErrorBody,
   JobKind,
@@ -42,9 +42,10 @@ export type JobExecutor = (context: {
 
 export type SubmitOutcome =
   | { ok: true; job: JobRecord; deduped: boolean }
-  | { ok: false; reason: "queue_full" }
+  | { ok: false; reason: "queue_full" | "shutting_down" }
 
 export type JobQueue = {
+  shutdown(): Promise<void>
   submit(kind: JobKind, dedupeKey: string, execute: JobExecutor): SubmitOutcome
   get(workerJobId: string): JobRecord | undefined
   cancel(workerJobId: string): JobRecord | undefined
@@ -56,6 +57,7 @@ export type LaneConfig = {
 }
 
 export type CreateJobLanesOptions = {
+  onCleanupFailure?: () => void
   render?: Partial<LaneConfig>
   /** Injectable clock (tests). Defaults to `() => new Date()`. */
   now?: () => Date
@@ -86,6 +88,10 @@ type Lane = {
 
 export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
   // The retained devotional workload has one bounded render lane.
+  let cleanupFailed = false
+  let stopping = false
+  let shutdown: Promise<void> | undefined
+  const running = new Set<Promise<void>>()
   const jobs = new Map<string, JobRecord>()
   const runningControllers = new Map<string, AbortController>()
   const now = options.now ?? (() => new Date())
@@ -125,12 +131,15 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
 
   function pump(target: Lane): void {
     while (
+      !stopping &&
       target.runningCount < target.concurrency &&
       target.pending.length > 0
     ) {
       const entry = target.pending.shift()!
       target.runningCount += 1
-      void runJob(target, entry)
+      const task = runJob(target, entry)
+      running.add(task)
+      void task.then(() => running.delete(task))
     }
   }
 
@@ -183,6 +192,13 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         `[shorts-worker] event=job_completed workerJobId=${job.workerJobId} kind=${job.kind}`,
       )
     } catch (error) {
+      if (error instanceof WorkerCleanupError) {
+        cleanupFailed = true
+        // No new work may use capacity whose resource cleanup is unconfirmed.
+        stopping = true
+        for (const record of jobs.values()) queue.cancel(record.workerJobId)
+        options.onCleanupFailure?.()
+      }
       if (controller.signal.aborted) {
         job.status = "cancelled"
         job.message = "Cancelled"
@@ -204,8 +220,20 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
     }
   }
 
-  return {
+  const queue: JobQueue = {
+    shutdown() {
+      if (shutdown) return shutdown
+      stopping = true
+      // Install before abort callbacks can reenter; await actual executor cleanup.
+      shutdown = Promise.resolve().then(async () => {
+        await Promise.all(running)
+        if (cleanupFailed) throw new WorkerCleanupError()
+      })
+      for (const job of jobs.values()) queue.cancel(job.workerJobId)
+      return shutdown
+    },
     submit(kind, dedupeKey, execute) {
+      if (stopping) return { ok: false, reason: "shutting_down" }
       evictStaleTerminalRecords()
 
       // In-flight dedupe: a resubmission with the same logical identity
@@ -276,4 +304,5 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
       return job
     },
   }
+  return queue
 }

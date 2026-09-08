@@ -1,0 +1,18 @@
+{
+  "source.mp4": {
+    "bytes": 6298398,
+    "sha256": "c6a821c2efe17da84f293e047f847240ac6d19cb70a2089eb10e1c31681fee78"
+  },
+  "voice.mp3": {
+    "bytes": 24428,
+    "sha256": "c05ee725e2b26c185bc4688a42eca6ec7d4fb2ece6b957ddbc2cb4099ded42b5"
+  },
+  "styles.json": {
+    "bytes": 6458,
+    "sha256": "50c84dafaed4cc70892c77aa8393e785615287604ac7ec25bee7641958fb2872"
+  },
+  "preload.mjs": {
+    "bytes": 1618,
+    "sha256": "c48140202789e67907a14c76ffd4a448d2a1a0888b787c0bea21b9b251d6a449"
+  }
+}

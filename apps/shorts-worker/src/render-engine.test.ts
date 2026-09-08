@@ -5,13 +5,20 @@ const adapter = vi.hoisted(() => ({
   openBrowser: vi.fn(),
   selectComposition: vi.fn(),
   renderMedia: vi.fn(),
+  makeCancelSignal: vi.fn(() => ({ cancelSignal: () => {}, cancel: () => {} })),
 }))
 vi.mock("@remotion/bundler", () => ({ bundle: adapter.bundle }))
 vi.mock("@remotion/renderer", () => adapter)
 
 import { createDefaultRenderEngine } from "./render-engine.js"
 
-beforeEach(() => vi.resetAllMocks())
+beforeEach(() => {
+  vi.resetAllMocks()
+  adapter.makeCancelSignal.mockReturnValue({
+    cancelSignal: () => {},
+    cancel: () => {},
+  })
+})
 
 describe("devotional Remotion engine", () => {
   it("preserves bundle, browser and render options across the adapter", async () => {
@@ -102,5 +109,51 @@ describe("devotional Remotion engine", () => {
         onProgress: vi.fn(),
       }),
     ).rejects.toBe(failure)
+  })
+  it("forwards cancellation and awaits encoder cleanup before settling", async () => {
+    const controller = new AbortController()
+    const cancel = vi.fn()
+    const cancelSignal = () => {}
+    adapter.makeCancelSignal.mockReturnValue({ cancel, cancelSignal })
+    let finish!: () => void
+    adapter.renderMedia.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const render = createDefaultRenderEngine().renderMedia({
+      signal: controller.signal,
+      composition: {
+        id: "devotional",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        durationInFrames: 30,
+      },
+      serveUrl: "/bundle",
+      codec: "h264",
+      outputLocation: "/output.mp4",
+      inputProps: {},
+      puppeteerInstance: { close: async () => {} },
+      concurrency: 1,
+      offthreadVideoCacheSizeInBytes: 1024,
+      timeoutInMilliseconds: 1000,
+      onProgress: () => {},
+    })
+    await vi.waitFor(() => expect(adapter.renderMedia).toHaveBeenCalled())
+    controller.abort()
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(adapter.renderMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ cancelSignal }),
+    )
+    let settled = false
+    void render.then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    finish()
+    await render
   })
 })

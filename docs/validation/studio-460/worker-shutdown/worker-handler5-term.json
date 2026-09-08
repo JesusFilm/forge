@@ -1,0 +1,11 @@
+{
+  "pid": 178594,
+  "stat": "178594 (node) S 178580 178594 178594 0 -1 4194560 15056 0 0 0 38 6 0 0 20 0 7 0 1277124 22617509888 21225 18446744073709551615 14905344 54527057 140722003160032 0 0 0 0 16781312 17922 0 0 0 17 3 0 0 0 0 0 112281824 112462704 326885376 140722003164523 140722003164676 140722003164676 140722003165156 0\n",
+  "status": "Name:\tnode\nUmask:\t0022\nState:\tS (sleeping)\nTgid:\t178594\nNgid:\t0\nPid:\t178594\nPPid:\t178580\nTracerPid:\t0\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nFDSize:\t64\nGroups:\t \nNStgid:\t178594\t1\nNSpid:\t178594\t1\nNSpgid:\t178594\t1\nNSsid:\t178594\t1\nKthread:\t0\nVmPeak:\t22104816 kB\nVmSize:\t22087412 kB\nVmLck:\t       0 kB\nVmPin:\t       0 kB\nVmHWM:\t   93376 kB\nVmRSS:\t   85268 kB\nRssAnon:\t   31272 kB\nRssFile:\t   53996 kB\nRssShmem:\t       0 kB\nVmData:\t   84288 kB\nVmStk:\t     132 kB\nVmExe:\t   38696 kB\nVmLib:\t    1984 kB\nVmPTE:\t    1068 kB\nVmSwap:\t       0 kB\nHugetlbPages:\t       0 kB\nCoreDumping:\t0\nTHP_enabled:\t1\nuntag_mask:\t0xffffffffffffffff\nThreads:\t7\nSigQ:\t0/209617\nSigPnd:\t0000000000000000\nShdPnd:\t0000000000000000\nSigBlk:\t0000000000000000\nSigIgn:\t0000000201001000\nSigCgt:\t0000000100004602\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t0\nSeccomp_filters:\t0\nSpeculation_Store_Bypass:\tthread vulnerable\nSpeculationIndirectBranch:\tconditional enabled\nCpus_allowed:\tff\nCpus_allowed_list:\t0-7\nMems_allowed:\t00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000001\nMems_allowed_list:\t0\nvoluntary_ctxt_switches:\t68\nnonvoluntary_ctxt_switches:\t119\nx86_Thread_features:\t\nx86_Thread_features_locked:\t\n",
+  "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-handler5\n",
+  "health": "200 {\"ok\":true,\"service\":\"shorts-worker\"}\n",
+  "signalReturn": 0,
+  "elapsedSeconds": 0.0502163630007999,
+  "existsAfter": false,
+  "leafExistsAfter": false
+}

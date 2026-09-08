@@ -1,0 +1,18 @@
+{
+  "pid": 175733,
+  "parent": "175716",
+  "stat": "175733 (node) S 175716 175733 175733 0 -1 4194560 15189 26 0 0 39 9 0 0 20 0 7 0 1263313 22617587712 21292 18446744073709551615 14905344 54527057 140727845857392 0 0 0 0 16781312 17922 0 0 0 17 0 0 0 0 0 0 112281824 112462704 978157568 140727845858772 140727845858792 140727845858792 140727845859300 0\n",
+  "status": "Name:\tnode\nUmask:\t0022\nState:\tS (sleeping)\nTgid:\t175733\nNgid:\t0\nPid:\t175733\nPPid:\t175716\nTracerPid:\t0\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nFDSize:\t64\nGroups:\t \nNStgid:\t175733\t1\nNSpid:\t175733\t1\nNSpgid:\t175733\t1\nNSsid:\t175733\t1\nKthread:\t0\nVmPeak:\t22104380 kB\nVmSize:\t22087488 kB\nVmLck:\t       0 kB\nVmPin:\t       0 kB\nVmHWM:\t   93668 kB\nVmRSS:\t   85480 kB\nRssAnon:\t   31448 kB\nRssFile:\t   54032 kB\nRssShmem:\t       0 kB\nVmData:\t   84352 kB\nVmStk:\t     132 kB\nVmExe:\t   38696 kB\nVmLib:\t    1984 kB\nVmPTE:\t    1060 kB\nVmSwap:\t       0 kB\nHugetlbPages:\t       0 kB\nCoreDumping:\t0\nTHP_enabled:\t1\nuntag_mask:\t0xffffffffffffffff\nThreads:\t7\nSigQ:\t0/209617\nSigPnd:\t0000000000000000\nShdPnd:\t0000000000000000\nSigBlk:\t0000000000000000\nSigIgn:\t0000000201001000\nSigCgt:\t0000000100004602\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t0\nSeccomp_filters:\t0\nSpeculation_Store_Bypass:\tthread vulnerable\nSpeculationIndirectBranch:\tconditional enabled\nCpus_allowed:\tff\nCpus_allowed_list:\t0-7\nMems_allowed:\t00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000001\nMems_allowed_list:\t0\nvoluntary_ctxt_switches:\t73\nnonvoluntary_ctxt_switches:\t577\nx86_Thread_features:\t\nx86_Thread_features_locked:\t\n",
+  "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-idle4\n",
+  "namespaces": {
+    "pid": "pid:[4026532599]",
+    "user": "user:[4026532509]",
+    "mnt": "mnt:[4026532512]",
+    "net": "net:[4026532601]"
+  },
+  "health": {
+    "code": 0,
+    "stdout": "200 {\"ok\":true,\"service\":\"shorts-worker\"}\n",
+    "stderr": ""
+  }
+}

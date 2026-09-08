@@ -30,6 +30,12 @@ workflow's transfer or recovery boundaries; it is not the Studio cutover runbook
   Completed/failed records expire after 24 hours; active jobs remain. Cancellation
   aborts the active executor or removes the queued entry. Keep failure cleanup in
   try/catch/finally so slots cannot leak.
+- TERM/INT closes readiness and admission immediately. One absolute five-second
+  grace includes queued/running cancellation, actual cleanup and HTTP handler
+  settlement, even after a client disconnects. Repeated signals never reset it.
+  Ordinary job cleanup has the same bounded allowance; unconfirmed cleanup
+  permanently closes queue admission and retires the worker unsuccessfully.
+  A successful cancellation flag alone never proves resources were cleaned up.
 - Registry/dedupe are in-memory: exactly one replica remains required. Mastra owns
   bounded recovery when restart loses job IDs; replica scaling cannot preserve
   this polling contract. Increasing the queue does not increase render concurrency.

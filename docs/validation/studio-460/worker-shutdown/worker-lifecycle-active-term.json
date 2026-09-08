@@ -1,0 +1,25 @@
+{
+  "pid": 231252,
+  "startStat": "231252 (node) S 231237 231252 231252 0 -1 4194560 40345 130495 0 0 111 20 562 71 20 0 11 0 1455136 33533485056 27599 18446744073709551615 14905344 54527057 140726492547808 0 0 0 0 16781312 17922 0 0 0 17 2 0 0 0 0 0 112281824 112462704 237957120 140726492552526 140726492552546 140726492552546 140726492553188 0\n",
+  "statusBefore": "Name:\tnode\nUmask:\t0022\nState:\tS (sleeping)\nTgid:\t231252\nNgid:\t0\nPid:\t231252\nPPid:\t231237\nTracerPid:\t0\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nFDSize:\t64\nGroups:\t \nNStgid:\t231252\t1\nNSpid:\t231252\t1\nNSpgid:\t231252\t1\nNSsid:\t231252\t1\nKthread:\t0\nVmPeak:\t32771860 kB\nVmSize:\t32747544 kB\nVmLck:\t       0 kB\nVmPin:\t       0 kB\nVmHWM:\t  133464 kB\nVmRSS:\t  111140 kB\nRssAnon:\t   54024 kB\nRssFile:\t   57116 kB\nRssShmem:\t       0 kB\nVmData:\t  143568 kB\nVmStk:\t     132 kB\nVmExe:\t   38696 kB\nVmLib:\t    1984 kB\nVmPTE:\t    1296 kB\nVmSwap:\t       0 kB\nHugetlbPages:\t       0 kB\nCoreDumping:\t0\nTHP_enabled:\t1\nuntag_mask:\t0xffffffffffffffff\nThreads:\t11\nSigQ:\t0/209617\nSigPnd:\t0000000000000000\nShdPnd:\t0000000000000000\nSigBlk:\t0000000000000000\nSigIgn:\t0000000201001000\nSigCgt:\t0000000100004602\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t0\nSeccomp_filters:\t0\nSpeculation_Store_Bypass:\tthread vulnerable\nSpeculationIndirectBranch:\tconditional enabled\nCpus_allowed:\tff\nCpus_allowed_list:\t0-7\nMems_allowed:\t00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000000,00000001\nMems_allowed_list:\t0\nvoluntary_ctxt_switches:\t742\nnonvoluntary_ctxt_switches:\t643\nx86_Thread_features:\t\nx86_Thread_features_locked:\t\n",
+  "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-lifecycle-active\n",
+  "membersBefore": "231252\n",
+  "runcState": {
+    "ociVersion": "1.3.0",
+    "id": "studio460-worker-lifecycle-active",
+    "pid": 231252,
+    "status": "running",
+    "bundle": "/home/tataihono/.cache/forge-studio-460-image-runtime/studio460-worker-lifecycle-active",
+    "rootfs": "/home/tataihono/.cache/forge-studio-460-image-runtime/worker-lifecycle-root/rootfs",
+    "created": "2026-09-08T04:53:32.736966045Z",
+    "owner": ""
+  },
+  "signalReturn": 0,
+  "signalError": "",
+  "elapsedSeconds": 0.03363398399960715,
+  "pidExistsAfterGrace": false,
+  "leafExistsAfterGrace": false,
+  "membersAfterGrace": null,
+  "pidExistsAfterCleanup": false,
+  "leafExistsAfterCleanup": false
+}

@@ -1,0 +1,6 @@
+{
+  "pid": 175733,
+  "method": "manual verified owned cgroup.kill after failed TERM and controlled child probe",
+  "pidExistsAfter": false,
+  "leafExistsAfter": false
+}
