@@ -1157,9 +1157,10 @@ provider metadata).
 Mastra writes vectors through Admin's narrow internal ingest route:
 `POST /api/internal/mastra/transcript-embeddings`. The route validates
 `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
-guards `dimensions === 1536`, resolves Admin or external targets before
-writing, and is idempotent by default. Explicit modes are `idempotent`,
-`repair`, `force`, and `model-upgrade`.
+guards `dimensions === 1536`, caps the streamed JSON body at 16 MiB and each
+transcript at 1,024 chunks, resolves Admin or external targets before writing,
+and is idempotent by default. Explicit modes are `idempotent`, `repair`,
+`force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per
@@ -1193,7 +1194,12 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   vectors from PostgreSQL, upserts stable chunk document ids into the current
   transcript collection, independently reads the documents and normalized
   vectors back, removes stale ids, and atomically completes the event while
-  advancing one durable projection revision. Once an external mutation starts,
+  advancing one durable projection revision. Before the first mutation, it
+  reads the exact physical collection schema and requires the complete Watch
+  Search transcript field contract, including grouping/visibility facets and
+  the 1,536-dimension vector declaration; document readback alone cannot prove
+  that the real reader can query an incorrectly shaped collection. Once an
+  external mutation starts,
   any later definite validation or completion failure removes and verifies
   absence of the affected current and stale document ids under the same
   publication lock before the event is released for retry; an incomplete
@@ -1223,7 +1229,14 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   operator key; the legacy key is never publication authority. Production
   Admin web startup rejects an injected operator key; the credential is valid
   only on the dedicated Postgres worker, even while incremental publication is
-  still disabled for a staged rollout.
+  still disabled for a staged rollout. Railway project-level variables may
+  inject reader keys into every service, so `railway.worker.toml` explicitly
+  unsets `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` before the worker's
+  build, migration, and runtime commands load Admin's fail-closed credential
+  checks. Build and migration additionally unset
+  `TYPESENSE_OPERATOR_API_KEY` and
+  `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED`; the operator key remains
+  available only to the worker runtime.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

@@ -18,6 +18,12 @@ tags:
 
 ## Problem
 
+> **Production correction, 2026-09-07:** the original v1 seed recorded
+> OpenRouter as the audited live query provider, but Railway and the earlier
+> latency work were intentionally using Fireworks. The follow-up v2 contract
+> records Fireworks explicitly, preserves v1 as immutable history, and retains
+> the existing stored transcript-vector tuple.
+
 Transcript ingest, pgvector retrieval, recommendations, query embeddings, and
 full Watch Search transcript loading all depend on one compatible content
 embedding contract, but parts of the stack still infer compatibility from loose

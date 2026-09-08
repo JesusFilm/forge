@@ -171,6 +171,12 @@ Using a full deployment identity here makes a healthy generation incompatible
 after unrelated Admin changes; see
 [Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).
 
+Tests that simulate a content-embedding contract rotation must derive a
+distinct alternate identity from the current contract seed. A hardcoded
+anticipated next-version id eventually becomes the active id, stops exercising
+the drift path, and can let the test fall through into unrelated publication
+side effects.
+
 The private page at `/dashboard/search/compare` runs one normalized query
 against frozen current and candidate profiles. Each side records its own result
 or error, so candidate failure cannot hide the current result. Candidate work
@@ -233,6 +239,26 @@ collection-write and deletion authority out of the public traffic service. A
 dedicated worker may hold the key while publication remains disabled so the
 rollout control stays independent from credential provisioning.
 
+Bound upstream ingest at both transport and schema layers. A dedicated bearer
+authenticates the caller but does not make its payload safe: an unbounded
+vector-bearing JSON body or chunk array can exhaust the Admin process, inflate
+PostgreSQL/outbox work, and amplify that work through the privileged publisher.
+Stream the request under a byte ceiling before parsing and retain a separate
+chunk-count ceiling for direct service callers.
+
+Railway project-level variables can inject reader credentials into the worker
+even when they were intended only for traffic-serving replicas. Strip
+`TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` from the dedicated worker's
+build, migration, and start commands before any Admin module loads. The
+operator key belongs only in the runtime start command: unset both
+`TYPESENSE_OPERATOR_API_KEY` and the publication flag during dependency
+installation/build and migrations so lifecycle code never receives collection
+mutation authority and build-time instrumentation follows the disabled path.
+Otherwise a legacy shared reader/operator value trips the fail-closed
+disjointness assertion during build or instrumentation loading, and the
+disabled-by-default publisher prevents the worker service from deploying at
+all.
+
 Treat winning the advisory lock as the start of lease admission, not merely as
 permission to persist a profile resolved earlier. Publication can finish after
 candidate profile resolution but before lease acquisition reaches PostgreSQL;
@@ -280,6 +306,21 @@ cooperating publishers and rebuilds, but it cannot prevent an out-of-band
 Typesense operator from moving an alias during the external write. If the alias
 changed, leave the event pending and do not advance the projection revision.
 
+Document readback does not certify the collection schema. Before incremental
+publication mutates the frozen physical collection, fetch its schema and match
+the complete transcript field manifest, including `canonicalVideoId` and
+`publiclyVisible` facets plus the vector dimension. A collection can store and
+return an imported JSON document while still rejecting the real reader's
+grouping or filter query; completing the outbox event in that state makes the
+publication irrecoverable without operator repair.
+
+Do not let the first incremental event invent the compatibility identity of an
+already populated active collection. An empty collection can bootstrap from
+the event, and a lease-fenced retry can do so when every existing document is
+inside that event's overwrite-or-delete set. Any other populated collection
+must supply the legacy projection revision and compatibility evidence; one
+changed transcript cannot certify the identity of the untouched corpus.
+
 An external JSONL mutation may apply some or all documents before its response
 or the later database completion fails. Once the first upsert begins, treat any
 subsequent definite failure as potentially visible partial publication. While
@@ -310,6 +351,14 @@ preserve the new aliases and collections and surface an indeterminate error.
 Blind rollback in that state can delete the collection named by a successfully
 committed projection, which is harder to recover than temporarily retaining
 both physical generations.
+
+Pin a full rebuild to one compatibility tuple as well. Resolve the active
+contract and chunking version before reading transcript pages, filter every
+page by the exact contract id instead of the mutable active pointer, and
+re-resolve compatibility before moving aliases. Otherwise a pointer rotation
+during a long vector import can mix two contracts in one physical collection
+and then certify the mixture with whichever contract happens to be active at
+completion.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate

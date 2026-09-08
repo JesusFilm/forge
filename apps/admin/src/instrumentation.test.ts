@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
@@ -513,5 +515,49 @@ describe("workflow instrumentation", () => {
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
+  })
+})
+
+describe("Admin worker Railway credential isolation", () => {
+  function workerCommands(): Record<string, string> {
+    const config = readFileSync(
+      fileURLToPath(new URL("../railway.worker.toml", import.meta.url)),
+      "utf8",
+    )
+
+    return Object.fromEntries(
+      ["buildCommand", "preDeployCommand", "startCommand"].map((command) => {
+        const value = config.match(
+          new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
+        )?.[1]
+        expect(value, `${command} must exist`).toBeDefined()
+        return [command, value!]
+      }),
+    )
+  }
+
+  it("removes inherited Typesense reader credentials from every worker phase", () => {
+    for (const value of Object.values(workerCommands())) {
+      expect(value).toMatch(
+        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY(?:\s|$)/,
+      )
+    }
+  })
+
+  it("exposes the Typesense operator credential only to the runtime publisher", () => {
+    const commands = workerCommands()
+
+    for (const command of ["buildCommand", "preDeployCommand"]) {
+      expect(commands[command]).toMatch(
+        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
+      )
+    }
+
+    expect(commands.startCommand).not.toMatch(
+      /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+    )
+    expect(commands.startCommand).not.toMatch(
+      /^unset [^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED(?:\s|$)/,
+    )
   })
 })

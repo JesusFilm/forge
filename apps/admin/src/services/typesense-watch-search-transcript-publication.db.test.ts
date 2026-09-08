@@ -54,8 +54,7 @@ const DEFAULT_VITEST_DATABASE_URL =
   "postgresql://test:test@localhost:5432/forge_admin_test"
 const hasRealDatabaseUrl =
   !!baseDatabaseUrl && baseDatabaseUrl !== DEFAULT_VITEST_DATABASE_URL
-const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID =
-  "semantic-transcript-pgvector-v2"
+const ALTERNATE_CONTENT_EMBEDDING_CONTRACT_ID = `${ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id}-alternate`
 const TYPESENSE_OPERATOR_KEY = "test-operator-key"
 const TYPESENSE_SEARCH_KEY = "test-search-key"
 
@@ -107,6 +106,7 @@ type StoredCollection = {
 class ControlledTypesenseServer {
   private readonly collections = new Map<string, StoredCollection>()
   private readonly aliases = new Map<string, string>()
+  private readonly curationSets = new Map<string, Record<string, unknown>>()
   private server = createServer(this.handleRequest.bind(this))
   url = ""
 
@@ -130,6 +130,7 @@ class ControlledTypesenseServer {
   reset(): void {
     this.collections.clear()
     this.aliases.clear()
+    this.curationSets.clear()
   }
 
   private async readBody(request: IncomingMessage): Promise<string> {
@@ -339,6 +340,25 @@ class ControlledTypesenseServer {
       : presentedKey === TYPESENSE_OPERATOR_KEY
     if (!authorized) {
       this.json(response, { message: "unauthorized" }, 401)
+      return
+    }
+
+    if (request.method === "PUT" && pathname.startsWith("/curation_sets/")) {
+      const name = decodeURIComponent(pathname.split("/").at(-1) ?? "")
+      const curationSet = JSON.parse(await this.readBody(request)) as Record<
+        string,
+        unknown
+      >
+      this.curationSets.set(name, curationSet)
+      this.json(response, curationSet)
+      return
+    }
+    if (request.method === "DELETE" && pathname.startsWith("/curation_sets/")) {
+      this.curationSets.delete(
+        decodeURIComponent(pathname.split("/").at(-1) ?? ""),
+      )
+      response.statusCode = 204
+      response.end()
       return
     }
 
@@ -889,6 +909,32 @@ suite("current transcript publication into Watch Search", () => {
     })
   }
 
+  function prismaRequiringBoundedCompletionTransaction(): PrismaClient {
+    let transactionCount = 0
+    return new Proxy(prisma, {
+      get(target, property) {
+        if (property === "$transaction") {
+          return async (...args: unknown[]) => {
+            transactionCount += 1
+            if (transactionCount === 2) {
+              const options = args[1] as
+                | { maxWait?: number; timeout?: number }
+                | undefined
+              if (options?.maxWait !== 10_000 || options.timeout !== 30_000) {
+                throw new Error(
+                  "transcript publication completion transaction is not bounded for the accepted chunk ceiling",
+                )
+              }
+            }
+            return Reflect.apply(target.$transaction, target, args)
+          }
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === "function" ? value.bind(target) : value
+      },
+    })
+  }
+
   function prismaWithLostRebuildProjectionAcknowledgement(input?: {
     reconciliationFails?: boolean
   }): PrismaClient {
@@ -978,13 +1024,158 @@ suite("current transcript publication into Watch Search", () => {
     })
   })
 
-  it("rolls back failed publication-event writes, increments source generation on replacement, and keeps unchanged ingest event-free", async () => {
+  it("refuses an active transcript collection whose schema cannot satisfy the real reader", async () => {
+    const incompatibleSchema = watchTranscriptCollectionSchema(
+      "incompatible-reader-contract",
+    )
+    incompatibleSchema.fields = incompatibleSchema.fields.map((field) =>
+      field.name === "canonicalVideoId" ? { ...field, facet: false } : field,
+    )
+    await typesense.createCollection(incompatibleSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      incompatibleSchema.name,
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "schema-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/canonicalVideoId.*reader contract/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true, completedAt: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING", completedAt: null })
+    await expect(
+      typesense.getDocument(
+        incompatibleSchema.name,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
+  it("refuses a stored-only transcript vector before readback can falsely certify it", async () => {
+    const incompatibleSchema =
+      watchTranscriptCollectionSchema("stored-only-vector")
+    incompatibleSchema.fields = incompatibleSchema.fields.map((field) =>
+      field.name === "embedding" ? { ...field, index: false } : field,
+    )
+    await typesense.createCollection(incompatibleSchema)
+    await typesense.upsertAlias(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      incompatibleSchema.name,
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "vector-index-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/embedding.*not indexed.*reader contract/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true, completedAt: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING", completedAt: null })
+    await expect(
+      typesense.getDocument(
+        incompatibleSchema.name,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
+  it("does not let one event certify a populated transcript collection without legacy projection evidence", async () => {
+    const preexistingDocument = {
+      id: "preexisting-transcript-document",
+      documentKind: "transcript" as const,
+      videoId: "video-1",
+      videoEditionId: "edition-1",
+      canonicalVideoId: "core-video-1",
+      language: "en",
+      publiclyVisible: true,
+      text: "Existing active transcript corpus",
+      startSeconds: 0,
+      embedding,
+    }
+    await typesense.importDocuments(
+      TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      [preexistingDocument],
+      "upsert",
+    )
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "bootstrap-guard-run" }),
+    )
+    const event =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow()
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma,
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).rejects.toThrow(/projection revision is missing/i)
+
+    await expect(
+      prisma.watchSearchCurrentTranscriptProjection.findUnique({
+        where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+      }),
+    ).resolves.toBeNull()
+    await expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        select: { status: true },
+      }),
+    ).resolves.toEqual({ status: "PENDING" })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        preexistingDocument.id,
+      ),
+    ).resolves.toMatchObject({ id: preexistingDocument.id })
+    await expect(
+      typesense.getDocument(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+        event.currentDocumentIds[0]!,
+      ),
+    ).resolves.toBeUndefined()
+  }, 180_000)
+
+  it("rejects missing publication identity before writing, rolls back failed event writes, increments source generation, and keeps unchanged ingest event-free", async () => {
     await expect(
       ingestTranscriptEmbeddings(
         prisma,
         payload({ chunkingVersion: "", mastraRunId: "invalid-run" }),
       ),
-    ).rejects.toMatchObject({ code: "write_failed" })
+    ).rejects.toMatchObject({ code: "payload_invalid" })
     expect(await prisma.videoTranscript.count()).toBe(0)
     expect(
       await prisma.watchSearchCurrentTranscriptPublicationEvent.count(),
@@ -1008,6 +1199,56 @@ suite("current transcript publication into Watch Search", () => {
     expect(firstEvent.sourceGeneration).toBe(1n)
     expect(firstEvent.currentDocumentIds).toHaveLength(2)
     expect(firstEvent.staleDocumentIds).toEqual([])
+
+    // Force the outbox insert to fail after the canonical replacement work.
+    // The conflicting row is committed independently, so PostgreSQL must roll
+    // back the attempted generation-2 parent and chunk changes while leaving
+    // the previously accepted generation intact.
+    const firstChunkIds = firstEvent.currentDocumentIds
+    const conflictingEvent =
+      await prisma.watchSearchCurrentTranscriptPublicationEvent.create({
+        data: {
+          transcriptId: firstTranscript.id,
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          language: "en",
+          contentEmbeddingContractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+          transcriptChunkingVersion: "mastra-v1",
+          sourceGeneration: 2n,
+          sourceContentHash: "sha256:conflicting-event",
+          currentDocumentIds: ["conflicting-document"],
+          staleDocumentIds: [],
+        },
+      })
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma,
+        payload({
+          mode: "force",
+          mastraRunId: "failed-event-write-run",
+          generatedAt: "2026-09-03T00:05:00.000Z",
+          chunks: [
+            { text: "Uncommitted replacement", embedding, tokenCount: 2 },
+          ],
+        }),
+      ),
+    ).rejects.toThrow()
+    await expect(
+      prisma.videoTranscript.findUniqueOrThrow({
+        where: { id: firstTranscript.id },
+        select: { sourceGeneration: true },
+      }),
+    ).resolves.toEqual({ sourceGeneration: 1n })
+    await expect(
+      prisma.videoTranscriptChunk.findMany({
+        where: { transcriptId: firstTranscript.id },
+        orderBy: { chunkIndex: "asc" },
+        select: { id: true },
+      }),
+    ).resolves.toEqual(firstChunkIds.map((id) => ({ id })))
+    await prisma.watchSearchCurrentTranscriptPublicationEvent.delete({
+      where: { id: conflictingEvent.id },
+    })
 
     const replaced = await ingestTranscriptEmbeddings(
       prisma,
@@ -1207,6 +1448,27 @@ suite("current transcript publication into Watch Search", () => {
       slug: "watch-search-transcript-fixture",
       playbackId: "playback-1",
       evidence: { kind: "transcript_semantic" },
+    })
+  }, 180_000)
+
+  it("bounds the vector-fingerprint completion transaction for the accepted chunk ceiling", async () => {
+    await ingestTranscriptEmbeddings(
+      prisma,
+      payload({ mode: "idempotent", mastraRunId: "bounded-completion-run" }),
+    )
+
+    await expect(
+      publishOneCurrentTranscriptToWatchSearch({
+        prisma: prismaRequiringBoundedCompletionTransaction(),
+        typesense,
+        generations,
+        withIndexLock: (run) =>
+          withTypesenseWatchSearchIndexLock(run, { databaseUrl }),
+      }),
+    ).resolves.toMatchObject({
+      status: "published",
+      sourceGeneration: 1n,
+      projectionRevision: 1n,
     })
   }, 180_000)
 
@@ -1507,6 +1769,7 @@ suite("current transcript publication into Watch Search", () => {
           prisma,
           typesense,
           buildId: "rebuild-2",
+          loadCurations: async () => [],
           transcriptStrategy: "rebuild",
         }),
       { databaseUrl },
@@ -1544,6 +1807,7 @@ suite("current transcript publication into Watch Search", () => {
           prisma: prismaWithLostRebuildProjectionAcknowledgement(),
           typesense,
           buildId: "rebuild-lost-ack",
+          loadCurations: async () => [],
           transcriptStrategy: "rebuild",
         }),
       { databaseUrl },
@@ -1586,6 +1850,7 @@ suite("current transcript publication into Watch Search", () => {
             }),
             typesense,
             buildId: "rebuild-indeterminate",
+            loadCurations: async () => [],
             transcriptStrategy: "rebuild",
           }),
         { databaseUrl },
@@ -1744,6 +2009,9 @@ suite("current transcript publication into Watch Search", () => {
     const racingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => typesense.importDocuments(...args),
@@ -1764,7 +2032,11 @@ suite("current transcript publication into Watch Search", () => {
       },
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2016,6 +2288,9 @@ suite("current transcript publication into Watch Search", () => {
     const failingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: async () => {
         throw new Error("simulated publication failure")
       },
@@ -2026,7 +2301,11 @@ suite("current transcript publication into Watch Search", () => {
         typesense.getDocument(...args),
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2109,6 +2388,9 @@ suite("current transcript publication into Watch Search", () => {
     const failingCleanupTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: async (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => {
@@ -2122,7 +2404,11 @@ suite("current transcript publication into Watch Search", () => {
         typesense.getDocument(...args),
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(
@@ -2323,6 +2609,9 @@ suite("current transcript publication into Watch Search", () => {
     const racingTypesense = {
       getAlias: (...args: Parameters<TypesenseClient["getAlias"]>) =>
         typesense.getAlias(...args),
+      getCollectionSchema: (
+        ...args: Parameters<TypesenseClient["getCollectionSchema"]>
+      ) => typesense.getCollectionSchema(...args),
       importDocuments: (
         ...args: Parameters<TypesenseClient["importDocuments"]>
       ) => typesense.importDocuments(...args),
@@ -2347,7 +2636,11 @@ suite("current transcript publication into Watch Search", () => {
       },
     } satisfies Pick<
       TypesenseClient,
-      "deleteDocumentsByFilter" | "getAlias" | "getDocument" | "importDocuments"
+      | "deleteDocumentsByFilter"
+      | "getAlias"
+      | "getCollectionSchema"
+      | "getDocument"
+      | "importDocuments"
     >
 
     await expect(

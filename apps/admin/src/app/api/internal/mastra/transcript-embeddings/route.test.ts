@@ -20,7 +20,7 @@ vi.mock("@/services/transcript-embedding-ingest.service", async (original) => {
   }
 })
 
-const { POST, GET } = await import("./route")
+const { POST, GET, MAX_TRANSCRIPT_INGEST_BODY_BYTES } = await import("./route")
 const { TranscriptEmbeddingIngestError } =
   await import("@/services/transcript-embedding-ingest.service")
 
@@ -90,6 +90,40 @@ describe("POST /api/internal/mastra/transcript-embeddings", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Authorization required",
     })
+    expect(ingestMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects non-JSON and oversized bodies before invoking ingest", async () => {
+    const wrongType = await POST(
+      request(
+        { ok: true },
+        { authorization: "Bearer mastra-key", "content-type": "text/plain" },
+      ),
+    )
+    expect(wrongType.status).toBe(415)
+
+    const declaredOversize = await POST(
+      request(
+        { ok: true },
+        {
+          authorization: "Bearer mastra-key",
+          "content-length": String(MAX_TRANSCRIPT_INGEST_BODY_BYTES + 1),
+        },
+      ),
+    )
+    expect(declaredOversize.status).toBe(413)
+
+    expect(ingestMock).not.toHaveBeenCalled()
+  })
+
+  it("bounds streamed bodies when Content-Length is absent", async () => {
+    const response = await POST(
+      request("x".repeat(MAX_TRANSCRIPT_INGEST_BODY_BYTES), {
+        authorization: "Bearer mastra-key",
+      }),
+    )
+
+    expect(response.status).toBe(413)
     expect(ingestMock).not.toHaveBeenCalled()
   })
 
