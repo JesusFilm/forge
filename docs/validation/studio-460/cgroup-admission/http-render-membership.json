@@ -1,0 +1,27 @@
+{
+  "health": {
+    "instanceId": "72bb775c-7c27-4ec6-ae4f-2d1ea1630ef0",
+    "budget": {
+      "memoryBytes": 2147483648,
+      "swapBytes": 0,
+      "tasks": 128,
+      "cpuQuota": 200000,
+      "cpuPeriod": 100000
+    },
+    "busy": false,
+    "healthy": true,
+    "profileId": "studio-render-1/900s-2cpu-2g-128p-96child-128m"
+  },
+  "status": 422,
+  "elapsedMs": 61.42620000000001,
+  "bytes": 17,
+  "headers": {
+    "cache-control": "no-store",
+    "connection": "keep-alive",
+    "content-type": "application/json",
+    "date": "Tue, 08 Sep 2026 04:10:42 GMT",
+    "keep-alive": "timeout=5",
+    "transfer-encoding": "chunked"
+  },
+  "digest": "19f7ea5553622c3853a8e2cdb989212a35802f771c388363a6d782be984e17cd"
+}

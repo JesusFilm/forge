@@ -1,0 +1,23 @@
+Running as unit: studio460-budget-unrelated2.scope; invocation ID: c132f6767052445fb7df5490c24c71cd
+TAP version 13
+# Subtest: startup admission rejects an unrelated bounded cgroup mount
+ok 1 - startup admission rejects an unrelated bounded cgroup mount
+  ---
+  duration_ms: 10.282926
+  type: 'test'
+  ...
+# Subtest: startup admission accepts its own bounded read-only leaf in a PID namespace
+ok 2 - startup admission accepts its own bounded read-only leaf in a PID namespace # SKIP
+  ---
+  duration_ms: 0.223918
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 18.253729

@@ -18,6 +18,10 @@ The versioned production profile is 900 seconds for staging/render/verification/
 
 The native startup record is sealed evidence combined with current kernel checks, not cryptographic launcher identity. The exact reviewed image/entrypoint is trusted configuration. Production admission still requires effective cgroup limits, including 128 tasks. The locally tested UID/NPROC candidate is not enabled as a fallback. Read-only Railway cgroups and user namespaces alone do not establish per-job containment.
 
+A read-only mount of finite cgroup files is not proof of process membership. Local rootless runc placed the image process in an unbounded sibling while the first harness mounted its bounded launcher scope; both original runtime qualifications were withdrawn. Admission now requires cgroup2 membership for the actual Node PID in the reader's PID namespace and rejects nested cgroup-file overlays. Operators must also verify actual init/descendant membership and bounded ancestors externally. Build-driver limits likewise do not establish Dockerfile executor limits. See `docs/validation/studio-460/cgroup-admission/README.md` for the failure-first cases and corrected local placement.
+
+The execution image's fresh job proc mount still fails under the preserved outer OCI masks. The current inner recipe does not independently replay all those masks; earlier unmasked native proof is not equivalent. A trusted bootstrap sequencing capability remains unproven on the intended platform. Railway pre-deploy commands run separately and are not that execution-namespace hook. No proc exposure change or replacement architecture has been implemented.
+
 Admin locks the project before reading mutable attempt state and then the job. Finish checks fresh server time after waits: expired/losing results are retained without becoming current. Exact issued-lease producer registration attaches known partial assets before terminal recording, preserving recovery after lost responses. Browser metadata cannot manufacture those edges. A retained result does not imply successful finalization. Three lease generations bound automatic retries.
 
 ## Provider state and publication

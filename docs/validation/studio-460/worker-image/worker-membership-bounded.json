@@ -1,0 +1,165 @@
+{
+  "pid": 108997,
+  "expected": "/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+  "before": {
+    "cpu.max": "200000 100000\n",
+    "memory.max": "2147483648\n",
+    "memory.swap.max": "0\n",
+    "pids.max": "128\n",
+    "pids.current": "7\n",
+    "pids.events": "max 0\n",
+    "memory.current": "33435648\n",
+    "memory.peak": "43790336\n",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n",
+    "cpu.stat": "usage_usec 428314\nuser_usec 369526\nsystem_usec 58787\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 19\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cgroup.procs": "108997\n",
+    "cgroup.threads": "108997\n109004\n109005\n109006\n109007\n109008\n109009\n"
+  },
+  "ancestors": {
+    "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2": {
+      "cpu.max": "200000 100000\n",
+      "memory.max": "2147483648\n",
+      "memory.swap.max": "0\n",
+      "pids.max": "128\n"
+    },
+    "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice": {
+      "cpu.max": "max 100000\n",
+      "memory.max": "max\n",
+      "memory.swap.max": "max\n",
+      "pids.max": "max\n"
+    },
+    "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service": {
+      "cpu.max": "max 100000\n",
+      "memory.max": "max\n",
+      "memory.swap.max": "max\n",
+      "pids.max": "max\n"
+    },
+    "/sys/fs/cgroup/user.slice/user-1000.slice": {
+      "cpu.max": "max 100000\n",
+      "memory.max": "max\n",
+      "memory.swap.max": "max\n",
+      "pids.max": "138347\n"
+    },
+    "/sys/fs/cgroup/user.slice": {
+      "cpu.max": "max 100000\n",
+      "memory.max": "max\n",
+      "memory.swap.max": "max\n",
+      "pids.max": "max\n"
+    },
+    "/sys/fs/cgroup": {}
+  },
+  "observed": {
+    "1:node": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t1\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t1\nThreads:\t7\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "15:runc:[2:INIT]": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t15\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t15\nThreads:\t6\nCapInh:\t0000000000000000\nCapPrm:\t000001ffffffffff\nCapEff:\t000001ffffffffff\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "15:node": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t15\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t15\nThreads:\t11\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "32:ffmpeg": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t32\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t32\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "36:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t36\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t36\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "53:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t53\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t53\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "70:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t70\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t70\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "75:exe": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t75\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t75\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "75:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t75\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t75\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "93:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t93\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t93\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "101:remotion": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t101\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t101\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "104:remotion": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t104\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t104\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "105:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t105\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t105\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "121:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t121\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t121\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "141:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t141\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t141\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "143:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t143\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t143\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "161:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t161\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t161\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "174:remotion": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t174\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t174\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "175:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t175\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t175\nThreads:\t23\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "191:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t191\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t191\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "210:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t210\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t210\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "218:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t218\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t218\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "232:exe": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t232\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t232\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    },
+    "232:chrome-headless": {
+      "membership": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/studio460-worker-image2",
+      "status": "Pid:\t232\nUid:\t1000\t1000\t1000\t1000\nGid:\t1000\t1000\t1000\t1000\nNSpid:\t232\nThreads:\t1\nCapInh:\t0000000000000000\nCapPrm:\t0000000000000000\nCapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nCapAmb:\t0000000000000000\nNoNewPrivs:\t1"
+    }
+  },
+  "violations": [],
+  "elapsedSeconds": 6.476439201000176,
+  "after": {
+    "cpu.max": "200000 100000\n",
+    "memory.max": "2147483648\n",
+    "memory.swap.max": "0\n",
+    "pids.max": "128\n",
+    "pids.current": "19\n",
+    "pids.events": "max 0\n",
+    "memory.current": "40136704\n",
+    "memory.peak": "341512192\n",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n",
+    "cpu.stat": "usage_usec 6265827\nuser_usec 4567750\nsystem_usec 1698076\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 70\nnr_throttled 10\nthrottled_usec 671387\nnr_bursts 0\nburst_usec 0\n",
+    "cgroup.procs": "108997\n",
+    "cgroup.threads": "108997\n109004\n109005\n109006\n109007\n109008\n109009\n"
+  }
+}

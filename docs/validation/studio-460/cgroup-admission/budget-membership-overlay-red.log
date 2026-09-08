@@ -1,0 +1,40 @@
+Running as unit: studio460-budget-overlaid1.scope; invocation ID: 4b28558fd7694d2aade9cd1dd1824d99
+TAP version 13
+# Subtest: startup admission rejects an unrelated bounded cgroup mount
+ok 1 - startup admission rejects an unrelated bounded cgroup mount # SKIP
+  ---
+  duration_ms: 1.243999
+  type: 'test'
+  ...
+# Subtest: startup admission accepts its own bounded read-only leaf in a PID namespace
+ok 2 - startup admission accepts its own bounded read-only leaf in a PID namespace # SKIP
+  ---
+  duration_ms: 0.189154
+  type: 'test'
+  ...
+# Subtest: startup admission rejects membership overlaid onto another cgroup
+not ok 3 - startup admission rejects membership overlaid onto another cgroup
+  ---
+  duration_ms: 13.416416
+  type: 'test'
+  location: '//[eval1]:41:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection (StudioContainmentError).'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: [class StudioContainmentError extends Error]
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:////[eval1]:45:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 2
+# todo 0
+# duration_ms 26.310247

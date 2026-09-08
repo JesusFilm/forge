@@ -1,0 +1,23 @@
+Running as unit: studio460-worker-build-scope1.scope; invocation ID: 1420fdc90c8c4a19b952e223e51dd931
+time="2026-09-08T15:04:52+12:00" level=warning msg="CDI setup error /etc/buildkit/cdi: failed to monitor for changes: no such file or directory"
+time="2026-09-08T15:04:52+12:00" level=warning msg="CDI setup error /etc/cdi: failed to monitor for changes: no such file or directory"
+time="2026-09-08T15:04:52+12:00" level=warning msg="CDI setup error /var/run/cdi: failed to monitor for changes: no such file or directory"
+time="2026-09-08T15:04:52+12:00" level=warning msg="failed check for fsverity support" error="enable fsverity failed: operation not supported" path=/home/tataihono/.cache/forge-studio-460-image-runtime/cache/runc-native/content
+time="2026-09-08T15:04:52+12:00" level=info msg="found worker \"5hjml8d7k5wdu4xwvaxn4oedn\", labels=map[org.mobyproject.buildkit.worker.executor:oci org.mobyproject.buildkit.worker.hostname:tataihono-dev org.mobyproject.buildkit.worker.network:host org.mobyproject.buildkit.worker.oci.process-mode:sandbox org.mobyproject.buildkit.worker.selinux.enabled:false org.mobyproject.buildkit.worker.snapshotter:native], platforms=[linux/amd64 linux/amd64/v2 linux/amd64/v3 linux/amd64/v4 linux/386]"
+time="2026-09-08T15:04:52+12:00" level=info msg="found 1 workers, default=\"5hjml8d7k5wdu4xwvaxn4oedn\""
+time="2026-09-08T15:04:52+12:00" level=warning msg="currently, only the default worker can be used."
+time="2026-09-08T15:04:52+12:00" level=info msg="running server on /home/tataihono/.cache/forge-studio-460-image-runtime/run/buildkit.sock"
+time="2026-09-08T15:05:05+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:05:18+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:05:30+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:07:38+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:07:38+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:09:58+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:11:58+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:17:46+12:00" level=info msg="detected 127.0.0.53 nameserver, assuming systemd-resolved, so using resolv.conf: /run/systemd/resolve/resolv.conf"
+time="2026-09-08T15:27:17+12:00" level=info msg="stopping server"
+buildkitd: got SIGTERM/SIGINT, forcing shutdown
+github.com/moby/buildkit/util/appcontext.initContexts.func1.1
+	/src/util/appcontext/appcontext.go:53
+runtime.goexit
+	/usr/local/go/src/runtime/asm_amd64.s:1771

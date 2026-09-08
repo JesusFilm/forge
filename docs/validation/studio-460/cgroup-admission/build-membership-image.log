@@ -1,0 +1,186 @@
+#1 [internal] load build definition from apps/studio-render/Dockerfile
+#1 transferring dockerfile: 5.62kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 1.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+#3 resolve docker.io/docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32 done
+#3 CACHED
+
+#4 [context studio_codec] load .dockerignore
+#4 transferring studio_codec: 2B done
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+#5 DONE 0.0s
+
+#6 [runtime-base 1/2] FROM docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+#6 resolve docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context:
+#7 transferring context: 121.02kB 0.0s done
+#7 DONE 0.0s
+
+#8 [context studio_codec] load from client
+#8 transferring studio_codec: 36B done
+#8 DONE 0.0s
+
+#9 [build  2/18] RUN curl --fail --location --proto '=https'       https://github.com/containers/bubblewrap/releases/download/v0.11.1/bubblewrap-0.11.1.tar.xz -o /tmp/bwrap.tar.xz     && echo 'c1b7455a1283b1295879a46d5f001dfd088c0bb0f238abb5e128b3583a246f71  /tmp/bwrap.tar.xz' | sha256sum -c -     && tar -xJf /tmp/bwrap.tar.xz -C /tmp     && meson setup /tmp/bwrap-build /tmp/bubblewrap-0.11.1 --prefix=/usr       -Dman=disabled -Dtests=false -Dselinux=disabled -Dbash_completion=disabled -Dzsh_completion=disabled     && ninja -C /tmp/bwrap-build
+#9 CACHED
+
+#10 [build  5/18] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#10 CACHED
+
+#11 [build  8/18] COPY packages/studio-contracts/package.json packages/studio-contracts/package.json
+#11 CACHED
+
+#12 [build  9/18] COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
+#12 CACHED
+
+#13 [build  6/18] COPY patches patches
+#13 CACHED
+
+#14 [build  1/18] RUN apt-get update && apt-get install -y --no-install-recommends     build-essential meson ninja-build pkg-config libcap-dev libseccomp-dev curl xz-utils     && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [build  3/18] RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+#15 CACHED
+
+#16 [build  4/18] WORKDIR /app
+#16 CACHED
+
+#17 [build  7/18] COPY apps/studio-render/package.json apps/studio-render/package.json
+#17 CACHED
+
+#18 [runtime-base 2/2] RUN apt-get update && apt-get install -y --no-install-recommends     ca-certificates libcap2 libseccomp2 libnss3 libdbus-1-3 libatk1.0-0     libasound2 libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1     libgbm1 libcups2 libcairo2 libpango-1.0-0 libatk-bridge2.0-0     fonts-noto-color-emoji fonts-noto-cjk     && rm -rf /var/lib/apt/lists/*
+#18 CACHED
+
+#19 [build 10/18] RUN pnpm install --frozen-lockfile --ignore-scripts --filter @forge/studio-render...
+#19 CACHED
+
+#20 [build 11/18] COPY apps/studio-render apps/studio-render
+#20 DONE 74.8s
+
+#21 [build 12/18] COPY packages/studio-contracts packages/studio-contracts
+#21 DONE 79.1s
+
+#22 [build 13/18] COPY packages/shorts-compositions packages/shorts-compositions
+#22 DONE 80.2s
+
+#23 [build 14/18] RUN pnpm --filter @forge/studio-render build     && pnpm --filter @forge/studio-render --prod deploy /runtime-deps --ignore-scripts
+#23 90.44 
+#23 90.44 > @forge/studio-render@0.0.1 build /app/apps/studio-render
+#23 90.44 > pnpm build:native && node build.mjs
+#23 90.44 
+#23 90.90 
+#23 90.90 > @forge/studio-render@0.0.1 build:native /app/apps/studio-render
+#23 90.90 > mkdir -p dist && cc -O2 -Wall -Wextra -Werror native/guard.c -o dist/guard && cc -O2 -Wall -Wextra -Werror native/sandbox-init.c -o dist/sandbox-init && cc -O2 -Wall -Wextra -Werror native/entrypoint.c -o dist/entrypoint
+#23 90.90 
+#23 101.5 Packages are copied from the content-addressable store to the virtual store.
+#23 101.5   Content-addressable store is at: /root/.local/share/pnpm/store/v3
+#23 101.5   Virtual store is at:             ../runtime-deps/node_modules/.pnpm
+#23 101.6 Progress: resolved 1, reused 0, downloaded 0, added 0
+#23 101.9 .                                        |  WARN  deprecated eslint@9.39.2
+#23 102.6 Progress: resolved 312, reused 312, downloaded 0, added 0
+#23 103.6 Progress: resolved 478, reused 449, downloaded 1, added 0
+#23 104.6 Progress: resolved 532, reused 460, downloaded 3, added 0
+#23 105.7 Progress: resolved 588, reused 506, downloaded 6, added 0
+#23 106.7 Progress: resolved 616, reused 534, downloaded 6, added 0
+#23 107.8  WARN  3 deprecated subdependencies found: git-raw-commits@4.0.0, source-map@0.8.0-beta.0, whatwg-encoding@3.1.1
+#23 107.8 Progress: resolved 618, reused 536, downloaded 6, added 0
+#23 107.8 .                                        |  +34 +++
+#23 107.9 Progress: resolved 618, reused 536, downloaded 6, added 34, done
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/browserslist. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/browserslist@4.28.1/node_modules/browserslist/cli.js'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/acorn. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/acorn@8.16.0/node_modules/acorn/bin/acorn'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/webpack. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/webpack@5.106.2_esbuild@0.27.3_lightningcss@1.32.0_postcss@8.5.26/node_modules/webpack/bin/webpack.js'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/vite. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/vite@6.4.2_@types+node@25.2.3_jiti@2.6.1_lightningcss@1.32.0_terser@5.46.0_tsx@4.21.0_yaml@2.8.3/node_modules/vite/bin/vite.js'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/yaml. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/yaml@2.8.3/node_modules/yaml/bin.mjs'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/jiti. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/jiti@2.6.1/node_modules/jiti/lib/jiti-cli.mjs'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/terser. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/terser@5.46.0/node_modules/terser/bin/terser'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/tsc. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/bin/tsc'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/msw. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/msw@2.12.10_@types+node@25.2.3_typescript@6.0.3/node_modules/msw/cli/index.js'
+#23 108.0  WARN  Failed to create bin at /app/apps/runtime-deps/node_modules/.bin/tsserver. ENOENT: no such file or directory, open '/runtime-deps/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/bin/tsserver'
+#23 108.0  WARN  Issues with peer dependencies found
+#23 108.0 apps/studio-render
+#23 108.0 └─┬ vite 6.4.2
+#23 108.0   └─┬ tinyglobby 0.2.17
+#23 108.0     └─┬ fdir 6.5.0
+#23 108.0       └── ✕ unmet peer picomatch@3.0.2: found 4.0.4
+#23 108.0 
+#23 DONE 108.2s
+
+#24 [build 15/18] WORKDIR /app/apps/studio-render
+#24 DONE 83.7s
+
+#25 [build 16/18] RUN node --input-type=module -e "import('@remotion/renderer').then(({ensureBrowser})=>ensureBrowser())"
+#25 84.86 Downloading Chrome Headless Shell https://www.remotion.dev/chrome-headless-shell
+#25 84.86 Customize this behavior by adding a onBrowserDownload function to ensureBrowser().
+#25 84.87 Downloading from: https://remotion.media/chromium-headless-shell-linux-x64-149.0.7790.0.zip?clear
+#25 88.42 Downloading Chrome Headless Shell - 9.5 Mb/91.9 Mb
+#25 89.83 Downloading Chrome Headless Shell - 19.1 Mb/91.9 Mb
+#25 91.13 Downloading Chrome Headless Shell - 28.6 Mb/91.9 Mb
+#25 92.25 Downloading Chrome Headless Shell - 38.2 Mb/91.9 Mb
+#25 93.36 Downloading Chrome Headless Shell - 47.7 Mb/91.9 Mb
+#25 94.53 Downloading Chrome Headless Shell - 57.3 Mb/91.9 Mb
+#25 95.75 Downloading Chrome Headless Shell - 66.8 Mb/91.9 Mb
+#25 96.87 Downloading Chrome Headless Shell - 76.4 Mb/91.9 Mb
+#25 98.02 Downloading Chrome Headless Shell - 85.9 Mb/91.9 Mb
+#25 98.73 Downloading Chrome Headless Shell - 91.9 Mb/91.9 Mb
+#25 DONE 102.1s
+
+#26 [build 17/18] COPY --from=studio_codec /codec.tar.xz /tmp/codec.tar.xz
+#26 DONE 89.1s
+
+#27 [build 18/18] RUN codec_sha="$(sha256sum /tmp/codec.tar.xz | cut -d ' ' -f 1)"     && case "$codec_sha" in       da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6) codec_root=ffmpeg-n9.0-latest-linux64-gpl-9.0 ;;       e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4) codec_root=ffmpeg-n9.0.1-27-g9b0578816c-linux64-gpl-9.0 ;;       *) exit 1 ;;     esac     && mkdir /codec     && tar -xJf /tmp/codec.tar.xz -C /codec --strip-components=2       "$codec_root/bin/ffmpeg" "$codec_root/bin/ffprobe"     && echo 'bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6  /codec/ffmpeg' | sha256sum -c -     && echo 'c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c  /codec/ffprobe' | sha256sum -c -
+#27 96.83 /codec/ffmpeg: OK
+#27 97.58 /codec/ffprobe: OK
+#27 DONE 97.6s
+
+#28 [runtime  1/12] COPY --from=build /tmp/bwrap-build/bwrap /usr/bin/bwrap
+#28 CACHED
+
+#29 [runtime  2/12] COPY --from=build /app/apps/studio-render/dist/main.mjs /opt/studio-render/main.mjs
+#29 DONE 20.2s
+
+#30 [runtime  3/12] COPY --from=build /app/apps/studio-render/dist/child.mjs /opt/studio-render/child.mjs
+#30 DONE 19.5s
+
+#31 [runtime  4/12] COPY --from=build /app/apps/studio-render/dist/verify.mjs /opt/studio-render/verify.mjs
+#31 DONE 19.7s
+
+#32 [runtime  5/12] COPY --from=build /app/apps/studio-render/dist/guard /opt/studio-render/native/guard
+#32 DONE 19.2s
+
+#33 [runtime  6/12] COPY --from=build /app/apps/studio-render/dist/sandbox-init /opt/studio-render/native/sandbox-init
+#33 DONE 16.5s
+
+#34 [runtime  7/12] COPY --from=build /app/apps/studio-render/dist/entrypoint /opt/studio-render/native/entrypoint
+#34 DONE 16.7s
+
+#35 [runtime  8/12] COPY --from=build /app/apps/studio-render/dist/bundle /opt/studio-render/bundle
+#35 DONE 16.8s
+
+#36 [runtime  9/12] COPY --from=build /runtime-deps/node_modules /opt/studio-render/deps
+#36 DONE 17.1s
+
+#37 [runtime 10/12] COPY --from=build /app/apps/studio-render/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64 /opt/studio-render/browser
+#37 DONE 21.5s
+
+#38 [runtime 11/12] COPY --from=build /codec /opt/studio-render/codec
+#38 DONE 23.1s
+
+#39 [runtime 12/12] RUN mkdir -p /work /runtime && cp /usr/local/bin/node /runtime/node     && chmod 0755 /work && chmod 0755 /opt/studio-render/native/* /usr/bin/bwrap     && find /opt/studio-render /usr -xdev -type f -perm /6000 -exec chmod a-s {} +
+#39 DONE 23.2s
+
+#40 exporting to oci image format
+#40 exporting layers
+#40 exporting layers 31.7s done
+#40 exporting manifest sha256:9788c4ba7a86505b6998064299f679bd185a2a35444979d1996fe1df68d53d95 0.0s done
+#40 exporting config sha256:7b267b419f7673ba351f016c31d7d8224bc75fc4ddde76e3529a0e9e99e59d46 0.0s done
+#40 sending tarball
+#40 sending tarball 5.2s done
+#40 DONE 37.0s

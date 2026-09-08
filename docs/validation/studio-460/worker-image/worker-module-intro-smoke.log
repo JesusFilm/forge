@@ -1,0 +1,4 @@
+{"phase":"resolution","node":"v22.22.3","resolved":{"workspace":"/app/packages/devotional-workspace/src/index.ts","styles":"/app/packages/shorts-compositions/src/devotional/styles.ts"},"workspaceSchema":"function","stylesSchema":"function","ffmpeg":"ffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers"}
+{"phase":"compositions","compositions":[{"id":"devotional","width":1080,"height":1920,"fps":30,"durationInFrames":714},{"id":"devotional-wide","width":1920,"height":1080,"fps":30,"durationInFrames":714}]}
+{"phase":"rendered-still","id":"devotional","bytes":1967934,"width":1080,"height":1920}
+{"phase":"rendered-still","id":"devotional-wide","bytes":1306152,"width":1920,"height":1080}

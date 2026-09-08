@@ -1,0 +1,11 @@
+Running as unit: studio460-render-unrelated1.scope; invocation ID: 7cbc7185d6da469d98fdb0e243e24914
+file:///opt/studio-render/main.mjs:14329
+      throw new StudioContainmentError(
+            ^
+
+StudioContainmentError: Studio containment cgroup does not contain this process
+    at currentCgroupDirectory (file:///opt/studio-render/main.mjs:14329:13)
+    at async createExecutionService (file:///opt/studio-render/main.mjs:14496:46)
+    at async file:///opt/studio-render/main.mjs:14791:15
+
+Node.js v22.22.3

@@ -1,0 +1,40 @@
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (9943d2dd)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json — 44 files
+[STARTED] *.{ts,tsx} — 0 files
+[STARTED] * — 44 files
+[SKIPPED] *.{ts,tsx} — no files
+[STARTED] prettier --write --ignore-unknown
+[COMPLETED] prettier --write --ignore-unknown
+[COMPLETED] * — 44 files
+[COMPLETED] package.json — 44 files
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[COMPLETED] Applying modifications from tasks...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+
+> forge@ format:check /home/tataihono/.cache/forge-studio-460-image-worktree
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+cli@20.4.1_@types+node@25.2.3_typescript@5.9.3/node_modules/@commitlint/cli/lib/cli.js:132
+        throw err;
+        ^
+
+Error: Cannot find module "@commitlint/config-conventional" from "/home/tataihono/.cache/forge-studio-460-image-worktree"
+    at resolveId (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+resolve-extends@20.4.0/node_modules/@commitlint/resolve-extends/lib/index.js:153:17)
+    at resolveConfig (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+resolve-extends@20.4.0/node_modules/@commitlint/resolve-extends/lib/index.js:137:20)
+    at file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+resolve-extends@20.4.0/node_modules/@commitlint/resolve-extends/lib/index.js:98:26
+    at Array.reduce (<anonymous>)
+    at loadExtends (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+resolve-extends@20.4.0/node_modules/@commitlint/resolve-extends/lib/index.js:97:22)
+    at resolveExtends (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+resolve-extends@20.4.0/node_modules/@commitlint/resolve-extends/lib/index.js:81:28)
+    at load (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+load@20.4.0_@types+node@25.2.3_typescript@5.9.3/node_modules/@commitlint/load/lib/load.js:46:28)
+    at async main (file:///home/tataihono/.codex/worktrees/06c1/forge/node_modules/.pnpm/@commitlint+cli@20.4.1_@types+node@25.2.3_typescript@5.9.3/node_modules/@commitlint/cli/lib/cli.js:200:20) {
+  code: 'MODULE_NOT_FOUND'
+}
+
+Node.js v24.20.0
+husky - commit-msg script failed (code 1)

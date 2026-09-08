@@ -52,3 +52,7 @@ Independent fixed-base Standards and Spec reviews found lease-time, discoverabil
 Calendar's actual due dispatch/Watch acceptance and feat-458 creative-quality/ElevenLabs acceptance remain separately open. These proposals do not authorize their execution or mark 460 complete.
 
 Final timing qualification: the single agreed idle Manager follow-up did not reproduce the previous 41 ms increase, but host activity and changed timing direction leave end-to-end latency inconclusive. No speedup/no-regression guarantee is claimed; all three samples, CPU/network/long-task evidence and the pre-navigation ENOSPC qualification are retained in `loading`. No further performance retries were performed.
+
+### Local membership correction follow-up
+
+See [cgroup admission](cgroup-admission/README.md) for the failure-first own/unrelated/overlay tests and rebuilt native-image startup evidence, including the preserved misnamed failing log. Startup now binds the actual process to cgroup2 membership and rejects subordinate overlays. The rebuilt own-leaf service starts, but signed rendering remains HTTP422; functioning execution and external acceptance remain open. See [retained worker image](worker-image/README.md) for corrected actual Node/Chromium membership and both bounded composition stills. This is limited HTTP/module/still qualification, not full-video/codec/audio/production transfer. Historical runtime/build claims remain withdrawn.

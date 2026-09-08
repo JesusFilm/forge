@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises"
+import { open, readFile, statfs } from "node:fs/promises"
 import { join } from "node:path"
 export class StudioContainmentError extends Error {}
 /** Read enforced leaf limits, not environment claims or plan maxima. Conservative:
@@ -40,5 +40,47 @@ export async function currentCgroupDirectory() {
   const path = row.slice(3)
   if (!path.startsWith("/") || path.split("/").includes(".."))
     throw new StudioContainmentError("Invalid unified cgroup path")
-  return join("/sys/fs/cgroup", path)
+  const directory = join("/sys/fs/cgroup", path).replace(/\/+$/, "")
+  // A cgroup.procs file from this process must not be overlaid onto a
+  // different bounded cgroup (nor may individual limit files be overlaid).
+  // Mountinfo escapes whitespace/backslashes in mountpoint fields.
+  const mounts = (await readFile("/proc/self/mountinfo", "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) =>
+      line
+        .split(" ")[4]
+        ?.replace(/\\([0-7]{3})/g, (_, octal) =>
+          String.fromCharCode(Number.parseInt(octal, 8)),
+        ),
+    )
+  if (mounts.some((point) => point?.startsWith(`${directory}/`)))
+    throw new StudioContainmentError(
+      "Studio containment rejects overlaid cgroup files",
+    )
+  const members = join(directory, "cgroup.procs")
+  if ((await statfs(members, { bigint: true })).type !== 0x63677270n)
+    throw new StudioContainmentError("Studio containment requires cgroup2")
+  const file = await open(members, "r")
+  try {
+    // cgroup.procs translates IDs into the reader's PID namespace. Compare
+    // with this Node process, not an outer/host PID or a launcher assertion.
+    const buffer = Buffer.alloc(65537)
+    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0)
+    if (
+      bytesRead === buffer.length ||
+      !buffer
+        .subarray(0, bytesRead)
+        .toString("utf8")
+        .trim()
+        .split(/\s+/)
+        .includes(String(process.pid))
+    )
+      throw new StudioContainmentError(
+        "Studio containment cgroup does not contain this process",
+      )
+  } finally {
+    await file.close()
+  }
+  return directory
 }

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "studio460-worker-image1",
+    "pid": 101590,
+    "beforeMembers": "101590\n",
+    "beforeThreads": "101590\n101597\n101598\n101599\n101600\n101601\n101602\n",
+    "runcState": {
+      "code": 0,
+      "stdout": "{\n  \"ociVersion\": \"1.3.0\",\n  \"id\": \"studio460-worker-image1\",\n  \"pid\": 101590,\n  \"status\": \"running\",\n  \"bundle\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle\",\n  \"rootfs\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle/rootfs\",\n  \"created\": \"2026-09-08T03:27:48.353539022Z\",\n  \"owner\": \"\"\n}",
+      "stderr": ""
+    },
+    "signal": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "forcedOwnedCgroupKill": true,
+    "pidExistsAfter": false,
+    "cgroupExistsAfter": false,
+    "membersAfter": null
+  },
+  {
+    "name": "studio460-worker-image2",
+    "pid": 108997,
+    "beforeMembers": "108997\n",
+    "beforeThreads": "108997\n109004\n109005\n109006\n109007\n109008\n109009\n",
+    "runcState": {
+      "code": 0,
+      "stdout": "{\n  \"ociVersion\": \"1.3.0\",\n  \"id\": \"studio460-worker-image2\",\n  \"pid\": 108997,\n  \"status\": \"running\",\n  \"bundle\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle\",\n  \"rootfs\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle/rootfs\",\n  \"created\": \"2026-09-08T03:33:38.603467805Z\",\n  \"owner\": \"\"\n}",
+      "stderr": ""
+    },
+    "signal": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "forcedOwnedCgroupKill": true,
+    "pidExistsAfter": false,
+    "cgroupExistsAfter": false,
+    "membersAfter": null
+  },
+  {
+    "name": "studio460-worker-image3",
+    "pid": 142339,
+    "beforeMembers": "142339\n",
+    "beforeThreads": "142339\n142361\n142362\n142363\n142364\n142365\n142370\n",
+    "runcState": {
+      "code": 0,
+      "stdout": "{\n  \"ociVersion\": \"1.3.0\",\n  \"id\": \"studio460-worker-image3\",\n  \"pid\": 142339,\n  \"status\": \"running\",\n  \"bundle\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle\",\n  \"rootfs\": \"/home/tataihono/.cache/forge-studio-460-image-runtime/worker-oci-bundle/rootfs\",\n  \"created\": \"2026-09-08T04:06:01.293953832Z\",\n  \"owner\": \"\"\n}",
+      "stderr": ""
+    },
+    "signal": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "forcedOwnedCgroupKill": true,
+    "pidExistsAfter": false,
+    "cgroupExistsAfter": false,
+    "membersAfter": null
+  }
+]

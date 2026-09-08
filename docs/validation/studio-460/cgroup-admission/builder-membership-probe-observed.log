@@ -1,0 +1,28 @@
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 245B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/2] FROM docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+#4 resolve docker.io/library/node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752 0.0s done
+#4 CACHED
+
+#5 [2/2] RUN node -e "console.log(require('fs').readFileSync('/proc/self/cgroup','utf8')); setTimeout(()=>{},8000)"
+#5 11.60 0::/
+#5 11.60 
+#5 DONE 19.7s
+
+#6 exporting to oci image format
+#6 exporting layers
+#6 exporting layers 0.4s done
+#6 exporting manifest sha256:c2113c73d45a04852b281fa64dee81abe50005f725c17fc76ee759272969fe57 done
+#6 exporting config sha256:fb94bd05ac4ea467ad883830b4fe629fd409818562ab5ac512e075bdee873d6c done
+#6 sending tarball
+#6 sending tarball 1.0s done
+#6 DONE 1.4s
