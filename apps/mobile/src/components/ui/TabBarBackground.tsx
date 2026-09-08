@@ -7,6 +7,7 @@ import {
 
 import { TAB_BAR_MATERIAL_TINT, TAB_BAR_PILL_RADIUS } from "../../lib/tabBar"
 import { PlatformBlur } from "./PlatformBlur"
+import { TabBarLens } from "./TabBarLens"
 
 /**
  * The tab bar's material. Returning null on Android is load-bearing: a non-null
@@ -19,21 +20,27 @@ export function TabBarBackground() {
   // isGlassEffectAPIAvailable guards iOS 26 betas that crash without it.
   if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
-      <GlassView
-        style={styles.material}
-        glassEffectStyle="regular"
-        colorScheme="dark"
-        tintColor={TAB_BAR_MATERIAL_TINT}
-      />
+      <>
+        <GlassView
+          style={styles.material}
+          glassEffectStyle="regular"
+          colorScheme="dark"
+          tintColor={TAB_BAR_MATERIAL_TINT}
+        />
+        <TabBarLens />
+      </>
     )
   }
 
   return (
-    <PlatformBlur
-      style={[styles.material, { backgroundColor: TAB_BAR_MATERIAL_TINT }]}
-      intensity={60}
-      tint="dark"
-    />
+    <>
+      <PlatformBlur
+        style={[styles.material, { backgroundColor: TAB_BAR_MATERIAL_TINT }]}
+        intensity={60}
+        tint="dark"
+      />
+      <TabBarLens />
+    </>
   )
 }
 

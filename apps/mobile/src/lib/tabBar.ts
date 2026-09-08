@@ -19,6 +19,44 @@ export const TAB_BAR_CLEARANCE_GAP = 12
 export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
 
 /**
+ * The tab screens, in the order `app/(tabs)/_layout.tsx` declares them. The
+ * sliding lens derives its position from this, so the two must not drift —
+ * `tabBarLensOrder.guard.test.js` pins them together.
+ */
+export const TAB_ROUTE_NAMES = ["index", "watch", "library", "profile"] as const
+
+/** Inset of the lens inside the capsule, per side. */
+export const TAB_BAR_LENS_INSET = 6
+export const TAB_BAR_LENS_HEIGHT = TAB_BAR_PILL_HEIGHT - TAB_BAR_LENS_INSET * 2
+export const TAB_BAR_LENS_RADIUS = TAB_BAR_LENS_HEIGHT / 2
+export const TAB_BAR_LENS_DURATION_MS = 260
+
+/**
+ * The lens is weighted to its RIM, not its fill. Measured on a flat background
+ * by selecting a cell and then leaving it: the fill lifts the ground from
+ * rgb(20,18,17) to rgb(35,33,32), costing the ACTIVE label 3.49:1 -> 3.11:1.
+ * That label already failed AA at 3.39:1 (D2), so the fill stays low and the
+ * rim carries the visibility instead.
+ */
+export const TAB_BAR_LENS_FILL = "rgba(255, 255, 255, 0.05)"
+export const TAB_BAR_LENS_BORDER = "rgba(255, 255, 255, 0.38)"
+
+/**
+ * Which tab the lens should sit over, from expo-router's segments. The group
+ * segment alone means the index route, and anything unrecognised parks the
+ * lens on the first tab rather than sliding somewhere arbitrary.
+ */
+export function tabIndexForSegments(segments: readonly string[]): number {
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const found = TAB_ROUTE_NAMES.indexOf(
+      segments[i] as (typeof TAB_ROUTE_NAMES)[number],
+    )
+    if (found >= 0) return found
+  }
+  return 0
+}
+
+/**
  * Space the bar occupies ABOVE the safe-area inset. The mini player reserves
  * this. Android keeps its present (already 7pt optimistic) value — correcting
  * it here would move the Android window and read as a regression.

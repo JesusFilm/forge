@@ -24,6 +24,7 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
 }))
+jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
   isLiquidGlassAvailable: () => true,

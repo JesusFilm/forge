@@ -779,6 +779,18 @@ disagree about the bar's size.
   problem as a tint over bare content:** the material has already darkened the
   ground, so contrast rises monotonically with alpha and there is no bad middle
   value to avoid. 0.26 is the computed minimum; 0.30 ships.
+- **The selected tab carries a sliding lens** (`TabBarLens.tsx`). It derives its
+  cell from `useSegments()` — neither `@react-navigation/native` nor a
+  navigation-state hook resolves from this app — and animates `translateX` on
+  the native driver. `tabBarBackground` therefore returns an ELEMENT
+  (`() => <TabBarBackground />`), not the component: the bar CALLS that option,
+  so a component passed directly would run its hooks inside `BottomTabBar`.
+  `TAB_ROUTE_NAMES` must stay in the order `<Tabs.Screen>` declares, and
+  `tabBarLensOrder.guard.test.js` pins the two together.
+- **The lens is rim-weighted on purpose.** Its fill lifts the ground under the
+  active label from rgb(20,18,17) to rgb(35,33,32), costing that label
+  3.49:1 -> 3.11:1 (measured on a flat background, lens on vs off in the same
+  cell). Idle labels are untouched at 7.41:1.
 - **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
   app ground is 3.39:1, and it sits at a middling luminance, so it fails against
   dark and light grounds alike. Only a colour change fixes it, and

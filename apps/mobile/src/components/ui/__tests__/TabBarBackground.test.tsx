@@ -16,12 +16,23 @@ import { TabBarBackground } from "../TabBarBackground"
 
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
 // this declaration and rejects any other out-of-scope name in the factory.
-const mockGlass = { liquid: true, api: true }
-jest.mock("expo-glass-effect", () => ({
-  GlassView: () => null,
-  isLiquidGlassAvailable: () => mockGlass.liquid,
-  isGlassEffectAPIAvailable: () => mockGlass.api,
-}))
+// The factory owns its state: TabBarLens pulls expo-router at import time, so
+// the factory now runs before a module-scope `const` would be initialised.
+jest.mock("expo-glass-effect", () => {
+  const state = { liquid: true, api: true }
+  return {
+    GlassView: () => null,
+    isLiquidGlassAvailable: () => state.liquid,
+    isGlassEffectAPIAvailable: () => state.api,
+    __state: state,
+  }
+})
+const mockGlass = (
+  jest.requireMock("expo-glass-effect") as unknown as {
+    __state: { liquid: boolean; api: boolean }
+  }
+).__state
+jest.mock("expo-router", () => ({ useSegments: () => ["(tabs)"] }))
 jest.mock("../PlatformBlur", () => ({
   PlatformBlur: () => null,
 }))

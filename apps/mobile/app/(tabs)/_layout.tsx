@@ -19,7 +19,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
         tabBarStyle,
-        tabBarBackground: TabBarBackground,
+        // Returned as an ELEMENT, not passed as the component: the bar calls
+        // tabBarBackground(), so hooks would otherwise land in ITS render.
+        tabBarBackground: () => <TabBarBackground />,
         // A floating pill glued to the keyboard's top edge reads as a bug.
         // Unset on Android, exactly as today.
         tabBarHideOnKeyboard: Platform.OS === "ios" ? true : undefined,

@@ -6,6 +6,8 @@ import { Platform } from "react-native"
 
 import {
   TAB_BAR_CLEARANCE_GAP,
+  TAB_ROUTE_NAMES,
+  tabIndexForSegments,
   TAB_BAR_FLAT_STYLE,
   TAB_BAR_PILL_HEIGHT,
   TAB_BAR_PILL_LIFT,
@@ -111,5 +113,34 @@ describe("useTabBarClearance", () => {
   it("is ZERO on Android, where the bar still displaces content", () => {
     setPlatform("android")
     expect(useTabBarClearance()).toBe(0)
+  })
+})
+
+describe("tabIndexForSegments", () => {
+  it("puts the lens on each tab's own segment", () => {
+    expect(tabIndexForSegments(["(tabs)", "watch"])).toBe(1)
+    expect(tabIndexForSegments(["(tabs)", "library"])).toBe(2)
+    expect(tabIndexForSegments(["(tabs)", "profile"])).toBe(3)
+  })
+
+  it("reads the group segment alone as the index route", () => {
+    // app/(tabs)/index.tsx is "/", so expo-router emits only the group.
+    expect(tabIndexForSegments(["(tabs)"])).toBe(0)
+  })
+
+  it("scans from the RIGHT, so a nested segment does not win", () => {
+    // "index" is a tab name; a left-to-right scan would return it here.
+    expect(tabIndexForSegments(["(tabs)", "index", "profile"])).toBe(3)
+  })
+
+  it("parks on the first tab for anything unrecognised", () => {
+    expect(tabIndexForSegments([])).toBe(0)
+    expect(tabIndexForSegments(["something-else"])).toBe(0)
+  })
+
+  it("covers every declared tab", () => {
+    TAB_ROUTE_NAMES.forEach((name, i) => {
+      expect(tabIndexForSegments(["(tabs)", name])).toBe(i)
+    })
   })
 })
