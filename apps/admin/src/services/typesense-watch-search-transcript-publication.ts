@@ -7,10 +7,15 @@ import {
   resolveWatchSearchTranscriptPublicationEnabled,
 } from "@/config/env"
 import { transcriptContentEmbeddingWhereForContractId } from "./content-embedding-contract"
-import { TypesenseClient } from "./typesense-client"
+import {
+  TypesenseClient,
+  type TypesenseCollection,
+  type TypesenseCollectionField,
+} from "./typesense-client"
 import {
   advanceCurrentWatchSearchTranscriptProjection,
   initialCurrentWatchSearchTranscriptProjectionRevision,
+  resolveCurrentWatchSearchTranscriptProjectionWithFallback,
   WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID as CURRENT_TRANSCRIPT_PROJECTION_ID,
 } from "./typesense-watch-search-current-transcript-projection"
 import {
@@ -20,7 +25,10 @@ import {
 import { freezeCurrentWatchSearchProfile } from "./typesense-watch-search-profile"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import { withTypesenseWatchSearchIndexLock } from "./typesense-watch-search-publication-lock"
-import type { TypesenseWatchTranscriptDocument } from "./typesense-watch-search-schema"
+import {
+  type TypesenseWatchTranscriptDocument,
+  watchTranscriptCollectionSchema,
+} from "./typesense-watch-search-schema"
 
 const BASE_LEASE_MS = 60_000
 const MAX_LEASE_MS = 5 * 60_000
@@ -31,6 +39,8 @@ const STALE_DELETE_BATCH_SIZE = 100
 const BASE_RETRY_DELAY_MS = 5_000
 const MAX_RETRY_DELAY_MS = 5 * 60_000
 const POLL_MS = 5_000
+const COMPLETION_TRANSACTION_MAX_WAIT_MS = 10_000
+const COMPLETION_TRANSACTION_TIMEOUT_MS = 30_000
 
 export const WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID =
   CURRENT_TRANSCRIPT_PROJECTION_ID
@@ -113,7 +123,11 @@ type CanonicalTranscriptSnapshotReader = Pick<
 
 type TypesenseTranscriptPublisher = Pick<
   TypesenseClient,
-  "deleteDocumentsByFilter" | "getDocument" | "getAlias" | "importDocuments"
+  | "deleteDocumentsByFilter"
+  | "getCollectionSchema"
+  | "getDocument"
+  | "getAlias"
+  | "importDocuments"
 >
 
 type IndexLockRunner = <T>(run: () => Promise<T>) => Promise<T>
@@ -332,6 +346,72 @@ function assertIncrementalPublicationIdentity(
     throw new WatchSearchTranscriptPublicationError(
       "incremental transcript publication identity drifted; a full transcript rebuild is required",
     )
+  }
+}
+
+const REQUIRED_TRANSCRIPT_COLLECTION_FIELDS = watchTranscriptCollectionSchema(
+  "incremental-publication-schema",
+).fields
+const REQUIRED_SEARCHABLE_TRANSCRIPT_COLLECTION_FIELDS = new Set([
+  "documentKind",
+  "canonicalVideoId",
+  "language",
+  "publiclyVisible",
+  "embedding",
+])
+
+function assertIncrementalTranscriptCollectionSchema(
+  collectionName: string,
+  actual: TypesenseCollection,
+): void {
+  if (actual.name !== collectionName) {
+    throw new WatchSearchTranscriptPublicationError(
+      `Typesense returned transcript schema ${actual.name} for ${collectionName}`,
+    )
+  }
+  if (actual.fields.length !== REQUIRED_TRANSCRIPT_COLLECTION_FIELDS.length) {
+    throw new WatchSearchTranscriptPublicationError(
+      `active transcript collection ${collectionName} field count does not match the Watch Search reader contract`,
+    )
+  }
+
+  const actualByName = new Map(
+    actual.fields.map((field) => [field.name, field]),
+  )
+  for (const expected of REQUIRED_TRANSCRIPT_COLLECTION_FIELDS) {
+    const observed = actualByName.get(expected.name)
+    if (!observed || observed.type !== expected.type) {
+      throw new WatchSearchTranscriptPublicationError(
+        `active transcript collection ${collectionName} field ${expected.name} does not match the Watch Search reader contract`,
+      )
+    }
+    // Typesense returns `index: false` explicitly for stored-only fields while
+    // our schema builder omits the default `index: true`. Comparing only
+    // properties present on `expected` would therefore accept a vector field
+    // that can be imported and read back but cannot satisfy the reader's
+    // `vector_query` (and likewise accept disabled filter/group fields).
+    if (
+      REQUIRED_SEARCHABLE_TRANSCRIPT_COLLECTION_FIELDS.has(expected.name) &&
+      observed.index === false
+    ) {
+      throw new WatchSearchTranscriptPublicationError(
+        `active transcript collection ${collectionName} field ${expected.name} is not indexed for the Watch Search reader contract`,
+      )
+    }
+    for (const key of [
+      "facet",
+      "index",
+      "locale",
+      "optional",
+      "sort",
+      "num_dim",
+    ] as const satisfies readonly (keyof TypesenseCollectionField)[]) {
+      if (expected[key] !== undefined && observed[key] !== expected[key]) {
+        throw new WatchSearchTranscriptPublicationError(
+          `active transcript collection ${collectionName} field ${expected.name} does not match the Watch Search reader contract`,
+        )
+      }
+    }
   }
 }
 
@@ -746,7 +826,15 @@ async function completeTranscriptPublicationBatch(
           projectionRevision: projection.projectionRevision,
         }
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        // Completion reloads and fingerprints every accepted vector while the
+        // transaction protects the canonical snapshot and fenced event update.
+        // Prisma's 2s max-wait / 5s interactive-transaction defaults are too
+        // small for the accepted 1,024-chunk ceiling under worker pool load.
+        maxWait: COMPLETION_TRANSACTION_MAX_WAIT_MS,
+        timeout: COMPLETION_TRANSACTION_TIMEOUT_MS,
+      },
     )
   } catch (completionError) {
     // PostgreSQL can commit a transaction and then lose the acknowledgement
@@ -882,6 +970,52 @@ export async function loadCurrentWatchSearchTranscriptProjection(
   }
 }
 
+async function loadIncrementalPublicationProjectionState(input: {
+  prisma: PrismaClient
+  typesense: Pick<TypesenseTranscriptPublisher, "getDocument">
+  transcriptCollection: string
+  collection: TypesenseCollection
+  affectedDocumentIds: readonly string[]
+}): Promise<ProjectionState> {
+  const stored = await loadCurrentWatchSearchTranscriptProjection(input.prisma)
+  const hasNoStoredIdentity =
+    stored.transcriptCollection == null &&
+    stored.contentEmbeddingContractId == null &&
+    stored.transcriptChunkingVersion == null
+  if (!hasNoStoredIdentity) return stored
+
+  // An empty collection has no existing corpus identity to preserve, so its
+  // first verified event may establish the durable projection.
+  if (input.collection.num_documents === 0) return stored
+
+  // A failed first attempt can leave only this batch's documents behind when
+  // fail-closed cleanup is itself unavailable. The lease-fenced retry will
+  // overwrite or delete that entire corpus, so it remains safe to bootstrap.
+  // A populated pre-migration collection is different: one changed transcript
+  // cannot certify the compatibility of documents outside its affected set.
+  if (input.collection.num_documents != null) {
+    const affectedDocumentIds = [...new Set(input.affectedDocumentIds)]
+    const existingAffectedDocuments = await mapWithConcurrency(
+      affectedDocumentIds,
+      READBACK_CONCURRENCY,
+      (id) => input.typesense.getDocument(input.transcriptCollection, id),
+    )
+    if (
+      existingAffectedDocuments.filter((document) => document != null)
+        .length === input.collection.num_documents
+    ) {
+      return stored
+    }
+  }
+
+  return resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+    prisma: input.prisma,
+    currentProfile: {
+      binding: { transcript: input.transcriptCollection },
+    },
+  })
+}
+
 export async function publishOneCurrentTranscriptToWatchSearch(input: {
   prisma: PrismaClient
   typesense: TypesenseTranscriptPublisher
@@ -928,8 +1062,23 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
         }
         const profile = await freezeCurrentWatchSearchProfile(input.typesense)
         transcriptCollection = profile.binding.transcript
+        const transcriptCollectionSchema =
+          await input.typesense.getCollectionSchema(transcriptCollection)
+        assertIncrementalTranscriptCollectionSchema(
+          transcriptCollection,
+          transcriptCollectionSchema,
+        )
         assertIncrementalPublicationIdentity(
-          await loadCurrentWatchSearchTranscriptProjection(prisma),
+          await loadIncrementalPublicationProjectionState({
+            prisma,
+            typesense: input.typesense,
+            transcriptCollection,
+            collection: transcriptCollectionSchema,
+            affectedDocumentIds: [
+              ...batch.currentDocumentIds,
+              ...batch.staleDocumentIds,
+            ],
+          }),
           {
             transcriptCollection,
             contentEmbeddingContractId: batch.contentEmbeddingContractId,

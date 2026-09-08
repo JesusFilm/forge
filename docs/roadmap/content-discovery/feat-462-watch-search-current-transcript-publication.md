@@ -51,8 +51,9 @@ larger rebuild or candidate flow runs.
   copy vectors into the outbox.
 - Add a disabled-by-default worker that claims the latest event batch for one
   transcript, reloads canonical chunks from Postgres, upserts them into the
-  active Typesense transcript collection, validates every JSONL response line,
-  independently reads the exact documents back, and removes stale ids.
+  active Typesense transcript collection after validating its exact reader
+  schema, validates every JSONL response line, independently reads the exact
+  documents back, and removes stale ids.
 - Advance exactly one current transcript projection revision only when canonical
   and projected fingerprints match, and complete the claimed event batch
   atomically.

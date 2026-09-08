@@ -27,7 +27,7 @@ vi.mock("@/services/transcript-embedding.service", async (importOriginal) => {
   }
 })
 
-const { ingestTranscriptEmbeddings, _internals } =
+const { ingestTranscriptEmbeddings, MAX_TRANSCRIPT_INGEST_CHUNKS, _internals } =
   await import("@/services/transcript-embedding-ingest.service")
 
 function activeContractRow() {
@@ -356,6 +356,59 @@ describe("ingestTranscriptEmbeddings", () => {
         transcriptChunkingVersion: "mastra-v1",
       }),
     })
+  })
+
+  it("rejects missing or unpersistable chunking-version identity before writing", async () => {
+    const prisma = buildPrisma()
+    const missingVersion = payload()
+    delete (missingVersion.chunking as { version?: string }).version
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, missingVersion),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          chunking: {
+            type: "segment-aware",
+            maxChunkTokens: 500,
+            overlapTokens: 100,
+            version: "v".repeat(129),
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("rejects chunk counts above the bounded publication-work ceiling", async () => {
+    const prisma = buildPrisma()
+    const chunkEmbedding = new Array(
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ).fill(0.01)
+    const body = payload({
+      chunks: Array.from(
+        { length: MAX_TRANSCRIPT_INGEST_CHUNKS + 1 },
+        (_, chunkIndex) => ({
+          chunkIndex,
+          chunkId: `chunk-${chunkIndex}`,
+          text: `Chunk ${chunkIndex}`,
+          tokenCount: 2,
+          embedding: chunkEmbedding,
+        }),
+      ),
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, body),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {

@@ -54,6 +54,7 @@ function rawSqlText(query: unknown): string {
 
 function transcriptCompatibilityQueryResult(
   query: unknown,
+  contractId: string = ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
 ): unknown[] | undefined {
   const sql = rawSqlText(query)
   if (
@@ -64,7 +65,7 @@ function transcriptCompatibilityQueryResult(
     return [
       {
         pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
-        contractId: contract.id,
+        contractId,
         queryProvider: contract.query.provider,
         queryModel: contract.query.model,
         queryNativeDimensions: contract.query.nativeDimensions,
@@ -1041,6 +1042,72 @@ describe("Typesense Watch Search indexer", () => {
     ])
   })
 
+  it("pins one transcript contract and aborts before aliases move when compatibility rotates", async () => {
+    let contractReads = 0
+    const queryRaw = vi.fn(async (query: unknown) => {
+      const sql = rawSqlText(query)
+      if (
+        sql.includes("FROM content_embedding_contract_pointer") &&
+        sql.includes('AS "contractId"')
+      ) {
+        contractReads += 1
+        return transcriptCompatibilityQueryResult(
+          query,
+          contractReads === 1
+            ? ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id
+            : "semantic-transcript-pgvector-v2",
+        )
+      }
+      const compatibility = transcriptCompatibilityQueryResult(query)
+      if (compatibility) return compatibility
+      return []
+    })
+    const prisma = {
+      video: { findMany: vi.fn(async () => []) },
+      $queryRaw: queryRaw,
+    } as unknown as PrismaClient
+    const typesense = {
+      listCollections: vi.fn(async () => []),
+      getAlias: vi.fn(async () => undefined),
+      createCollection: vi.fn(async () => ({})),
+      upsertCurationSet: vi.fn(async () => ({ items: [] })),
+      deleteCurationSet: vi.fn(async () => undefined),
+      importDocuments: vi.fn(async () => undefined),
+      upsertAlias: vi.fn(async () => ({})),
+      deleteCollection: vi.fn(async () => undefined),
+    } as unknown as TypesenseClient
+
+    await expect(
+      rebuildTypesenseWatchSearchIndex({
+        prisma,
+        typesense,
+        buildId: "contract-rotation-test",
+        loadCurations: async () => [],
+        transcriptStrategy: "rebuild",
+      }),
+    ).rejects.toThrow("transcript compatibility changed during rebuild")
+
+    const transcriptQuery = queryRaw.mock.calls
+      .map(
+        ([query]) =>
+          query as unknown as { strings?: string[]; values?: unknown[] },
+      )
+      .find((query) =>
+        query.strings?.join(" ").includes('AS "publiclyVisible"'),
+      )
+    expect(transcriptQuery?.strings?.join(" ")).toContain(
+      "FROM content_embedding_contract contract",
+    )
+    expect(transcriptQuery?.strings?.join(" ")).not.toContain(
+      "content_embedding_contract_pointer pointer",
+    )
+    expect(transcriptQuery?.values).toContain(
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_SEED.id,
+    )
+    expect(typesense.upsertAlias).not.toHaveBeenCalled()
+    expect(typesense.deleteCollection).toHaveBeenCalledTimes(4)
+  })
+
   it("rolls back the new lexical alias without touching reused transcripts", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
@@ -1204,7 +1271,10 @@ describe("Typesense Watch Search indexer", () => {
   it("restores the first alias when publishing the second alias fails", async () => {
     const prisma = {
       video: { findMany: vi.fn(async () => []) },
-      $queryRaw: vi.fn(async () => []),
+      $queryRaw: vi.fn(
+        async (query: unknown) =>
+          transcriptCompatibilityQueryResult(query) ?? [],
+      ),
     } as unknown as PrismaClient
     const typesense = {
       listCollections: vi.fn(async () => []),
