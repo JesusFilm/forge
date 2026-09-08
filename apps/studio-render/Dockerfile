@@ -42,11 +42,19 @@ RUN node --input-type=module -e "import('@remotion/renderer').then(({ensureBrows
 # Named context is staged from the retained reviewed archive outside the repo.
 # No provider/build credential enters an image layer. See IMAGE.md for CI supply.
 COPY --from=studio_codec /codec.tar.xz /tmp/codec.tar.xz
-RUN echo 'da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6  /tmp/codec.tar.xz' | sha256sum -c - \
+# Both reviewed archives contain byte-identical codec binaries. Accept no other
+# packaging; verify the extracted executables independently before final copy.
+RUN codec_sha="$(sha256sum /tmp/codec.tar.xz | cut -d ' ' -f 1)" \
+    && case "$codec_sha" in \
+      da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6) codec_root=ffmpeg-n9.0-latest-linux64-gpl-9.0 ;; \
+      e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4) codec_root=ffmpeg-n9.0.1-27-g9b0578816c-linux64-gpl-9.0 ;; \
+      *) exit 1 ;; \
+    esac \
     && mkdir /codec \
     && tar -xJf /tmp/codec.tar.xz -C /codec --strip-components=2 \
-      ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffmpeg \
-      ffmpeg-n9.0-latest-linux64-gpl-9.0/bin/ffprobe
+      "$codec_root/bin/ffmpeg" "$codec_root/bin/ffprobe" \
+    && echo 'bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6  /codec/ffmpeg' | sha256sum -c - \
+    && echo 'c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c  /codec/ffprobe' | sha256sum -c -
 
 FROM runtime-base AS runtime
 COPY --from=build /tmp/bwrap-build/bwrap /usr/bin/bwrap

@@ -1,0 +1,14 @@
+Running as unit: studio460-exact-image1.scope; invocation ID: e9b5bf1dbe454d508071f0276b5c6c79
+0::/
+
+1111 1109 0:30 /../../../../.. /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime - cgroup2 cgroup2 rw,nsdelegate,memory_recursiveprot,memory_hugetlb_accounting
+1119 1111 0:30 / /sys/fs/cgroup ro,nosuid,nodev,noexec,relatime - cgroup2 cgroup2 rw,nsdelegate,memory_recursiveprot,memory_hugetlb_accounting
+cpu.max max 100000
+
+memory.max max
+
+memory.swap.max max
+
+pids.max max
+
+UID 1000

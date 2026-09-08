@@ -2,6 +2,10 @@
 
 Status: local implementation and release preparation; **full feature acceptance remains open**. Ticket remains in progress. No provider spending, production writes, infrastructure changes, registry uploads, push, merge or deployment occurred.
 
+## Resumed local image work
+
+The authorized local image continuation uses reviewed base `bb6ed63f30b326f468fd7eb8cdf866a022db8ffe`, without replaying earlier prerequisites. Newly installed mapping helpers permit the pinned rootless OCI builder. The execution image now builds and starts under native PID1 with actual bounded cgroups; final renderer/Chromium/codec resolution passes. Signed HTTP rendering fails at the fresh child proc mount, with outer OCI protections preserved. Complete child mask replay is also not established by the existing recipe. See `exact-image/README.md` and its read-only boundary assessment; full exact-image and deployed/provider acceptance remain open.
+
 ## Integration base and owned scope
 
 Review base: `4109b02c31242f1b0ca8c4975b6fada0eb2f3d87`. All reviewed prerequisites, including the separately reviewed internal scheduler hook, precede this base and must not be replayed as part of 460. This change owns migrations 0083–0087. Calendar461 owns 0088 onward; do not copy its WIP. Normal integration must union any independently reviewed Admin build-script additions.

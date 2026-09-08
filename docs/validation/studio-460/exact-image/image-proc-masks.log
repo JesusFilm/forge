@@ -1,0 +1,12 @@
+823 808 0:78 /bus /proc/bus ro,relatime - proc proc rw
+824 808 0:78 /fs /proc/fs ro,relatime - proc proc rw
+825 808 0:78 /irq /proc/irq ro,relatime - proc proc rw
+827 808 0:78 /sys /proc/sys ro,relatime - proc proc rw
+828 808 0:78 /sysrq-trigger /proc/sysrq-trigger ro,relatime - proc proc rw
+829 808 0:83 / /proc/acpi ro,relatime - tmpfs tmpfs ro,size=4k,nr_inodes=1,uid=1000,gid=1000,inode64
+830 808 0:83 / /proc/asound ro,relatime - tmpfs tmpfs ro,size=4k,nr_inodes=1,uid=1000,gid=1000,inode64
+831 808 0:7 /null /proc/kcore rw,nosuid - devtmpfs devtmpfs rw,size=26808068k,nr_inodes=6702017,mode=755,inode64
+832 808 0:7 /null /proc/keys rw,nosuid - devtmpfs devtmpfs rw,size=26808068k,nr_inodes=6702017,mode=755,inode64
+833 808 0:7 /null /proc/latency_stats rw,nosuid - devtmpfs devtmpfs rw,size=26808068k,nr_inodes=6702017,mode=755,inode64
+834 808 0:7 /null /proc/timer_list rw,nosuid - devtmpfs devtmpfs rw,size=26808068k,nr_inodes=6702017,mode=755,inode64
+835 808 0:83 / /proc/scsi ro,relatime - tmpfs tmpfs ro,size=4k,nr_inodes=1,uid=1000,gid=1000,inode64

@@ -17,8 +17,10 @@ try {
   const digest = createHash("sha256")
   for await (const chunk of createReadStream(temporary)) digest.update(chunk)
   if (
-    digest.digest("hex") !==
-    "da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6"
+    ![
+      "da49baa2fd544ac090fa8adac19d2d6d1f781e75556c4f95dcc0a4f2dd22b1a6",
+      "e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4",
+    ].includes(digest.digest("hex"))
   )
     throw new CodecInputError("Codec archive does not match reviewed bytes")
   await rename(temporary, join(directory, "codec.tar.xz"))

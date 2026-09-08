@@ -1,0 +1,8 @@
+file:///home/tataihono/.cache/forge-studio-460-image-runtime/http-render.mjs:29
+if(response.status!==200)throw new Error('Render rejected: '+bytes.toString());
+                               ^
+
+Error: Render rejected: {"code":"FAILED"}
+    at file:///home/tataihono/.cache/forge-studio-460-image-runtime/http-render.mjs:29:32
+
+Node.js v24.20.0
