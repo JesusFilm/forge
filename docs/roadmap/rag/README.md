@@ -10,10 +10,10 @@ database into Admin.
 
 ## Status (September 8, 2026)
 
-- **Total tickets:** 20
-- **Complete:** 15
+- **Total tickets:** 22
+- **Complete:** 16
 - **In progress:** 1
-- **Not started:** 4
+- **Not started:** 5
 - **Blocked:** 0
 
 ## Feature Index
@@ -40,6 +40,9 @@ database into Admin.
 | [feat-460](feat-460-rag-production-readonly-principal.md)      | —                                                             | Provision a least-privilege RAG production reader                  | complete    | [#2180](https://github.com/JesusFilm/forge/pull/2180)                                                        |
 | [feat-461](feat-461-rag-readonly-provision-timeout.md)         | —                                                             | Bound production reader provisioning for network latency           | complete    | [#2185](https://github.com/JesusFilm/forge/pull/2185)                                                        |
 | [feat-463](feat-463-rag-baseline-concerns-investigation.md)    | —                                                             | Investigate baseline recall, coverage, and language-label concerns | not-started | [#2189](https://github.com/JesusFilm/forge/pull/2189)                                                        |
+
+| [feat-466](feat-466-gotquestions-icelandic-slice.md) | — | Complete the local GotQuestions Icelandic slice | complete | — |
+| [feat-467](feat-467-gotquestions-icelandic-negative-retrieval.md) | — | Investigate the Icelandic off-topic retrieval hit | not-started | — |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked

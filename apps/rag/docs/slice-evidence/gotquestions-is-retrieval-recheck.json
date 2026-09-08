@@ -1,0 +1,174 @@
+{
+  "checkedAt": "2026-09-08T03:55:20.661949+00:00",
+  "target": "local Forge RAG, 127.0.0.1:5435/forge_rag, read-only database sessions",
+  "source": "gotquestions",
+  "language": "is",
+  "operation": "fresh retrieval checks",
+  "credentialOrigin": "legacy checkout embedding key only, loaded in memory",
+  "model": "qwen/qwen3-embedding-8b",
+  "minScore": 0.37,
+  "topK": 5,
+  "corpusTextRetained": false,
+  "results": [
+    {
+      "query": "Hver er Jesús Kristur?",
+      "expectedTopPath": "hver-Jesus-Kristur.html",
+      "attempts": [
+        {
+          "exitCode": 0
+        }
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "score": 0.687,
+          "title": "Hver er Jesús Kristur?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/hver-Jesus-Kristur.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 2,
+          "score": 0.644,
+          "title": "Er Guð til?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/er-Gud-til.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 3,
+          "score": 0.624,
+          "title": "Hvert er hjálpræðið?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/hjalprad.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 4,
+          "score": 0.624,
+          "title": "Hvað merkir að taka á móti Jesú sem persónulegum Frelsara?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/personulegur-Frelsari.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 5,
+          "score": 0.599,
+          "title": "Hvað er það að vera kristinn?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/Hvad-kristinn.html",
+          "citationVerified": true
+        }
+      ],
+      "expectedArticleRanksFirst": true,
+      "fiveDistinctVerifiedCitations": true
+    },
+    {
+      "query": "Hvernig get ég fengið fyrirgefningu Guðs?",
+      "expectedTopPath": "thiggja-fyrirgefningu-Guds.html",
+      "attempts": [
+        {
+          "exitCode": 0
+        }
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "score": 0.689,
+          "title": "Hvernig öðlast ég fyrirgefninu Guðs?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/thiggja-fyrirgefningu-Guds.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 2,
+          "score": 0.633,
+          "title": "Hvernig sættist ég við Guð?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/saettast-vid-Gud.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 3,
+          "score": 0.565,
+          "title": "Hvernig get ég vitað með vissu að ég fari til himins þegar ég dey?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/vita-vissu-sina-himininn.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 4,
+          "score": 0.562,
+          "title": "Hvers vegna skyldi ég ekki fremja sjálfsmorð?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/ekki-fremja-sjalfsmord.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 5,
+          "score": 0.559,
+          "title": "Hver eru hin fjögur andlegu lögmál?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/fjogur-andleg-logmal.html",
+          "citationVerified": true
+        }
+      ],
+      "expectedArticleRanksFirst": true,
+      "fiveDistinctVerifiedCitations": true
+    },
+    {
+      "query": "Er líf eftir dauðann?",
+      "expectedTopPath": "lif-eftir-daudann.html",
+      "attempts": [
+        {
+          "exitCode": 0
+        }
+      ],
+      "hits": [
+        {
+          "rank": 1,
+          "score": 0.626,
+          "title": "Er líf eftir dauðann?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/lif-eftir-daudann.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 2,
+          "score": 0.531,
+          "title": "Hvernig get ég vitað með vissu að ég fari til himins þegar ég dey?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/vita-vissu-sina-himininn.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 3,
+          "score": 0.515,
+          "title": "Hvað gerist eftir dauðann?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/gerist-eftir-daudann.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 4,
+          "score": 0.501,
+          "title": "Áttu eilíft líf?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/eilift-lif.html",
+          "citationVerified": true
+        },
+        {
+          "rank": 5,
+          "score": 0.481,
+          "title": "Hver er rétt trú fyrir mig?",
+          "sourceName": "GotQuestions",
+          "url": "https://www.gotquestions.org/islenska/rett-tru-fyrir-mig.html",
+          "citationVerified": true
+        }
+      ],
+      "expectedArticleRanksFirst": true,
+      "fiveDistinctVerifiedCitations": true
+    }
+  ],
+  "passed": true
+}

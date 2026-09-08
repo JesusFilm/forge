@@ -1,0 +1,33 @@
+{
+  "target": "local Forge RAG",
+  "operation": "acquire source",
+  "source": "gotquestions",
+  "pathPrefix": "/islenska/",
+  "rawDocuments": 51,
+  "distinctCanonicalUrls": 51,
+  "pending": 51,
+  "http200": 51,
+  "titled": 51,
+  "landingPages": 0,
+  "minExtractedChars": 1427,
+  "maxExtractedChars": 8697,
+  "normalizedLanguages": {
+    "is": 51
+  },
+  "projectedChunks": 142,
+  "approximateEmbeddingTokens": 54412,
+  "tokenEstimateMethod": "existing chunker character/4 estimate; Icelandic tokenizer usage may differ",
+  "date": "2026-09-08",
+  "approval": "Operator approved acquire source for local gotquestions; approval consumed",
+  "attempted": 51,
+  "written": 51,
+  "skipped": 0,
+  "existingCorpusUnchanged": true,
+  "outsideIcelandicDigest": "12496227e16cbaebdf61e2fee93d0d4537c008fb6d0640857ec839b27c5f2f52",
+  "indexPreview": {
+    "candidateCount": 51,
+    "pathPrefix": "/islenska/",
+    "embeddingModel": "qwen/qwen3-embedding-8b",
+    "mutation": false
+  }
+}

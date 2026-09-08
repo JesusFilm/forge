@@ -309,6 +309,28 @@ describe("applyMutation — remove-source", () => {
 })
 
 describe("parseArgv", () => {
+  it("accepts the pnpm separator before operation flags", () => {
+    expect(
+      parseArgv(["add-lang", "--", "--source", "gotquestions", "--lang", "is"]),
+    ).toEqual({ kind: "add-lang", source: "gotquestions", lang: "is" })
+    expect(
+      parseArgv([
+        "set",
+        "--",
+        "--source",
+        "gotquestions",
+        "--lang",
+        "is",
+        "--stage",
+        "acquire=green",
+      ]),
+    ).toEqual({
+      kind: "set",
+      source: "gotquestions",
+      lang: "is",
+      ops: [{ op: "stage", stage: "acquire", state: "green" }],
+    })
+  })
   it("parses a multi-op set", () => {
     expect(
       parseArgv([
@@ -517,13 +539,18 @@ describe("withExclusiveFileLock", () => {
     const firstMayFinish = new Promise<void>((resolve) => {
       releaseFirst = resolve
     })
+    let firstHasStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => {
+      firstHasStarted = resolve
+    })
 
     const first = withExclusiveFileLock("status.yaml", async () => {
       events.push("first:read")
+      firstHasStarted()
       await firstMayFinish
       events.push("first:write")
     })
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await firstStarted
     const second = withExclusiveFileLock("status.yaml", async () => {
       events.push("second:read")
       events.push("second:write")

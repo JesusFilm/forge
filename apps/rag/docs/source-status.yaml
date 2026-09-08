@@ -86,7 +86,9 @@ sources:
         stages:
           { acquire: green, ingest: green, retrieve: green, evaluate: green }
         scope: French articles hosted on thelife.com
-        note: Forge registry reconciliation; this is distinct from thelife-fr's sibling domain.
+        note:
+          Forge registry reconciliation; this is distinct from thelife-fr's sibling
+          domain.
     slice_file: docs/slices/thelife.md
     last_updated: 2026-08-31
 
@@ -721,5 +723,11 @@ sources:
         status: done
         stages:
           { acquire: green, ingest: green, retrieve: green, evaluate: green }
+      is:
+        status: done
+        stages:
+          { acquire: green, ingest: green, retrieve: green, evaluate: green }
+        scope: Local standalone /islenska/ slice; 51 articles; see
+          docs/slices/gotquestions.md
     slice_file: docs/slices/gotquestions.md
-    last_updated: 2026-08-23
+    last_updated: 2026-09-08
