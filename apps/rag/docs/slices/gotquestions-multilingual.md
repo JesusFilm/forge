@@ -69,7 +69,7 @@ cases and 26 relevant pairs. The operator approved their canonical append and
 final lifecycle closure. The 431-case canonical rerun found relevant documents
 within the top three for all six Icelandic cases, with coverage 0.769. One
 reproduced off-topic false positive is retained in `feat-467`; no identity-matched
-historical regression pass is available or claimed. See the canonical receipt
+historical regression pass is available or claimed. See the canonical results
 and final closure in the Icelandic slice record.
 All other translations remain deferred.
 

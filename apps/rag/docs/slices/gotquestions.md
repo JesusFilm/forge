@@ -188,272 +188,232 @@ normal non-walled production promotion path. Branch: `slice/gotquestions`.
 
 ## Icelandic standalone exception — 2026-09-08
 
-The operator explicitly pulled `is` forward from the deferred multilingual
-campaign. English above remains complete; all other languages stay deferred.
-This section is the Icelandic resume contract under the existing source key.
-**Current state: all four local stages complete.** The six-case canonical append,
-431-case rerun, limitations, and final lifecycle closure are recorded below.
+**Current state: all four local stages complete.** This is the Icelandic resume
+contract under the existing `gotquestions` source key. English remains complete;
+all other translations remain in the deferred [campaign](./gotquestions-multilingual.md).
 Roadmap: `docs/roadmap/rag/feat-466-gotquestions-icelandic-slice.md`.
-
-### Migration acceptance context
-
-The operator confirmed on 2026-09-08 that this work contributes to
-[jfrag #168: prove one small source end to end, soak, and archive jfrag](https://github.com/JesusFilm/jesusfilm-rag/issues/168),
-tracked in Forge by `docs/roadmap/rag/feat-435-rag-proof-soak-archive.md`.
-`feat-466` is the bounded local Icelandic slice within that broader outcome.
-
-The local evidence below proves acquisition through indexing, reconciled
-counts/model, unchanged pre-existing corpus, three retrieval checks, and the
-approved canonical evaluation below. Closing
-this slice's lifecycle record does not close #168 or `feat-435`. The migration
-acceptance still needs its own evidence for dimensions, dashboard and golden
-evaluation, production soak and repeated eval/smoke checks, public/private
-consumer inventory, rollback exercise and expiry, retained final jfrag snapshot,
-default operational aliases, and approved service/secrets/repository retirement.
-The three-query proportional evaluation is not the ticket's golden-eval proof.
-The local run also used an embedding credential from the legacy checkout;
-exclusive Forge operational ownership is not established by this run alone.
-
-Issue #168 requires its preceding migration/cutover work to be complete before
-the final confidence step. Verify those receipts and the `feat-435` production
-current acceptance and production-authority boundaries when resuming the broader
-ticket. This linkage grants no production or retirement approval. The operator
-separately approved the local canonical append and final lifecycle closure.
-
-### Scope and plan
-
-- Acquire only `/islenska/` from
-  `https://www.gotquestions.org/islenska/icelandic.xml` with plain HTTP.
-- Use the opt-in registered `--path-prefix /islenska/` policy, `main .content`,
-  1,500 ms delay, 51-page cap, and an exact 51-article gate before resume or cap.
-  The default English sitemap and `articleBody` extraction remain unchanged.
-- Index only canonical URLs under `https://www.gotquestions.org/islenska/`,
-  filtering before `--limit`; detected content language remains authoritative.
-- Pin the nine existing `gq-*` golden cases to `language: en`.
-- Evaluate proportionately through three queries, each with
-  `--source gotquestions --language is`: “Hver er Jesús Kristur?”,
-  “Hvernig get ég fengið fyrirgefningu Guðs?”, and “Er líf eftir dauðann?”.
-  This initial plan was subsequently expanded by the operator to include six
-  reviewed Icelandic golden cases and a full canonical evaluation.
-- Obtain fresh approval separately for `status:add-lang gotquestions/is`,
-  local `acquire source gotquestions`, local `index source gotquestions`, and
-  the evidence-backed `status:set gotquestions/is` mutation.
-
-### Icelandic checklist
-
-- [x] Read English resume state; prepare path scoping and English eval pins.
-- [x] Public read-only inventory: **52 seen / 51 unique articles / 1 landing
-      page excluded**, one sitemap. Samples at positions 1, 26, and 51 returned
-      HTTP 200, 2,926 / 1,792 / 3,840 extracted characters, each detected `is`
-      at confidence 1.0. No corpus text retained in evidence.
-- [x] Validate the local environment and capture existing English/corpus counts:
-      10,562 documents / 29,634 chunks / 29,634 embeddings; 10,562 raws and no
-      Icelandic pending raws. Detected labels match the historical English
-      record (9,796 `en`, 763 null, one each `ber`/`de`/`fr`).
-- [x] Acquisition preview: 51 resolved, zero already staged, zero written.
-      Read-only model-aware index preview: zero Icelandic candidates. Local
-      environment, 88 focused tests, typecheck, lint, dependency checks, golden
-      schema and nine English pins pass. See
-      [redacted preflight evidence](../slice-evidence/gotquestions-is-preflight.json).
-- [x] Operator approved `status:add-lang gotquestions/is` on 2026-09-08;
-      added the scoped language with all four stages pending and declared `is`
-      alongside `en`. English remains done/all-green; source rollup is now
-      in-progress. `status:check` and 44 affected tests pass.
-- [x] Operator approved local `acquire source gotquestions`; acquired **51/51**
-      articles with zero skips. Staging has 51 unique canonical URLs, all pending,
-      HTTP 200 and titled; zero landing pages. Extracted bodies range from
-      1,427 to 8,697 characters and normalize to **51 `is` / 0 null / 0 other**.
-      The pre-existing 10,562-document corpus digest is unchanged. See
-      [acquisition evidence](../slice-evidence/gotquestions-is-acquisition.json).
-- [x] Index preview resolves exactly 51 Icelandic pending rows with model
-      `qwen/qwen3-embedding-8b`; no writes. Chunking projects 142 chunks and
-      roughly 54,412 input tokens using the existing character/4 estimator
-      (actual Icelandic tokenizer usage may differ).
-- [x] Operator approved local `index source gotquestions` on 2026-09-08;
-      indexed **51 documents / 142 chunks / 142 embeddings**, all detected `is`,
-      with zero skips, updates, pending raws, or chunk-count mismatches. The
-      read-only repeat preview finds zero candidates. Fresh before/after
-      fingerprints prove all 24,518 pre-existing documents and their 77,060
-      chunks/embeddings unchanged, including the 10,562 English GotQuestions
-      documents and 29,634 chunks/embeddings. The historical SHA-256 recipe was
-      not recorded, so this run uses an explicitly documented fresh fingerprint
-      comparison. See [indexing evidence](../slice-evidence/gotquestions-is-indexing.json).
-- [x] Run and assess the three Icelandic queries. The directly matching article
-      ranks first for Jesus' identity (`hver-Jesus-Kristur.html`, **0.685**),
-      God's forgiveness (`thiggja-fyrirgefningu-Guds.html`, **0.688**), and life
-      after death (`lif-eftir-daudann.html`, **0.626**). All 15 returned citations
-      resolve exactly once and belong to `gotquestions` with detected language
-      `is`; each query has five distinct URLs. The third query initially exited
-      without results and passed on one standalone retry; its initial cause was
-      not retained. This is the planned three-query proportional evaluation,
-      not a full golden campaign. See
-      [retrieval evidence](../slice-evidence/gotquestions-is-retrieval.json).
-- Fresh retrieval recheck on 2026-09-08 at 03:55 UTC: the operator requested
-  retrieval verification before lifecycle closure. All three query commands
-  passed on their first attempt against the local database with read-only
-  sessions and explicit `--source gotquestions --language is --top-k 5`.
-  Expected articles again ranked first: Jesus' identity **0.687**, forgiveness
-  **0.689**, and life after death **0.626**. All 15 citations resolved exactly
-  once to `gotquestions` / `is`, with five distinct URLs per query. The local
-  inventory still contains 51 Icelandic documents. Only the embedding key was
-  loaded in memory from the legacy checkout; no corpus text or secrets were
-  retained. See [fresh retrieval evidence](../slice-evidence/gotquestions-is-retrieval-recheck.json).
-  Lifecycle closure was subsequently approved and executed below.
-- [x] Operator approved `status:set` for exact target `gotquestions/is` on
-      2026-09-08 after the fresh retrieval recheck. The command below executed
-      successfully, setting all four stages green and Icelandic done;
-      `status:check` passed. English remains done/all-green, and the derived
-      source rollup is done. Completion is recorded here, in the campaign
-      ledger, and in roadmap ticket `feat-466`. Approval is consumed.
-
-### Icelandic resume hint
-
-Acquisition, indexing, and retrieval are complete locally: 51 Icelandic documents
-and 142 chunks and embeddings, with a fresh three-query retrieval recheck.
-Dedicated evaluation was reopened and then completed with the approved six-case
-canonical append and full 431-case run on 2026-09-08; see the final closure below.
-No local acquisition, indexing, retrieval, or evaluation stage remains. English
-remains complete, and the broader multilingual campaign remains deferred.
-
-Executed once with fresh operator approval on 2026-09-08 (approval consumed):
-
-```sh
-pnpm --filter @forge/rag status:set -- --source gotquestions --lang is --stage acquire=green --stage ingest=green --stage retrieve=green --stage evaluate=green --status done
-```
-
-The post-mutation `status:check` passed. Resume the broader migration acceptance
-separately through `feat-435`; its production, golden-eval, soak, and retirement
-requirements remain open as described above. Local completion does not authorize
-production work or a multilingual campaign. Add the Forge PR link to `feat-466`
-before merge; the operator subsequently explicitly requested the PR closeout.
-
-Durable resume lesson: lifecycle flags assert recorded evidence; `status:set`
-does not execute retrieval. When fresh retrieval is requested, run the queries
-and record their timestamp separately before the approved lifecycle closure.
-
-Local target remains the `apps/rag/docker-compose.yml` database on port 5435.
-Only the embedding key was read into memory from the sibling
-`/Users/jacobusbrink/Jaxs/projects/jesusfilm-rag/.env` and injected into the local
-index/query processes; no legacy database configuration or secrets were copied.
-
-### Dedicated evaluation addendum — 2026-09-08
-
-The operator clarified that evaluation must follow retrieval as a separate stage.
-The earlier closure used the three-query check as proportional evaluation; it
-was not a run of the golden evaluation runner. Approval to start dedicated eval
-reopened `gotquestions/is` with `evaluate=pending` and `status=in-progress` via
-`status:set`. Acquisition, ingest, and retrieval stay green.
-
-- [x] Inspect the evaluation contract and existing cases: the current canonical
-      suite contains 425 cases and zero Icelandic cases. Local `status:check`,
-      dependency checks, and 48 focused evaluation tests pass.
-- [x] Run the current 425-case local evaluation and preserve a redacted receipt.
-      Recall@3 **0.922**, recall@10 **0.991**, coverage **0.816**, MRR **0.793**,
-      P@1 **0.666**. The 17 cases crediting GotQuestions have source recall and
-      coverage **0.824**; this suite has no Icelandic cases. Four cases miss all
-      credited documents in the top 10; all nine expected documents resolve
-      uniquely and are language-eligible. No matched control exists for this
-      run, so these are descriptive metrics, not a regression-gate pass. See
-      [existing-suite evidence](../slice-evidence/gotquestions-evaluation-current.json).
-- [x] Bootstrap six persona-diverse Icelandic candidate cases from all 51 whole
-      extracted documents, independently reviewed through three lenses. Fan-out:
-      51 documents × 3 lenses = 153 document reviews, covering 918 case/document
-      judgments. Use mean relevance at least 0.75 and escalate disagreement
-      greater than 0.5. This single-source language uses relevance for credits
-      and reports soundness separately. The panel proposed 17 credits and
-      escalated 22 disputed pairs, initially excluded provisionally. Those pairs
-      were subsequently resolved by delegated precedent review below. All
-      question-translation checks passed. Separate contexts
-      on one model are not independent human corroboration. Oversized reviewer
-      outputs were discarded and remaining work split into smaller requests;
-      completed reviews were reused without changing their scores.
-- [x] Validate every proposed credit against the local corpus; run the unchanged
-      evaluation runner against an isolated candidate golden file, using
-      language-scoped whole-corpus retrieval at top 10 and cutoff 0.37. Check
-      three off-topic Icelandic negatives separately. All 17 credits resolve
-      exactly once. Six draft cases achieved recall@3 and recall@10 **1.000**,
-      coverage **0.925**, MRR **0.889**, and P@1 **0.833**. This coverage is
-      provisional until disputed exclusions are reviewed. Two negatives return
-      zero hits; the programming negative returns one hit, reproduced on both
-      repeat checks. Do not call the negative check clean or change the cutoff
-      to make it pass. Before/after fingerprints show the corpus unchanged.
-      See [candidate metrics](../slice-evidence/gotquestions-is-evaluation-candidates.json).
-- [x] Resolve the 22 disputed pairs under the operator's explicit instruction to
-      use decisions from prior sources. Cru's whole-document review,
-      EveryStudent's gospel-tail exclusions, and the Arabic audience/next-step
-      distinction yield **9 additions / 13 exclusions**, for **26 relevant pairs
-      across 21 documents**. A supplemental full-document review supports each
-      decision; the agent rejected one recommendation that relied on a generic
-      gospel tail. No retrieval results or original scores were supplied to that
-      review. Original scores were preserved, not rewritten to pass the gate.
-      Total pair judgments: 918 initial + 22 supplemental = **940**.
-      [All decisions and precedents](../slice-evidence/gotquestions-is-relevance-adjudication.md).
-- [x] Rerun the six-case draft against the adjudicated keys: recall@3 and
-      recall@10 **1.000**, coverage **0.769**, MRR **0.889**, P@1 **0.833**.
-      All credits resolve once; corpus fingerprints are unchanged. The expanded
-      keys expose additional missing relevant documents. Questions, model,
-      language, top-k, and cutoff are unchanged. The prior negative evidence is
-      retained, not rerun or reclassified. See
-      [adjudicated evaluation](../slice-evidence/gotquestions-is-evaluation-adjudicated.json).
-- [x] The operator approved steps 1–4 and a PR on 2026-09-08. Append exactly
-      the six reviewed cases and their English explanations to canonical
-      `eval/qa-golden.yaml`: **431 total cases / 26 Icelandic relevant pairs**.
-      The append preserved the preceding 425 cases; the nine English language
-      pins are the earlier necessary multilingual-registry change. The retained
-      first 416 cases are unchanged. The candidate file is now a review snapshot.
-- [x] Rerun all 431 canonical cases with the standard runner, language-scoped
-      whole-corpus retrieval, top-k 10, and score floor 0.37. Completed
-      **2026-09-08 09:35 UTC**, run `5742fb83-54a7-4ef4-9ccd-b41d59d4b2a8`:
-      recall@3 **0.921**, recall@10 **0.991**, coverage **0.815**, MRR **0.795**,
-      P@1 **0.671**. All six Icelandic cases find a relevant document within the
-      top three: recall@3/@10 **1.000**, coverage **0.769**, MRR **0.917**,
-      P@1 **0.833**. All corpus fingerprints remain unchanged. The same four
-      global misses remain; this is not evidence of a new migration regression.
-      See [canonical receipt](../slice-evidence/gotquestions-is-evaluation-canonical.json).
-- [x] Record explicit limitations. The programming negative is a confirmed local
-      false positive, reproduced twice; the other two negative probes returned
-      zero hits. Retain the unchanged cutoff and track investigation in
-      `docs/roadmap/rag/feat-467-gotquestions-icelandic-negative-retrieval.md`.
-      Partial relevant-set coverage remains visible; do not remove legitimate
-      credits to improve metrics. Six LLM-translated questions and contexts on
-      one review model do not constitute independent human validation.
-- [x] Record comparison as **not run: no identity-matched control**. The retained
-      comparator accepts only the historical 416-case control; neither the new
-      431-case suite nor the six-case bootstrap has a matching retained control.
-      This completes local bootstrap evaluation with descriptive evidence, not a
-      regression-gate pass. Broader baseline and migration acceptance remain in
-      `feat-463` and `feat-435`; their status is unchanged by this slice.
-- [x] Execute the operator-approved final lifecycle update once, after canonical
-      evaluation and the dispositions above. `gotquestions/is` is done with all
-      four stages green; English remains done and the source rollup is done.
-      Re-run `status:check` successfully and close `feat-466`.
-
-### Final closure — 2026-09-08
-
 [Forge PR #2202](https://github.com/JesusFilm/forge/pull/2202).
 
-The operator's instruction to proceed with steps 1–4 authorized the reviewed
-canonical append and final `gotquestions/is` lifecycle update. These operations
-executed once and their approval is consumed:
+### Scope and completed operations
+
+The operator pulled Icelandic forward as a standalone exception. The approved
+local operations used `--source gotquestions --path-prefix /islenska/` for
+acquisition and indexing. Source registration declares `en` and `is`; detected
+content language remains authoritative. Each canonical acquisition, indexing,
+golden, and lifecycle write was explicitly approved in the session.
+
+- [x] Register and preview the one-sitemap slice: `/islenska/icelandic.xml`,
+      plain HTTP, `main .content` extraction, 1,500 ms request delay, a 51-page
+      cap, and an exact 51-article inventory check before resume or truncation.
+      Exclude the landing page. The default English crawl remains unchanged.
+- [x] Acquire 51 articles, all HTTP 200, titled, and distinct; zero skips or
+      landing pages. Extracted lengths range from 1,427 to 8,697 characters;
+      all 51 normalize to Icelandic. Pre-existing GotQuestions corpus unchanged.
+- [x] Index 51 documents into **142 chunks / 142 embeddings**, all `is`, using
+      `qwen/qwen3-embedding-8b`. Zero updates, skips, pending raws, or parity
+      mismatches. A repeat preview selects zero candidates. Canonical path
+      filtering occurs before normal and model-aware forced batch limits;
+      ingest rejects out-of-scope rows before writes.
+- [x] Verify fresh before/after fingerprints for all 24,518 pre-existing
+      documents and 77,060 chunks/embeddings, including 10,562 English
+      GotQuestions documents and 29,634 chunks/embeddings. All were unchanged.
+      The historical fingerprint recipe was unavailable; this is a fresh local
+      before/after comparison, not a historical or production identity claim.
+- [x] Run three retrieval checks for Jesus' identity, forgiveness, and life after
+      death with `--source gotquestions --language is --top-k 5`. The expected
+      article ranks first for each. Recheck at **2026-09-08 03:55 UTC** passed on
+      each first attempt; all 15 citations resolve once to this source/language,
+      with five distinct URLs per query. The initial afterlife command had
+      required one retry; its cause was not retained.
+
+All database operations targeted the local Docker database. Only the embedding
+credential was loaded in memory from the legacy checkout; no legacy database
+configuration was used. This local proof does not establish exclusive Forge
+credential ownership or close `feat-435` migration acceptance.
+
+### Dedicated evaluation and final closure
+
+The first lifecycle closure incorrectly treated retrieval smoke as proportional
+evaluation. The operator clarified the requirement for a separate evaluation
+stage; `evaluate` was reopened through `status:set`, and the actual golden
+runner was then executed. Final closure below supersedes that premature closure.
+
+- [x] Run the existing 425-case local suite: recall@3 **0.922**, recall@10
+      **0.991**, coverage **0.816**, MRR **0.793**, P@1 **0.666**. It contained
+      zero Icelandic cases. All nine expected documents for its four complete
+      misses resolved uniquely and were language-eligible.
+- [x] Draft six persona-diverse Icelandic cases from all 51 whole documents.
+      Three separate contexts on `google/gemini-2.5-flash-lite` produced 153
+      document reviews and 918 case/document judgments. The initial 17 credits
+      achieved recall@10 **1.000** and coverage **0.925**; 22 disputed pairs
+      were excluded provisionally. Translation checks raised no flags.
+- [x] Resolve the 22 disagreements using the precedents below: **9 additions /
+      13 exclusions**, yielding **26 relevant pairs across 21 documents**.
+      An additional whole-document judgment for each disagreement brings the
+      total to 940. Retrieval results and initial scores were withheld from
+      that review; one proposed inclusion relying on a generic gospel ending
+      was rejected. Original scores were not rewritten. All credits resolve once.
+- [x] Rerun the adjudicated draft: recall@3/@10 **1.000**, coverage **0.769**,
+      MRR **0.889**, P@1 **0.833**. Expanded relevant sets expose missed documents.
+- [x] Append exactly the six approved cases to `eval/qa-golden.yaml` on
+      2026-09-08, producing **431 cases**. The append preserved the preceding
+      425 cases; nine English language pins were the earlier multilingual
+      registry change. The historical first 416 cases are unchanged.
+      Questions, English explanations, credited paths, and exclusion reasons
+      remain in [the canonical golden file](../../eval/qa-golden.yaml) and its
+      [approved review snapshot](../../eval/candidates-gotquestions-is.yaml).
+- [x] Run all 431 canonical cases, completed **2026-09-08 09:35 UTC**. Global
+      recall@3 **0.921**, recall@10 **0.991**, coverage **0.815**, MRR **0.795**,
+      P@1 **0.671**. The six Icelandic cases have recall@3/@10 **1.000**,
+      coverage **0.769**, MRR **0.917**, P@1 **0.833**. Corpus fingerprints are
+      unchanged. The 23 cases crediting GotQuestions have source recall **0.870**
+      and coverage **0.809**.
+
+| Icelandic case suffix (`gq-is-`) | First relevant rank | Relevant returned / total |
+| -------------------------------- | ------------------: | ------------------------: |
+| `seeker-forgiveness`             |                   1 |                    7 / 10 |
+| `skeptic-jesus-divinity`         |                   1 |                     6 / 6 |
+| `skeptic-bible-trust`            |                   1 |                     1 / 1 |
+| `believer-recurring-sin`         |                   2 |                     1 / 2 |
+| `newcomer-next-steps`            |                   1 |                     2 / 3 |
+| `seeker-purpose`                 |                   1 |                     3 / 4 |
+
+The same four global misses remain: `cru-seeker-ethnic-identity`,
+`esru-newcomer-krest`, `essq-newcomer-tre-veta`, and
+`gq-believer-spiritual-warfare`. Their persistence does not establish a new
+migration regression.
+
+#### Limits and dispositions
+
+- Two off-topic Icelandic probes (faucet repair and sourdough) returned zero
+  hits. The programming probe returned **one off-topic hit**, reproduced on
+  both repeats. These negatives were not rerun with the canonical suite.
+  Retain the unchanged 0.37 cutoff and investigate in
+  `docs/roadmap/rag/feat-467-gotquestions-icelandic-negative-retrieval.md`.
+- Relevant-set coverage is partial; retain all 26 reviewed credits. Six
+  LLM-translated questions and multiple contexts on one model do not constitute
+  independent human or native-speaker validation. Relevance determined credits;
+  soundness was reported separately, with no credited document below the
+  initial panel's mean 0.75 soundness threshold.
+- **Comparison: not run — no identity-matched control.** The retained comparator
+  accepts only the historical 416-case control. Neither the 431-case suite nor
+  the six-case bootstrap has a matching retained control. These descriptive
+  local results do not claim a regression-gate pass. Broader baseline concerns
+  remain in `feat-463`; migration, production, soak, and retirement acceptance
+  remain in `feat-435`.
+
+#### Run provenance
+
+The standard `scripts/eval.ts` runner used language-scoped whole-corpus retrieval,
+top-k 10, cutoff 0.37, model `qwen/qwen3-embedding-8b`, and no query instruction.
+Queries ran with concurrency 8, a maximum of 8 attempts, and 25-second timeouts.
+Canonical run ID: `5742fb83-54a7-4ef4-9ccd-b41d59d4b2a8`.
+
+- `goldenRevision`: `sha256:fbd5bceff4436b00b1079c38ae3f9f860582b9ea21456828cc4dc2372460065b`.
+- `caseSetRevision`: `sha256:e71e9c14aba974886e3b2f08459a11c054e6c372f438bf2acd61dffebb30c724`.
+- `registryRevision`: `sha256:500a0b3b06ad89ff8646d765fd87b1fa4e2f5140ae5849da371bca9ee7712360`.
+- `corpusRevision`: `local-md5:4073f4954401aaae0038dd4619f0e726`.
+- `metricImplementation`: `jesusfilm-rag/eval-metrics@2026-08-06+forge-identity-v1`.
+
+Detailed attempts stay untracked under `eval/attempts/`, following
+[the evaluation procedure](../ops/evaluation.md). On 2026-09-09 the operator
+requested removal of this PR's 11 separate evidence documents. Their necessary
+results and decisions are consolidated here; the pre-existing English language
+audit remains unchanged. No evaluation, golden key, or lifecycle result changed
+as part of this documentation cleanup.
+
+#### Final lifecycle update
+
+After the canonical run and disposition of limitations, the operator approved
+steps 1–4 and a PR. The final update executed once on 2026-09-08:
 
 ```sh
 pnpm --filter @forge/rag status:set -- --source gotquestions --lang is --stage evaluate=green --status done
 pnpm --filter @forge/rag status:check
 ```
 
-All local stages in this slice are complete. The known false positive is deferred
-to `feat-467`; unavailable historical comparison is explicitly unclaimed. Resume
-other translations through the deferred campaign ledger or migration acceptance
-through `feat-435`, each within its own scope.
+`status:check` passed. Icelandic and English are done with all four stages green;
+the derived source rollup is done. No local slice stage remains.
 
-PR verification: 816 unit/CLI/contract tests, 23 real PostgreSQL integration
-checks in a separate test database, typecheck, lint, dependency boundaries,
-schema validation/drift, repeat migration deployment, environment/status checks,
-dashboard verification, and repository-wide formatting passed. Review added a
-real-database assertion that normal and model-aware forced reads apply literal
-path boundaries before limits. The lock test now waits for its first callback
-instead of assuming the filesystem starts within 10 ms.
+Implementation verification at closeout: 816 unit/CLI/contract tests and 23 real
+PostgreSQL integration checks in a separate test database; typecheck, lint,
+dependency boundaries, schema/drift, repeat migration deployment,
+environment/status/dashboard checks, and repository-wide formatting passed.
 
-Durable correction: retrieval smoke, draft evaluation, approved golden evaluation,
-and a matched-control regression pass are different receipts. Never infer one
-from another or close `evaluate` merely because several retrieval queries worked.
+### Relevance decisions
+
+#### Precedents applied
+
+- **P1 — substantive whole-document answers.** [Cru Stage 4](./cru.md) rejected sound-but-off-question material and reinstated 13 credits on review. [The eval approach](../eval-approach.md) requires judging the whole document, including answers buried after an introduction. Shared themes or assertions do not answer a request for reasons.
+- **P2 — reject generic gospel endings.** [EveryStudent multilingual campaign §0.9](./everystudent-siblings.md) rejected otherwise off-topic articles whose closing invitation happened to match a query. An article that develops forgiveness or salvation in its body can still qualify.
+- **P3 — match the requested stage and action.** [EveryStudent Arabic Stage 4](./everystudent-ar.md) rejected pre-conversion material for a believer’s next-step question. Conversion, assurance, and practical discipleship are distinct needs.
+- **P4 — separate relevance from soundness.** [EveryStudent Arabic’s single-source decision](./everystudent-ar.md) uses relevance for credits, reporting soundness separately. Icelandic has the same single-source condition.
+- **P5 — retain honest buried answers.** [EveryStudent multilingual campaign §0.9](./everystudent-siblings.md) retained relevant material even when coverage fell because the engine missed it. Retrieval results did not decide these keys.
+
+#### Decisions
+
+Whole extracted documents were reviewed in independent contexts without retrieval results or initial panel scores. The agent then applied the precedents to the 22 recommendations, rejecting one proposed inclusion that relied on a short gospel invitation. These decisions use machine-assisted Icelandic reading and English paraphrases; they do not claim native-speaker or human theological verification.
+
+##### gq-is-seeker-forgiveness
+
+I am ashamed of what I have done. How can I receive God's forgiveness and start again?
+
+| Decision    | Document                                      | Reason                                                                                                                                                                     | Precedent |
+| ----------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **include** | `/islenska/vegur-Romverjans-hjalpraedis.html` | The Romans Road develops the need for forgiveness, faith in Christ, repentance, and freedom from condemnation; forgiveness is its substance, not an appended invitation.   | P1, P2    |
+| **exclude** | `/islenska/lif-eftir-daudann.html`            | The article explains the afterlife; the closing invitation does not turn it into an answer about receiving forgiveness for past actions.                                   | P2        |
+| **include** | `/islenska/ekki-fremja-sjalfsmord.html`       | A substantive body section addresses grave past wrongdoing, repentance, forgiveness, and becoming new; its suicide-prevention framing does not erase that direct answer.   | P1        |
+| **exclude** | `/islenska/gerist-eftir-daudann.html`         | It explains post-death destinations and judgment, without explaining how to receive forgiveness and begin again now.                                                       | P1        |
+| **include** | `/islenska/eilift-lif.html`                   | The body develops sin, Christ’s sacrifice, repentance, and faith as the means of forgiveness; this is more than its concluding prayer.                                     | P1, P2    |
+| **include** | `/islenska/hjalprad.html`                     | The salvation explanation connects separation caused by sin to forgiveness and restored relationship through Christ; that developed answer meets the question.             | P1, P2    |
+| **exclude** | `/islenska/rett-tru-fyrir-mig.html`           | The article argues for choosing Christianity; its brief forgiveness offer and closing prayer are the gospel-tail pattern previously rejected in the multilingual campaign. | P2        |
+| **include** | `/islenska/hvao-naest.html`                   | Its substantial opening explanation of salvation and assurance explains how forgiveness is received, even though later sections address new believers.                     | P1        |
+
+##### gq-is-skeptic-jesus-divinity
+
+Was Jesus just a good teacher, or are there biblical reasons to believe he is God?
+
+| Decision    | Document                                | Reason                                                                                                                                           | Precedent |
+| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| **exclude** | `/islenska/lif-eftir-daudann.html`      | It assumes Christ’s divine identity while explaining the afterlife; it does not develop the requested case against the merely-good-teacher view. | P1        |
+| **exclude** | `/islenska/Jesus-einasti-vegurinn.html` | It argues that Jesus is the route to salvation, while assuming rather than defending his divine identity against the question’s objection.       | P1        |
+| **include** | `/islenska/rett-tru-fyrir-mig.html`     | The body develops Jesus’ authority and resurrection evidence, giving reasons to consider him more than an ordinary teacher.                      | P1        |
+
+##### gq-is-skeptic-bible-trust
+
+The Bible was written by people. Why should I trust that it is God's word?
+
+| Decision    | Document                                | Reason                                                                                                                                       | Precedent |
+| ----------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **exclude** | `/islenska/Jesus-einasti-vegurinn.html` | It uses biblical authority to explain salvation but does not defend that authority against the objection that human authors wrote the Bible. | P1        |
+
+##### gq-is-believer-recurring-sin
+
+I believe in Jesus but keep falling into the same sin. How can I resist it in daily life?
+
+| Decision    | Document                           | Reason                                                                                                                                                  | Precedent |
+| ----------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **include** | `/islenska/Kristni.html`           | The body explicitly addresses believers’ continuing struggle with sin and directs them to read and apply Scripture and follow the Spirit in daily life. | P1        |
+| **exclude** | `/islenska/eitt-sinn-holpinn.html` | Assurance that salvation cannot be lost does not explain how to resist recurring sin in daily life.                                                     | P3        |
+
+##### gq-is-newcomer-next-steps
+
+I have just begun believing in Jesus. What should I do next to grow in faith?
+
+| Decision    | Document                                      | Reason                                                                                                                                      | Precedent |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **include** | `/islenska/Kristni.html`                      | It moves beyond conversion to practical post-conversion guidance: apply Scripture, follow the Spirit, and live in fellowship and obedience. | P1, P3    |
+| **exclude** | `/islenska/endurfaedd-kristin-manneskja.html` | It explains becoming born again; the question is what someone who already believes should do to grow.                                       | P3        |
+| **include** | `/islenska/merking-lifsins.html`              | The discipleship section explicitly recommends learning about Jesus, Bible reading, prayer, and obedience beyond initial belief.            | P1, P3    |
+| **exclude** | `/islenska/vita-vissu-sina-himininn.html`     | It explains obtaining and being assured of salvation, without practical guidance for growth after conversion.                               | P3        |
+| **exclude** | `/islenska/personulegur-Frelsari.html`        | It explains receiving Jesus as Savior and ends with a conversion invitation, rather than giving subsequent discipleship steps.              | P3        |
+
+##### gq-is-seeker-purpose
+
+My life feels empty even though things are going well. How can I find lasting purpose according to Christianity?
+
+| Decision    | Document                                | Reason                                                                                                                                                    | Precedent |
+| ----------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **exclude** | `/islenska/eilift-lif.html`             | It explains receiving eternal life, without developing how faith addresses present emptiness and purpose; its invitation does not fill that gap.          | P1, P2    |
+| **exclude** | `/islenska/Jesus-einasti-vegurinn.html` | Its focus is salvation’s exclusive route; it does not develop an answer about present meaning and fulfillment despite outward success.                    | P1        |
+| **exclude** | `/islenska/pekktu-vilja-Guds.html`      | It discusses discerning permissible decisions and aligning desires with God’s will, rather than the question’s existential emptiness and lasting purpose. | P1        |

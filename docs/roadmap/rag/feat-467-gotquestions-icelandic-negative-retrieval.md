@@ -23,11 +23,8 @@ that local lifecycle closure or expand its authority to production.
 ## Entry Points — Read These First
 
 - `apps/rag/docs/slices/gotquestions.md` — canonical evaluation and closure.
-- `apps/rag/docs/slice-evidence/gotquestions-is-evaluation-candidates.json` —
-  original negative checks; repeat counts are retained in
-  `apps/rag/docs/slice-evidence/gotquestions-evaluation-current.json`.
-- `apps/rag/docs/slice-evidence/gotquestions-is-evaluation-adjudicated.json` —
-  reviewed relevant sets and descriptive six-case metrics.
+- `apps/rag/docs/slices/gotquestions.md#limits-and-dispositions` — negative
+  checks and repeats; canonical metrics and reviewed keys are in the same record.
 - `apps/rag/src/retrieval/retrieve.ts` — query policy and cutoff.
 - `apps/rag/scripts/lib/evaluation/identity.ts` — comparison identity.
 - `docs/roadmap/rag/feat-463-rag-baseline-concerns-investigation.md` — separate

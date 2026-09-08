@@ -73,10 +73,16 @@ close feat-435 migration acceptance. English remains complete and other
 translations deferred. `gotquestions/is` and the source rollup are done; all
 four lifecycle stages are green, with `status:check` passing.
 
-Evidence: `apps/rag/docs/slices/gotquestions.md` and
-`apps/rag/docs/slice-evidence/gotquestions-is-evaluation-canonical.json`.
-Validation: 816 unit/CLI/contract tests, 23 PostgreSQL integration checks in an
+Results, limitations, run provenance, and relevance decisions:
+`apps/rag/docs/slices/gotquestions.md`.
+Original slice validation: 816 unit/CLI/contract tests, 23 PostgreSQL integration checks in an
 isolated database, typecheck, lint, dependency boundaries, schema/drift and
 migration checks, environment/status/dashboard validation, and full formatting.
+
+Cleanup validation (2026-09-09): 820 unit/CLI/contract tests, typecheck, lint,
+status consistency, and formatting. Removed eleven newly added evidence
+documents; preserved their necessary conclusions in the existing slice record.
+The code review added four real-process separator tests and left no actionable
+findings.
 
 [Forge PR #2202](https://github.com/JesusFilm/forge/pull/2202).
