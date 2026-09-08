@@ -5,6 +5,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { useTabBarClearance } from "../../lib/tabBar"
 
 type SnackbarProps = {
   message: string
@@ -20,6 +21,7 @@ export function Snackbar({
   duration = 3000,
 }: SnackbarProps) {
   const insets = useSafeAreaInsets()
+  const tabBarClearance = useTabBarClearance()
   const typography = useTypography()
   const translateY = useRef(new Animated.Value(100)).current
   const opacity = useRef(new Animated.Value(0)).current
@@ -78,7 +80,7 @@ export function Snackbar({
       style={[
         styles.container,
         {
-          bottom: insets.bottom + 16,
+          bottom: insets.bottom + 16 + tabBarClearance,
           transform: [{ translateY }],
           opacity,
         },
