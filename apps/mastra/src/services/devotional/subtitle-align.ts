@@ -413,3 +413,28 @@ export async function fetchEditedWindow(
     return null
   }
 }
+
+/**
+ * Join the cues that fall inside a window into one plain transcript string.
+ *
+ * `fetchEditedWindow` already returns every cue on the track (`EditedWindow.
+ * cues`); this is the missing step between "every cue" and "what does the
+ * clip actually say" — the overlap test mirrors `mapCuesToEditedTimeline`'s,
+ * so a cue is included whenever ANY part of it falls inside the window, not
+ * only when it starts inside it (a line already speaking when the window
+ * opens still belongs in the transcript).
+ */
+export function transcriptForWindow(
+  cues: ReadonlyArray<SubtitleCue>,
+  windowStartSec: number,
+  windowLenSec: number,
+): string {
+  const windowEnd = windowStartSec + windowLenSec
+  return [...cues]
+    .filter((c) => c.end > windowStartSec && c.start < windowEnd)
+    .sort((a, b) => a.start - b.start)
+    .map((c) => c.text.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s{2,}/g, " ")
+}

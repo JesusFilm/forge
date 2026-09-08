@@ -7,6 +7,7 @@ import {
   mapCuesToEditedTimeline,
   parseSubtitles,
   removeInternalGaps,
+  transcriptForWindow,
 } from "./subtitle-align"
 
 const SRT = `1
@@ -424,5 +425,52 @@ Zaccheus, hurry and come down.
     // the caller deliberately seeded.
     const out = await fetchEditedWindow("u", 50, 30, { fetchFn })
     expect(out!.startSec).toBeLessThanOrEqual(50)
+  })
+})
+
+describe("transcriptForWindow", () => {
+  const cues = parseSubtitles(SRT)
+
+  it("joins cues fully inside the window in time order, separated by spaces", () => {
+    // Window covers all three SRT cues (42.8 .. 90.5).
+    const t = transcriptForWindow(cues, 40, 55)
+    expect(t).toBe(
+      "искал видеть Иисуса, но не мог за народом Он влез на смоковницу, чтобы увидеть Его. Половину имения моего я отдам нищим, и воздам вчетверо!",
+    )
+  })
+
+  it("includes a cue that starts before the window but ends inside it", () => {
+    // Window opens at 45s, mid-way through cue 1 (42.8-47.3).
+    const t = transcriptForWindow(cues, 45, 10)
+    expect(t).toContain("искал видеть Иисуса")
+  })
+
+  it("includes a cue that starts inside the window but ends after it", () => {
+    // Window closes at 45s, mid-way through cue 1 (42.8-47.3).
+    const t = transcriptForWindow(cues, 42.8, 2.2)
+    expect(t).toContain("искал видеть Иисуса")
+  })
+
+  it("excludes a cue entirely outside the window", () => {
+    // Window covers only cue 1 (42.8-47.3); cues 2 and 3 start later.
+    const t = transcriptForWindow(cues, 42.8, 4.5)
+    expect(t).toContain("искал видеть Иисуса")
+    expect(t).not.toContain("смоковницу")
+    expect(t).not.toContain("Половину имения")
+  })
+
+  it("returns an empty string for an empty cue list", () => {
+    expect(transcriptForWindow([], 0, 100)).toBe("")
+  })
+
+  it("returns an empty string when no cue overlaps the window", () => {
+    expect(transcriptForWindow(cues, 200, 10)).toBe("")
+  })
+
+  it("joins in time order even when cues are passed out of order", () => {
+    const shuffled = [cues[2], cues[0], cues[1]]
+    const t = transcriptForWindow(shuffled, 40, 55)
+    expect(t.indexOf("искал видеть")).toBeLessThan(t.indexOf("смоковницу"))
+    expect(t.indexOf("смоковницу")).toBeLessThan(t.indexOf("Половину имения"))
   })
 })
