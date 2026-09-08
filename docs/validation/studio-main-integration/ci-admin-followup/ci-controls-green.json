@@ -1,0 +1,16 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/admin",
+    "exec",
+    "vitest",
+    "run",
+    "src/services/studio-authoring/release-controls.test.ts",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 0,
+  "seconds": 1.658124762994703,
+  "namespace": "net:[4026532634]"
+}

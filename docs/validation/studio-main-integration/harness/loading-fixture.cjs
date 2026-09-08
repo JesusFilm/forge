@@ -57,11 +57,6 @@ const { chromium } = createRequire(path.join(repo, "apps/web/package.json"))(
     '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="navy"/></svg>'
   const server = http.createServer((req, res) => {
     const u = new URL(req.url, "http://local")
-    if (u.pathname === "/fixture.js") {
-      res.setHeader("Content-Type", "application/javascript")
-      res.end(bundles[u.searchParams.get("variant")])
-      return
-    }
     if (
       u.pathname === "/core-frame.png" ||
       u.pathname === "/_next/image" ||
@@ -72,9 +67,33 @@ const { chromium } = createRequire(path.join(repo, "apps/web/package.json"))(
       res.end(svg)
       return
     }
+    // Return only fixed literals; never reflect a query value into HTML.
+    const variant = (() => {
+      switch (u.searchParams.get("variant")) {
+        case "main-core":
+          return "main-core"
+        case "merged-core":
+          return "merged-core"
+        case "merged-studio":
+          return "merged-studio"
+        default:
+          return null
+      }
+    })()
+    if (variant === null) {
+      res.statusCode = 400
+      res.setHeader("Content-Type", "text/plain")
+      res.end("Unknown fixture variant")
+      return
+    }
+    if (u.pathname === "/fixture.js") {
+      res.setHeader("Content-Type", "application/javascript")
+      res.end(bundles[variant])
+      return
+    }
     res.setHeader("Content-Type", "text/html")
     res.end(
-      `<html><body><div id="root"></div><script src="/fixture.js?variant=${u.searchParams.get("variant")}"></script></body></html>`,
+      `<html><body><div id="root"></div><script src="/fixture.js?variant=${variant}"></script></body></html>`,
     )
   })
   await new Promise((r) => server.listen(0, "127.0.0.1", r))

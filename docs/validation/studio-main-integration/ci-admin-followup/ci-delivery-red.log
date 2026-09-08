@@ -1,0 +1,54 @@
+(node:808053) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin[39m
+
+[90mstdout[2m | src/services/recommendations/delivery-retriever.db.test.ts[2m > [22m[2msemantic delivery retriever against the approved snapshot[2m > [22m[2mkeeps cold and warm complete-service delivery, including stage persistence, inside 1.5s
+[22m[39m[recommendations] event=candidate_platform_benchmark fixture=deterministic_fixture cold_ms=90 warm_ms=38 payload_bytes=4485 baseline_items=6 nominated=12 composed=6 persisted_stages=60
+
+[90mstdout[2m | src/services/recommendations/delivery-retriever.db.test.ts[2m > [22m[2msemantic delivery retriever against the approved snapshot[2m > [22m[2mkeeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s
+[22m[39m[recommendations] event=hybrid_complete_service_benchmark fixture=deterministic_fixture cold_ms=92 warm_ms=66 composed=6 unique=6 shortfall=none
+
+ [31m❯[39m src/services/recommendations/delivery-retriever.db.test.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1045[2mms[22m[39m
+   [32m✓[39m semantic delivery retriever against the approved snapshot[2m > [22mkeeps cold and warm complete-service delivery, including stage persistence, inside 1.5s[32m 226[2mms[22m[39m
+   [32m✓[39m semantic delivery retriever against the approved snapshot[2m > [22mkeeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s[32m 164[2mms[22m[39m
+[31m   [31m×[31m semantic delivery retriever against the approved snapshot[2m > [22mretrieves a representative multi-chunk slate inside the 1.5s budget[39m[32m 44[2mms[22m[39m
+[31m     → 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "studio_catalog_release" does not exist`[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/services/recommendations/delivery-retriever.db.test.ts[2m > [22msemantic delivery retriever against the approved snapshot[2m > [22mretrieves a representative multi-chunk slate inside the 1.5s budget
+[31m[1mPrismaClientKnownRequestError[22m: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "studio_catalog_release" does not exist`[39m
+[90m [2m❯[22m ei.handleRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:[2m228:13[22m[39m
+[90m [2m❯[22m ei.handleAndLogRequestError ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:[2m174:12[22m[39m
+[90m [2m❯[22m ei.request ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:[2m143:12[22m[39m
+[90m [2m❯[22m a ../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:[2m833:24[22m[39m
+[36m [2m❯[22m getSemanticDeliveryCandidatePool src/services/recommendations/delivery-retriever.ts:[2m65:16[22m[39m
+    [90m 63| [39m    input[33m.[39mlimit [33m*[39m [33mDELIVERY_OVERFETCH_FACTOR[39m[33m,[39m
+    [90m 64| [39m  )
+    [90m 65| [39m  [35mconst[39m rows [33m=[39m [35mawait[39m prisma[33m.[39m$queryRaw[33m<[39m[33mDeliveryRecommendationRow[39m[][33m>[39m[32m`
+    [90m   | [39m               [31m^[39m
+    [90m 66| [39m    WITH seed_candidates AS MATERIALIZED (
+    [90m 67| [39m      SELECT
+[90m [2m❯[22m getSemanticDeliveryRecommendations src/services/recommendations/delivery-retriever.ts:[2m380:22[22m[39m
+[90m [2m❯[22m src/services/recommendations/delivery-retriever.db.test.ts:[2m975:26[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 09:46:47
+[2m   Duration [22m 2.21s[2m (transform 401ms, setup 16ms, collect 844ms, tests 1.04s, environment 0ms, prepare 78ms)[22m
+
+undefined
+/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/services/recommendations/delivery-retriever.db.test.ts --maxWorkers=1 --no-file-parallelism

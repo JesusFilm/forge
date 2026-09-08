@@ -1,0 +1,13 @@
+[90mapps/admin/scripts/verify-studio-calendar-workflow-build.mjs[39m 43ms (unchanged)
+apps/admin/src/services/recommendations/delivery-retriever.db.test.ts 193ms
+apps/admin/src/services/studio-authoring/release-controls.test.ts 9ms
+[90mdocs/plans/2026-09-09-studio-admin-ci-followup.md[39m 27ms (unchanged)
+(node:813737) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Verified Studio calendar workflow and tick registrations
+(node:813628) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 typecheck /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin
+> tsc --noEmit
+
