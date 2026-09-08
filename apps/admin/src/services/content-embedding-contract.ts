@@ -1,12 +1,14 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 
-export const ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID =
+export const INITIAL_CONTENT_EMBEDDING_CONTRACT_ID =
   "semantic-transcript-pgvector-v1" as const
+export const ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID =
+  "semantic-transcript-pgvector-v2" as const
 export const CONTENT_EMBEDDING_CONTRACT_POINTER_ID =
   "content-embedding-contract-pointer" as const
-export const ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER = "openrouter" as const
+export const ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER = "fireworks" as const
 export const ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL =
-  "qwen/qwen3-embedding-8b" as const
+  "fireworks/qwen3-embedding-8b" as const
 export const ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS = 1536 as const
 export const ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER =
   "jesus-film-ai-gateway" as const
