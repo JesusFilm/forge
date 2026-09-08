@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 /**
- * Default-wiring pins for the rename route (plan KTD4, "kill-switch seam"):
+ * Default-wiring pins for the rename route (plan KTD5, shared-backend seam):
  * with NO `getMemory` / `getPool` / `getBackend` seam injected — the
  * `index.ts` registration shape — the route must
  *
  *   - resolve ownership over a Memory built DIRECTLY on `getAiChatStorage()`
  *     (the persisted `ai_chat` store) and NEVER call `getAiChatMemory()`,
- *     whose backend the `AI_CHAT_MEMORY_BACKEND=memory` kill-switch swaps for
- *     an InMemoryStore (a lookup there would answer a false thread_not_found);
+ *     whose shared-memory branch uses an InMemoryStore (a lookup there would
+ *     answer a false thread_not_found for a durable row);
  *   - open its pool on the SAME connection-string resolver the store uses
  *     (`getMastraDatabaseUrl`), with the pinned options;
  *   - construct each exactly once across calls (module-scoped, lazy);
@@ -45,8 +45,12 @@ const poolOn = vi.hoisted(() =>
 
 vi.mock("../config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../config/env")>()),
+  env: {
+    get MASTRA_STORAGE_BACKEND() {
+      return state.backend
+    },
+  },
   getMastraDatabaseUrl: () => DB_URL_SENTINEL,
-  resolveAiChatMemoryBackend: () => state.backend,
 }))
 
 vi.mock("./ai-chat-memory", async (importOriginal) => ({
@@ -110,7 +114,7 @@ afterEach(() => {
   poolOn.mockClear()
 })
 
-describe("rename route — default wiring (KTD4)", () => {
+describe("rename route — default wiring (KTD5)", () => {
   it("resolves ownership over a Memory built on getAiChatStorage and never calls getAiChatMemory", async () => {
     const outcome = await handleAiChatHistoryRenameRequest(noSeamInput())
     expect(outcome.status).toBe(200)
@@ -162,7 +166,7 @@ describe("rename route — default wiring (KTD4)", () => {
     expect(poolQuery).toHaveBeenCalledTimes(2)
   })
 
-  it("refuses 503 writes_disabled through the DEFAULT backend source under the kill-switch, constructing nothing", async () => {
+  it("refuses 503 writes_disabled through the DEFAULT shared backend source in memory mode, constructing nothing", async () => {
     state.backend = "memory"
     const outcome = await handleAiChatHistoryRenameRequest(noSeamInput())
     expect(outcome.status).toBe(503)

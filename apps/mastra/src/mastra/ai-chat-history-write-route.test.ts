@@ -802,10 +802,10 @@ describe("rename route — pool options", () => {
 
 // ===========================================================================
 // Source pins: the route reads from the PERSISTED store, never the
-// kill-switch-resolved Memory (KTD4)
+// backend-resolved Memory (KTD5)
 // ===========================================================================
 
-describe("rename route — persisted-store source pin (KTD4)", () => {
+describe("rename route — persisted-store source pin (KTD5)", () => {
   // Comments stripped: the header PROSE names `getAiChatMemory()` to say why
   // it is never used; the pin is on code, not on the explanation.
   const source = readFileSync(

@@ -180,6 +180,14 @@ This plan owns feat-337 only. The surrounding lane understanding, current not co
 - `apps/mastra/src/scripts/check-devotional-database-readiness.ts` — the testable-CLI-core shape (exported run function returning an exit code, injectable seams, thin `main()`); `apps/mastra/src/evals/seeker/cli.ts` — the `flag(argv, name)` arg-parsing idiom.
 - `apps/mastra/src/mastra/ai-chat-pg-failmode-contract.test.ts` — the unreachable-store contract test (NOT a seeded-DB harness; see KTD8).
 - `docs/solutions/architecture-patterns/diy-retention-sweep-three-controls-visibility-walled-store.md` — the feat-337 caveat section (per-subject completeness, visibility wall as erasure boundary).
+
+> **Superseded (2026-09-08, feat-464):** References in this completed plan to
+> the `AI_CHAT_MEMORY_BACKEND` kill switch describe the original implementation.
+> The override no longer exists. Erasure still deliberately constructs Memory
+> over `getAiChatStorage()` and requires an explicit `DATABASE_URL`, so it
+> targets durable `ai_chat` rows even during local
+> `MASTRA_STORAGE_BACKEND=memory` runs.
+
 - `docs/solutions/best-practices/per-run-caps-vs-per-day-quota-claims-restart-refreshed-jobs.md` — the 40/50 quota split and headroom convention.
 - `docs/solutions/conventions/single-service-http-client-result-union-convention.md` — result-union client shape; names the byte-cap-reader `TimeoutError` defect fixed only in `langfuse-trace-retention.ts` (KTD4 reuses that fixed copy).
 - `docs/solutions/tooling-decisions/destructive-embedding-cleanup-cli-safety-contract.md` — the repo's destructive-CLI safety contract (dry-run-first, explicit execute, count-only reports).

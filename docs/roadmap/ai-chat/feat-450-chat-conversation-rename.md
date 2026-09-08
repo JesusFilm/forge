@@ -23,6 +23,13 @@ tags:
 
 **What landed.** PR 1: `POST /forge-ai-chat-history-rename` on the ai-chat lane — a guarded direct-SQL `UPDATE … SET title` that omits `updatedAt` (so a rename neither reorders the rail nor extends retention), ownership-resolved over the persisted store, refusing with 503 `writes_disabled` when the memory backend is not Postgres. PR 2: the chat proxy `POST /api/history/rename` (the read proxies' deny ladder plus `invalid_title`; a reasonless 404 from a not-yet-deployed route is a retryable `unavailable`), the session's pessimistic `renameConversation` with a per-id in-flight slot and a per-id rename fence that keeps a committed title from being reverted by a page fetch that was already in flight, and the sidebar's per-row pencil plus inline editor (Enter commits, Escape cancels, blur cancels; controls only on gate-granted shells; the drawer's Escape listener ignores the editor by target). The client normalizer mirrors the Mastra clamp's character class byte-for-byte, pinned by a test that reads the Mastra source. The one deliberate divergence from the read contract: a rename `access` failure shows an inline notice instead of silently reverting the sidebar to client-only.
 
+> **Superseded (2026-09-08, feat-464):** References below to
+> `AI_CHAT_MEMORY_BACKEND` and `resolveAiChatMemoryBackend()` describe the
+> original implementation. Rename still returns 503 `writes_disabled` before
+> store or pool construction when the shared `MASTRA_STORAGE_BACKEND` is
+> `memory`; its ownership read and SQL write still target the same dedicated
+> `ai_chat` Postgres store when that shared backend is `postgres`.
+
 **Verification.** The chat suite passed all 1,061 tests, with typecheck, lint, formatting, and the production build passing. Desktop and mobile browser checks exercised the real chat proxy, Mastra route, and a throwaway Postgres database: active and background renames persisted after reload while both timestamp columns and sidebar order stayed unchanged. The 67 Mastra route, dist-pin, and database checks passed; outage/retry, ownership denial, invalid titles, and a deleted thread were also exercised. Code review and security review left no actionable findings.
 
 **Residual risk / follow-ups.** The titling race (KD7) and the client-only rename on a granted shell (lost on reload) are accepted residuals recorded in the plan. Delete stays on `feat-247`. No cross-tab propagation. Rename never changes the document title (feat-209's no-titles-in-head rule).

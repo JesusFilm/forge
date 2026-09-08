@@ -53,10 +53,11 @@
  *  - **`deleteThread`, not hand-rolled SQL.** It also removes the thread's
  *    messages and orphaned vectors, which the old runbook SQL missed.
  *  - **Memory built DIRECTLY over `getAiChatStorage()`** — never
- *    `getAiChatMemory()`, whose `AI_CHAT_MEMORY_BACKEND=memory` kill switch
- *    resolves to an InMemoryStore: an erasure over it would report success
- *    while every Postgres row survived. Same reason the retention purge does
- *    it, one notch more serious.
+ *    `getAiChatMemory()`, which follows the shared runtime backend and can be
+ *    an InMemoryStore in local mode. Erasure is an explicit durable-data
+ *    operation even when ordinary conversation memory is process-local: using
+ *    the runtime-selected singleton could report success while every Postgres
+ *    row survived.
  *  - **`DATABASE_URL` is asserted explicitly** (KTD1). `getMastraDatabaseUrl()`
  *    silently falls back to a localhost URL; for a destructive tool that is a
  *    "wrong database" hazard, so an unset value is a refusal, not a fallback.
@@ -415,7 +416,7 @@ let cachedErasureStore: { close?: () => Promise<void> } | null = null
 
 /**
  * The Memory erasure operates on: built DIRECTLY over the persisted `ai_chat`
- * store (never the backend-resolved `getAiChatMemory()` — see the module
+ * store (never the shared-backend-selected `getAiChatMemory()` — see the module
  * header), and only after `DATABASE_URL` is proven present. Reads
  * `env.DATABASE_URL` (post-`emptyToUndefined`, so a blank sourced value is
  * `undefined` here) rather than `getMastraDatabaseUrl()`, whose localhost
