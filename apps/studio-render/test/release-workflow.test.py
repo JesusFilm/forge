@@ -18,8 +18,9 @@ class HostedWorkflow(unittest.TestCase):
             self.assertIn("github.repository == 'JesusFilm/forge'", job['if'])
         config = json.loads((ROOT / 'apps/studio-render/ops/release/config.json').read_text())
         self.assertIs(config['enabled'], False)
-        self.assertIsNone(config['codecArtifact'])
-        self.assertIsNone(config['environmentId'])
+        self.assertEqual(config['codecArtifact'], 'ghcr.io/jesusfilm/forge-studio-codec@sha256:a60de84e61cded686c703768809e34dc20bc0e501273fe1a5d4b9af5400f9cad')
+        self.assertEqual(config['environmentId'], 21503495622)
+        self.assertEqual(config['reviewerIds'], [802117])
 
     def test_candidate_has_no_write_and_publisher_never_builds_or_runs_candidate(self):
         build, publish = self.workflow['jobs']['candidate'], self.workflow['jobs']['publish']

@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-09",
+  "scope": "Local verification of root-provided authorized setup evidence; no external calls",
+  "environment": {
+    "id": 21503495622,
+    "name": "studio-release",
+    "reviewerId": 802117,
+    "reviewerLogin": "tataihono",
+    "preventSelfReview": true,
+    "canAdminsBypass": false,
+    "branches": [
+      "main"
+    ]
+  },
+  "codec": {
+    "reference": "ghcr.io/jesusfilm/forge-studio-codec@sha256:a60de84e61cded686c703768809e34dc20bc0e501273fe1a5d4b9af5400f9cad",
+    "archiveSha256": "e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4",
+    "bytes": 126621792,
+    "packageId": 14941980,
+    "visibility": "private",
+    "repository": null
+  },
+  "enabled": false,
+  "sourceEvidenceSha256": {
+    "environment.json": "27ab76549e9c2c9c7748f30c9da350556eaa05ea32a1e7ebf9dfeefdbab3996f",
+    "branches.json": "e56e1b31240dc20f2e3ea88b01dccfa84629065ff78fed58882852fde5cc69a2",
+    "package.json": "5cb47974920a80574358dd3b48760888167fc140d0eff5a5ad82e87266f62bbc",
+    "codec-manifest.json": "a60de84e61cded686c703768809e34dc20bc0e501273fe1a5d4b9af5400f9cad",
+    "codec-push.log": "159151cafa62dc4087a3e1081d7c878002b9e223e70382b2afe509890a103311"
+  }
+}

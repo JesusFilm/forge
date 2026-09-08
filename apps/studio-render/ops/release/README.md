@@ -77,3 +77,9 @@ No hosted workflow, registry upload, new image build, VM installation, productio
 - [Workflow run and review-history fields](https://docs.github.com/en/rest/actions/workflow-runs).
 - [ORAS copy from an OCI archive](https://oras.land/docs/commands/oras_cp/).
 - [Curl sensitive headers on redirects](https://curl.se/docs/manpage.html#-H): artifact transport follows only bounded HTTPS redirects; it never uses `--location-trusted`. Approval API reads do not follow redirects.
+
+## Owner setup update — 2026-09-09
+
+The earlier “not provisioned by this phase” and environment404 statements describe the original release-preparation checkpoint. With subsequent explicit user authorization, root provisioned environment21503495622 (`studio-release`), reviewer802117 (`tataihono`), prevent-self-review, no admin bypass and a sole main branch policy. Root also published the approved codec as private package14941980 at `ghcr.io/jesusfilm/forge-studio-codec@sha256:a60de84e61cded686c703768809e34dc20bc0e501273fe1a5d4b9af5400f9cad`. The exact reviewed archive layer is unchanged. These actual identifiers are now recorded in `config.json`, with **enabled:false** preserved.
+
+Another actor must dispatch because the authenticated account is the reviewer. Main's source-review count is still0. The codec package currently has no repository association; Actions read access still needs root's setup/readback. No workflow activation, main-rule change, additional publication or VM action follows from this local alignment. Dated evidence and focused results are in `docs/validation/studio-460/hosted-release/owner-setup/README.md`.

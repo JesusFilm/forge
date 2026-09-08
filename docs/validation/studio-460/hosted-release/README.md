@@ -35,3 +35,7 @@ Logs named `first`, `red` or `qualified` retain their original contents. Earlier
 The proposed namespaces are `ghcr.io/jesusfilm/forge-studio-{codec,render,verify,host,releases}`. An owner still must authorize retention/distribution and first exact codec publication, actual environment/main policy setup, hosted builds and artifact publication, then approved VM pull/install/activation. The new host-bundle Docker target is source-validated only; its future built bytes need qualification before selection. The same existing renderer/verifier targets do not waive qualification of new output digests.
 
 Host updates and clean rollback remain inactive by default. Failed partial operations retain a pending marker and private prior configuration; exceptional reconciliation is manual, not claimed as automatic rollback. No caller-authored JSON approval grants authority. Production durable storage, scoped HTTPS/pool setup, actual provider/Mux/public Watch acceptance and other release gates remain open under the common runbook.
+
+## Subsequent authorized owner setup — 2026-09-09
+
+The environment absence and unprovisioned codec statements above are historical to the original preparation. `owner-setup/README.md` records root's subsequently authorized private codec and environment provisioning and the matching disabled configuration. Other-actor dispatch, main-review policy and package Actions read access remain unresolved; this task made no external changes.
