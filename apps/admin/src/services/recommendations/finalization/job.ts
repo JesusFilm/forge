@@ -13,9 +13,7 @@ import {
   markWorkflowRunStarted,
 } from "@/services/workflow-run-log.service"
 import { createRecommendationOutcomeService } from "../outcome.service"
-import { createRecommendationIntegrityService } from "../integrity.service"
-import { dispatchRecommendationProfileFeedback } from "../profiles/job"
-import { resolveActiveRecommendationProfileLink } from "../profiles/active-profile-link"
+import { dispatchPlaybackOutcomeToRecommendationConsumer } from "../playback-outcome-consumer"
 import {
   runRecommendationEpisodeFinalization,
   runRecommendationEpisodeFinalizationRecovery,
@@ -133,7 +131,11 @@ export async function dispatchRecommendationEpisodeFinalization(
         include: { request: true },
       })
       .catch(() => null)
-    if (episode && episode.generation === input.generation) {
+    if (
+      episode &&
+      episode.requestId != null &&
+      episode.generation === input.generation
+    ) {
       await prisma.recommendationEvidenceAudit
         .create({
           data: {
@@ -144,7 +146,7 @@ export async function dispatchRecommendationEpisodeFinalization(
               episodeId: episode.id,
               generation: episode.generation,
             },
-            expiresAt: episode.request.expiresAt,
+            expiresAt: episode.expiresAt,
           },
         })
         .catch(() => {})
@@ -189,12 +191,24 @@ export async function runRecommendationEpisodeFinalizationJob(
       (result.status === "published" || result.status === "existing") &&
       result.activeOutcomeId
     ) {
-      await classifyAndDispatchProfileOutcome(result.activeOutcomeId).catch(
-        () => {
-          // Finalized outcome truth is replayable. Profile projection failure
-          // must not change finalization or the player's serving path.
-        },
-      )
+      try {
+        await dispatchPlaybackOutcomeToRecommendationConsumer(
+          result.activeOutcomeId,
+          prisma,
+        )
+      } catch (error) {
+        // Re-arm the episode recovery ledger before surfacing the failure.
+        // finalize() is idempotent, so a later wake reuses the same immutable
+        // outcome and retries only the downstream consumer boundary.
+        await prisma.recommendationPlaybackEpisode.updateMany({
+          where: {
+            id: input.episodeId,
+            generation: input.generation,
+          },
+          data: { finalizationDueAt: new Date() },
+        })
+        throw error
+      }
     }
     if (input.ledgerRunId) {
       const succeeded =
@@ -233,13 +247,13 @@ export async function runRecommendationEpisodeFinalizationJob(
         select: {
           generation: true,
           activeUntil: true,
-          request: { select: { expiresAt: true } },
+          expiresAt: true,
         },
       })
       const now = new Date()
       if (
         episode?.generation === input.generation &&
-        episode.request.expiresAt > now &&
+        episode.expiresAt > now &&
         episode.activeUntil > now
       ) {
         const activeRuns = await findRecentActiveFinalizationRuns({
@@ -268,42 +282,6 @@ export async function runRecommendationEpisodeFinalizationJob(
     }
     throw error
   }
-}
-
-async function classifyAndDispatchProfileOutcome(outcomeId: string) {
-  const receipt =
-    await createRecommendationIntegrityService(prisma).classifyPlaybackOutcome(
-      outcomeId,
-    )
-  if (
-    receipt.state !== "eligible" ||
-    !receipt.eligibleScopes.includes("profile")
-  ) {
-    return
-  }
-  const outcome = await prisma.recommendationOutcomeRevision.findUnique({
-    where: { id: outcomeId },
-    select: {
-      createdAt: true,
-      episode: {
-        select: {
-          sessionDigest: true,
-        },
-      },
-    },
-  })
-  if (!outcome) return
-  const activeProfile = await resolveActiveRecommendationProfileLink(prisma, {
-    sessionDigest: outcome.episode.sessionDigest,
-    now: new Date(),
-  })
-  if (!activeProfile) return
-  await dispatchRecommendationProfileFeedback({
-    sessionDigest: outcome.episode.sessionDigest,
-    profileId: activeProfile.profileId,
-    privacyGeneration: activeProfile.privacyGeneration,
-    evidenceWatermark: outcome.createdAt,
-  })
 }
 
 export async function recoverRecommendationEpisodeFinalizations(
@@ -346,6 +324,7 @@ export async function recoverRecommendationEpisodeFinalizations(
         FROM "recommendation_playback_episode" episode
         WHERE episode."finalization_due_at" <= ${now}
           AND episode."expires_at" > ${now}
+          AND episode."state" <> 'pending'
           ${cursorPredicate}
         ORDER BY episode."finalization_due_at" ASC, episode."id" ASC
         LIMIT ${limit}

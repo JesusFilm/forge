@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 
 import {
   cachedBoundedTtlValue,
@@ -31,6 +32,10 @@ import {
   TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
   typesenseWatchExactTitleKey,
 } from "./typesense-watch-search-exact-title"
+import {
+  normalizeWatchSearchCurationQuery,
+  TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+} from "./typesense-watch-search-curation"
 import {
   typesenseWatchLanguageIdentity,
   type TypesenseWatchLexicalDocument,
@@ -169,8 +174,11 @@ type TypesenseWatchSearchDeps = {
 export type TypesenseWatchSearchDiagnostics = {
   profile: TypesenseWatchSearchProfile["kind"]
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: bigint | null
+  activeTranscriptProjectionRevision: bigint | null
   binding: TypesenseWatchSearchCollectionBinding
   retrievalCalls: number
   logicalSubsearches: number
@@ -296,6 +304,7 @@ type CandidateRetrieval = {
 )
 
 type RankedCandidateGroup = WatchSearchRankingGroup & {
+  curated: boolean
   evidenceTier: WatchSearchRankingEvidenceTier
   members: Candidate[]
 }
@@ -308,6 +317,44 @@ type RankedCandidate = {
   candidate: Candidate
   rankingRelevance: number
   watchabilityKind: IndexedWatchability["kind"]
+}
+
+function ensureCuratedGroupsOnDefaultFirstPage(
+  groups: readonly RankedCandidateGroup[],
+  offset: number,
+  limit: number,
+): RankedCandidateGroup[] {
+  if (offset !== 0 || limit !== DEFAULT_LIMIT || groups.length <= limit) {
+    return [...groups]
+  }
+
+  const firstPage = groups.slice(0, limit)
+  const promoted = groups
+    .slice(limit)
+    .filter(({ curated }) => curated)
+    .slice(0, firstPage.filter(({ curated }) => !curated).length)
+  if (promoted.length === 0) return [...groups]
+
+  const promotedIds = new Set(
+    promoted.map(({ canonicalVideoId }) => canonicalVideoId),
+  )
+  const retainedFirstPage = [...firstPage]
+  const displaced: RankedCandidateGroup[] = []
+  for (let index = retainedFirstPage.length - 1; index >= 0; index -= 1) {
+    if (displaced.length >= promoted.length) break
+    if (retainedFirstPage[index]?.curated) continue
+    const [group] = retainedFirstPage.splice(index, 1)
+    if (group) displaced.unshift(group)
+  }
+
+  return [
+    ...retainedFirstPage,
+    ...promoted,
+    ...displaced,
+    ...groups
+      .slice(limit)
+      .filter(({ canonicalVideoId }) => !promotedIds.has(canonicalVideoId)),
+  ]
 }
 
 type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
@@ -585,6 +632,7 @@ function lexicalLaneRequest(
   languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
+  lane: "title" | "metadata",
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
   const isFallbackField = (field: string) => field.endsWith("_fallback")
@@ -610,6 +658,12 @@ function lexicalLaneRequest(
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 1,
+    ...(lane === "title"
+      ? { enable_curations: false }
+      : {
+          curation_tags: TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+          filter_curated_hits: true,
+        }),
     include_fields: [
       "id",
       "videoId",
@@ -640,6 +694,7 @@ function exactTitleLaneRequest(
     prefix: false,
     num_typos: 0,
     drop_tokens_threshold: 0,
+    enable_curations: false,
     include_fields: [
       "id",
       "videoId",
@@ -1133,15 +1188,20 @@ export class TypesenseWatchSearchService {
   private readonly logger: Pick<Console, "warn">
   private readonly profile: TypesenseWatchSearchProfile
   private readonly rankingImplementation: WatchSearchRankingImplementation
+  private readonly activeTranscriptProjectionRevision: bigint | null
 
   private retrievalIdentity(): WatchSearchRetrievalIdentity {
     return {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       rankingRevision: this.rankingImplementation,
       transcriptProjectionRevision:
         this.profile.transcriptProjectionRevision?.toString() ?? null,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision?.toString() ?? null,
       evaluationRevision: this.profile.qrelsRevision ?? null,
     }
   }
@@ -1161,6 +1221,8 @@ export class TypesenseWatchSearchService {
       this.profile.kind === "CANDIDATE"
         ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
         : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
+    this.activeTranscriptProjectionRevision =
+      resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? null
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
@@ -1170,8 +1232,12 @@ export class TypesenseWatchSearchService {
     const diagnostics: MutableSearchDiagnostics = {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       transcriptProjectionRevision: this.profile.transcriptProjectionRevision,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision,
       binding: this.profile.binding,
       retrievalCalls: 0,
       logicalSubsearches: 0,
@@ -1388,7 +1454,11 @@ export class TypesenseWatchSearchService {
       laneStatuses,
       diagnostics,
     })
-    const rankingGroups = retrieval.groups
+    const rankingGroups = ensureCuratedGroupsOnDefaultFirstPage(
+      retrieval.groups,
+      offset,
+      limit,
+    )
     const candidates = rankingGroups.flatMap((group) => group.members)
     const nativeRanking = retrieval.kind === "native"
     const nativeCandidateGroups = nativeRanking ? rankingGroups : null
@@ -1800,17 +1870,19 @@ export class TypesenseWatchSearchService {
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "title",
         ),
       },
       {
         kind: "metadata",
         request: lexicalLaneRequest(
           this.profile.binding.lexical,
-          titleQuery,
+          normalizeWatchSearchCurationQuery(titleQuery),
           metadataFields,
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "metadata",
         ),
       },
       ...(embedding
@@ -2029,6 +2101,7 @@ export class TypesenseWatchSearchService {
       metadataValues: string[]
       titleValueSet: Set<string>
       metadataValueSet: Set<string>
+      curated: boolean
       members: Map<string, Candidate>
     }
     const groups = new Map<string, GroupState>()
@@ -2180,6 +2253,7 @@ export class TypesenseWatchSearchService {
           canonicalVideoId,
           fusedScore: 0,
           wholeTitleMatch: false,
+          curated: false,
           titleValues: [],
           metadataValues: [],
           titleValueSet: new Set<string>(),
@@ -2196,6 +2270,7 @@ export class TypesenseWatchSearchService {
           { candidate: Candidate; quality: number }
         >()
         let bestGroupQuality = 0
+        state.curated ||= group.hits.some((hit) => hit.curated === true)
         for (const hit of group.hits) {
           const quality = typesenseLexicalMatchQuality(hit.text_match_info)
           bestGroupQuality = Math.max(bestGroupQuality, quality)
@@ -2307,6 +2382,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId,
         fusedScore: 0,
         wholeTitleMatch: false,
+        curated: false,
         titleValues: [],
         metadataValues: [],
         titleValueSet: new Set<string>(),
@@ -2490,6 +2566,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId: candidate.videoId,
         fusedScore: relevance,
         wholeTitleMatch: candidate.wholeTitleMatch,
+        curated: false,
         titleValues: titleValuesByVideoId.get(candidate.videoId) ?? [],
         metadataValues: [],
         laneEvidence: {

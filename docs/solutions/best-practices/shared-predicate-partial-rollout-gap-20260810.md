@@ -1,7 +1,7 @@
 ---
 title: A new shared visibility predicate must be audited against every duplicate hand-rolled block, not just the call sites the PR already touched
 date: 2026-08-10
-last_updated: 2026-08-13
+last_updated: 2026-09-08
 problem_type: best_practice
 category: best-practices
 component: apps_admin
@@ -14,8 +14,10 @@ tags:
   - graphql
   - code-review
   - dataloader
+  - mobile
 related:
   - docs/plans/2026-08-04-001-fix-video-restrict-view-platforms-sync-plan.md
+  - docs/solutions/best-practices/code-review-prescribed-mechanism-verification-gap.md
 ---
 
 # A new shared visibility predicate must be audited against every duplicate hand-rolled block, not just the call sites the PR already touched
@@ -156,6 +158,92 @@ The instance extends the law beyond shared predicates: any repeated FIX
 leaves the untouched siblings silently stale — grep the shape before
 claiming the area covered.
 
+## Worked instance (2026-09-07): incremental transcript visibility
+
+The gap recurred in Watch Search's transcript projection. Catalog indexing
+correctly excluded videos whose `restrict_view_platforms` contained `watch`,
+but both the full transcript loader and the new incremental transcript
+publisher independently computed a `publiclyVisible` boolean from deletion,
+`no_index`, and published locale state without restating the Watch restriction.
+The incremental path made the omission observable: a restriction could change
+after the catalog alias was built, leaving a stale catalog document that a new
+public transcript hit could still hydrate into a result.
+
+The fix added the raw-SQL restriction to both transcript projection paths. Its
+real-PostgreSQL seam test deliberately keeps the old Typesense catalog document
+while changing the canonical video restriction before ingest, then proves the
+published transcript document is private and the real Watch Search reader
+returns no result. This extends the audit rule across asynchronously refreshed
+projections: never assume another projection's older visibility decision will
+contain a newly published row.
+
+## Worked instance (2026-09-08): new mobile search code re-derived a predicate the same screen already imports
+
+Every case above is a rollout gap: a shared predicate or a repeated fix reached
+some sites of a structural shape and left the pre-existing siblings alone. This
+one is not. The gap opened on brand-new code, in an app already using the
+predicate correctly. `apps/mobile` classifies a series with
+`isSeriesSearchResult` (`apps/mobile/src/lib/isSeriesRecord.ts:42-48`), which is
+label-first: a record
+that carries a label is classified by that label alone, and `childCount` decides
+only for an unlabeled record. Mobile PR #1980 introduced that rule and removed
+`isSeriesLabel(result.label) || (result.childCount ?? 0) > 0`, because a feature
+film owns its chapter clips. The predicate's own comment names the
+counterexample: "Feature films own their chapter clips (JESUS 61), so 'has
+children' is not evidence of a series."
+
+PR #2194 (open and unmerged as of 2026-09-08) then added two decisions to the
+search grid — a preview-eligibility gate and a duration/episode-count chip — and
+both answered "is this a series?" with a bare `childCount > 0`, re-creating the
+exact expression #1980 had removed. The JESUS card's chip read "61 episodes"
+instead of its runtime 2:07:54, and the preview cycle skipped the card.
+
+The predicate was not merely available. It was already imported and called
+correctly in the same screen file that renders the new card:
+`apps/mobile/app/(tabs)/watch.tsx:153` routes a tapped result with
+`isSeriesSearchResult(result)`, and that line is on `origin/main`.
+`apps/mobile/src/components/home/HomeCard.tsx:87` is a second correct consumer,
+also predating the branch. So "does this app already use the shared helper?"
+answers yes and still gives a false all-clear. **Ask it per call site, and ask it
+of new code** — not only of a refactor that introduces a helper.
+
+Two details generalize past this feature. The new gate carried a comment
+justifying itself — "`childCount` is the rule, matching apps/tv's series gate" —
+and that citation was false in the same direction as the bug: apps/tv PR #1767
+is the PR that _removed_ the childCount rule. A comment naming a sibling app is a
+claim to verify, not evidence of coverage. Separately, the branch changed
+`buildMetaLabel` (`apps/mobile/src/lib/watchHome/model.ts:149`) from private to
+exported so the new chip could call it. It decides on `if (args.childCount > 0)`
+(`:154`), so every caller must pass a series-gated count — an invariant that was
+safe while one caller held it, and that the signature cannot state. Exporting a
+single-caller helper publishes its caller's invariants along with it.
+
+`ce-code-review` caught both sites pre-merge — two P1 findings at confidence
+100 per that run's own report, whose artifacts were temporary — so the fix landed
+in the same commit and the defective state never reached git. This is the first instance here where the audit rule ran as a review check
+rather than a post-hoc discovery. Coverage of the fix is uneven, and the uneven
+part is the lesson: `previewCycle.test.ts` adds a discriminating
+`featureFilmWithChapters(61)` fixture that goes red if the gate reverts, while a
+revert of the chip site compiles, typechecks, and leaves the whole suite green.
+Nothing else would catch either — no lint rule targets a hand-rolled
+`childCount > 0`, and no test enumerates the predicate's call sites, although the
+repo already uses that guard shape twice for other invariants
+(`apps/mobile/src/lib/__tests__/watchProgressBarKeys.test.ts`,
+`apps/mobile/src/components/home/__tests__/homeCardRoutingLabel.guard.test.ts`).
+
+One hit of the same shape grep stays open. `normalizeCard` computes a raw
+`children.length` (`apps/mobile/src/lib/watchHome/model.ts:180-183`) and passes
+it straight into `buildMetaLabel` (`:220-223`) with no predicate between them,
+and the home carousel deliberately keeps feature films that own chapter children
+(`:405-408`). No home-model test builds a `FEATURE_FILM` card with children.
+This session did not confirm that the shape is reachable in production on the
+home surface, so treat it as the grep's third hit, not as a reported defect.
+
+The instance extends the law from rollout to greenfield. A predicate that is
+already correct, already imported, and already called correctly next door still
+gets re-derived by new code — so a per-app check and a per-PR check both pass
+while a new call site carries the old bug.
+
 ## Cross-references
 
 - **Plan:** `docs/plans/2026-08-04-001-fix-video-restrict-view-platforms-sync-plan.md`
@@ -163,6 +251,11 @@ claiming the area covered.
 - **Fixed files:** `apps/admin/src/graphql/loaders.ts`,
   `apps/admin/src/services/video.service.ts`
   (`getChildDubLanguages`, `getDownloadableChildDubs`).
+- **Sibling law from the same 2026-09-08 review run:**
+  `docs/solutions/best-practices/code-review-prescribed-mechanism-verification-gap.md`
+  — there a reviewer named a real defect but prescribed a mechanism this app
+  does not have; here a reviewer named both the defect and the correct
+  existing mechanism to call.
 - **Meta-pattern this is an instance of:** see CLAUDE.md's
   "Mocked-vs-real testing discipline (META)" entry and
   `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`.

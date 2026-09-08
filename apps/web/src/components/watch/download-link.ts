@@ -6,6 +6,7 @@ import type { DownloadTier } from "@/components/watch/download-options"
 export const DOWNLOAD_PROXY_PATH = "/watch/api/download"
 
 export type DownloadProxyParams = {
+  capability?: string
   downloadId: string
   filename?: string
   variantId: string
@@ -13,6 +14,7 @@ export type DownloadProxyParams = {
 }
 
 export function buildDownloadProxyUrl({
+  capability,
   downloadId,
   filename,
   variantId,
@@ -23,6 +25,7 @@ export function buildDownloadProxyUrl({
     variantId,
     videoSlug,
   })
+  if (capability) params.set("capability", capability)
   if (filename) params.set("filename", filename)
   return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
 }

@@ -84,6 +84,15 @@ const {
   _internals,
 } = await import("./transcriptEmbeddingBackfill")
 const {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+} = await import("@/services/content-embedding-contract")
+const {
   shouldDeferNextTranscriptEmbeddingLaunch,
   stepProcessTranscriptEmbeddingGroups,
 } = await import("./_steps/process-transcript-embedding-group")
@@ -173,6 +182,8 @@ function transcriptHealthRow(
     model: string
     dimensions: number
     embeddingProvider: string | null
+    embeddingNativeDimensions: number | null
+    embeddingTransformVersion: string | null
     generationMode: string | null
     sourceKind: string | null
     chunksWithEmbedding: number
@@ -187,7 +198,19 @@ function transcriptHealthRow(
     dimensions: overrides.dimensions ?? 1536,
     embedding_provider: Object.hasOwn(overrides, "embeddingProvider")
       ? (overrides.embeddingProvider ?? null)
-      : "jesus-film-ai-gateway",
+      : ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+    embedding_native_dimensions: Object.hasOwn(
+      overrides,
+      "embeddingNativeDimensions",
+    )
+      ? (overrides.embeddingNativeDimensions ?? null)
+      : ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    embedding_transform_version: Object.hasOwn(
+      overrides,
+      "embeddingTransformVersion",
+    )
+      ? (overrides.embeddingTransformVersion ?? null)
+      : null,
     generation_mode: Object.hasOwn(overrides, "generationMode")
       ? (overrides.generationMode ?? null)
       : "model-upgrade",
@@ -197,6 +220,47 @@ function transcriptHealthRow(
     chunks_with_embedding: overrides.chunksWithEmbedding ?? 2,
     chunks_with_embedding_input_text:
       overrides.chunksWithEmbeddingInputText ?? 2,
+  }
+}
+
+function activeContractRow(
+  overrides: Partial<{
+    contractId: string | null
+    queryProvider: string | null
+    queryModel: string | null
+    queryNativeDimensions: number | null
+    queryDimensions: number | null
+    queryTransformVersion: string | null
+    storageProvider: string | null
+    storageModel: string | null
+    storageNativeDimensions: number | null
+    storageDimensions: number | null
+    storageTransformVersion: string | null
+  }> = {},
+) {
+  return {
+    pointerId: "content-embedding-contract-pointer",
+    contractId: overrides.contractId ?? ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    queryProvider:
+      overrides.queryProvider ?? ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+    queryModel: overrides.queryModel ?? ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+    queryNativeDimensions:
+      overrides.queryNativeDimensions ??
+      ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+    queryDimensions:
+      overrides.queryDimensions ?? ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+    queryTransformVersion: overrides.queryTransformVersion ?? null,
+    storageProvider:
+      overrides.storageProvider ?? ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+    storageModel:
+      overrides.storageModel ?? ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+    storageNativeDimensions:
+      overrides.storageNativeDimensions ??
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    storageDimensions:
+      overrides.storageDimensions ??
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    storageTransformVersion: overrides.storageTransformVersion ?? null,
   }
 }
 
@@ -398,6 +462,7 @@ Subtitle transcript text.
   it("skips already healthy enriched transcript rows during model-upgrade resumes", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw
       .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+      .mockResolvedValueOnce([activeContractRow()])
       .mockResolvedValueOnce([transcriptHealthRow()])
 
     const report = await runTranscriptEmbeddingBackfill({
@@ -492,10 +557,10 @@ Subtitle transcript text.
       ],
     },
     {
-      label: "rows with stale model stamps",
+      label: "rows with legacy model stamps",
       healthRows: [
         transcriptHealthRow({
-          model: "openai/text-embedding-future-model",
+          model: "openai/text-embedding-3-small",
         }),
       ],
     },
@@ -508,18 +573,18 @@ Subtitle transcript text.
       ],
     },
     {
-      label: "rows with null providers",
+      label: "rows with stale native dimensions",
       healthRows: [
         transcriptHealthRow({
-          embeddingProvider: null,
+          embeddingNativeDimensions: 3072,
         }),
       ],
     },
     {
-      label: "rows with stale dimensions",
+      label: "rows with stale transform provenance",
       healthRows: [
         transcriptHealthRow({
-          dimensions: 3072,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
         }),
       ],
     },
@@ -528,6 +593,7 @@ Subtitle transcript text.
     async ({ healthRows }) => {
       ;(prisma as unknown as PrismaStub).$queryRaw
         .mockResolvedValueOnce([row("v-a", "e-a", "core-a", "en")])
+        .mockResolvedValueOnce([activeContractRow()])
         .mockResolvedValueOnce(healthRows)
 
       const report = await runTranscriptEmbeddingBackfill({
@@ -553,6 +619,7 @@ Subtitle transcript text.
         row("v-b", "e-b", "core-b", "es"),
         row("v-c", "e-c", "core-c", "fr"),
       ])
+      .mockResolvedValueOnce([activeContractRow()])
       .mockResolvedValueOnce([
         transcriptHealthRow({
           videoEditionId: "e-a",
@@ -571,7 +638,7 @@ Subtitle transcript text.
 
     expect(report.skipped).toBe(2)
     expect(report.succeeded).toBe(1)
-    expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(2)
+    expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(3)
     expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(1)
     expect(
       vi.mocked(launchMastraTranscriptEmbedding).mock.calls[0]?.[0],

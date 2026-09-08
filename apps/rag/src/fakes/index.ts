@@ -1,5 +1,5 @@
 /**
- * In-memory fakes for every contract port (docs/architecture.md §5.6). Each
+ * In-memory fakes for every contract port (docs/architecture.md §4–§5). Each
  * context's unit tests run against these — no Postgres, no network. A context
  * that can't be tested on fakes is already coupled.
  */

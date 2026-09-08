@@ -1,0 +1,20 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/web",
+    "exec",
+    "vitest",
+    "run",
+    "src/proxy.test.ts",
+    "src/components/watch/__tests__/CollectionDownloadModal.test.tsx",
+    "src/components/watch/__tests__/HeroPlayer.test.tsx",
+    "src/components/whats-new/__tests__/WatchWhatsNewPage.test.tsx",
+    "src/lib/studio-playback.test.ts",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 0,
+  "seconds": 20.163237472006585,
+  "namespace": "net:[4026532860]"
+}

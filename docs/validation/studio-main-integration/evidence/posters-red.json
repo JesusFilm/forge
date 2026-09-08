@@ -1,0 +1,17 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/web",
+    "exec",
+    "vitest",
+    "run",
+    "src/lib/watch-home.test.ts",
+    "src/components/home/__tests__/WatchHomePage.test.tsx",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 1,
+  "seconds": 6.487865107003017,
+  "namespace": "net:[4026532629]"
+}

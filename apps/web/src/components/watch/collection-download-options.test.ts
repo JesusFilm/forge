@@ -25,6 +25,7 @@ function buildQueueForTitles(titles: string[]) {
       downloads: [
         {
           documentId: `download-${index + 1}`,
+          capability: `capability-${index + 1}`,
           height: 720,
           quality: "high" as const,
           size: 100,
@@ -57,17 +58,47 @@ describe("collection download options", () => {
         documentId: "dub-2",
         videoId: "v2",
         downloads: [
-          { documentId: "d2h", height: 1080, quality: "high", size: 200 },
-          { documentId: "d2l", height: 360, quality: "low", size: 20 },
+          {
+            documentId: "d2h",
+            capability: "capability-d2h",
+            height: 1080,
+            quality: "high",
+            size: 200,
+          },
+          {
+            documentId: "d2l",
+            capability: "capability-d2l",
+            height: 360,
+            quality: "low",
+            size: 20,
+          },
         ],
       },
       {
         documentId: "dub-1",
         videoId: "v1",
         downloads: [
-          { documentId: "d1h", height: 1080, quality: "high", size: 200 },
-          { documentId: "d1m", height: 720, quality: "sd", size: 100 },
-          { documentId: "d1l", height: 360, quality: "low", size: 20 },
+          {
+            documentId: "d1h",
+            capability: "capability-d1h",
+            height: 1080,
+            quality: "high",
+            size: 200,
+          },
+          {
+            documentId: "d1m",
+            capability: "capability-d1m",
+            height: 720,
+            quality: "sd",
+            size: 100,
+          },
+          {
+            documentId: "d1l",
+            capability: "capability-d1l",
+            height: 360,
+            quality: "low",
+            size: 20,
+          },
         ],
       },
     ])
@@ -86,7 +117,13 @@ describe("collection download options", () => {
         documentId: "dub-1",
         videoId: "v1",
         downloads: [
-          { documentId: "download-1", height: 720, quality: "high", size: 100 },
+          {
+            documentId: "download-1",
+            capability: "opaque-capability",
+            height: 720,
+            quality: "high",
+            size: 100,
+          },
         ],
       },
     ])
@@ -101,6 +138,9 @@ describe("collection download options", () => {
     expect(item.filename).toBe("01_One_English_eng_720p.mp4")
     expect(item.url).toContain("/watch/api/download?")
     expect(item.url).toContain("downloadId=download-1")
+    expect(
+      new URL(item.url, "https://watch.example").searchParams.get("capability"),
+    ).toBe("opaque-capability")
     expect(item.url).not.toContain("stream.mux.com")
   })
 
@@ -138,14 +178,26 @@ describe("collection download options", () => {
         documentId: "dub-1",
         videoId: "v1",
         downloads: [
-          { documentId: "download-1", height: 720, quality: "high", size: 100 },
+          {
+            documentId: "download-1",
+            capability: "capability-1",
+            height: 720,
+            quality: "high",
+            size: 100,
+          },
         ],
       },
       {
         documentId: "dub-3",
         videoId: "v3",
         downloads: [
-          { documentId: "download-3", height: 720, quality: "high", size: 100 },
+          {
+            documentId: "download-3",
+            capability: "capability-3",
+            height: 720,
+            quality: "high",
+            size: 100,
+          },
         ],
       },
     ])
@@ -178,6 +230,7 @@ describe("collection download options", () => {
         downloads: [
           {
             documentId: `download-${episode.documentId}`,
+            capability: `capability-${episode.documentId}`,
             height: 720,
             quality: "high",
             size: 100,

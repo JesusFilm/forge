@@ -169,6 +169,7 @@ import {
 import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
+import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -178,6 +179,7 @@ import {
   handleAiChatHistoryListRequest,
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
+import { handleAiChatHistoryRenameRequest } from "./ai-chat-history-write-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { startLangfuseTraceRetention } from "./langfuse-trace-retention"
@@ -335,6 +337,7 @@ export const mastra = new Mastra({
     seoDailyAuditWorkflow,
     seoExperimentEvaluationWorkflow,
     seoTicketDispatchWorkflow,
+    watchRouteAlertsWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via
     // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
@@ -592,8 +595,9 @@ export const mastra = new Mastra({
             requestSignal: c.req.raw.signal,
           }),
       }),
-      // The seeker send route + the two history read routes below are the
-      // ai-chat lane: their flag + bearer preamble lives in the shared lane
+      // The seeker send route + the three history routes below (two reads and
+      // the rename write) are the ai-chat lane: their flag + bearer preamble
+      // lives in the shared lane
       // admission module (feat-283), which sources the dedicated
       // AI_CHAT_SERVICE_API_KEYS lane CSV internally (KTD2/feat-250 — never
       // the shared pool), so no key list is threaded through here.
@@ -625,6 +629,20 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-rename", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryRenameRequest({
             authHeader: c.req.header("authorization"),
             readJson: () => c.req.json(),
           })
@@ -1007,11 +1025,12 @@ setInstructionResolver(async (agentId) => {
 // ai-chat retention purge (feat-208): boot drain + daily timer over the
 // `ai_chat` schema. Gated to the deployed runtime (NODE_ENV=production) so a
 // build / `mastra dev` CLI-analysis import never fires DB I/O at module load;
-// it additionally no-ops unless a postgres backend is configured at all
-// (canAiChatDataPersist) — deliberately NOT the resolved ai-chat backend: the
-// kill-switch (AI_CHAT_MEMORY_BACKEND=memory) stops writes, never retention
-// on already-stored rows. Single-instance assumption: replicas would each run
-// redundant (harmless, wasteful) sweeps — add a leader guard before scaling out.
+// it additionally no-ops unless the shared backend is Postgres
+// (canAiChatDataPersist), keeping shared-memory local runs pool-free. Retention
+// deliberately remains independent of SEEKER_ROUTE_ENABLED: route admission
+// does not suspend the durable-row lifecycle obligation. Single-instance
+// assumption: replicas would each run redundant (harmless, wasteful) sweeps —
+// add a leader guard before scaling out.
 if (env.NODE_ENV === "production") {
   startAiChatRetentionPurge()
   startSeekerPromptHealthMonitor()

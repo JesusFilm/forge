@@ -1,0 +1,8 @@
+(node:751526) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin-graphql@0.0.1 generate /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/packages/admin-graphql
+> gql-tada generate output
+
+✓ Introspection output was generated successfully
+

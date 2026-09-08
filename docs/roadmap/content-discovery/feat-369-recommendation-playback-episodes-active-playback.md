@@ -3,7 +3,8 @@ id: "feat-369"
 title: "Recommendation playback episodes and active-playback proxy"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
+completed_date: "2026-09-07"
 start_date: ""
 duration: 6
 depends_on:
@@ -22,6 +23,7 @@ blocks:
   - "feat-391"
   - "feat-392"
   - "feat-448"
+  - "feat-464"
 tags:
   - "admin"
   - "web"
@@ -54,7 +56,7 @@ Playback must be represented as recomputable episodes so elapsed time, player po
 - Issue a source-neutral server playback context for every eligible Watch arrival, optionally linked to recommendation, search, share, or acquisition provenance, then exchange it for an episode-scoped token.
 - Record immutable playback facts, union foreground-playing intervals, and finalize episodes through a fenced idempotent workflow.
 - Publish revisioned outcomes with exact input watermarks and compare the legacy rule with active-watch-proxy-v1 by duration cohort.
-- Publish consent- and integrity-eligible finalized outcomes as source-neutral preference evidence regardless of whether the viewer arrived through recommendations, search, direct navigation, a shared link, or editorial discovery; retain discovery source as provenance, never as the gate for profile eligibility.
+- Publish finalized outcomes through a stable source-neutral consumer boundary regardless of whether the viewer arrived through recommendations, search, direct navigation, a shared link, acquisition, or editorial discovery; retain discovery source as provenance. Downstream consumers—not playback collection—own consent, integrity, privacy, and preference-eligibility policy.
 - Record a per-proxy Admin readiness decision without making the proxy live ranking input.
 
 ## Admin Evidence Gate
@@ -68,15 +70,23 @@ The ticket is not complete until this result is visible and reconcilable in the 
 
 - The measure is an observable active-playback proxy, not attention, satisfaction, or universal meaningful-watch truth.
 - Late evidence supersedes prior outcome revisions; it never mutates history or double-counts intervals.
-- Discovery source may affect analysis and rank features, but equivalent finalized outcomes must use the same profile-eligibility policy across sources.
+- Discovery source may affect later analysis and rank features, but the playback episode pipeline must process equivalent outcomes identically across sources and consent states.
 - The readiness decision is eligible-for-shadow-evaluation, revise, retire, or inconclusive—not live promotion.
-- Declare purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback/fallback for every new recommendation record.
+- Do not add consent branching, consent UI, recommendation-specific privacy schema, recommendation eligibility gates, erasure workflows, retention machinery, or a new privacy-review gate in this ticket. Any downstream recommendation consumer owns those policies at its ingestion boundary.
 - Preserve player startup and Watch availability when recommendation telemetry or Admin is degraded.
 
 ## Verification
 
-- Test route exit, cleanup, long watches, late batches, overlapping intervals, seeking, background playback, token misuse, and racing finalizers.
+- Test route exit, cleanup, short and long watches, late and reordered batches, overlapping and duplicate intervals, seeking, hidden/background playback, invalid/expired/replayed/cross-session tokens, racing finalizers, stale fences, supersession, source equivalence with distinct provenance, consent-state-identical processing, and fail-open playback when telemetry is unavailable.
 - Rebuild the projection from immutable facts and prove it matches the incremental result.
 - Reconcile representative episodes and classifier revisions in Admin.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## Completion Evidence
+
+- PR #2155 shipped source-neutral episodes, append-only facts, revisioned outcomes, Admin reconciliation, source-equivalence coverage, and a browser-proven Watch-to-Admin lifecycle while keeping `active-watch-proxy-v1` out of live ranking.
+- PR #2165 made selection attribution and playback delivery replay-safe, including stable claim nonces, immutable delivery receipts, exact-event idempotency, payload-conflict detection, and fail-open playback.
+- The 2026-09-07 post-deploy audit confirmed active production collection and exposed the remaining replay-receipt collision and cookie-less session-binding race instead of silently accepting corrupt evidence.
+- The closeout hotfix reserves replay ordinals through the episode row before immutable receipt insertion, serializes every session-creating browser request even without Web Locks, and stops retrying definitive invalid bindings. Privacy-safe reason codes make every rejected binding reconcilable without exposing episode, media, or session identifiers.
+- The deterministic real-PostgreSQL concurrency regression, the focused playback/route/recorder suites, both application typechecks and lints, and the full Admin and Web suites pass.

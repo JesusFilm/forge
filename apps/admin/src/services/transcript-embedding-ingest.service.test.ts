@@ -1,4 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+} from "./content-embedding-contract"
 
 const { writeTranscriptEmbeddingPayloadMock } = vi.hoisted(() => ({
   writeTranscriptEmbeddingPayloadMock: vi.fn(),
@@ -17,12 +27,44 @@ vi.mock("@/services/transcript-embedding.service", async (importOriginal) => {
   }
 })
 
-const { ingestTranscriptEmbeddings, _internals } =
+const { ingestTranscriptEmbeddings, MAX_TRANSCRIPT_INGEST_CHUNKS, _internals } =
   await import("@/services/transcript-embedding-ingest.service")
 
+function activeContractRow() {
+  return {
+    pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+    contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    queryProvider: ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+    queryModel: ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+    queryNativeDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+    queryDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+    queryTransformVersion: null,
+    storageProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+    storageModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+    storageNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    storageDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    storageTransformVersion: null,
+  }
+}
+
 function buildPrisma() {
-  const queryRaw = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => [])
+  const queryRaw = vi.fn(
+    async (
+      strings: TemplateStringsArray,
+      ..._args: unknown[]
+    ): Promise<unknown[]> => {
+      const sql = strings.join(" ")
+      if (sql.includes("FROM content_embedding_contract_pointer")) {
+        return [activeContractRow()]
+      }
+      return []
+    },
+  )
   const executeRaw = vi.fn(async (..._args: unknown[]): Promise<number> => 0)
+  const createPublicationEvent = vi.fn(async () => ({ id: "event-1" }))
+  const findPublicationEvent = vi.fn(
+    async (): Promise<{ currentDocumentIds: string[] } | null> => null,
+  )
   const findVideo = vi.fn(
     async (): Promise<{ id: string; coreId: string } | null> => ({
       id: "video-1",
@@ -35,6 +77,10 @@ function buildPrisma() {
   const prisma: {
     video: { findFirst: typeof findVideo }
     videoEdition: { findFirst: typeof findEdition }
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: typeof createPublicationEvent
+      findFirst: typeof findPublicationEvent
+    }
     $executeRaw: typeof executeRaw
     $queryRaw: typeof queryRaw
     $transaction: ReturnType<typeof vi.fn>
@@ -45,6 +91,10 @@ function buildPrisma() {
     videoEdition: {
       findFirst: findEdition,
     },
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: createPublicationEvent,
+      findFirst: findPublicationEvent,
+    },
     $executeRaw: executeRaw,
     $queryRaw: queryRaw,
     $transaction: vi.fn(),
@@ -53,6 +103,30 @@ function buildPrisma() {
     async <T>(fn: (tx: typeof prisma) => Promise<T>): Promise<T> => fn(prisma),
   )
   return prisma
+}
+
+function mockExistingTranscriptState(
+  prisma: ReturnType<typeof buildPrisma>,
+  input: {
+    existing: Record<string, unknown> | null
+    healthyChunks?: number
+  },
+) {
+  vi.mocked(prisma.$queryRaw).mockImplementation(
+    async (strings: TemplateStringsArray): Promise<unknown[]> => {
+      const sql = strings.join(" ")
+      if (sql.includes("FROM content_embedding_contract_pointer")) {
+        return [activeContractRow()]
+      }
+      if (sql.includes("FROM video_transcript_chunk")) {
+        return [{ count: input.healthyChunks ?? 0 }]
+      }
+      if (sql.includes("FROM video_transcript")) {
+        return input.existing == null ? [] : [input.existing]
+      }
+      return []
+    },
+  )
 }
 
 function payload(overrides?: Record<string, unknown>) {
@@ -73,11 +147,10 @@ function payload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "embeddings",
-      provider: "jesus-film-ai-gateway",
-      dimensions: 1536,
-      nativeDimensions: 4096,
-      transformVersion: "matryoshka-truncate-1536-v1",
+      name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
     },
     chunking: {
       type: "segment-aware",
@@ -98,7 +171,9 @@ function payload(overrides?: Record<string, unknown>) {
         tokenCount: 6,
         startSeconds: 0,
         endSeconds: 2,
-        embedding: new Array(1536).fill(0.01),
+        embedding: new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(
+          0.01,
+        ),
       },
     ],
     ...overrides,
@@ -204,8 +279,11 @@ describe("ingestTranscriptEmbeddings", () => {
   beforeEach(() => {
     writeTranscriptEmbeddingPayloadMock.mockReset()
     writeTranscriptEmbeddingPayloadMock.mockResolvedValue({
+      transcriptId: "transcript-1",
       chunksIndexed: 1,
       embeddingsWritten: 1,
+      currentDocumentIds: ["chunk-doc-1"],
+      staleDocumentIds: [],
     })
   })
 
@@ -240,8 +318,9 @@ describe("ingestTranscriptEmbeddings", () => {
         ]),
         provenance: expect.objectContaining({
           embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
+          embeddingNativeDimensions:
+            ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          embeddingTransformVersion: undefined,
           sourceArtifactKey: "42/transcript.json",
           generationMode: "idempotent",
           mastraRunId: "run-1",
@@ -249,6 +328,92 @@ describe("ingestTranscriptEmbeddings", () => {
         }),
       }),
     )
+  })
+
+  it("normalizes chunking-version identity before canonical and outbox writes", async () => {
+    const prisma = buildPrisma()
+
+    const result = await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        chunking: {
+          type: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          version: "  mastra-v1  ",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("created")
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        provenance: expect.objectContaining({
+          chunkingVersion: "mastra-v1",
+        }),
+      }),
+    )
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        transcriptChunkingVersion: "mastra-v1",
+      }),
+    })
+  })
+
+  it("rejects missing or unpersistable chunking-version identity before writing", async () => {
+    const prisma = buildPrisma()
+    const missingVersion = payload()
+    delete (missingVersion.chunking as { version?: string }).version
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, missingVersion),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          chunking: {
+            type: "segment-aware",
+            maxChunkTokens: 500,
+            overlapTokens: 100,
+            version: "v".repeat(129),
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("rejects chunk counts above the bounded publication-work ceiling", async () => {
+    const prisma = buildPrisma()
+    const chunkEmbedding = new Array(
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ).fill(0.01)
+    const body = payload({
+      chunks: Array.from(
+        { length: MAX_TRANSCRIPT_INGEST_CHUNKS + 1 },
+        (_, chunkIndex) => ({
+          chunkIndex,
+          chunkId: `chunk-${chunkIndex}`,
+          text: `Chunk ${chunkIndex}`,
+          tokenCount: 2,
+          embedding: chunkEmbedding,
+        }),
+      ),
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, body),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 
   it("accepts and forwards v2 enriched transcript chunk fields", async () => {
@@ -287,7 +452,9 @@ describe("ingestTranscriptEmbeddings", () => {
           tokenCount: 24,
           startSeconds: 0,
           endSeconds: 2,
-          embedding: new Array(1536).fill(0.01),
+          embedding: new Array(
+            ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          ).fill(0.01),
         },
       ],
     })
@@ -376,25 +543,25 @@ describe("ingestTranscriptEmbeddings", () => {
     const prisma = buildPrisma()
     const body = payload()
     const hash = hashFor(body)
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: hash,
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 1 }])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 1,
+    })
 
     const bodyWithHash = payload({
       source: {
@@ -412,48 +579,21 @@ describe("ingestTranscriptEmbeddings", () => {
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
-  it("keeps migrated legacy OpenAI rows idempotent when provider was previously null", async () => {
+  it("rejects equal-dimension legacy OpenAI payloads when the provider tuple differs", async () => {
     const prisma = buildPrisma()
-    const body = payload({
-      model: {
-        name: "openai/text-embedding-3-small",
-        provider: "openai",
-        dimensions: 1536,
-      },
-    })
-    const hash = hashFor(body)
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-legacy",
-          sourceContentHash: hash,
-          model: "openai/text-embedding-3-small",
-          dimensions: 1536,
-          embeddingProvider: null,
-          embeddingNativeDimensions: 1536,
-          embeddingTransformVersion: null,
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 1 }])
-
-    const result = await ingestTranscriptEmbeddings(
-      prisma as never,
-      payload({
-        model: body.model as Record<string, unknown>,
-        source: {
-          ...(body.source as object),
-          contentHash: hash,
-        },
-      }),
-    )
-
-    expect(result.status).toBe("unchanged")
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          model: {
+            name: "openai/text-embedding-3-small",
+            provider: "openai",
+            dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+            nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "contract_mismatch" })
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
@@ -472,30 +612,89 @@ describe("ingestTranscriptEmbeddings", () => {
         contentHash: hash,
       },
     })
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: hash,
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 0 }])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 0,
+    })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, body)
 
     expect(result.status).toBe("repaired")
     expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("carries a missing previously published chunk id into repair stale evidence", async () => {
+    const prisma = buildPrisma()
+    const base = payload()
+    const hash = hashFor(base)
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 0,
+    })
+    prisma.watchSearchCurrentTranscriptPublicationEvent.findFirst.mockResolvedValue(
+      { currentDocumentIds: ["still-current", "missing-published"] },
+    )
+    writeTranscriptEmbeddingPayloadMock.mockResolvedValue({
+      transcriptId: "transcript-1",
+      chunksIndexed: 1,
+      embeddingsWritten: 1,
+      currentDocumentIds: ["still-current"],
+      staleDocumentIds: ["writer-stale"],
+    })
+
+    await ingestTranscriptEmbeddings(
+      prisma as never,
+      payload({
+        generation: {
+          mode: "repair",
+          generatedAt: "2026-05-25T00:01:00.000Z",
+          mastraRunId: "run-repair-stale-evidence",
+        },
+        source: {
+          ...(payload().source as object),
+          contentHash: hash,
+        },
+      }),
+    )
+
+    expect(
+      prisma.watchSearchCurrentTranscriptPublicationEvent.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        currentDocumentIds: ["still-current"],
+        staleDocumentIds: ["writer-stale", "missing-published"],
+      }),
+    })
   })
 
   it("repair mode leaves healthy matching chunks unchanged", async () => {
@@ -513,25 +712,25 @@ describe("ingestTranscriptEmbeddings", () => {
         contentHash: hash,
       },
     })
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: hash,
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 1 }])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 1,
+    })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, body)
 
@@ -551,7 +750,13 @@ describe("ingestTranscriptEmbeddings", () => {
     )
     writeTranscriptEmbeddingPayloadMock
       .mockRejectedValueOnce(serializationFailure)
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        transcriptId: "transcript-1",
+        chunksIndexed: 1,
+        embeddingsWritten: 1,
+        currentDocumentIds: ["chunk-doc-1"],
+        staleDocumentIds: [],
+      })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, payload())
 
@@ -600,25 +805,25 @@ describe("ingestTranscriptEmbeddings", () => {
         contentHash: hash,
       },
     })
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: hash,
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 1 }])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 1,
+    })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, body)
 
@@ -641,25 +846,25 @@ describe("ingestTranscriptEmbeddings", () => {
         contentHash: hash,
       },
     })
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: hash,
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
-      .mockResolvedValueOnce([{ count: 1 }])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: hash,
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+      healthyChunks: 1,
+    })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, body)
 
@@ -669,24 +874,24 @@ describe("ingestTranscriptEmbeddings", () => {
 
   it("rejects default idempotent mode when an existing transcript differs", async () => {
     const prisma = buildPrisma()
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: "transcript-1",
-          sourceContentHash: "sha256:old",
-          model: "embeddings",
-          dimensions: 1536,
-          embeddingProvider: "jesus-film-ai-gateway",
-          embeddingNativeDimensions: 4096,
-          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
-          chunkingType: "segment-aware",
-          maxChunkTokens: 500,
-          overlapTokens: 100,
-          totalChunks: 1,
-          totalTokens: 6,
-        },
-      ])
+    mockExistingTranscriptState(prisma, {
+      existing: {
+        id: "transcript-1",
+        sourceContentHash: "sha256:old",
+        model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        embeddingTransformVersion: null,
+        sourceGeneration: 1n,
+        chunkingType: "segment-aware",
+        chunkingVersion: "mastra-v1",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        totalChunks: 1,
+        totalTokens: 6,
+      },
+    })
 
     const result = await ingestTranscriptEmbeddings(prisma as never, payload())
 
@@ -697,22 +902,21 @@ describe("ingestTranscriptEmbeddings", () => {
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
-  it("rejects dimension drift before writing", async () => {
+  it("rejects dimension drift by failing the contract match before writing", async () => {
     const prisma = buildPrisma()
     await expect(
       ingestTranscriptEmbeddings(
         prisma as never,
         payload({
           model: {
-            name: "embeddings",
-            provider: "jesus-film-ai-gateway",
+            name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+            provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
             dimensions: 768,
-            nativeDimensions: 4096,
-            transformVersion: "matryoshka-truncate-1536-v1",
+            nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
           },
         }),
       ),
-    ).rejects.toMatchObject({ code: "dimension_mismatch" })
+    ).rejects.toMatchObject({ code: "contract_mismatch" })
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
@@ -800,12 +1004,9 @@ describe("ingestTranscriptEmbeddings", () => {
 
   it("constrains external target resolution with Admin video id when provided", async () => {
     const prisma = buildPrisma()
-    vi.mocked(prisma.$queryRaw)
-      .mockResolvedValueOnce([
-        { videoId: "video-1", videoEditionId: "edition-1", coreId: "core-1" },
-      ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([
+      { videoId: "video-1", videoEditionId: "edition-1", coreId: "core-1" },
+    ])
 
     await ingestTranscriptEmbeddings(
       prisma as never,

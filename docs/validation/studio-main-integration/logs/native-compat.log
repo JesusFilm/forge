@@ -1,0 +1,19 @@
+(node:761507) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/mastra[39m
+
+ [32m✓[39m src/services/studio-authoring/runtime.db.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 623[2mms[22m[39m
+   [33m[2m✓[22m[39m two native HTTP runtimes execute pinned bytes once despite active changes and reconstruction [33m 621[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/tool-feedback.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 288[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/run-budget.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/proposal-speech.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/calendar-planner.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/proposal-feedback.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/services/studio-authoring/instructions.db.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 350[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m22 passed[39m[22m[90m (22)[39m
+[2m   Start at [22m 09:13:25
+[2m   Duration [22m 9.12s[2m (transform 355ms, setup 0ms, collect 5.70s, tests 1.55s, environment 2ms, prepare 549ms)[22m
+

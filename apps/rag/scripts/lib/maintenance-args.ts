@@ -41,9 +41,20 @@ const positive = (argv: string[], flag: string): number | undefined => {
   return value
 }
 
+function parsePathPrefix(argv: string[], source?: string): string | undefined {
+  const prefix = valueAfter(argv, "--path-prefix")
+  if (prefix === undefined) return undefined
+  if (!source || !/^\/(?:[A-Za-z0-9-]+\/)+$/.test(prefix))
+    throw invalidArgument(
+      "--path-prefix requires --source and a directory path such as /islenska/",
+    )
+  return prefix
+}
+
 export type AcquireArgs = {
   all: boolean
   source?: string
+  pathPrefix?: string
   dryRun: boolean
   resume: boolean
   apply: boolean
@@ -52,7 +63,7 @@ export type AcquireArgs = {
 export function parseAcquireArgs(argv: string[]): AcquireArgs {
   validateArgs(
     argv,
-    ["--source"],
+    ["--source", "--path-prefix"],
     ["--all", "--dry-run", "--resume", "--apply"],
   )
   const all = argv.includes("--all")
@@ -63,6 +74,7 @@ export function parseAcquireArgs(argv: string[]): AcquireArgs {
   return {
     all,
     source,
+    pathPrefix: parsePathPrefix(argv, source),
     dryRun: !apply || argv.includes("--dry-run"),
     resume: argv.includes("--resume"),
     apply,
@@ -72,6 +84,7 @@ export function parseAcquireArgs(argv: string[]): AcquireArgs {
 export type IndexArgs = {
   all: boolean
   source?: string
+  pathPrefix?: string
   limit?: number
   concurrency: number
   force: boolean
@@ -82,7 +95,7 @@ export type IndexArgs = {
 export function parseIndexArgs(argv: string[]): IndexArgs {
   validateArgs(
     argv,
-    ["--source", "--limit", "--concurrency"],
+    ["--source", "--path-prefix", "--limit", "--concurrency"],
     ["--all", "--force", "--force-all", "--apply"],
   )
   const all = argv.includes("--all")
@@ -105,6 +118,7 @@ export function parseIndexArgs(argv: string[]): IndexArgs {
   return {
     all,
     source,
+    pathPrefix: parsePathPrefix(argv, source),
     limit,
     concurrency,
     force: argv.includes("--force") || forceAll,

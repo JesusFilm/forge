@@ -7,8 +7,12 @@ import type { Root } from "react-dom/client"
 import { describe, expect, it, vi } from "vitest"
 
 import { RecommendationPlaybackRecorder } from "./RecommendationPlaybackRecorder"
-import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import {
+  RECOMMENDATION_TAB_CORRELATION_KEY,
+  type RecommendationPlaybackEvent,
+} from "@/lib/recommendation-contracts"
+import {
+  acceptedFactsResponse,
   deferred,
   makePlayer,
   response,
@@ -26,17 +30,23 @@ describe("RecommendationPlaybackRecorder", () => {
   })
 
   it("records a media error after an attempt even before playback starts", async () => {
-    fetchMock.mockResolvedValue(
-      response({
-        episode: {
-          episodeId: "episode-1",
-          capability: "episode-capability-secret",
-          activeUntil: "2026-08-19T07:00:00.000Z",
-          hardUntil: "2026-08-19T09:00:00.000Z",
-        },
-        receipts: [],
-      }),
-    )
+    fetchMock.mockImplementation((_url, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        action?: string
+      }
+      return Promise.resolve(
+        body.action === "claim"
+          ? response({
+              episode: {
+                episodeId: "episode-1",
+                capability: "episode-capability-secret",
+                activeUntil: "2026-08-19T07:00:00.000Z",
+                hardUntil: "2026-08-19T09:00:00.000Z",
+              },
+            })
+          : acceptedFactsResponse(init),
+      )
+    })
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -117,7 +127,9 @@ describe("RecommendationPlaybackRecorder", () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    fetchMock.mockResolvedValue(response({ receipts: [] }))
+    fetchMock.mockImplementation((_url, init) =>
+      Promise.resolve(acceptedFactsResponse(init)),
+    )
     await act(async () => {
       claim.resolve(
         response({
@@ -162,7 +174,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -255,7 +269,7 @@ describe("RecommendationPlaybackRecorder", () => {
     )
     const player = makePlayer()
     const overflow = vi.fn()
-    window.addEventListener("forge:recommendation-playback-overflow", overflow)
+    window.addEventListener("forge:recommendation-playback-degraded", overflow)
 
     await act(async () => {
       root.render(
@@ -277,8 +291,14 @@ describe("RecommendationPlaybackRecorder", () => {
     }
     await act(async () => window.dispatchEvent(new Event("pagehide")))
 
-    expect(overflow).toHaveBeenCalled()
-    fetchMock.mockResolvedValue(response({ receipts: [] }))
+    expect(overflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ reason: "pending_claim" }),
+      }),
+    )
+    fetchMock.mockImplementation((_url, init) =>
+      Promise.resolve(acceptedFactsResponse(init)),
+    )
     await act(async () => {
       claim.resolve(
         response({
@@ -308,9 +328,70 @@ describe("RecommendationPlaybackRecorder", () => {
     ).toBe("pagehide")
     expect(factCalls.every(([, init]) => init.keepalive === true)).toBe(true)
     window.removeEventListener(
-      "forge:recommendation-playback-overflow",
+      "forge:recommendation-playback-degraded",
       overflow,
     )
+  })
+
+  it("pauses active measurement across BFCache and resumes without ending the episode", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "episode-1",
+            capability: "episode-capability-secret",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => player.dispatch("playing"))
+    await act(async () => vi.advanceTimersByTimeAsync(5_000))
+    const pagehide = new Event("pagehide")
+    Object.defineProperty(pagehide, "persisted", { value: true })
+    await act(async () => window.dispatchEvent(pagehide))
+    await act(async () => vi.advanceTimersByTimeAsync(10_000))
+    const pageshow = new Event("pageshow")
+    Object.defineProperty(pageshow, "persisted", { value: true })
+    await act(async () => window.dispatchEvent(pageshow))
+    await act(async () => vi.advanceTimersByTimeAsync(7_000))
+    await act(async () => player.dispatch("pause"))
+
+    const events = fetchMock.mock.calls.slice(1).flatMap(
+      ([, init]) =>
+        (
+          JSON.parse(init.body as string) as {
+            events?: RecommendationPlaybackEvent[]
+          }
+        ).events ?? [],
+    )
+    expect(
+      events
+        .filter((event) => event.kind === "playback_active_visible_playing")
+        .reduce((total, event) => total + event.payload.activeMilliseconds, 0),
+    ).toBe(12_000)
+    expect(events.some((event) => event.kind === "playback_end")).toBe(false)
   })
 
   it("keeps automatic initiation separate and marks unavailable player-state coverage partial", async () => {
@@ -325,7 +406,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -387,7 +470,9 @@ describe("RecommendationPlaybackRecorder", () => {
         }),
       )
       .mockReturnValueOnce(firstFacts.promise)
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -422,7 +507,7 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     await act(async () => {
-      firstFacts.resolve(response({ receipts: [] }))
+      firstFacts.resolve(acceptedFactsResponse(fetchMock.mock.calls[1]?.[1]))
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -441,7 +526,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -492,7 +579,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -532,6 +621,67 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(activeMilliseconds).toBe(3_000)
   })
 
+  it("excludes hidden time and resumes the same episode when visible again", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "episode-1",
+            capability: "episode-capability-secret",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+    let visibility: DocumentVisibilityState = "visible"
+    const visibilitySpy = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockImplementation(() => visibility)
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => player.dispatch("playing"))
+    vi.advanceTimersByTime(2_000)
+    visibility = "hidden"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(20_000)
+    visibility = "visible"
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")))
+    vi.advanceTimersByTime(3_000)
+    await act(async () => window.dispatchEvent(new Event("pagehide")))
+    await act(async () => await Promise.resolve())
+    visibilitySpy.mockRestore()
+
+    const events = fetchMock.mock.calls
+      .slice(1)
+      .flatMap(([, init]) => JSON.parse(init.body as string).events)
+    const activeMilliseconds = events
+      .filter((fact) => fact.kind === "playback_active_visible_playing")
+      .reduce((total, fact) => total + fact.payload.activeMilliseconds, 0)
+    expect(activeMilliseconds).toBe(5_000)
+    expect(events.filter((fact) => fact.kind === "playback_end")).toHaveLength(
+      1,
+    )
+  })
+
   it("timestamps bounded active chunks as adjacent intervals", async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -544,7 +694,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -605,7 +757,9 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -662,7 +816,9 @@ describe("RecommendationPlaybackRecorder", () => {
         }),
       )
       .mockReturnValueOnce(firstFacts.promise)
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -698,7 +854,7 @@ describe("RecommendationPlaybackRecorder", () => {
     ])
     expect(fetchMock.mock.calls[2]?.[1]?.keepalive).toBe(true)
 
-    firstFacts.resolve(response({ receipts: [] }))
+    firstFacts.resolve(acceptedFactsResponse(fetchMock.mock.calls[1]?.[1]))
   })
 
   it("retains and retries terminal truth when the earlier serialized drain fails", async () => {
@@ -715,9 +871,13 @@ describe("RecommendationPlaybackRecorder", () => {
         }),
       )
       .mockReturnValueOnce(firstFacts.promise)
-      .mockResolvedValueOnce(response({ receipts: [] }))
+      .mockImplementationOnce((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
       .mockResolvedValueOnce(response({ error: "still unavailable" }, false))
-      .mockResolvedValue(response({ receipts: [] }))
+      .mockImplementation((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -783,7 +943,9 @@ describe("RecommendationPlaybackRecorder", () => {
         }),
       )
       .mockResolvedValueOnce(response({ error: "temporary" }, false))
-      .mockResolvedValueOnce(response({ receipts: [] }))
+      .mockImplementationOnce((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
+      )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
@@ -815,5 +977,135 @@ describe("RecommendationPlaybackRecorder", () => {
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(
       fetchMock.mock.calls[1]?.[1]?.body,
     )
+  })
+
+  it("drops an invalid binding without amplifying it through retries", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        response({
+          episode: {
+            episodeId: "episode-1",
+            capability: "episode-capability-secret",
+            activeUntil: "2026-08-19T07:00:00.000Z",
+            hardUntil: "2026-08-19T09:00:00.000Z",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        response({ error: "playback_binding_invalid" }, false, 409),
+      )
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const degraded = vi.fn()
+    window.addEventListener("forge:recommendation-playback-degraded", degraded)
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(1_000))
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(degraded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          reason: "binding_invalid",
+          disposition: "dropped",
+        }),
+      }),
+    )
+    window.removeEventListener(
+      "forge:recommendation-playback-degraded",
+      degraded,
+    )
+  })
+
+  it("retires only accepted receipts and retries the unacknowledged event", async () => {
+    fetchMock.mockResolvedValueOnce(
+      response({
+        episode: {
+          episodeId: "episode-1",
+          capability: "episode-capability-secret",
+          activeUntil: "2026-08-19T07:00:00.000Z",
+          hardUntil: "2026-08-19T09:00:00.000Z",
+        },
+      }),
+    )
+    fetchMock.mockImplementationOnce((_url, init) => {
+      const events = JSON.parse(init.body as string)
+        .events as RecommendationPlaybackEvent[]
+      return Promise.resolve(
+        response({
+          receipts: [
+            {
+              eventId: events[0]!.eventId,
+              status: "accepted",
+              sequence: 1,
+            },
+          ],
+        }),
+      )
+    })
+    fetchMock.mockImplementationOnce((_url, init) => {
+      const events = JSON.parse(init.body as string)
+        .events as RecommendationPlaybackEvent[]
+      return Promise.resolve(
+        response({
+          receipts: events.map((fact, index) => ({
+            eventId: fact.eventId,
+            status: "accepted",
+            sequence: index + 2,
+          })),
+        }),
+      )
+    })
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={player}
+          initiation="manual"
+          mediaId="media-1"
+          durationSeconds={120}
+        />,
+      )
+      await Promise.resolve()
+    })
+    player.paused = false
+    await act(async () => {
+      player.dispatch("playing")
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(100))
+
+    const firstEvents = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)
+      .events as RecommendationPlaybackEvent[]
+    const retryEvents = JSON.parse(fetchMock.mock.calls[2]?.[1]?.body as string)
+      .events as RecommendationPlaybackEvent[]
+    expect(firstEvents).toHaveLength(2)
+    expect(retryEvents).toEqual([firstEvents[1]])
   })
 })

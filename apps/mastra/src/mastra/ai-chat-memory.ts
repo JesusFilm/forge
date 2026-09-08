@@ -16,10 +16,9 @@
  * (`memory: { thread, resource }`) — Agent.network() delegation auto-isolates
  * subagent memory and must not be relied on for shared threads.
  *
- * Backend selection (`resolveAiChatMemoryBackend`): `memory` → a dedicated
- * `InMemoryStore` (local dev/tests, no Postgres needed — and the documented
- * production kill-switch via AI_CHAT_MEMORY_BACKEND); `postgres` → the shared
- * `ai_chat` store. Ownership of a thread is NOT enforced here — Mastra's
+ * Backend selection follows `MASTRA_STORAGE_BACKEND`: `memory` → a dedicated
+ * `InMemoryStore` (local dev/tests, no Postgres needed); `postgres` → the
+ * shared `ai_chat` store. Ownership of a thread is NOT enforced here — Mastra's
  * message path silently adopts an existing thread regardless of the caller's
  * resource — so every ai-chat route MUST enforce ownership via
  * ./ai-chat-thread-ownership.ts first: `authorizeAiChatThreadAccess` on
@@ -29,8 +28,9 @@
  * pg pool arithmetic for this service: the ai-chat storage pool is capped at
  * 5; the service's other pools (runtime store 20, experience-chat storage 5,
  * experience-chat vector 2 — see `./memory.ts`; title-repair sweep 2,
- * run-scoped — see `./workflows/title-repair.ts`) bring the total to ~34
- * potential connections. Keep new pools small.
+ * run-scoped — see `./workflows/title-repair.ts`; ai-chat rename route 2,
+ * module-scoped and lazy — see `./ai-chat-history-write-route.ts`) bring the
+ * total to ~36 potential connections. Keep new pools small.
  *
  * Mirrors the lazy-singleton + `__reset*ForTesting` SHAPE of
  * `apps/admin/src/mastra/memory.ts`. Admin is a reference to copy from,
@@ -50,7 +50,7 @@ import { PostgresStore } from "@mastra/pg"
 import type { ModelWithRetries } from "@mastra/core/agent"
 import type { MastraModelConfig } from "@mastra/core/llm"
 
-import { getMastraDatabaseUrl, resolveAiChatMemoryBackend } from "../config/env"
+import { env, getMastraDatabaseUrl } from "../config/env"
 
 import { USER_RESOURCE_PREFIX } from "./ai-chat-thread-ownership"
 import { buildSeekerModelList } from "./seeker-model-list"
@@ -122,8 +122,8 @@ const defaultTitleModel = (): ModelWithRetries[] => buildSeekerModelList()
 
 /**
  * Build the ai-chat Memory. Backend-aware (feat-208): `memory` → a dedicated
- * `InMemoryStore` (local dev/tests + the production kill-switch), `postgres` →
- * the shared `ai_chat` store. Storage-only — no vector/embedder/semantic
+ * `InMemoryStore` for local dev/tests, `postgres` → the shared `ai_chat`
+ * store. Storage-only — no vector/embedder/semantic
  * recall yet.
  *
  * BEFORE TURNING ON `semanticRecall` (feat-366 review, 2026-08-20): the
@@ -157,7 +157,7 @@ const defaultTitleModel = (): ModelWithRetries[] => buildSeekerModelList()
  * titling them would waste a model call per junk POST).
  */
 export function buildAiChatMemory({
-  getBackend = resolveAiChatMemoryBackend,
+  getBackend = () => env.MASTRA_STORAGE_BACKEND,
   titleModel = defaultTitleModel,
 }: {
   getBackend?: () => "postgres" | "memory"

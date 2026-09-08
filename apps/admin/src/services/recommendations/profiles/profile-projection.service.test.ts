@@ -127,42 +127,70 @@ describe("recommendation profile projection service", () => {
       },
     )
 
-    const queries = queryRaw.mock.calls.map(([query]) =>
-      query.strings.join(" "),
-    )
-    const sql = queries.join("\n")
-    expect(queries[0]).toContain(
+    const [sessionSql, priorDurableSql, currentDurableSql] =
+      queryRaw.mock.calls.map(([query]) =>
+        query.strings.join(" ").replace(/\s+/g, " "),
+      )
+    const durableSql = `${priorDurableSql}\n${currentDurableSql}`
+    expect(sessionSql).toContain(
       "JOIN recommendation_profile_session_link link",
     )
-    expect(queries[0]).toContain("link.session_digest")
-    expect(queries[0]).toContain("selection.occurred_at >= GREATEST(")
-    expect(queries[0]).toContain("profile.created_at, link.linked_at")
-    expect(sql).toContain("outcome.qualified_view = true")
-    expect(sql).not.toContain("outcome.learning_eligible = true")
-    expect(sql).not.toContain("outcome.created_at >= profile.created_at")
-    expect(sql).toContain("request.created_at >= profile.created_at")
-    expect(sql).toContain("link.session_digest")
-    expect(sql).toContain("GREATEST(")
-    expect(sql).toContain("profile.created_at, link.linked_at")
-    expect(sql).toContain(
-      "selection.occurred_at >= GREATEST(profile.created_at, link.linked_at)",
+    expect(sessionSql).toContain("link.session_digest")
+    expect(sessionSql).toContain("selection.occurred_at >= GREATEST(")
+    expect(sessionSql).toContain("selection.attribution_eligible_at <=")
+    expect(sessionSql).toContain("decision.selection_id = selection.id")
+    expect(sessionSql).toContain("decision.is_current = true")
+    expect(sessionSql).toContain("JOIN recommendation_impression impression")
+    expect(sessionSql).toContain("impression.visibility_policy")
+    expect(sessionSql).toContain("impression.expires_at >")
+    expect(sessionSql).toContain("profile.created_at, link.linked_at")
+    expect(durableSql).toContain("outcome.qualified_view = true")
+    expect(durableSql).toContain(
+      "selection.attribution_eligible_at IS NOT NULL",
     )
-    expect(sql).toContain(
+    expect(durableSql).not.toContain("outcome.learning_eligible = true")
+    expect(durableSql).not.toContain("outcome.created_at >= profile.created_at")
+    expect(priorDurableSql).toContain(
+      "episode.request_id IS NOT DISTINCT FROM outcome.request_id",
+    )
+    expect(priorDurableSql).toContain(
+      "episode.item_id IS NOT DISTINCT FROM outcome.item_id",
+    )
+    expect(priorDurableSql).toContain(
+      "contribution.target_media_id = episode.media_id",
+    )
+    expect(currentDurableSql).toContain(
+      "JOIN recommendation_playback_episode episode ON episode.session_digest = link.session_digest",
+    )
+    expect(currentDurableSql).toContain('episode.media_id AS "targetMediaId"')
+    expect(currentDurableSql).toContain(
+      "LEFT JOIN recommendation_request request",
+    )
+    expect(currentDurableSql).toContain(
+      "LEFT JOIN recommendation_selection selection",
+    )
+    expect(currentDurableSql).not.toContain(
+      "JOIN recommendation_served_item item",
+    )
+    expect(currentDurableSql).toContain("profile.token_digest IS NOT NULL")
+    expect(currentDurableSql).toContain(
+      "episode.request_id IS NULL OR ( request.expires_at >",
+    )
+    expect(currentDurableSql).toContain(
+      "episode.selection_id IS NULL OR ( selection.attribution_eligible_at IS NOT NULL",
+    )
+    expect(currentDurableSql).toContain(
       "COALESCE(episode.claimed_at, episode.created_at) >= GREATEST(profile.created_at, link.linked_at)",
     )
-    expect(sql).toContain("outcome.expires_at >")
-    expect(sql).toContain("decision.expires_at >")
-    expect(sql).toContain("contribution.source_outcome_id")
-    expect(sql).toContain("decision.is_current = true")
-    expect(sql).toContain("decision.policy_version =")
-    expect(sql).toContain("decision.state = 'eligible'")
-    expect(sql).toContain("'profile' = ANY(decision.eligible_scopes)")
-    expect(sql).toContain("superseding.supersedes_id = outcome.id")
-    expect(sql).toContain("recommendation_promotion_slate_fence fence")
-    expect(sql).toContain("fence.request_id = outcome.request_id")
-    expect(sql).toContain("LEAST(")
-    expect(sql).toContain("selection.occurred_at")
-    expect(queries[0]).not.toMatch(/qualified_outcome|durable/i)
+    expect(durableSql).toContain("outcome.expires_at >")
+    expect(durableSql).toContain("decision.expires_at >")
+    expect(durableSql).toContain("decision.is_current = true")
+    expect(durableSql).toContain("decision.policy_version =")
+    expect(durableSql).toContain("decision.state = 'eligible'")
+    expect(durableSql).toContain("'profile' = ANY(decision.eligible_scopes)")
+    expect(durableSql).toContain("superseding.supersedes_id = outcome.id")
+    expect(durableSql).toContain("recommendation_promotion_slate_fence fence")
+    expect(sessionSql).not.toMatch(/qualified_outcome|durable/i)
   })
 
   it("publishes all projection contributions with one set-based insert", async () => {
@@ -259,20 +287,19 @@ describe("recommendation profile projection service", () => {
     expect(transaction).toHaveBeenCalledTimes(2)
   })
 
-  it("does not let a stale empty build replace a newer interest projection", async () => {
+  it("publishes an empty replacement instead of replaying contaminated interests", async () => {
     const executeRaw = vi.fn().mockResolvedValue(1)
-    const newerWatermark = new Date("2026-08-26T01:59:30.000Z")
     const queryRaw = vi
       .fn()
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
         {
           id: "interest-generation",
           generation: 8,
-          inputWatermark: newerWatermark,
-          contributionCount: 1,
+          pointerGeneration: 8,
         },
       ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ generation: 9 }])
     const transaction = vi.fn(async (work) =>
       work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
     )
@@ -296,12 +323,135 @@ describe("recommendation profile projection service", () => {
         durableEvidence: [],
         sessionEvidence: [],
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: "published",
-      generationId: "interest-generation",
-      generation: 8,
-      replay: true,
+      generation: 9,
+      replay: false,
     })
+    expect(executeRaw).toHaveBeenCalledTimes(4)
+  })
+
+  it("rejects a repair publisher when the expected pointer moved", async () => {
+    const executeRaw = vi.fn().mockResolvedValue(1)
+    const queryRaw = vi.fn().mockResolvedValueOnce([
+      {
+        id: "newer-generation",
+        generation: 9,
+        pointerGeneration: 9,
+      },
+    ])
+    const transaction = vi.fn(async (work) =>
+      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
+    )
+
+    await expect(
+      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+        scope: "session",
+        sessionDigest: "a".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: NOW,
+        inputDigest: "b".repeat(64),
+        projection: {
+          durableInterests: [],
+          sessionIntent: null,
+          explicitPreferences: [],
+          negativeEvidence: [],
+          contributionCount: 0,
+          cohortQuality: 0,
+        },
+        durableEvidence: [],
+        sessionEvidence: [],
+        expectedPointer: {
+          generationId: "expected-generation",
+          pointerGeneration: 8,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "profile_projection_pointer_fenced" })
+  })
+
+  it("rejects a first publisher when an expected-absent pointer appeared", async () => {
+    const executeRaw = vi.fn().mockResolvedValue(1)
+    const queryRaw = vi.fn().mockResolvedValueOnce([
+      {
+        id: "concurrent-generation",
+        generation: 1,
+        pointerGeneration: 1,
+      },
+    ])
+    const transaction = vi.fn(async (work) =>
+      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
+    )
+
+    await expect(
+      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+        scope: "session",
+        sessionDigest: "a".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: NOW,
+        inputDigest: "c".repeat(64),
+        projection: {
+          durableInterests: [],
+          sessionIntent: null,
+          explicitPreferences: [],
+          negativeEvidence: [],
+          contributionCount: 0,
+          cohortQuality: 0,
+        },
+        durableEvidence: [],
+        sessionEvidence: [],
+        expectedPointer: { generationId: null, pointerGeneration: 0 },
+      }),
+    ).rejects.toMatchObject({ code: "profile_projection_pointer_fenced" })
+  })
+
+  it("rejects publication when current eligibility changes after projection input loads", async () => {
+    const executeRaw = vi.fn().mockResolvedValue(1)
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          sourceId: "selection-new-revision",
+          targetMediaId: "video-new",
+          weight: 1,
+          occurredAt: NOW,
+          sourceExpiresAt: new Date("2026-09-01T00:00:00.000Z"),
+          eligibilityPolicyVersion: "recommendation-integrity-v1",
+          outcomeClassifierVersion: null,
+          eligibilityDecisionId: "decision-2",
+          eligibilityRevision: 2,
+          eligibilityInputDigest: "c".repeat(64),
+          eligibilityDecidedAt: NOW,
+          evidenceWatermark: NOW,
+        },
+      ])
+    const transaction = vi.fn(async (work) =>
+      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
+    )
+
+    await expect(
+      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+        scope: "session",
+        sessionDigest: "a".repeat(64),
+        profileId: null,
+        privacyGeneration: null,
+        now: NOW,
+        inputDigest: "b".repeat(64),
+        evidenceSnapshotDigest: "d".repeat(64),
+        projection: {
+          durableInterests: [],
+          sessionIntent: null,
+          explicitPreferences: [],
+          negativeEvidence: [],
+          contributionCount: 0,
+          cohortQuality: 0,
+        },
+        durableEvidence: [],
+        sessionEvidence: [],
+      }),
+    ).rejects.toMatchObject({ code: "profile_projection_input_fenced" })
     expect(executeRaw).toHaveBeenCalledOnce()
   })
 

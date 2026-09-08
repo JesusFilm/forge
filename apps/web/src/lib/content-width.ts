@@ -1,6 +1,6 @@
 /**
- * Shared content width for experience sections. Use so VideoHero, Section blur,
- * and other blocks align horizontally. Change here to adjust all sections.
+ * Shared outer width for public Watch template content. Full-bleed backgrounds
+ * and media sit outside this rail. Change here to adjust every template.
  */
 export const CONTENT_MAX_WIDTH = "max-w-[1920px]"
 
@@ -11,8 +11,8 @@ export const CONTENT_WIDTH_ALIGN_CLASSES = `mx-auto w-full ${CONTENT_MAX_WIDTH}`
 export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12`
 
 /**
- * Watch-page rail: aligns floating chrome, hero overlay text, carousel, and
- * body content on the same left edge.
+ * Public Watch content rail: aligns template content, floating chrome, hero
+ * overlay text, carousels, and body content on the same left edge.
  */
 export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
 export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"

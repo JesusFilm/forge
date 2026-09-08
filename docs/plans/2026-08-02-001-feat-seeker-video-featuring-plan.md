@@ -1133,6 +1133,11 @@ flip is an operator action with a strict order:
    > feat-236 era) or an incident class requiring visual retraction of
    > already-featured videos. Cited sources were never gated by this flag on
    > any path.
+   >
+   > **Scope clarification (2026-09-08, feat-464):** “whole ai-chat lane” above
+   > meant the custom Forge send/history routes. `SEEKER_ROUTE_ENABLED` does not
+   > disable native `/api/agents/seekerAgent`, which remains contained by the
+   > Mastra gateway and Railway network boundary.
 6. **Key hygiene:** once step 3 verifies, REMOVE every pre-existing entry
    from admin's `ADMIN_AGENT_TOOLS_API_KEYS` and redeploy, so exactly ONE
    caller credential — the newly minted production key — remains. Re-mint

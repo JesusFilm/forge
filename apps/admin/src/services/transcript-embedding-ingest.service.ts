@@ -8,11 +8,18 @@ import {
   statusForEmbeddingRewrite,
 } from "@/services/embedding-ingest-shared"
 import {
-  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   writeTranscriptEmbeddingPayloadInTransaction,
   type TranscriptEmbeddingGenerationMode,
   type TranscriptEmbeddingPayloadChunk,
 } from "@/services/transcript-embedding.service"
+import {
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "@/services/content-embedding-contract"
+
+export const MAX_TRANSCRIPT_INGEST_CHUNKS = 1_024
 
 const AdminTargetSchema = z
   .object({
@@ -115,7 +122,11 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         type: z.enum(["segment-aware", "plain-text"]),
         maxChunkTokens: z.number().int().positive(),
         overlapTokens: z.number().int().nonnegative(),
-        version: z.string().min(1).optional(),
+        // Publication identity is persisted in a varchar(128) outbox column.
+        // Reject missing or permanently-unpersistable identities at the
+        // authenticated request boundary instead of surfacing a retryable 502
+        // after the canonical vector write has already started.
+        version: z.string().trim().min(1).max(128),
       })
       .strict(),
     generation: z
@@ -125,7 +136,7 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         mastraRunId: z.string().min(1),
       })
       .strict(),
-    chunks: z.array(IngestChunkSchema).min(1),
+    chunks: z.array(IngestChunkSchema).min(1).max(MAX_TRANSCRIPT_INGEST_CHUNKS),
   })
   .strict()
   .superRefine((payload, ctx) => {
@@ -176,6 +187,7 @@ type ResolvedTarget = {
 type ExistingTranscript = {
   id: string
   sourceContentHash: string | null
+  sourceGeneration: bigint
   model: string
   dimensions: number
   embeddingProvider: string | null
@@ -186,6 +198,7 @@ type ExistingTranscript = {
   overlapTokens: number
   totalChunks: number
   totalTokens: number
+  chunkingVersion: string | null
 }
 
 export type TranscriptEmbeddingIngestStatus =
@@ -212,6 +225,7 @@ export class TranscriptEmbeddingIngestError extends Error {
       | "payload_invalid"
       | "target_not_found"
       | "target_ambiguous"
+      | "contract_mismatch"
       | "dimension_mismatch"
       | "chunk_invalid"
       | "source_hash_mismatch"
@@ -353,11 +367,12 @@ function sourceContentHash(payload: TranscriptEmbeddingIngestPayload): string {
 
 function validateChunks(
   payload: TranscriptEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
 ): readonly TranscriptEmbeddingPayloadChunk[] {
-  if (payload.model.dimensions !== EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS) {
+  if (payload.model.dimensions !== contract.storage.dimensions) {
     throw new TranscriptEmbeddingIngestError(
       "dimension_mismatch",
-      `payload dimensions=${payload.model.dimensions}; expected ${EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS}`,
+      `payload dimensions=${payload.model.dimensions}; expected ${contract.storage.dimensions}`,
     )
   }
 
@@ -403,6 +418,41 @@ function validateChunks(
     }
   }
   return sorted
+}
+
+function payloadEmbeddingTuple(
+  payload: TranscriptEmbeddingIngestPayload,
+): ContentEmbeddingTuple | null {
+  if (
+    payload.model.provider == null ||
+    payload.model.nativeDimensions == null
+  ) {
+    return null
+  }
+
+  return {
+    provider: payload.model.provider,
+    model: payload.model.name,
+    nativeDimensions: payload.model.nativeDimensions,
+    dimensions: payload.model.dimensions,
+    transformVersion: payload.model.transformVersion ?? null,
+  }
+}
+
+function assertPayloadMatchesActiveContract(
+  payload: TranscriptEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  const payloadTuple = payloadEmbeddingTuple(payload)
+  if (
+    payloadTuple == null ||
+    !contentEmbeddingTupleMatches(contract.storage, payloadTuple)
+  ) {
+    throw new TranscriptEmbeddingIngestError(
+      "contract_mismatch",
+      `transcript embedding payload does not match active content embedding contract ${contract.id}`,
+    )
+  }
 }
 
 async function resolveTarget(
@@ -512,6 +562,7 @@ async function readExistingTranscript(
     SELECT
       id,
       source_content_hash AS "sourceContentHash",
+      source_generation AS "sourceGeneration",
       model,
       dimensions,
       embedding_provider AS "embeddingProvider",
@@ -521,7 +572,8 @@ async function readExistingTranscript(
       max_chunk_tokens AS "maxChunkTokens",
       overlap_tokens AS "overlapTokens",
       total_chunks AS "totalChunks",
-      total_tokens AS "totalTokens"
+      total_tokens AS "totalTokens",
+      chunking_version AS "chunkingVersion"
     FROM video_transcript
     WHERE video_edition_id = ${target.videoEditionId}
       AND language = ${language}
@@ -543,22 +595,6 @@ async function countHealthyChunks(
   return Number(rows[0]?.count ?? 0)
 }
 
-function legacyOpenAiProviderMatches(
-  existing: ExistingTranscript,
-  payload: TranscriptEmbeddingIngestPayload,
-): boolean {
-  return (
-    existing.embeddingProvider == null &&
-    existing.embeddingNativeDimensions === existing.dimensions &&
-    existing.embeddingTransformVersion == null &&
-    payload.model.provider === "openai" &&
-    payload.model.nativeDimensions == null &&
-    payload.model.transformVersion == null &&
-    (existing.model === "openai/text-embedding-3-small" ||
-      existing.model === "text-embedding-3-small")
-  )
-}
-
 function existingMatches(
   existing: ExistingTranscript,
   payload: TranscriptEmbeddingIngestPayload,
@@ -568,13 +604,13 @@ function existingMatches(
     existing.sourceContentHash === hash &&
     existing.model === payload.model.name &&
     existing.dimensions === payload.model.dimensions &&
-    (existing.embeddingProvider === (payload.model.provider ?? null) ||
-      legacyOpenAiProviderMatches(existing, payload)) &&
+    existing.embeddingProvider === (payload.model.provider ?? null) &&
     existing.embeddingNativeDimensions ===
-      (payload.model.nativeDimensions ?? existing.dimensions) &&
+      (payload.model.nativeDimensions ?? null) &&
     existing.embeddingTransformVersion ===
       (payload.model.transformVersion ?? null) &&
     existing.chunkingType === payload.chunking.type &&
+    existing.chunkingVersion === (payload.chunking.version ?? null) &&
     existing.maxChunkTokens === payload.chunking.maxChunkTokens &&
     existing.overlapTokens === payload.chunking.overlapTokens &&
     existing.totalChunks === payload.chunks.length &&
@@ -605,9 +641,10 @@ async function writePayload(
   target: ResolvedTarget,
   chunks: readonly TranscriptEmbeddingPayloadChunk[],
   hash: string,
-): Promise<void> {
+  sourceGeneration: bigint,
+) {
   try {
-    await writeTranscriptEmbeddingPayloadInTransaction(tx, {
+    return await writeTranscriptEmbeddingPayloadInTransaction(tx, {
       editionId: target.videoEditionId,
       videoId: target.videoId,
       coreId: target.coreId,
@@ -637,6 +674,7 @@ async function writePayload(
         sourceContentHash: hash,
         sourceProvider: payload.source.provider ?? payload.model.provider,
         sourceGeneratedAt: payload.source.generatedAt,
+        sourceGeneration,
         generationMode: payload.generation.mode,
         mastraRunId: payload.generation.mastraRunId,
         chunkingVersion: payload.chunking.version,
@@ -684,7 +722,6 @@ export async function ingestTranscriptEmbeddings(
   }
 
   const payload = parsed.data
-  const chunks = validateChunks(payload)
   const hash = sourceContentHash(payload)
   const target = await resolveTarget(prisma, payload)
   const mode = payload.generation.mode as TranscriptEmbeddingGenerationMode
@@ -697,6 +734,9 @@ export async function ingestTranscriptEmbeddings(
     try {
       return await prisma.$transaction(
         async (tx) => {
+          const contract = await resolveActiveContentEmbeddingContract(tx)
+          assertPayloadMatchesActiveContract(payload, contract)
+          const chunks = validateChunks(payload, contract)
           await lockTranscriptTarget(tx, target, payload.language)
           const existing = await readExistingTranscript(
             tx,
@@ -764,7 +804,50 @@ export async function ingestTranscriptEmbeddings(
             status = statusForEmbeddingRewrite(mode)
           }
 
-          await writePayload(tx, payload, target, chunks, hash)
+          const nextSourceGeneration = (existing?.sourceGeneration ?? 0n) + 1n
+          const writeResult = await writePayload(
+            tx,
+            payload,
+            target,
+            chunks,
+            hash,
+            nextSourceGeneration,
+          )
+          if (!writeResult.transcriptId) {
+            throw new TranscriptEmbeddingIngestError(
+              "write_failed",
+              "transcript write did not return a transcript id",
+            )
+          }
+          const previousPublicationEvent =
+            await tx.watchSearchCurrentTranscriptPublicationEvent.findFirst({
+              where: { transcriptId: writeResult.transcriptId },
+              orderBy: { sourceGeneration: "desc" },
+              select: { currentDocumentIds: true },
+            })
+          const currentDocumentIds = new Set(writeResult.currentDocumentIds)
+          const staleDocumentIds = [
+            ...new Set([
+              ...writeResult.staleDocumentIds,
+              ...(previousPublicationEvent?.currentDocumentIds ?? []).filter(
+                (id) => !currentDocumentIds.has(id),
+              ),
+            ]),
+          ]
+          await tx.watchSearchCurrentTranscriptPublicationEvent.create({
+            data: {
+              transcriptId: writeResult.transcriptId,
+              videoId: target.videoId,
+              videoEditionId: target.videoEditionId,
+              language: payload.language,
+              contentEmbeddingContractId: contract.id,
+              transcriptChunkingVersion: payload.chunking.version,
+              sourceGeneration: nextSourceGeneration,
+              sourceContentHash: hash,
+              currentDocumentIds: writeResult.currentDocumentIds,
+              staleDocumentIds,
+            },
+          })
 
           return {
             status,

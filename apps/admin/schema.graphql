@@ -1010,6 +1010,71 @@ type ManagerViewer {
   username: String
 }
 
+type ManagerWatchRouteAlertItem {
+  activeUsers: Int!
+  count: Int!
+  countKind: String!
+  firstSeenAt: String!
+  httpStatus: Int
+  id: ID!
+  lastProbedAt: String
+  lastSeenAt: String!
+  lifecycle: String!
+  manifestVersion: String!
+  occurrenceCount: Int!
+  origin: String!
+  path: String!
+  propertyId: String!
+  severity: String!
+  sources: [String!]!
+  verdict: String!
+}
+
+type ManagerWatchRouteAlertLane {
+  caveats: [String!]!
+  countKind: String!
+  rowCount: Int!
+  source: String!
+  status: String!
+  windowEnd: String!
+  windowStart: String!
+}
+
+type ManagerWatchRouteAlertRun {
+  completedAt: String
+  id: ID!
+  lanes: [ManagerWatchRouteAlertLane!]!
+  mode: String!
+  propertyId: String!
+  startedAt: String!
+  status: String!
+  validationCaveats: [String!]!
+}
+
+type ManagerWatchRouteAlertSummary {
+  critical: Int!
+  open: Int!
+  plausibleMissingRoutes: Int!
+  recovered: Int!
+  supportedRouteFailures: Int!
+}
+
+type ManagerWatchRouteAlertsPage {
+  generatedAt: String!
+  hasNextPage: Boolean!
+  items: [ManagerWatchRouteAlertItem!]!
+  lastSuccessfulAt: String
+  latestRun: ManagerWatchRouteAlertRun
+  monitorState: String!
+  nextCursor: String
+  propertyRuns: [ManagerWatchRouteAlertRun!]!
+  propertyRunsTruncated: Boolean!
+  recoverySuppressed: Boolean!
+  showing: Int!
+  summary: ManagerWatchRouteAlertSummary!
+  totalCount: Int!
+}
+
 """
 An uploaded image, video, PDF, or file registered in the Apps admin media library.
 """
@@ -1265,6 +1330,7 @@ type Mutation {
   duplicateExperience(id: ID!): Experience!
   issueStudioAssetRead(reference: JSON!): StudioAssetTransfer
   issueStudioAssetUpload(input: JSON!): StudioAssetTransfer
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
   materializeStudioSource(input: JSON!): StudioSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
@@ -1293,7 +1359,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
   stageStudioCatalog(input: JSON!): StudioCatalogRelease
   startStudioAttempt(input: StudioStartInput!): StudioCommandResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
@@ -1490,6 +1556,7 @@ type Query {
   Current Admin session projected into the narrow Manager access contract.
   """
   managerViewer: ManagerViewer
+  managerWatchRouteAlerts(after: String, limit: Int = 25): ManagerWatchRouteAlertsPage!
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
@@ -2721,6 +2788,11 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+type WatchPlaybackContextReceipt {
+  claimNonce: String!
+  contextVersion: String!
 }
 
 type WatchProgressEntry {

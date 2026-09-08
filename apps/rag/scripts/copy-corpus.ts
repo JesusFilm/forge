@@ -64,6 +64,10 @@ const COPY_INDEXES = [
     `CREATE INDEX IF NOT EXISTS "raw_documents_source_key_idx" ON "raw_documents"("source_key")`,
   ],
   [
+    "raw_documents_promotion_latest_idx",
+    `CREATE INDEX IF NOT EXISTS "raw_documents_promotion_latest_idx" ON "raw_documents"("source_key", "canonical_url", "fetched_at" DESC, "id" DESC)`,
+  ],
+  [
     "raw_documents_ingested_at_idx",
     `CREATE INDEX IF NOT EXISTS "raw_documents_ingested_at_idx" ON "raw_documents"("ingested_at")`,
   ],

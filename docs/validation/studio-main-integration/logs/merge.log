@@ -1,0 +1,53 @@
+Auto-merging CONCEPTS.md
+Auto-merging apps/admin/.env.example
+Auto-merging apps/admin/CLAUDE.md
+Auto-merging apps/admin/package.json
+Auto-merging apps/admin/prisma/schema.prisma
+Auto-merging apps/admin/schema.graphql
+CONFLICT (content): Merge conflict in apps/admin/schema.graphql
+Auto-merging apps/admin/src/auth/permissions.ts
+Auto-merging apps/admin/src/config/env.ts
+Auto-merging apps/admin/src/graphql/schema.ts
+Auto-merging apps/admin/src/instrumentation.ts
+CONFLICT (content): Merge conflict in apps/admin/src/instrumentation.ts
+Auto-merging apps/admin/src/services/recommendations/candidates/profile-candidate.service.ts
+Auto-merging apps/admin/src/services/recommendations/delivery-retriever.ts
+Auto-merging apps/admin/src/services/scene-recommendations-retriever.ts
+Auto-merging apps/admin/src/services/transcript-embedding-ingest.service.ts
+Auto-merging apps/admin/src/services/typesense-watch-search-indexer.test.ts
+Auto-merging apps/admin/src/services/typesense-watch-search-indexer.ts
+Auto-merging apps/auth/CLAUDE.md
+Auto-merging apps/auth/src/auth/config.test.ts
+Auto-merging apps/auth/src/auth/config.ts
+Auto-merging apps/manager/src/app/globals.css
+Auto-merging apps/manager/src/backend/admin-client.ts
+Auto-merging apps/manager/src/features/shell/manager-shell.tsx
+Auto-merging apps/mastra/AGENTS.md
+Auto-merging apps/mastra/CLAUDE.md
+Auto-merging apps/mastra/package.json
+Auto-merging apps/mastra/src/config/env.ts
+Auto-merging apps/mastra/src/mastra/index.ts
+Auto-merging apps/web/src/components/home/WatchHomeExperiencePage.tsx
+Auto-merging apps/web/src/components/home/WatchHomePage.tsx
+Auto-merging apps/web/src/components/home/WatchHomeTvCarousel.tsx
+Auto-merging apps/web/src/components/search/VideoCard.tsx
+Auto-merging apps/web/src/components/watch-language-inventory/LanguageInventoryPage.tsx
+Auto-merging apps/web/src/components/watch/CollectionDownloadModal.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/watch/CollectionDownloadModal.tsx
+Auto-merging apps/web/src/components/watch/DownloadModal.tsx
+Auto-merging apps/web/src/components/watch/HeroPlayer.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/watch/HeroPlayer.tsx
+Auto-merging apps/web/src/components/watch/SeriesHero.tsx
+Auto-merging apps/web/src/components/watch/ShareModal.tsx
+Auto-merging apps/web/src/components/whats-new/WatchWhatsNewPage.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/whats-new/WatchWhatsNewPage.tsx
+Auto-merging apps/web/src/components/whats-new/WhatsNewAssistantPhone.tsx
+Auto-merging apps/web/src/lib/watch-home.ts
+Auto-merging apps/web/src/proxy.test.ts
+CONFLICT (content): Merge conflict in apps/web/src/proxy.test.ts
+Auto-merging apps/web/src/proxy.ts
+Auto-merging packages/admin-graphql/src/admin-graphql-env.d.ts
+CONFLICT (content): Merge conflict in packages/admin-graphql/src/admin-graphql-env.d.ts
+Auto-merging pnpm-lock.yaml
+CONFLICT (content): Merge conflict in pnpm-lock.yaml
+Automatic merge failed; fix conflicts and then commit the result.

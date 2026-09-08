@@ -30,6 +30,7 @@ import { consumeDeliveryCapabilitySubmissions } from "./submission-budget"
 import type { DeliveryCapabilityBinding } from "./token.service"
 import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
+import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 
 const Event = z
   .object({
@@ -62,6 +63,13 @@ type EvidenceDependencies = {
   prisma: PrismaClient
   tokenService: DeliveryVerifier
   now?: () => Date
+  dispatchProfileFeedback?: (input: {
+    sessionDigest: string
+    profileId: string
+    privacyGeneration: number
+    evidenceWatermark: Date
+  }) => Promise<unknown>
+  classifySelection?: (selectionId: string) => Promise<unknown>
 }
 
 export type RecommendationEvidenceReceipt = {
@@ -238,7 +246,7 @@ export class RecommendationEvidenceService {
       }
     }
 
-    return this.deps.prisma.$transaction(async (tx) => {
+    const result = await this.deps.prisma.$transaction(async (tx) => {
       if (
         !(await lockRecommendationAssignmentCapabilityFence(
           tx,
@@ -252,6 +260,7 @@ export class RecommendationEvidenceService {
       }
       await lockRecommendationItemEvidence(tx, item.id)
       const receipts: RecommendationEvidenceReceipt[] = []
+      let reconciledSelection = false
       for (const event of input.events) {
         const digest = recommendationEvidenceDigest(event)
         const existing =
@@ -264,6 +273,18 @@ export class RecommendationEvidenceService {
               })
         if (existing) {
           if (existing.payloadDigest === digest) {
+            if (event.kind === "impression") {
+              const reconciliation =
+                await tx.recommendationSelection.updateMany({
+                  where: {
+                    requestId: item.requestId,
+                    itemId: item.id,
+                    attributionEligibleAt: null,
+                  },
+                  data: { attributionEligibleAt: now },
+                })
+              reconciledSelection ||= reconciliation.count === 1
+            }
             await tx.recommendationEvidenceAudit.create({
               data: {
                 requestId: item.requestId,
@@ -305,6 +326,15 @@ export class RecommendationEvidenceService {
               visibilityPolicy: RECOMMENDATION_CONTRACTS.surface,
             },
           })
+          const reconciliation = await tx.recommendationSelection.updateMany({
+            where: {
+              requestId: item.requestId,
+              itemId: item.id,
+              attributionEligibleAt: null,
+            },
+            data: { attributionEligibleAt: now },
+          })
+          reconciledSelection ||= reconciliation.count === 1
           if (
             !item.request.promotionSlateFence &&
             assignment?.state ===
@@ -360,8 +390,48 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
-      return receipts
+      return { receipts, reconciledSelection }
     })
+    if (result.reconciledSelection) {
+      void this.classifyAndDispatchSelectionFeedback({
+        itemId: item.id,
+        sessionDigest: item.request.sessionDigest,
+        evidenceWatermark: now,
+      })
+    }
+    return result.receipts
+  }
+
+  private async classifyAndDispatchSelectionFeedback(input: {
+    itemId: string
+    sessionDigest: string
+    evidenceWatermark: Date
+  }): Promise<void> {
+    try {
+      if (this.deps.classifySelection) {
+        const selection =
+          await this.deps.prisma.recommendationSelection.findUnique({
+            where: { itemId: input.itemId },
+            select: { id: true },
+          })
+        if (!selection) return
+        await this.deps.classifySelection(selection.id)
+      }
+      const activeProfile = await resolveActiveRecommendationProfileLink(
+        this.deps.prisma,
+        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
+      )
+      if (!activeProfile) return
+      await this.deps.dispatchProfileFeedback?.({
+        sessionDigest: input.sessionDigest,
+        profileId: activeProfile.profileId,
+        privacyGeneration: activeProfile.privacyGeneration,
+        evidenceWatermark: input.evidenceWatermark,
+      })
+    } catch {
+      // Evidence acknowledgement remains fail-open. Durable reconciliation
+      // will retry classification and replacement projection.
+    }
   }
 
   private async recordCommittedRejection(
@@ -385,5 +455,20 @@ export function createRecommendationEvidenceService(
 ) {
   const tokenService = createRuntimeRecommendationTokenService(prisma)
   if (!tokenService) throw new RecommendationCapabilityUnavailableError()
-  return new RecommendationEvidenceService({ prisma, tokenService })
+  return new RecommendationEvidenceService({
+    prisma,
+    tokenService,
+    dispatchProfileFeedback: async (input) => {
+      const { dispatchRecommendationProfileFeedback } =
+        await import("./profiles/job")
+      return dispatchRecommendationProfileFeedback(input)
+    },
+    classifySelection: async (selectionId) => {
+      const { createRecommendationIntegrityService } =
+        await import("./integrity.service")
+      return createRecommendationIntegrityService(prisma).classifySelection(
+        selectionId,
+      )
+    },
+  })
 }

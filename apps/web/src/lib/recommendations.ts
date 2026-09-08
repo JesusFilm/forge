@@ -4,6 +4,7 @@ import { adminGraphql } from "@forge/admin-graphql"
 import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminClaimSemanticRecommendationEpisodeOperation,
+  adminIssueWatchPlaybackContextOperation,
   adminRecommendationProfileStatusOperation,
   adminRecordSemanticRecommendationEvidenceOperation,
   adminRecordSemanticRecommendationPlaybackOperation,
@@ -26,6 +27,34 @@ const EVIDENCE_UPSTREAM_TIMEOUT_MS = 900
 
 function upstreamContext(timeoutMs: number) {
   return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
+}
+
+function hasRecommendationGraphqlCode(
+  value: unknown,
+  expected: string,
+): boolean {
+  if (!value || typeof value !== "object") return false
+  const record = value as { error?: unknown; errors?: unknown }
+  const direct = Array.isArray(record.errors) ? record.errors : []
+  const nested =
+    record.error &&
+    typeof record.error === "object" &&
+    "errors" in record.error &&
+    Array.isArray(record.error.errors)
+      ? record.error.errors
+      : []
+  return [...direct, ...nested].some((entry) => {
+    if (!entry || typeof entry !== "object" || !("extensions" in entry)) {
+      return false
+    }
+    const extensions = entry.extensions
+    return (
+      !!extensions &&
+      typeof extensions === "object" &&
+      "recommendationCode" in extensions &&
+      extensions.recommendationCode === expected
+    )
+  })
 }
 
 // Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
@@ -553,6 +582,21 @@ export async function claimSemanticRecommendationEpisode(
   return result.data.claimSemanticRecommendationEpisode
 }
 
+export async function issueWatchPlaybackContext(
+  variables: AdminVariablesOf<typeof adminIssueWatchPlaybackContextOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminIssueWatchPlaybackContextOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.issueWatchPlaybackContext) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.issueWatchPlaybackContext
+}
+
 export async function recordSemanticRecommendationPlayback(
   variables: AdminVariablesOf<
     typeof adminRecordSemanticRecommendationPlaybackOperation
@@ -564,6 +608,9 @@ export async function recordSemanticRecommendationPlayback(
     fetchPolicy: "no-cache",
     context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
   })
+  if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
+    throw new RecommendationRuntimeError("playback_binding_invalid")
+  }
   if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
     throw new RecommendationRuntimeError("playback_unavailable")
   }

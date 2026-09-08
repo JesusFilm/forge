@@ -10,8 +10,10 @@ evidence belongs in `docs/roadmap/rag/evidence/`.
 
 The retained pre-copy control contains 416 cases with recall@10 `1.000` and
 coverage `0.887`. Compare it only with `--case-set control-2026-08-06`; the nine
-newer cases in the 425-case golden file are deliberately excluded from that
-identity. A `current` run needs a new identity-matched control.
+newer English GotQuestions cases and six Icelandic additions in the 431-case
+golden file are deliberately excluded from that identity. A `current` run needs
+a new identity-matched control. See the local Icelandic results and comparison
+disposition in [`../slices/gotquestions.md`](../slices/gotquestions.md).
 
 Before applying the two-percent relative tolerance, `eval:compare` requires
 identical canonical selected golden cases, ordered case set, registry, corpus
@@ -41,12 +43,15 @@ retrieved text, scores, embeddings, or credentials.
 Production access requires fresh authority for the exact `forge-rag/prd`
 `production-read` target. The database credential must belong to the dedicated
 least-privilege evaluation/dashboard principal, and the operator must first
-have evidence that it cannot perform DDL or DML. Inject values directly from
-Doppler; do not retrieve or echo them:
+have evidence that it cannot perform DDL or DML. Provision and verify that
+principal through [`readonly-database.md`](./readonly-database.md). Inject
+values directly from Doppler; do not retrieve or echo them:
 
 ```sh
 doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag env:check production-read
+doppler run --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag db:verify-readonly --production
 doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag eval:production --case-set control-2026-08-06
 ```

@@ -1170,18 +1170,90 @@
    covers the RIGHT edge of the one behind it. That direction is
    load-bearing: the copy is left-aligned, so covering left edges would
    hide the start of every line. */
-@keyframes watch-fan-gather {
+/* The audiences stage, second movement: one card crosses the row.
+
+   The travelling cell slides left by whole columns and cancels the tilt and
+   drop the fan gave it, so it arrives square in the first column. Both are
+   expressed against the CELL's own box — `-100%` is one column, and the gap
+   is added per column crossed — so the distance is correct at any width
+   without a value per breakpoint.
+
+   The rotate and translate here COMPOSE with the fan's own transform rather
+   than replacing it: the fan animates the card `<div>` inside this cell,
+   this animates the cell. That split is the whole reason the effect is one
+   card travelling instead of two cards drawn in two places — two animations
+   cannot both own `translate` on a single element. */
+@keyframes watch-audience-travel {
+  from {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  to {
+    translate: var(--travel-x) calc(-1 * var(--fan-drop, 0px));
+    rotate: calc(-1 * var(--fan-rotate, 0deg));
+  }
+}
+
+/* The cards the travelling one leaves behind. They clear the ground the
+   question needs, and drift up slightly as they go so it reads as making
+   room rather than as a bug switching them off. */
+@keyframes watch-audience-clear {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -1.5rem;
+  }
+}
+
+/* The question, arriving over the vacated columns. Opacity AND travel:
+   fading alone leaves it looking like it was always there, which loses the
+   sense that the cards made room for it. */
+@keyframes watch-audience-quiz {
   from {
     opacity: 0;
-    rotate: 0deg;
-    translate: var(--fan-open-x, 0) 0;
-    scale: 0.96;
+    translate: 6% 0;
   }
   to {
     opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* NO opacity here, deliberately.
+
+   The cards used to fade up from 0 across the gather, which meant the
+   section opened on a heading with nothing legible under it — the reader
+   sees an empty band, not three cards arriving, and every attempt to
+   close that "gap" by moving boxes around was chasing the wrong cause.
+   The cards are painted from the first frame; only their POSITION
+   animates.
+
+   NO per-card scale either, for a related reason. It used to open at
+   `scale: 0.96`, and because the origin below is 190% down — where the
+   fan's pivot has to be — scaling toward it pushed each card's top edge
+   DOWN by ~20px at the start (measured at 1440). On the first card, whose
+   opening offset is deliberately zero so it sits under the section heading
+   from the first frame, that reintroduced exactly the drift the zero was
+   written to remove. The whole hand still comes forward: `watch-fan-lift`
+   scales the list as one piece over the same range. */
+@keyframes watch-fan-gather {
+  from {
+    rotate: 0deg;
+    /* A staircase hanging BELOW the row, not straddling it: the first
+       card starts level with its landing place, the second a step under
+       it, the third two steps under — one step per card, driven by the
+       same `--fan-dir` (-1 / 0 / +1) that decides which way each card
+       spreads sideways. So the set arrives as three steps descending
+       left to right, anchored at the top, and rises into one level row
+       as the reader scrolls. */
+    translate: var(--fan-open-x, 0) var(--fan-open-y, 0);
+  }
+  to {
     rotate: var(--fan-rotate, 0deg);
     translate: var(--fan-closed-x, 0) var(--fan-drop, 0);
-    scale: 1;
   }
 }
 
@@ -1693,14 +1765,44 @@
            direction to this travel. Tune by measuring the gathered boxes,
            not by reading the number. */
         --fan-travel: 4rem;
+        /* Height of one stair. The first card starts level with the row
+           and each one after it hangs a step lower, so the run spans TWICE
+           this from the first card to the third — all of it BELOW the row.
+
+           Deliberately large: at 3.5/4.5rem the stagger was there but read
+           as a wobble rather than as three steps. Nothing above constrains
+           it now that no card starts higher than its landing place, and
+           the lowest card is free to start below the fold since it is
+           travelling up into the row anyway. Re-measure when changing it. */
+        --fan-step-y: 3.5rem;
         --fan-open-x: calc(var(--fan-dir, 0) * var(--fan-spread));
+        /* The first card starts EXACTLY where it lands and never moves
+           vertically; the other two start below it and rise into the row.
+           `dir + 1` is what pins the first one: its `dir` is -1, so its
+           opening offset is zero by construction, and no term may be added
+           after it — a constant floor here (there was a 2.5/4rem one) lifts
+           the whole staircase and reopens a gap between the first card and
+           the section heading above it, which is the space this is written
+           to keep closed.
+
+           An earlier form straddled the row (`dir * step`), which sent the
+           first card DOWNWARD into place while the others came up. That was
+           written to close the same gap, which turned out to be the cards'
+           own `opacity: 0`, not spacing — with them visible, the direction
+           is free to be the one that reads: bottom-up, into a fixed top. */
+        --fan-open-y: calc((var(--fan-dir, 0) + 1) * var(--fan-step-y));
         --fan-closed-x: calc(var(--fan-dir, 0) * -1 * var(--fan-travel));
         transform-origin: 50% 190%;
         z-index: var(--fan-layer, 1);
         animation: watch-fan-gather linear both;
         animation-timeline: view();
-        animation-range: entry 8% cover 34%;
-        will-change: opacity, rotate, translate, scale;
+        /* Ends at `cover 22%`, early enough that the row is fully closed
+           BEFORE the stage's own pinned window opens — measured 125px of
+           scroll to spare at 1440x900. At the previous `cover 34%` the
+           gather was still running when the fade began, so the assembled
+           row existed only as a frame in passing. */
+        animation-range: entry 8% cover 22%;
+        will-change: rotate, translate;
       }
 
       /* The list the cards are laid out in, grown as one. Its own box is
@@ -1713,7 +1815,7 @@
         transform-origin: 50% 50%;
         animation: watch-fan-lift linear both;
         animation-timeline: view();
-        animation-range: entry 8% cover 34%;
+        animation-range: entry 8% cover 22%;
         will-change: scale;
       }
 
@@ -1726,6 +1828,180 @@
         .watch-scroll-fan {
           --fan-spread: 3rem;
           --fan-travel: 4.5rem;
+          --fan-step-y: 12rem;
+        }
+      }
+
+      /* The audiences stage. Pinned and choreographed only from `lg` up,
+         where the three cards actually sit in three columns — below that
+         they are a stacked list, there is no row to cross, and a pin would
+         hold a stack still while the reader scrolls past nothing.
+
+         Ranges are `contain`. For a subject TALLER than the viewport those
+         endpoints are not "fully visible": contain 0% is where the stage's
+         top meets the top of the scrollport and 100% is where its bottom
+         meets the bottom — exactly the window the pin is stuck for. So the
+         percentages are shares of the pinned window.
+
+         Everything finishes early in that window — the cards clear by 18%,
+         the card lands by 30%, the question is up by 45% — because what the
+         reader needs is not a long slide but a long look: the rest of the
+         210svh stage is dwell with the card and the question sitting still,
+         side by side, which is what it takes to actually drag the slider
+         and commit to a guess. */
+      @media (width >= 64rem) {
+        .watch-audience-stage {
+          view-timeline-name: --watch-audience;
+          view-timeline-axis: block;
+          /* Three things have to fit in the pinned window, in this order:
+             the HOLD on the assembled row (the three cards level, opaque,
+             and still), then the fade/travel/question, then the DWELL in
+             which the reader actually drags the slider. At 210svh the first
+             of those did not exist at all — the fade began at `contain 0%`,
+             while the gather was still closing, so the row the section is
+             built around was never once on screen finished and undisturbed.
+             The 20svh added here is what the hold spends; the ranges below
+             all start at 30% instead of 0%. Retuning any of the three means
+             re-checking the other two against this height. */
+          min-height: 230svh;
+          /* Must match the fan list's own `lg:gap-8`. The travel adds one
+             gap per column crossed, so a mismatch here lands the card
+             beside the first column instead of in it. */
+          --audience-gap: 2rem;
+          /* The two fan constants the travel has to cancel, restated here
+             because the cell cannot see the values set on `.watch-scroll-fan`
+             and `.watch-scroll-fan-hand`. Keep all four in step: a mismatch
+             does not break the layout, it just lands the card off its
+             column, which is why the browser check on the landing position
+             is part of this feature's verification and not optional. */
+          --fan-scale-end: 1.12;
+          --fan-travel-end: 4.5rem;
+        }
+
+        .watch-audience-pin {
+          position: sticky;
+          /* The pin is exactly as tall as the pair inside it — no
+             min-height, no align-content.
+
+             It used to be a screenful tall and centre its contents, which
+             parked the group nicely once stuck but cost 135px of slack
+             ABOVE the cards (measured at 1440) that was there from the
+             moment the section appeared, before the pin had stuck to
+             anything: the reader met the heading and then a band of
+             nothing. The heading is inside the pin now, so that slack sat
+             between two things the reader reads as one. The scroll distance the timeline needs comes from the
+             STAGE's height, not this box's, so shrinking it to its content
+             costs the choreography nothing.
+
+             The centring moved into `top`. In flow the group sits where
+             the section's padding puts it; once stuck it parks near the
+             middle of the screen. `max()` is the floating header's floor —
+             at a short viewport half a screen minus the group's
+             half-height rides up under it. 16rem is half the group's
+             measured height, heading included; it only decides where the
+             stuck group parks, so it degrades gently if the copy grows. */
+          top: max(
+            calc(env(safe-area-inset-top, 0px) + 6.5rem),
+            calc(50svh - 16rem)
+          );
+          display: grid;
+        }
+
+        .watch-audience-travel {
+          /* Where the card has to end up: the first column's slot.
+             Three terms, because two other transforms are already acting on
+             it by the time it starts moving and a bare column-count travel
+             lands it 113px past the gutter (measured at 1440).
+
+             1. COLUMNS — one card width plus one gap per column crossed.
+             2. UNDO GROWTH — `watch-scroll-fan-hand` has scaled the whole
+                list to `--fan-scale-end` about its centre, which pushes a
+                column-one box further left by
+                `(column + gap) x (scale - 1)`. Independent of how many
+                columns were crossed: the displacement depends on where the
+                card ENDS, and it always ends in column one. An earlier form
+                multiplied this by `(columns - 1)`, which happened to be
+                right only while the card started in the third column.
+             3. UNDO CLOSE — the card's own gather ended at
+                `--fan-closed-x`, i.e. `fan-dir x -fan-travel`. Adding
+                `fan-dir x fan-travel` cancels it.
+
+             Terms 2 and 3 read as fudge factors and are not: each one names
+             a transform that is still applied, and each is written from that
+             transform's own variables so the two cannot drift. If the fan's
+             lift or travel is retuned, this follows automatically. */
+          --travel-x: calc(
+            var(--travel-columns, 0) * (-100% - var(--audience-gap)) +
+              (100% + var(--audience-gap)) * (var(--fan-scale-end) - 1) +
+              var(--fan-dir, 0) * var(--fan-travel-end)
+          );
+          animation: watch-audience-travel linear both;
+          animation-timeline: --watch-audience;
+          /* Starts at 30%, not 0%: the first 30% of the pinned window is
+             the hold on the assembled row. Must start on the same percent
+             as the fade — the card crosses into the space the other two
+             are vacating, and starting first would send it over cards
+             still solid. */
+          animation-range: contain 30% contain 54%;
+          /* Above the cards it crosses, and above the question it lands
+             beside. */
+          position: relative;
+          z-index: 3;
+          will-change: translate, rotate;
+        }
+
+        .watch-audience-fade {
+          animation: watch-audience-clear linear both;
+          animation-timeline: --watch-audience;
+          /* Same 30% start as the travel — see there. */
+          animation-range: contain 30% contain 42%;
+          will-change: opacity, translate;
+        }
+
+        /* The section's heading leaves on the same beat as the two cards it
+           counts, using their keyframe. Once the row is down to one card and
+           a question about that card's audience, "serves three overlapping
+           audiences" describes something no longer on screen — and being the
+           only thing left above the question, it reads as a label for it.
+
+           Opacity, not `visibility` or `display`: the box keeps its space so
+           nothing below it reflows mid-hold, and the `<h2>` stays in the
+           accessibility tree as this section's `aria-labelledby` target. A
+           reader who asked for less motion never reaches this rule at all —
+           the whole guard is behind `prefers-reduced-motion` — so the
+           heading simply stays put for them. */
+        .watch-audience-heading {
+          animation: watch-audience-clear linear both;
+          animation-timeline: --watch-audience;
+          animation-range: contain 30% contain 42%;
+          will-change: opacity, translate;
+        }
+
+        .watch-audience-quiz {
+          /* Placement is Tailwind's now — same grid cell as the cards,
+             right half, `justify-self: end` — so the cell is as tall as
+             the taller of the two and the pin can centre the pair. This
+             rule keeps only the motion. */
+          animation: watch-audience-quiz linear both;
+          animation-timeline: --watch-audience;
+          /* Opens as the fade closes, and lands with 34% of the window
+             still to run — that tail is the reader's dwell for dragging
+             the slider, and it is why the hold above could not simply be
+             taken out of the end of the stage. */
+          animation-range: contain 42% contain 66%;
+          will-change: opacity, translate;
+        }
+      }
+
+      /* Below the two-column breakpoint nothing travels and nothing is
+         cleared away: the cards stay a stacked list and the question is an
+         ordinary block underneath, each with a plain entrance. */
+      @media (width < 64rem) {
+        .watch-audience-quiz {
+          animation: watch-scroll-rise linear both;
+          animation-timeline: view();
+          animation-range: entry 6% cover 30%;
+          will-change: opacity, transform;
         }
       }
 

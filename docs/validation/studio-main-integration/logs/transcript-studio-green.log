@@ -1,0 +1,13 @@
+(node:759506) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin[39m
+
+ [32m✓[39m src/services/typesense-watch-search-transcript-publication.db.test.ts [2m([22m[2m43 tests[22m[2m | [22m[33m41 skipped[39m[2m)[22m[33m 4722[2mms[22m[39m
+   [33m[2m✓[22m[39m current transcript publication into Watch Search[2m > [22mrefuses Core-only transcript ingestion for staged, published and revoked Studio identities [33m 775[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m2 passed[39m[22m[2m | [22m[33m41 skipped[39m[90m (43)[39m
+[2m   Start at [22m 09:12:04
+[2m   Duration [22m 6.96s[2m (transform 1.18s, setup 19ms, collect 1.89s, tests 4.72s, environment 0ms, prepare 84ms)[22m
+

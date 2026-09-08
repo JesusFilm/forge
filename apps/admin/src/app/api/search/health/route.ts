@@ -15,7 +15,7 @@
 
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { prisma } from "@/db/client"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 import {
   getStats,
   recordAttempt,
@@ -69,7 +69,7 @@ export async function GET(request: Request): Promise<Response> {
   recordAttempt()
   try {
     await withTimeout(
-      generateExperienceEmbedding(HEALTH_PROBE_INPUT),
+      generateCurrentContentQueryEmbedding(prisma, HEALTH_PROBE_INPUT),
       HEALTH_PROBE_TIMEOUT_MS,
     )
     const retention = await loadRetentionHealth()

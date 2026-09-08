@@ -21,6 +21,7 @@ export type TypesenseCollectionSchema = {
   fields: TypesenseCollectionField[]
   default_sorting_field?: string
   enable_nested_fields?: boolean
+  curation_sets?: string[]
 }
 
 export type TypesenseCollection = TypesenseCollectionSchema & {
@@ -37,6 +38,7 @@ export type TypesenseSearchRequest = Record<
 
 export type TypesenseSearchHit<T> = {
   document: T
+  curated?: boolean
   text_match?: number
   text_match_info?: {
     score?: string
@@ -71,6 +73,25 @@ export type TypesenseAlias = {
   collection_name: string
 }
 
+export type TypesenseCurationSet = {
+  items: Array<{
+    id: string
+    rule: {
+      query?: string
+      filter_by?: string
+      match?: "exact" | "contains"
+      tags?: string[]
+      synonyms?: boolean
+      stem?: boolean
+    }
+    includes?: Array<{ id: string; position: number }>
+    excludes?: Array<{ id: string }>
+    filter_curated_hits?: boolean
+    remove_matched_tokens?: boolean
+    stop_processing?: boolean
+  }>
+}
+
 type TypesenseMultiSearchResponse<T> = {
   results: Array<TypesenseSearchResult<T> | { error: string; code?: number }>
 }
@@ -97,6 +118,13 @@ export class TypesenseImportError extends TypesenseRequestError {
       `Typesense rejected ${failures.length} imported document${failures.length === 1 ? "" : "s"}`,
     )
     this.name = "TypesenseImportError"
+  }
+}
+
+export class TypesenseImportResponseError extends TypesenseRequestError {
+  constructor(message: string) {
+    super(message)
+    this.name = "TypesenseImportResponseError"
   }
 }
 
@@ -136,6 +164,10 @@ export class TypesenseClient {
           "x-typesense-api-key": this.apiKey,
           ...init.headers,
         },
+        // Typesense requests carry a privileged API key. Refuse redirects so a
+        // misconfigured or compromised endpoint cannot forward that credential
+        // to a different origin.
+        redirect: "error",
         signal: controller.signal,
       })
       if (!response.ok && !acceptedStatuses.includes(response.status)) {
@@ -220,6 +252,25 @@ export class TypesenseClient {
     )
   }
 
+  upsertCurationSet(
+    name: string,
+    curationSet: TypesenseCurationSet,
+  ): Promise<TypesenseCurationSet> {
+    return this.request(`/curation_sets/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(curationSet),
+    })
+  }
+
+  deleteCurationSet(name: string): Promise<void> {
+    return this.request(
+      `/curation_sets/${encodeURIComponent(name)}`,
+      { method: "DELETE" },
+      { acceptedStatuses: [404] },
+    )
+  }
+
   async importDocuments<T extends object>(
     collection: string,
     documents: readonly T[],
@@ -238,21 +289,46 @@ export class TypesenseClient {
     const response = responseText
       .split("\n")
       .filter(Boolean)
-      .map(
-        (line) =>
-          JSON.parse(line) as {
+      .map((line, index) => {
+        try {
+          return JSON.parse(line) as {
             success: boolean
             error?: string
             document?: unknown
-          },
+          }
+        } catch (error) {
+          throw new TypesenseImportResponseError(
+            `Typesense import response line ${index + 1} is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      })
+    if (response.length !== documents.length) {
+      throw new TypesenseImportResponseError(
+        `Typesense import response length ${response.length} does not match request length ${documents.length}`,
       )
+    }
     const failures = response
-      .filter((entry) => !entry.success)
+      .filter((entry) => entry?.success !== true)
       .map((entry) => ({
-        error: entry.error ?? "Unknown Typesense import failure",
-        document: entry.document,
+        error:
+          entry && typeof entry === "object" && typeof entry.error === "string"
+            ? entry.error
+            : "Invalid Typesense import response",
+        document:
+          entry && typeof entry === "object" ? entry.document : undefined,
       }))
     if (failures.length > 0) throw new TypesenseImportError(failures)
+  }
+
+  getDocument<T extends object>(
+    collection: string,
+    id: string,
+  ): Promise<T | undefined> {
+    return this.request(
+      `/collections/${encodeURIComponent(collection)}/documents/${encodeURIComponent(id)}`,
+      {},
+      { acceptedStatuses: [404] },
+    )
   }
 
   async deleteDocumentsByFilter(

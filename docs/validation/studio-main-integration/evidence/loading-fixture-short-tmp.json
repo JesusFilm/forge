@@ -1,0 +1,6 @@
+{
+  "args": ["node", "../loading-fixture.cjs"],
+  "exit": 0,
+  "seconds": 4.335924464001437,
+  "namespace": "net:[4026533024]"
+}

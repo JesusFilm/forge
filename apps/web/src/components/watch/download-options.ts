@@ -1,4 +1,5 @@
 export type WatchDownloadOption = {
+  capability?: string
   documentId: string
   height?: number | null
   quality: string

@@ -1,10 +1,15 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
+  CONVERSATION_TITLE_MAX_UNITS,
   createConversation,
   deriveTitle,
   fallbackTitle,
   NEW_CONVERSATION_TITLE,
+  normalizeConversationTitle,
+  TITLE_STRIP_PATTERN,
   titleFromFirstUser,
 } from "./conversations"
 
@@ -99,5 +104,49 @@ describe("titleFromFirstUser (feat-270)", () => {
 
   it("keeps the blank title when no user turn exists (date fallback stays)", () => {
     expect(titleFromFirstUser("", undefined)).toBe("")
+  })
+})
+
+describe("normalizeConversationTitle (feat-450, KTD6)", () => {
+  it("trims and collapses whitespace runs, keeping visible text byte-identical", () => {
+    expect(normalizeConversationTitle("  Faith   and\n doubt ")).toBe(
+      "Faith and doubt",
+    )
+    expect(normalizeConversationTitle("Faith and doubt")).toBe(
+      "Faith and doubt",
+    )
+  })
+
+  it("strips control and invisible-format characters, so an invisible-only draft normalizes to empty (AE2/R6)", () => {
+    expect(normalizeConversationTitle("\u200b\u200d\ufeff\u00ad")).toBe("")
+    expect(normalizeConversationTitle("\u0007\u001f\u007f\u009f")).toBe("")
+    expect(normalizeConversationTitle("Fa\u200bith\u202e and")).toBe(
+      "Fa ith and",
+    )
+  })
+
+  it("does not clamp — the server's clamp is the authority and its echo is adopted", () => {
+    const long = "x".repeat(CONVERSATION_TITLE_MAX_UNITS + 10)
+    expect(normalizeConversationTitle(long)).toBe(long)
+    expect(CONVERSATION_TITLE_MAX_UNITS).toBe(120)
+  })
+
+  // Mirror pin (apps cannot cross-import): read the Mastra clamp's SOURCE and
+  // compare the regex literal byte-for-byte, so drift on either side goes red
+  // — the precedent is mastra's byte-cap pin against history-proxy.ts.
+  it("mirrors the Mastra clamp's character class byte-for-byte", () => {
+    // process.cwd() is apps/chat under vitest (the module-contract pin in
+    // conversation-session.test.ts relies on the same fact).
+    const mastraClamp = readFileSync(
+      resolve(process.cwd(), "../mastra/src/mastra/ai-chat-title-clamp.ts"),
+      "utf8",
+    )
+    const declared = mastraClamp.match(/\n\s*\/(\[[^\n]*?\])\/g,\n/)
+    expect(declared).not.toBeNull()
+    expect(TITLE_STRIP_PATTERN.source).toBe(declared![1])
+    expect(TITLE_STRIP_PATTERN.flags).toBe("g")
+    // And the mirrored bound is Mastra's AI_CHAT_TITLE_MAX_UNITS.
+    const bound = mastraClamp.match(/AI_CHAT_TITLE_MAX_UNITS = (\d+)/)
+    expect(Number(bound![1])).toBe(CONVERSATION_TITLE_MAX_UNITS)
   })
 })

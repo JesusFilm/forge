@@ -242,6 +242,36 @@ exact admission means the manifest proves the parent/child pair and that
 specific child's selected audio language. A global language entry or fallback
 playback stream is not proof that the contextual route exists.
 
+### Watch Route Monitor Run
+
+One bounded attempt to reconcile Watch page-not-found evidence for one
+analytics property and reporting window against current route truth and live
+HTTP behavior.
+
+A run preserves the completeness of each evidence lane. Only a complete live
+run can advance monitoring progress or provide the absence evidence needed for
+recovery. Diagnostic and failed runs do not change alert lifecycle; a partial
+live run may open or update observed alerts but cannot recover them or advance
+progress.
+
+### Watch Route Alert
+
+A durable operator-facing record that a normalized public Watch path has been
+observed as a supported-route failure or a plausible missing route.
+
+Its identity survives recurrence and recovery. Analytics traffic, route-manifest
+classification, live-probe evidence, and source completeness describe the alert
+without making any one signal sufficient to close it.
+
+### Watch Route Alert Episode
+
+One open-to-recovered occurrence of a Watch Route Alert. A later recurrence
+creates another episode under the same stable alert identity rather than
+discarding its history.
+
+Recovery requires both a complete clean analytics window and an explicit
+healthy live re-probe. Incomplete evidence leaves the episode open.
+
 ### Watch Search & Social Metadata Overlay
 
 Editor-owned, per-language promotional metadata for a Watch Video that may
@@ -871,10 +901,18 @@ served-item lineage rather than inferred later from unrelated analytics.
 
 ### Recommendation Playback Episode
 
-The minimal append-only playback lineage opened atomically with a selection and
-claimed once on the selected target media. It carries server-sequenced attempt,
-start, progress, seek, active-visible-playing, terminal, and error facts within
-bounded active/hard horizons without replacing the legacy Watch recorder.
+A source-neutral root for append-only playback evidence, claimed once for one
+session and media item. It may carry complete Recommendation Request,
+Recommendation Served Item, and selection lineage, but ordinary Watch arrivals
+exist without that lineage and keep discovery provenance separate from
+attribution.
+
+It carries server-sequenced attempt, start, progress, seek,
+active-visible-playing, terminal, and error facts within bounded active and hard
+horizons. When visibility coverage is complete, active playback is derived from
+the union of foreground-playing intervals, never from wall time, player
+position, progress, seeks, or background time; incomplete coverage is retained
+as an explicit qualification rather than presented as certain foreground time.
 
 ### Recommendation Outcome Revision
 
@@ -882,7 +920,9 @@ An immutable, recomputable classifier result over one episode's ordered fact
 watermark and digest. A later fact watermark may append a monotonic superseding
 revision; an old retry cannot become latest. `legacy-position-v0` is a named
 position/progress comparator with no continuous weight or satisfaction claim,
-and every U1 revision is learning-ineligible.
+while active-playback classifiers derive their result from explicit interval
+facts. Publication is learning-ineligible; downstream consumers independently
+decide whether a revision may influence a particular purpose.
 
 ### Recommendation Strategy Manifest
 
@@ -997,6 +1037,14 @@ the original grant ceiling.
 One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
 
 Registration is per environment, not per app: an app holds a separate registration for each environment it runs in, each carrying its own client identifier, exact-match redirect targets, allowed browser origins, default scopes, and approval posture. Apps differ in how a person signs in — a browser redirect, a code displayed on one screen and approved on another device, or a native platform credential — but every route resolves to the same person and the same SSO Session. The registry is upsert-only and never prunes: editing a registration is scrubbed into the provider on the next deploy, while removing one from the registry leaves the live registration in place, so retiring an app is a deliberate out-of-band step rather than a deletion from the list.
+
+### Self-RP Sign-In
+
+A sign-in arrangement where the auth provider registers itself as a relying client of its own OAuth provider, so a native app can send a person to the provider's hosted login page and receive back a normal provider session. The provider is both ends of the exchange: it issues the authorization as it would for any First-Party App, and it consumes that authorization to establish the session it hands to the app. Whatever sign-in methods the hosted page offers reach the app this way without an app release.
+
+Because the provider's sign-in machinery discovers its own endpoints the way it would discover a third party's, a starting instance can fetch metadata from itself before it can answer requests. An environment that runs one instance must answer that self-fetch without routing it through the starting instance, or startup waits on itself.
+
+A provider button on the hosted page starts a second, inner authorization inside the self-RP one, in the same browser. The provider binds each authorization to one per-browser sign-in token and consumes that token when the inner authorization completes, so the outer authorization must be bound again before it returns to the provider, or it is refused as a forgery. The password form starts no inner authorization, so a verification that uses only the password form cannot see this.
 
 ### SSO Session
 
@@ -1145,9 +1193,9 @@ A child Video of a series that is a work in its own right — watchable and mean
 
 ### Series-Shaped
 
-The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. The test is label-only — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
+The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION. There is no separate series type in the schema, and every entry point (search, home cards, deep links) applies the same rule.
 
-Children are deliberately **not** part of the test. A feature film may carry its own Chapters as children while remaining one playable item, so presence of children says nothing about whether a record is a container. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
+A label decides alone. A record that carries a label is classified by that label and by nothing else, so a feature film that owns its Chapters stays one playable item — for a labelled record, having children is never evidence of series-shape. Children decide only for a record that arrives with no label at all, and that lone case is the one place the clients differ: some read an unlabelled record with children as series-shaped, while the TV client treats any unlabelled record as a leaf and never consults children at all. Both directions of the watch/series redirect read this one classification, which is what keeps them exact inverses.
 
 ### First Rail Ready
 
@@ -1178,7 +1226,7 @@ _Avoid:_ Mux insert.
 
 The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
 
-A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. The queue holds a fixed size as content is consumed: unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. Unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. This rollover ignores the Played Set only for candidate selection; it keeps the set intact for later hero choices and visits.
 
 ### Carousel Pool
 
@@ -1192,7 +1240,7 @@ An eligible film is emitted as a single parent tile, never expanded into its Cha
 
 ### Played Set
 
-The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a separate bounded cycling policy can clear it early; selection-only Hero Queue rollover does not.
 
 A video enters the set when the rotation departs its slide, regardless of why it departed — watched to the end, navigated away, or skipped by a playback failure — so a persistently failing slide is recorded as "seen" just like a watched one and yields its priority until the set resets.
 

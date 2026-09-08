@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 
-const { generateExperienceEmbeddingMock } = vi.hoisted(() => ({
-  generateExperienceEmbeddingMock: vi.fn(),
+const { generateCurrentContentQueryEmbeddingMock } = vi.hoisted(() => ({
+  generateCurrentContentQueryEmbeddingMock: vi.fn(),
 }))
 
 vi.mock("@/services/embeddings.service", () => ({
-  generateExperienceEmbedding: generateExperienceEmbeddingMock,
+  generateCurrentContentQueryEmbedding:
+    generateCurrentContentQueryEmbeddingMock,
 }))
 
 import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
@@ -155,8 +156,8 @@ function seedCatalog(prisma: MockPrisma) {
 
 describe("loadExperienceAiVideoCandidates", () => {
   beforeEach(() => {
-    generateExperienceEmbeddingMock.mockReset()
-    generateExperienceEmbeddingMock.mockRejectedValue(
+    generateCurrentContentQueryEmbeddingMock.mockReset()
+    generateCurrentContentQueryEmbeddingMock.mockRejectedValue(
       new Error("not configured"),
     )
   })
@@ -311,10 +312,14 @@ describe("loadExperienceAiVideoCandidates", () => {
   it("uses transcript vector hits before token ranking", async () => {
     const prisma = makePrisma()
     seedCatalog(prisma)
-    generateExperienceEmbeddingMock.mockResolvedValue({
-      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
-      dimensions: 2048,
-      embedding: Array.from({ length: 2048 }, () => 0.01),
+    generateCurrentContentQueryEmbeddingMock.mockResolvedValue({
+      contractId: "semantic-transcript-pgvector-v1",
+      provider: "openrouter",
+      model: "qwen/qwen3-embedding-8b",
+      nativeDimensions: 1536,
+      dimensions: 1536,
+      transformVersion: null,
+      embedding: Array.from({ length: 1536 }, () => 0.01),
     })
     const queryRaw = vi.fn().mockResolvedValue([
       { videoId: "video-2", distance: 0.1 },
@@ -333,7 +338,8 @@ describe("loadExperienceAiVideoCandidates", () => {
       limit: 2,
     })
 
-    expect(generateExperienceEmbeddingMock).toHaveBeenCalledWith(
+    expect(generateCurrentContentQueryEmbeddingMock).toHaveBeenCalledWith(
+      prisma,
       "hope and prayer",
     )
     const sql = sqlTextFromQueryRawCall(queryRaw.mock.calls[0] ?? [])

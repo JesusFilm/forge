@@ -1,0 +1,61 @@
+(node:776471) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/web@0.0.1 build /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web
+> pnpm run generate:ui-locales && next build && pnpm run prune:next-isr
+
+
+> @forge/web@0.0.1 generate:ui-locales /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web
+> node scripts/generate-ui-locales.mjs
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+▲ Next.js 16.2.4 (Turbopack)
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 42s
+  Running TypeScript ...
+  Finished TypeScript in 46s ...
+  Collecting page data using 7 workers ...
+❌ Invalid environment variables: [
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'REVALIDATION_SECRET' ],
+    message: 'Invalid input: expected string, received undefined'
+  },
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'ADMIN_GRAPHQL_URL' ],
+    message: 'Invalid input: expected string, received undefined'
+  },
+  {
+    expected: 'string',
+    code: 'invalid_type',
+    path: [ 'WEB_ADMIN_API_KEYS' ],
+    message: 'Invalid input: expected string, received undefined'
+  }
+]
+Error: Invalid environment variables
+    at <unknown> (.next/server/chunks/[root-of-the-server]__13d4xb7._.js:1:9195)
+    at <unknown> (.next/server/chunks/[root-of-the-server]__13d4xb7._.js:1:9367)
+    at module evaluation (.next/server/chunks/[root-of-the-server]__13d4xb7._.js:1:9621)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (.next/server/chunks/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (.next/server/chunks/[turbopack]_runtime.js:281:20)
+    at module evaluation (.next/server/chunks/apps_web_src_lib_0jj_mi-._.js:1:42218)
+    at instantiateModule (.next/server/chunks/[turbopack]_runtime.js:853:9)
+    at getOrInstantiateModuleFromParent (.next/server/chunks/[turbopack]_runtime.js:877:12)
+    at Context.esmImport [as i] (.next/server/chunks/[turbopack]_runtime.js:281:20)
+
+> Build error occurred
+Error: Failed to collect page data for /sitemap.xml
+    at ignore-listed frames {
+  type: 'Error'
+}
+/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @forge/web@0.0.1 build: `pnpm run generate:ui-locales && next build && pnpm run prune:next-isr`
+Exit status 1

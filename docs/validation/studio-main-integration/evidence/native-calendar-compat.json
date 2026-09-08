@@ -1,0 +1,16 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/mastra",
+    "exec",
+    "vitest",
+    "run",
+    "src/services/studio-authoring/calendar-instructions.db.test.ts",
+    "src/services/studio-authoring/calendar-runtime.db.test.ts",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 0,
+  "seconds": 4.290493306005374
+}

@@ -1,0 +1,49 @@
+(node:759648) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web[39m
+
+ [32m✓[39m src/components/watch/__tests__/HeroPlayer.test.tsx [2m([22m[2m124 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 4241[2mms[22m[39m
+ [32m✓[39m src/components/whats-new/__tests__/WatchWhatsNewPage.test.tsx [2m([22m[2m112 tests[22m[2m)[22m[33m 8150[2mms[22m[39m
+ [32m✓[39m src/components/watch/__tests__/CollectionDownloadModal.test.tsx [2m([22m[2m30 tests[22m[2m)[22m[33m 914[2mms[22m[39m
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — canonicalize integration (§5.4)[2m > [22m[2m404s bcp47 catalog keys in public audio slots
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=jesus childSlug=en manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — canonicalize integration (§5.4)[2m > [22m[2m404s bcp47 regional tags in public audio slots
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=jesus childSlug=pt-br manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — canonicalize integration (§5.4)[2m > [22m[2mreaches a terminal canonical in one hop (idempotence)
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=jesus childSlug=jesus manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2m404s the stale synthetic search shape
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=search childSlug=search manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2m404s unknown public audio slugs before they reach the app route
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=easter childSlug=non-existent manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2m404s stale public audio aliases that current production no longer serves
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=jesus childSlug=swahili manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2mfails closed for short contextual routes when the manifest is unavailable
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=lumo-the-gospel-of-john childSlug=lumo-john-1-1-34 manifestAvailable=false hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2mfails closed when an older manifest cannot prove exact episode English
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=lumo-the-gospel-of-john childSlug=lumo-john-1-1-34 manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2mfails closed when the exact episode lacks English
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=lumo-the-gospel-of-john childSlug=lumo-john-1-1-34 manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2mfails closed for inherited-object episode slug constructor
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=lumo-the-gospel-of-john childSlug=constructor manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+[90mstderr[2m | src/proxy.test.ts[2m > [22m[2mproxy — internal locale/htmlLang rewrites[2m > [22m[2mfails closed for inherited-object episode slug __proto__
+[22m[39m[watch] event=watch_route.implicit_english_episode.rejected parentSlug=lumo-the-gospel-of-john childSlug=__proto__ manifestAvailable=true hint=second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode
+
+ [32m✓[39m src/proxy.test.ts [2m([22m[2m120 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m src/lib/studio-playback.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m386 passed[39m[22m[2m | [22m[90m1 todo[39m[90m (387)[39m
+[2m   Start at [22m 09:12:05
+[2m   Duration [22m 18.99s[2m (transform 1.41s, setup 318ms, collect 2.56s, tests 13.39s, environment 1.31s, prepare 380ms)[22m
+

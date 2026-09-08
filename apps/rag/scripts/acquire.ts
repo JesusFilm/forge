@@ -1,3 +1,4 @@
+import { scopeSource } from "./lib/path-scope.js"
 import { acquireSource } from "../src/acquisition/index.js"
 import {
   acquirableSources,
@@ -10,7 +11,7 @@ import { parseAcquireArgs } from "./lib/maintenance-args.js"
 import { installProductionEnvironment } from "./lib/production-target.js"
 
 async function main() {
-  const argv = process.argv.slice(2)
+  const argv = process.argv.slice(process.argv[2] === "--" ? 3 : 2)
   const production = argv.includes("--production")
   const args = parseAcquireArgs(argv)
   if (production) installProductionEnvironment(process.env, args.apply)
@@ -43,8 +44,9 @@ async function main() {
   const wiring = wire()
   try {
     const failures: Error[] = []
-    for (const entry of entries) {
-      if (!entry) continue
+    for (const registered of entries) {
+      if (!registered) continue
+      const entry = scopeSource(registered, args.pathPrefix)
       try {
         const result = await acquireSource(
           { fetcher: wiring.fetcherFor(entry), store: wiring.rawDocumentStore },

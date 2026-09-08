@@ -18,6 +18,7 @@ import "@/graphql/types/managerJob"
 import "@/graphql/types/studio"
 import "@/graphql/types/studio-assets"
 import "@/graphql/types/managerSeo"
+import "@/graphql/types/managerWatchRouteAlerts"
 import "@/graphql/types/watch-events"
 import "@/graphql/types/watch-progress"
 // Block union types must register before experience.ts since

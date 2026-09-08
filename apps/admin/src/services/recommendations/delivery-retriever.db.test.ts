@@ -4,6 +4,16 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "@/services/content-embedding-contract"
+import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
   MAX_DELIVERY_RESPONSE_BYTES,
   RECOMMENDATION_CONTRACTS,
@@ -48,6 +58,9 @@ const recommendationMigrationSql = [
   "0069_recommendation_hybrid_composition",
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
+  "0072_recommendation_source_neutral_playback_episodes",
+  "0075_recommendation_selection_attribution_eligibility",
+  "0076_recommendation_profile_eligibility_reconciliation",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -67,6 +80,60 @@ function vectorAt(index: number): string {
 const BENCHMARK_PROFILE_TOKEN_DIGEST = "4".repeat(64)
 const BENCHMARK_CONSENT_RECEIPT_DIGEST = "5".repeat(64)
 const BENCHMARK_SESSION_DIGEST = "6".repeat(64)
+
+async function installContentEmbeddingContractAuthority(
+  client: Client,
+): Promise<void> {
+  await client.query(`
+    CREATE TABLE content_embedding_contract (
+      id text PRIMARY KEY,
+      query_provider text NOT NULL,
+      query_model text NOT NULL,
+      query_native_dimensions integer NOT NULL,
+      query_dimensions integer NOT NULL,
+      query_transform_version text,
+      storage_provider text NOT NULL,
+      storage_model text NOT NULL,
+      storage_native_dimensions integer NOT NULL,
+      storage_dimensions integer NOT NULL,
+      storage_transform_version text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE content_embedding_contract_pointer (
+      id text PRIMARY KEY,
+      active_contract_id text NOT NULL REFERENCES content_embedding_contract(id),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `)
+  await client.query(
+    `INSERT INTO content_embedding_contract (
+      id, query_provider, query_model, query_native_dimensions,
+      query_dimensions, query_transform_version, storage_provider,
+      storage_model, storage_native_dimensions, storage_dimensions,
+      storage_transform_version
+    ) VALUES (
+      $1, $2, $3, $4, $4, NULL, $5, $6, $7, $7, NULL
+    )`,
+    [
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ],
+  )
+  await client.query(
+    `INSERT INTO content_embedding_contract_pointer (
+      id, active_contract_id
+    ) VALUES ($1, $2)`,
+    [
+      CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    ],
+  )
+}
 
 async function installHybridDeliveryAuthority(client: Client): Promise<void> {
   const projectionMedia = await client.query<{ video_id: string }>(`
@@ -134,6 +201,61 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       AND chunk.embedding IS NOT NULL
     GROUP BY transcript.video_id`,
     [projectionMediaId, "8".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, finalized_at,
+      created_at, expires_at
+    ) VALUES ('delivery-benchmark-episode', $1, $2, 'finalized',
+      'delivery-benchmark-episode-jti', 'test-kid',
+      '2026-08-27T02:00:00.000Z', '2026-08-27T03:00:00.000Z', 1,
+      '2026-08-27T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    [projectionMediaId, BENCHMARK_SESSION_DIGEST],
+  )
+  await client.query(
+    `INSERT INTO recommendation_outcome_revision (
+      id, episode_id, classifier_version, fact_watermark, input_digest,
+      revision, qualified_view, view_quality_weight,
+      view_quality_weight_reason, active_playback_milliseconds,
+      duration_seconds, duration_cohort, active_coverage, generation,
+      created_at, expires_at
+    ) VALUES ('delivery-benchmark-outcome', 'delivery-benchmark-episode',
+      'active-watch-proxy-v1', 0, $1, 1, true, 1,
+      'active_fraction_of_duration', 60000, 120, 'medium', 'complete', 1,
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["1".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_eligibility_decision (
+      id, source_type, source_key, outcome_id, policy_version, revision,
+      actor_class, state, reason_codes, eligible_scopes,
+      contribution_weight, contribution_ordinal, distinct_support,
+      identity_concentration, input_digest, evidence_watermark,
+      decided_at, expires_at
+    ) VALUES ('delivery-benchmark-decision', 'playback_outcome',
+      'playback_outcome:delivery-benchmark-outcome',
+      'delivery-benchmark-outcome', 'recommendation-integrity-v1', 1,
+      'human_anonymous', 'eligible', ARRAY['qualified_view'], ARRAY['profile'],
+      1, 1, 1, 1, $1, '2026-08-27T00:00:00.000Z',
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["2".repeat(64)],
+  )
+  await client.query(
+    `INSERT INTO recommendation_profile_projection_contribution (
+      id, generation_id, kind, source_id_digest, source_outcome_id,
+      target_media_id, interest_ordinal, weight,
+      eligibility_policy_version, outcome_classifier_version,
+      source_eligibility_decision_id, source_eligibility_revision,
+      privacy_generation, occurred_at, expires_at
+    ) VALUES ('delivery-benchmark-contribution',
+      'delivery-benchmark-projection', 'qualified_outcome', $1,
+      'delivery-benchmark-outcome', $2, 0, 1,
+      'recommendation-integrity-v1', 'active-watch-proxy-v1',
+      'delivery-benchmark-decision', 1, 1,
+      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
+    ["3".repeat(64), projectionMediaId],
   )
   await client.query(
     `INSERT INTO recommendation_profile_projection_pointer (
@@ -255,6 +377,8 @@ async function prepareExplicitDeliveryFixture(
       `)
       if (compatibleSnapshot.rows[0]?.ready) {
         for (const table of [
+          "content_embedding_contract",
+          "content_embedding_contract_pointer",
           "video",
           "video_relation",
           "video_transcript",
@@ -285,6 +409,7 @@ async function prepareExplicitDeliveryFixture(
     }
 
     await client.query("CREATE EXTENSION IF NOT EXISTS vector")
+    await installContentEmbeddingContractAuthority(client)
     await client.query(`
       CREATE TABLE video (
         id text PRIMARY KEY, slug text NOT NULL UNIQUE, core_id text,
@@ -330,7 +455,10 @@ async function prepareExplicitDeliveryFixture(
         dimensions, embedding_native_dimensions
       ) VALUES (
         'seed-transcript', 'seed-video', 'seed-edition', 'en',
-        'jesus-film-ai-gateway', 'embeddings', 1536, 1536
+        '${ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER}',
+        '${ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL}',
+        ${ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS},
+        ${ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS}
       );
     `)
     for (let index = 0; index < 8; index += 1) {
@@ -338,14 +466,16 @@ async function prepareExplicitDeliveryFixture(
         `INSERT INTO video_transcript_chunk (
           id, transcript_id, chunk_index, language, model, dimensions, text,
           start_seconds, end_seconds, felt_needs, embedding
-        ) VALUES ($1, 'seed-transcript', $2, 'en', 'embeddings', 1536, $3,
-          $4, $5, ARRAY['hope'], $6::vector)`,
+        ) VALUES ($1, 'seed-transcript', $2, 'en', $6, $7, $3,
+          $4, $5, ARRAY['hope'], $8::vector)`,
         [
           `seed-chunk-${index}`,
           index,
           `Seed scene ${index}`,
           index * 10,
           index * 10 + 10,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
           vectorAt(index),
         ],
       )
@@ -381,19 +511,28 @@ async function prepareExplicitDeliveryFixture(
         `INSERT INTO video_transcript (
            id, video_id, video_edition_id, language, embedding_provider, model,
            dimensions, embedding_native_dimensions
-         ) VALUES ($1, $2, $3, 'en', 'jesus-film-ai-gateway', 'embeddings', 1536, 1536)`,
-        [transcriptId, videoId, editionId],
+         ) VALUES ($1, $2, $3, 'en', $4, $5, $6, $6)`,
+        [
+          transcriptId,
+          videoId,
+          editionId,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        ],
       )
       await client.query(
         `INSERT INTO video_transcript_chunk (
            id, transcript_id, chunk_index, language, model, dimensions, text,
            start_seconds, end_seconds, felt_needs, embedding
-         ) VALUES ($1, $2, 0, 'en', 'embeddings', 1536, $3, 0, 30,
-           ARRAY['hope'], $4::vector)`,
+         ) VALUES ($1, $2, 0, 'en', $4, $5, $3, 0, 30,
+           ARRAY['hope'], $6::vector)`,
         [
           `target-chunk-${index}`,
           transcriptId,
           `Target scene ${index}`,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
           vectorAt(index + 8),
         ],
       )

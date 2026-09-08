@@ -1,0 +1,125 @@
+browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --disable-background-networking --disable-component-update --user-data-dir=/home/tataihono/.local/share/forge/studio-462-main-integration/tmp/playwright_chromiumdev_profile-KJvXLg --remote-debugging-pipe --no-startup-window
+<launched> pid=769108
+[pid=769108][err] [769108:769108:0909/091802.393932:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /home/tataihono/.local/share/forge/studio-462-main-integration/tmp/org.chromium.Chromium.jNAcIt/SingletonSocket.
+[pid=769108][err] [0909/091802.399788:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)
+[pid=769108][err] [0909/091802.399848:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)
+[pid=769108][err] Received signal 6
+[pid=769108][err] #0 0x57be24202bc3 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6a9abc2)
+[pid=769108][err] #1 0x57be28ec8494 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb760493)
+[pid=769108][err] #2 0x764b27e45cb0 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45caf)
+[pid=769108][err] #3 0x764b27e45b7e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45b7d)
+[pid=769108][err] #4 0x764b27e288ec (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288eb)
+[pid=769108][err] #5 0x57be28ebf385 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb757384)
+[pid=769108][err] #6 0x57be28e7f14d (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb71714c)
+[pid=769108][err] #7 0x57be28e7f0de (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb7170dd)
+[pid=769108][err] #8 0x57be23fc9603 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6861602)
+[pid=769108][err] #9 0x57be22c621f9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x54fa1f8)
+[pid=769108][err] #10 0x57be2349da56 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d35a55)
+[pid=769108][err] #11 0x57be2349c5af (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d345ae)
+[pid=769108][err] #12 0x57be2349c564 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d34563)
+[pid=769108][err] #13 0x57be2257c73b (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e1473a)
+[pid=769108][err] #14 0x57be2257b953 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e13952)
+[pid=769108][err] #15 0x57be23737106 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcf105)
+[pid=769108][err] #16 0x57be237367a9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fce7a8)
+[pid=769108][err] #17 0x57be23735b00 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcdaff)
+[pid=769108][err] #18 0x764b27e2a601 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600)
+[pid=769108][err] #19 0x764b27e2a718 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717)
+[pid=769108][err] #20 0x57be244c535a (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6d5d359)
+[pid=769108][err]   r8: 0000000000000016  r9: 0000000000000001 r10: 00001390000d853d r11: 0000000000000246
+[pid=769108][err]  r12: 0000000000000006 r13: 00001390000d8460 r14: 00000000000000dd r15: 00007ffec8272360
+[pid=769108][err]   di: 00000000000bbc54  si: 00000000000bbc54  bp: 00007ffec8271cd0  bx: 00000000000bbc54
+[pid=769108][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 0000764b27ea642c  sp: 00007ffec8271c90
+[pid=769108][err]   ip: 0000764b27ea642c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000
+[pid=769108][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000
+[pid=769108][err] [end of stack trace]
+Call log:
+  - <launching> /home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --disable-background-networking --disable-component-update --user-data-dir=/home/tataihono/.local/share/forge/studio-462-main-integration/tmp/playwright_chromiumdev_profile-KJvXLg --remote-debugging-pipe --no-startup-window
+  - <launched> pid=769108
+  - [pid=769108][err] [769108:769108:0909/091802.393932:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /home/tataihono/.local/share/forge/studio-462-main-integration/tmp/org.chromium.Chromium.jNAcIt/SingletonSocket.
+  - [pid=769108][err] [0909/091802.399788:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)
+  - [pid=769108][err] [0909/091802.399848:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)
+  - [pid=769108][err] Received signal 6
+  - [pid=769108][err] #0 0x57be24202bc3 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6a9abc2)
+  - [pid=769108][err] #1 0x57be28ec8494 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb760493)
+  - [pid=769108][err] #2 0x764b27e45cb0 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45caf)
+  - [pid=769108][err] #3 0x764b27e45b7e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45b7d)
+  - [pid=769108][err] #4 0x764b27e288ec (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288eb)
+  - [pid=769108][err] #5 0x57be28ebf385 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb757384)
+  - [pid=769108][err] #6 0x57be28e7f14d (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb71714c)
+  - [pid=769108][err] #7 0x57be28e7f0de (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb7170dd)
+  - [pid=769108][err] #8 0x57be23fc9603 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6861602)
+  - [pid=769108][err] #9 0x57be22c621f9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x54fa1f8)
+  - [pid=769108][err] #10 0x57be2349da56 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d35a55)
+  - [pid=769108][err] #11 0x57be2349c5af (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d345ae)
+  - [pid=769108][err] #12 0x57be2349c564 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d34563)
+  - [pid=769108][err] #13 0x57be2257c73b (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e1473a)
+  - [pid=769108][err] #14 0x57be2257b953 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e13952)
+  - [pid=769108][err] #15 0x57be23737106 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcf105)
+  - [pid=769108][err] #16 0x57be237367a9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fce7a8)
+  - [pid=769108][err] #17 0x57be23735b00 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcdaff)
+  - [pid=769108][err] #18 0x764b27e2a601 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600)
+  - [pid=769108][err] #19 0x764b27e2a718 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717)
+  - [pid=769108][err] #20 0x57be244c535a (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6d5d359)
+  - [pid=769108][err]   r8: 0000000000000016  r9: 0000000000000001 r10: 00001390000d853d r11: 0000000000000246
+  - [pid=769108][err]  r12: 0000000000000006 r13: 00001390000d8460 r14: 00000000000000dd r15: 00007ffec8272360
+  - [pid=769108][err]   di: 00000000000bbc54  si: 00000000000bbc54  bp: 00007ffec8271cd0  bx: 00000000000bbc54
+  - [pid=769108][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 0000764b27ea642c  sp: 00007ffec8271c90
+  - [pid=769108][err]   ip: 0000764b27ea642c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000
+  - [pid=769108][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000
+  - [pid=769108][err] [end of stack trace]
+  - [pid=769108] <gracefully close start>
+  - [pid=769108] <kill>
+  - [pid=769108] <will force kill>
+  - [pid=769108] <process did exit: exitCode=null, signal=SIGABRT>
+  - [pid=769108] starting temporary directories cleanup
+  - [pid=769108] finished temporary directories cleanup
+  - [pid=769108] <gracefully close end>
+
+    at /home/tataihono/.local/share/forge/studio-462-main-integration/loading-fixture.cjs:27:31 {
+  log: [
+    '  - <launching> /home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --disable-background-networking --disable-component-update --user-data-dir=/home/tataihono/.local/share/forge/studio-462-main-integration/tmp/playwright_chromiumdev_profile-KJvXLg --remote-debugging-pipe --no-startup-window',
+    '  - <launched> pid=769108',
+    '  - [pid=769108][err] [769108:769108:0909/091802.393932:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /home/tataihono/.local/share/forge/studio-462-main-integration/tmp/org.chromium.Chromium.jNAcIt/SingletonSocket.',
+    '  - [pid=769108][err] [0909/091802.399788:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)',
+    '  - [pid=769108][err] [0909/091802.399848:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)',
+    '  - [pid=769108][err] Received signal 6',
+    '  - [pid=769108][err] #0 0x57be24202bc3 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6a9abc2)',
+    '  - [pid=769108][err] #1 0x57be28ec8494 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb760493)',
+    '  - [pid=769108][err] #2 0x764b27e45cb0 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45caf)',
+    '  - [pid=769108][err] #3 0x764b27e45b7e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x45b7d)',
+    '  - [pid=769108][err] #4 0x764b27e288ec (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288eb)',
+    '  - [pid=769108][err] #5 0x57be28ebf385 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb757384)',
+    '  - [pid=769108][err] #6 0x57be28e7f14d (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb71714c)',
+    '  - [pid=769108][err] #7 0x57be28e7f0de (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0xb7170dd)',
+    '  - [pid=769108][err] #8 0x57be23fc9603 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6861602)',
+    '  - [pid=769108][err] #9 0x57be22c621f9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x54fa1f8)',
+    '  - [pid=769108][err] #10 0x57be2349da56 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d35a55)',
+    '  - [pid=769108][err] #11 0x57be2349c5af (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d345ae)',
+    '  - [pid=769108][err] #12 0x57be2349c564 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5d34563)',
+    '  - [pid=769108][err] #13 0x57be2257c73b (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e1473a)',
+    '  - [pid=769108][err] #14 0x57be2257b953 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x4e13952)',
+    '  - [pid=769108][err] #15 0x57be23737106 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcf105)',
+    '  - [pid=769108][err] #16 0x57be237367a9 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fce7a8)',
+    '  - [pid=769108][err] #17 0x57be23735b00 (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x5fcdaff)',
+    '  - [pid=769108][err] #18 0x764b27e2a601 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a600)',
+    '  - [pid=769108][err] #19 0x764b27e2a718 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a717)',
+    '  - [pid=769108][err] #20 0x57be244c535a (/home/tataihono/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome+0x6d5d359)',
+    '  - [pid=769108][err]   r8: 0000000000000016  r9: 0000000000000001 r10: 00001390000d853d r11: 0000000000000246',
+    '  - [pid=769108][err]  r12: 0000000000000006 r13: 00001390000d8460 r14: 00000000000000dd r15: 00007ffec8272360',
+    '  - [pid=769108][err]   di: 00000000000bbc54  si: 00000000000bbc54  bp: 00007ffec8271cd0  bx: 00000000000bbc54',
+    '  - [pid=769108][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 0000764b27ea642c  sp: 00007ffec8271c90',
+    '  - [pid=769108][err]   ip: 0000764b27ea642c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000',
+    '  - [pid=769108][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000',
+    '  - [pid=769108][err] [end of stack trace]',
+    '  - [pid=769108] <gracefully close start>',
+    '  - [pid=769108] <kill>',
+    '  - [pid=769108] <will force kill>',
+    '  - [pid=769108] <process did exit: exitCode=null, signal=SIGABRT>',
+    '  - [pid=769108] starting temporary directories cleanup',
+    '  - [pid=769108] finished temporary directories cleanup',
+    '  - [pid=769108] <gracefully close end>'
+  ]
+}

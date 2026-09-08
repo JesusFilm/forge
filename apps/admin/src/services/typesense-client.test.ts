@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { TypesenseClient, TypesenseImportError } from "./typesense-client"
+import {
+  TypesenseClient,
+  TypesenseImportError,
+  TypesenseImportResponseError,
+} from "./typesense-client"
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -25,6 +29,7 @@ describe("TypesenseClient", () => {
       "http://localhost:8108/aliases/watch",
       expect.objectContaining({
         method: "PUT",
+        redirect: "error",
         headers: expect.objectContaining({
           "x-typesense-api-key": "test-key",
           "content-type": "application/json",
@@ -45,6 +50,52 @@ describe("TypesenseClient", () => {
     })
 
     await expect(client.getAlias("missing")).resolves.toBeUndefined()
+  })
+
+  it("owns versioned curation sets through the Typesense v30 API", async () => {
+    const set = {
+      items: [
+        {
+          id: "rescue-project",
+          rule: { query: "rescue project", match: "exact" as const },
+          includes: [{ id: "intro:slug:english", position: 1 }],
+        },
+      ],
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(set))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "operator-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.upsertCurationSet("watch_search_curations_build-7", set),
+    ).resolves.toEqual(set)
+    await expect(
+      client.deleteCurationSet("watch_search_curations_retired"),
+    ).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:8108/curation_sets/watch_search_curations_build-7",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "content-type": "application/json",
+          "x-typesense-api-key": "operator-key",
+        }),
+        body: JSON.stringify(set),
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:8108/curation_sets/watch_search_curations_retired",
+      expect.objectContaining({ method: "DELETE" }),
+    )
   })
 
   it("lists physical collections for release cleanup", async () => {
@@ -153,6 +204,36 @@ describe("TypesenseClient", () => {
     ).rejects.toEqual(expect.any(TypesenseImportError))
   })
 
+  it("rejects a mismatched Typesense import line count", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ success: true })))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.importDocuments("chunks", [{ id: "a" }, { id: "b" }]),
+    ).rejects.toEqual(expect.any(TypesenseImportResponseError))
+  })
+
+  it("rejects import rows whose success marker is not the boolean true", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify({ success: "true" })))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.importDocuments("chunks", [{ id: "a" }]),
+    ).rejects.toEqual(expect.any(TypesenseImportError))
+  })
+
   it("upserts lightweight documents and deletes stale documents by filter", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -216,6 +297,25 @@ describe("TypesenseClient", () => {
         body: JSON.stringify({ titles: ["Renamed title"] }),
       }),
     )
+  })
+
+  it("reads one exact document and treats a missing document as absent", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ id: "chunk-1", text: "hope" }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.getDocument<{ id: string; text: string }>("chunks", "chunk-1"),
+    ).resolves.toEqual({ id: "chunk-1", text: "hope" })
+    await expect(
+      client.getDocument("chunks", "missing-chunk"),
+    ).resolves.toBeUndefined()
   })
 
   it("surfaces a failed multi-search result", async () => {

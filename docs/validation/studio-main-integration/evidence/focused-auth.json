@@ -1,0 +1,22 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/auth",
+    "exec",
+    "vitest",
+    "run",
+    "src/auth/config.test.ts",
+    "src/domain/oauth-resources.test.ts",
+    "src/auth/mobile-session.test.ts",
+    "src/auth/mobile-callback.test.ts",
+    "src/auth/mobile-expo-plugin.test.ts",
+    "src/auth/mobile-expo-plugin.guard.test.ts",
+    "src/auth/mobile-apple-plugin.test.ts",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 0,
+  "seconds": 5.005496461002622,
+  "namespace": "net:[4026532861]"
+}

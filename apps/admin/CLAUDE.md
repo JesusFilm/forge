@@ -1157,9 +1157,10 @@ provider metadata).
 Mastra writes vectors through Admin's narrow internal ingest route:
 `POST /api/internal/mastra/transcript-embeddings`. The route validates
 `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
-guards `dimensions === 1536`, resolves Admin or external targets before
-writing, and is idempotent by default. Explicit modes are `idempotent`,
-`repair`, `force`, and `model-upgrade`.
+guards `dimensions === 1536`, caps the streamed JSON body at 16 MiB and each
+transcript at 1,024 chunks, resolves Admin or external targets before writing,
+and is idempotent by default. Explicit modes are `idempotent`, `repair`,
+`force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per
@@ -1187,6 +1188,64 @@ writing, and is idempotent by default. Explicit modes are `idempotent`,
   (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
   generation mode, chunking version), and delegates the actual table
   write to the existing indexer service.
+- **Incremental Watch Search publication:** every accepted canonical ingest
+  increments `sourceGeneration` and writes one identity-only publication event
+  in the same serializable transaction. The dedicated Admin worker reloads the
+  vectors from PostgreSQL, upserts stable chunk document ids into the current
+  transcript collection, independently reads the documents and normalized
+  vectors back, removes stale ids, and atomically completes the event while
+  advancing one durable projection revision. Before the first mutation, it
+  reads the exact physical collection schema and requires the complete Watch
+  Search transcript field contract, including grouping/visibility facets and
+  the 1,536-dimension vector declaration; document readback alone cannot prove
+  that the real reader can query an incorrectly shaped collection. Once an
+  external mutation starts, a failed JSONL upsert removes current ids but keeps
+  exact stale ids until every current upsert has succeeded; failures after
+  stale deletion starts remove and verify the complete affected id set under
+  the same publication lock before retry. An incomplete attempt must not leave
+  a newly public transcript searchable. Claims are generation/token fenced,
+  and the next live worker dead-letters an attempt-exhausted crashed claim
+  before making another external call. Bounded failures enter `DEAD_LETTER`
+  without losing repair evidence, and a later source generation can coalesce
+  that evidence. A canonical transcript/video cascade appends identity-only
+  `LIFECYCLE` cleanup before deleting the parent, combining incremental event
+  evidence with canonical chunk ids published only by a full rebuild;
+  publication events therefore deliberately have no transcript foreign key
+  and retain transcript, video, edition, language, contract, chunking, and
+  exact document identity. A thrown final
+  PostgreSQL commit is reconciled from the durable event and projection rows
+  before compensation because the commit acknowledgement may be lost after a
+  successful commit; an unavailable reconciliation preserves the claim and
+  documents until retry rather than deleting a potentially completed
+  publication that has no pending event left to restore it. Enable it only on
+  the Admin worker
+  with `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=true`; the default is
+  `false`. Enabling also requires `WORKFLOW_RUNNER_ENABLED=true`,
+  `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`, `TYPESENSE_HOST`, and
+  `TYPESENSE_OPERATOR_API_KEY`. Missing Typesense operator configuration is a
+  fail-fast startup error before the workflow runtime or any scheduler starts
+  when publication is explicitly enabled, as is enabling the publisher without
+  the Postgres Workflow runner settings above. Incremental publication waits
+  for active evaluation leases but remains compatible with an already
+  qualified serving candidate that shares the same transcript collection,
+  embedding contract, and chunking version; a routine projection-revision
+  advance must not require requalification or promotion. Every configured
+  reader credential, including the legacy `TYPESENSE_API_KEY` even when a
+  dedicated search key takes precedence, must remain distinct from
+  `TYPESENSE_OPERATOR_API_KEY`; Admin enforces this at startup so no reader or
+  benchmark path can silently inherit publication and deletion authority.
+  Both current-index and candidate-index publication commands require the
+  operator key; the legacy key is never publication authority. Production
+  Admin web startup rejects an injected operator key; the credential is valid
+  only on the dedicated Postgres worker, even while incremental publication is
+  still disabled for a staged rollout. Railway project-level variables may
+  inject reader keys into every service, so `railway.worker.toml` explicitly
+  unsets `TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` before the worker's
+  build, migration, and runtime commands load Admin's fail-closed credential
+  checks. Build and migration additionally unset
+  `TYPESENSE_OPERATOR_API_KEY` and
+  `WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED`; the operator key remains
+  available only to the worker runtime.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.

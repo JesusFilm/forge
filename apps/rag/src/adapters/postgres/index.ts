@@ -21,6 +21,10 @@ import type {
 import { RagOperationalError } from "../../contracts/index.js"
 
 import { assertQueryDimensions, toVectorLiteral } from "./vector.js"
+import {
+  lockRawDocumentSource,
+  RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS,
+} from "./raw-document-lock.js"
 
 export { EMBEDDING_DIMENSIONS } from "./vector.js"
 
@@ -232,6 +236,7 @@ export class PostgresRawDocumentStore implements RawDocumentStore {
 
   async putRawDocument(doc: RawDocument): Promise<void> {
     await this.db.$transaction(async (tx) => {
+      await lockRawDocumentSource(tx, doc.sourceKey)
       await tx.rawDocument.deleteMany({
         where: {
           sourceKey: doc.sourceKey,
@@ -254,7 +259,7 @@ export class PostgresRawDocumentStore implements RawDocumentStore {
           notModified: doc.fetch.notModified,
         },
       })
-    })
+    }, RAW_DOCUMENT_ACQUISITION_TRANSACTION_OPTIONS)
   }
 
   async listStagedCanonicalUrls(sourceKey: string): Promise<string[]> {
@@ -275,6 +280,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       sourceKey?: string
       limit?: number
       includeIngested?: boolean
+      canonicalUrlPrefix?: string
       targetEmbeddingModel?: string
     } = {},
   ): Promise<PendingRawDocument[]> {
@@ -287,6 +293,7 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
             r.index_attempted_at, r.index_attempted_model
           FROM raw_documents r
           WHERE (${options.sourceKey ?? null}::text IS NULL OR r.source_key = ${options.sourceKey ?? null})
+          AND (${options.canonicalUrlPrefix ?? null}::text IS NULL OR starts_with(r.canonical_url, ${options.canonicalUrlPrefix ?? null}::text))
           ORDER BY r.source_key, r.canonical_url, r.fetched_at DESC, r.id DESC
         )
         SELECT r.id
@@ -314,6 +321,11 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
       where: {
         id: eligibleIds ? { in: eligibleIds } : undefined,
         sourceKey: options.sourceKey,
+        canonicalUrl: options.canonicalUrlPrefix
+          ? {
+              startsWith: options.canonicalUrlPrefix.replace(/[\\%_]/g, "\\$&"),
+            }
+          : undefined,
         ingestedAt: options.includeIngested ? undefined : null,
       },
       orderBy: [{ fetchedAt: "asc" }, { id: "asc" }],

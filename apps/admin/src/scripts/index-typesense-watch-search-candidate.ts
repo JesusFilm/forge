@@ -12,16 +12,19 @@ import {
   type CandidateGenerationState,
   TypesenseWatchSearchCandidateGenerationService,
 } from "@/services/typesense-watch-search-candidate-generation"
-import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
+import { candidateWatchSearchIndexContractRevision } from "@/services/typesense-watch-search-candidate-identity"
+import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
 } from "@/services/typesense-watch-search-indexer"
+import { buildTypesenseWatchCurationProjection } from "@/services/typesense-watch-search-curation"
 import {
   TYPESENSE_WATCH_EXACT_TITLE_KEY_BYTES,
   TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
 } from "@/services/typesense-watch-search-exact-title"
 import {
+  candidateWatchCurationSetName,
   candidateWatchCollectionNames,
   candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -37,13 +40,15 @@ type CandidateGenerationRecord = {
   id: string
   state: CandidateGenerationState
   version: number
-  applicationRevision?: string
+  indexContractRevision?: string
   sourceEpoch?: string
   sourceDigests?: unknown
   catalogCollection?: string
   availabilityCollection?: string
   lexicalCollection?: string
   transcriptCollection: string
+  contentEmbeddingContractId?: string
+  transcriptChunkingVersion?: string
   transcriptProjectionRevision?: bigint
   catalogFields?: unknown
   availabilityFields?: unknown
@@ -96,10 +101,13 @@ type CandidateTypesense = Pick<
   | "multiSearch"
   | "getAlias"
   | "deleteCollection"
+  | "upsertCurationSet"
+  | "deleteCurationSet"
 >
 
 type PublicationStep =
   | "owner:created"
+  | "curations:upserted"
   | "catalog:created"
   | "catalog:imported"
   | "availability:created"
@@ -114,6 +122,7 @@ type RetirementStep =
   | "catalog:deleted"
   | "availability:deleted"
   | "lexical:deleted"
+  | "curations:deleted"
 
 export class CandidateProjectionSafetyError extends Error {
   constructor(message: string) {
@@ -162,7 +171,7 @@ function deletedCollections(value: unknown): string[] {
 
 function expectedOwnerInput({
   generationId,
-  applicationRevision,
+  indexContractRevision,
   sourceEpoch,
   transcript,
   transcriptFields,
@@ -170,18 +179,25 @@ function expectedOwnerInput({
   schemas,
 }: {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   sourceEpoch: string
-  transcript: { collection: string; projectionRevision: bigint }
+  transcript: {
+    collection: string
+    contentEmbeddingContractId: string
+    chunkingVersion: string
+    projectionRevision: bigint
+  }
   transcriptFields: readonly TypesenseCollectionField[]
   snapshot: TypesenseWatchCandidateProjectionSnapshot
   schemas: ReturnType<typeof candidateWatchCollectionSchemas>
 }): CandidateGenerationInput {
   return {
     id: generationId,
-    applicationRevision,
+    indexContractRevision,
     sourceEpoch,
     sourceDigests: snapshot.digests,
+    contentEmbeddingContractId: transcript.contentEmbeddingContractId,
+    transcriptChunkingVersion: transcript.chunkingVersion,
     transcriptProjectionRevision: transcript.projectionRevision,
     members: {
       catalog: {
@@ -214,7 +230,7 @@ function assertExistingOwner(
 ): void {
   const matches =
     generation.id === expected.id &&
-    generation.applicationRevision === expected.applicationRevision &&
+    generation.indexContractRevision === expected.indexContractRevision &&
     generation.sourceEpoch === expected.sourceEpoch &&
     jsonEqual(generation.sourceDigests, expected.sourceDigests) &&
     generation.catalogCollection === expected.members.catalog.collection &&
@@ -223,6 +239,10 @@ function assertExistingOwner(
     generation.lexicalCollection === expected.members.lexical.collection &&
     generation.transcriptCollection ===
       expected.members.transcript.collection &&
+    generation.contentEmbeddingContractId ===
+      expected.contentEmbeddingContractId &&
+    generation.transcriptChunkingVersion ===
+      expected.transcriptChunkingVersion &&
     generation.transcriptProjectionRevision ===
       expected.transcriptProjectionRevision &&
     jsonEqual(generation.catalogFields, expected.members.catalog.fields) &&
@@ -249,7 +269,14 @@ async function ensureCollection(
   schema: TypesenseCollectionSchema,
 ): Promise<void> {
   try {
-    await typesense.getCollectionSchema(schema.name)
+    const existing = await typesense.getCollectionSchema(schema.name)
+    const expectedCurationSets = schema.curation_sets ?? []
+    const actualCurationSets = existing.curation_sets ?? []
+    if (!jsonEqual(actualCurationSets, expectedCurationSets)) {
+      throw new CandidateProjectionSafetyError(
+        `candidate collection ${schema.name} has unexpected curation sets`,
+      )
+    }
   } catch (error) {
     if (!isMissingCollection(error)) throw error
     await typesense.createCollection(schema)
@@ -387,7 +414,7 @@ export async function publishTypesenseWatchSearchCandidate({
   typesense,
   generations,
   generationId,
-  applicationRevision,
+  indexContractRevision,
   sourceEpoch,
   transcript,
   batchSize = DEFAULT_BATCH_SIZE,
@@ -399,9 +426,14 @@ export async function publishTypesenseWatchSearchCandidate({
   typesense: CandidateTypesense
   generations: CandidateGenerationLifecycle
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   sourceEpoch: string
-  transcript: { collection: string; projectionRevision: bigint }
+  transcript: {
+    collection: string
+    contentEmbeddingContractId: string
+    chunkingVersion: string
+    projectionRevision: bigint
+  }
   batchSize?: number
   loadSnapshot?: () => Promise<TypesenseWatchCandidateProjectionSnapshot>
   runCurrentCanary?: () => Promise<void>
@@ -418,12 +450,18 @@ export async function publishTypesenseWatchSearchCandidate({
     snapshot.tokenizerLocales,
   )
   const probe = exactTitleProbe(snapshot)
+  const curationSetName = candidateWatchCurationSetName(generationId)
+  const curationProjection = buildTypesenseWatchCurationProjection({
+    setName: curationSetName,
+    curations: snapshot.curations,
+    lexicalDocuments: snapshot.lexical,
+  })
   const transcriptSchema = await typesense.getCollectionSchema(
     transcript.collection,
   )
   const ownerInput = expectedOwnerInput({
     generationId,
-    applicationRevision,
+    indexContractRevision,
     sourceEpoch,
     transcript,
     transcriptFields: transcriptSchema.fields,
@@ -432,8 +470,10 @@ export async function publishTypesenseWatchSearchCandidate({
   })
 
   let generation: CandidateGenerationRecord
+  let ownerCreated = false
   try {
     generation = await generations.createBuildingGeneration(ownerInput)
+    ownerCreated = true
   } catch (error) {
     if (!isUniqueConflict(error)) throw error
     generation = await generations.getGeneration(generationId)
@@ -441,73 +481,108 @@ export async function publishTypesenseWatchSearchCandidate({
   }
   await failpoint?.("owner:created")
 
-  if (generation.state === "BUILDING") {
-    const members = [
-      ["catalog", schemas.catalog, snapshot.catalog],
-      ["availability", schemas.availability, snapshot.availability],
-      ["lexical", schemas.lexical, snapshot.lexical],
-    ] as const
-    for (const [name, schema, documents] of members) {
-      await ensureCollection(typesense, schema)
-      await failpoint?.(`${name}:created`)
-      await importProjection(typesense, schema.name, documents, batchSize)
-      await failpoint?.(`${name}:imported`)
+  let evaluationPublicationMayHaveCommitted = false
+  try {
+    await typesense.upsertCurationSet(
+      curationProjection.name,
+      curationProjection.set,
+    )
+    await failpoint?.("curations:upserted")
+
+    if (generation.state === "BUILDING") {
+      const members = [
+        ["catalog", schemas.catalog, snapshot.catalog],
+        ["availability", schemas.availability, snapshot.availability],
+        ["lexical", schemas.lexical, snapshot.lexical],
+      ] as const
+      for (const [name, schema, documents] of members) {
+        await ensureCollection(typesense, schema)
+        await failpoint?.(`${name}:created`)
+        await importProjection(typesense, schema.name, documents, batchSize)
+        await failpoint?.(`${name}:imported`)
+      }
+
+      await validateDocumentCounts(typesense, schemas, snapshot)
+      await validateExactTitleRead(typesense, schemas.lexical.name, probe)
+      const [transcriptCount] = await typesense.multiSearch([
+        {
+          collection: transcript.collection,
+          q: "*",
+          per_page: 1,
+          exclude_fields: "embedding,text",
+        },
+      ])
+      await runCurrentCanary()
+      await failpoint?.("projection:validated")
+      generation = await generations.validateAndMarkReady({
+        generationId,
+        expectedVersion: generation.version,
+        documentCounts: {
+          ...snapshot.counts,
+          transcript: transcriptCount?.found ?? 0,
+        },
+        capacityEvidence: {
+          preBuildRssBytes,
+          postBuildRssBytes: process.memoryUsage().rss,
+          lexicalSearchableBytes: snapshot.lexicalMemory.searchableBytes,
+          estimatedKeywordMemoryLowBytes:
+            snapshot.lexicalMemory.estimatedRamLowBytes,
+          estimatedKeywordMemoryHighBytes:
+            snapshot.lexicalMemory.estimatedRamHighBytes,
+          exactTitleKeyBytes: snapshot.lexicalMemory.exactTitleKeyBytes,
+          transcriptReused: true,
+        },
+      })
+      await failpoint?.("generation:ready")
     }
 
-    await validateDocumentCounts(typesense, schemas, snapshot)
-    await validateExactTitleRead(typesense, schemas.lexical.name, probe)
-    const [transcriptCount] = await typesense.multiSearch([
-      {
-        collection: transcript.collection,
-        q: "*",
-        per_page: 1,
-        exclude_fields: "embedding,text",
-      },
-    ])
-    await runCurrentCanary()
-    await failpoint?.("projection:validated")
-    generation = await generations.validateAndMarkReady({
-      generationId,
-      expectedVersion: generation.version,
-      documentCounts: {
-        ...snapshot.counts,
-        transcript: transcriptCount?.found ?? 0,
-      },
-      capacityEvidence: {
-        preBuildRssBytes,
-        postBuildRssBytes: process.memoryUsage().rss,
-        lexicalSearchableBytes: snapshot.lexicalMemory.searchableBytes,
-        estimatedKeywordMemoryLowBytes:
-          snapshot.lexicalMemory.estimatedRamLowBytes,
-        estimatedKeywordMemoryHighBytes:
-          snapshot.lexicalMemory.estimatedRamHighBytes,
-        exactTitleKeyBytes: snapshot.lexicalMemory.exactTitleKeyBytes,
-        transcriptReused: true,
-      },
-    })
-    await failpoint?.("generation:ready")
-  }
+    const pointer = await generations.getPointer("EVALUATION")
+    evaluationPublicationMayHaveCommitted =
+      pointer.generationId === generationId
+    if (!evaluationPublicationMayHaveCommitted) {
+      // The CAS may commit remotely before its result reaches this process.
+      // Retain the set once publication starts so an uncertain outcome cannot
+      // leave the evaluation pointer attached to a broken lexical collection.
+      evaluationPublicationMayHaveCommitted = true
+      await generations.publishEvaluationGeneration({
+        generationId,
+        expectedPointerVersion: pointer.version,
+      })
+    }
+    await failpoint?.("pointer:published")
 
-  const pointer = await generations.getPointer("EVALUATION")
-  if (pointer.generationId !== generationId) {
-    await generations.publishEvaluationGeneration({
+    return {
       generationId,
-      expectedPointerVersion: pointer.version,
-    })
-  }
-  await failpoint?.("pointer:published")
-
-  return {
-    generationId,
-    state: generation.state,
-    counts: snapshot.counts,
-    digests: snapshot.digests,
-    collections: {
-      ...candidateWatchCollectionNames(generationId),
-      transcript: transcript.collection,
-    },
-    transcriptProjectionRevision: transcript.projectionRevision,
-    transcriptReused: true,
+      state: generation.state,
+      counts: snapshot.counts,
+      digests: snapshot.digests,
+      collections: {
+        ...candidateWatchCollectionNames(generationId),
+        transcript: transcript.collection,
+      },
+      contentEmbeddingContractId: transcript.contentEmbeddingContractId,
+      transcriptChunkingVersion: transcript.chunkingVersion,
+      transcriptProjectionRevision: transcript.projectionRevision,
+      transcriptReused: true,
+      curationSet: curationProjection.name,
+      curationItems: curationProjection.set.items.length,
+      skippedCurationAliases: curationProjection.coverage.reduce(
+        (total, entry) => total + entry.skippedAliasIds.length,
+        0,
+      ),
+    }
+  } catch (error) {
+    if (ownerCreated && !evaluationPublicationMayHaveCommitted) {
+      try {
+        await typesense.deleteCurationSet(curationProjection.name)
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          `candidate generation ${generationId} failed before evaluation publication and curation-set cleanup also failed`,
+        )
+      }
+    }
+    throw error
   }
 }
 
@@ -607,6 +682,9 @@ export async function retireTypesenseWatchSearchCandidate({
     })
   }
 
+  await typesense.deleteCurationSet(candidateWatchCurationSetName(generationId))
+  await failpoint?.("curations:deleted")
+
   return generations.transitionGeneration({
     generationId,
     expectedState: "RETIRING",
@@ -686,14 +764,21 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       typesense,
       generations,
       generationId: requiredEnv("WATCH_SEARCH_CANDIDATE_GENERATION_ID"),
-      applicationRevision: candidateWatchSearchApplicationRevision(),
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
       sourceEpoch: requiredEnv("WATCH_SEARCH_CANDIDATE_SOURCE_EPOCH"),
-      transcript: {
-        collection: requiredEnv("WATCH_SEARCH_TRANSCRIPT_COLLECTION"),
-        projectionRevision: BigInt(
-          requiredEnv("WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION"),
-        ),
-      },
+      transcript: await (async () => {
+        const projection =
+          await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+            prisma,
+            typesense,
+          })
+        return {
+          collection: projection.transcriptCollection,
+          contentEmbeddingContractId: projection.contentEmbeddingContractId,
+          chunkingVersion: projection.transcriptChunkingVersion,
+          projectionRevision: projection.projectionRevision,
+        }
+      })(),
       batchSize: Number(process.env.TYPESENSE_INDEX_BATCH_SIZE ?? 100),
       runCurrentCanary: () => currentCanary(typesense),
     })

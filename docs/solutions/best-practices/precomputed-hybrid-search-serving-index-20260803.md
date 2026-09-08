@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-29
+last_updated: 2026-09-07
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -151,10 +151,14 @@ Deployment, private evaluation, and public serving are separate controls:
   deployed value rather than assuming `CURRENT`.
 - Candidate serving requires the selector and `SERVING` pointer to name the
   same generation, then revalidates the exact application revision, ranking
-  revision, transcript projection, current physical bindings, and evaluation
-  revision. The authorizing qualification is either an automatic `PASSED`
-  record or a truthful `OPERATOR_ACCEPTED` record for the same evidence-bound
-  identity (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1430-1487`).
+  revision, transcript physical collection, embedding contract, chunking
+  version, current physical bindings, and evaluation revision. The projection
+  revision remains immutable evaluation evidence, but a routine incremental
+  transcript publication may advance the shared collection's revision without
+  invalidating or requalifying an otherwise compatible serving generation. The
+  authorizing qualification is either an automatic `PASSED` record or a
+  truthful `OPERATOR_ACCEPTED` record for the same evidence-bound identity
+  (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1430-1487`).
 
 The application revision is the physical Candidate-collection compatibility
 identity, not the Admin deployment SHA. It stays stable across unrelated
@@ -166,6 +170,12 @@ be requalified but can reuse compatible physical collections
 Using a full deployment identity here makes a healthy generation incompatible
 after unrelated Admin changes; see
 [Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).
+
+Tests that simulate a content-embedding contract rotation must derive a
+distinct alternate identity from the current contract seed. A hardcoded
+anticipated next-version id eventually becomes the active id, stops exercising
+the drift path, and can let the test fall through into unrelated publication
+side effects.
 
 The private page at `/dashboard/search/compare` runs one normalized query
 against frozen current and candidate profiles. Each side records its own result
@@ -207,13 +217,176 @@ can be stored or used for serving promotion
 Coordinate mutation and evaluation in the database, not by operator timing.
 Current publication holds one PostgreSQL advisory lock across the external
 Typesense operation. Lease acquisition, lease renewal, and `SERVING` promotion
-probe that same lock transactionally; current publication also refuses active
-candidate leases or a serving candidate
+probe that same lock transactionally. Both rebuild and incremental publication
+refuse active candidate leases. A full transcript rebuild also refuses a live
+candidate generation because it rotates the shared physical collection;
+incremental publication does not refuse an existing `SERVING` pointer because
+it preserves the physical compatibility tuple and must not require another
+qualification or promotion
 (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:799-912`,
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1157-1205`,
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
 Candidate runtime, comparison, and qualification require a dedicated search
-key, while publication and deletion use a separate operator key.
+key, while publication and deletion use a separate operator key. Enforce that
+boundary in every mutating entry point, including the current full-rebuild
+command, and reject any configured legacy reader key that equals the operator
+key even when a newer search key takes precedence. Retaining a legacy combined
+key defeats least-privilege deployment because old benchmark and fallback
+paths can still receive it even when runtime readers are configured correctly.
+Production web startup must also reject an injected operator key: disjoint
+values prevent confused use, but only process-level separation keeps
+collection-write and deletion authority out of the public traffic service. A
+dedicated worker may hold the key while publication remains disabled so the
+rollout control stays independent from credential provisioning.
+
+Bound upstream ingest at both transport and schema layers. A dedicated bearer
+authenticates the caller but does not make its payload safe: an unbounded
+vector-bearing JSON body or chunk array can exhaust the Admin process, inflate
+PostgreSQL/outbox work, and amplify that work through the privileged publisher.
+Stream the request under a byte ceiling before parsing and retain a separate
+chunk-count ceiling for direct service callers.
+
+Railway project-level variables can inject reader credentials into the worker
+even when they were intended only for traffic-serving replicas. Strip
+`TYPESENSE_API_KEY` and `TYPESENSE_SEARCH_API_KEY` from the dedicated worker's
+build, migration, and start commands before any Admin module loads. The
+operator key belongs only in the runtime start command: unset both
+`TYPESENSE_OPERATOR_API_KEY` and the publication flag during dependency
+installation/build and migrations so lifecycle code never receives collection
+mutation authority and build-time instrumentation follows the disabled path.
+Otherwise a legacy shared reader/operator value trips the fail-closed
+disjointness assertion during build or instrumentation loading, and the
+disabled-by-default publisher prevents the worker service from deploying at
+all.
+
+Treat winning the advisory lock as the start of lease admission, not merely as
+permission to persist a profile resolved earlier. Publication can finish after
+candidate profile resolution but before lease acquisition reaches PostgreSQL;
+after acquiring the lock, re-freeze the current aliases and re-read the durable
+transcript projection before inserting the lease. Lease renewal must likewise
+read the current time only after it acquires the lock. Otherwise a request that
+entered before its deadline can resurrect an expired lease after publication
+has already advanced the projection. The re-read rejects collection, embedding
+contract, or chunking-version drift; a revision-only advance remains compatible
+and preserves the generation's immutable evaluation evidence.
+
+For a durable outbox publisher, acquire that session advisory lock before
+claiming an event and retain it through external write, independent readback,
+and fenced database completion. Otherwise a replica that loses the global lock
+can still increment attempts or replace the lease owned by the active
+publisher. Once this ordering is enforced, lease expiry is the crash-recovery
+deadline for a process that no longer holds the session lock; it must not by
+itself reject completion by the process that still holds the lock. Fence that
+completion with the claimed status, lease generation, and hashed token. A
+competing process cannot claim while the lock is held, and a lost database
+session releases the advisory lock so a later claimant changes the token and
+generation before the original process can commit.
+
+Treat every identity field in the outbox as completion evidence, not merely as
+diagnostic context. After a claim, reload the canonical parent and chunks and
+require their video, edition, and language identities to match the event before
+writing or advancing the projection. Batch vector-bearing JSONL upserts as well
+as stale-document deletes: a complete transcript can carry enough 1,536-value
+vectors to exceed a safe request-body size even though its chunk count looks
+modest. Each import batch still needs exact response-line count and success
+validation, followed by independent document and normalized-vector readback
+over the complete chunk set.
+
+Derive a replacement event's stale-document evidence from both the canonical
+rows removed during that write and the immediately preceding event's current
+document ids. Repair mode exists specifically for incomplete canonical chunk
+sets: if a previously published chunk row is already missing, the row-level
+delete query cannot rediscover its old Typesense id. The prior identity-only
+event can, so carry that old id forward whenever it is absent from the repaired
+current set.
+
+Canonical deletion cleanup must also read the current chunk ids before the
+database cascade removes them. A full transcript rebuild publishes those exact
+chunk ids without creating incremental event rows, so event history alone is
+not a complete lifecycle ledger. A `BEFORE DELETE` trigger can union canonical
+chunk ids with all retained event ids, persist that identity-only lifecycle
+work without a parent foreign key, and then let the cascade proceed.
+Schema-qualify every relation the trigger reads or writes: PostgreSQL resolves
+unqualified names against the deleting session's search path, where a temporary
+table could otherwise shadow the durable ledger and suppress canonical cleanup.
+
+Enforce a retry ceiling both when releasing a caught failure and when reclaiming
+an expired claim. A process crash bypasses the normal failure-release path; if
+the next worker only increments the attempt count, repeated crashes or failed
+compensation can remain `CLAIMED` forever. The next live claimant must move an
+already exhausted row to dead letter before making another external call while
+leaving its immutable cleanup ids intact.
+
+Fingerprint numeric fields at the storage width of the serving schema.
+Typesense `float` and `float[]` values are 32-bit, while PostgreSQL and JSON
+values enter JavaScript as 64-bit numbers. Normalize both the canonical input
+and independent readback with `Math.fround` before hashing so ordinary
+Typesense storage rounding does not leave a correct publication retrying
+forever; reject values that overflow to a non-finite float.
+
+The current alias is another mutable trust boundary. Freeze it to an exact
+physical transcript collection before writing, then resolve it again after
+readback and before durable completion. The PostgreSQL advisory lock serializes
+cooperating publishers and rebuilds, but it cannot prevent an out-of-band
+Typesense operator from moving an alias during the external write. If the alias
+changed, leave the event pending and do not advance the projection revision.
+
+Document readback does not certify the collection schema. Before incremental
+publication mutates the frozen physical collection, fetch its schema and match
+the complete transcript field manifest, including `canonicalVideoId` and
+`publiclyVisible` facets plus the vector dimension. A collection can store and
+return an imported JSON document while still rejecting the real reader's
+grouping or filter query; completing the outbox event in that state makes the
+publication irrecoverable without operator repair.
+
+Do not let the first incremental event invent the compatibility identity of an
+already populated active collection. An empty collection can bootstrap from
+the event, and a lease-fenced retry can do so when every existing document is
+inside that event's overwrite-or-delete set. Any other populated collection
+must supply the legacy projection revision and compatibility evidence; one
+changed transcript cannot certify the identity of the untouched corpus.
+
+An external JSONL mutation may apply some or all documents before its response
+or the later database completion fails. Once the first upsert begins, treat any
+subsequent definite failure as potentially visible partial publication. If a
+current-document upsert fails, remove and verify the current ids but preserve
+the exact stale ids: the stale documents are still the last verified version
+and stale deletion must not start until every current upsert succeeds. Once
+stale deletion has started, compensate the union of current and stale document
+ids and independently verify their absence before releasing the event for
+retry. This deliberately prefers a temporary transcript-search gap over a
+fail-open `publiclyVisible` document when canonical publication state drifted
+during readback. If compensating cleanup also fails, surface both failures and
+never advance the durable projection or complete the event.
+
+A thrown PostgreSQL commit is not always a definite failure: the server can
+commit the atomic projection/event transaction and lose its acknowledgement on
+the way back to the client. Before compensating that final step, independently
+re-read every claimed event plus the projection identity. If they show the
+atomic completion committed, return success and keep the verified Typesense
+documents. If the durable read proves it rolled back, compensate normally. If
+the read itself fails, classify the outcome as indeterminate, retain the claim
+fence, and do not delete the documents; a rolled-back claim becomes retryable
+after lease expiry, while a committed terminal event must never lose the only
+documents that no pending work remains to restore.
+
+Apply the same rule when a deliberate full transcript rebuild hands its new
+alias binding to the durable projection row. Read the prior projection before
+the final write and reconcile the exact expected next revision if that write
+throws. A proven rollback may restore the old aliases; a proven commit is
+success. If reconciliation is unavailable or observes neither exact state,
+preserve the new aliases and collections and surface an indeterminate error.
+Blind rollback in that state can delete the collection named by a successfully
+committed projection, which is harder to recover than temporarily retaining
+both physical generations.
+
+Pin a full rebuild to one compatibility tuple as well. Resolve the active
+contract and chunking version before reading transcript pages, filter every
+page by the exact contract id instead of the mutable active pointer, and
+re-resolve compatibility before moving aliases. Otherwise a pointer rotation
+during a long vector import can mix two contracts in one physical collection
+and then certify the mixture with whichever contract happens to be active at
+completion.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate

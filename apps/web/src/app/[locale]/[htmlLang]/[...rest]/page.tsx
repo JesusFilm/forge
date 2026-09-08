@@ -77,6 +77,7 @@ import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
   getWatchNestedContainerAudioLanguageSlugs,
+  isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
@@ -408,7 +409,28 @@ function resolveEpisodeWithSubtitleIntent(
     : resolveSeriesEpisodeBySlug(seriesSlug, episodeSlug, audioLanguageSlug)
 }
 
-function classify(rest: string[], internalLocale: UiLocale): Shape {
+type WatchRouteManifestGetter = () => Promise<WatchRouteManifest | null>
+
+/**
+ * Segment-count dispatch. The manifest is consulted for exactly one decision:
+ * whether an ambiguous `.html` segment is an audio-language slug. It mirrors
+ * `classifyRewrite` in `src/proxy.ts`; the two must agree or a URL the proxy
+ * admitted as a video renders here as a failed implicit-English episode.
+ *
+ * The manifest is awaited ONLY when the compiled corpus does not already
+ * recognize the segment, so the common path never serializes content
+ * resolution behind the manifest request (the render branches start both
+ * concurrently). In production the proxy has just fetched it, so the await
+ * is normally served from the 60s in-process cache.
+ */
+async function classify(
+  rest: string[],
+  internalLocale: UiLocale,
+  getManifest: WatchRouteManifestGetter,
+): Promise<Shape> {
+  const isAudioLanguageSlug = async (slug: string): Promise<boolean> =>
+    isPublicWatchLanguageSlug(slug) ||
+    isWatchAudioLanguageSlug(slug, await getManifest())
   if (rest.length === 1) {
     const slug = stripSafeSegment(rest[0])
     if (!slug) return { kind: "unknown" }
@@ -427,7 +449,7 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     const firstSlug = stripSafeSegment(rest[0])
     const secondSlug = stripSafeSegment(rest[1])
     if (!firstSlug || !secondSlug) return { kind: "unknown" }
-    if (!isPublicWatchLanguageSlug(secondSlug)) {
+    if (!(await isAudioLanguageSlug(secondSlug))) {
       return {
         kind: "episode",
         seriesSlug: firstSlug,
@@ -457,7 +479,9 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!seriesSlug || !episodeSlug || !rawLocale) {
       return { kind: "unknown" }
     }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    if (!(await isAudioLanguageSlug(rawLocale))) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "episode",
       seriesSlug,
@@ -468,6 +492,10 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   return { kind: "unknown" }
+}
+
+function getRouteManifestForClassification(): Promise<WatchRouteManifest | null> {
+  return getWatchRouteManifest().catch(() => null)
 }
 
 function watchRouteSurfaceForShape(shape: Shape): WatchRouteSurface | null {
@@ -524,7 +552,11 @@ export async function generateMetadata({
   const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(routeIntent.rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
   if (shape.kind !== "unknown") {
     setRequestLocale(shape.locale)
   }
@@ -624,7 +656,11 @@ export default async function SlugRestPage({ params }: PageProps) {
   const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(routeIntent.rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
 
   if (shape.kind === "unknown") notFound()
 

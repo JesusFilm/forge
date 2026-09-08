@@ -1079,7 +1079,72 @@ describe("Mastra env", () => {
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an allowlisted Railway-private http RAG base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "JESUSFILM_RAG_BASE_URL",
+      "http://forge-rag.railway.internal:8080",
+    )
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "forge-rag.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects a Railway-private http RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "JESUSFILM_RAG_BASE_URL",
+      "http://forge-rag.railway.internal:8080",
+    )
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Railway-private http RAG base URL with no allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "JESUSFILM_RAG_BASE_URL",
+      "http://forge-rag.railway.internal:8080",
+    )
+    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it.each([
+    "http://railway.internal:8080",
+    "http://evilrailway.internal:8080",
+    "http://forge-rag.railway.internal.evil.test:8080",
+    "http://.railway.internal:8080",
+    "http://forge-rag..railway.internal:8080",
+    "http://forge-rag.railway.internal.:8080",
+  ])("rejects Railway-private http lookalike %s", async (baseUrl) => {
+    stubProductionBaseline()
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", baseUrl)
+    vi.stubEnv(
+      "JESUSFILM_RAG_ALLOWED_HOSTS",
+      new URL(baseUrl).hostname.toLowerCase(),
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
@@ -1091,7 +1156,7 @@ describe("Mastra env", () => {
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
@@ -1103,7 +1168,7 @@ describe("Mastra env", () => {
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
@@ -1723,60 +1788,43 @@ describe("Mastra env", () => {
     expect(isLangfuseTracingEnabled()).toBe(false)
   })
 
-  // --- feat-208: AI_CHAT_MEMORY_BACKEND kill-switch precedence ---
+  // --- ai-chat storage follows the shared Mastra backend ---
 
-  it("resolves the ai-chat backend to MASTRA_STORAGE_BACKEND (postgres default) when the override is unset", async () => {
-    vi.stubEnv("NODE_ENV", "development")
-    // AI_CHAT_MEMORY_BACKEND unset; MASTRA_STORAGE_BACKEND defaults to postgres.
-
-    const { resolveAiChatMemoryBackend } = await import("./env")
-
-    expect(resolveAiChatMemoryBackend()).toBe("postgres")
-  })
-
-  it("follows MASTRA_STORAGE_BACKEND=memory when the override is unset", async () => {
-    vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
-
-    const { resolveAiChatMemoryBackend } = await import("./env")
-
-    expect(resolveAiChatMemoryBackend()).toBe("memory")
-  })
-
-  it("lets AI_CHAT_MEMORY_BACKEND=memory override postgres runtime storage (the kill-switch)", async () => {
-    // The documented no-code-deploy revert: ai-chat runs in-memory even while
-    // the runtime store stays postgres. `??` precedence must pick the override.
+  it("ignores a stale dedicated memory value beside the shared postgres backend", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
     vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "memory")
 
-    const { resolveAiChatMemoryBackend } = await import("./env")
+    const { canAiChatDataPersist, env } = await import("./env")
 
-    expect(resolveAiChatMemoryBackend()).toBe("memory")
+    expect(env.MASTRA_STORAGE_BACKEND).toBe("postgres")
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(true)
   })
 
-  it("honors AI_CHAT_MEMORY_BACKEND=postgres explicitly over a memory runtime store", async () => {
-    vi.stubEnv("NODE_ENV", "development")
+  it("rejects the shared memory backend in production", async () => {
+    stubProductionBaseline()
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
-    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "postgres")
 
-    const { resolveAiChatMemoryBackend } = await import("./env")
+    const { assertMastraRuntimeEnv } = await import("./env")
 
-    expect(resolveAiChatMemoryBackend()).toBe("postgres")
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "MASTRA_STORAGE_BACKEND=memory is not allowed in production",
+    )
   })
 
-  // --- feat-208: retention purge gating — canAiChatDataPersist ---
+  // --- retention purge gating — canAiChatDataPersist ---
 
   it("reports persisted ai-chat data possible under the postgres default", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    // Both backends unset; MASTRA_STORAGE_BACKEND defaults to postgres.
+    // MASTRA_STORAGE_BACKEND defaults to postgres.
 
     const { canAiChatDataPersist } = await import("./env")
 
     expect(canAiChatDataPersist()).toBe(true)
   })
 
-  it("reports no persistence for a pure memory-backend local run", async () => {
+  it("reports no persistence for a memory-backend local run", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
 
@@ -1785,27 +1833,15 @@ describe("Mastra env", () => {
     expect(canAiChatDataPersist()).toBe(false)
   })
 
-  it("keeps retention eligible under the kill-switch (ai-chat memory over postgres runtime)", async () => {
-    // THE load-bearing case: engaging the kill-switch stops WRITES, but rows
-    // already persisted in ai_chat must keep aging out — the purge gate must
-    // stay open whenever postgres is configured at all.
-    vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
-    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "memory")
-
-    const { canAiChatDataPersist } = await import("./env")
-
-    expect(canAiChatDataPersist()).toBe(true)
-  })
-
-  it("reports persistence for the explicit ai-chat postgres override over a memory runtime", async () => {
+  it("ignores a stale dedicated postgres value beside the shared memory backend", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
     vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "postgres")
 
-    const { canAiChatDataPersist } = await import("./env")
+    const { canAiChatDataPersist, env } = await import("./env")
 
-    expect(canAiChatDataPersist()).toBe(true)
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(false)
   })
 
   // --- Langfuse prompt helper (U1): LANGFUSE_* optional config + production host guard ---

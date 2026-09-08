@@ -1,7 +1,7 @@
 // @vitest-environment node
-// Join test (feat-241): the real POST wrappers' cookie -> identity -> gate
-// (surface "history") wiring + the R6/AE5 real-cookie deny matrix the
-// injectable-core suite cannot prove. Node env: jose throws under jsdom.
+// Join test (feat-241 + the feat-450 rename write): the real POST wrappers'
+// cookie -> identity -> gate (surface "history") wiring + the R6/AE5 real-
+// cookie deny matrix the core suites cannot prove. Node env: jose vs jsdom.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock the gate so we can assert the exact (identity, { surface }) it receives.
@@ -27,16 +27,24 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function historyRequest(path: "list" | "thread", cookie?: string): Request {
+type HistoryPath = "list" | "thread" | "rename"
+
+const HISTORY_PATHS: readonly HistoryPath[] = ["list", "thread", "rename"]
+
+const BODIES: Record<HistoryPath, unknown> = {
+  list: { page: 0 },
+  thread: { conversationId: "conv-1" },
+  rename: { threadId: "conv-1", title: "Renamed" },
+}
+
+function historyRequest(path: HistoryPath, cookie?: string): Request {
   return new Request(`https://chat.example.com/api/history/${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(cookie ? { cookie } : {}),
     },
-    body: JSON.stringify(
-      path === "list" ? { page: 0 } : { conversationId: "conv-1" },
-    ),
+    body: JSON.stringify(BODIES[path]),
   })
 }
 
@@ -99,6 +107,35 @@ describe("POST /api/history/* — session + gate wiring (feat-241)", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(response.status).toBe(403)
   })
+
+  it("wires the rename write route through the same history-surface gate (feat-450)", async () => {
+    const { createChatSessionCookie, CHAT_SESSION_COOKIE } =
+      await import("@/auth/session-cookie")
+    const { resolveSeekerGate } = await import("@/lib/seeker-gate")
+    const { POST } = await import("./rename/route")
+
+    const cookieValue = await createChatSessionCookie({
+      sub: "auth0|dogfooder-1",
+      email: "person@example.com",
+      emailVerified: true,
+    })
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("upstream must not be called on a deny"))
+
+    const response = await POST(
+      historyRequest("rename", `${CHAT_SESSION_COOKIE}=${cookieValue}`),
+    )
+
+    expect(resolveSeekerGate).toHaveBeenCalledTimes(1)
+    expect(resolveSeekerGate).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: "auth0|dogfooder-1" }),
+      { surface: "history" },
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ reason: "gate_denied" })
+  })
 })
 
 describe("POST /api/history/* — real-cookie deny matrix (AE3/AE5, R6/R8)", () => {
@@ -107,7 +144,7 @@ describe("POST /api/history/* — real-cookie deny matrix (AE3/AE5, R6/R8)", () 
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValue(new Error("upstream must not be called"))
-    for (const path of ["list", "thread"] as const) {
+    for (const path of HISTORY_PATHS) {
       const { POST } = await import(`./${path}/route`)
       const response = await POST(historyRequest(path))
       expect(response.status).toBe(401)
@@ -156,12 +193,14 @@ describe("POST /api/history/* — real-cookie deny matrix (AE3/AE5, R6/R8)", () 
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValue(new Error("upstream must not be called"))
-    const { POST } = await import("./thread/route")
-    const response = await POST(
-      historyRequest("thread", `${CHAT_SESSION_COOKIE}=${tampered}`),
-    )
-    expect(response.status).toBe(401)
-    expect(await response.json()).toEqual({ reason: "invalid_session" })
+    for (const path of ["thread", "rename"] as const) {
+      const { POST } = await import(`./${path}/route`)
+      const response = await POST(
+        historyRequest(path, `${CHAT_SESSION_COOKIE}=${tampered}`),
+      )
+      expect(response.status).toBe(401)
+      expect(await response.json()).toEqual({ reason: "invalid_session" })
+    }
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

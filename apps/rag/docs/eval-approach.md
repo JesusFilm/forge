@@ -15,8 +15,9 @@ registry, corpus revision, embedding model, query instruction, top-k, score
 floor, and metric implementation all match. The two-percent gate is relative:
 an exact two-percent regression passes; anything beyond it fails.
 
-The retained 2026-08-06 control ran 416 cases. The source golden file now has 425:
-the nine final `gq-*` cases were appended after that run. Therefore the historical
+The retained 2026-08-06 control ran 416 cases. The source golden file now has 431:
+nine English GotQuestions cases and six reviewed Icelandic cases were appended
+after that run. Therefore the historical
 control is comparable only with `--case-set control-2026-08-06`, which selects the
 first 416 cases while hashing their canonical content and selected ordered ID
 set. Later append-only additions therefore do not invalidate the retained
@@ -307,9 +308,11 @@ interleave or compete.
 
 Adopting `qwen/qwen3-embedding-8b` ([ADR-0005](./decisions/0005-embedding-model-qwen3-8b-multilingual.md))
 re-embeds the whole corpus, so eval covers two distinct concerns with two
-different bars. The prod half is the repo runbook
-[docs/ops/prod-reembed.md](./ops/prod-reembed.md); the local (dev-laptop) phase is driven
-from the operator's out-of-repo execution tracker (kept on the laptop, not in this repo).
+different bars. The production half was governed by the historical standalone
+re-embed runbook. That executable runbook is intentionally not carried forward;
+current Forge maintenance safety lives in
+[docs/ops/corpus-maintenance.md](./ops/corpus-maintenance.md). The local
+(dev-laptop) phase was driven from the operator's out-of-repo execution tracker.
 
 ### English — a **drift gate** (existing 6 sources only), not an improvement target
 

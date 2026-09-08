@@ -602,7 +602,11 @@ export const getWatchCollectionDownloadDubsBySlugOperation = adminGraphql(`
       documentId: id
       downloadableChildDubs(languageSlug: $languageSlug) {
         documentId: id
+        slug
         videoId
+        language {
+          documentId: id
+        }
         downloads {
           documentId: id
           height

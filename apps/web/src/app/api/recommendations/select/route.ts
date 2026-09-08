@@ -31,6 +31,7 @@ const SelectionInput = z
     eventId: z.string().min(1).max(191),
     occurredAt: z.string().datetime({ offset: true }),
     tabNonce: z.string().min(1).max(191),
+    claimNonce: z.string().min(16).max(191),
   })
   .strict()
 
@@ -57,13 +58,18 @@ export async function POST(request: Request) {
       occurredAt: parsed.data.occurredAt,
       sessionDigest: session.digest,
       tabDigest: digestRecommendationValue(parsed.data.tabNonce),
+      claimNonce: parsed.data.claimNonce,
     })
-    if (selection.status !== "accepted" || !selection.claimNonce) {
+    if (
+      (selection.status !== "accepted" && selection.status !== "replay") ||
+      !selection.claimNonce
+    ) {
       throw new RecommendationRouteError(409, "selection_unavailable")
     }
     if (
       selection.claimNonce.length < 16 ||
       selection.claimNonce.length > 191 ||
+      selection.claimNonce !== parsed.data.claimNonce ||
       !selection.targetMediaId ||
       selection.targetMediaId.length > 191 ||
       !isCanonicalWatchRecommendationHref(selection.canonicalHref)

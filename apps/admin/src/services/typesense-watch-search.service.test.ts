@@ -202,10 +202,16 @@ const candidateFieldManifests = {
   transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
 } as const
 
+const transcriptCompatibility = {
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+} as const
+
 function candidateProfile() {
   return createCandidateWatchSearchProfile({
     generationId: "generation-1",
-    applicationRevision: "revision-1",
+    indexContractRevision: "revision-1",
+    ...transcriptCompatibility,
     transcriptProjectionRevision: 7n,
     fieldManifests: candidateFieldManifests,
     collections: {
@@ -276,6 +282,8 @@ function typesenseFixture({
     lexical: TYPESENSE_WATCH_LEXICAL_ALIAS,
     transcript: TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
   },
+  curatedVideoId,
+  curatedQuery = "rescue project",
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
   lexicalLanes?: Partial<
@@ -306,6 +314,8 @@ function typesenseFixture({
   availabilityFound?: number
   availabilityError?: Error
   binding?: TypesenseWatchSearchCollectionBinding
+  curatedVideoId?: string
+  curatedQuery?: string
 }) {
   function projectDocument<TDocument extends object>(
     document: TDocument,
@@ -440,6 +450,19 @@ function typesenseFixture({
               hits: group.slice(0, groupLimit).map((entry) => ({
                 vector_distance: entry.vectorDistance,
                 text_match_info: entry.textMatchInfo,
+                curated:
+                  request.collection === binding.lexical &&
+                  String(request.query_by).startsWith("metadata_") &&
+                  request.curation_tags === "watch-search-editorial" &&
+                  String(request.q)
+                    .trim()
+                    .replace(/\s+/g, " ")
+                    .toLocaleLowerCase() ===
+                    curatedQuery
+                      .trim()
+                      .replace(/\s+/g, " ")
+                      .toLocaleLowerCase() &&
+                  entry.document.videoId === curatedVideoId,
                 document: projectDocument(entry.document, request),
               })),
             })),
@@ -628,7 +651,8 @@ describe("TypesenseWatchSearchService", () => {
     const profile = createCandidateWatchSearchProfile(
       {
         generationId: "generation-1",
-        applicationRevision: "revision-1",
+        indexContractRevision: "revision-1",
+        ...transcriptCompatibility,
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateFieldManifests,
         collections: {
@@ -670,16 +694,20 @@ describe("TypesenseWatchSearchService", () => {
         query_by: "title_exact_keys",
         prefix: false,
         num_typos: 0,
+        enable_curations: false,
       }),
       expect.objectContaining({
         query_by:
           "title_fr,title_fallback,title_en,title_ja,title_ru,title_tr,title_zh",
         filter_by: undefined,
+        enable_curations: false,
       }),
       expect.objectContaining({
         query_by:
           "metadata_fr,metadata_fallback,metadata_en,metadata_ja,metadata_ru,metadata_tr,metadata_zh",
         filter_by: undefined,
+        curation_tags: "watch-search-editorial",
+        filter_curated_hits: true,
       }),
       expect.objectContaining({
         filter_by: "documentKind:=transcript && publiclyVisible:=true",
@@ -702,16 +730,20 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       rankingRevision: "title-and-brand-v2",
       transcriptProjectionRevision: "7",
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: "none:operator-accepted:launch-1",
     })
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
+      activeTranscriptProjectionRevision: null,
       binding: profile.binding,
       retrievalCalls: 2,
       logicalSubsearches: 6,
@@ -1090,7 +1122,8 @@ describe("TypesenseWatchSearchService", () => {
   it("never retries a missing candidate projection through current aliases", async () => {
     const profile = createCandidateWatchSearchProfile({
       generationId: "generation-1",
-      applicationRevision: "revision-1",
+      indexContractRevision: "revision-1",
+      ...transcriptCompatibility,
       transcriptProjectionRevision: 7n,
       fieldManifests: candidateFieldManifests,
       collections: {
@@ -1442,9 +1475,12 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.retrievalIdentity).toEqual({
       profile: "CURRENT",
       generationId: null,
-      applicationRevision: null,
+      indexContractRevision: null,
+      contentEmbeddingContractId: null,
+      transcriptChunkingVersion: null,
       rankingRevision: "legacy-rrf",
       transcriptProjectionRevision: null,
+      activeTranscriptProjectionRevision: null,
       evaluationRevision: null,
     })
     expect(diagnostics).toMatchObject({
@@ -2692,6 +2728,91 @@ describe("TypesenseWatchSearchService", () => {
     ).toBe(false)
     expect(response.results).toHaveLength(20)
     expect(response.hasMore).toBe(true)
+  })
+
+  it("applies exact editorial curations only to metadata and keeps a curated result on the default page", async () => {
+    const organic = Array.from({ length: 25 }, (_value, index) => ({
+      ...catalogDocument,
+      id: `organic-${index.toString().padStart(2, "0")}`,
+      coreId: `organic-core-${index}`,
+      slug: `organic-${index}`,
+      titles: [`Organic result ${index}`],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: `Organic result ${index}`,
+          description: "Rescue Project background",
+        },
+      ]),
+    }))
+    const intro = {
+      ...catalogDocument,
+      id: "visual-vernacular-intro",
+      coreId: "13_0-RPGospelIntro",
+      slug: "visual-vernacular-intro",
+      titles: ["Visual Vernacular Intro"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "Visual Vernacular Intro",
+          description: null,
+        },
+      ]),
+    }
+    const catalog = [...organic, intro]
+    const typesense = typesenseFixture({
+      lexical: catalog,
+      catalog,
+      curatedVideoId: intro.id,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const rescue = await service.search({
+      query: "Rescue   Project",
+      targetLanguageSlug: "french",
+    })
+    const lexicalRequests = typesense.multiSearch.mock.calls[0]?.[0] ?? []
+    const titleRequest = lexicalRequests.find((request) =>
+      String(request.query_by).startsWith("title_"),
+    )
+    const metadataRequest = lexicalRequests.find((request) =>
+      String(request.query_by).startsWith("metadata_"),
+    )
+
+    expect(titleRequest).toMatchObject({ enable_curations: false })
+    expect(metadataRequest).toMatchObject({
+      q: "rescue project",
+      curation_tags: "watch-search-editorial",
+      filter_curated_hits: true,
+    })
+    expect(rescue.results).toHaveLength(20)
+    expect(rescue.results.map(({ id }) => id)).toEqual([
+      ...organic.slice(0, 19).map(({ id }) => id),
+      intro.id,
+    ])
+
+    vi.clearAllMocks()
+    const customPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "french",
+      limit: 10,
+    })
+    expect(customPage.results.map(({ id }) => id)).toEqual(
+      organic.slice(0, 10).map(({ id }) => id),
+    )
+
+    vi.clearAllMocks()
+    const jesus = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "french",
+    })
+    expect(jesus.results.map(({ id }) => id)).not.toContain(intro.id)
   })
 
   it("falls back to legacy catalog watchability while the availability alias is absent", async () => {

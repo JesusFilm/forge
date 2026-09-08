@@ -10,6 +10,7 @@ import {
 } from "@prisma/client"
 import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
+  RECOMMENDATION_CONTRACTS,
   RECOMMENDATION_RAW_RETENTION_DAYS,
 } from "../contracts"
 import {
@@ -281,7 +282,7 @@ export function isHybridPersonalizedExperiment(
       RECOMMENDATION_ASSIGNMENT_POLICY_VERSION &&
     control.enabled &&
     control.generator === "semantic" &&
-    control.id === "semantic-transcript-pgvector-v1" &&
+    control.id === RECOMMENDATION_CONTRACTS.strategy &&
     experiment.challengerManifestId === HYBRID_PERSONALIZED_MANIFEST_ID &&
     isExactHybridPersonalizedManifest(experiment.challengerManifest)
   )

@@ -17,6 +17,7 @@ import {
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { RagOperationalError } from "../src/contracts/index.js"
 import {
   loadDoc,
   applyMutation,
@@ -25,6 +26,8 @@ import {
   isoDate,
   writeStatusFileAtomically,
   withExclusiveFileLock,
+  validateSliceFileReferences,
+  validateStatusDocumentForWrite,
 } from "../scripts/source-status.js"
 import { validateSourceStatusRegistry } from "../src/contracts/source-status.js"
 import type { Mutation } from "../scripts/source-status.js"
@@ -150,6 +153,57 @@ describe("canonical registry reconciliation", () => {
   })
 })
 
+describe("slice file reference validation", () => {
+  const packageRoot = "/workspace/apps/rag"
+
+  it("accepts an existing package-local Markdown record", () => {
+    expect(() =>
+      validateSliceFileReferences(
+        validateDoc(loadDoc(FIXTURE)),
+        packageRoot,
+        (file) => file === `${packageRoot}/docs/slices/foo.md`,
+      ),
+    ).not.toThrow()
+  })
+
+  it("rejects missing, non-Markdown, and package-escaping records", () => {
+    const file = validateDoc(loadDoc(FIXTURE))
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => false),
+    ).toThrow(RagOperationalError)
+
+    file.sources.foo.slice_file = "docs/slices/foo.txt"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/Markdown/)
+
+    file.sources.foo.slice_file = "../../outside.md"
+    expect(() =>
+      validateSliceFileReferences(file, packageRoot, () => true),
+    ).toThrow(/escapes/)
+  })
+
+  it("rejects an invalid canonical-document reference before writing", async () => {
+    const doc = loadDoc(
+      await readFile(
+        new URL("../docs/source-status.yaml", import.meta.url),
+        "utf8",
+      ),
+    )
+    doc.setIn(
+      ["sources", "starting-with-god", "slice_file"],
+      "docs/slices/missing.md",
+    )
+    expect(() =>
+      validateStatusDocumentForWrite(
+        doc,
+        packageRoot,
+        (file) => !file.endsWith("/missing.md"),
+      ),
+    ).toThrow(/does not exist/)
+  })
+})
+
 describe("applyMutation — add-source / add-lang", () => {
   it("adds a source as a single in-progress language, all stages pending", () => {
     const doc = loadDoc(FIXTURE)
@@ -255,6 +309,28 @@ describe("applyMutation — remove-source", () => {
 })
 
 describe("parseArgv", () => {
+  it("accepts the pnpm separator before operation flags", () => {
+    expect(
+      parseArgv(["add-lang", "--", "--source", "gotquestions", "--lang", "is"]),
+    ).toEqual({ kind: "add-lang", source: "gotquestions", lang: "is" })
+    expect(
+      parseArgv([
+        "set",
+        "--",
+        "--source",
+        "gotquestions",
+        "--lang",
+        "is",
+        "--stage",
+        "acquire=green",
+      ]),
+    ).toEqual({
+      kind: "set",
+      source: "gotquestions",
+      lang: "is",
+      ops: [{ op: "stage", stage: "acquire", state: "green" }],
+    })
+  })
   it("parses a multi-op set", () => {
     expect(
       parseArgv([
@@ -463,13 +539,18 @@ describe("withExclusiveFileLock", () => {
     const firstMayFinish = new Promise<void>((resolve) => {
       releaseFirst = resolve
     })
+    let firstHasStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => {
+      firstHasStarted = resolve
+    })
 
     const first = withExclusiveFileLock("status.yaml", async () => {
       events.push("first:read")
+      firstHasStarted()
       await firstMayFinish
       events.push("first:write")
     })
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await firstStarted
     const second = withExclusiveFileLock("status.yaml", async () => {
       events.push("second:read")
       events.push("second:write")

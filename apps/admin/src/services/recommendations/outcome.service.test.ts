@@ -208,6 +208,12 @@ describe("RecommendationOutcomeService", () => {
       ),
     ).toMatchObject({
       activePlaybackMilliseconds: 15_000,
+      activeIntervals: [
+        {
+          startMilliseconds: new Date("2026-08-19T03:00:00.000Z").getTime(),
+          endMilliseconds: new Date("2026-08-19T03:00:15.000Z").getTime(),
+        },
+      ],
       viewQualityWeight: 0.15,
     })
   })

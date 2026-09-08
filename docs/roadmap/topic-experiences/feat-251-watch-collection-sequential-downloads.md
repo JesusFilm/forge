@@ -3,7 +3,7 @@ id: "feat-251"
 title: "Watch collection sequential downloads"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-14"
 duration: 3
 depends_on:
@@ -20,7 +20,16 @@ tags:
 
 ## Resolution
 
-**Status:** Reopened on 2026-07-20 for the missing Terms acceptance requirement in the collection modal. [PR #1559](https://github.com/JesusFilm/forge/pull/1559) remains the delivery vehicle and returns to complete only after the parity patch and local browser verification pass.
+**Status:** Completed on 2026-09-04 after hardening the redirect-era queue. The
+collection lookup now returns encrypted, identifier-bound capabilities instead
+of making every episode repeat its Admin lookup. Each start or retry refreshes
+the one-day capability batch, and gated requests bind it to the authenticated
+account. Chromium streams one response at a time into a viewer-selected
+directory, uses collision-safe filenames, removes partial writes, and records
+completion only after the file write closes. The native-download fallback
+performs an authenticated HEAD acknowledgement before each anchor, reports
+browser handoff rather than disk completion, and preserves unfinished stable
+episode IDs for retry.
 
 ## Problem
 

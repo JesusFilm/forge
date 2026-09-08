@@ -1,0 +1,97 @@
+(node:750103) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web[39m
+
+ [31m❯[39m src/components/home/__tests__/WatchHomePage.test.tsx [2m([22m[2m39 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 2494[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mserver-renders one page heading outside the heading-free carousel[32m 160[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mlocalizes semantic carousel, card, and promo copy in Russian[32m 104[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mrenders the hero, configured sections, promo content, and card links[32m 84[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mrenders an unlinked fallback card when href is missing[32m 58[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mhides the top-right meta label for collection cards[32m 28[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22msoftens section card hover by crossfading the backdrop without clearing between cards[32m 68[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mcarries the hero preview playback time into the watch now link[32m 32[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mshows available subtitles while the hero preview is muted[32m 35[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22madvances between pooled library videos with no branded slide in the sequence[32m 121[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mmoves focus to the current circle when autoplay removes the focused past circle[32m 138[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mresets a completed playback ring when a timeline video is selected[32m 299[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mprefetches three future timeline videos near the queue tail[32m 90[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mcontinues autoplay after the final unplayed pooled video ends[32m 97[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mkeeps the server-rendered opening slide independent of the random draw[32m 64[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mopens a different library video per visit[32m 116[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mre-arms the per-visit draw under StrictMode double mounting[32m 60[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22monly records the video the visitor actually opened as played[32m 39[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mskips a video the browser reports as portrait and never draws it again[32m 104[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mresumes after a mid-sequence portrait video instead of jumping backwards[32m 62[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mkeeps a landscape video and records nothing[32m 42[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mstops skipping when every video in the pool measures portrait[32m 63[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mfalls back to the hero slides when the video pools are empty[32m 22[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mdims the muted intro with the watch-page hero scrim and drops it on unmute[32m 50[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mreserves room for the categories rail while muted and expands on unmute[32m 33[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mshrinks the muted intro to the measured height of the rail below it[32m 43[2mms[22m[39m
+[31m   [31m×[31m WatchHomePage[2m > [22mkeeps the Studio intro poster on its revocable gateway[39m[32m 31[2mms[22m[39m
+[31m     → expected 'https://image.mux.com/signed-studio-p…' to be 'https://admin.test/api/studio/playbac…' // Object.is equality[39m
+   [32m✓[39m WatchHomePage[2m > [22mposters the intro from the Mux frame, not the mobile-sized authored image[32m 23[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mfalls the intro poster through to the next tier — no playback id, authored image present[32m 19[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mfalls the intro poster through to the next tier — playback id present, authored image blank[32m 16[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mrenders no poster at all when every tier is blank or absent[32m 15[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mre-pauses a slide that starts playing while the body already covers it[32m 51[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mkeeps pause ownership honest across a StrictMode remount[32m 50[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mdoes not pin an intro that is rendered unpinned[32m 32[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mdresses the intro copy in the watch page's own hero overlay[32m 32[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mgives the hero eyebrow the shared Watch section eyebrow styling[32m 31[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mruns the muted video on below the frame, behind the panel covering it[32m 34[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mpins the intro and lets the body zone scroll over it[32m 39[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mpauses the pinned intro once the body covers it, and resumes on the way back[32m 73[2mms[22m[39m
+   [32m✓[39m WatchHomePage[2m > [22mbleeds the intro media past the content rail without clipping ancestors[32m 33[2mms[22m[39m
+ [31m❯[39m src/lib/watch-home.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 13[2mms[22m[39m
+[31m   [31m×[31m cardToCarouselSlide posters[2m > [22mkeeps signed Studio hero posters behind the revocable gateway[39m[32m 10[2mms[22m[39m
+[31m     → expected 'https://image.mux.com/signed-studio-p…' to be 'https://admin.test/api/studio/playbac…' // Object.is equality[39m
+   [32m✓[39m cardToCarouselSlide posters[2m > [22mposters the full-bleed intro from the Mux frame, and the card from the authored image[32m 1[2mms[22m[39m
+   [32m✓[39m cardToCarouselSlide posters[2m > [22mfalls back to the authored image when the video has no Mux playback[32m 0[2mms[22m[39m
+   [32m✓[39m cardToCarouselSlide posters[2m > [22mtreats a blank authored image as absent, not as a poster[32m 0[2mms[22m[39m
+   [32m✓[39m cardToCarouselSlide posters[2m > [22mkeeps a card with neither image nor playback posterless rather than blank-stringed[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/lib/watch-home.test.ts[2m > [22mcardToCarouselSlide posters[2m > [22mkeeps signed Studio hero posters behind the revocable gateway
+[31m[1mAssertionError[22m: expected 'https://image.mux.com/signed-studio-p…' to be 'https://admin.test/api/studio/playbac…' // Object.is equality[39m
+
+Expected: [32m"https://[7madmin.test/api/[27mstudio[7m/[27mplayback/[7mrelease/poster.webp[27m"[39m
+Received: [31m"https://[7mimage.mux.com/signed-[27mstudio[7m-[27mplayback/[7mthumbnail.webp?time=2&width=1280[27m"[39m
+
+[36m [2m❯[22m src/lib/watch-home.test.ts:[2m39:30[22m[39m
+    [90m 37| [39m      imageUrl: "https://admin.test/api/studio/playback/release/poster…
+    [90m 38| [39m    }))
+    [90m 39| [39m    expect(slide?.posterUrl).toBe("https://admin.test/api/studio/playb…
+    [90m   | [39m                             [31m^[39m
+    [90m 40| [39m  })
+    [90m 41| [39m  it("posters the full-bleed intro from the Mux frame, and the card fr…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/components/home/__tests__/WatchHomePage.test.tsx[2m > [22mWatchHomePage[2m > [22mkeeps the Studio intro poster on its revocable gateway
+[31m[1mAssertionError[22m: expected 'https://image.mux.com/signed-studio-p…' to be 'https://admin.test/api/studio/playbac…' // Object.is equality[39m
+
+Expected: [32m"https://[7madmin.test/api/[27mstudio[7m/[27mplayback/[7mrelease/poster.webp[27m"[39m
+Received: [31m"https://[7mimage.mux.com/signed-[27mstudio[7m-[27mplayback/[7mthumbnail.webp?time=2&width=1280[27m"[39m
+
+[36m [2m❯[22m src/components/home/__tests__/WatchHomePage.test.tsx:[2m2044:33[22m[39m
+    [90m2042| [39m    })
+    [90m2043| [39m    const poster = container.querySelector<HTMLElement>('[data-testid=…
+    [90m2044| [39m    [34mexpect[39m(poster[33m?.[39mdataset[33m.[39msrc)[33m.[39m[34mtoBe[39m(posterUrl)
+    [90m   | [39m                                [31m^[39m
+    [90m2045| [39m    expect(container.querySelector("video")?.getAttribute("poster")).t…
+    [90m2046| [39m  })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m42 passed[39m[22m[90m (44)[39m
+[2m   Start at [22m 09:05:49
+[2m   Duration [22m 5.41s[2m (transform 849ms, setup 184ms, collect 1.75s, tests 2.51s, environment 438ms, prepare 154ms)[22m
+
+undefined
+/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/lib/watch-home.test.ts src/components/home/__tests__/WatchHomePage.test.tsx --maxWorkers=1 --no-file-parallelism

@@ -14,9 +14,9 @@ function keeps(url: string): boolean {
 }
 
 describe("GotQuestions registry entry", () => {
-  it("registers English on the shared domain through plain HTTP", () => {
+  it("registers English and Icelandic on the shared domain through plain HTTP", () => {
     expect(source().domain).toBe("www.gotquestions.org")
-    expect(source().languages).toEqual(["en"])
+    expect(source().languages).toEqual(["en", "is"])
     expect(source().crawl.sitemaps).toEqual(["/sitemap.xml"])
     expect(source().crawl.maxPages).toBe(11000)
     expect(resolveFetchStrategy(source())).toBe("plain-http")

@@ -1,0 +1,2324 @@
+{
+  "admin": {
+    "manifests": {
+      "BUILD_ID": {
+        "sha256": "56931a39a370c99406f4fc35450977adb9e8b3f8fb8e9ec0d4e9a00c737d2dfe",
+        "bytes": 21,
+        "contents": "uOjQtQBd6XapACU7RGB9J"
+      },
+      "app-path-routes-manifest.json": {
+        "sha256": "8bc3e5ce0139300b4090d4a3f516b993650a3eeaf20c74ae7121ae6ba05b5bf1",
+        "bytes": 5817,
+        "contents": {
+          "/.well-known/oauth-protected-resource/route": "/.well-known/oauth-protected-resource",
+          "/.well-known/workflow/v1/flow/route": "/.well-known/workflow/v1/flow",
+          "/.well-known/workflow/v1/step/route": "/.well-known/workflow/v1/step",
+          "/.well-known/workflow/v1/webhook/[token]/route": "/.well-known/workflow/v1/webhook/[token]",
+          "/_global-error/page": "/_global-error",
+          "/_not-found/page": "/_not-found",
+          "/access-request/page": "/access-request",
+          "/api/auth/callback/route": "/api/auth/callback",
+          "/api/auth/login/route": "/api/auth/login",
+          "/api/auth/logout/route": "/api/auth/logout",
+          "/api/auth/request-access/route": "/api/auth/request-access",
+          "/api/core-sync/manual/route": "/api/core-sync/manual",
+          "/api/core-sync/scheduled/route": "/api/core-sync/scheduled",
+          "/api/experience-chat/messages/[messageId]/rating/route": "/api/experience-chat/messages/[messageId]/rating",
+          "/api/experience-chat/stream/route": "/api/experience-chat/stream",
+          "/api/experience-chat/threads/[threadId]/ratings/route": "/api/experience-chat/threads/[threadId]/ratings",
+          "/api/graphql/route": "/api/graphql",
+          "/api/health/route": "/api/health",
+          "/api/internal/agent-tools/fetch-video-image/route": "/api/internal/agent-tools/fetch-video-image",
+          "/api/internal/agent-tools/lookup-bible-verse/route": "/api/internal/agent-tools/lookup-bible-verse",
+          "/api/internal/agent-tools/search-videos/route": "/api/internal/agent-tools/search-videos",
+          "/api/internal/mastra/experience-embeddings/route": "/api/internal/mastra/experience-embeddings",
+          "/api/internal/mastra/scene-embeddings/route": "/api/internal/mastra/scene-embeddings",
+          "/api/internal/mastra/transcript-embeddings/route": "/api/internal/mastra/transcript-embeddings",
+          "/api/internal/search-eval/candidate-compare/route": "/api/internal/search-eval/candidate-compare",
+          "/api/internal/search-eval/candidate-search/route": "/api/internal/search-eval/candidate-search",
+          "/api/internal/search-eval/candidates/[id]/archive/route": "/api/internal/search-eval/candidates/[id]/archive",
+          "/api/internal/search-eval/candidates/[id]/promote/route": "/api/internal/search-eval/candidates/[id]/promote",
+          "/api/internal/search-eval/candidates/[id]/reject/route": "/api/internal/search-eval/candidates/[id]/reject",
+          "/api/internal/search-eval/candidates/[id]/route": "/api/internal/search-eval/candidates/[id]",
+          "/api/internal/search-eval/candidates/route": "/api/internal/search-eval/candidates",
+          "/api/internal/search-eval/catalog-context/route": "/api/internal/search-eval/catalog-context",
+          "/api/internal/search-eval/search/route": "/api/internal/search-eval/search",
+          "/api/internal/search-eval/serving-search/route": "/api/internal/search-eval/serving-search",
+          "/api/internal/search-traces/sample/route": "/api/internal/search-traces/sample",
+          "/api/internal/video-db-backups/presign/route": "/api/internal/video-db-backups/presign",
+          "/api/internal/watch-progress/route": "/api/internal/watch-progress",
+          "/api/manager/session/route": "/api/manager/session",
+          "/api/manager/videos-by-core-ids/route": "/api/manager/videos-by-core-ids",
+          "/api/media-assets/[id]/[variant]/route": "/api/media-assets/[id]/[variant]",
+          "/api/preferences/locale/route": "/api/preferences/locale",
+          "/api/public/media-assets/[id]/[variant]/route": "/api/public/media-assets/[id]/[variant]",
+          "/api/recommendations/promotion/route": "/api/recommendations/promotion",
+          "/api/recommendations/shadow-evaluations/route": "/api/recommendations/shadow-evaluations",
+          "/api/scene-embedding/recommendations/route": "/api/scene-embedding/recommendations",
+          "/api/search/health/route": "/api/search/health",
+          "/api/seo/evaluate/route": "/api/seo/evaluate",
+          "/api/seo/ingest/route": "/api/seo/ingest",
+          "/api/seo/tickets/route": "/api/seo/tickets",
+          "/api/seo/watch-route-alerts/route": "/api/seo/watch-route-alerts",
+          "/api/studio/assets/transfer/[token]/route": "/api/studio/assets/transfer/[token]",
+          "/api/studio/calendar-worker/route": "/api/studio/calendar-worker",
+          "/api/studio/delegated/route": "/api/studio/delegated",
+          "/api/studio/interactive/route": "/api/studio/interactive",
+          "/api/studio/playback/[releaseId]/[resource]/route": "/api/studio/playback/[releaseId]/[resource]",
+          "/api/studio/tools/route": "/api/studio/tools",
+          "/api/watch-route-manifest/route": "/api/watch-route-manifest",
+          "/api/watch-seo-manifest/route": "/api/watch-seo-manifest",
+          "/api/workflows/[...workflow]/route": "/api/workflows/[...workflow]",
+          "/dashboard/embeddings/page": "/dashboard/embeddings",
+          "/dashboard/experiences/[id]/page": "/dashboard/experiences/[id]",
+          "/dashboard/experiences/page": "/dashboard/experiences",
+          "/dashboard/languages/page": "/dashboard/languages",
+          "/dashboard/mcp/page": "/dashboard/mcp",
+          "/dashboard/media/page": "/dashboard/media",
+          "/dashboard/page": "/dashboard",
+          "/dashboard/partner-keys/page": "/dashboard/partner-keys",
+          "/dashboard/recommendations/[requestId]/page": "/dashboard/recommendations/[requestId]",
+          "/dashboard/recommendations/page": "/dashboard/recommendations",
+          "/dashboard/recommendations/playback/[episodeId]/page": "/dashboard/recommendations/playback/[episodeId]",
+          "/dashboard/search/[requestId]/page": "/dashboard/search/[requestId]",
+          "/dashboard/search/compare/page": "/dashboard/search/compare",
+          "/dashboard/search/page": "/dashboard/search",
+          "/dashboard/settings/page": "/dashboard/settings",
+          "/dashboard/system-status/page": "/dashboard/system-status",
+          "/dashboard/users/page": "/dashboard/users",
+          "/dashboard/videos/page": "/dashboard/videos",
+          "/dashboard/workflows/[runId]/page": "/dashboard/workflows/[runId]",
+          "/dashboard/workflows/page": "/dashboard/workflows",
+          "/icon.svg/route": "/icon.svg",
+          "/mcp/route": "/mcp",
+          "/page": "/"
+        }
+      },
+      "build-manifest.json": {
+        "sha256": "b3b348b184e147e3d51aee03c9383ecef9563db4c1b8f586486a047348db7abe",
+        "bytes": 541,
+        "contents": {
+          "pages": {
+            "/_app": []
+          },
+          "devFiles": [],
+          "polyfillFiles": ["static/chunks/03~yq9q893hmn.js"],
+          "lowPriorityFiles": [
+            "static/uOjQtQBd6XapACU7RGB9J/_buildManifest.js",
+            "static/uOjQtQBd6XapACU7RGB9J/_ssgManifest.js",
+            "static/uOjQtQBd6XapACU7RGB9J/_clientMiddlewareManifest.js"
+          ],
+          "rootMainFiles": [
+            "static/chunks/0vf7b~~z6ias_.js",
+            "static/chunks/0cj4zceo-qzr2.js",
+            "static/chunks/0p1s~v5skfo1q.js",
+            "static/chunks/0w30o47mfmjkd.js",
+            "static/chunks/turbopack-034o_iy0~i84x.js"
+          ]
+        }
+      },
+      "prerender-manifest.json": {
+        "sha256": "3f7078538fae40497e6ade00d0868a352ebfc48dac6c31619bcc5ed33c7bd92a",
+        "bytes": 1817,
+        "contents": {
+          "version": 4,
+          "routes": {
+            "/_global-error": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/_global-error",
+              "dataRoute": "/_global-error.rsc",
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/icon.svg": {
+              "initialHeaders": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "content-type": "image/svg+xml",
+                "x-next-cache-tags": "_N_T_/layout,_N_T_/icon.svg/layout,_N_T_/icon.svg/route,_N_T_/icon.svg"
+              },
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/icon.svg",
+              "dataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            }
+          },
+          "dynamicRoutes": {},
+          "notFoundRoutes": [],
+          "preview": {
+            "previewModeId": "5468367d505f721ad5b442f4031ee5bd",
+            "previewModeSigningKey": "122045053f4c4e428b40e07cbe8b92f435f041b55743881fb589ec3d8b2cab09",
+            "previewModeEncryptionKey": "948768d5145aaa768876cbdf7c015ea2cce33ce7dabbace93c9d328b7eddfb20"
+          }
+        }
+      },
+      "routes-manifest.json": {
+        "sha256": "4166c5b7fa5d68aa770bf739d9b5f6b4df816e21283f0e3181ddcf296c707bd6",
+        "bytes": 18449,
+        "contents": {
+          "version": 3,
+          "pages404": true,
+          "appType": "app",
+          "caseSensitive": false,
+          "basePath": "",
+          "redirects": [
+            {
+              "source": "/:path+/",
+              "destination": "/:path+",
+              "internal": true,
+              "priority": true,
+              "statusCode": 308,
+              "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+            }
+          ],
+          "headers": [],
+          "onMatchHeaders": [],
+          "rewrites": {
+            "beforeFiles": [],
+            "afterFiles": [],
+            "fallback": []
+          },
+          "dynamicRoutes": [
+            {
+              "page": "/.well-known/workflow/v1/webhook/[token]",
+              "regex": "^/\\.well\\-known/workflow/v1/webhook/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPtoken": "nxtPtoken"
+              },
+              "namedRegex": "^/\\.well\\-known/workflow/v1/webhook/(?<nxtPtoken>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/experience-chat/messages/[messageId]/rating",
+              "regex": "^/api/experience\\-chat/messages/([^/]+?)/rating(?:/)?$",
+              "routeKeys": {
+                "nxtPmessageId": "nxtPmessageId"
+              },
+              "namedRegex": "^/api/experience\\-chat/messages/(?<nxtPmessageId>[^/]+?)/rating(?:/)?$"
+            },
+            {
+              "page": "/api/experience-chat/threads/[threadId]/ratings",
+              "regex": "^/api/experience\\-chat/threads/([^/]+?)/ratings(?:/)?$",
+              "routeKeys": {
+                "nxtPthreadId": "nxtPthreadId"
+              },
+              "namedRegex": "^/api/experience\\-chat/threads/(?<nxtPthreadId>[^/]+?)/ratings(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidates/[id]",
+              "regex": "^/api/internal/search\\-eval/candidates/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/api/internal/search\\-eval/candidates/(?<nxtPid>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidates/[id]/archive",
+              "regex": "^/api/internal/search\\-eval/candidates/([^/]+?)/archive(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/api/internal/search\\-eval/candidates/(?<nxtPid>[^/]+?)/archive(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidates/[id]/promote",
+              "regex": "^/api/internal/search\\-eval/candidates/([^/]+?)/promote(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/api/internal/search\\-eval/candidates/(?<nxtPid>[^/]+?)/promote(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidates/[id]/reject",
+              "regex": "^/api/internal/search\\-eval/candidates/([^/]+?)/reject(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/api/internal/search\\-eval/candidates/(?<nxtPid>[^/]+?)/reject(?:/)?$"
+            },
+            {
+              "page": "/api/media-assets/[id]/[variant]",
+              "regex": "^/api/media\\-assets/([^/]+?)/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid",
+                "nxtPvariant": "nxtPvariant"
+              },
+              "namedRegex": "^/api/media\\-assets/(?<nxtPid>[^/]+?)/(?<nxtPvariant>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/public/media-assets/[id]/[variant]",
+              "regex": "^/api/public/media\\-assets/([^/]+?)/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid",
+                "nxtPvariant": "nxtPvariant"
+              },
+              "namedRegex": "^/api/public/media\\-assets/(?<nxtPid>[^/]+?)/(?<nxtPvariant>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/studio/assets/transfer/[token]",
+              "regex": "^/api/studio/assets/transfer/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPtoken": "nxtPtoken"
+              },
+              "namedRegex": "^/api/studio/assets/transfer/(?<nxtPtoken>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/studio/playback/[releaseId]/[resource]",
+              "regex": "^/api/studio/playback/([^/]+?)/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPreleaseId": "nxtPreleaseId",
+                "nxtPresource": "nxtPresource"
+              },
+              "namedRegex": "^/api/studio/playback/(?<nxtPreleaseId>[^/]+?)/(?<nxtPresource>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/api/workflows/[...workflow]",
+              "regex": "^/api/workflows/(.+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPworkflow": "nxtPworkflow"
+              },
+              "namedRegex": "^/api/workflows/(?<nxtPworkflow>.+?)(?:/)?$"
+            },
+            {
+              "page": "/dashboard/experiences/[id]",
+              "regex": "^/dashboard/experiences/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/dashboard/experiences/(?<nxtPid>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/dashboard/recommendations/playback/[episodeId]",
+              "regex": "^/dashboard/recommendations/playback/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPepisodeId": "nxtPepisodeId"
+              },
+              "namedRegex": "^/dashboard/recommendations/playback/(?<nxtPepisodeId>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/dashboard/recommendations/[requestId]",
+              "regex": "^/dashboard/recommendations/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPrequestId": "nxtPrequestId"
+              },
+              "namedRegex": "^/dashboard/recommendations/(?<nxtPrequestId>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/dashboard/search/[requestId]",
+              "regex": "^/dashboard/search/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPrequestId": "nxtPrequestId"
+              },
+              "namedRegex": "^/dashboard/search/(?<nxtPrequestId>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/dashboard/workflows/[runId]",
+              "regex": "^/dashboard/workflows/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPrunId": "nxtPrunId"
+              },
+              "namedRegex": "^/dashboard/workflows/(?<nxtPrunId>[^/]+?)(?:/)?$"
+            }
+          ],
+          "staticRoutes": [
+            {
+              "page": "/",
+              "regex": "^/(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/(?:/)?$"
+            },
+            {
+              "page": "/_global-error",
+              "regex": "^/_global\\-error(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/_global\\-error(?:/)?$"
+            },
+            {
+              "page": "/_not-found",
+              "regex": "^/_not\\-found(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/_not\\-found(?:/)?$"
+            },
+            {
+              "page": "/.well-known/oauth-protected-resource",
+              "regex": "^/\\.well\\-known/oauth\\-protected\\-resource(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/\\.well\\-known/oauth\\-protected\\-resource(?:/)?$"
+            },
+            {
+              "page": "/.well-known/workflow/v1/flow",
+              "regex": "^/\\.well\\-known/workflow/v1/flow(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/\\.well\\-known/workflow/v1/flow(?:/)?$"
+            },
+            {
+              "page": "/.well-known/workflow/v1/step",
+              "regex": "^/\\.well\\-known/workflow/v1/step(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/\\.well\\-known/workflow/v1/step(?:/)?$"
+            },
+            {
+              "page": "/access-request",
+              "regex": "^/access\\-request(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/access\\-request(?:/)?$"
+            },
+            {
+              "page": "/api/auth/callback",
+              "regex": "^/api/auth/callback(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/callback(?:/)?$"
+            },
+            {
+              "page": "/api/auth/login",
+              "regex": "^/api/auth/login(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/login(?:/)?$"
+            },
+            {
+              "page": "/api/auth/logout",
+              "regex": "^/api/auth/logout(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/logout(?:/)?$"
+            },
+            {
+              "page": "/api/auth/request-access",
+              "regex": "^/api/auth/request\\-access(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/request\\-access(?:/)?$"
+            },
+            {
+              "page": "/api/core-sync/manual",
+              "regex": "^/api/core\\-sync/manual(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/core\\-sync/manual(?:/)?$"
+            },
+            {
+              "page": "/api/core-sync/scheduled",
+              "regex": "^/api/core\\-sync/scheduled(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/core\\-sync/scheduled(?:/)?$"
+            },
+            {
+              "page": "/api/experience-chat/stream",
+              "regex": "^/api/experience\\-chat/stream(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/experience\\-chat/stream(?:/)?$"
+            },
+            {
+              "page": "/api/graphql",
+              "regex": "^/api/graphql(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/graphql(?:/)?$"
+            },
+            {
+              "page": "/api/health",
+              "regex": "^/api/health(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/health(?:/)?$"
+            },
+            {
+              "page": "/api/internal/agent-tools/fetch-video-image",
+              "regex": "^/api/internal/agent\\-tools/fetch\\-video\\-image(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/agent\\-tools/fetch\\-video\\-image(?:/)?$"
+            },
+            {
+              "page": "/api/internal/agent-tools/lookup-bible-verse",
+              "regex": "^/api/internal/agent\\-tools/lookup\\-bible\\-verse(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/agent\\-tools/lookup\\-bible\\-verse(?:/)?$"
+            },
+            {
+              "page": "/api/internal/agent-tools/search-videos",
+              "regex": "^/api/internal/agent\\-tools/search\\-videos(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/agent\\-tools/search\\-videos(?:/)?$"
+            },
+            {
+              "page": "/api/internal/mastra/experience-embeddings",
+              "regex": "^/api/internal/mastra/experience\\-embeddings(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/mastra/experience\\-embeddings(?:/)?$"
+            },
+            {
+              "page": "/api/internal/mastra/scene-embeddings",
+              "regex": "^/api/internal/mastra/scene\\-embeddings(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/mastra/scene\\-embeddings(?:/)?$"
+            },
+            {
+              "page": "/api/internal/mastra/transcript-embeddings",
+              "regex": "^/api/internal/mastra/transcript\\-embeddings(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/mastra/transcript\\-embeddings(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidate-compare",
+              "regex": "^/api/internal/search\\-eval/candidate\\-compare(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/candidate\\-compare(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidate-search",
+              "regex": "^/api/internal/search\\-eval/candidate\\-search(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/candidate\\-search(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/candidates",
+              "regex": "^/api/internal/search\\-eval/candidates(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/candidates(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/catalog-context",
+              "regex": "^/api/internal/search\\-eval/catalog\\-context(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/catalog\\-context(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/search",
+              "regex": "^/api/internal/search\\-eval/search(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/search(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-eval/serving-search",
+              "regex": "^/api/internal/search\\-eval/serving\\-search(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-eval/serving\\-search(?:/)?$"
+            },
+            {
+              "page": "/api/internal/search-traces/sample",
+              "regex": "^/api/internal/search\\-traces/sample(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/search\\-traces/sample(?:/)?$"
+            },
+            {
+              "page": "/api/internal/video-db-backups/presign",
+              "regex": "^/api/internal/video\\-db\\-backups/presign(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/video\\-db\\-backups/presign(?:/)?$"
+            },
+            {
+              "page": "/api/internal/watch-progress",
+              "regex": "^/api/internal/watch\\-progress(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/internal/watch\\-progress(?:/)?$"
+            },
+            {
+              "page": "/api/manager/session",
+              "regex": "^/api/manager/session(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/manager/session(?:/)?$"
+            },
+            {
+              "page": "/api/manager/videos-by-core-ids",
+              "regex": "^/api/manager/videos\\-by\\-core\\-ids(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/manager/videos\\-by\\-core\\-ids(?:/)?$"
+            },
+            {
+              "page": "/api/preferences/locale",
+              "regex": "^/api/preferences/locale(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/preferences/locale(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/promotion",
+              "regex": "^/api/recommendations/promotion(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/promotion(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/shadow-evaluations",
+              "regex": "^/api/recommendations/shadow\\-evaluations(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/shadow\\-evaluations(?:/)?$"
+            },
+            {
+              "page": "/api/scene-embedding/recommendations",
+              "regex": "^/api/scene\\-embedding/recommendations(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/scene\\-embedding/recommendations(?:/)?$"
+            },
+            {
+              "page": "/api/search/health",
+              "regex": "^/api/search/health(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/search/health(?:/)?$"
+            },
+            {
+              "page": "/api/seo/evaluate",
+              "regex": "^/api/seo/evaluate(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/seo/evaluate(?:/)?$"
+            },
+            {
+              "page": "/api/seo/ingest",
+              "regex": "^/api/seo/ingest(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/seo/ingest(?:/)?$"
+            },
+            {
+              "page": "/api/seo/tickets",
+              "regex": "^/api/seo/tickets(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/seo/tickets(?:/)?$"
+            },
+            {
+              "page": "/api/seo/watch-route-alerts",
+              "regex": "^/api/seo/watch\\-route\\-alerts(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/seo/watch\\-route\\-alerts(?:/)?$"
+            },
+            {
+              "page": "/api/studio/calendar-worker",
+              "regex": "^/api/studio/calendar\\-worker(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/studio/calendar\\-worker(?:/)?$"
+            },
+            {
+              "page": "/api/studio/delegated",
+              "regex": "^/api/studio/delegated(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/studio/delegated(?:/)?$"
+            },
+            {
+              "page": "/api/studio/interactive",
+              "regex": "^/api/studio/interactive(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/studio/interactive(?:/)?$"
+            },
+            {
+              "page": "/api/studio/tools",
+              "regex": "^/api/studio/tools(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/studio/tools(?:/)?$"
+            },
+            {
+              "page": "/api/watch-route-manifest",
+              "regex": "^/api/watch\\-route\\-manifest(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/watch\\-route\\-manifest(?:/)?$"
+            },
+            {
+              "page": "/api/watch-seo-manifest",
+              "regex": "^/api/watch\\-seo\\-manifest(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/watch\\-seo\\-manifest(?:/)?$"
+            },
+            {
+              "page": "/dashboard",
+              "regex": "^/dashboard(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard(?:/)?$"
+            },
+            {
+              "page": "/dashboard/embeddings",
+              "regex": "^/dashboard/embeddings(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/embeddings(?:/)?$"
+            },
+            {
+              "page": "/dashboard/experiences",
+              "regex": "^/dashboard/experiences(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/experiences(?:/)?$"
+            },
+            {
+              "page": "/dashboard/languages",
+              "regex": "^/dashboard/languages(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/languages(?:/)?$"
+            },
+            {
+              "page": "/dashboard/mcp",
+              "regex": "^/dashboard/mcp(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/mcp(?:/)?$"
+            },
+            {
+              "page": "/dashboard/media",
+              "regex": "^/dashboard/media(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/media(?:/)?$"
+            },
+            {
+              "page": "/dashboard/partner-keys",
+              "regex": "^/dashboard/partner\\-keys(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/partner\\-keys(?:/)?$"
+            },
+            {
+              "page": "/dashboard/recommendations",
+              "regex": "^/dashboard/recommendations(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/recommendations(?:/)?$"
+            },
+            {
+              "page": "/dashboard/search",
+              "regex": "^/dashboard/search(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/search(?:/)?$"
+            },
+            {
+              "page": "/dashboard/search/compare",
+              "regex": "^/dashboard/search/compare(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/search/compare(?:/)?$"
+            },
+            {
+              "page": "/dashboard/settings",
+              "regex": "^/dashboard/settings(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/settings(?:/)?$"
+            },
+            {
+              "page": "/dashboard/system-status",
+              "regex": "^/dashboard/system\\-status(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/system\\-status(?:/)?$"
+            },
+            {
+              "page": "/dashboard/users",
+              "regex": "^/dashboard/users(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/users(?:/)?$"
+            },
+            {
+              "page": "/dashboard/videos",
+              "regex": "^/dashboard/videos(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/videos(?:/)?$"
+            },
+            {
+              "page": "/dashboard/workflows",
+              "regex": "^/dashboard/workflows(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/dashboard/workflows(?:/)?$"
+            },
+            {
+              "page": "/icon.svg",
+              "regex": "^/icon\\.svg(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/icon\\.svg(?:/)?$"
+            },
+            {
+              "page": "/mcp",
+              "regex": "^/mcp(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/mcp(?:/)?$"
+            }
+          ],
+          "dataRoutes": [],
+          "rsc": {
+            "header": "rsc",
+            "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+            "prefetchHeader": "next-router-prefetch",
+            "didPostponeHeader": "x-nextjs-postponed",
+            "contentTypeHeader": "text/x-component",
+            "suffix": ".rsc",
+            "prefetchSegmentHeader": "next-router-segment-prefetch",
+            "prefetchSegmentSuffix": ".segment.rsc",
+            "prefetchSegmentDirSuffix": ".segments",
+            "clientParamParsing": false,
+            "dynamicRSCPrerender": false
+          },
+          "rewriteHeaders": {
+            "pathHeader": "x-nextjs-rewritten-path",
+            "queryHeader": "x-nextjs-rewritten-query"
+          }
+        }
+      },
+      "server/app-paths-manifest.json": {
+        "sha256": "dc37db66e34e1d3fe6ce4781a59f0a2d8715dec9d1c3d67e059a71b4ee5e30dc",
+        "bytes": 6776,
+        "contents": {
+          "/.well-known/oauth-protected-resource/route": "app/.well-known/oauth-protected-resource/route.js",
+          "/.well-known/workflow/v1/flow/route": "app/.well-known/workflow/v1/flow/route.js",
+          "/.well-known/workflow/v1/step/route": "app/.well-known/workflow/v1/step/route.js",
+          "/.well-known/workflow/v1/webhook/[token]/route": "app/.well-known/workflow/v1/webhook/[token]/route.js",
+          "/_global-error/page": "app/_global-error/page.js",
+          "/_not-found/page": "app/_not-found/page.js",
+          "/access-request/page": "app/access-request/page.js",
+          "/api/auth/callback/route": "app/api/auth/callback/route.js",
+          "/api/auth/login/route": "app/api/auth/login/route.js",
+          "/api/auth/logout/route": "app/api/auth/logout/route.js",
+          "/api/auth/request-access/route": "app/api/auth/request-access/route.js",
+          "/api/core-sync/manual/route": "app/api/core-sync/manual/route.js",
+          "/api/core-sync/scheduled/route": "app/api/core-sync/scheduled/route.js",
+          "/api/experience-chat/messages/[messageId]/rating/route": "app/api/experience-chat/messages/[messageId]/rating/route.js",
+          "/api/experience-chat/stream/route": "app/api/experience-chat/stream/route.js",
+          "/api/experience-chat/threads/[threadId]/ratings/route": "app/api/experience-chat/threads/[threadId]/ratings/route.js",
+          "/api/graphql/route": "app/api/graphql/route.js",
+          "/api/health/route": "app/api/health/route.js",
+          "/api/internal/agent-tools/fetch-video-image/route": "app/api/internal/agent-tools/fetch-video-image/route.js",
+          "/api/internal/agent-tools/lookup-bible-verse/route": "app/api/internal/agent-tools/lookup-bible-verse/route.js",
+          "/api/internal/agent-tools/search-videos/route": "app/api/internal/agent-tools/search-videos/route.js",
+          "/api/internal/mastra/experience-embeddings/route": "app/api/internal/mastra/experience-embeddings/route.js",
+          "/api/internal/mastra/scene-embeddings/route": "app/api/internal/mastra/scene-embeddings/route.js",
+          "/api/internal/mastra/transcript-embeddings/route": "app/api/internal/mastra/transcript-embeddings/route.js",
+          "/api/internal/search-eval/candidate-compare/route": "app/api/internal/search-eval/candidate-compare/route.js",
+          "/api/internal/search-eval/candidate-search/route": "app/api/internal/search-eval/candidate-search/route.js",
+          "/api/internal/search-eval/candidates/[id]/archive/route": "app/api/internal/search-eval/candidates/[id]/archive/route.js",
+          "/api/internal/search-eval/candidates/[id]/promote/route": "app/api/internal/search-eval/candidates/[id]/promote/route.js",
+          "/api/internal/search-eval/candidates/[id]/reject/route": "app/api/internal/search-eval/candidates/[id]/reject/route.js",
+          "/api/internal/search-eval/candidates/[id]/route": "app/api/internal/search-eval/candidates/[id]/route.js",
+          "/api/internal/search-eval/candidates/route": "app/api/internal/search-eval/candidates/route.js",
+          "/api/internal/search-eval/catalog-context/route": "app/api/internal/search-eval/catalog-context/route.js",
+          "/api/internal/search-eval/search/route": "app/api/internal/search-eval/search/route.js",
+          "/api/internal/search-eval/serving-search/route": "app/api/internal/search-eval/serving-search/route.js",
+          "/api/internal/search-traces/sample/route": "app/api/internal/search-traces/sample/route.js",
+          "/api/internal/video-db-backups/presign/route": "app/api/internal/video-db-backups/presign/route.js",
+          "/api/internal/watch-progress/route": "app/api/internal/watch-progress/route.js",
+          "/api/manager/session/route": "app/api/manager/session/route.js",
+          "/api/manager/videos-by-core-ids/route": "app/api/manager/videos-by-core-ids/route.js",
+          "/api/media-assets/[id]/[variant]/route": "app/api/media-assets/[id]/[variant]/route.js",
+          "/api/preferences/locale/route": "app/api/preferences/locale/route.js",
+          "/api/public/media-assets/[id]/[variant]/route": "app/api/public/media-assets/[id]/[variant]/route.js",
+          "/api/recommendations/promotion/route": "app/api/recommendations/promotion/route.js",
+          "/api/recommendations/shadow-evaluations/route": "app/api/recommendations/shadow-evaluations/route.js",
+          "/api/scene-embedding/recommendations/route": "app/api/scene-embedding/recommendations/route.js",
+          "/api/search/health/route": "app/api/search/health/route.js",
+          "/api/seo/evaluate/route": "app/api/seo/evaluate/route.js",
+          "/api/seo/ingest/route": "app/api/seo/ingest/route.js",
+          "/api/seo/tickets/route": "app/api/seo/tickets/route.js",
+          "/api/seo/watch-route-alerts/route": "app/api/seo/watch-route-alerts/route.js",
+          "/api/studio/assets/transfer/[token]/route": "app/api/studio/assets/transfer/[token]/route.js",
+          "/api/studio/calendar-worker/route": "app/api/studio/calendar-worker/route.js",
+          "/api/studio/delegated/route": "app/api/studio/delegated/route.js",
+          "/api/studio/interactive/route": "app/api/studio/interactive/route.js",
+          "/api/studio/playback/[releaseId]/[resource]/route": "app/api/studio/playback/[releaseId]/[resource]/route.js",
+          "/api/studio/tools/route": "app/api/studio/tools/route.js",
+          "/api/watch-route-manifest/route": "app/api/watch-route-manifest/route.js",
+          "/api/watch-seo-manifest/route": "app/api/watch-seo-manifest/route.js",
+          "/api/workflows/[...workflow]/route": "app/api/workflows/[...workflow]/route.js",
+          "/dashboard/embeddings/page": "app/dashboard/embeddings/page.js",
+          "/dashboard/experiences/[id]/page": "app/dashboard/experiences/[id]/page.js",
+          "/dashboard/experiences/page": "app/dashboard/experiences/page.js",
+          "/dashboard/languages/page": "app/dashboard/languages/page.js",
+          "/dashboard/mcp/page": "app/dashboard/mcp/page.js",
+          "/dashboard/media/page": "app/dashboard/media/page.js",
+          "/dashboard/page": "app/dashboard/page.js",
+          "/dashboard/partner-keys/page": "app/dashboard/partner-keys/page.js",
+          "/dashboard/recommendations/[requestId]/page": "app/dashboard/recommendations/[requestId]/page.js",
+          "/dashboard/recommendations/page": "app/dashboard/recommendations/page.js",
+          "/dashboard/recommendations/playback/[episodeId]/page": "app/dashboard/recommendations/playback/[episodeId]/page.js",
+          "/dashboard/search/[requestId]/page": "app/dashboard/search/[requestId]/page.js",
+          "/dashboard/search/compare/page": "app/dashboard/search/compare/page.js",
+          "/dashboard/search/page": "app/dashboard/search/page.js",
+          "/dashboard/settings/page": "app/dashboard/settings/page.js",
+          "/dashboard/system-status/page": "app/dashboard/system-status/page.js",
+          "/dashboard/users/page": "app/dashboard/users/page.js",
+          "/dashboard/videos/page": "app/dashboard/videos/page.js",
+          "/dashboard/workflows/[runId]/page": "app/dashboard/workflows/[runId]/page.js",
+          "/dashboard/workflows/page": "app/dashboard/workflows/page.js",
+          "/icon.svg/route": "app/icon.svg/route.js",
+          "/mcp/route": "app/mcp/route.js",
+          "/page": "app/page.js"
+        }
+      }
+    },
+    "staticJavaScript": [
+      {
+        "path": "static/chunks/0.7g-ye581rn3.js",
+        "bytes": 80010,
+        "sha256": "d7bd836ac5a205ec985d2998b853e8e2ce36ebaff400af269d4a58eaaa0a4af5"
+      },
+      {
+        "path": "static/chunks/03a_f30~fzafq.js",
+        "bytes": 45838,
+        "sha256": "e55c56b421185875d99a9f097ebacdde88cb84647811ba906185c05a9bab57ae"
+      },
+      {
+        "path": "static/chunks/03~yq9q893hmn.js",
+        "bytes": 112594,
+        "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683"
+      },
+      {
+        "path": "static/chunks/06wg~zxi~bk0c.js",
+        "bytes": 4285,
+        "sha256": "d649df3d90d7573a1e07f6d95774875da618cb28d8282a1885af3b8edb1bbdf4"
+      },
+      {
+        "path": "static/chunks/0c3vk6not~20..js",
+        "bytes": 8682,
+        "sha256": "b60e6915c616c357740cee121ac15d367dfd2fba0ee6bfc5003891d182a24d5e"
+      },
+      {
+        "path": "static/chunks/0cj4zceo-qzr2.js",
+        "bytes": 44527,
+        "sha256": "de5d95c9565dfcd234cb787ad0e87a8912ea7d9f6534dc215c9d320137cf2c22"
+      },
+      {
+        "path": "static/chunks/0cxv7nbydmz...js",
+        "bytes": 9425,
+        "sha256": "6e4f395258cf3bea3f487352e6745a07b18200410ba6d86b387abca2ccd37216"
+      },
+      {
+        "path": "static/chunks/0eexbq3o5b17q.js",
+        "bytes": 153451,
+        "sha256": "ffc9a07ee37db8b2de1d7839c026781cb37d8e4b8f9eb85666da40d2c8bc2469"
+      },
+      {
+        "path": "static/chunks/0f8f-p9c01c4j.js",
+        "bytes": 38693,
+        "sha256": "68514f51fe4e1a4793674d40491f7dba84c23b20594ed6a045d1c5c4453c9a01"
+      },
+      {
+        "path": "static/chunks/0hmiaevvategx.js",
+        "bytes": 47871,
+        "sha256": "ce51cd6097b960c135c40408202b26d8559e8d87478154557b9c77e6fd0b01cb"
+      },
+      {
+        "path": "static/chunks/0hoxehfu05ld~.js",
+        "bytes": 27129,
+        "sha256": "74e52e861b1fb62feb59cd5bd18d7bf4a9898aeaf880acfa568e0245b55271b0"
+      },
+      {
+        "path": "static/chunks/0kxdbq900fw~a.js",
+        "bytes": 12804,
+        "sha256": "ef3cc43ec73671ab00c28b3cf34a338b0ef8c706f0201368dfa17d7d37bf4199"
+      },
+      {
+        "path": "static/chunks/0lnwzc0akwwab.js",
+        "bytes": 7483,
+        "sha256": "9b600558cfe1148c609255fae1742e52b21b18633b818c107ab5c1022960b885"
+      },
+      {
+        "path": "static/chunks/0lya94n1.u1mm.js",
+        "bytes": 54806,
+        "sha256": "fe1b74c6990ea60642e03aeba7494b7dfed3aae4b736454ad3e43b7480f66bb3"
+      },
+      {
+        "path": "static/chunks/0ng_2s6s3ugm3.js",
+        "bytes": 5604,
+        "sha256": "a3367200ad3ba916c9c78215f80616f58c7653a3e4727153291576be76ea6886"
+      },
+      {
+        "path": "static/chunks/0p1s~v5skfo1q.js",
+        "bytes": 227477,
+        "sha256": "33a94be7cbea7e6d5689c8ceb9cf565669afc4e417f79b256b0059aa67121df7"
+      },
+      {
+        "path": "static/chunks/0r2foji32e0b4.js",
+        "bytes": 2114,
+        "sha256": "7c659648665be1f58b990828051a5161302f9f0ab3bf31cb38bfa8fd6710ac58"
+      },
+      {
+        "path": "static/chunks/0rg5j3j2nuoto.js",
+        "bytes": 47871,
+        "sha256": "9ec22b1d8e6c30de1d4b70b98b1d6a6e4b9bf74bcc5b0c7942b97b3999160c3f"
+      },
+      {
+        "path": "static/chunks/0rvgmkjl5p9a9.js",
+        "bytes": 3423,
+        "sha256": "d4f0284034199e726380f15d2d2ea1db79d361ba2d2c0c8876100e5182ab2e3d"
+      },
+      {
+        "path": "static/chunks/0ualngyzqufqk.js",
+        "bytes": 695,
+        "sha256": "a0e73d61577dcd149753f7d45671fc7c81cf9a342feff9990c75aba7f632de33"
+      },
+      {
+        "path": "static/chunks/0vf7b~~z6ias_.js",
+        "bytes": 28998,
+        "sha256": "3322b47dfc0d3078f500f3a5a93bdc24ebbd367e33d39ece461d4836f8aa35a1"
+      },
+      {
+        "path": "static/chunks/0w30o47mfmjkd.js",
+        "bytes": 145104,
+        "sha256": "63e7aa3386bc6c237545fab48f0a03a7d29ab02666ff0eea0cc5cbcafcf9a8a2"
+      },
+      {
+        "path": "static/chunks/0wophef7e00h1.js",
+        "bytes": 21890,
+        "sha256": "5d0ed9d70331e52693ccc5055b81e8d9051d9caa14edd830535d8ce9bef18b4f"
+      },
+      {
+        "path": "static/chunks/0wskhfcfz8-sj.js",
+        "bytes": 374939,
+        "sha256": "6e1c241289542200aa6e4ee34c4229f65449f69418a5ae0da3ea78f9deea1089"
+      },
+      {
+        "path": "static/chunks/0x91on4rm4gvt.js",
+        "bytes": 12148,
+        "sha256": "254bc553ad4f1a277b7ea7d059f4188cd0acd4c4ae04a0251c27618ec62c642c"
+      },
+      {
+        "path": "static/chunks/0xldyr046r57b.js",
+        "bytes": 259,
+        "sha256": "6ba4e20ba05573b00a8a5ebadf5f4ca06e00cc1c7db734d5bdfc466c5ed5bcb2"
+      },
+      {
+        "path": "static/chunks/0ydja9ivtbmwd.js",
+        "bytes": 23950,
+        "sha256": "838a5e902c9a276df959eec342ed3fc4412f486da2250db0fd2e586362205cd4"
+      },
+      {
+        "path": "static/chunks/0ykugula_cw-0.js",
+        "bytes": 26585,
+        "sha256": "d30ee463e12b9e05af60183fb57fe8edb56dc377fd9ee0f6ed7fac9e86db4c38"
+      },
+      {
+        "path": "static/chunks/0~5745ywfet69.js",
+        "bytes": 450622,
+        "sha256": "e22a037a0950d78e6f4cd5fbf6dd89058b6a716a46fd98b08f4dcf149f7df352"
+      },
+      {
+        "path": "static/chunks/0~qnx3hjh025k.js",
+        "bytes": 8776,
+        "sha256": "b31085372b69d8d20262c9405279c33e2aa62c8573233b5e7c37b6ad390bcbfd"
+      },
+      {
+        "path": "static/chunks/10897zoxt5zwd.js",
+        "bytes": 5609,
+        "sha256": "1b2dfd9a899c8e10aebc1b8e83889f58895a537203c4ebb463e11886b059deea"
+      },
+      {
+        "path": "static/chunks/109hl2sp~6ugp.js",
+        "bytes": 572,
+        "sha256": "518b074265dbb73de5a278fd13a3db0f8152dd407634b27274ff217bfa691c60"
+      },
+      {
+        "path": "static/chunks/12z_z0_z42kpn.js",
+        "bytes": 426106,
+        "sha256": "6b0c9c76b444eb3bdcf528fdc5be593b0b66990096f1400011c5b50727066248"
+      },
+      {
+        "path": "static/chunks/15gktmdapph31.js",
+        "bytes": 15690,
+        "sha256": "1dda08db4913081216d72ca3fcf808b7d063b7457d3e5d767b1bfb05637b5447"
+      },
+      {
+        "path": "static/chunks/15mhgveajv~ft.js",
+        "bytes": 9522,
+        "sha256": "ae95c2012c54b0f82fdba9f337277b5cce6b051fb8948c668c283790713d0919"
+      },
+      {
+        "path": "static/chunks/16e_hd2mzg~f1.js",
+        "bytes": 44932,
+        "sha256": "b94f5b18d5ac5b56539322f69c186939f795fef1bad3fbf12f32e2d5c9033a97"
+      },
+      {
+        "path": "static/chunks/177eb3o1t7it_.js",
+        "bytes": 63689,
+        "sha256": "14f2c8f2004a96b52324ed668a5a1a44e1bdc1c211bfa8e86fa3bcb3a5b81b39"
+      },
+      {
+        "path": "static/chunks/turbopack-0-bjns3cugfq1.js",
+        "bytes": 10558,
+        "sha256": "1f5c7226cd5c20e1291608af39f03228b77d1678179f721d71780ca850431e07"
+      },
+      {
+        "path": "static/chunks/turbopack-034o_iy0~i84x.js",
+        "bytes": 10624,
+        "sha256": "f48b61166d60de39b35af27f4bd400e5e0efe001d52b4602eee776370e32e8eb"
+      },
+      {
+        "path": "static/chunks/turbopack-worker-0g5kymvzkx-yr.js",
+        "bytes": 861,
+        "sha256": "fe11781dd7bf581affdb0b2b489387f9d0d54ff6c07189ce3d1d4ab4276da65d"
+      },
+      {
+        "path": "static/media/worker.102zas1s52_pf.js",
+        "bytes": 3233,
+        "sha256": "37a2755250982a72ee084fb094b984fe10bc690a38ac47d508a21436ab218065"
+      },
+      {
+        "path": "static/uOjQtQBd6XapACU7RGB9J/_buildManifest.js",
+        "bytes": 219,
+        "sha256": "9476e0afd3f9da68a64e6ec58631191fd3eaca62c9f5a377e7517fe9a89e59ea"
+      },
+      {
+        "path": "static/uOjQtQBd6XapACU7RGB9J/_clientMiddlewareManifest.js",
+        "bytes": 96,
+        "sha256": "5483e3295dc35dfe29ea932efc85341c916f10ff78ff5b0e965e003710893a4a"
+      },
+      {
+        "path": "static/uOjQtQBd6XapACU7RGB9J/_ssgManifest.js",
+        "bytes": 80,
+        "sha256": "678f6ce2cb80b1fe72fc67e7412be6e2ab6ada083111b64f7c40d35e3cba5e00"
+      }
+    ],
+    "totalStaticJsBytes": 2619844,
+    "qualification": "Output inventory, not per-route transferred bytes, hydration or deployed loading proof. Admin build uses declared local font CSS response fixture; Web uses declared local configuration."
+  },
+  "web": {
+    "manifests": {
+      "BUILD_ID": {
+        "sha256": "099e027a72c3051f5e362f6e32e048404c3a57cf44ade4eb29b42697ac08a5dd",
+        "bytes": 21,
+        "contents": "8Qv1-eYXTZ8RPGuhX6y8R"
+      },
+      "app-path-routes-manifest.json": {
+        "sha256": "340f00db1aae34e0876fa61a44bcba9532037187c2d952c25cf66285af6ecb85",
+        "bytes": 2221,
+        "contents": {
+          "/(demo)/demo-recommendations/[slug]/[locale]/page": "/demo-recommendations/[slug]/[locale]",
+          "/(preview)/language-globe/not-found/page": "/language-globe/not-found",
+          "/(preview)/language-globe/page": "/language-globe",
+          "/(preview)/preview/experience/[token]/page": "/preview/experience/[token]",
+          "/[locale]/[htmlLang]/404/page": "/[locale]/[htmlLang]/404",
+          "/[locale]/[htmlLang]/[...rest]/page": "/[locale]/[htmlLang]/[...rest]",
+          "/[locale]/[htmlLang]/history/page": "/[locale]/[htmlLang]/history",
+          "/[locale]/[htmlLang]/languages/page": "/[locale]/[htmlLang]/languages",
+          "/[locale]/[htmlLang]/page": "/[locale]/[htmlLang]",
+          "/[locale]/[htmlLang]/unavailable/404/page": "/[locale]/[htmlLang]/unavailable/404",
+          "/[locale]/[htmlLang]/videos/[languageSlug]/page": "/[locale]/[htmlLang]/videos/[languageSlug]",
+          "/[locale]/[htmlLang]/whats-new/page": "/[locale]/[htmlLang]/whats-new",
+          "/_global-error/page": "/_global-error",
+          "/_not-found/page": "/_not-found",
+          "/api/auth/callback/route": "/api/auth/callback",
+          "/api/auth/login/route": "/api/auth/login",
+          "/api/auth/logout/route": "/api/auth/logout",
+          "/api/auth/session/route": "/api/auth/session",
+          "/api/beta-tester-cta/route": "/api/beta-tester-cta",
+          "/api/demo-search/generate/route": "/api/demo-search/generate",
+          "/api/download/route": "/api/download",
+          "/api/dynamic-collections/route": "/api/dynamic-collections",
+          "/api/language-options/route": "/api/language-options",
+          "/api/preview/route": "/api/preview",
+          "/api/recommendations/content-actions/route": "/api/recommendations/content-actions",
+          "/api/recommendations/evidence/route": "/api/recommendations/evidence",
+          "/api/recommendations/playback/route": "/api/recommendations/playback",
+          "/api/recommendations/profile/route": "/api/recommendations/profile",
+          "/api/recommendations/route": "/api/recommendations",
+          "/api/recommendations/select/route": "/api/recommendations/select",
+          "/api/revalidate/route": "/api/revalidate",
+          "/api/watch-progress/route": "/api/watch-progress",
+          "/manifest.webmanifest/route": "/manifest.webmanifest",
+          "/robots.txt/route": "/robots.txt",
+          "/sitemap.xml/route": "/sitemap.xml",
+          "/sitemap/[id]/route": "/sitemap/[id]"
+        }
+      },
+      "build-manifest.json": {
+        "sha256": "b6f49c8a085b40a461ff6b8673b352f7e135fa9f1c456b5e3b980cd92ef52235",
+        "bytes": 579,
+        "contents": {
+          "pages": {
+            "/_app": []
+          },
+          "devFiles": [],
+          "polyfillFiles": ["static/chunks/03~yq9q893hmn.js"],
+          "lowPriorityFiles": [
+            "static/8Qv1-eYXTZ8RPGuhX6y8R/_buildManifest.js",
+            "static/8Qv1-eYXTZ8RPGuhX6y8R/_ssgManifest.js",
+            "static/8Qv1-eYXTZ8RPGuhX6y8R/_clientMiddlewareManifest.js"
+          ],
+          "rootMainFiles": [
+            "static/chunks/06khuu30gq9uu.js",
+            "static/chunks/0u~f3a7bm~h0q.js",
+            "static/chunks/0akrpge3m_7zx.js",
+            "static/chunks/0y5hvw.xobj1d.js",
+            "static/chunks/05eo93z6hgxy3.js",
+            "static/chunks/turbopack-0r~_5y3c-zj7q.js"
+          ]
+        }
+      },
+      "prerender-manifest.json": {
+        "sha256": "93aac8662af126740bb20b181d46fd56261b82cb4a47df878ea04abe0d0b7c4b",
+        "bytes": 8772,
+        "contents": {
+          "version": 4,
+          "routes": {
+            "/_global-error": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/_global-error",
+              "dataRoute": "/_global-error.rsc",
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/_not-found": {
+              "initialStatus": 404,
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/_not-found",
+              "dataRoute": "/_not-found.rsc",
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/language-globe": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/language-globe",
+              "dataRoute": "/language-globe.rsc",
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/language-globe/not-found": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/language-globe/not-found",
+              "dataRoute": "/language-globe/not-found.rsc",
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/manifest.webmanifest": {
+              "initialHeaders": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "content-type": "application/manifest+json",
+                "x-next-cache-tags": "_N_T_/layout,_N_T_/manifest.webmanifest/layout,_N_T_/manifest.webmanifest/route,_N_T_/manifest.webmanifest"
+              },
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/manifest.webmanifest",
+              "dataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/robots.txt": {
+              "initialHeaders": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "content-type": "text/plain",
+                "x-next-cache-tags": "_N_T_/layout,_N_T_/robots.txt/layout,_N_T_/robots.txt/route,_N_T_/robots.txt"
+              },
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "initialRevalidateSeconds": false,
+              "srcRoute": "/robots.txt",
+              "dataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            }
+          },
+          "dynamicRoutes": {
+            "/[locale]/[htmlLang]": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "routeRegex": "^/([^/]+?)/([^/]+?)(?:/)?$",
+              "dataRoute": "/[locale]/[htmlLang].rsc",
+              "fallback": null,
+              "fallbackRootParams": [],
+              "fallbackRouteParams": [],
+              "dataRouteRegex": "^/([^/]+?)/([^/]+?)\\.rsc$",
+              "prefetchDataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/[locale]/[htmlLang]/languages": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "routeRegex": "^/([^/]+?)/([^/]+?)/languages(?:/)?$",
+              "dataRoute": "/[locale]/[htmlLang]/languages.rsc",
+              "fallback": null,
+              "fallbackRootParams": [],
+              "fallbackRouteParams": [],
+              "dataRouteRegex": "^/([^/]+?)/([^/]+?)/languages\\.rsc$",
+              "prefetchDataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/[locale]/[htmlLang]/videos/[languageSlug]": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "routeRegex": "^/([^/]+?)/([^/]+?)/videos/([^/]+?)(?:/)?$",
+              "dataRoute": "/[locale]/[htmlLang]/videos/[languageSlug].rsc",
+              "fallback": null,
+              "fallbackRootParams": [],
+              "fallbackRouteParams": [],
+              "dataRouteRegex": "^/([^/]+?)/([^/]+?)/videos/([^/]+?)\\.rsc$",
+              "prefetchDataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/[locale]/[htmlLang]/whats-new": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "routeRegex": "^/([^/]+?)/([^/]+?)/whats\\-new(?:/)?$",
+              "dataRoute": "/[locale]/[htmlLang]/whats-new.rsc",
+              "fallback": null,
+              "fallbackRootParams": [],
+              "fallbackRouteParams": [],
+              "dataRouteRegex": "^/([^/]+?)/([^/]+?)/whats\\-new\\.rsc$",
+              "prefetchDataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            },
+            "/[locale]/[htmlLang]/[...rest]": {
+              "experimentalBypassFor": [
+                {
+                  "type": "header",
+                  "key": "next-action"
+                },
+                {
+                  "type": "header",
+                  "key": "content-type",
+                  "value": "multipart/form-data;.*"
+                }
+              ],
+              "routeRegex": "^/([^/]+?)/([^/]+?)/(.+?)(?:/)?$",
+              "dataRoute": "/[locale]/[htmlLang]/[...rest].rsc",
+              "fallback": null,
+              "fallbackRootParams": [],
+              "fallbackRouteParams": [],
+              "dataRouteRegex": "^/([^/]+?)/([^/]+?)/(.+?)\\.rsc$",
+              "prefetchDataRoute": null,
+              "allowHeader": [
+                "host",
+                "x-matched-path",
+                "x-prerender-revalidate",
+                "x-prerender-revalidate-if-generated",
+                "x-next-revalidated-tags",
+                "x-next-revalidate-tag-token"
+              ]
+            }
+          },
+          "notFoundRoutes": [],
+          "preview": {
+            "previewModeId": "4191407fbb1238e71542f699233a279c",
+            "previewModeSigningKey": "ab504db66249ae8d927c362eb79305355333e1acd639f11f218f6f8b4e63def9",
+            "previewModeEncryptionKey": "977db9792fe166752c51378bdcfc64df42d59151d646e24c3ceab13ab55f439c"
+          }
+        }
+      },
+      "routes-manifest.json": {
+        "sha256": "54df4faba326fa6389b51dfd68efc2c3c276b292eac21ad6aa2e2028ab5d8c13",
+        "bytes": 9150,
+        "contents": {
+          "version": 3,
+          "pages404": true,
+          "appType": "app",
+          "caseSensitive": false,
+          "basePath": "/watch",
+          "redirects": [
+            {
+              "source": "/watch/",
+              "destination": "/watch",
+              "basePath": false,
+              "internal": true,
+              "priority": true,
+              "statusCode": 308,
+              "regex": "^/watch/$"
+            },
+            {
+              "source": "/:path+/",
+              "destination": "/:path+",
+              "internal": true,
+              "priority": true,
+              "statusCode": 308,
+              "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+            }
+          ],
+          "headers": [],
+          "onMatchHeaders": [],
+          "rewrites": {
+            "beforeFiles": [
+              {
+                "source": "/watch",
+                "destination": "/watch/en/en",
+                "regex": "^/watch(?:/)?$"
+              }
+            ],
+            "afterFiles": [],
+            "fallback": []
+          },
+          "dynamicRoutes": [
+            {
+              "page": "/demo-recommendations/[slug]/[locale]",
+              "regex": "^/demo\\-recommendations/([^/]+?)/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPslug": "nxtPslug",
+                "nxtPlocale": "nxtPlocale"
+              },
+              "namedRegex": "^/demo\\-recommendations/(?<nxtPslug>[^/]+?)/(?<nxtPlocale>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/preview/experience/[token]",
+              "regex": "^/preview/experience/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPtoken": "nxtPtoken"
+              },
+              "namedRegex": "^/preview/experience/(?<nxtPtoken>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/sitemap/[id]",
+              "regex": "^/sitemap/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPid": "nxtPid"
+              },
+              "namedRegex": "^/sitemap/(?<nxtPid>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]",
+              "regex": "^/([^/]+?)/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/404",
+              "regex": "^/([^/]+?)/([^/]+?)/404(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/404(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/history",
+              "regex": "^/([^/]+?)/([^/]+?)/history(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/history(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/languages",
+              "regex": "^/([^/]+?)/([^/]+?)/languages(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/languages(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/unavailable/404",
+              "regex": "^/([^/]+?)/([^/]+?)/unavailable/404(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/unavailable/404(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/videos/[languageSlug]",
+              "regex": "^/([^/]+?)/([^/]+?)/videos/([^/]+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang",
+                "nxtPlanguageSlug": "nxtPlanguageSlug"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/videos/(?<nxtPlanguageSlug>[^/]+?)(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/whats-new",
+              "regex": "^/([^/]+?)/([^/]+?)/whats\\-new(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/whats\\-new(?:/)?$"
+            },
+            {
+              "page": "/[locale]/[htmlLang]/[...rest]",
+              "regex": "^/([^/]+?)/([^/]+?)/(.+?)(?:/)?$",
+              "routeKeys": {
+                "nxtPlocale": "nxtPlocale",
+                "nxtPhtmlLang": "nxtPhtmlLang",
+                "nxtPrest": "nxtPrest"
+              },
+              "namedRegex": "^/(?<nxtPlocale>[^/]+?)/(?<nxtPhtmlLang>[^/]+?)/(?<nxtPrest>.+?)(?:/)?$"
+            }
+          ],
+          "staticRoutes": [
+            {
+              "page": "/_global-error",
+              "regex": "^/_global\\-error(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/_global\\-error(?:/)?$"
+            },
+            {
+              "page": "/_not-found",
+              "regex": "^/_not\\-found(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/_not\\-found(?:/)?$"
+            },
+            {
+              "page": "/api/auth/callback",
+              "regex": "^/api/auth/callback(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/callback(?:/)?$"
+            },
+            {
+              "page": "/api/auth/login",
+              "regex": "^/api/auth/login(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/login(?:/)?$"
+            },
+            {
+              "page": "/api/auth/logout",
+              "regex": "^/api/auth/logout(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/logout(?:/)?$"
+            },
+            {
+              "page": "/api/auth/session",
+              "regex": "^/api/auth/session(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/auth/session(?:/)?$"
+            },
+            {
+              "page": "/api/beta-tester-cta",
+              "regex": "^/api/beta\\-tester\\-cta(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/beta\\-tester\\-cta(?:/)?$"
+            },
+            {
+              "page": "/api/demo-search/generate",
+              "regex": "^/api/demo\\-search/generate(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/demo\\-search/generate(?:/)?$"
+            },
+            {
+              "page": "/api/download",
+              "regex": "^/api/download(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/download(?:/)?$"
+            },
+            {
+              "page": "/api/dynamic-collections",
+              "regex": "^/api/dynamic\\-collections(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/dynamic\\-collections(?:/)?$"
+            },
+            {
+              "page": "/api/language-options",
+              "regex": "^/api/language\\-options(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/language\\-options(?:/)?$"
+            },
+            {
+              "page": "/api/preview",
+              "regex": "^/api/preview(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/preview(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations",
+              "regex": "^/api/recommendations(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/content-actions",
+              "regex": "^/api/recommendations/content\\-actions(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/content\\-actions(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/evidence",
+              "regex": "^/api/recommendations/evidence(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/evidence(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/playback",
+              "regex": "^/api/recommendations/playback(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/playback(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/profile",
+              "regex": "^/api/recommendations/profile(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/profile(?:/)?$"
+            },
+            {
+              "page": "/api/recommendations/select",
+              "regex": "^/api/recommendations/select(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/recommendations/select(?:/)?$"
+            },
+            {
+              "page": "/api/revalidate",
+              "regex": "^/api/revalidate(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/revalidate(?:/)?$"
+            },
+            {
+              "page": "/api/watch-progress",
+              "regex": "^/api/watch\\-progress(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/api/watch\\-progress(?:/)?$"
+            },
+            {
+              "page": "/language-globe",
+              "regex": "^/language\\-globe(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/language\\-globe(?:/)?$"
+            },
+            {
+              "page": "/language-globe/not-found",
+              "regex": "^/language\\-globe/not\\-found(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/language\\-globe/not\\-found(?:/)?$"
+            },
+            {
+              "page": "/manifest.webmanifest",
+              "regex": "^/manifest\\.webmanifest(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/manifest\\.webmanifest(?:/)?$"
+            },
+            {
+              "page": "/robots.txt",
+              "regex": "^/robots\\.txt(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/robots\\.txt(?:/)?$"
+            },
+            {
+              "page": "/sitemap.xml",
+              "regex": "^/sitemap\\.xml(?:/)?$",
+              "routeKeys": {},
+              "namedRegex": "^/sitemap\\.xml(?:/)?$"
+            }
+          ],
+          "dataRoutes": [],
+          "rsc": {
+            "header": "rsc",
+            "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+            "prefetchHeader": "next-router-prefetch",
+            "didPostponeHeader": "x-nextjs-postponed",
+            "contentTypeHeader": "text/x-component",
+            "suffix": ".rsc",
+            "prefetchSegmentHeader": "next-router-segment-prefetch",
+            "prefetchSegmentSuffix": ".segment.rsc",
+            "prefetchSegmentDirSuffix": ".segments",
+            "clientParamParsing": false,
+            "dynamicRSCPrerender": false
+          },
+          "rewriteHeaders": {
+            "pathHeader": "x-nextjs-rewritten-path",
+            "queryHeader": "x-nextjs-rewritten-query"
+          }
+        }
+      },
+      "server/app-paths-manifest.json": {
+        "sha256": "6d0fbd74e29b0d6d0be4a0bc59782a2a6c819e7f4daafbcc334fa104669cfcd3",
+        "bytes": 2676,
+        "contents": {
+          "/(demo)/demo-recommendations/[slug]/[locale]/page": "app/(demo)/demo-recommendations/[slug]/[locale]/page.js",
+          "/(preview)/language-globe/not-found/page": "app/(preview)/language-globe/not-found/page.js",
+          "/(preview)/language-globe/page": "app/(preview)/language-globe/page.js",
+          "/(preview)/preview/experience/[token]/page": "app/(preview)/preview/experience/[token]/page.js",
+          "/[locale]/[htmlLang]/404/page": "app/[locale]/[htmlLang]/404/page.js",
+          "/[locale]/[htmlLang]/[...rest]/page": "app/[locale]/[htmlLang]/[...rest]/page.js",
+          "/[locale]/[htmlLang]/history/page": "app/[locale]/[htmlLang]/history/page.js",
+          "/[locale]/[htmlLang]/languages/page": "app/[locale]/[htmlLang]/languages/page.js",
+          "/[locale]/[htmlLang]/page": "app/[locale]/[htmlLang]/page.js",
+          "/[locale]/[htmlLang]/unavailable/404/page": "app/[locale]/[htmlLang]/unavailable/404/page.js",
+          "/[locale]/[htmlLang]/videos/[languageSlug]/page": "app/[locale]/[htmlLang]/videos/[languageSlug]/page.js",
+          "/[locale]/[htmlLang]/whats-new/page": "app/[locale]/[htmlLang]/whats-new/page.js",
+          "/_global-error/page": "app/_global-error/page.js",
+          "/_not-found/page": "app/_not-found/page.js",
+          "/api/auth/callback/route": "app/api/auth/callback/route.js",
+          "/api/auth/login/route": "app/api/auth/login/route.js",
+          "/api/auth/logout/route": "app/api/auth/logout/route.js",
+          "/api/auth/session/route": "app/api/auth/session/route.js",
+          "/api/beta-tester-cta/route": "app/api/beta-tester-cta/route.js",
+          "/api/demo-search/generate/route": "app/api/demo-search/generate/route.js",
+          "/api/download/route": "app/api/download/route.js",
+          "/api/dynamic-collections/route": "app/api/dynamic-collections/route.js",
+          "/api/language-options/route": "app/api/language-options/route.js",
+          "/api/preview/route": "app/api/preview/route.js",
+          "/api/recommendations/content-actions/route": "app/api/recommendations/content-actions/route.js",
+          "/api/recommendations/evidence/route": "app/api/recommendations/evidence/route.js",
+          "/api/recommendations/playback/route": "app/api/recommendations/playback/route.js",
+          "/api/recommendations/profile/route": "app/api/recommendations/profile/route.js",
+          "/api/recommendations/route": "app/api/recommendations/route.js",
+          "/api/recommendations/select/route": "app/api/recommendations/select/route.js",
+          "/api/revalidate/route": "app/api/revalidate/route.js",
+          "/api/watch-progress/route": "app/api/watch-progress/route.js",
+          "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+          "/robots.txt/route": "app/robots.txt/route.js",
+          "/sitemap.xml/route": "app/sitemap.xml/route.js",
+          "/sitemap/[id]/route": "app/sitemap/[id]/route.js"
+        }
+      }
+    },
+    "staticJavaScript": [
+      {
+        "path": "static/8Qv1-eYXTZ8RPGuhX6y8R/_buildManifest.js",
+        "bytes": 306,
+        "sha256": "5d158eff097dbb762c47082eedcbeb31b390199e8d99d2de99fd94bd542fbb31"
+      },
+      {
+        "path": "static/8Qv1-eYXTZ8RPGuhX6y8R/_clientMiddlewareManifest.js",
+        "bytes": 832,
+        "sha256": "4da8f43aac06958f418ac72c2fb9a4635d2e3f4278a5588bea294a5c6d00e7e7"
+      },
+      {
+        "path": "static/8Qv1-eYXTZ8RPGuhX6y8R/_ssgManifest.js",
+        "bytes": 321,
+        "sha256": "9c3eb086f9affee145693c67e0d5a8472add0b9d5bc5fd0b1d567727ad267e05"
+      },
+      {
+        "path": "static/chunks/0.1xnv-qqsq65.js",
+        "bytes": 35701,
+        "sha256": "676650bd09a943b7b202d3c577ae7ac74fbfbc3a00de2789e20b3f16ef9cae9d"
+      },
+      {
+        "path": "static/chunks/0014idrm.e4bl.js",
+        "bytes": 56322,
+        "sha256": "d355f42508a20d6ec5c32842552763405114b26706d0e6c99b2975b4445fe334"
+      },
+      {
+        "path": "static/chunks/0034vhl6amgyh.js",
+        "bytes": 36603,
+        "sha256": "134a48b07695ac518d40dd4956e3e5204625370655f8fa391b5a8f52251f1758"
+      },
+      {
+        "path": "static/chunks/00hdj5azjniut.js",
+        "bytes": 21256,
+        "sha256": "134791736bcad55f4657336ec90169be1b3ff1ec5da906fbc18598d2dafc4fa5"
+      },
+      {
+        "path": "static/chunks/00i57bm_fz_al.js",
+        "bytes": 150357,
+        "sha256": "df072748c98013359741be56b9774ece50e7ab2a5a1cb1310f4dabf9ed63bce1"
+      },
+      {
+        "path": "static/chunks/031k_xo6rmkdw.js",
+        "bytes": 30304,
+        "sha256": "0508db38f2621d59c52387bd9460b07a7c5c526029d77dab885a07c14bed112e"
+      },
+      {
+        "path": "static/chunks/031zm7-s7rw8e.js",
+        "bytes": 185,
+        "sha256": "8109648d06c99be7a55d391801f06ec4965da86d3f0f83b6d61e71473f8dd2fa"
+      },
+      {
+        "path": "static/chunks/03a6oftwuq-q..js",
+        "bytes": 186,
+        "sha256": "28f08386ecaca5a40fe05b9a5363146b98fcf1aee17a136eb0fdee0ce8c50879"
+      },
+      {
+        "path": "static/chunks/03x3j~h._4pn4.js",
+        "bytes": 46464,
+        "sha256": "9e9b2554b208001a215516bb7acfc8aba7733276cc31ccb46ab1c63e6310d43b"
+      },
+      {
+        "path": "static/chunks/03~yq9q893hmn.js",
+        "bytes": 112594,
+        "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683"
+      },
+      {
+        "path": "static/chunks/04_ug26-i6yo..js",
+        "bytes": 184,
+        "sha256": "dbc72835f6e0625d93f0fe4810b2aeaf8a70177ca5a596fe7a39f4030c2fd7d5"
+      },
+      {
+        "path": "static/chunks/05eo93z6hgxy3.js",
+        "bytes": 44069,
+        "sha256": "16592185cc631ca9226b84ab4f74f303ea4be67257e0f748771c4d39aba43826"
+      },
+      {
+        "path": "static/chunks/06-23t8u7qu8e.js",
+        "bytes": 12402,
+        "sha256": "95f36a96f98186438aa2b4e5363bc9e437b0f07d7e5263bf274642289327db9b"
+      },
+      {
+        "path": "static/chunks/06khuu30gq9uu.js",
+        "bytes": 27837,
+        "sha256": "a375c3570989f734bd397dfa5a2b97db87ba38d5df0bf245519f6b06e98aba6c"
+      },
+      {
+        "path": "static/chunks/06oc8~zlz_xgj.js",
+        "bytes": 39138,
+        "sha256": "3e2bd4393e37a17a3e74dfb92ab166ffef7db42daeb2a8fc02bc08e1a711b194"
+      },
+      {
+        "path": "static/chunks/06rdjl5bzc6kp.js",
+        "bytes": 25726,
+        "sha256": "158bbf3b1644b812fa25f071c791aeb5578f0194f08042b422d05b97fab41f5e"
+      },
+      {
+        "path": "static/chunks/06wv0l7eopr77.js",
+        "bytes": 47353,
+        "sha256": "40673fdd43e9975937c59c1ebfea43c01eb2c4d6986c1df8713510d163862f00"
+      },
+      {
+        "path": "static/chunks/08idhywyv8aen.js",
+        "bytes": 109353,
+        "sha256": "fe03e891d7710a850c76cd7aa8498be360e7212e07dbff1a32d29d3314a345ae"
+      },
+      {
+        "path": "static/chunks/08y_u~to.ur9s.js",
+        "bytes": 30275,
+        "sha256": "214970342fdddb6cbf60dfe12157ced5bcef194ef0a241491f07651d7fd701b7"
+      },
+      {
+        "path": "static/chunks/09-weg9bj752n.js",
+        "bytes": 186,
+        "sha256": "6a967f5e00fc41a4b6e6b76f4f7ca3af07b55a5e0336253127689867bb9de290"
+      },
+      {
+        "path": "static/chunks/0_08h85.e4alv.js",
+        "bytes": 50546,
+        "sha256": "3c27549cf10a105bb64e99ba5ff812d7782812a49aa0364da20b56f4b90a1891"
+      },
+      {
+        "path": "static/chunks/0_4f5x1.nfk1w.js",
+        "bytes": 279299,
+        "sha256": "d153e4687419fffa0814db2ca379df6df654b61299378a8d43e12b6c23606c26"
+      },
+      {
+        "path": "static/chunks/0_5r0sl5nmcl6.js",
+        "bytes": 43829,
+        "sha256": "be5cbee30bcb8f67c2fea085dd7a34478ccb1e100ee2b12fbdf0ead8b180fbed"
+      },
+      {
+        "path": "static/chunks/0_vl9fk74c85-.js",
+        "bytes": 1667,
+        "sha256": "e6d5844c93a235885b6f25983525b10764eaa58a3ba60ffa4c58cd017e16f168"
+      },
+      {
+        "path": "static/chunks/0akrpge3m_7zx.js",
+        "bytes": 226510,
+        "sha256": "596a738541c533819070ff48ecc0329e4a08c0ee03e9cada26ab898cdc54247b"
+      },
+      {
+        "path": "static/chunks/0ao8l_oxi~qk6.js",
+        "bytes": 47118,
+        "sha256": "8c8f0fbb10975bba765ad703ed31cafcf8a860cda1402db3a6319e200cc49738"
+      },
+      {
+        "path": "static/chunks/0b-03yj6wzrhg.js",
+        "bytes": 59222,
+        "sha256": "2b1c706a306a24347bd45bac0b181c684d43e5d90f1cca4f61b75c014d815b82"
+      },
+      {
+        "path": "static/chunks/0b.s4piuqaxi8.js",
+        "bytes": 186,
+        "sha256": "9dbf635ec237ef14d273bba407a3a8d1f2ba94172ef483fe74ae3a30db5e00ea"
+      },
+      {
+        "path": "static/chunks/0b1_t~u~qjivm.js",
+        "bytes": 429,
+        "sha256": "9357ade214c22ddde144f2e7ecaeb2439ec8b0686b8c0a020b6167ba1c6565a0"
+      },
+      {
+        "path": "static/chunks/0bsjgbw71dphg.js",
+        "bytes": 21406,
+        "sha256": "bc6559931940a924c5c2fa275837b15998078c94c190c8a26d5a7055673243a1"
+      },
+      {
+        "path": "static/chunks/0c8h_ds4ccgqm.js",
+        "bytes": 60074,
+        "sha256": "5a6c94f0e9de31d01c11ed8ec617aa1e92ab80e36745ca83551230ecea9ebf47"
+      },
+      {
+        "path": "static/chunks/0ccw2z7ibbzv5.js",
+        "bytes": 2583,
+        "sha256": "a2d9be034cb12b2c88569153e6e4baca4e44c32fcaf918e813f935addf7a5886"
+      },
+      {
+        "path": "static/chunks/0cjr_xd.-xnsn.js",
+        "bytes": 11729,
+        "sha256": "2ee1002b6978f08d34d9721534e88aebbe670b294ab99fd13fd6f3aa99a7a15a"
+      },
+      {
+        "path": "static/chunks/0cxv7nbydmz...js",
+        "bytes": 9425,
+        "sha256": "6e4f395258cf3bea3f487352e6745a07b18200410ba6d86b387abca2ccd37216"
+      },
+      {
+        "path": "static/chunks/0d-3-obtso0le.js",
+        "bytes": 39461,
+        "sha256": "af1c817370b086301d0edf9ce8f94ac44e64a9ec958eabacf1570de0e62cf947"
+      },
+      {
+        "path": "static/chunks/0dt-lhdzv8s9v.js",
+        "bytes": 5115,
+        "sha256": "4cac96386a2f12e62247e5558e085197dfddbca65369573e31b8bf2564ce4736"
+      },
+      {
+        "path": "static/chunks/0dwdog7wbz-4n.js",
+        "bytes": 3754,
+        "sha256": "11c2a6afe7c9a27c62b5d75fc53d6baee63e294c9239bf40545976b3486d7f75"
+      },
+      {
+        "path": "static/chunks/0dxr~-95na9h4.js",
+        "bytes": 12111,
+        "sha256": "c63bf0a8cf4231ae0e262245fc5e1f5d6c7044fa1502c5ed267e252e5ccf3a0c"
+      },
+      {
+        "path": "static/chunks/0eb0qrwttc2.n.js",
+        "bytes": 1843,
+        "sha256": "a11ac83062bae6aa12e77787ecc83fbf4950542f34888eaf15e2a29b1a222a30"
+      },
+      {
+        "path": "static/chunks/0eexbq3o5b17q.js",
+        "bytes": 153451,
+        "sha256": "ffc9a07ee37db8b2de1d7839c026781cb37d8e4b8f9eb85666da40d2c8bc2469"
+      },
+      {
+        "path": "static/chunks/0f_22mwk3c_za.js",
+        "bytes": 50546,
+        "sha256": "a1f5f85683bceed4c040af65ac853175d4c04762e23fd049dca2767bdeb2b928"
+      },
+      {
+        "path": "static/chunks/0g4.y.jidil9w.js",
+        "bytes": 13682,
+        "sha256": "2f74f1f86e4f73e79bfeb8afc4f1f5c5c0415d658031867ee71c4f6d75d4473e"
+      },
+      {
+        "path": "static/chunks/0gwj63x45lo8z.js",
+        "bytes": 54808,
+        "sha256": "4c2a12beabbb07bd766b2f2eb5e56cd317f7323cabe13dbe1688085f44f4a37c"
+      },
+      {
+        "path": "static/chunks/0iex07ufweap..js",
+        "bytes": 1355,
+        "sha256": "462e7045d4ce480895a3620a3eb2a558d83f09a524eefd50381f19a24c463328"
+      },
+      {
+        "path": "static/chunks/0jcf3si9.pgy8.js",
+        "bytes": 121382,
+        "sha256": "1d65d2dc34a878e1870bbfcc368150d932ef49bfaa65abe69a8d8425e2448774"
+      },
+      {
+        "path": "static/chunks/0jrax7kzi70dm.js",
+        "bytes": 186,
+        "sha256": "962c79e0c24e834324123be6660ed556b2b9895f4537880d8e3452c96c651bbf"
+      },
+      {
+        "path": "static/chunks/0k5-~-9v5.6kt.js",
+        "bytes": 185,
+        "sha256": "adf639d3bc9f31b0dc71fee3843e165f1e8e271bb475d28ea2e64f25f4c475d6"
+      },
+      {
+        "path": "static/chunks/0l_0y_zh7i1t-.js",
+        "bytes": 1554,
+        "sha256": "a405f19b0921e02dea9dca3f79bcd841c040f40ad4b6c6d2ba2916350fd05aae"
+      },
+      {
+        "path": "static/chunks/0lnzhty7inhqi.js",
+        "bytes": 67399,
+        "sha256": "20cea5297fd97042a3e5231bf131bfa310895e8be0bcfa49bc40f33550b11839"
+      },
+      {
+        "path": "static/chunks/0lwg251n0cl~d.js",
+        "bytes": 10204,
+        "sha256": "6ad9e829c2bfdfff8b2c0805637675c4427d96178a23cdd25f43e28b4d699fea"
+      },
+      {
+        "path": "static/chunks/0m3.yzm.a~2x0.js",
+        "bytes": 36781,
+        "sha256": "f8791a04804086199eda26e9a65fbcfac5dc665822480bc66cb04980936b842f"
+      },
+      {
+        "path": "static/chunks/0nao380fe4otg.js",
+        "bytes": 43800,
+        "sha256": "b9b8b84b971c08c782beed7bfe660d6dabe38558e3d610e80159d78a8a693745"
+      },
+      {
+        "path": "static/chunks/0nbz.2q9qr.4n.js",
+        "bytes": 47118,
+        "sha256": "87c8007956e6b946fdeb7045f5b8ed238bafaba37d8a3239905addc7cefdda86"
+      },
+      {
+        "path": "static/chunks/0o2pwbnfwwxve.js",
+        "bytes": 11090,
+        "sha256": "4e85b944ec058c9dcd34c5f705084bc86082fd2423a1c3b6d0240a39897f43d2"
+      },
+      {
+        "path": "static/chunks/0ob0ormzk23-b.js",
+        "bytes": 1842,
+        "sha256": "c2243c4f62d11beda9e86b61f42bd13554881b8e21888df6673080cc7a1be364"
+      },
+      {
+        "path": "static/chunks/0og63unj1_v7~.js",
+        "bytes": 9377,
+        "sha256": "379b3eae71b30d0de41c99ad0092af52c2fcf85b12611b127f6fca3fb8cf1ad9"
+      },
+      {
+        "path": "static/chunks/0ol1.r66yaom1.js",
+        "bytes": 756,
+        "sha256": "881194293a0769f1484b399761f1c9f0399809d74d489b726223964dc8ae50f5"
+      },
+      {
+        "path": "static/chunks/0p8w.5yqpy7ub.js",
+        "bytes": 56314,
+        "sha256": "91fccac057238bf06bd050a9797cc0924692e6396ff3bafba73c9dcbdf6c8455"
+      },
+      {
+        "path": "static/chunks/0pf~40okpq9z2.js",
+        "bytes": 26798,
+        "sha256": "81ad662ef642cfb82f7ff1b476db4b22959f8f252aa5acbca1a133b8d3797907"
+      },
+      {
+        "path": "static/chunks/0pq9mnf5swp28.js",
+        "bytes": 186,
+        "sha256": "d0945fe3425f997c5e1a7c77e4936436dbc2b70e3f04dac9ae2d8012ba289776"
+      },
+      {
+        "path": "static/chunks/0qslgpffe70e1.js",
+        "bytes": 26279,
+        "sha256": "de180ed9f1244992c69e37c91d73c730ebf7b0bc4378dad92bbeb26794d73500"
+      },
+      {
+        "path": "static/chunks/0rb18fy12zahm.js",
+        "bytes": 114100,
+        "sha256": "2128ad98b7c96ab63cf81e5ec0c99eb3c17861f7177dddbec6fdf350e96556c9"
+      },
+      {
+        "path": "static/chunks/0s5g3mqtbkg8p.js",
+        "bytes": 60103,
+        "sha256": "895dd7a59ee948c2246b23ae858697f8e4b31b9223eeb1b38bdf3ba414ba9785"
+      },
+      {
+        "path": "static/chunks/0sa.g9f2_173c.js",
+        "bytes": 186,
+        "sha256": "b85686488bfd60488c31e16447f9f6b519e97bdfd2e493b82db46808ae12f1f7"
+      },
+      {
+        "path": "static/chunks/0skdw43gx10qo.js",
+        "bytes": 25440,
+        "sha256": "69c66562e91ad9fbb288fb7deb88125064d3fbee8a84ba7dfc59d9cb2f9d51c3"
+      },
+      {
+        "path": "static/chunks/0sur_tz5ej_ru.js",
+        "bytes": 646759,
+        "sha256": "a0e80e34434f1a4846bd75d3ca3cd0e1bfbf2f3a7e91166ce9ec7e27b53bbef4"
+      },
+      {
+        "path": "static/chunks/0sxoss4f.wa1f.js",
+        "bytes": 186,
+        "sha256": "9bc6dfeaa0e83e01b850dd4652653aa172dade563dfc87df627d1cd07b3517bc"
+      },
+      {
+        "path": "static/chunks/0tg5y9duwp8rb.js",
+        "bytes": 113815,
+        "sha256": "db9b6a55d8bd8af616c3e4100c29d40a2a42ab2046c9356114c811149324b745"
+      },
+      {
+        "path": "static/chunks/0tvl1m-9_oyad.js",
+        "bytes": 46435,
+        "sha256": "2f3f8b0be20bac6e28fadf8b77de93332a033de3f8267dd508ef9c2f767262f1"
+      },
+      {
+        "path": "static/chunks/0u9du50_gmq9w.js",
+        "bytes": 40504,
+        "sha256": "ff2f0efe01d4b9255c226a85eb7e88982fd3af97061fb2f9377424da57c817b9"
+      },
+      {
+        "path": "static/chunks/0udhag.wppe6x.js",
+        "bytes": 36094,
+        "sha256": "865cb737081d4124c9c3138aa97ab9e808707d1e63696dd75dec759918542356"
+      },
+      {
+        "path": "static/chunks/0u~f3a7bm~h0q.js",
+        "bytes": 38564,
+        "sha256": "0f79afd69814559f2da09facf5ec99be43174d6063fe9cad7393b5f6be5c1d85"
+      },
+      {
+        "path": "static/chunks/0vjm4ddi61c3s.js",
+        "bytes": 6992,
+        "sha256": "f19b26f20f26d119de56aa137c7092445a9765d87225b0c3585fcd60e4a9433e"
+      },
+      {
+        "path": "static/chunks/0vn2c8fpvl-jc.js",
+        "bytes": 184,
+        "sha256": "dfc1fe67e00dbab55fba64d769bfed6e8887dc1030dc6a2278dc55dd50c2487d"
+      },
+      {
+        "path": "static/chunks/0vtoi~cw9nt17.js",
+        "bytes": 164567,
+        "sha256": "5f6f421e45f4ae70aa8018a232c979064b245452f141c489cf0758fd6f90600d"
+      },
+      {
+        "path": "static/chunks/0wophef7e00h1.js",
+        "bytes": 21890,
+        "sha256": "5d0ed9d70331e52693ccc5055b81e8d9051d9caa14edd830535d8ce9bef18b4f"
+      },
+      {
+        "path": "static/chunks/0x~0aab0rofok.js",
+        "bytes": 3423,
+        "sha256": "afbd86e81e16f72ef8c49900ef09e80e52a01456b14a7cbbdd23df840b204d48"
+      },
+      {
+        "path": "static/chunks/0y5hvw.xobj1d.js",
+        "bytes": 109380,
+        "sha256": "4f104245d5e8d6773865ecadd982ecd42640c7c568d5ae855b44440006a11adb"
+      },
+      {
+        "path": "static/chunks/0zv1xakohg2w~.js",
+        "bytes": 24091,
+        "sha256": "de81d309bee50a33ce61f7ae01a22a85ceb11fe99aae062573013d2f858bd5cb"
+      },
+      {
+        "path": "static/chunks/0zy1kxa-8kfah.js",
+        "bytes": 186,
+        "sha256": "d571676bdf42729244566565f2945fd74447552b73b7570a33408707260b57a2"
+      },
+      {
+        "path": "static/chunks/10bvbypzawo2b.js",
+        "bytes": 35624,
+        "sha256": "ff3fedef849f9c91202da055ad9717cd7696f3af07ecc263bf112bcd6dd133fb"
+      },
+      {
+        "path": "static/chunks/10g5o6x6oww35.js",
+        "bytes": 16378,
+        "sha256": "bbf395c0862f6050042ff03b6ac3a30a4a5153e51f0c1d8a4c4031b39959c167"
+      },
+      {
+        "path": "static/chunks/115b8obz062vu.js",
+        "bytes": 18931,
+        "sha256": "318fd8e2f8eea1fccb8843ac38c453a4c61a7baa52441f8259248395750cb82b"
+      },
+      {
+        "path": "static/chunks/11jsjg53ncffy.js",
+        "bytes": 4471,
+        "sha256": "4bb2ae446caeddbda188e20cd383feddc9610c605f1cec432491b3a5709b8945"
+      },
+      {
+        "path": "static/chunks/11xcfr-rqakfm.js",
+        "bytes": 40269,
+        "sha256": "ecfcc4ddc6015165ad15b6199be6b9b4486b04342e37880c16b0fcd7e8a4e0a2"
+      },
+      {
+        "path": "static/chunks/13ap9m_li913q.js",
+        "bytes": 25889,
+        "sha256": "4e431000f839bcc75ea03c97a664da62830320b1698141975751e808cad72d2e"
+      },
+      {
+        "path": "static/chunks/13n4x_wmp5f_6.js",
+        "bytes": 2304,
+        "sha256": "192c6fef7135759270e60af62d0563b518fadc43a5c7aee62f1dc503b464f485"
+      },
+      {
+        "path": "static/chunks/14pae1_hsf7hc.js",
+        "bytes": 32225,
+        "sha256": "e67aeca46223b9a5367092d3c7c4dc3b4e4887d3593919dffb22f181425abce3"
+      },
+      {
+        "path": "static/chunks/16yxatg7hy0pz.js",
+        "bytes": 465426,
+        "sha256": "057da06f217b91ace1b3e5d692004aa468ecff2946603203ac1da211bc44d2e4"
+      },
+      {
+        "path": "static/chunks/171.f~m78ui0_.js",
+        "bytes": 42121,
+        "sha256": "ccf6422ca67b036e3dea557d01877680de2f39fc815df858fde5701f69008b9e"
+      },
+      {
+        "path": "static/chunks/17a32vplz3cr..js",
+        "bytes": 26595,
+        "sha256": "a89c1a6f27ad88c31bb812e9166fcae0415c48b289dcc379a41c1e340510be8a"
+      },
+      {
+        "path": "static/chunks/17lhsu585rc5v.js",
+        "bytes": 30400,
+        "sha256": "5d2bf6d609a64f2f5764ad19ab5ffbe77c007c4d24b46434a7a14c20916fdb4a"
+      },
+      {
+        "path": "static/chunks/17y4rnd~pxwpa.js",
+        "bytes": 54961,
+        "sha256": "c944c3d0f9c201603d711a8eb10ce249a81213ef28dfee5b6a41a8d9fae884c9"
+      },
+      {
+        "path": "static/chunks/182gzrs_g9cnf.js",
+        "bytes": 780,
+        "sha256": "87a53db5f20670f2e837c9bab362ced29a8d818e251076069a8e2e3b4a9e3616"
+      },
+      {
+        "path": "static/chunks/18d8pdhqzv5cb.js",
+        "bytes": 185,
+        "sha256": "bacda77bd0b27cae32d6ccbed6402f9f692b2bae1c610744e49f6bdfa927fcd2"
+      },
+      {
+        "path": "static/chunks/turbopack-0r~_5y3c-zj7q.js",
+        "bytes": 10663,
+        "sha256": "ea57b31c51096ffe0234d997e89dad60dff1feca650908ef4346ecb3599ad4e2"
+      }
+    ],
+    "totalStaticJsBytes": 4699475,
+    "qualification": "Output inventory, not per-route transferred bytes, hydration or deployed loading proof. Admin build uses declared local font CSS response fixture; Web uses declared local configuration."
+  }
+}

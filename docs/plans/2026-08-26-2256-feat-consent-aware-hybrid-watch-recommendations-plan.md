@@ -14,6 +14,8 @@ deepened: 2026-08-26
 
 # Consent-Aware Hybrid Watch Recommendations - Plan
 
+> **Superseded operating model (post-#2137):** This implementation-era plan preserves historical rationale, but its cookie-banner, bounded-assignment, shadow-authorization, and promotion-gate instructions no longer describe ordinary production delivery. Current `main` establishes personalization automatically, provides persistent reset/withdraw/delete controls, authorizes published profiles directly without requiring an experiment assignment, and records actual execution mode plus optional historical assignment evidence. The canonical plan's amended U30 contract is authoritative.
+
 ## Goal Capsule
 
 - **Objective:** Every eligible Watch page shows a useful six-item contextual slate when catalogue capacity permits, and viewers who accept recommendation personalization receive a profile-informed cross-visit slate whose incremental relevance can be evaluated against the semantic control and whose influence and outcomes are reconcilable in Admin.

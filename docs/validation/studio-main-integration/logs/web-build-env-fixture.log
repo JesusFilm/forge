@@ -1,0 +1,76 @@
+(node:780929) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/web@0.0.1 build /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web
+> pnpm run generate:ui-locales && next build && pnpm run prune:next-isr
+
+
+> @forge/web@0.0.1 generate:ui-locales /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web
+> node scripts/generate-ui-locales.mjs
+
+▲ Next.js 16.2.4 (Turbopack)
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 48s
+  Running TypeScript ...
+  Finished TypeScript in 53s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/10) ...
+  Generating static pages using 7 workers (2/10) 
+  Generating static pages using 7 workers (4/10) 
+  Generating static pages using 7 workers (7/10) 
+[watch] event=watch_seo_manifest.fetch.error detail=Dynamic_server_usage:_Route_/sitemap.xml_couldn_t_be_rendered_statically_because_it_used_revalidate:_0_fetch_http://127.0.0.1:55469/graphql/api/watch-seo-manifest_/sitemap.xml._See_more_info_here:_https://nextjs.org/docs/messages/dynamic-server-error url=http://127.0.0.1:55469/graphql/api/watch-seo-manifest
+✓ Generating static pages using 7 workers (10/10) in 344ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+├ ○ /[locale]/[htmlLang]
+├ ○ /[locale]/[htmlLang]/[...rest]
+├ ƒ /[locale]/[htmlLang]/404
+├ ƒ /[locale]/[htmlLang]/history
+├ ○ /[locale]/[htmlLang]/languages
+├ ƒ /[locale]/[htmlLang]/unavailable/404
+├ ○ /[locale]/[htmlLang]/videos/[languageSlug]
+├ ○ /[locale]/[htmlLang]/whats-new
+├ ƒ /api/auth/callback
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/session
+├ ƒ /api/beta-tester-cta
+├ ƒ /api/demo-search/generate
+├ ƒ /api/download
+├ ƒ /api/dynamic-collections
+├ ƒ /api/language-options
+├ ƒ /api/preview
+├ ƒ /api/recommendations
+├ ƒ /api/recommendations/content-actions
+├ ƒ /api/recommendations/evidence
+├ ƒ /api/recommendations/playback
+├ ƒ /api/recommendations/profile
+├ ƒ /api/recommendations/select
+├ ƒ /api/revalidate
+├ ƒ /api/watch-progress
+├ ƒ /demo-recommendations/[slug]/[locale]
+├ ○ /language-globe
+├ ○ /language-globe/not-found
+├ ○ /manifest.webmanifest
+├ ƒ /preview/experience/[token]
+├ ○ /robots.txt
+├ ƒ /sitemap.xml
+└ ƒ /sitemap/[id]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> @forge/web@0.0.1 prune:next-isr /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web
+> node scripts/prune-next-isr-output.mjs
+
+Pruned concrete ISR output for 225 UI locale(s) from /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/web/.next/server/app

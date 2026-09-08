@@ -11,6 +11,7 @@ describe("maintenance command arguments", () => {
     expect(parseAcquireArgs(["--source", "cru"])).toEqual({
       all: false,
       source: "cru",
+      pathPrefix: undefined,
       dryRun: true,
       resume: false,
       apply: false,
@@ -54,6 +55,30 @@ describe("maintenance command arguments", () => {
         "100",
       ]),
     ).toMatchObject({ apply: true, limit: 100 })
+  })
+
+  it("requires a source and an unambiguous directory for path scopes", () => {
+    for (const parse of [parseAcquireArgs, parseIndexArgs]) {
+      expect(
+        parse(["--source", "gotquestions", "--path-prefix", "/islenska/"]),
+      ).toMatchObject({ pathPrefix: "/islenska/" })
+      for (const prefix of [
+        "/",
+        "//evil/",
+        "/islenska",
+        "/islenska/../",
+        "/is_foo/",
+        "/is%25/",
+        "/is/?q=x",
+      ]) {
+        expect(() =>
+          parse(["--source", "gotquestions", "--path-prefix", prefix]),
+        ).toThrow(/directory path/)
+      }
+      expect(() => parse(["--all", "--path-prefix", "/islenska/"])).toThrow(
+        /requires --source/,
+      )
+    }
   })
 
   it("makes sweep and revert read-only unless apply is explicit", () => {

@@ -30,6 +30,9 @@ const migrationSql = [
   "0069_recommendation_hybrid_composition",
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
+  "0072_recommendation_source_neutral_playback_episodes",
+  "0075_recommendation_selection_attribution_eligibility",
+  "0076_recommendation_profile_eligibility_reconciliation",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -136,6 +139,36 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ],
       )
       return { requestId, itemId, selectionId, episodeId }
+    }
+
+    async function markSelectionAttributionEligible(
+      graph: Awaited<ReturnType<typeof insertLifecycleGraph>>,
+      occurredAt: string,
+    ): Promise<void> {
+      await client.query(
+        `INSERT INTO recommendation_impression (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, visibility_policy, occurred_at, received_at,
+          expires_at
+        ) VALUES ($1, $2, $3, $4, $5, $6,
+          'visibility-qualified', $7, $7, $8)`,
+        [
+          `${graph.selectionId}-impression`,
+          graph.requestId,
+          graph.itemId,
+          `${graph.selectionId}-impression-jti`,
+          `${graph.selectionId}-impression-event`,
+          digest(`${graph.selectionId}-impression`),
+          occurredAt,
+          expiresAt,
+        ],
+      )
+      await client.query(
+        `UPDATE recommendation_selection
+         SET attribution_eligible_at = $1
+         WHERE id = $2`,
+        [occurredAt, graph.selectionId],
+      )
     }
 
     beforeAll(async () => {
@@ -532,13 +565,36 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         ],
       )
+      await client.query("COMMIT")
+
+      await expect(
+        client.query(
+          `UPDATE recommendation_playback_fact
+           SET payload = '{"changed":true}'::jsonb WHERE id = 'append-only-fact'`,
+        ),
+      ).rejects.toThrow("recommendation fact/revision is append only")
+      await expect(
+        client.query(
+          `UPDATE recommendation_outcome_revision
+           SET qualified_view = true WHERE id = 'append-only-outcome'`,
+        ),
+      ).rejects.toThrow("recommendation fact/revision is append only")
+    })
+
+    it("executes eligibility projection against PostgreSQL without mutating its immutable outcome", async () => {
+      await client.query("BEGIN")
       const preGrant = await insertLifecycleGraph(
         "eligibility-projection-pre-grant",
+      )
+      await markSelectionAttributionEligible(
+        preGrant,
+        "2026-08-19T03:00:00.000Z",
       )
       await client.query(
         `UPDATE recommendation_playback_episode
          SET media_id = 'eligibility-projection-pre-grant-video',
-           session_digest = $1
+           session_digest = $1, state = 'finalized',
+           finalized_at = '2026-08-26T00:00:00.000Z'
          WHERE id = $2`,
         ["d".repeat(64), preGrant.episodeId],
       )
@@ -563,30 +619,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expiresAt,
         ],
       )
-      await client.query("COMMIT")
-
-      await expect(
-        client.query(
-          `UPDATE recommendation_playback_fact
-           SET payload = '{"changed":true}'::jsonb WHERE id = 'append-only-fact'`,
-        ),
-      ).rejects.toThrow("recommendation fact/revision is append only")
-      await expect(
-        client.query(
-          `UPDATE recommendation_outcome_revision
-           SET qualified_view = true WHERE id = 'append-only-outcome'`,
-        ),
-      ).rejects.toThrow("recommendation fact/revision is append only")
-    })
-
-    it("executes eligibility projection against PostgreSQL without mutating its immutable outcome", async () => {
-      await client.query("BEGIN")
       const graph = await insertLifecycleGraph("eligibility-projection")
       await client.query(
         `UPDATE recommendation_playback_episode
-         SET media_id = 'eligibility-projection-video', session_digest = $1
+         SET media_id = 'eligibility-projection-video', session_digest = $1,
+           state = 'finalized', finalized_at = '2026-08-25T02:00:00.000Z'
          WHERE id = $2`,
-        ["f".repeat(64), graph.episodeId],
+        ["a".repeat(64), graph.episodeId],
       )
       // This source starts after the durable consent watermark used below.
       // The pre-grant fixture above deliberately keeps its August 19
@@ -597,6 +636,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
          WHERE id = $1`,
         [graph.selectionId],
       )
+      await markSelectionAttributionEligible(graph, "2026-08-25T01:00:00.000Z")
       await client.query(
         `UPDATE recommendation_playback_episode
          SET claimed_at = '2026-08-25T01:00:01.000Z'
@@ -648,7 +688,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         })
         await expect(
           service.classifyPlaybackOutcome("eligibility-projection-outcome"),
-        ).resolves.toMatchObject({ revision: 2, state: "eligible" })
+        ).resolves.toMatchObject({ revision: 1, state: "eligible" })
         await expect(
           service.classifyPlaybackOutcome(
             "eligibility-projection-pre-grant-outcome",
@@ -681,6 +721,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(eligible.durable).toEqual([
           expect.objectContaining({
             sourceId: "eligibility-projection-outcome",
+            targetMediaId: "eligibility-projection-video",
             eligibilityPolicyVersion: "recommendation-integrity-v1",
             outcomeClassifierVersion: "active-watch-proxy-v1",
             sourceExpiresAt: new Date(expiresAt),
@@ -700,7 +741,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await expect(
           service.classifyPlaybackOutcome("eligibility-projection-outcome"),
         ).resolves.toMatchObject({
-          revision: 3,
+          revision: 2,
           state: "excluded",
           reasonCodes: ["promotion_rollback"],
           eligibleScopes: [],
@@ -765,8 +806,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(result.rows).toEqual([
         {
           source_eligible: false,
-          revisions: [1, 2, 3],
-          current_flags: [false, false, true],
+          revisions: [1, 2],
+          current_flags: [false, true],
         },
       ])
     })

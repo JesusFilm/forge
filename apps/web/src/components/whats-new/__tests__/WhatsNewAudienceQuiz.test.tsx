@@ -131,4 +131,22 @@ describe("WhatsNewAudienceQuiz", () => {
     setGuess(7)
     expect(q("value")?.textContent).toBe("7%")
   })
+
+  it("wears no box of its own", () => {
+    // Removed on request: beside the audience card it read as a second
+    // card of equal weight competing with the one the question is about.
+    // Listed explicitly rather than snapshotted so a re-added frame fails
+    // here by name.
+    const quiz = container.querySelector('[data-testid="whats-new-quiz"]')
+
+    for (const token of [
+      "rounded-3xl",
+      "border",
+      "backdrop-blur",
+      "bg-[linear-gradient",
+      "p-6",
+    ]) {
+      expect(quiz?.className, token).not.toContain(token)
+    }
+  })
 })

@@ -1,0 +1,12 @@
+apps/admin/src/instrumentation.ts 181ms (unchanged)
+apps/admin/src/instrumentation.test.ts 93ms
+apps/admin/src/services/typesense-watch-search-transcript-publication.db.test.ts 429ms
+apps/web/src/components/watch/CollectionDownloadModal.tsx 101ms (unchanged)
+apps/web/src/components/watch/HeroPlayer.tsx 155ms (unchanged)
+apps/web/src/components/whats-new/WatchWhatsNewPage.tsx 100ms (unchanged)
+apps/web/src/proxy.test.ts 133ms (unchanged)
+apps/web/src/lib/watch-home.ts 67ms (unchanged)
+apps/web/src/lib/watch-home.test.ts 6ms
+apps/web/src/components/home/WatchHomeTvCarousel.tsx 63ms (unchanged)
+apps/web/src/components/home/__tests__/WatchHomePage.test.tsx 159ms
+docs/plans/2026-09-09-studio-main-integration.md 33ms (unchanged)

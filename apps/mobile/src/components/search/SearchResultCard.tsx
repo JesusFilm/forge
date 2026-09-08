@@ -1,14 +1,26 @@
-import { useCallback, useEffect, useRef } from "react"
+import { memo, useCallback, useEffect, useRef } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 
 import type { SearchResult } from "../../lib/queries"
-import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
+import { SURFACE_COLOR } from "../../lib/color"
+import { card as cardStyle } from "../../styles/shared"
+import { useTypography } from "../../hooks/useTypography"
+import { buildMetaLabel } from "../../lib/watchHome/model"
+import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { ExperienceFallback } from "./ExperienceFallback"
+import { SearchPreviewImage } from "./SearchPreviewImage"
 import { WatchProgressBar } from "../watch/WatchProgressBar"
 import { ENTRANCE_DURATION_MS } from "./searchEntrance"
+import {
+  SEARCH_CARD_GAP_X,
+  SEARCH_CARD_GAP_Y,
+  SEARCH_CARD_RADIUS,
+  SEARCH_CARD_TEXT_HEIGHT,
+  SEARCH_CARD_TITLE_MAX_SCALE,
+  SEARCH_THUMB_ASPECT,
+} from "./searchCardLayout"
 
 type SearchResultCardProps = {
   result: SearchResult
@@ -19,16 +31,30 @@ type SearchResultCardProps = {
   onPressIn?: (result: SearchResult) => void
   /** Fired once this card has been laid out, so the caller knows it is on screen. */
   onAppear?: () => void
+  /** True while this card holds the grid's single preview turn. */
+  previewActive?: boolean
 }
 
-export function SearchResultCard({
+export const SearchResultCard = memo(function SearchResultCard({
   result,
   entranceDelay = 0,
   onSelect,
   onPressIn,
   onAppear,
+  previewActive = false,
 }: SearchResultCardProps) {
   const validatedImageUrl = resolveImageUrl(result.imageUrl)
+  const typography = useTypography()
+  // Two rules here. Empty `label`: a search chip shows a duration or an
+  // episode count and nothing else. childCount only counts for a real series
+  // — a feature film owns its chapter clips (JESUS has 61, and would
+  // otherwise read "61 episodes" instead of its runtime).
+  const metaLabel =
+    buildMetaLabel({
+      label: "",
+      durationSeconds: result.durationSeconds,
+      childCount: isSeriesSearchResult(result) ? (result.childCount ?? 0) : 0,
+    }) || null
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.92)).current
   // Pinned at mount: appending a later page shifts this card's position, and a
@@ -72,11 +98,13 @@ export function SearchResultCard({
         onPress={() => onSelect(result)}
         onPressIn={onPressIn ? () => onPressIn(result) : undefined}
         accessibilityRole="button"
-        accessibilityLabel={`${result.title}: ${result.snippet}`}
+        accessibilityLabel={[result.title, metaLabel]
+          .filter(Boolean)
+          .join(", ")}
         // KTD10: a stable RUM action name so trackInteractions doesn't derive it
-        // from accessibilityLabel (which leaks the title + snippet into telemetry).
+        // from accessibilityLabel (which would leak the title into telemetry).
         {...{ "dd-action-name": "search-result" }}
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        style={({ pressed }) => (pressed ? styles.cardPressed : undefined)}
       >
         <View style={styles.thumbnailContainer}>
           {validatedImageUrl ? (
@@ -87,54 +115,64 @@ export function SearchResultCard({
               recyclingKey={`search-${result.id}`}
             />
           ) : result.type === "EXPERIENCE" ? (
-            <ExperienceFallback slug={result.slug} title={result.title} />
+            <ExperienceFallback slug={result.slug} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
               <Text style={styles.placeholderIcon}>▶</Text>
             </View>
           )}
 
-          <LinearGradient
-            colors={[hexToRgba(BLACK, 0), "rgba(0,0,0,0.25)", BLACK]}
-            locations={[0, 0.5, 1]}
-            style={StyleSheet.absoluteFill}
+          {/* Always mounted, renders null until its turn: the component owns
+              its own fade-out, so a conditional mount would cut it short. */}
+          <SearchPreviewImage
+            playbackId={result.playbackId}
+            recyclingKey={`search-preview-${result.id}`}
+            active={previewActive}
           />
 
           {result.type === "VIDEO" ? (
             <WatchProgressBar videoId={result.id} />
           ) : null}
 
-          <View style={styles.textOverlay}>
-            <Text style={styles.title} numberOfLines={2}>
-              {result.title}
-            </Text>
-            {result.snippet ? (
-              <Text style={styles.snippet} numberOfLines={2}>
-                {result.snippet}
+          {metaLabel != null && (
+            <View style={cardStyle.badge}>
+              <Text style={[cardStyle.badgeText, typography.caption]}>
+                {metaLabel}
               </Text>
-            ) : null}
-          </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.textBlock}>
+          <Text
+            style={styles.title}
+            numberOfLines={2}
+            maxFontSizeMultiplier={SEARCH_CARD_TITLE_MAX_SCALE}
+          >
+            {result.title}
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   cardOuter: {
     flex: 1,
-    margin: 6,
-  },
-  card: {
-    borderRadius: 16,
-    overflow: "hidden",
+    marginHorizontal: SEARCH_CARD_GAP_X,
+    marginVertical: SEARCH_CARD_GAP_Y,
   },
   cardPressed: {
     opacity: 0.85,
   },
+  // The thumbnail is the only surface: it carries the rounding and the
+  // clip, so the title below sits on the page background.
   thumbnailContainer: {
-    aspectRatio: 4 / 3,
+    aspectRatio: SEARCH_THUMB_ASPECT,
     width: "100%",
+    borderRadius: SEARCH_CARD_RADIUS,
+    overflow: "hidden",
     backgroundColor: SURFACE_COLOR,
   },
   placeholder: {
@@ -146,25 +184,17 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: "rgba(255,255,255,0.3)",
   },
-  textOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 12,
-    gap: 4,
+  textBlock: {
+    height: SEARCH_CARD_TEXT_HEIGHT,
+    paddingTop: 8,
   },
   title: {
     color: "#ffffff",
     fontFamily: "System",
     fontWeight: "700",
     fontSize: 14,
-    lineHeight: 18,
-  },
-  snippet: {
-    color: TEXT_BODY,
-    fontFamily: "System",
-    fontSize: 12,
-    lineHeight: 16,
+    // Paired with SEARCH_CARD_TEXT_HEIGHT — raising this without raising that
+    // clips the second line's descenders against the fixed block.
+    lineHeight: 20,
   },
 })

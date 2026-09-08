@@ -355,7 +355,45 @@ describe("searchByExactTitle", () => {
       resultId: "vid-1",
       videoTitle: "The Bible Project",
       titleLength: 17,
+      titleMatched: true,
+      curated: false,
+      curationPosition: null,
     })
+  })
+
+  it("returns exact normalized editorial curation targets with their marker", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "video-rescue-intro",
+        video_core_id: "13_0-RPGospelIntro",
+        video_slug: "rescue-project-introduction",
+        video_title: "Rescue Project Introduction",
+        description: "A Visual Vernacular introduction.",
+        title_length: 27,
+        title_matched: false,
+        curated: true,
+        curation_position: 1,
+      },
+    ])
+
+    const rows = await searchByExactTitle(prisma, {
+      query: "  Rescue   Project  ",
+      locale: "en",
+      limit: 20,
+    })
+
+    expect(rows[0]).toMatchObject({
+      resultId: "video-rescue-intro",
+      videoCoreId: "13_0-RPGospelIntro",
+      titleMatched: false,
+      curated: true,
+      curationPosition: 1,
+    })
+    const callArgs = prisma.$queryRaw.mock.calls[0]
+    const [strings] = callArgs as [TemplateStringsArray]
+    expect(strings.join("?")).toMatch(/watch_search_curation_alias/)
+    expect(strings.join("?")).toMatch(/normalized_query/)
+    expect(callArgs).toContain("rescue project")
   })
 
   it("short-circuits to [] on empty / pure-punctuation queries", async () => {
@@ -390,12 +428,12 @@ describe("searchByExactTitle", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     // Tagged-template `prisma.$queryRaw\`...\`` passes the cooked
     // strings as the 0th arg and bound values as positional args after.
-    // Our query has three positional bindings:
-    //   ${ilikeChain}  ${locale}  ${limit}
+    // Our query has five positional bindings:
+    //   ${ilikeChain}  ${locale}  ${locale}  ${normalizedQuery}  ${limit}
     // — `Prisma.join` collapses the 16 ILIKE clauses into one bound
-    // expression. So the call should have 1 + 3 args total.
+    // expression. So the call should have 1 + 5 args total.
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    expect(callArgs.length - 1).toBe(3)
+    expect(callArgs.length - 1).toBe(5)
     // The first bound positional is the `Prisma.Sql` from `Prisma.join`,
     // which exposes the constituent values. Each of those is one wrapped
     // ILIKE pattern. Cap holds: exactly 16 entries.

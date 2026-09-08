@@ -11,9 +11,11 @@ function operatorAcceptanceBundle(overrides: Record<string, unknown> = {}) {
     status: "OPERATOR_ACCEPTED",
     identity: {
       generationId: "candidate-1",
-      applicationRevision: "watch-search-candidate/v3",
+      indexContractRevision: "watch-search-candidate/v3",
       rankingRevision: "title-and-brand-v2",
       transcriptCollection: "watch_transcripts_current_42",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
       transcriptProjectionRevision: "17",
       qrelsRevision: "none:operator-accepted:candidate-launch-2026-08-16",
       currentBindings: [

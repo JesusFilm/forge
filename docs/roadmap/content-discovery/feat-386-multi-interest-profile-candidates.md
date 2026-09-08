@@ -16,6 +16,7 @@ blocks:
   - "feat-447"
   - "feat-387"
   - "feat-392"
+  - "feat-459"
 tags:
   - "admin"
   - "recommendations"

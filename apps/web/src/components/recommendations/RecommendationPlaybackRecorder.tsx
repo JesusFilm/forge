@@ -9,15 +9,18 @@ import {
   RECOMMENDATION_PLAYBACK_EVENT_LIMIT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   parseRecommendationEpisodeCapability,
+  parseRecommendationPlaybackReceipts,
   type RecommendationEpisodeCapability,
   type RecommendationPlaybackEvent,
 } from "@/lib/recommendation-contracts"
 import {
   recommendationEventId,
-  recommendationFetchWithRetry,
+  recommendationFetchWithDeadline,
   withinRecommendationDeadline,
 } from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { withRecommendationConsentLock } from "@/lib/recommendation-consent-bootstrap"
+import { consumePlaybackDiscoveryContext } from "@/lib/playback-discovery"
 import { watchPath } from "@/lib/watch-paths"
 
 const PLAYBACK_ENDPOINT = watchPath("/api/recommendations/playback")
@@ -27,6 +30,8 @@ const CLAIM_RETRY_BACKOFF_MS = 250
 const MAX_EPISODE_FACTS = 128
 const MAX_PENDING_CLAIM_FACTS = 16
 const MAX_PENDING_REGULAR_FACTS = MAX_PENDING_CLAIM_FACTS - 1
+const MAX_FACT_DELIVERY_ATTEMPTS = 3
+const FACT_RETRY_BACKOFF_MS = 100
 const PROGRESS_INTERVAL_MS = 10_000
 const MAX_ACTIVE_CHUNK_MS = 60_000
 const UTF8_ENCODER = new TextEncoder()
@@ -99,8 +104,10 @@ function playbackPosition(
   }
 }
 
+class DefinitivePlaybackError extends Error {}
+
 async function postPlayback(body: string, keepalive: boolean) {
-  return recommendationFetchWithRetry(
+  const response = await recommendationFetchWithDeadline(
     PLAYBACK_ENDPOINT,
     {
       method: "POST",
@@ -112,6 +119,19 @@ async function postPlayback(body: string, keepalive: boolean) {
     },
     REQUEST_DEADLINE_MS,
   )
+  if (response.ok) return response
+  if (response.status === 409) {
+    let value: { error?: unknown } | null = null
+    try {
+      value = (await response.json()) as { error?: unknown }
+    } catch {
+      // A malformed error body remains a retryable transport failure.
+    }
+    if (value?.error === "playback_binding_invalid") {
+      throw new DefinitivePlaybackError()
+    }
+  }
+  throw new RecommendationRuntimeError("request_failed")
 }
 
 function playbackFactsBody(
@@ -129,10 +149,27 @@ function playbackFactsBody(
   })
 }
 
-function reportOverflow(reason: "pending_claim" | "episode_limit") {
+type PlaybackDegradationReason =
+  | "body_limit"
+  | "binding_invalid"
+  | "episode_limit"
+  | "integrity_conflict"
+  | "pending_claim"
+  | "receipt_invalid"
+  | "receipt_missing"
+  | "transport_exhausted"
+  | "transport_retry"
+
+type PlaybackDegradationDisposition = "dropped" | "retrying"
+
+function reportDegradation(
+  reason: PlaybackDegradationReason,
+  eventIds: string[] = [],
+  disposition: PlaybackDegradationDisposition = "dropped",
+) {
   window.dispatchEvent(
-    new CustomEvent("forge:recommendation-playback-overflow", {
-      detail: { reason },
+    new CustomEvent("forge:recommendation-playback-degraded", {
+      detail: { reason, disposition, eventIds },
     }),
   )
 }
@@ -186,6 +223,43 @@ async function claimRecommendationEpisode(
   )
 }
 
+async function issuePlaybackContext(mediaId: string): Promise<string> {
+  const discovery = consumePlaybackDiscoveryContext(mediaId)
+  return withRecommendationConsentLock(() =>
+    withinRecommendationDeadline(
+      undefined,
+      REQUEST_DEADLINE_MS,
+      async (signal) => {
+        const response = await fetch(PLAYBACK_ENDPOINT, {
+          method: "POST",
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "context",
+            mediaId,
+            discoverySource: discovery.source,
+            provenance: discovery.provenance,
+          }),
+          signal,
+        })
+        if (!response.ok) {
+          throw new RecommendationRuntimeError("request_failed")
+        }
+        const value = (await response.json()) as { claimNonce?: unknown }
+        if (
+          typeof value.claimNonce !== "string" ||
+          value.claimNonce.length < 16 ||
+          value.claimNonce.length > 191
+        ) {
+          throw new RecommendationRuntimeError("claim_invalid")
+        }
+        return value.claimNonce
+      },
+    ),
+  )
+}
+
 export function RecommendationPlaybackRecorder({
   player,
   initiation,
@@ -206,6 +280,8 @@ export function RecommendationPlaybackRecorder({
   const flushScheduledRef = useRef(false)
   const drainingRef = useRef(false)
   const drainRequestedRef = useRef(false)
+  const retryTimerRef = useRef<number | null>(null)
+  const deliveryAttemptsRef = useRef(new Map<string, number>())
   const sendOutboundRef = useRef<() => void>(() => undefined)
   const factCountRef = useRef(0)
   const factKindCountsRef = useRef<
@@ -215,6 +291,7 @@ export function RecommendationPlaybackRecorder({
   const startRecordedRef = useRef(false)
   const terminalRecordedRef = useRef(false)
   const playingRef = useRef(false)
+  const bfcacheWasPlayingRef = useRef(false)
   const activeStartedAtRef = useRef<number | null>(null)
   const playbackStartedAtRef = useRef<number | null>(null)
   const lastProgressAtRef = useRef<number | null>(null)
@@ -248,19 +325,144 @@ export function RecommendationPlaybackRecorder({
               UTF8_ENCODER.encode(candidateBody).byteLength >
               RECOMMENDATION_PLAYBACK_BODY_BYTES
             ) {
-              if (events.length === 0) outboundRef.current.shift()
+              if (events.length === 0) {
+                const dropped = outboundRef.current.shift()
+                if (dropped) {
+                  deliveryAttemptsRef.current.delete(dropped.eventId)
+                  reportDegradation("body_limit", [dropped.eventId])
+                }
+              }
               break
             }
             events.push(candidate)
           }
           if (events.length === 0) continue
+          for (const fact of events) {
+            deliveryAttemptsRef.current.set(
+              fact.eventId,
+              (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) + 1,
+            )
+          }
           const body = playbackFactsBody(episode, mediaId, events)
+          let receiptInvalid = false
           try {
-            await postPlayback(body, true)
-            outboundRef.current.splice(0, events.length)
-          } catch {
-            // Preserve the exact event IDs and payloads. A later player fact or
-            // lifecycle flush can replay the same idempotent batch.
+            const response = await postPlayback(body, true)
+            const submittedIds = new Set(events.map((fact) => fact.eventId))
+            const receipts = parseRecommendationPlaybackReceipts(
+              await response.json(),
+              submittedIds,
+            )
+            if (!receipts) {
+              receiptInvalid = true
+              throw new RecommendationRuntimeError("request_failed")
+            }
+            const retired = new Set<string>()
+            for (const receipt of receipts) {
+              retired.add(receipt.eventId)
+              deliveryAttemptsRef.current.delete(receipt.eventId)
+              if (receipt.status === "conflict") {
+                reportDegradation("integrity_conflict", [receipt.eventId])
+              }
+            }
+            outboundRef.current = outboundRef.current.filter(
+              (fact) => !retired.has(fact.eventId),
+            )
+            const missing = events.filter((fact) => !retired.has(fact.eventId))
+            if (missing.length > 0) {
+              const exhausted = missing.filter(
+                (fact) =>
+                  (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) >=
+                  MAX_FACT_DELIVERY_ATTEMPTS,
+              )
+              if (exhausted.length > 0) {
+                const exhaustedIds = new Set(
+                  exhausted.map((fact) => fact.eventId),
+                )
+                outboundRef.current = outboundRef.current.filter(
+                  (fact) => !exhaustedIds.has(fact.eventId),
+                )
+                for (const eventId of exhaustedIds) {
+                  deliveryAttemptsRef.current.delete(eventId)
+                }
+                reportDegradation("receipt_missing", [...exhaustedIds])
+              }
+              const retrying = missing.filter(
+                (fact) =>
+                  !exhausted.some(({ eventId }) => eventId === fact.eventId),
+              )
+              if (retrying.length > 0) {
+                reportDegradation(
+                  "receipt_missing",
+                  retrying.map((fact) => fact.eventId),
+                  "retrying",
+                )
+              }
+              if (outboundRef.current.length > 0) {
+                const attempt = Math.max(
+                  ...missing.map(
+                    (fact) =>
+                      deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
+                  ),
+                )
+                retryTimerRef.current = window.setTimeout(
+                  () => sendOutboundRef.current(),
+                  FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
+                )
+                break
+              }
+            }
+          } catch (error) {
+            if (error instanceof DefinitivePlaybackError) {
+              const dropped = outboundRef.current.splice(0)
+              episodeRef.current = null
+              claimSettledRef.current = true
+              drainRequestedRef.current = false
+              for (const fact of dropped) {
+                deliveryAttemptsRef.current.delete(fact.eventId)
+              }
+              reportDegradation(
+                "binding_invalid",
+                dropped.map((fact) => fact.eventId),
+              )
+              break
+            }
+            const exhausted = events.filter(
+              (fact) =>
+                (deliveryAttemptsRef.current.get(fact.eventId) ?? 0) >=
+                MAX_FACT_DELIVERY_ATTEMPTS,
+            )
+            if (exhausted.length > 0) {
+              const exhaustedIds = new Set(
+                exhausted.map((fact) => fact.eventId),
+              )
+              outboundRef.current = outboundRef.current.filter(
+                (fact) => !exhaustedIds.has(fact.eventId),
+              )
+              for (const eventId of exhaustedIds) {
+                deliveryAttemptsRef.current.delete(eventId)
+              }
+              reportDegradation(
+                receiptInvalid ? "receipt_invalid" : "transport_exhausted",
+                [...exhaustedIds],
+              )
+            } else {
+              reportDegradation(
+                receiptInvalid ? "receipt_invalid" : "transport_retry",
+                events.map((fact) => fact.eventId),
+                "retrying",
+              )
+            }
+            if (outboundRef.current.length > 0) {
+              const attempt = Math.max(
+                ...events.map(
+                  (fact) => deliveryAttemptsRef.current.get(fact.eventId) ?? 1,
+                ),
+              )
+              retryTimerRef.current = window.setTimeout(
+                () => sendOutboundRef.current(),
+                FACT_RETRY_BACKOFF_MS * 2 ** (attempt - 1),
+              )
+            }
             break
           }
         }
@@ -275,6 +477,11 @@ export function RecommendationPlaybackRecorder({
   }, [mediaId])
   useEffect(() => {
     sendOutboundRef.current = sendOutbound
+    return () => {
+      if (retryTimerRef.current != null) {
+        window.clearTimeout(retryTimerRef.current)
+      }
+    }
   }, [sendOutbound])
 
   const enqueue = useCallback(
@@ -286,7 +493,7 @@ export function RecommendationPlaybackRecorder({
         factCountRef.current >= factLimit ||
         kindCount >= MAX_FACTS_BY_KIND[next.kind]
       ) {
-        reportOverflow("episode_limit")
+        reportDegradation("episode_limit", [next.eventId])
         return
       }
       const registerFact = () => {
@@ -299,7 +506,7 @@ export function RecommendationPlaybackRecorder({
           ? MAX_PENDING_CLAIM_FACTS
           : MAX_PENDING_REGULAR_FACTS
         if (pendingRef.current.length >= limit) {
-          reportOverflow("pending_claim")
+          reportDegradation("pending_claim", [next.eventId])
           return
         }
         pendingRef.current.push(next)
@@ -327,20 +534,26 @@ export function RecommendationPlaybackRecorder({
 
   useEffect(() => {
     if (claimStartedRef.current) return
-    const claimNonce = readRecommendationClaimNonce()
-    if (!claimNonce) {
-      claimSettledRef.current = true
-      return
-    }
     claimStartedRef.current = true
+    const recommendationClaimNonce = readRecommendationClaimNonce()
 
-    const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
-    const attemptClaim = (attempt: number) => {
+    const abandonPendingClaim = () => {
+      pendingRef.current = []
+      claimSettledRef.current = true
+    }
+    const attemptClaim = (
+      claimNonce: string,
+      attempt: number,
+      allowStandaloneFallback: boolean,
+    ) => {
+      const body = JSON.stringify({ action: "claim", claimNonce, mediaId })
       void claimRecommendationEpisode(body)
         .then((value) => {
           const episode = parseRecommendationEpisodeCapability(value.episode)
           if (!episode) throw new RecommendationRuntimeError("claim_invalid")
-          clearRecommendationClaimNonce(claimNonce)
+          if (recommendationClaimNonce) {
+            clearRecommendationClaimNonce(recommendationClaimNonce)
+          }
           episodeRef.current = episode
           claimSettledRef.current = true
           outboundRef.current.push(...pendingRef.current.splice(0))
@@ -348,14 +561,19 @@ export function RecommendationPlaybackRecorder({
         })
         .catch((error) => {
           if (error instanceof DefinitiveClaimError) {
-            clearRecommendationClaimNonce(claimNonce)
-            pendingRef.current = []
-            claimSettledRef.current = true
+            if (allowStandaloneFallback) {
+              clearRecommendationClaimNonce(claimNonce)
+              void issuePlaybackContext(mediaId)
+                .then((fallbackNonce) => attemptClaim(fallbackNonce, 1, false))
+                .catch(abandonPendingClaim)
+              return
+            }
+            abandonPendingClaim()
             return
           }
           if (attempt < MAX_CLAIM_ATTEMPTS) {
             window.setTimeout(() => {
-              attemptClaim(attempt + 1)
+              attemptClaim(claimNonce, attempt + 1, allowStandaloneFallback)
             }, CLAIM_RETRY_BACKOFF_MS)
           }
           // Ambiguous failures retain both the nonce and the exact pending
@@ -363,7 +581,17 @@ export function RecommendationPlaybackRecorder({
           // committed before its response was lost.
         })
     }
-    attemptClaim(1)
+    if (recommendationClaimNonce) {
+      attemptClaim(recommendationClaimNonce, 1, true)
+      return
+    }
+    void issuePlaybackContext(mediaId)
+      .then((claimNonce) => attemptClaim(claimNonce, 1, false))
+      .catch(() => {
+        // Telemetry is strictly fail-open: the player and legacy Watch event
+        // recorder remain available when context issuance is degraded.
+        abandonPendingClaim()
+      })
   }, [mediaId, sendOutbound])
 
   useEffect(() => {
@@ -562,9 +790,23 @@ export function RecommendationPlaybackRecorder({
         true,
       )
     }
-    const onPageHide = () => recordEnd("pagehide")
+    const onPageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        bfcacheWasPlayingRef.current = playingRef.current
+        playingRef.current = false
+        flushActive()
+      } else recordEnd("pagehide")
+    }
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      playingRef.current =
+        bfcacheWasPlayingRef.current &&
+        (!canMeasurePlayerState || !player.paused)
+      bfcacheWasPlayingRef.current = false
+      startActive()
+    }
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") recordEnd("hidden")
+      if (document.visibilityState === "hidden") flushActive()
       else startActive()
     }
 
@@ -579,6 +821,7 @@ export function RecommendationPlaybackRecorder({
     player.addEventListener("ended", onEnded)
     player.addEventListener("error", onError)
     window.addEventListener("pagehide", onPageHide)
+    window.addEventListener("pageshow", onPageShow)
     document.addEventListener("visibilitychange", onVisibilityChange)
     if (initiation != null && !player.paused) onPlaying()
 
@@ -595,6 +838,7 @@ export function RecommendationPlaybackRecorder({
       player.removeEventListener("ended", onEnded)
       player.removeEventListener("error", onError)
       window.removeEventListener("pagehide", onPageHide)
+      window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [durationSeconds, enqueue, initiation, mediaId, player])

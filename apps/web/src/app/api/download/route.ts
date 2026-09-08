@@ -14,6 +14,7 @@ import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
 
 import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import { readWatchDownloadCapability } from "@/lib/watch-download-capability"
 import { resolveWatchDownloadTarget } from "@/lib/download-target"
 import { resolveWatchSubtitleTarget } from "@/lib/subtitle-target"
 import {
@@ -22,14 +23,16 @@ import {
 } from "@/lib/feature-flags"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { recordWatchEventWithAccessToken } from "@/lib/watch-event-actions"
+import {
+  WATCH_DOWNLOAD_AUTH_REQUIRED,
+  WATCH_DOWNLOAD_ERROR_HEADER,
+} from "@/lib/watch-download-contract"
 
 // Use the Node runtime for DNS preflight before releasing a target URL.
 export const runtime: ServerRuntime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
-const DOWNLOAD_AUTH_REQUIRED = "auth-required"
 const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
 const MAX_DOWNLOAD_FILENAME_LENGTH = 200
 const INLINE_SUBTITLE_TIMEOUT_MS = 30_000
@@ -112,7 +115,9 @@ async function resolveDownloadAccountGate(
       { error: "Authentication required" },
       {
         status: 401,
-        headers: { [DOWNLOAD_ERROR_HEADER]: DOWNLOAD_AUTH_REQUIRED },
+        headers: {
+          [WATCH_DOWNLOAD_ERROR_HEADER]: WATCH_DOWNLOAD_AUTH_REQUIRED,
+        },
       },
     ),
   }
@@ -207,8 +212,34 @@ type ResolveTargetResult =
 
 async function resolveRequestedTarget(
   searchParams: URLSearchParams,
-  options: { allowLegacyTarget: boolean } = { allowLegacyTarget: true },
+  options: {
+    allowLegacyTarget: boolean
+    requiredSubject?: string
+  } = { allowLegacyTarget: true },
 ): Promise<ResolveTargetResult> {
+  const capabilityToken = searchParams.get("capability")
+  if (searchParams.has("capability")) {
+    const capability = await readWatchDownloadCapability(capabilityToken)
+    if (
+      !capability ||
+      capability.downloadId !== searchParams.get("downloadId") ||
+      capability.variantId !== searchParams.get("variantId") ||
+      capability.videoSlug !== searchParams.get("videoSlug") ||
+      (options.requiredSubject !== undefined &&
+        capability.subject !== options.requiredSubject)
+    ) {
+      return {
+        ok: false,
+        errorResponse: jsonError("Download unavailable", 404),
+      }
+    }
+    return {
+      ok: true,
+      target: capability.target,
+      event: capability.event,
+    }
+  }
+
   const legacyTarget = searchParams.get("url")
   if (legacyTarget) {
     if (options.allowLegacyTarget) return { ok: true, target: legacyTarget }
@@ -525,6 +556,9 @@ export async function GET(request: Request): Promise<Response> {
   } else {
     const downloadTarget = await resolveRequestedTarget(searchParams, {
       allowLegacyTarget: authGate.accountGateEnabled,
+      requiredSubject: authGate.accountGateEnabled
+        ? (authGate.session?.userId ?? "")
+        : undefined,
     })
     if (!downloadTarget.ok) return downloadTarget.errorResponse
     target = downloadTarget.target
@@ -596,7 +630,15 @@ export async function HEAD(request: Request): Promise<Response> {
     return proxyInlineSubtitle(request, inlineSubtitleUrl)
   }
 
-  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  const authGate = await resolveDownloadAccountGate(request, false)
+  if (!authGate.ok) return authGate.response
+
+  const resolvedTarget = await resolveRequestedTarget(searchParams, {
+    allowLegacyTarget: authGate.accountGateEnabled,
+    requiredSubject: authGate.accountGateEnabled
+      ? (authGate.session?.userId ?? "")
+      : undefined,
+  })
   if (!resolvedTarget.ok) {
     return resolvedTarget.errorResponse
   }

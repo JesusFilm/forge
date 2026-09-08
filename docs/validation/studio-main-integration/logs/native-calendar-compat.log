@@ -1,0 +1,13 @@
+(node:764640) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90m/home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/mastra[39m
+
+ [2m[90m↓[39m[22m src/services/studio-authoring/calendar-runtime.db.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/studio-authoring/calendar-instructions.db.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+
+[2m Test Files [22m [33m2 skipped[39m[90m (2)[39m
+[2m      Tests [22m [33m2 skipped[39m[90m (2)[39m
+[2m   Start at [22m 09:14:33
+[2m   Duration [22m 3.15s[2m (transform 249ms, setup 0ms, collect 2.54s, tests 0ms, environment 0ms, prepare 183ms)[22m
+

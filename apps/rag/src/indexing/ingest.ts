@@ -50,6 +50,7 @@ export interface IngestSummary {
 }
 
 export interface IngestOptions {
+  canonicalUrlPrefix?: string
   sourceKey?: string
   limit?: number
   /** Maximum distinct documents processed at once. Default 1 preserves legacy behavior. */
@@ -199,10 +200,24 @@ export async function ingestPending(
   const force = (opts.force ?? false) || forceAll // forceAll implies force
   const pending = await deps.reader.listPending({
     sourceKey: opts.sourceKey,
+    canonicalUrlPrefix: opts.canonicalUrlPrefix,
     limit: opts.limit,
     includeIngested: force, // force/forceAll ⇒ re-index from the snapshot
     targetEmbeddingModel: force && !forceAll ? deps.embedder.model : undefined,
   })
+  // Fail closed before any writes if an adapter ever ignores the scope.
+  if (
+    pending.some(
+      (raw) =>
+        (opts.sourceKey && raw.sourceKey !== opts.sourceKey) ||
+        (opts.canonicalUrlPrefix &&
+          !raw.canonicalUrl.startsWith(opts.canonicalUrlPrefix)),
+    )
+  )
+    throw new RagOperationalError(
+      "argument_invalid",
+      "index reader returned rows outside the requested scope",
+    )
   const summary: IngestSummary = {
     attempted: 0,
     inserted: 0,

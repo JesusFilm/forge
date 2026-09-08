@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest"
 
 import * as content from "../whats-new-content"
-import { WHATS_NEW_ASSISTANTS } from "../whats-new-content"
+import {
+  WHATS_NEW_ASSISTANTS,
+  WHATS_NEW_AUDIENCES,
+  WHATS_NEW_HERO,
+  WHATS_NEW_QUIZ,
+} from "../whats-new-content"
 
 /**
  * Every string reachable from the module's exports, paired with the dotted
@@ -102,6 +107,69 @@ describe("whats-new copy", () => {
       .map(({ path, text }) => `${path}: ${text}`)
 
     expect(doubled).toEqual([])
+  })
+
+  it("keeps the two halves of the last-updated date on the same day", () => {
+    // One fact, two fields: the prose the reader sees and the ISO value the
+    // rendered `<time datetime>` carries. Nothing but this test stops an
+    // editor updating one and leaving the other pointing at a stale day —
+    // and a machine-readable date that disagrees with the visible one is
+    // worse than no attribute at all.
+    const iso = WHATS_NEW_HERO.lastUpdatedIso
+    expect(iso, "ISO form must be YYYY-MM-DD").toMatch(/^\d{4}-\d{2}-\d{2}$/)
+
+    const parsed = new Date(`${iso}T00:00:00Z`)
+    const prose = new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(parsed)
+
+    expect(WHATS_NEW_HERO.lastUpdated).toBe(prose)
+  })
+
+  it("keeps the share out of the audience copy entirely", () => {
+    /**
+     * The share is one honest, unflattering number. The estimate stage
+     * reveals it and the letter sets it as a pull-quote — twice, on
+     * purpose. It used to appear a third time, interpolated into the
+     * self-identification answer written for exactly the reader it
+     * describes, which turned being counted into being told three times in
+     * a row that you are a rounding error. That section is gone; this
+     * keeps the pressure off the copy that replaced it.
+     */
+    for (const card of WHATS_NEW_AUDIENCES.cards) {
+      expect(card.body, card.title).not.toMatch(/\d+\s*%/)
+    }
+  })
+
+  it("never hard-codes the ministry share into a sentence", () => {
+    // Every printed form of the share is interpolated from one constant, so
+    // a corrected figure cannot leave the page stating two different numbers
+    // about the same audience. A literal "2%" typed into any copy string is
+    // how that guarantee gets lost — the reveal heading and the reveal's
+    // note to partners both used to carry one.
+    const share = WHATS_NEW_QUIZ.actualPercent
+    const literal = new RegExp(`(?<!\\$\\{)\\b${share}%`)
+
+    const offenders = copyStrings()
+      .filter(({ text }) => literal.test(text))
+      // The interpolated strings are indistinguishable from literals once
+      // evaluated, so this can only catch a NEW literal in a string that
+      // should not carry the share at all. The three that legitimately
+      // print it are the quiz's own reveal and the letter's figure.
+      .filter(
+        ({ path }) =>
+          ![
+            "WHATS_NEW_QUIZ.revealHeading",
+            "WHATS_NEW_QUIZ.revealPartners",
+            "WHATS_NEW_PARTNER_LETTER.figure.value",
+          ].includes(path),
+      )
+      .map(({ path, text }) => `${path}: ${text}`)
+
+    expect(offenders).toEqual([])
   })
 
   it("keeps both bare-'Watch' exemptions pointing at real strings", () => {

@@ -340,6 +340,66 @@ enum WatchSearchCandidateLeaseKind {
   EVALUATION @map("evaluation")
 }
 
+enum WatchSearchCurrentTranscriptPublicationStatus {
+  PENDING     @map("pending")
+  CLAIMED     @map("claimed")
+  COMPLETED   @map("completed")
+  DEAD_LETTER @map("dead_letter")
+}
+
+enum WatchSearchTranscriptPublicationWorkKind {
+  PUBLICATION @map("publication")
+  LIFECYCLE   @map("lifecycle")
+}
+
+/// Execution mode is persisted with each Watch-route monitoring run so a
+/// diagnostic dry run can never be mistaken for an alert-producing run.
+enum WatchRouteAlertAutomationMode {
+  OFF     @map("off")
+  DRY_RUN @map("dry_run")
+  LIVE    @map("live")
+}
+
+enum WatchRouteAlertRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum WatchRouteAlertCountKind {
+  EVENT_COUNT @map("event_count")
+  PAGE_VIEWS  @map("page_views")
+}
+
+enum WatchRouteAlertVerdict {
+  SUPPORTED_ROUTE_FAILURE @map("supported_route_failure")
+  PLAUSIBLE_MISSING_ROUTE @map("plausible_missing_route")
+}
+
+enum WatchRouteAlertSeverity {
+  CRITICAL @map("critical")
+  HIGH     @map("high")
+  MEDIUM   @map("medium")
+}
+
+enum WatchRouteAlertLifecycle {
+  OPEN      @map("open")
+  RECOVERED @map("recovered")
+}
+
+/// Locales in which an editorial Watch Search curation may be projected.
+enum WatchSearchCurationScope {
+  PUBLISHED_LOCALES @map("published_locales")
+  ALL_LANGUAGES     @map("all_languages")
+}
+
+/// Provenance for an exact Watch Search curation alias.
+enum WatchSearchCurationAliasSource {
+  EDITORIAL @map("editorial")
+  MACHINE   @map("machine")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -640,7 +700,9 @@ model WatchSearchCandidateGeneration {
   id                           String                              @id @db.VarChar(128)
   state                        WatchSearchCandidateGenerationState @default(BUILDING)
   version                      Int                                 @default(0)
-  applicationRevision          String                              @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                              @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                              @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                              @map("transcript_chunking_version") @db.VarChar(128)
   sourceEpoch                  String                              @map("source_epoch") @db.VarChar(128)
   sourceDigests                Json                                @map("source_digests")
   catalogCollection            String                              @map("catalog_collection") @db.VarChar(255)
@@ -670,6 +732,7 @@ model WatchSearchCandidateGeneration {
 
   @@index([state, createdAt])
   @@index([transcriptCollection, transcriptProjectionRevision])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion])
   @@map("watch_search_candidate_generation")
 }
 
@@ -692,7 +755,9 @@ model WatchSearchCandidateQualification {
   generationId                 String                                  @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration          @relation(fields: [generationId], references: [id], onDelete: Restrict)
   status                       WatchSearchCandidateQualificationStatus
-  applicationRevision          String                                  @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                                  @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                                  @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                                  @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                                  @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                                  @map("transcript_projection_revision")
   qrelsRevision                String                                  @map("qrels_revision") @db.VarChar(128)
@@ -712,7 +777,9 @@ model WatchSearchCandidateLease {
   holderToken                  String                         @map("holder_token") @db.VarChar(128)
   generationId                 String                         @map("generation_id") @db.VarChar(128)
   generation                   WatchSearchCandidateGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
-  applicationRevision          String                         @map("application_revision") @db.VarChar(128)
+  indexContractRevision        String                         @map("application_revision") @db.VarChar(128)
+  contentEmbeddingContractId   String                         @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion    String                         @map("transcript_chunking_version") @db.VarChar(128)
   transcriptCollection         String                         @map("transcript_collection") @db.VarChar(255)
   transcriptProjectionRevision BigInt                         @map("transcript_projection_revision")
   currentBindings              Json                           @map("current_bindings")
@@ -722,8 +789,59 @@ model WatchSearchCandidateLease {
 
   @@index([generationId, expiresAt])
   @@index([transcriptCollection, transcriptProjectionRevision, expiresAt])
+  @@index([transcriptCollection, contentEmbeddingContractId, transcriptChunkingVersion, expiresAt])
   @@index([expiresAt])
   @@map("watch_search_candidate_lease")
+}
+
+/// Singleton state for the active shared transcript projection published into
+/// the current Typesense transcript collection.
+model WatchSearchCurrentTranscriptProjection {
+  id                         String   @id @db.VarChar(64)
+  transcriptCollection       String?  @map("transcript_collection") @db.VarChar(255)
+  contentEmbeddingContractId String?  @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion  String?  @map("transcript_chunking_version") @db.VarChar(128)
+  projectionRevision         BigInt   @default(0) @map("projection_revision")
+  version                    Int      @default(0)
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  @@map("watch_search_current_transcript_projection")
+}
+
+/// Durable outbox for current shared transcript projection publication. The
+/// payload carries transcript identity and chunk document ids only; vectors are
+/// reloaded from canonical Postgres during publication.
+model WatchSearchCurrentTranscriptPublicationEvent {
+  id                          String                                        @id @default(cuid())
+  transcriptId                String                                        @map("transcript_id")
+  videoId                     String                                        @map("video_id")
+  videoEditionId              String                                        @map("video_edition_id")
+  language                    String
+  contentEmbeddingContractId  String                                        @map("content_embedding_contract_id") @db.VarChar(128)
+  transcriptChunkingVersion   String                                        @map("transcript_chunking_version") @db.VarChar(128)
+  sourceGeneration            BigInt                                        @map("source_generation")
+  sourceContentHash           String?                                       @map("source_content_hash")
+  currentDocumentIds          String[]                                      @map("current_document_ids")
+  staleDocumentIds            String[]                                      @map("stale_document_ids")
+  workKind                    WatchSearchTranscriptPublicationWorkKind      @default(PUBLICATION) @map("work_kind")
+  status                      WatchSearchCurrentTranscriptPublicationStatus @default(PENDING)
+  leaseGeneration             Int                                           @default(0) @map("lease_generation")
+  leaseTokenHash              String?                                       @map("lease_token_hash") @db.VarChar(128)
+  leaseExpiresAt              DateTime?                                     @map("lease_expires_at")
+  attemptCount                Int                                           @default(0) @map("attempt_count")
+  nextAttemptAt               DateTime?                                     @map("next_attempt_at")
+  lastErrorCode               String?                                       @map("last_error_code") @db.VarChar(128)
+  completedAt                 DateTime?                                     @map("completed_at")
+  completedProjectionRevision BigInt?                                       @map("completed_projection_revision")
+  deadLetteredAt              DateTime?                                     @map("dead_lettered_at")
+  createdAt                   DateTime                                      @default(now()) @map("created_at")
+  updatedAt                   DateTime                                      @updatedAt @map("updated_at")
+
+  @@unique([transcriptId, sourceGeneration], map: "watch_search_transcript_pub_transcript_generation_key")
+  @@index([status, nextAttemptAt, createdAt], map: "watch_search_transcript_pub_status_retry_created_idx")
+  @@index([transcriptId, status, createdAt], map: "watch_search_transcript_pub_transcript_status_created_idx")
+  @@map("watch_search_current_transcript_publication_event")
 }
 
 /// Core Sync-specific detail for the generic workflow ledger. Kept separate so
@@ -1142,6 +1260,137 @@ model SeoLesson {
 }
 
 // -----------------------------------------------------------------------------
+// Watch route alert ledger
+// -----------------------------------------------------------------------------
+
+/// One idempotent property/window collection attempt. Only a hash of the
+/// execution token is stored; generation plus token fence every completion.
+model WatchRouteAlertRun {
+  id                       String                            @id @default(cuid())
+  idempotencyKey           String                            @unique @map("idempotency_key") @db.Char(64)
+  propertyId               String                            @map("property_id") @db.VarChar(191)
+  origin                   String                            @db.VarChar(255)
+  contractVersion          String                            @map("contract_version") @db.VarChar(64)
+  mode                     WatchRouteAlertAutomationMode
+  status                   WatchRouteAlertRunStatus          @default(RUNNING)
+  windowStart              DateTime                          @map("window_start")
+  windowEnd                DateTime                          @map("window_end")
+  manifestVersion          String?                           @map("manifest_version") @db.VarChar(191)
+  report                   Json                              @default("{}")
+  actionableCount          Int                               @default(0) @map("actionable_count")
+  noiseCount               Int                               @default(0) @map("noise_count")
+  executionFenceGeneration Int                               @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash  String?                           @map("execution_claim_token_hash") @db.Char(64)
+  executionClaimExpiresAt  DateTime?                         @map("execution_claim_expires_at")
+  startedAt                DateTime                          @default(now()) @map("started_at")
+  completedAt              DateTime?                         @map("completed_at")
+  detailExpiresAt          DateTime                          @map("detail_expires_at")
+  detailExpiredAt          DateTime?                         @map("detail_expired_at")
+  createdAt                DateTime                          @default(now()) @map("created_at")
+  updatedAt                DateTime                          @updatedAt @map("updated_at")
+  observations             WatchRouteAlertDailyObservation[]
+
+  @@index([propertyId, startedAt])
+  @@index([status, executionClaimExpiresAt])
+  @@index([detailExpiresAt, detailExpiredAt])
+  @@map("watch_route_alert_run")
+}
+
+/// Last complete live window for each independently reconciled GA4 property.
+model WatchRouteAlertPropertyProgress {
+  propertyId              String   @id @map("property_id") @db.VarChar(191)
+  lastCompleteWindowStart DateTime @map("last_complete_window_start")
+  lastCompleteWindowEnd   DateTime @map("last_complete_window_end")
+  lastCompleteRunId       String   @map("last_complete_run_id")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([lastCompleteWindowEnd])
+  @@map("watch_route_alert_property_progress")
+}
+
+/// Stable identity for one property plus normalized, query-free Watch path.
+/// Episode rows below carry reopen/recovery history without changing this ID.
+model WatchRouteAlert {
+  id              String                            @id @default(cuid())
+  semanticKey     String                            @unique @map("semantic_key") @db.Char(64)
+  propertyId      String                            @map("property_id") @db.VarChar(191)
+  origin          String                            @db.VarChar(255)
+  normalizedPath  String                            @map("normalized_path") @db.VarChar(1000)
+  lifecycle       WatchRouteAlertLifecycle          @default(OPEN)
+  verdict         WatchRouteAlertVerdict
+  severity        WatchRouteAlertSeverity
+  latestCount     Int                               @default(0) @map("latest_count")
+  countKind       WatchRouteAlertCountKind          @map("count_kind")
+  activeUsers     Int                               @default(0) @map("active_users")
+  occurrenceCount Int                               @default(0) @map("occurrence_count")
+  firstSeenAt     DateTime                          @map("first_seen_at")
+  lastSeenAt      DateTime                          @map("last_seen_at")
+  lastProbedAt    DateTime?                         @map("last_probed_at")
+  lastHttpStatus  Int?                              @map("last_http_status")
+  lastProbeKind   String?                           @map("last_probe_kind") @db.VarChar(32)
+  manifestVersion String                            @map("manifest_version") @db.VarChar(191)
+  latestEvidence  Json                              @default("{}") @map("latest_evidence")
+  latestRunId     String                            @map("latest_run_id")
+  recoveredAt     DateTime?                         @map("recovered_at")
+  createdAt       DateTime                          @default(now()) @map("created_at")
+  updatedAt       DateTime                          @updatedAt @map("updated_at")
+  episodes        WatchRouteAlertEpisode[]
+  observations    WatchRouteAlertDailyObservation[]
+
+  @@unique([propertyId, normalizedPath])
+  @@index([lifecycle, severity, latestCount(sort: Desc), lastSeenAt(sort: Desc), id])
+  @@index([propertyId, lifecycle, severity, lastSeenAt, id])
+  @@index([propertyId, lifecycle, lastProbedAt, id])
+  @@map("watch_route_alert")
+}
+
+/// One open-to-recovered lifecycle. Reappearance appends another episode.
+model WatchRouteAlertEpisode {
+  id               String          @id @default(cuid())
+  alertId          String          @map("alert_id")
+  alert            WatchRouteAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  sequence         Int
+  openedAt         DateTime        @map("opened_at")
+  lastSeenAt       DateTime        @map("last_seen_at")
+  recoveredAt      DateTime?       @map("recovered_at")
+  openedByRunId    String          @map("opened_by_run_id")
+  recoveredByRunId String?         @map("recovered_by_run_id")
+  evidence         Json            @default("{}")
+  detailExpiresAt  DateTime?       @map("detail_expires_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@unique([alertId, sequence])
+  @@index([alertId, recoveredAt])
+  @@index([detailExpiresAt])
+  @@map("watch_route_alert_episode")
+}
+
+/// Idempotent per-run evidence used for history and occurrence accounting.
+model WatchRouteAlertDailyObservation {
+  id          String                   @id @default(cuid())
+  runId       String                   @map("run_id")
+  run         WatchRouteAlertRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alertId     String                   @map("alert_id")
+  alert       WatchRouteAlert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  observedOn  DateTime                 @map("observed_on") @db.Date
+  count       Int
+  countKind   WatchRouteAlertCountKind @map("count_kind")
+  activeUsers Int                      @map("active_users")
+  verdict     WatchRouteAlertVerdict
+  severity    WatchRouteAlertSeverity
+  evidence    Json                     @default("{}")
+  observedAt  DateTime                 @map("observed_at")
+  expiresAt   DateTime                 @map("expires_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+
+  @@unique([runId, alertId])
+  @@index([alertId, observedOn])
+  @@index([expiresAt, id])
+  @@map("watch_route_alert_daily_observation")
+}
+
+// -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------
 
@@ -1385,21 +1634,101 @@ model LanguageFallback {
 /// The raw query text is not stored; `queryHash` is the SHA-256 hash of the
 /// normalized search text plus provider/model/dimension metadata.
 model QueryEmbeddingCache {
-  id         String   @id @default(cuid())
+  id         String                   @id @default(cuid())
+  contractId String                   @map("contract_id") @db.VarChar(191)
+  contract   ContentEmbeddingContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
   provider   String
   model      String
   dimensions Int
-  queryHash  String   @map("query_hash")
+  queryHash  String                   @map("query_hash")
   embedding  Json
-  expiresAt  DateTime @map("expires_at")
-  lastUsedAt DateTime @default(now()) @map("last_used_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  expiresAt  DateTime                 @map("expires_at")
+  lastUsedAt DateTime                 @default(now()) @map("last_used_at")
+  createdAt  DateTime                 @default(now()) @map("created_at")
+  updatedAt  DateTime                 @updatedAt @map("updated_at")
 
-  @@unique([provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@unique([contractId, provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@index([contractId, expiresAt], map: "query_embedding_cache_contract_expiry_idx")
   @@index([expiresAt])
   @@index([lastUsedAt])
   @@map("query_embedding_cache")
+}
+
+/// Immutable compatibility authority for current content embeddings. The
+/// current row declares the exact query-time and stored-vector tuples that are
+/// permitted to interoperate.
+model ContentEmbeddingContract {
+  id                      String   @id @db.VarChar(191)
+  queryProvider           String   @map("query_provider") @db.VarChar(64)
+  queryModel              String   @map("query_model") @db.VarChar(191)
+  queryNativeDimensions   Int      @map("query_native_dimensions")
+  queryDimensions         Int      @map("query_dimensions")
+  queryTransformVersion   String?  @map("query_transform_version") @db.VarChar(191)
+  storageProvider         String   @map("storage_provider") @db.VarChar(64)
+  storageModel            String   @map("storage_model") @db.VarChar(191)
+  storageNativeDimensions Int      @map("storage_native_dimensions")
+  storageDimensions       Int      @map("storage_dimensions")
+  storageTransformVersion String?  @map("storage_transform_version") @db.VarChar(191)
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  queryEmbeddingCaches QueryEmbeddingCache[]
+  pointers             ContentEmbeddingContractPointer[]
+
+  @@map("content_embedding_contract")
+}
+
+/// Singleton mutable pointer for the current contract. The registry rows are
+/// immutable; changing current serving updates only this pointer.
+model ContentEmbeddingContractPointer {
+  id               String                   @id @db.VarChar(64)
+  activeContractId String                   @map("active_contract_id") @db.VarChar(191)
+  activeContract   ContentEmbeddingContract @relation(fields: [activeContractId], references: [id], onDelete: Restrict)
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  @@map("content_embedding_contract_pointer")
+}
+
+/// Admin-owned editorial rule compiled into a generation-specific Typesense
+/// curation set. The stable Core ID deliberately remains a logical reference:
+/// Core-sourced Video rows may be absent during sync or disaster recovery.
+model WatchSearchCuration {
+  id                String                   @id @default(cuid())
+  key               String                   @unique
+  targetVideoCoreId String                   @map("target_video_core_id")
+  scope             WatchSearchCurationScope @default(PUBLISHED_LOCALES)
+  position          Int                      @default(1)
+  enabled           Boolean                  @default(true)
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  aliases WatchSearchCurationAlias[]
+
+  @@index([enabled])
+  @@index([targetVideoCoreId])
+  @@map("watch_search_curation")
+}
+
+/// Exact query text for a Watch Search curation. A null locale applies the
+/// alias to every published localization of the target video; localized
+/// aliases apply only to target documents carrying that BCP-47 locale.
+model WatchSearchCurationAlias {
+  id               String                         @id @default(cuid())
+  curationId       String                         @map("curation_id")
+  curation         WatchSearchCuration            @relation(fields: [curationId], references: [id], onDelete: Cascade)
+  query            String
+  normalizedQuery  String                         @map("normalized_query")
+  locale           String?
+  source           WatchSearchCurationAliasSource @default(EDITORIAL)
+  translationModel String?                        @map("translation_model")
+  sourceTextDigest String?                        @map("source_text_digest")
+  generatedAt      DateTime?                      @map("generated_at")
+  active           Boolean                        @default(true)
+  createdAt        DateTime                       @default(now()) @map("created_at")
+  updatedAt        DateTime                       @updatedAt @map("updated_at")
+
+  @@index([curationId, active])
+  @@index([locale])
+  @@map("watch_search_curation_alias")
 }
 
 /// A localized display name for a language. Synced from Core.
@@ -2352,6 +2681,7 @@ model VideoTranscript {
   sourceContentHash         String?      @map("source_content_hash")
   sourceProvider            String?      @map("source_provider")
   sourceGeneratedAt         DateTime?    @map("source_generated_at")
+  sourceGeneration          BigInt       @default(0) @map("source_generation")
   generationMode            String?      @map("generation_mode")
   mastraRunId               String?      @map("mastra_run_id")
   chunkingVersion           String?      @map("chunking_version")
@@ -2537,6 +2867,7 @@ enum RecommendationContentActionActorClass {
 enum RecommendationEligibilitySourceType {
   PLAYBACK_OUTCOME @map("playback_outcome")
   CONTENT_ACTION   @map("content_action")
+  SELECTION        @map("selection")
 }
 
 enum RecommendationEligibilityState {
@@ -3491,32 +3822,35 @@ model RecommendationImpression {
   @@map("recommendation_impression")
 }
 
-/// Selection and one-use handoff authority commit together. claimNonceDigest
-/// is server generated; the raw nonce is returned once and never stored.
+/// Selection and one-use handoff authority commit together. The browser keeps
+/// the raw nonce for replay-safe handoff; Admin stores only its digest.
 model RecommendationSelection {
-  id               String                   @id @default(cuid())
-  requestId        String                   @map("request_id")
-  request          RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId           String                   @unique(map: "recommendation_selection_item_key") @map("item_id")
-  item             RecommendationServedItem @relation("RecommendationSelectionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_selection_item_request_fkey")
-  capabilityJti    String                   @unique(map: "recommendation_selection_capability_key") @map("capability_jti") @db.VarChar(191)
-  eventId          String                   @map("event_id") @db.VarChar(191)
-  payloadDigest    String                   @map("payload_digest") @db.Char(64)
-  tabDigest        String?                  @map("tab_digest") @db.Char(64)
-  claimNonceDigest String                   @unique(map: "recommendation_selection_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
-  handoffExpiresAt DateTime                 @map("handoff_expires_at")
-  claimedAt        DateTime?                @map("claimed_at")
-  occurredAt       DateTime                 @map("occurred_at")
-  receivedAt       DateTime                 @default(now()) @map("received_at")
-  expiresAt        DateTime                 @map("expires_at")
+  id                    String                   @id @default(cuid())
+  requestId             String                   @map("request_id")
+  request               RecommendationRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                String                   @unique(map: "recommendation_selection_item_key") @map("item_id")
+  item                  RecommendationServedItem @relation("RecommendationSelectionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_selection_item_request_fkey")
+  capabilityJti         String                   @unique(map: "recommendation_selection_capability_key") @map("capability_jti") @db.VarChar(191)
+  eventId               String                   @map("event_id") @db.VarChar(191)
+  payloadDigest         String                   @map("payload_digest") @db.Char(64)
+  tabDigest             String?                  @map("tab_digest") @db.Char(64)
+  claimNonceDigest      String                   @unique(map: "recommendation_selection_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt      DateTime                 @map("handoff_expires_at")
+  claimedAt             DateTime?                @map("claimed_at")
+  attributionEligibleAt DateTime?                @map("attribution_eligible_at")
+  occurredAt            DateTime                 @map("occurred_at")
+  receivedAt            DateTime                 @default(now()) @map("received_at")
+  expiresAt             DateTime                 @map("expires_at")
 
   episode                        RecommendationPlaybackEpisode?                @relation("RecommendationPlaybackEpisodeSelection")
+  eligibilityDecisions           RecommendationEligibilityDecision[]           @relation("RecommendationEligibilitySelection")
   profileProjectionContributions RecommendationProfileProjectionContribution[]
 
   @@unique([capabilityJti, eventId], map: "recommendation_selection_event_key")
   @@unique([requestId, itemId], map: "recommendation_selection_item_request_key")
   @@unique([requestId, itemId, id], map: "recommendation_selection_request_item_id_key")
   @@index([requestId], map: "recommendation_selection_request_idx")
+  @@index([requestId, attributionEligibleAt], map: "recommendation_selection_attribution_idx")
   @@index([claimNonceDigest, handoffExpiresAt], map: "recommendation_selection_handoff_idx")
   @@index([expiresAt])
   @@map("recommendation_selection")
@@ -3525,38 +3859,52 @@ model RecommendationSelection {
 /// Minimal append-only playback root opened with selection. Active/hard token
 /// horizons and generation fence are persisted for verifier/finalizer parity.
 model RecommendationPlaybackEpisode {
-  id                String                     @id @default(cuid())
-  requestId         String                     @map("request_id")
-  request           RecommendationRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId            String                     @map("item_id")
-  item              RecommendationServedItem   @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
-  selectionId       String                     @unique(map: "recommendation_episode_selection_key") @map("selection_id")
-  selection         RecommendationSelection    @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
-  mediaId           String                     @map("media_id") @db.VarChar(191)
-  sessionDigest     String                     @map("session_digest") @db.Char(64)
-  state             RecommendationEpisodeState @default(PENDING)
-  capabilityJti     String?                    @unique(map: "recommendation_episode_capability_key") @map("capability_jti") @db.VarChar(191)
-  signingKid        String?                    @map("signing_kid") @db.VarChar(64)
-  activeUntil       DateTime                   @map("active_until")
-  hardUntil         DateTime                   @map("hard_until")
+  id                   String                     @id @default(cuid())
+  requestId            String?                    @map("request_id")
+  request              RecommendationRequest?     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId               String?                    @map("item_id")
+  item                 RecommendationServedItem?  @relation("RecommendationPlaybackEpisodeItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_episode_item_request_fkey")
+  selectionId          String?                    @unique(map: "recommendation_episode_selection_key") @map("selection_id")
+  selection            RecommendationSelection?   @relation("RecommendationPlaybackEpisodeSelection", fields: [requestId, itemId, selectionId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_episode_selection_lineage_fkey")
+  contextVersion       String                     @default("playback-context-v1") @map("context_version") @db.VarChar(64)
+  discoverySource      String                     @default("direct") @map("discovery_source") @db.VarChar(32)
+  provenance           Json                       @default("{}")
+  claimNonceDigest     String?                    @unique(map: "recommendation_episode_claim_nonce_key") @map("claim_nonce_digest") @db.Char(64)
+  handoffExpiresAt     DateTime?                  @map("handoff_expires_at")
+  mediaId              String                     @map("media_id") @db.VarChar(191)
+  sessionDigest        String                     @map("session_digest") @db.Char(64)
+  state                RecommendationEpisodeState @default(PENDING)
+  capabilityJti        String?                    @unique(map: "recommendation_episode_capability_key") @map("capability_jti") @db.VarChar(191)
+  signingKid           String?                    @map("signing_kid") @db.VarChar(64)
+  activeUntil          DateTime                   @map("active_until")
+  hardUntil            DateTime                   @map("hard_until")
   /// Nullable recovery work marker. Its partial index is migration-owned
   /// because Prisma cannot express the `IS NOT NULL` predicate.
-  finalizationDueAt DateTime?                  @map("finalization_due_at")
-  nextFactSequence  Int                        @default(1) @map("next_fact_sequence")
-  generation        Int                        @default(1)
-  claimedAt         DateTime?                  @map("claimed_at")
-  finalizedAt       DateTime?                  @map("finalized_at")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  expiresAt         DateTime                   @map("expires_at")
+  finalizationDueAt    DateTime?                  @map("finalization_due_at")
+  nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  replayCount          Int                        @default(0) @map("replay_count")
+  transportReplayCount Int                        @default(0) @map("transport_replay_count")
+  conflictCount        Int                        @default(0) @map("conflict_count")
+  generation           Int                        @default(1)
+  claimedAt            DateTime?                  @map("claimed_at")
+  finalizedAt          DateTime?                  @map("finalized_at")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  expiresAt            DateTime                   @map("expires_at")
 
-  facts          RecommendationPlaybackFact[]    @relation("RecommendationPlaybackFactEpisode")
-  outcomes       RecommendationOutcomeRevision[] @relation("RecommendationOutcomeRevisionEpisode")
-  contentActions RecommendationContentAction[]   @relation("RecommendationContentActionEpisode")
+  facts                   RecommendationPlaybackFact[]                   @relation("RecommendationPlaybackFactEpisode")
+  outcomes                RecommendationOutcomeRevision[]                @relation("RecommendationOutcomeRevisionEpisode")
+  contentActions          RecommendationContentAction[]                  @relation("RecommendationContentActionEpisode")
+  submissionBudgets       RecommendationCapabilitySubmissionBudget[]     @relation("RecommendationCapabilitySubmissionEpisode")
+  transportReplayReceipts RecommendationPlaybackTransportReplayReceipt[] @relation("RecommendationPlaybackTransportReplayEpisode")
+  traceAccessAudits       RecommendationTraceAccessAudit[]               @relation("RecommendationTraceAccessEpisode")
 
   @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
   @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
   @@index([state, activeUntil], map: "recommendation_episode_state_deadline_idx")
   @@index([requestId], map: "recommendation_episode_request_idx")
+  @@index([discoverySource, createdAt, id], map: "recommendation_episode_source_created_idx")
+  @@index([createdAt, id], map: "recommendation_episode_created_idx")
+  @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
   @@index([expiresAt])
   @@map("recommendation_playback_episode")
 }
@@ -3565,12 +3913,12 @@ model RecommendationPlaybackEpisode {
 /// eventId+digest provides idempotent replay and conflicting digests quarantine.
 model RecommendationPlaybackFact {
   id            String                        @id @default(cuid())
-  requestId     String                        @map("request_id")
-  request       RecommendationRequest         @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId        String                        @map("item_id")
-  item          RecommendationServedItem      @relation("RecommendationPlaybackFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_fact_item_request_fkey")
+  requestId     String?                       @map("request_id")
+  request       RecommendationRequest?        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId        String?                       @map("item_id")
+  item          RecommendationServedItem?     @relation("RecommendationPlaybackFactItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_fact_item_request_fkey")
   episodeId     String                        @map("episode_id")
-  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackFactEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_fact_episode_lineage_fkey")
+  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackFactEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_fact_episode_fkey")
   capabilityJti String                        @map("capability_jti") @db.VarChar(191)
   eventId       String                        @map("event_id") @db.VarChar(191)
   payloadDigest String                        @map("payload_digest") @db.Char(64)
@@ -3610,7 +3958,7 @@ model RecommendationContentAction {
   itemId                  String?                               @map("item_id")
   item                    RecommendationServedItem?             @relation("RecommendationContentActionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: SetNull, map: "recommendation_content_action_item_lineage_fkey")
   episodeId               String?                               @map("episode_id")
-  episode                 RecommendationPlaybackEpisode?        @relation("RecommendationContentActionEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: SetNull, map: "recommendation_content_action_episode_lineage_fkey")
+  episode                 RecommendationPlaybackEpisode?        @relation("RecommendationContentActionEpisode", fields: [episodeId], references: [id], onDelete: SetNull, map: "recommendation_content_action_episode_fkey")
   candidateGenerator      String?                               @map("candidate_generator") @db.VarChar(64)
   destinationArtifactType String?                               @map("destination_artifact_type") @db.VarChar(64)
   destinationArtifactId   String?                               @map("destination_artifact_id") @db.VarChar(191)
@@ -3640,18 +3988,18 @@ model RecommendationContentAction {
 /// and continuous_weight_not_available; a later watermark appends a revision.
 model RecommendationOutcomeRevision {
   id                         String                         @id @default(cuid())
-  requestId                  String                         @map("request_id")
-  request                    RecommendationRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  itemId                     String                         @map("item_id")
-  item                       RecommendationServedItem       @relation("RecommendationOutcomeRevisionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_outcome_item_request_fkey")
+  requestId                  String?                        @map("request_id")
+  request                    RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  itemId                     String?                        @map("item_id")
+  item                       RecommendationServedItem?      @relation("RecommendationOutcomeRevisionItem", fields: [requestId, itemId], references: [requestId, id], onDelete: Cascade, map: "recommendation_outcome_item_request_fkey")
   episodeId                  String                         @map("episode_id")
-  episode                    RecommendationPlaybackEpisode  @relation("RecommendationOutcomeRevisionEpisode", fields: [requestId, itemId, episodeId], references: [requestId, itemId, id], onDelete: Cascade, map: "recommendation_outcome_episode_lineage_fkey")
+  episode                    RecommendationPlaybackEpisode  @relation("RecommendationOutcomeRevisionEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_outcome_episode_fkey")
   classifierVersion          String                         @map("classifier_version") @db.VarChar(64)
   factWatermark              Int                            @map("fact_watermark")
   inputDigest                String                         @map("input_digest") @db.Char(64)
   revision                   Int
   supersedesId               String?                        @unique(map: "recommendation_outcome_supersedes_key") @map("supersedes_id")
-  supersedes                 RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes", fields: [requestId, itemId, episodeId, supersedesId], references: [requestId, itemId, episodeId, id], onDelete: Restrict, map: "recommendation_outcome_supersedes_lineage_fkey")
+  supersedes                 RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes", fields: [supersedesId], references: [id], onDelete: Restrict, map: "recommendation_outcome_supersedes_fkey")
   supersededBy               RecommendationOutcomeRevision? @relation("RecommendationOutcomeSupersedes")
   qualifiedView              Boolean                        @map("qualified_view")
   viewQualityWeight          Float?                         @map("view_quality_weight")
@@ -3660,6 +4008,7 @@ model RecommendationOutcomeRevision {
   durationSeconds            Float?                         @map("duration_seconds")
   durationCohort             String?                        @map("duration_cohort") @db.VarChar(16)
   activeCoverage             String?                        @map("active_coverage") @db.VarChar(16)
+  activeIntervals            Json?                          @map("active_intervals")
   reasons                    String[]                       @default([])
   /// Compatibility field fixed false on immutable outcomes. All consumers
   /// derive current scope eligibility from RecommendationEligibilityDecision.
@@ -3676,8 +4025,38 @@ model RecommendationOutcomeRevision {
   @@unique([requestId, itemId, episodeId, id], map: "recommendation_outcome_lineage_id_key")
   @@unique([requestId, itemId, episodeId, supersedesId], map: "recommendation_outcome_supersedes_lineage_key")
   @@index([requestId], map: "recommendation_outcome_request_idx")
+  @@index([classifierVersion, createdAt, episodeId, revision], map: "recommendation_outcome_classifier_created_idx")
   @@index([expiresAt])
   @@map("recommendation_outcome_revision")
+}
+
+/// Immutable, aggregate comparison of a playback proxy with the legacy
+/// comparator. A readiness decision can authorize shadow evaluation only;
+/// this ledger can never authorize live ranking influence.
+model PlaybackProxyEvaluation {
+  id                   String   @id @default(cuid())
+  proxyVersion         String   @map("proxy_version") @db.VarChar(64)
+  revision             Int
+  windowStart          DateTime @map("window_start")
+  windowEnd            DateTime @map("window_end")
+  sampleCount          Int      @map("sample_count")
+  pairedCount          Int      @map("paired_count")
+  missingCount         Int      @map("missing_count")
+  agreementRate        Float?   @map("agreement_rate")
+  activeQualifiedRate  Float?   @map("active_qualified_rate")
+  legacyQualifiedRate  Float?   @map("legacy_qualified_rate")
+  lateRevisionRate     Float?   @map("late_revision_rate")
+  finalizationLagP95Ms Int?     @map("finalization_lag_p95_ms")
+  durationCohorts      Json     @default("{}") @map("duration_cohorts")
+  decision             String   @db.VarChar(48)
+  reasonCodes          String[] @default([]) @map("reason_codes")
+  rankingInfluence     Boolean  @default(false) @map("ranking_influence")
+  inputDigest          String   @map("input_digest") @db.Char(64)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@unique([proxyVersion, revision], map: "playback_proxy_evaluation_revision_key")
+  @@index([proxyVersion, createdAt], map: "playback_proxy_evaluation_created_idx")
+  @@map("playback_proxy_evaluation")
 }
 
 /// Append-only integrity verdict. Raw facts without a current decision are
@@ -3692,6 +4071,8 @@ model RecommendationEligibilityDecision {
   outcome               RecommendationOutcomeRevision?        @relation("RecommendationEligibilityOutcome", fields: [outcomeId], references: [id], onDelete: Cascade)
   contentActionId       String?                               @map("content_action_id")
   contentAction         RecommendationContentAction?          @relation("RecommendationEligibilityContentAction", fields: [contentActionId], references: [id], onDelete: Cascade)
+  selectionId           String?                               @map("selection_id")
+  selection             RecommendationSelection?              @relation("RecommendationEligibilitySelection", fields: [selectionId], references: [id], onDelete: Cascade, map: "recommendation_eligibility_selection_id_fkey")
   policyVersion         String                                @map("policy_version") @db.VarChar(64)
   revision              Int
   isCurrent             Boolean                               @default(true) @map("is_current")
@@ -3703,14 +4084,40 @@ model RecommendationEligibilityDecision {
   contributionOrdinal   Int                                   @map("contribution_ordinal")
   distinctSupport       Int                                   @map("distinct_support")
   identityConcentration Float                                 @map("identity_concentration")
+  inputDigest           String                                @map("input_digest") @db.Char(64)
+  evidenceWatermark     DateTime?                             @map("evidence_watermark")
   decidedAt             DateTime                              @default(now()) @map("decided_at")
   expiresAt             DateTime                              @map("expires_at")
 
+  profileProjectionContributions RecommendationProfileProjectionContribution[]
+
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
+  // Current-source lookup indexes are migration-owned partial indexes.
   @@index([state, decidedAt], map: "recommendation_eligibility_state_decided_idx")
   @@index([actorClass, state, decidedAt], map: "recommendation_eligibility_actor_state_idx")
   @@index([expiresAt], map: "recommendation_eligibility_expiry_idx")
   @@map("recommendation_eligibility_decision")
+}
+
+/// Private append-only proof that an already accepted playback fact was sent
+/// again with the exact payload. It is bounded by the episode capability
+/// submission budget and cascades with the episode retention root. It is used
+/// only by integrity classification and aggregate reconciliation evidence.
+model RecommendationPlaybackTransportReplayReceipt {
+  id            String                        @id @default(cuid())
+  episodeId     String                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode @relation("RecommendationPlaybackTransportReplayEpisode", fields: [episodeId], references: [id], onDelete: Cascade, map: "recommendation_transport_replay_episode_fkey")
+  capabilityJti String                        @map("capability_jti") @db.VarChar(191)
+  eventId       String                        @map("event_id") @db.VarChar(191)
+  payloadDigest String                        @map("payload_digest") @db.Char(64)
+  replayOrdinal Int                           @map("replay_ordinal")
+  observedAt    DateTime                      @default(now()) @map("observed_at")
+  expiresAt     DateTime                      @map("expires_at")
+
+  @@unique([episodeId, eventId, replayOrdinal], map: "recommendation_transport_replay_episode_event_ordinal_key")
+  @@index([episodeId, observedAt], map: "recommendation_transport_replay_episode_observed_idx")
+  @@index([expiresAt], map: "recommendation_transport_replay_expiry_idx")
+  @@map("recommendation_playback_transport_replay_receipt")
 }
 
 /// Immutable, aggregate-only semantic-control readiness proof. It contains no
@@ -3916,31 +4323,37 @@ model RecommendationProfileProjectionPointer {
 /// Durable workflow claim state. It is private operational truth and is
 /// created before dispatch so a failed dispatch remains visible and replayable.
 model RecommendationProfileProjectionRun {
-  id                String                                     @id @default(cuid())
-  scope             RecommendationProfileProjectionScope
-  profileId         String?                                    @map("profile_id")
-  profile           RecommendationProfile?                     @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  privacyGeneration Int?                                       @map("privacy_generation")
-  sessionDigest     String?                                    @map("session_digest") @db.Char(64)
-  state             RecommendationProfileProjectionRunState    @default(PENDING)
-  generation        Int                                        @default(1)
-  claimId           String?                                    @map("claim_id") @db.Uuid
-  claimedAt         DateTime?                                  @map("claimed_at")
-  heartbeatAt       DateTime?                                  @map("heartbeat_at")
-  workflowRunId     String?                                    @map("workflow_run_id") @db.VarChar(191)
-  projectionId      String?                                    @map("projection_id")
-  projection        RecommendationProfileProjectionGeneration? @relation(fields: [projectionId], references: [id], onDelete: SetNull)
-  failureReason     String?                                    @map("failure_reason") @db.VarChar(64)
-  purpose           String                                     @default("profile_projection_workflow") @db.VarChar(64)
-  identityClass     String                                     @default("private_pseudonymous_workflow") @map("identity_class") @db.VarChar(64)
-  accessClass       String                                     @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
-  deletionBehavior  String                                     @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
-  fallbackBehavior  String                                     @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
-  createdAt         DateTime                                   @default(now()) @map("created_at")
-  completedAt       DateTime?                                  @map("completed_at")
-  expiresAt         DateTime                                   @map("expires_at")
+  id                        String                                     @id @default(cuid())
+  scope                     RecommendationProfileProjectionScope
+  profileId                 String?                                    @map("profile_id")
+  profile                   RecommendationProfile?                     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  privacyGeneration         Int?                                       @map("privacy_generation")
+  sessionDigest             String?                                    @map("session_digest") @db.Char(64)
+  state                     RecommendationProfileProjectionRunState    @default(PENDING)
+  generation                Int                                        @default(1)
+  attemptCount              Int                                        @default(0) @map("attempt_count")
+  claimId                   String?                                    @map("claim_id") @db.Uuid
+  claimedAt                 DateTime?                                  @map("claimed_at")
+  heartbeatAt               DateTime?                                  @map("heartbeat_at")
+  leaseExpiresAt            DateTime?                                  @map("lease_expires_at")
+  workflowRunId             String?                                    @map("workflow_run_id") @db.VarChar(191)
+  projectionId              String?                                    @map("projection_id")
+  projection                RecommendationProfileProjectionGeneration? @relation(fields: [projectionId], references: [id], onDelete: SetNull)
+  failureReason             String?                                    @map("failure_reason") @db.VarChar(64)
+  lastTransitionReason      String?                                    @map("last_transition_reason") @db.VarChar(64)
+  reconciliationCause       String                                     @default("projection_request") @map("reconciliation_cause") @db.VarChar(64)
+  expectedPointerGeneration Int?                                       @map("expected_pointer_generation")
+  expectedGenerationId      String?                                    @map("expected_generation_id")
+  purpose                   String                                     @default("profile_projection_workflow") @db.VarChar(64)
+  identityClass             String                                     @default("private_pseudonymous_workflow") @map("identity_class") @db.VarChar(64)
+  accessClass               String                                     @default("recommendation_profile_projection_service") @map("access_class") @db.VarChar(64)
+  deletionBehavior          String                                     @default("cascade_profile_or_session_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior          String                                     @default("semantic_control") @map("fallback_behavior") @db.VarChar(64)
+  createdAt                 DateTime                                   @default(now()) @map("created_at")
+  completedAt               DateTime?                                  @map("completed_at")
+  expiresAt                 DateTime                                   @map("expires_at")
 
-  @@index([state, heartbeatAt], map: "recommendation_profile_projection_run_claim_idx")
+  @@index([state, leaseExpiresAt, attemptCount], map: "recommendation_profile_projection_run_lease_idx")
   @@index([profileId, privacyGeneration, state], map: "recommendation_profile_projection_run_profile_idx")
   @@index([sessionDigest, state], map: "recommendation_profile_projection_run_session_idx")
   @@index([expiresAt], map: "recommendation_profile_projection_run_expiry_idx")
@@ -3973,28 +4386,32 @@ model RecommendationProfileInterest {
 /// Exact ticket-local contribution lineage for replay, revision, integrity
 /// reversal, and erasure. Membership is private and cascades with generation.
 model RecommendationProfileProjectionContribution {
-  id                       String                                    @id @default(cuid())
-  generationId             String                                    @map("generation_id")
-  generation               RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
-  kind                     RecommendationProfileContributionKind
-  sourceIdDigest           String                                    @map("source_id_digest") @db.Char(64)
-  sourceOutcomeId          String?                                   @map("source_outcome_id")
-  sourceOutcome            RecommendationOutcomeRevision?            @relation(fields: [sourceOutcomeId], references: [id], onDelete: SetNull)
-  sourceSelectionId        String?                                   @map("source_selection_id")
-  sourceSelection          RecommendationSelection?                  @relation(fields: [sourceSelectionId], references: [id], onDelete: Cascade)
-  targetMediaId            String                                    @map("target_media_id") @db.VarChar(191)
-  interestOrdinal          Int?                                      @map("interest_ordinal")
-  weight                   Float
-  eligibilityPolicyVersion String?                                   @map("eligibility_policy_version") @db.VarChar(64)
-  outcomeClassifierVersion String?                                   @map("outcome_classifier_version") @db.VarChar(64)
-  privacyGeneration        Int?                                      @map("privacy_generation")
-  occurredAt               DateTime                                  @map("occurred_at")
-  createdAt                DateTime                                  @default(now()) @map("created_at")
-  expiresAt                DateTime                                  @map("expires_at")
+  id                          String                                    @id @default(cuid())
+  generationId                String                                    @map("generation_id")
+  generation                  RecommendationProfileProjectionGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  kind                        RecommendationProfileContributionKind
+  sourceIdDigest              String                                    @map("source_id_digest") @db.Char(64)
+  sourceOutcomeId             String?                                   @map("source_outcome_id")
+  sourceOutcome               RecommendationOutcomeRevision?            @relation(fields: [sourceOutcomeId], references: [id], onDelete: SetNull)
+  sourceSelectionId           String?                                   @map("source_selection_id")
+  sourceSelection             RecommendationSelection?                  @relation(fields: [sourceSelectionId], references: [id], onDelete: Cascade)
+  sourceEligibilityDecisionId String?                                   @map("source_eligibility_decision_id")
+  sourceEligibilityDecision   RecommendationEligibilityDecision?        @relation(fields: [sourceEligibilityDecisionId], references: [id], onDelete: SetNull, map: "recommendation_profile_contribution_eligibility_fkey")
+  sourceEligibilityRevision   Int?                                      @map("source_eligibility_revision")
+  targetMediaId               String                                    @map("target_media_id") @db.VarChar(191)
+  interestOrdinal             Int?                                      @map("interest_ordinal")
+  weight                      Float
+  eligibilityPolicyVersion    String?                                   @map("eligibility_policy_version") @db.VarChar(64)
+  outcomeClassifierVersion    String?                                   @map("outcome_classifier_version") @db.VarChar(64)
+  privacyGeneration           Int?                                      @map("privacy_generation")
+  occurredAt                  DateTime                                  @map("occurred_at")
+  createdAt                   DateTime                                  @default(now()) @map("created_at")
+  expiresAt                   DateTime                                  @map("expires_at")
 
   @@unique([generationId, kind, sourceIdDigest], map: "recommendation_profile_contribution_generation_source_key")
   @@index([sourceOutcomeId], map: "recommendation_profile_contribution_outcome_idx")
   @@index([sourceSelectionId], map: "recommendation_profile_contribution_selection_idx")
+  @@index([sourceEligibilityDecisionId, sourceEligibilityRevision], map: "recommendation_profile_contribution_eligibility_idx")
   @@index([expiresAt], map: "recommendation_profile_contribution_expiry_idx")
   @@map("recommendation_profile_projection_contribution")
 }
@@ -4083,16 +4500,19 @@ model RecommendationConflict {
 /// request-owned and cascades with the raw lifecycle root; it stores only the
 /// already-persisted opaque jti, never the raw token or browser event payload.
 model RecommendationCapabilitySubmissionBudget {
-  capabilityJti String                @id @map("capability_jti") @db.VarChar(191)
-  requestId     String                @map("request_id")
-  request       RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  capabilityJti String                         @id @map("capability_jti") @db.VarChar(191)
+  requestId     String?                        @map("request_id")
+  request       RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  episodeId     String?                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode? @relation("RecommendationCapabilitySubmissionEpisode", fields: [episodeId], references: [id], onDelete: Cascade)
   attempts      Int
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
-  expiresAt     DateTime              @map("expires_at")
+  createdAt     DateTime                       @default(now()) @map("created_at")
+  updatedAt     DateTime                       @updatedAt @map("updated_at")
+  expiresAt     DateTime                       @map("expires_at")
 
   @@index([expiresAt])
   @@index([requestId], map: "recommendation_capability_submission_budget_request_idx")
+  @@index([episodeId], map: "recommendation_capability_submission_budget_episode_idx")
   @@map("recommendation_capability_submission_budget")
 }
 
@@ -4117,15 +4537,18 @@ model RecommendationRetentionRun {
 /// Permission-gated Admin raw-trace access audit. The request FK is cleared
 /// atomically by root purge; actor digest/reason/time remain for 90 days.
 model RecommendationTraceAccessAudit {
-  id          String                 @id @default(cuid())
-  requestId   String?                @map("request_id")
-  request     RecommendationRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  actorDigest String                 @map("actor_digest") @db.Char(64)
-  reasonCode  String                 @map("reason_code") @db.VarChar(64)
-  accessedAt  DateTime               @default(now()) @map("accessed_at")
-  expiresAt   DateTime               @map("expires_at")
+  id          String                         @id @default(cuid())
+  requestId   String?                        @map("request_id")
+  request     RecommendationRequest?         @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  episodeId   String?                        @map("episode_id")
+  episode     RecommendationPlaybackEpisode? @relation("RecommendationTraceAccessEpisode", fields: [episodeId], references: [id], onDelete: SetNull)
+  actorDigest String                         @map("actor_digest") @db.Char(64)
+  reasonCode  String                         @map("reason_code") @db.VarChar(64)
+  accessedAt  DateTime                       @default(now()) @map("accessed_at")
+  expiresAt   DateTime                       @map("expires_at")
 
   @@index([requestId])
+  @@index([episodeId])
   @@index([expiresAt])
   @@map("recommendation_trace_access_audit")
 }

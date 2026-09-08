@@ -8,6 +8,7 @@
  * source's minContentLength (a nav-only / boilerplate page). bodyHash is
  * sha256(response body) — the re-fetch identity, distinct from any contentHash.
  */
+import { RagOperationalError } from "../contracts/index.js"
 import { createHash } from "node:crypto"
 import type {
   Fetcher,
@@ -121,9 +122,10 @@ async function resolveAcquireUrls(
     // In resume mode, discover uncapped so the resume-skip runs against the full
     // candidate set and the final urls.slice(maxPages) is the single cap bounding
     // the work that REMAINS (discover.ts still guards fan-out via MAX_SITEMAP_FETCHES).
-    const discoveryPolicy = opts.resume
-      ? { ...entry.crawl, maxPages: Number.MAX_SAFE_INTEGER }
-      : entry.crawl
+    const discoveryPolicy =
+      opts.resume || entry.crawl.expectedPages !== undefined
+        ? { ...entry.crawl, maxPages: Number.MAX_SAFE_INTEGER }
+        : entry.crawl
     const disc = await discoverUrls(
       { fetcher: deps.fetcher },
       discoveryPolicy,
@@ -134,6 +136,14 @@ async function resolveAcquireUrls(
     )
     urls = [...new Set([...seeds, ...disc.urls])]
   }
+  if (
+    entry.crawl.expectedPages !== undefined &&
+    urls.length !== entry.crawl.expectedPages
+  )
+    throw new RagOperationalError(
+      "argument_invalid",
+      `acquisition inventory changed: expected ${entry.crawl.expectedPages} articles, found ${urls.length}; review before applying`,
+    )
   if (opts.resume) {
     const staged = new Set(await deps.store.listStagedCanonicalUrls(entry.key))
     const before = urls.length

@@ -27,7 +27,17 @@ function verdict(guess: number): string {
  * handler, and the result is announced through `role="status"` rather
  * than only being visible.
  */
-export function WhatsNewAudienceQuiz() {
+export function WhatsNewAudienceQuiz({
+  /**
+   * Outer spacing, supplied by the caller. The quiz used to close the
+   * audiences section on its own and owned its top margin; it now sits in
+   * the right-hand column of the estimate stage, where a top margin would
+   * knock it out of line with the card beside it.
+   */
+  className = "mt-12 lg:mt-16",
+}: {
+  className?: string
+} = {}) {
   const sliderId = useId()
   const [guess, setGuess] = useState(30)
   const [submitted, setSubmitted] = useState<number | null>(null)
@@ -38,10 +48,14 @@ export function WhatsNewAudienceQuiz() {
   }
 
   return (
-    <div
-      data-testid="whats-new-quiz"
-      className="mt-12 overflow-hidden rounded-3xl border border-white/12 bg-[linear-gradient(135deg,rgba(124,92,240,0.16),rgba(240,86,124,0.1)_55%,transparent)] p-6 backdrop-blur-sm sm:p-9 lg:mt-16 lg:p-12"
-    >
+    /* No box: no frame, no fill, no padding of its own.
+
+       It used to be a bordered, gradient-filled, blurred card, which made
+       sense while it was a full-width band closing the section. Beside the
+       audience card it read as a second card competing with the one the
+       question is about — two boxes of equal weight, only one of which is
+       the subject. Bare, the question reads as the page asking it. */
+    <div data-testid="whats-new-quiz" className={className}>
       <p className="text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/70 uppercase">
         {WHATS_NEW_QUIZ.eyebrow}
       </p>

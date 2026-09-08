@@ -30,11 +30,14 @@ vi.mock("./embeddings.service", () => ({
   },
   EXPERIENCE_EMBEDDING_DIMENSIONS: 3,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
-  currentEmbeddingProviderIdentity: () => ({
+  currentContentQueryEmbeddingIdentity: vi.fn(async () => ({
+    contractId: "semantic-transcript-pgvector-v1",
     provider: "openrouter",
     model: "qwen/qwen3-embedding-8b",
+    nativeDimensions: 3,
     dimensions: 3,
-  }),
+    transformVersion: null,
+  })),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 
@@ -1069,6 +1072,63 @@ describe("WatchSearchService", () => {
     expect(secondPageIds).toEqual(["b-broader", "c-broader"])
     expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(4)
     expect(firstPage.hasMore).toBe(true)
+  })
+
+  it("guarantees an exact-query editorial target on the default first page without duplicating page two", async () => {
+    const organicRows = Array.from({ length: 25 }, (_, index) =>
+      exactTitleResult(
+        `organic-${String(index).padStart(2, "0")}`,
+        `Organic result ${index}`,
+      ),
+    )
+    const curatedRow = {
+      ...exactTitleResult(
+        "zz-rescue-intro",
+        "Rescue Project Introduction in Visual Vernacular",
+      ),
+      titleMatched: false,
+      curated: true,
+      curationPosition: 1,
+    }
+    mockLexicalResults(
+      lexicalResults({ exactTitle: [...organicRows, curatedRow] }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const firstPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 0,
+    })
+    const secondPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 20,
+    })
+
+    const firstPageIds = firstPage.results.map((row) => row.id)
+    const secondPageIds = secondPage.results.map((row) => row.id)
+    expect(firstPageIds).toHaveLength(20)
+    expect(firstPageIds[19]).toBe("zz-rescue-intro")
+    expect(secondPageIds).not.toContain("zz-rescue-intro")
+    expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(
+      firstPageIds.length + secondPageIds.length,
+    )
+    expect(firstPage.results[19]).toMatchObject({
+      evidence: { kind: "metadata", label: "Editorial match" },
+    })
   })
 
   it("fills exact-title results with bounded transcript-semantic results without duplicating videos", async () => {

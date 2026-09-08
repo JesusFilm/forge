@@ -20,6 +20,7 @@ export class FakeRawDocumentReader implements RawDocumentReader {
 
   async listPending(
     opts: {
+      canonicalUrlPrefix?: string
       sourceKey?: string
       limit?: number
       includeIngested?: boolean
@@ -30,6 +31,10 @@ export class FakeRawDocumentReader implements RawDocumentReader {
       : this.pending.filter((d) => !this.ingested.has(d.id))
     if (opts.sourceKey)
       rows = rows.filter((d) => d.sourceKey === opts.sourceKey)
+    if (opts.canonicalUrlPrefix)
+      rows = rows.filter((d) =>
+        d.canonicalUrl.startsWith(opts.canonicalUrlPrefix!),
+      )
     if (opts.limit != null) rows = rows.slice(0, opts.limit)
     return rows.map((d) => ({ ...d }))
   }

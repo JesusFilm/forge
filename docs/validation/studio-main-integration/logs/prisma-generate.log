@@ -1,0 +1,16 @@
+(node:751266) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 db:generate /home/tataihono/.local/share/forge/studio-462-main-integration/checkout/apps/admin
+> prisma generate
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to ./../../node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 1.36s
+
+✔ Generated Pothos integration to ./../../node_modules/.pnpm/@pothos+plugin-prisma@4.14.3_@pothos+core@4.12.0_graphql@16.13.1__@prisma+client@6.19.3_prism_sqtyjvequyzsqiijhnyuyfdhlm/node_modules/@pothos/plugin-prisma/generated.d.ts in 752ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+

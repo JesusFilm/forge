@@ -1,0 +1,82 @@
+(node:751634) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "forge_studio_462_main_upgrade", schema "public" at "127.0.0.1:55463"
+
+114 migrations found in prisma/migrations
+
+Applying migration `0072_studio_authoring`
+Applying migration `0073_studio_content_assets`
+Applying migration `0074_studio_asset_retention`
+Applying migration `0075_studio_pack_usage`
+Applying migration `0076_studio_source_snapshots`
+Applying migration `0077_studio_transfers_experiments`
+Applying migration `0078_studio_source_dependency_guards`
+Applying migration `0078a_studio_source_revision_guard`
+Applying migration `0079_studio_catalog_identity`
+Applying migration `0080_studio_production_execution`
+Applying migration `0081_studio_unknown_provider_cost`
+Applying migration `0082_studio_experiment_selection`
+Applying migration `0083_studio_render_leases`
+Applying migration `0084_studio_render_execution_results`
+Applying migration `0085_studio_publication_admission`
+Applying migration `0086_studio_render_retained_assets`
+Applying migration `0087_studio_mux_processing`
+Applying migration `0088_studio_calendar`
+Applying migration `0089_studio_calendar_history`
+Applying migration `0090_studio_planner_dispatch`
+Applying migration `0091_studio_calendar_week_provenance`
+Applying migration `0092_studio_schedule_dispatch`
+Applying migration `0093_studio_render_worker_assignment`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 0072_studio_authoring/
+    └─ migration.sql
+  └─ 0073_studio_content_assets/
+    └─ migration.sql
+  └─ 0074_studio_asset_retention/
+    └─ migration.sql
+  └─ 0075_studio_pack_usage/
+    └─ migration.sql
+  └─ 0076_studio_source_snapshots/
+    └─ migration.sql
+  └─ 0077_studio_transfers_experiments/
+    └─ migration.sql
+  └─ 0078_studio_source_dependency_guards/
+    └─ migration.sql
+  └─ 0078a_studio_source_revision_guard/
+    └─ migration.sql
+  └─ 0079_studio_catalog_identity/
+    └─ migration.sql
+  └─ 0080_studio_production_execution/
+    └─ migration.sql
+  └─ 0081_studio_unknown_provider_cost/
+    └─ migration.sql
+  └─ 0082_studio_experiment_selection/
+    └─ migration.sql
+  └─ 0083_studio_render_leases/
+    └─ migration.sql
+  └─ 0084_studio_render_execution_results/
+    └─ migration.sql
+  └─ 0085_studio_publication_admission/
+    └─ migration.sql
+  └─ 0086_studio_render_retained_assets/
+    └─ migration.sql
+  └─ 0087_studio_mux_processing/
+    └─ migration.sql
+  └─ 0088_studio_calendar/
+    └─ migration.sql
+  └─ 0089_studio_calendar_history/
+    └─ migration.sql
+  └─ 0090_studio_planner_dispatch/
+    └─ migration.sql
+  └─ 0091_studio_calendar_week_provenance/
+    └─ migration.sql
+  └─ 0092_studio_schedule_dispatch/
+    └─ migration.sql
+  └─ 0093_studio_render_worker_assignment/
+    └─ migration.sql
+      
+All migrations have been successfully applied.

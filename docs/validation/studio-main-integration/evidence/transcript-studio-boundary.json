@@ -1,0 +1,17 @@
+{
+  "args": [
+    "pnpm",
+    "--filter",
+    "@forge/admin",
+    "exec",
+    "vitest",
+    "run",
+    "src/services/typesense-watch-search-transcript-publication.db.test.ts",
+    "-t",
+    "Core-only transcript|Watch restriction changes",
+    "--maxWorkers=1",
+    "--no-file-parallelism"
+  ],
+  "exit": 1,
+  "seconds": 7.452608539999346
+}
