@@ -1152,12 +1152,7 @@ export async function publishOneCurrentTranscriptToWatchSearch(input: {
       const contention = await loadPublicationLeaseContention(prisma, now)
       if (contention) {
         console.info(
-          JSON.stringify({
-            event: "watch_search_transcript_publication_blocked",
-            leaseKind: contention.leaseKind.toLowerCase(),
-            blockedDurationMs: contention.blockedDurationMs,
-            retryAt: contention.retryAt.toISOString(),
-          }),
+          `[watch-search-transcript-publication] event=watch_search_transcript_publication_blocked lease_kind=${contention.leaseKind.toLowerCase()} blocked_duration_ms=${contention.blockedDurationMs} retry_at=${contention.retryAt.toISOString()}`,
         )
         return { status: "blocked" as const, ...contention }
       }

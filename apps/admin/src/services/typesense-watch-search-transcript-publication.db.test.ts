@@ -13,7 +13,15 @@ import {
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import {
   _internals as transcriptEmbeddingIngestInternals,
@@ -3216,6 +3224,7 @@ suite("current transcript publication into Watch Search", () => {
   it("treats evaluation-lease contention as mutation-free scheduling information", async () => {
     const now = new Date("2026-09-08T00:00:00.000Z")
     const expiresAt = new Date(now.getTime() + 30_000)
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined)
     await ingestTranscriptEmbeddings(
       prisma,
       payload({ mode: "idempotent", mastraRunId: "lease-contention" }),
@@ -3287,6 +3296,10 @@ suite("current transcript publication into Watch Search", () => {
       retryAt: expiresAt,
       blockedDurationMs: 30_000,
     })
+    expect(info).toHaveBeenCalledWith(
+      "[watch-search-transcript-publication] event=watch_search_transcript_publication_blocked lease_kind=evaluation blocked_duration_ms=30000 retry_at=2026-09-08T00:00:30.000Z",
+    )
+    info.mockRestore()
     await expect(
       prisma.watchSearchCurrentTranscriptPublicationEvent.findFirstOrThrow({
         select: {
