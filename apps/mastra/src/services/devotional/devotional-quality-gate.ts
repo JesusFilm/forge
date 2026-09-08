@@ -137,6 +137,7 @@ export async function reviewDevotionalText(
     sceneTitle: d.clip.title,
     reflection: d.reflection.text,
     conclusion: d.conclusion,
+    ...(d.clipTranscript ? { clipTranscript: d.clipTranscript } : {}),
     llm: buildReflectionCriticLlm(),
   })
   log(

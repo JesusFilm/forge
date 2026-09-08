@@ -106,6 +106,30 @@ describe("reviewDevotionalText", () => {
     expect(r.blocking).toEqual([])
   })
 
+  it("forwards the devotional's clipTranscript to the depth critic when present", async () => {
+    await reviewDevotionalText({
+      devotional: devotional({ clipTranscript: "Zacchaeus climbed the tree." }),
+      checkFidelity: true,
+    })
+    expect(critiqueReflection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clipTranscript: "Zacchaeus climbed the tree.",
+      }),
+    )
+  })
+
+  it("calls the depth critic without clipTranscript when the devotional has none", async () => {
+    // Parity check: a devotional generated before this feature (or one whose
+    // subtitle fetch failed) must produce exactly the call the critic always
+    // received.
+    await reviewDevotionalText({
+      devotional: devotional(),
+      checkFidelity: true,
+    })
+    const call = critiqueReflection.mock.calls.at(-1)?.[0]
+    expect(call).not.toHaveProperty("clipTranscript")
+  })
+
   describe("a check that could not RUN blocks", () => {
     it("blocks when coherence was skipped", async () => {
       // `coherent: true` here is the fallback value, NOT a verdict — exactly the
