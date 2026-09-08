@@ -1,27 +1,28 @@
 import { Tabs } from "expo-router"
-import { Platform, type ViewStyle } from "react-native"
+import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+
+import { TabBarBackground } from "../../src/components/ui/TabBarBackground"
+import { useTabBarStyle } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
 const BG_COLOR = "#1c1917"
 
-// Shared so the Library screen can RESTORE this exact style after hiding the
-// tab bar during selection — restoring to `undefined` falls back to RN's
-// default (light) bar, not the navigator's dark one (that was the bug).
-export const TAB_BAR_STYLE: ViewStyle = {
-  backgroundColor: BG_COLOR,
-  borderTopColor: "transparent",
-}
-
 export default function TabLayout() {
+  const tabBarStyle = useTabBarStyle()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarStyle: TAB_BAR_STYLE,
+        tabBarStyle,
+        tabBarBackground: TabBarBackground,
+        // A floating pill glued to the keyboard's top edge reads as a bug.
+        // Unset on Android, exactly as today.
+        tabBarHideOnKeyboard: Platform.OS === "ios" ? true : undefined,
         tabBarLabelStyle: {
           fontSize: Platform.select({ ios: 10, android: 12 }),
           fontFamily: "System",
