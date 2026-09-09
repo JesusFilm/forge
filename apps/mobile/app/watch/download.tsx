@@ -12,6 +12,7 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
 import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
@@ -71,11 +72,33 @@ export default function DownloadSheetRoute() {
 
   /**
    * The raw branch. R33 refuses every new export, and R15 dismisses the sheet
-   * because the export outlives this route (R29). The export run attaches here.
+   * FIRST because the export outlives this route (R29) — its outcome is
+   * reported by the root-level host, not here.
    */
   const startRawExport = (rendition: WatchDownload) => {
     if (!RAW_EXPORT_ENABLED || !rendition.url) return
+    const request = {
+      videoSlug: video.slug,
+      runId: `${video.slug}:${Date.now()}`,
+      title: video.title,
+      rendition: {
+        documentId: rendition.documentId,
+        qualityLabel: rendition.quality,
+        url: rendition.url,
+        sizeBytes: Number(rendition.size) || null,
+      },
+      wifiOnly,
+      // R23: the subtitle raw mode hid is passed so the core can PROVE it
+      // changes neither the transferred file nor the computed size.
+      subtitleHiddenByRawMode: activeSubtitle
+        ? {
+            languageSlug: activeSubtitle.languageSlug,
+            url: activeSubtitle.vttSrc,
+          }
+        : null,
+    }
     router.back()
+    void getRawExportAdapter().exportVideo(request)
   }
 
   const onStartDownload = async (

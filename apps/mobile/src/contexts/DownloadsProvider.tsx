@@ -58,6 +58,7 @@ import {
   type StartDownloadResult,
 } from "../lib/downloadLifecycle"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
+import { attachRawExportRuntime } from "../lib/rawExportRuntime"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
@@ -396,6 +397,15 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     },
     [writeRecord],
   )
+
+  // R13: the export path reads offline records and never writes one, so it gets
+  // the reader rather than the manifest. Attaching here keeps the export's own
+  // modules free of both React and AsyncStorage.
+  useEffect(() => {
+    attachRawExportRuntime({
+      findOfflineRecord: (videoSlug) => recordsRef.current[videoSlug] ?? null,
+    })
+  }, [])
 
   // Apply the global engine config once hydrated and whenever wifi-only changes.
   useEffect(() => {
