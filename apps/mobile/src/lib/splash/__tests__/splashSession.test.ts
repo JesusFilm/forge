@@ -65,6 +65,7 @@ describe("every release path clears the one visibility predicate", () => {
   it("clears it when Home reports a failed fetch", async () => {
     const session = await visibleSession()
     session.reportHomeFailure()
+    await settle(SPLASH_HOLD_MS)
     expect(session.getSnapshot().visible).toBe(false)
   })
 
@@ -346,19 +347,36 @@ describe("one session per process (R7)", () => {
 
 describe("the failed Home fetch (R15)", () => {
   // AE10: the retry card must be reachable as soon as there is something to
-  // retry, so the failure does not wait out the ceiling.
-  it("releases at once rather than holding to the ceiling", async () => {
+  // retry, so the failure does not wait out the ceiling. It does wait out the
+  // FLOOR: R15's "at once" and KD2's fixed hold conflict on a fresh install
+  // with no network, where the fetch rejects in a few hundred milliseconds and
+  // an immediate release shows a half-drawn bloom and cuts it. Owner decided
+  // the fixed hold wins (2026-09-09).
+  it("releases at the floor, well before the ceiling", async () => {
     const session = await visibleSession()
     await settle(100)
     session.reportHomeFailure()
+    expect(session.getSnapshot().visible).toBe(true)
+
+    await settle(SPLASH_HOLD_MS)
     expect(session.getSnapshot().visible).toBe(false)
     expect(session.getSnapshot().exit).toBe("fade")
   })
 
-  it("releases before the floor has elapsed", async () => {
+  it("keeps the brand moment whole when the fetch fails immediately", async () => {
+    const session = await visibleSession()
+    session.reportHomeFailure()
+
+    // The whole hold, minus a tick: still covered.
+    await settle(SPLASH_HOLD_MS - 1)
+    expect(session.getSnapshot().visible).toBe(true)
+  })
+
+  it("does not wait for content that will never come", async () => {
     const session = await visibleSession()
     session.reportHomeFailure()
     await settle(SPLASH_HOLD_MS)
+    // Released at 2.5s, not at the 6s ceiling.
     expect(session.getSnapshot().visible).toBe(false)
   })
 })

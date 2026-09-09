@@ -48,7 +48,8 @@ export type SplashSession = {
    *  type when the slug resolves and remounts Home mid-hold, so a report that
    *  outlived its reporter would hand the cover over to a spinner (R3). */
   retractHomeContent: () => void
-  /** The Home fetch failed — release now rather than holding to the ceiling (R15). */
+  /** The Home fetch failed. Releases at the floor, not at once — see the
+   *  implementation for why R15 and KD2 conflict here (R15). */
   reportHomeFailure: () => void
   /** An error panel is about to render. Release at once, with no fade (R5). */
   releaseImmediately: () => void
@@ -95,6 +96,7 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
   let started = false
   let ended = false
   let homeReported = false
+  let homeFailed = false
   let floorElapsed = false
   let floorTimer: ReturnType<typeof setTimeout> | undefined
   let ceilingTimer: ReturnType<typeof setTimeout> | undefined
@@ -129,7 +131,8 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
   }
 
   function maybeRelease() {
-    if (!snapshot.visible || !floorElapsed || !homeReported) return
+    if (!snapshot.visible || !floorElapsed) return
+    if (!homeReported && !homeFailed) return
     release("fade")
   }
 
@@ -219,10 +222,18 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
       homeReported = false
     },
 
-    /** The retry card must be reachable as soon as there is something to retry,
-     *  so the failure never waits out the ceiling (R15). */
+    /**
+     * The retry card must be reachable as soon as there is something to retry,
+     * so the failure never waits out the ceiling (R15) — but it releases at the
+     * FLOOR, not at once. R15 and KD2 conflict on a fresh install with no
+     * network, where the fetch rejects in a few hundred milliseconds: releasing
+     * at once shows a half-drawn bloom and cuts it, on the very launch this
+     * feature exists for. Owner decided the fixed hold wins (2026-09-09).
+     */
     reportHomeFailure(): void {
-      release("fade")
+      if (ended) return
+      homeFailed = true
+      maybeRelease()
     },
 
     /** An immediate cut, from ANY state — the error panel may render before the
