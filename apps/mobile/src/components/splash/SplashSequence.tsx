@@ -25,6 +25,12 @@ export const MARK_BOTTOM_LEFT_Y = 22.4957 / 35.2077
  *  box-centred word sags. */
 export const MARK_CENTROID_X = 0.5388
 export const MARK_CENTROID_Y = 0.4158
+/**
+ * How far ABOVE the centroid the word sits, as a fraction of the mark's tile.
+ * The centroid weights the sloped tail, which is not part of the screen a
+ * viewer reads text on, so anchoring there alone sets the word visibly low.
+ */
+export const WORD_RISE_FROM_CENTROID = 0.06
 /** The beam's apex sits on the right edge, four fifths of the way down. */
 export const RAY_APEX_Y_RATIO = 0.8
 /** How far the beam runs past the mark, so it dissolves rather than stopping. */
@@ -126,7 +132,7 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
     mark: { left, top, width, height },
     wordCenter: {
       x: left + width * MARK_CENTROID_X,
-      y: top + height * MARK_CENTROID_Y,
+      y: top + height * (MARK_CENTROID_Y - WORD_RISE_FROM_CENTROID),
     },
     apex,
     bottomLeftAngleDeg: degrees(

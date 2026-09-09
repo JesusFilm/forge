@@ -25,6 +25,7 @@ import {
   MARK_BOTTOM_LEFT_Y,
   MARK_CENTROID_X,
   MARK_CENTROID_Y,
+  WORD_RISE_FROM_CENTROID,
   MARK_WIDTH_RATIO,
   RAY_APEX_Y_RATIO,
   SPLASH_BLOOM_RISE_MS,
@@ -199,13 +200,27 @@ describe("the beam's geometry (R9)", () => {
       geometry.mark.left + geometry.mark.width * MARK_CENTROID_X,
       6,
     )
+    // Above it, not on it: the centroid weights the sloped tail, which is not
+    // part of the screen a viewer reads text on.
     expect(geometry.wordCenter.y).toBeCloseTo(
-      geometry.mark.top + geometry.mark.height * MARK_CENTROID_Y,
+      geometry.mark.top +
+        geometry.mark.height * (MARK_CENTROID_Y - WORD_RISE_FROM_CENTROID),
       6,
     )
+    expect(WORD_RISE_FROM_CENTROID).toBeGreaterThan(0)
     // The centroid is off both axes, so a box-centred word would sag.
     expect(MARK_CENTROID_X).not.toBe(0.5)
     expect(MARK_CENTROID_Y).not.toBe(0.5)
+  })
+
+  it("keeps the word inside the screen's own body", () => {
+    const geometry = splashGeometry(PHONE)
+    const risen =
+      (geometry.wordCenter.y - geometry.mark.top) / geometry.mark.height
+    // Between the left edge's own mid-height and the centroid: high enough to
+    // read as set ON the screen, not so high it crowds the top edge.
+    expect(risen).toBeGreaterThan(MARK_BOTTOM_LEFT_Y / 2)
+    expect(risen).toBeLessThan(MARK_CENTROID_Y)
   })
 
   it("keeps the mark's own proportions on both frames", () => {
