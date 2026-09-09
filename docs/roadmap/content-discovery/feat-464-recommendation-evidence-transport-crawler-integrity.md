@@ -24,6 +24,12 @@ tags:
 
 ## Problem
 
+Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
+now proves current-pointer convergence, stored receipt consistency and zero
+substantive failures across 23 reconciliation batches. The previous lack of
+database access is resolved. Installed alerts and complete primary-only request
+accounting remain unverified, so production acceptance remains open.
+
 The recommendation evidence closeout hotfix shipped the replay-receipt collision fix and reconciliation scheduler recovery, but a fixed production audit window after deployment still showed an unhealthy Web-to-Admin evidence boundary. Between 2026-09-07 23:20 and 2026-09-08 01:05 UTC, `POST /api/recommendations/playback` returned 791 `503` responses, 101 `200` responses, and one `403`. Excluding Applebot still left 502 `503` responses, 84 `200` responses, and one `403`.
 
 The failures are not a recurrence of the resolved replay-receipt collision. Production traces showed 300 claim mutations ending in `invalid_binding`, while Web converted the actual Admin GraphQL error shape into the generic `episode_unavailable` path and returned `503`. The browser treats `503` as retryable, so a definitive binding failure is amplified into repeated traffic. Playback writes also exhausted ten PostgreSQL `P2034` write-conflict retries. At the same time, the 900 ms Web upstream deadline is below observed successful production latency, making a committed or still-running Admin mutation indistinguishable from a retryable transport failure at the browser boundary.

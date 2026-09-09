@@ -3,6 +3,13 @@
 This is an acceptance record for content-discovery feat-464, not the unrelated
 ai-chat ticket. All times below are UTC. Production acceptance remains open.
 
+Later verification: the owner supplied production database access, and the
+[2026-09-10 NZ integrity audit](recommendation-evidence-production-integrity-2026-09-10.md)
+now establishes a clean current-pointer snapshot after scheduled reconciliation,
+stored receipt consistency, and zero substantive failures in 23 durable batches.
+The access limitations below describe the earlier observation; installed alerts
+and complete primary-only request accounting remain open.
+
 ## Releases and scope
 
 - PR #2217 (`dafa3ab003080aada92d6094f04ec1342762c8b6`) added failure-only
