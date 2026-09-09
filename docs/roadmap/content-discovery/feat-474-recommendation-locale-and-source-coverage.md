@@ -48,7 +48,7 @@ Reconcile the staged counts with the recorded request reasons. Verify exact-lang
 
 ## Diagnosis Handoff
 
-Reusable read-only inventory and fixed-window cohort tools are implemented. Verified missing seed transcripts route to `feat-199`; display metadata and Chinese script policy route to `feat-475`. No serving policy or source data is changed by this diagnostic slice. The private report and bounded source target list live under `.tmp/recommendation-locale-coverage/`. A replay with known audio is not a reconstruction of historical empty requests whose audio was not persisted.
+Reusable read-only inventory and fixed-window cohort tools are implemented. Verified missing seed transcripts route to `feat-199`; missing translations and locale-identity reconciliation route to `feat-475`. The user confirmed that missing translations must exclude the card; English fallback is not permitted. No source data is changed by this diagnostic slice. The private report and bounded source target list live under `.tmp/recommendation-locale-coverage/`. A replay with known audio is not a reconstruction of historical empty requests whose audio was not persisted.
 
 ## Validation
 

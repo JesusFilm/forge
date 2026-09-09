@@ -1,6 +1,6 @@
 ---
 id: "feat-475"
-title: "Resolve recommendation display locale coverage policy"
+title: "Close recommendation translation coverage gaps"
 owner: "nisal"
 priority: "P1"
 status: "not-started"
@@ -17,11 +17,11 @@ tags:
 
 ## Problem
 
-Recommendations require published card metadata under the exact requested transcript/display locale. Compatible embeddings and playable chosen audio alone cannot satisfy that rule. Missing text and alternative Chinese script labels need an explicit policy before changing serving behavior. `feat-474` supplies reproducible diagnosis and a private prioritized cohort; this ticket owns the resulting display-policy work.
+Recommendations require a published translation under the exact requested transcript/display locale. Compatible embeddings and playable chosen audio alone cannot satisfy that rule. `feat-474` supplies reproducible diagnosis and a private prioritized cohort; this ticket owns the resulting translated-metadata coverage work.
 
-## Decision Required
+## Approved Display Rule
 
-Choose whether missing translated card text may fall back to English while preserving the exact chosen audio, or whether content must continue to wait for published requested-locale text. Separately define acceptable Chinese script selection; generic `zh` must not silently choose a script. No fallback policy has been approved by this ticket.
+If a translation is missing, do not show the card. The user explicitly rejected English text fallback. Keep published requested-locale text and the exact chosen audio as eligibility requirements. Generic `zh` must not silently choose a script; reconcile locale identities only where the actual requested translation can be established.
 
 ## Entry Points — Read These First
 
@@ -39,15 +39,15 @@ Choose whether missing translated card text may fall back to English while prese
 
 ## What To Build
 
-1. Record the display policy. If exact requested-locale publication remains required, prepare a bounded missing-text synchronization/publication list through existing Core/Admin ownership rather than rebuilding embeddings.
-2. If fallback is approved, distinguish transcript locale, display locale, and exact audio slug explicitly. Align semantic retrieval, profile candidates, hydration, publication checks, response/cache identity, and candidate evidence. Avoid a one-join fallback that later fails eligibility or returns mismatched text/audio.
+1. Prepare a bounded missing-translation synchronization/publication list through existing Core/Admin ownership. Distinguish absent source translations from translated metadata that exists upstream but was not synchronized or published. Rebuilding embeddings does not create those translations.
+2. Repair only demonstrated synchronization, publication, or locale-identity defects for genuine requested translations. Keep semantic retrieval, profile candidates, hydration, and cache eligibility consistent: a missing or unpublished requested translation excludes the card even if English metadata is available. Preserve exact audio identity and distinguish transcript locale from display locale.
 3. Make future empty-request diagnosis reproducible by retaining the requested audio identity in bounded request evidence, with existing retention/privacy rules. Plan a compatible migration for older rows; never backfill an inferred audio slug from a BCP-47 code.
 4. Re-run fixed-window coverage and bounded retrieval after normal deployment. Keep usefulness evaluation dependent on valid playback/impression evidence rather than card counts alone.
 
 ## Constraints
 
-Preserve exact audio identity, active embedding provenance, and non-deleted published content. Do not infer historical audio, select an unapproved Chinese script, or trigger paid enrichment as a side effect. Respect existing Core versus Manager metadata ownership.
+Preserve exact audio identity, active embedding provenance, and non-deleted published translated content. Do not use English text fallback, create placeholder translations from English text to satisfy eligibility, infer historical audio, select an unapproved Chinese script, or trigger paid enrichment as a side effect. Respect existing Core versus Manager metadata ownership.
 
 ## Verification
 
-Cover missing and unpublished translations, exact publication taking precedence over fallback, deleted/restricted content, Chinese script distinctions, same-BCP47 audio siblings, edition mismatch, and consistent cache/hydration/candidate evidence. Preserve the 1.5-second delivery budget and exact active embedding contract. Regenerate Admin GraphQL artifacts in the same PR if the schema changes.
+Verify that missing or unpublished requested translations produce no card even when English metadata, compatible embeddings, and selected audio are present. Verify that publishing the genuine requested translation makes an otherwise eligible candidate available. Cover deleted/restricted content, Chinese script distinctions, same-BCP47 audio siblings, edition mismatch, and consistent cache/hydration/candidate evidence. Preserve the 1.5-second delivery budget and exact active embedding contract. Regenerate Admin GraphQL artifacts in the same PR if the schema changes.

@@ -31,3 +31,7 @@ Run focused unit and isolated PostgreSQL integration tests, Admin typecheck/lint
 ## Execution-time unknowns
 
 Whether each failing source lacks timed text, active chunks, published metadata, or compatible audio; whether a bounded candidate window contributes independently; whether the user authorizes a display fallback. No ranking or paid enrichment work is assumed.
+
+## Resolved product decision
+
+The user confirmed that a card must not be shown if its requested translation is missing. English fallback is excluded, so the conditional fallback implementation described above does not apply. `feat-475` now owns genuine translation coverage and synchronization/publication defects under the existing strict eligibility rule; missing transcript sources remain with `feat-199`.

@@ -70,7 +70,7 @@ Existing `recommendation_request` rows do not store requested audio for empty re
 | `seed_transcript_missing`, `candidate_transcripts_missing` | Resolve exact edition/language timed text through the existing source workflow in `feat-199`                                                        |
 | `*_contract_incompatible`                                  | Inspect active contract versus stored parent provenance before proposing any re-embedding                                                           |
 | `*_chunks_unavailable`                                     | Inspect matching-language chunk completion and model/dimension compatibility                                                                        |
-| `published_metadata_missing`                               | Check Core localized metadata and Admin `VideoLocale` ownership/publication; resolve display policy in `feat-475`                                   |
+| `published_metadata_missing`                               | Omit the card; resolve genuine requested-locale translations and Core/Admin synchronization/publication in `feat-475`                               |
 | `exact_audio_unavailable`, `publication_audio_no_overlap`  | Resolve the exact dub, playback readiness, and transcript edition; do not substitute a sibling language sharing BCP-47                              |
 | No inventory blocker but empty retrieval                   | Replay the bounded serving query with known audio and its normal planner/deadline settings; inspect neighbor filtering and deduplication separately |
 
@@ -78,7 +78,7 @@ Localized text is synchronized by `apps/admin/src/services/core-sync/video-local
 
 The source handoff should contain at most ten prioritized `(video ID, edition ID, exact audio slug, transcript locale)` targets, their fixed-window request counts, current transcript counts, and subtitle source-pointer availability. Store it privately. A subtitle pointer is not proof of usable timed text, and absent Admin subtitles do not establish absent Manager artifacts. Resolve Core subtitles first, then Manager transcript artifacts, before considering any separately authorized paid enrichment. Keep processing ownership in `docs/roadmap/content-discovery/feat-199-transcript-embedding-operations-promotion.md`.
 
-The display-text follow-up is `docs/roadmap/content-discovery/feat-475-recommendation-display-locale-policy.md`. Until that policy is decided, the serving rule remains published text in the requested locale plus the exact chosen audio. Do not relax one SQL join while hydration, candidate evidence, or cache eligibility still enforce another rule.
+The translation-coverage follow-up is `docs/roadmap/content-discovery/feat-475-recommendation-display-locale-policy.md`. The user confirmed the serving rule: if the requested translation is missing, do not show the card. English metadata is not a fallback. Require published requested-locale text plus the exact chosen audio throughout retrieval, hydration, candidate evidence, and cache eligibility. Improve coverage by resolving genuine translations and their synchronization/publication; do not create placeholder translations from English text to bypass this rule.
 
 ## Verification
 

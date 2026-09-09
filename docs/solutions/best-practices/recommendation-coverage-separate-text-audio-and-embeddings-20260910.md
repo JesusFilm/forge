@@ -28,7 +28,7 @@ Use `docs/operations/recommendation-locale-coverage.md` to audit an explicit `(s
 
 Keep three boundaries explicit:
 
-- Metadata: `VideoLocale.locale` must satisfy the current publication policy. Availability under `zh-hans` or `zh-hant` does not automatically satisfy generic `zh`. Synchronizing localized text and generating embeddings have different owners.
+- Metadata: require a published translation in the requested `VideoLocale.locale`. The user confirmed that a missing translation excludes the card even when English text is available. Availability under `zh-hans` or `zh-hant` does not automatically satisfy generic `zh`. Synchronizing localized text and generating embeddings have different owners.
 - Audio: match `Language.slug` and the transcript edition. BCP-47 may be shared by multiple audio language identities; it cannot select a replacement dub.
 - Retrieval: eligible inventory exists before the bounded ANN window, deduplication, recent-item suppression, and delivery. A positive inventory count does not guarantee cards.
 
@@ -42,12 +42,12 @@ Re-embedding compatible transcript rows does not create missing published text. 
 
 The diagnostic database tests use synthetic fixtures for missing metadata, alternative Chinese script labels, sibling audio slugs sharing BCP-47, mismatched editions, incompatible contract provenance, missing chunks, and deleted/restricted content. Production observations remain in gitignored reports; this guidance records the diagnostic method without usage data.
 
-For a synthetic `te` / `telugu` input with valid vectors and playable audio but no published `te` metadata, expect `published_metadata_missing`. That is a metadata or display-policy handoff. If the same seed has no `te` transcript row, expect an independent `seed_transcript_missing` source handoff as well.
+For a synthetic `te` / `telugu` input with valid vectors and playable audio but no published `te` metadata, expect `published_metadata_missing` and no eligible card, including when English metadata exists. That is a translation-coverage handoff. If the same seed has no `te` transcript row, expect an independent `seed_transcript_missing` source handoff as well.
 
 ## Related
 
 - [Language identity uses slug, not BCP-47](language-identity-on-slug-not-bcp47-20260605.md)
 - [Bounded semantic retrieval](../performance-issues/semantic-recommendation-retrieval-bounded-pgvector-fanout.md)
 - [Coverage runbook](../../operations/recommendation-locale-coverage.md)
-- [Display policy follow-up](../../roadmap/content-discovery/feat-475-recommendation-display-locale-policy.md)
+- [Translation coverage follow-up](../../roadmap/content-discovery/feat-475-recommendation-display-locale-policy.md)
 - [Source operator ownership](../../roadmap/content-discovery/feat-199-transcript-embedding-operations-promotion.md)
