@@ -247,7 +247,11 @@ export default function WatchVideoScreen() {
     playerWasVisibleRef.current = false
     if (autoplayPhase !== "playing") return
     if (consumeUpNextChain()) return
-    if (router.canGoBack()) router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/")
+    }
   }, [playerState.isVisible, autoplayPhase, router, consumeUpNextChain])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")

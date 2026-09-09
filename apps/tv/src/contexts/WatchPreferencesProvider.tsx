@@ -24,6 +24,9 @@ import {
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   setAudioLanguageSlug: (slug: string | null) => void
+  setNativePlayerVariant: (
+    variant: WatchPreferences["nativePlayerVariant"],
+  ) => void
   /** False until the on-disk read resolves (or times out to defaults). */
   hydrated: boolean
 }
@@ -48,10 +51,20 @@ export function WatchPreferencesProvider({
     (slug: string | null) => setPref("audioLanguageSlug", slug),
     [setPref],
   )
+  const setNativePlayerVariant = useCallback(
+    (variant: WatchPreferences["nativePlayerVariant"]) =>
+      setPref("nativePlayerVariant", variant),
+    [setPref],
+  )
 
   const value = useMemo<WatchPreferencesContextValue>(
-    () => ({ ...prefs, setAudioLanguageSlug, hydrated }),
-    [prefs, setAudioLanguageSlug, hydrated],
+    () => ({
+      ...prefs,
+      setAudioLanguageSlug,
+      setNativePlayerVariant,
+      hydrated,
+    }),
+    [prefs, setAudioLanguageSlug, setNativePlayerVariant, hydrated],
   )
 
   return (

@@ -36,6 +36,7 @@ describe("parseStoredPreferences", () => {
   it("reads a stored audio-language slug", () => {
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko-kmr"}')).toEqual({
       audioLanguageSlug: "ko-kmr",
+      nativePlayerVariant: "existing",
     })
   })
 
@@ -54,16 +55,21 @@ describe("parseStoredPreferences", () => {
   it("treats an empty or non-string slug as unset", () => {
     expect(parseStoredPreferences('{"audioLanguageSlug":""}')).toEqual({
       audioLanguageSlug: null,
+      nativePlayerVariant: "existing",
     })
     expect(parseStoredPreferences('{"audioLanguageSlug":7}')).toEqual({
       audioLanguageSlug: null,
+      nativePlayerVariant: "existing",
     })
   })
 
   it("ignores unknown fields from a future writer", () => {
     expect(
       parseStoredPreferences('{"audioLanguageSlug":"ru","subtitleSlug":"fr"}'),
-    ).toEqual({ audioLanguageSlug: "ru" })
+    ).toEqual({
+      audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
+    })
   })
 
   it("preserves the exact slug — bcp47 prefixes never coalesce", () => {
@@ -71,17 +77,51 @@ describe("parseStoredPreferences", () => {
     // unique slug, so each round-trips to itself and the two stay distinct.
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko"}')).toEqual({
       audioLanguageSlug: "ko",
+      nativePlayerVariant: "existing",
     })
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko-kmr"}')).toEqual({
       audioLanguageSlug: "ko-kmr",
+      nativePlayerVariant: "existing",
+    })
+  })
+
+  it("migrates the legacy native-player toggle to Native A", () => {
+    expect(
+      parseStoredPreferences(
+        '{"audioLanguageSlug":null,"nativeSwiftPlayerEnabled":true}',
+      ),
+    ).toEqual({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "native-a",
+    })
+  })
+
+  it("reads Native A and Native B as separate experiments", () => {
+    expect(
+      parseStoredPreferences('{"nativePlayerVariant":"native-a"}'),
+    ).toEqual({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "native-a",
+    })
+    expect(
+      parseStoredPreferences('{"nativePlayerVariant":"native-b"}'),
+    ).toEqual({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "native-b",
     })
   })
 })
 
 describe("mergeWatchPreferences", () => {
   it("takes the stored value when no local write raced hydration", () => {
-    expect(mergeWatchPreferences({ audioLanguageSlug: "ru" }, {})).toEqual({
+    expect(
+      mergeWatchPreferences(
+        { audioLanguageSlug: "ru", nativePlayerVariant: "existing" },
+        {},
+      ),
+    ).toEqual({
       audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
     })
   })
 
@@ -90,29 +130,41 @@ describe("mergeWatchPreferences", () => {
     // pending key — never the value — can win over disk.
     expect(
       mergeWatchPreferences(
-        { audioLanguageSlug: "ru" },
+        { audioLanguageSlug: "ru", nativePlayerVariant: "existing" },
         {
           audioLanguageSlug: null,
         },
       ),
-    ).toEqual({ audioLanguageSlug: null })
+    ).toEqual({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "existing",
+    })
   })
 
   it("lets a pending slug win over a stored null", () => {
     expect(
       mergeWatchPreferences(
-        { audioLanguageSlug: null },
+        { audioLanguageSlug: null, nativePlayerVariant: "existing" },
         {
           audioLanguageSlug: "ur",
         },
       ),
-    ).toEqual({ audioLanguageSlug: "ur" })
+    ).toEqual({
+      audioLanguageSlug: "ur",
+      nativePlayerVariant: "existing",
+    })
   })
 
   it("does not mutate its inputs", () => {
-    const onDisk = { audioLanguageSlug: "ru" }
+    const onDisk = {
+      audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing" as const,
+    }
     mergeWatchPreferences(onDisk, { audioLanguageSlug: null })
-    expect(onDisk).toEqual({ audioLanguageSlug: "ru" })
+    expect(onDisk).toEqual({
+      audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
+    })
   })
 })
 
@@ -124,28 +176,58 @@ describe("loadWatchPreferences / saveWatchPreferences", () => {
   })
 
   it("round-trips a persisted slug", async () => {
-    await saveWatchPreferences({ audioLanguageSlug: "ru" })
+    await saveWatchPreferences({
+      audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
+    })
     await expect(loadWatchPreferences()).resolves.toEqual({
       audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
+    })
+  })
+
+  it("round-trips the selected native player experiment", async () => {
+    await saveWatchPreferences({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "native-b",
+    })
+    await expect(loadWatchPreferences()).resolves.toEqual({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "native-b",
     })
   })
 
   it("round-trips a preference cleared back to null", async () => {
-    await saveWatchPreferences({ audioLanguageSlug: "ru" })
-    await saveWatchPreferences({ audioLanguageSlug: null })
+    await saveWatchPreferences({
+      audioLanguageSlug: "ru",
+      nativePlayerVariant: "existing",
+    })
+    await saveWatchPreferences({
+      audioLanguageSlug: null,
+      nativePlayerVariant: "existing",
+    })
     await expect(loadWatchPreferences()).resolves.toEqual({
       audioLanguageSlug: null,
+      nativePlayerVariant: "existing",
     })
   })
 
   it("round-trips the exact slug through storage (ko is not ko-kmr)", async () => {
-    await saveWatchPreferences({ audioLanguageSlug: "ko" })
+    await saveWatchPreferences({
+      audioLanguageSlug: "ko",
+      nativePlayerVariant: "existing",
+    })
     await expect(loadWatchPreferences()).resolves.toEqual({
       audioLanguageSlug: "ko",
+      nativePlayerVariant: "existing",
     })
-    await saveWatchPreferences({ audioLanguageSlug: "ko-kmr" })
+    await saveWatchPreferences({
+      audioLanguageSlug: "ko-kmr",
+      nativePlayerVariant: "existing",
+    })
     await expect(loadWatchPreferences()).resolves.toEqual({
       audioLanguageSlug: "ko-kmr",
+      nativePlayerVariant: "existing",
     })
   })
 
@@ -188,7 +270,10 @@ describe("loadWatchPreferences / saveWatchPreferences", () => {
   it("logs and swallows a failed persist rather than throwing at the caller", async () => {
     jest.spyOn(getStorage(), "setItem").mockRejectedValueOnce(new Error("full"))
     await expect(
-      saveWatchPreferences({ audioLanguageSlug: "ru" }),
+      saveWatchPreferences({
+        audioLanguageSlug: "ru",
+        nativePlayerVariant: "existing",
+      }),
     ).resolves.toBeUndefined()
     expect(datadogLog.warn).toHaveBeenCalledWith(
       "watch_prefs.write_failed",

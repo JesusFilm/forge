@@ -27,7 +27,7 @@ const CONTEXT = path.resolve(__dirname, "./VideoPlayerContext.tsx")
 describe("up next chain wiring", () => {
   it("overlay host marks the chain BEFORE dismissing on onPlayNext", () => {
     const src = fs.readFileSync(LAYOUT_ROUTE, "utf8")
-    const handlerStart = src.indexOf("onPlayNext={")
+    const handlerStart = src.indexOf("const handlePlayNext = useCallback(")
     expect(handlerStart).toBeGreaterThan(-1)
     const slice = src.slice(handlerStart, handlerStart + 800)
     const markAt = slice.indexOf("markUpNextChain()")
@@ -36,6 +36,7 @@ describe("up next chain wiring", () => {
     expect(markAt).toBeGreaterThan(-1)
     expect(dismissAt).toBeGreaterThan(markAt)
     expect(replaceAt).toBeGreaterThan(dismissAt)
+    expect(src.match(/onPlayNext=\{handlePlayNext\}/g)).toHaveLength(2)
   })
 
   it("pass-through pop-back consumes the chain mark before router.back()", () => {
@@ -48,6 +49,7 @@ describe("up next chain wiring", () => {
     // deleting the pop-back entirely would strand Back on pages the viewer
     // never chose (the behavior the effect exists to prevent).
     expect(src.includes("router.back()")).toBe(true)
+    expect(src.includes('router.replace("/")')).toBe(true)
   })
 
   it("playVideo clears the latch so a stale mark cannot survive a hop", () => {
