@@ -1,7 +1,7 @@
 {
   "name": "[forge] Playback transaction retries exhausted",
   "type": "log alert",
-  "query": "logs(\"service:forge-admin (env:prod OR @env:prod) \\\"event=recommendation.evidence\\\" \\\"reason=transaction_exhausted\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "query": "logs(\"(service:forge-admin OR service:forge-admin-worker) (env:prod OR @env:prod) \\\"event=recommendation.evidence\\\" \\\"reason=transaction_exhausted\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
   "message": "Inspect contention budget and concurrent finalizers. Do not raise retries or relax immutable receipt and Serializable invariants to silence this alert.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
   "tags": ["team:forge", "env:prod", "feature:feat-464"],
   "priority": 2,
