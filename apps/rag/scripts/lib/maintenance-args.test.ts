@@ -7,6 +7,11 @@ import {
 } from "./maintenance-args.js"
 
 describe("maintenance command arguments", () => {
+  it("rejects contradictory acquisition modes before setup", () => {
+    expect(() =>
+      parseAcquireArgs(["--source", "gotquestions", "--apply", "--dry-run"]),
+    ).toThrow(/cannot be combined/)
+  })
   it("requires an explicit acquire scope and defaults production-safe flags", () => {
     expect(parseAcquireArgs(["--source", "cru"])).toEqual({
       all: false,

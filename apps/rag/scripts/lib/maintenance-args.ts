@@ -71,11 +71,13 @@ export function parseAcquireArgs(argv: string[]): AcquireArgs {
   if (all === Boolean(source))
     throw invalidArgument("use exactly one of --source <key> or --all")
   const apply = argv.includes("--apply")
+  if (apply && argv.includes("--dry-run"))
+    throw invalidArgument("--apply cannot be combined with --dry-run")
   return {
     all,
     source,
     pathPrefix: parsePathPrefix(argv, source),
-    dryRun: !apply || argv.includes("--dry-run"),
+    dryRun: !apply,
     resume: argv.includes("--resume"),
     apply,
   }

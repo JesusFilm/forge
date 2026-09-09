@@ -10,10 +10,10 @@ database into Admin.
 
 ## Status (September 9, 2026)
 
-- **Total tickets:** 24
-- **Complete:** 17
+- **Total tickets:** 26
+- **Complete:** 18
 - **In progress:** 1
-- **Not started:** 6
+- **Not started:** 7
 - **Blocked:** 0
 
 ## Feature Index
@@ -44,6 +44,8 @@ database into Admin.
 | [feat-467](feat-467-gotquestions-icelandic-negative-retrieval.md) | —                                                             | Investigate the Icelandic off-topic retrieval hit                  | not-started | [#2202](https://github.com/JesusFilm/forge/pull/2202)                                                        |
 | [feat-468](feat-468-rag-sitemap-discovery-policy.md)              | —                                                             | Separate sitemap discovery from article policy                     | complete    | [#2210](https://github.com/JesusFilm/forge/pull/2210)                                                        |
 | [feat-469](feat-469-rag-redirected-sitemap-relative-children.md)  | —                                                             | Resolve sitemap children after redirects                           | not-started | [#2210](https://github.com/JesusFilm/forge/pull/2210)                                                        |
+| [feat-470](feat-470-rag-production-operations.md)                 | —                                                             | Make production acquisition and indexing self-contained            | complete    | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
+| [feat-471](feat-471-rag-production-operations-rollout.md)         | —                                                             | Verify direct production maintenance and the Icelandic path        | not-started | [#2215](https://github.com/JesusFilm/forge/pull/2215)                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked

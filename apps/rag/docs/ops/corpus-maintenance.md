@@ -18,8 +18,10 @@ corpus.
   containing more rows than its explicit limit. Production language sweeps are
   source-scoped because a per-source limit would not bound an `--all` run.
 - Omit `--apply` for a dry run. A write requires `--apply`; production writes
-  additionally require `--production`, exact `JFRAG_ALLOW_PROD_WRITE=1`, and an
-  exact `JFRAG_EXPECTED_POSTGRES_HOST` match.
+  additionally require `--production`. Acquisition/indexing use exact
+  `FORGE_RAG_ALLOW_PROD_WRITE=1` and an independently configured exact
+  `FORGE_RAG_EXPECTED_POSTGRES_HOST` match. Language maintenance retains
+  `JFRAG_ALLOW_PROD_WRITE` / `JFRAG_EXPECTED_POSTGRES_HOST`.
 - Inject production values from Doppler `forge-rag/prd`. Never paste or print a
   database URL, provider key, Firecrawl key, corpus text, or changelog content.
 - Keep concurrency at or below four. Prefer `--resume` for interrupted
@@ -29,15 +31,53 @@ corpus.
 - Production code reaches Railway only through PR-to-main autodeploy. These
   maintenance commands do not authorize `railway up` or another direct deploy.
 
-Run the environment preflight before any production command:
+## Run directly from the repository
+
+Use a clean checkout of merged `main`, the
+Node/pnpm versions declared by the repository, installed dependencies, and a
+Doppler login or service token authorized for `forge-rag/prd`. From the repo root:
 
 ```sh
-doppler run --project forge-rag --config prd -- \
-  pnpm --filter @forge/rag env:check production-write
+pnpm install --frozen-lockfile
+pnpm --filter @forge/rag db:generate
 ```
 
-The preflight reports names and status only. For read-only inspection use the
-`production-read` target instead.
+An administrator must provision these values in that Doppler config before the
+first operation (see [environment and secrets](environment-and-secrets.md)):
+
+| Variable                               | Purpose                                                                                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `FORGE_RAG_POSTGRESQL_READONLY_DB_URL` | Forge reader login for previews; provision and verify its actual SELECT-only grants using [readonly-database.md](readonly-database.md). |
+| `FORGE_RAG_POSTGRESQL_DB_URL`          | Forge writer URL for apply. Never substitute the legacy JFRAG writer.                                                                   |
+| `FORGE_RAG_EXPECTED_POSTGRES_HOST`     | Exact Forge database hostname, confirmed independently against the intended Railway receiver; not derived from the URL during each run. |
+| `FORGE_RAG_READONLY_ROLE_NAME`         | Optional reader login override; default `forge_rag_evaluator`.                                                                          |
+| `OPENROUTER_API_KEY`                   | Provider key; the environment-agnostic `JFRAG_OPENROUTER_API_KEY` remains an accepted fallback.                                         |
+| `FORGE_RAG_EMBED_MODEL_ID`             | Optional canonical model; default `qwen/qwen3-embedding-8b`. Must match the serving corpus model.                                       |
+
+Gateway settings (`EMBED_BASE_URL`, `EMBED_API_KEY`, `EMBED_WIRE_MODEL_ID`,
+`EMBED_QUERY_INSTRUCTION`) remain environment-agnostic. Include
+`FIRECRAWL_API_KEY` only for a registry policy that uses Firecrawl; those crawls
+may spend money even in discovery. Plain HTTP Icelandic acquisition does not
+require Firecrawl.
+
+Acquisition/indexing never fall back to `DATABASE_URL` or a `JFRAG_*` database,
+host pin, write opt-in, or model. The same vault can contain both production
+databases. Its project name alone does not select the Forge database.
+Do not store `FORGE_RAG_ALLOW_PROD_WRITE=1` permanently; supply it only to the
+reviewed apply command as shown below. Previews use the reader even if a writer
+URL or opt-in is present. `--apply --dry-run` is refused.
+
+Run the exact scoped preview below as the acquisition/indexing preflight.
+`env:check production-read|production-write` still validates the older
+`JFRAG_*` contract used by other commands and is **not** the preflight for these
+two entrypoints. Language maintenance, evaluation, dashboard, promotion, and
+reader provisioning retain their documented variable names; this change does
+not retarget them. Provisioning instructions use JFRAG-named inputs internally:
+explicitly select Forge's owner URL and independently checked host, then store
+the resulting reader URL under the Forge reader name above.
+
+Serialize acquisition/indexing apply sessions against a given Forge corpus,
+including sessions on other machines.
 
 ## DNS-rebinding decision
 
@@ -68,12 +108,20 @@ pnpm --filter @forge/rag acquire --source <source-key> --dry-run
 pnpm --filter @forge/rag acquire --source <source-key> --resume --apply
 ```
 
-For production, inject the namespaced database/provider values through Doppler:
+For production, preview first, then apply the same source/resume selection:
 
 ```sh
-doppler run --project forge-rag --config prd -- \
+doppler run --no-fallback --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag acquire:production --source <source-key> --resume
+doppler run --no-fallback --project forge-rag --config prd -- \
+  env FORGE_RAG_ALLOW_PROD_WRITE=1 \
   pnpm --filter @forge/rag acquire:production --source <source-key> --resume --apply
 ```
+
+Preview resolves discovery and resume counts; it does not fetch article bodies
+or stage rows. Review the registered `maxPages`, expected inventory (when
+present), and preview count before applying. Discovery success alone does not
+prove content extraction or acquisition completion.
 
 If and only if the registry entry selects `fetchStrategy: "firecrawl"`, ensure
 `FIRECRAWL_API_KEY` exists in that Doppler config before the preflight. The key
@@ -139,9 +187,55 @@ for an intentional same-model chunker rebuild. It cannot be combined with
 `--limit`: without persisted run state, bounded force-all runs would repeatedly
 select the same prefix. For production, use
 `index:production` with an explicit `--limit` under the same Doppler injection
-and write preflight shown
+and Forge write gate shown
 above. Record source key, limit, model identifier, summary counts, and pass/fail
 only.
+
+## Registered path slices: Icelandic GotQuestions
+
+Pass `--source gotquestions --path-prefix /islenska/` to **both** commands in
+**both** modes. The prefix must be registered in `src/registry/gotquestions.ts`;
+syntax-valid but unregistered paths fail. Omission deliberately keeps English
+acquisition. Source-only indexing can select any pending language for that
+source, so always retain the prefix for a language slice.
+
+```sh
+# Resolve the registered Icelandic inventory and already-staged resume set.
+doppler run --no-fallback --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag acquire:production \
+    --source gotquestions --path-prefix /islenska/ --resume
+
+# Stage Icelandic article bodies after reviewing the preview.
+doppler run --no-fallback --project forge-rag --config prd -- \
+  env FORGE_RAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag acquire:production \
+    --source gotquestions --path-prefix /islenska/ --resume --apply
+
+# Preview pending Icelandic rows before an embedding batch.
+doppler run --no-fallback --project forge-rag --config prd -- \
+  pnpm --filter @forge/rag index:production \
+    --source gotquestions --path-prefix /islenska/ --limit 51
+
+# Embed/write that bounded scope; provider charges apply.
+doppler run --no-fallback --project forge-rag --config prd -- \
+  env FORGE_RAG_ALLOW_PROD_WRITE=1 \
+  pnpm --filter @forge/rag index:production \
+    --source gotquestions --path-prefix /islenska/ --limit 51 --apply
+```
+
+An empty production index preview before acquisition is expected when no rows
+are staged; it does not prove the full path works. The registered acquisition
+inventory is currently exactly 51 articles, checked before resume filtering and
+writes. A changed count fails closed and needs review. After an interrupted
+acquisition, repeat the scoped preview and `--resume`; already-staged URLs are
+skipped, including ingested ones. A deliberate refresh omits `--resume`.
+
+Review every final acquisition skip count and indexing summary. Fetch/extraction
+skips can occur in a process that exits successfully; do not call that a complete
+51-article slice. Repeat the same index preview after apply and reconcile any
+remaining rows, skipped documents, chunks and intended model. A zero pending
+count alone does not prove all articles were acquired or evaluated. Keep local
+proof, current production proof, and retrieval/evaluation evidence distinct.
 
 ## Promote locally acquired raw documents
 
@@ -220,7 +314,7 @@ embedding remains a separate metered write:
 doppler run --project forge-rag --config prd -- \
   pnpm --filter @forge/rag index:production --source <source-key> --limit 10
 doppler run --project forge-rag --config prd -- \
-  env JFRAG_ALLOW_PROD_WRITE=1 \
+  env FORGE_RAG_ALLOW_PROD_WRITE=1 \
   pnpm --filter @forge/rag index:production --source <source-key> --limit 10 --apply
 ```
 
