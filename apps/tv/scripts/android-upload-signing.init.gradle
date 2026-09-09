@@ -1,0 +1,20 @@
+gradle.beforeProject { project ->
+  if (project.path == ':app') {
+    project.afterEvaluate {
+      def keystorePath = System.getenv('TV_UPLOAD_KEYSTORE')
+      def passwordPath = System.getenv('TV_UPLOAD_PASSWORD_FILE')
+      if (!keystorePath || !passwordPath) {
+        throw new GradleException('Set TV_UPLOAD_KEYSTORE and TV_UPLOAD_PASSWORD_FILE for a Play upload build.')
+      }
+      def password = new File(passwordPath).text.trim()
+      def android = project.extensions.getByName('android')
+      def upload = android.signingConfigs.create('playUpload') {
+        storeFile = new File(keystorePath)
+        storePassword = password
+        keyAlias = 'upload'
+        keyPassword = password
+      }
+      android.buildTypes.release.signingConfig = upload
+    }
+  }
+}

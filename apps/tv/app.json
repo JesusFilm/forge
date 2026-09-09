@@ -24,7 +24,8 @@
       "appleTeamId": "DQ48D9BF2V"
     },
     "android": {
-      "package": "org.jesusfilm.forgetv",
+      "package": "org.jesusfilm.tv",
+      "versionCode": 2,
       "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": [
@@ -54,6 +55,8 @@
       ],
       "./plugins/withTVInfoPlistFixes",
       "./plugins/withAssistantSearchIntent",
+      "./plugins/withTVHardwareFeatures",
+      "./plugins/withAndroidStartupLoading",
       "expo-secure-store"
     ],
     "extra": {

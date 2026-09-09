@@ -3,12 +3,20 @@
 
 import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useMemo, useRef } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import { useShowcasePrefs } from "../../lib/showcaseMode/useShowcasePrefs"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
@@ -21,6 +29,11 @@ const ICON_SIZE = Math.round(scale(26))
 export function SettingsScreen() {
   const router = useRouter()
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
+  const {
+    androidPlayerVariant,
+    setAndroidPlayerVariant,
+    hydrated: watchPreferencesHydrated,
+  } = useWatchPreferences()
 
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors Home's focusMemory wiring).
@@ -91,6 +104,29 @@ export function SettingsScreen() {
           onFocusNode={captureFocusedNode}
         />
       </View>
+
+      {Platform.OS === "android" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Video player</Text>
+          <Text style={styles.sectionNote}>
+            The Android native player is the default. Turn on this option to use
+            the React Native player instead.
+          </Text>
+          <SettingsRow
+            testID="settings-native-android-player-row"
+            icon="tv-outline"
+            label="Use React Native player"
+            checked={androidPlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() =>
+              setAndroidPlayerVariant(
+                androidPlayerVariant === "native" ? "existing" : "native",
+              )
+            }
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
     </View>
   )
 }

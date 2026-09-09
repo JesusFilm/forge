@@ -3,7 +3,15 @@
 // Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share R18 opens the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -21,6 +29,7 @@ import { WATCH_THEME } from "./watchDetailTheme"
 import type { ActionRowPill } from "./actionRowScrollGlide"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
+import { deriveDetailsPlayState, type DetailsPlayState } from "./panelState"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -28,6 +37,7 @@ type DetailsActionRowProps = {
   title: string | null
   onOpenLanguage: () => void
   onOpenSubtitles: () => void
+  metadataReady?: boolean
   // Pill-identified so the consumer can tell "focus left the row" from a
   // within-row hop: tvOS delivers the NEW pill's focus BEFORE the old pill's
   // blur, so a bare blur callback would cancel work the new focus just started
@@ -43,9 +53,14 @@ export function DetailsActionRow({
   onOpenSubtitles,
   onRowFocus,
   onRowBlur,
+  metadataReady = true,
 }: DetailsActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
   const { video, activeVariant, subtitleEnabled } = useWatchSession()
+  const playState =
+    Platform.OS === "android"
+      ? deriveDetailsPlayState(metadataReady, activeVariant?.hls)
+      : "ready"
 
   // One-shot preferred focus on Play: armed on mount, and re-armed whenever the
   // overlay closes so focus returns to Play (R7). Cleared the render after it
@@ -172,8 +187,8 @@ export function DetailsActionRow({
   // Secondary-pill sub-labels from real session data. The play button is just the
   // icon + "Play" (the mockup's "Day 1 · 3:42 left" resume state has no JFP
   // equivalent — no watch-progress tracking).
-  const langSub = activeVariant?.languageName ?? null
-  const subsSub = subtitleEnabled ? "On" : "Off"
+  const langSub = metadataReady ? (activeVariant?.languageName ?? null) : null
+  const subsSub = metadataReady ? (subtitleEnabled ? "On" : "Off") : null
 
   return (
     <>
@@ -190,6 +205,7 @@ export function DetailsActionRow({
       <TVFocusGuideView autoFocus trapFocusUp style={styles.row}>
         <PlayPill
           onPress={handlePlay}
+          state={playState}
           hasTVPreferredFocus={playPreferredFocus}
           onFocus={() => onRowFocus?.("play")}
           onBlur={() => onRowBlur?.("play")}
@@ -270,11 +286,13 @@ function PlayPill({
   hasTVPreferredFocus,
   onFocus,
   onBlur,
+  state = "ready",
 }: {
   onPress: () => void
   hasTVPreferredFocus: boolean
   onFocus?: () => void
   onBlur?: () => void
+  state?: DetailsPlayState
 }) {
   const { setFocused, progress, transform } = useFocusVisual("pill", {
     nativeDriver: false,
@@ -291,6 +309,25 @@ function PlayPill({
     }),
     [progress, transform],
   )
+  if (state !== "ready") {
+    return (
+      <View
+        style={[styles.playPill, { opacity: 0.55 }]}
+        accessibilityRole={state === "loading" ? "progressbar" : "button"}
+        accessibilityLabel={
+          state === "loading" ? "Loading video" : "Video unavailable"
+        }
+        accessibilityState={{ disabled: true, busy: state === "loading" }}
+      >
+        {state === "loading" ? (
+          <ActivityIndicator color={WATCH_THEME.accentText} />
+        ) : null}
+        <Text style={styles.playLabel}>
+          {state === "loading" ? "Loading…" : "Unavailable"}
+        </Text>
+      </View>
+    )
+  }
   return (
     <Pressable
       onPress={onPress}
