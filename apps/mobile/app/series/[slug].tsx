@@ -46,6 +46,8 @@ import {
 } from "../../src/lib/seriesDownloadAggregate"
 import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
 import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
+import { useExportSession } from "../../src/hooks/useExportSession"
+import { getExportSessionStore } from "../../src/lib/exportSession"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
@@ -104,6 +106,7 @@ export default function SeriesScreen() {
     !subtitleUnionError &&
     (subtitleUnion == null || subtitleUnion.length > 0)
 
+  const exportSession = useExportSession()
   const downloadState = useMemo(
     () =>
       deriveSeriesDownloadState(
@@ -111,8 +114,15 @@ export default function SeriesScreen() {
         downloadedSlugs,
         offlineRecords,
         pendingSwapSlugs,
+        exportSession,
       ),
-    [series?.episodes, downloadedSlugs, offlineRecords, pendingSwapSlugs],
+    [
+      series?.episodes,
+      downloadedSlugs,
+      offlineRecords,
+      pendingSwapSlugs,
+      exportSession,
+    ],
   )
   const seriesFullyDownloaded = seriesAllDownloaded(downloadState)
 
@@ -142,8 +152,9 @@ export default function SeriesScreen() {
       deriveEpisodeBadges(
         series?.episodes.map((episode) => episode.slug) ?? [],
         offlineRecords,
+        exportSession,
       ),
-    [series?.episodes, offlineRecords],
+    [series?.episodes, offlineRecords, exportSession],
   )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
@@ -286,6 +297,33 @@ export default function SeriesScreen() {
 
   // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
   // (keeping existing copies). Replaces the old always-on batch bar.
+  // R30: the only route to a running export's cancel, since the sheet has
+  // dismissed. R22 keeps every episode already saved to the device library.
+  const handleCancelExport = useCallback(() => {
+    const store = getExportSessionStore()
+    const stopAll = () =>
+      downloadState.exportingSlugs.forEach((slug) => store.requestCancel(slug))
+    const STOP = "Stop saving"
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [STOP, "Keep saving"],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 1,
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) stopAll()
+        },
+      )
+    } else {
+      Alert.alert("Saving to Photos", undefined, [
+        { text: STOP, style: "destructive", onPress: stopAll },
+        { text: "Keep saving", style: "cancel" },
+      ])
+    }
+  }, [downloadState.exportingSlugs])
+
   const handlePausedTap = useCallback(() => {
     const resumeAll = () =>
       downloadState.inFlightSlugs.forEach((slug) => void resumeDownload(slug))
@@ -451,6 +489,7 @@ export default function SeriesScreen() {
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onSubtitles={() => router.push("/series/subtitle")}
+                  onCancelExport={handleCancelExport}
                   // The single download control carries every state: paused →
                   // resume/cancel sheet; downloading → pause; saved → manage
                   // sheet; idle → the download picker. (No separate batch bar.)

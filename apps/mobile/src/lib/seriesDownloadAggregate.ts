@@ -1,3 +1,4 @@
+import type { ExportSessionSnapshot } from "./exportSession"
 import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
@@ -21,12 +22,31 @@ export type SeriesDownloadState = {
   inFlightSlugs: string[]
   /** 0..1 byte-weighted progress across the series for the action-row ring. */
   progress: number
+  /**
+   * A raw export runs over one of this series' episodes (R16). It is separate
+   * from `inProgress`: an export is not an offline transfer, and nothing about
+   * it may be paused (R24).
+   */
+  exporting: boolean
+  /**
+   * 0..1 for the export ring. The mean of the episodes exporting NOW — no
+   * export is persisted, so an already-saved episode leaves no trace to count.
+   */
+  exportProgress: number
+  /** The episodes exporting now — the cancel control acts on these (R30). */
+  exportingSlugs: string[]
 }
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["queued", "downloading", "paused"])
 
 const NO_PENDING_SWAPS: ReadonlySet<string> = new Set()
+
+/** A non-finite fraction would render as a broken ring, so it reads as 0. */
+function clampFraction(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0
+  return Math.min(1, Math.max(0, value))
+}
 
 export function deriveSeriesDownloadState(
   episodeSlugs: readonly string[],
@@ -36,6 +56,7 @@ export function deriveSeriesDownloadState(
   // playable) but not yet replaced. Counting them as done would make the ring
   // read ~full during a re-download; they count 0 so it fills from scratch.
   pendingSwapSlugs: ReadonlySet<string> = NO_PENDING_SWAPS,
+  exportSession?: ExportSessionSnapshot | null,
 ): SeriesDownloadState {
   const downloaded = new Set(downloadedSlugs)
   const recordBySlug = new Map(
@@ -73,6 +94,15 @@ export function deriveSeriesDownloadState(
     }
   }
 
+  const exportingSlugs: string[] = []
+  let exportUnits = 0
+  for (const slug of episodeSlugs) {
+    const entry = exportSession?.byTarget[slug]
+    if (!entry) continue
+    exportingSlugs.push(slug)
+    exportUnits += clampFraction(entry.progress)
+  }
+
   const total = episodeSlugs.length
   return {
     // N counts only completed copies; failed records are excluded (they are
@@ -86,6 +116,10 @@ export function deriveSeriesDownloadState(
     pausedAggregate: anyPaused && !anyDownloading,
     inFlightSlugs,
     progress: total === 0 ? 0 : units / total,
+    exporting: exportingSlugs.length > 0,
+    exportProgress:
+      exportingSlugs.length === 0 ? 0 : exportUnits / exportingSlugs.length,
+    exportingSlugs,
   }
 }
 
@@ -101,12 +135,16 @@ export type EpisodeBadgeState =
   | "downloading"
   | "queued"
   | "paused"
+  | "exporting"
   | "none"
 
 /** Badge state for one episode from its record; `none` for failed/absent. */
 export function episodeBadgeState(
   record: OfflineDownloadRecord | undefined,
+  exporting = false,
 ): EpisodeBadgeState {
+  // R16: a running export outranks the offline state beneath it.
+  if (exporting) return "exporting"
   switch (record?.state) {
     case "downloaded":
       return "saved"
@@ -125,13 +163,20 @@ export function episodeBadgeState(
 export function deriveEpisodeBadges(
   episodeSlugs: readonly string[],
   offlineRecords: readonly OfflineDownloadRecord[],
+  exportSession?: ExportSessionSnapshot | null,
 ): Map<string, EpisodeBadgeState> {
   const recordBySlug = new Map(
     offlineRecords.map((record) => [record.videoSlug, record] as const),
   )
   const badges = new Map<string, EpisodeBadgeState>()
   for (const slug of episodeSlugs) {
-    badges.set(slug, episodeBadgeState(recordBySlug.get(slug)))
+    badges.set(
+      slug,
+      episodeBadgeState(
+        recordBySlug.get(slug),
+        exportSession?.byTarget[slug] != null,
+      ),
+    )
   }
   return badges
 }
