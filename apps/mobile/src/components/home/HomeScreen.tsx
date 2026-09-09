@@ -37,6 +37,7 @@ import { useTabBarClearance } from "../../lib/tabBar"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
+import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
   muxSlideDisplayCopy,
@@ -94,6 +95,25 @@ export function HomeScreen() {
   const heroHeight = Math.round(screenWidth * 1.2)
 
   const { model, loading, refreshing, error, refetch } = useWatchHome()
+
+  // The splash draws ABOVE this screen and needs to know when it may hand over.
+  // Report only — nothing here waits on the splash, and the ref makes it a
+  // one-shot so a later refetch cannot re-report (R3, R15).
+  const splashReportedRef = useRef(false)
+  useEffect(() => {
+    if (splashReportedRef.current) return
+    if (model != null) {
+      splashReportedRef.current = true
+      getSplashSession().reportHomeContent()
+      return
+    }
+    // Only when there is nothing to paint: a failed refetch over a live model
+    // is not a reason to drop the cover early.
+    if (error != null) {
+      splashReportedRef.current = true
+      getSplashSession().reportHomeFailure()
+    }
+  }, [model, error])
 
   // ── Hero queue (referentially stable per model identity) ──────────────────
 
