@@ -96,23 +96,21 @@ export function HomeScreen() {
 
   const { model, loading, refreshing, error, refetch } = useWatchHome()
 
-  // The splash draws ABOVE this screen and needs to know when it may hand over.
-  // Report only — nothing here waits on the splash, and the ref makes it a
-  // one-shot so a later refetch cannot re-report (R3, R15).
-  const splashReportedRef = useRef(false)
+  // The splash draws ABOVE this screen and needs to know whether there is
+  // anything to hand over TO. Report only — nothing here waits on the splash.
+  // The cleanup retracts because ExperienceShell swaps its element type when
+  // the slug resolves and remounts this screen mid-hold; a report that
+  // outlived its reporter would hand the cover over to a spinner (R3, R15).
   useEffect(() => {
-    if (splashReportedRef.current) return
-    if (model != null) {
-      splashReportedRef.current = true
-      getSplashSession().reportHomeContent()
-      return
-    }
+    const session = getSplashSession()
     // Only when there is nothing to paint: a failed refetch over a live model
     // is not a reason to drop the cover early.
-    if (error != null) {
-      splashReportedRef.current = true
-      getSplashSession().reportHomeFailure()
+    if (model == null) {
+      if (error != null) session.reportHomeFailure()
+      return
     }
+    session.reportHomeContent()
+    return () => session.retractHomeContent()
   }, [model, error])
 
   // ── Hero queue (referentially stable per model identity) ──────────────────

@@ -61,6 +61,7 @@ jest.mock("../../../hooks/useWatchHome", () => ({ useWatchHome: jest.fn() }))
 jest.mock("../../../lib/splash/splashSession", () => {
   const session = {
     reportHomeContent: jest.fn(),
+    retractHomeContent: jest.fn(),
     reportHomeFailure: jest.fn(),
   }
   return { getSplashSession: () => session, __session: session }
@@ -81,7 +82,11 @@ const { useWatchHome } = jest.requireMock("../../../hooks/useWatchHome") as {
 const { __session: splash } = jest.requireMock(
   "../../../lib/splash/splashSession",
 ) as {
-  __session: { reportHomeContent: jest.Mock; reportHomeFailure: jest.Mock }
+  __session: {
+    reportHomeContent: jest.Mock
+    retractHomeContent: jest.Mock
+    reportHomeFailure: jest.Mock
+  }
 }
 
 /** A model with nothing renderable — Home's "No content available" branch. */
@@ -123,7 +128,7 @@ beforeEach(() => {
 })
 
 describe("Home's handover report to the splash", () => {
-  it("reports content the first time a model lands, and not again", () => {
+  it("reports content once a model lands, and says nothing before", () => {
     setHookState({ model: null, loading: true })
     const renderer = render()
     expect(splash.reportHomeContent).not.toHaveBeenCalled()
@@ -131,15 +136,33 @@ describe("Home's handover report to the splash", () => {
     setHookState({ model: emptyModel() })
     act(() => renderer.update(createElement(HomeScreen)))
     expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
-
-    // A later refetch produces a new model identity. The cover is long gone by
-    // then, and a second report would be a lie about a first paint.
-    setHookState({ model: emptyModel() })
-    act(() => renderer.update(createElement(HomeScreen)))
-    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
-
     expect(splash.reportHomeFailure).not.toHaveBeenCalled()
     act(() => renderer.unmount())
+  })
+
+  it("takes the report back when this screen goes away", () => {
+    setHookState({ model: emptyModel() })
+    const renderer = render()
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+    expect(splash.retractHomeContent).not.toHaveBeenCalled()
+
+    // ExperienceShell swaps its element type when the slug resolves and
+    // remounts this screen mid-hold. Without the retraction the cover would
+    // hand over to whatever the NEW instance is showing — a spinner — on the
+    // strength of a report the old instance made.
+    act(() => renderer.unmount())
+    expect(splash.retractHomeContent).toHaveBeenCalledTimes(1)
+  })
+
+  it("re-reports once the remounted screen has content of its own", () => {
+    setHookState({ model: emptyModel() })
+    const first = render()
+    act(() => first.unmount())
+    expect(splash.retractHomeContent).toHaveBeenCalledTimes(1)
+
+    const second = render()
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(2)
+    act(() => second.unmount())
   })
 
   it("reports the failure when the fetch leaves nothing to paint", () => {

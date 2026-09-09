@@ -42,8 +42,12 @@ export type SplashSession = {
   getSnapshot: () => SplashSnapshot
   /** Begins the session. Idempotent per process (R7). */
   start: () => void
-  /** Home produced a model. Only the FIRST report matters (R3). */
+  /** Home has something to paint (R3). */
   reportHomeContent: () => void
+  /** Home no longer has anything to paint. ExperienceShell swaps its element
+   *  type when the slug resolves and remounts Home mid-hold, so a report that
+   *  outlived its reporter would hand the cover over to a spinner (R3). */
+  retractHomeContent: () => void
   /** The Home fetch failed — release now rather than holding to the ceiling (R15). */
   reportHomeFailure: () => void
   /** An error panel is about to render. Release at once, with no fade (R5). */
@@ -206,6 +210,11 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
       if (ended) return
       homeReported = true
       maybeRelease()
+    },
+
+    retractHomeContent(): void {
+      if (ended) return
+      homeReported = false
     },
 
     /** The retry card must be reachable as soon as there is something to retry,

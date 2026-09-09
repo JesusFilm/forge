@@ -473,3 +473,50 @@ describe("no ordering leaves the cover on screen past the ceiling", () => {
     },
   )
 })
+
+// ExperienceShell swaps its element type when the slug resolves, so Home
+// remounts mid-hold on its own — no touch required, and the cover swallows
+// touches anyway. A report that outlived its reporter hands the cover over to
+// whatever the NEW Home is showing, which is the spinner this feature exists
+// to hide (R3).
+describe("a retracted report", () => {
+  it("keeps the cover up past the floor", async () => {
+    const session = await visibleSession()
+    session.reportHomeContent()
+    session.retractHomeContent()
+
+    await settle(SPLASH_HOLD_MS)
+    expect(session.getSnapshot().visible).toBe(true)
+  })
+
+  it("still lets the ceiling end the session", async () => {
+    const session = await visibleSession()
+    session.reportHomeContent()
+    session.retractHomeContent()
+
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+
+  it("releases as soon as the remounted Home reports again", async () => {
+    const session = await visibleSession()
+    session.reportHomeContent()
+    session.retractHomeContent()
+    await settle(SPLASH_HOLD_MS)
+    expect(session.getSnapshot().visible).toBe(true)
+
+    session.reportHomeContent()
+    await settle()
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+
+  it("cannot reopen a session that already ended", async () => {
+    const session = await visibleSession()
+    session.releaseImmediately()
+    session.retractHomeContent()
+    session.reportHomeContent()
+
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+})
