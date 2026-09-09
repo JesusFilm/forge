@@ -23,6 +23,15 @@ import {
   preventNativeSplashAutoHide,
   resetNativeSplashState,
 } from "../nativeSplash"
+// The bound below is the sum of the three budgets, so it has to be BUILT from
+// them. Copying their values freezes the assertion while the real invariant
+// moves, and the backstop would then cut a healthy launch short with the test
+// still green.
+import { SPLASH_EXIT_FADE_MS } from "../../../components/splash/SplashHost"
+import {
+  SPLASH_CEILING_MS,
+  SPLASH_SKIP_DECISION_BUDGET_MS,
+} from "../splashSession"
 
 const prevent = SplashScreen.preventAutoHideAsync as jest.Mock
 const hide = SplashScreen.hideAsync as jest.Mock
@@ -157,7 +166,9 @@ describe("the unconditional backstop", () => {
   it("outlasts the longest legitimate path to the release", () => {
     // Skip budget, then the ceiling, then the exit fade. Shorter than this and
     // the backstop would cut a healthy launch short.
-    expect(NATIVE_SPLASH_BACKSTOP_MS).toBeGreaterThan(1_000 + 6_000 + 350)
+    expect(NATIVE_SPLASH_BACKSTOP_MS).toBeGreaterThan(
+      SPLASH_SKIP_DECISION_BUDGET_MS + SPLASH_CEILING_MS + SPLASH_EXIT_FADE_MS,
+    )
   })
 })
 

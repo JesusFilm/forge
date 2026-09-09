@@ -33,6 +33,7 @@ import {
   SPLASH_BLOOM_SETTLE_MS,
   SPLASH_CRIMSON_DELAY_MS,
   SPLASH_CRIMSON_MS,
+  SPLASH_RAY_DELAY_MS,
   SPLASH_SEQUENCE_MS,
   SPLASH_WORD_DELAY_MS,
   SPLASH_WORD_MS,
@@ -106,6 +107,21 @@ function styleOf(
 function scaleOf(style: Record<string, unknown>): number | undefined {
   const transform = style.transform as { scale?: number }[] | undefined
   return transform?.find((entry) => entry.scale !== undefined)?.scale
+}
+
+/**
+ * The `Animated.Value` a beat drives, taken off the timing's own call. Driving
+ * that value and reading the rendered style back is what proves a beat reaches
+ * its layer — a call-shape assertion cannot, which is how the Fabric defect
+ * shipped green.
+ */
+function valueDrivenBy(
+  timing: jest.SpyInstance,
+  matches: (config: { delay?: number }) => boolean,
+): Animated.Value {
+  const call = timing.mock.calls.find(([, config]) => matches(config))
+  expect(call).toBeDefined()
+  return call![0] as Animated.Value
 }
 
 let mounted: TestInstance | null = null
@@ -338,7 +354,9 @@ describe("Reduce Motion (R13)", () => {
 
     expect(start).toHaveBeenCalledTimes(1)
     // The still frame's end values are NOT where the motion path begins.
+    expect(scaleOf(styleOf(renderer, "splash-mark"))).toBe(0)
     expect(scaleOf(styleOf(renderer, "splash-ray"))).toBe(0)
+    expect(styleOf(renderer, "splash-mark-crimson").opacity).toBe(0)
     expect(styleOf(renderer, "splash-word").opacity).toBe(0)
   })
 
@@ -387,6 +405,67 @@ describe("the Fabric single-run defect (KTD9)", () => {
     expect(bloomConfig?.duration).toBe(
       SPLASH_BLOOM_RISE_MS + SPLASH_BLOOM_SETTLE_MS,
     )
+  })
+
+  it("drives every beat's own layer, not just the timing config", async () => {
+    // The defect this whole block exists for was a mark that never moved while
+    // its sibling beats did, so the guards above — which read Animated CALLS —
+    // could not see it. These assertions read the RENDERED style instead: wire
+    // any layer to a static value and it stays at rest here while every
+    // call-shape check stays green.
+    const timing = jest.spyOn(Animated, "timing")
+    jest
+      .spyOn(Animated, "parallel")
+      .mockReturnValue({ start: jest.fn(), stop: jest.fn() } as never)
+
+    const renderer = await render({ reduceMotion: false })
+
+    // The bloom is the only beat with no delay; the other three carry theirs.
+    const bloom = valueDrivenBy(timing, (config) => config.delay === undefined)
+    const ray = valueDrivenBy(
+      timing,
+      (config) => config.delay === SPLASH_RAY_DELAY_MS,
+    )
+    const crimson = valueDrivenBy(
+      timing,
+      (config) => config.delay === SPLASH_CRIMSON_DELAY_MS,
+    )
+    const word = valueDrivenBy(
+      timing,
+      (config) => config.delay === SPLASH_WORD_DELAY_MS,
+    )
+
+    await act(async () => {
+      bloom.setValue(1)
+      ray.setValue(1)
+      crimson.setValue(1)
+      word.setValue(1)
+    })
+
+    expect(scaleOf(styleOf(renderer, "splash-mark"))).toBe(1)
+    expect(scaleOf(styleOf(renderer, "splash-ray"))).toBe(1)
+    expect(styleOf(renderer, "splash-mark-crimson").opacity).toBe(1)
+    expect(styleOf(renderer, "splash-word").opacity).toBe(1)
+  })
+
+  it("carries the bloom's overshoot on the way to that end state", async () => {
+    const timing = jest.spyOn(Animated, "timing")
+    jest
+      .spyOn(Animated, "parallel")
+      .mockReturnValue({ start: jest.fn(), stop: jest.fn() } as never)
+
+    const renderer = await render({ reduceMotion: false })
+    const bloom = valueDrivenBy(timing, (config) => config.delay === undefined)
+
+    // R8's overshoot rides the interpolation now that the second timing is
+    // gone. Without it the mark would rise straight to 1 and never spring.
+    await act(async () => {
+      bloom.setValue(
+        SPLASH_BLOOM_RISE_MS / (SPLASH_BLOOM_RISE_MS + SPLASH_BLOOM_SETTLE_MS),
+      )
+    })
+
+    expect(scaleOf(styleOf(renderer, "splash-mark"))).toBeGreaterThan(1)
   })
 })
 

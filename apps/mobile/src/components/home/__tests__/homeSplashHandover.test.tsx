@@ -63,6 +63,7 @@ jest.mock("../../../lib/splash/splashSession", () => {
     reportHomeContent: jest.fn(),
     retractHomeContent: jest.fn(),
     reportHomeFailure: jest.fn(),
+    retractHomeFailure: jest.fn(),
   }
   return { getSplashSession: () => session, __session: session }
 })
@@ -86,6 +87,7 @@ const { __session: splash } = jest.requireMock(
     reportHomeContent: jest.Mock
     retractHomeContent: jest.Mock
     reportHomeFailure: jest.Mock
+    retractHomeFailure: jest.Mock
   }
 }
 
@@ -176,6 +178,39 @@ describe("Home's handover report to the splash", () => {
     expect(splash.reportHomeFailure).toHaveBeenCalledTimes(1)
     expect(splash.reportHomeContent).not.toHaveBeenCalled()
     act(() => renderer.unmount())
+  })
+
+  it("takes the failure back when this screen goes away", () => {
+    setHookState({ model: null, error: "network" })
+    const renderer = render()
+    expect(splash.reportHomeFailure).toHaveBeenCalledTimes(1)
+    expect(splash.retractHomeFailure).not.toHaveBeenCalled()
+
+    // The same remount that retracts a content report has to retract a
+    // failure. Otherwise the latch outlives its reporter, and the floor drops
+    // the cover onto the NEW instance's spinner rather than its retry card.
+    act(() => renderer.unmount())
+    expect(splash.retractHomeFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it("re-reports the failure once the remounted screen fails too", () => {
+    setHookState({ model: null, error: "network" })
+    const first = render()
+    act(() => first.unmount())
+    expect(splash.retractHomeFailure).toHaveBeenCalledTimes(1)
+
+    const second = render()
+    expect(splash.reportHomeFailure).toHaveBeenCalledTimes(2)
+    act(() => second.unmount())
+  })
+
+  it("retracts nothing while the fetch is still in flight", () => {
+    setHookState({ model: null, loading: true })
+    const renderer = render()
+
+    act(() => renderer.unmount())
+    expect(splash.retractHomeFailure).not.toHaveBeenCalled()
+    expect(splash.retractHomeContent).not.toHaveBeenCalled()
   })
 
   it("prefers the model when both arrive in the same render", () => {

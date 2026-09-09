@@ -539,6 +539,57 @@ describe("a retracted report", () => {
   })
 })
 
+describe("a retracted failure", () => {
+  it("keeps the cover up past the floor", async () => {
+    const session = await visibleSession()
+    session.reportHomeFailure()
+    session.retractHomeFailure()
+
+    await settle(SPLASH_HOLD_MS)
+    expect(session.getSnapshot().visible).toBe(true)
+  })
+
+  it("still lets the ceiling end the session", async () => {
+    const session = await visibleSession()
+    session.reportHomeFailure()
+    session.retractHomeFailure()
+
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+
+  it("releases as soon as the remounted Home fails again", async () => {
+    const session = await visibleSession()
+    session.reportHomeFailure()
+    session.retractHomeFailure()
+    await settle(SPLASH_HOLD_MS)
+    expect(session.getSnapshot().visible).toBe(true)
+
+    session.reportHomeFailure()
+    await settle()
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+
+  it("does not clear a content report from the live Home", async () => {
+    const session = await visibleSession()
+    session.reportHomeContent()
+    session.retractHomeFailure()
+
+    await settle(SPLASH_HOLD_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+
+  it("cannot reopen a session that already ended", async () => {
+    const session = await visibleSession()
+    session.releaseImmediately()
+    session.retractHomeFailure()
+    session.reportHomeFailure()
+
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+})
+
 // A session stuck at `resolved: false` is the worst state this store has: the
 // host's skip-path effect never fires, so nothing lowers the native splash and
 // the person is left under a flat field.

@@ -98,16 +98,17 @@ export function HomeScreen() {
 
   // The splash draws ABOVE this screen and needs to know whether there is
   // anything to hand over TO. Report only — nothing here waits on the splash.
-  // The cleanup retracts because ExperienceShell swaps its element type when
-  // the slug resolves and remounts this screen mid-hold; a report that
-  // outlived its reporter would hand the cover over to a spinner (R3, R15).
+  // Both branches retract, because ExperienceShell swaps its element type when
+  // the slug resolves and remounts this screen mid-hold; either report, if it
+  // outlived its reporter, hands the cover over to a spinner (R3, R15).
   useEffect(() => {
     const session = getSplashSession()
     // Only when there is nothing to paint: a failed refetch over a live model
     // is not a reason to drop the cover early.
     if (model == null) {
-      if (error != null) session.reportHomeFailure()
-      return
+      if (error == null) return
+      session.reportHomeFailure()
+      return () => session.retractHomeFailure()
     }
     session.reportHomeContent()
     return () => session.retractHomeContent()

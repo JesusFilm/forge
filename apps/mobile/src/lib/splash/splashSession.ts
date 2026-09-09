@@ -51,6 +51,10 @@ export type SplashSession = {
   /** The Home fetch failed. Releases at the floor, not at once — see the
    *  implementation for why R15 and KD2 conflict here (R15). */
   reportHomeFailure: () => void
+  /** The failed Home is gone. The remount that retracts a content report
+   *  retracts a failure the same way, or the cover hands over to the next
+   *  instance's spinner instead of its retry card (R15). */
+  retractHomeFailure: () => void
   /** An error panel is about to render. Release at once, with no fade (R5). */
   releaseImmediately: () => void
 }
@@ -234,6 +238,11 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
       if (ended) return
       homeFailed = true
       maybeRelease()
+    },
+
+    retractHomeFailure(): void {
+      if (ended) return
+      homeFailed = false
     },
 
     /** An immediate cut, from ANY state — the error panel may render before the
