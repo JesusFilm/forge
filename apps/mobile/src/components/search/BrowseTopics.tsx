@@ -9,6 +9,7 @@ import {
 import { BROWSE_TOPICS } from "../../lib/browseTopics"
 import { TEXT_SECONDARY } from "../../lib/color"
 import { useCategoryThumbnails } from "../../hooks/useCategoryThumbnails"
+import { useTabBarClearance } from "../../lib/tabBar"
 import { TopicCard } from "./TopicCard"
 
 const GRID_PADDING = 16
@@ -23,6 +24,7 @@ export interface BrowseTopicsProps {
 // screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   const thumbnails = useCategoryThumbnails()
+  const tabBarClearance = useTabBarClearance()
   const { width } = useWindowDimensions()
   // Explicit two-column width: full width minus the content padding and the
   // single inter-card gap, halved. An explicit width keeps the grid reliably
@@ -32,7 +34,11 @@ export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: 24 + tabBarClearance },
+      ]}
+      scrollIndicatorInsets={{ bottom: tabBarClearance }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >

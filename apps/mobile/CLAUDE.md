@@ -753,6 +753,94 @@ the app's own `#1c1917` instead of the platform contrast scrim.
   pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
   No replacement scrim ships yet.
 
+## Tab bar — a floating pill on iOS, a flush bar on Android
+
+`src/lib/tabBar.ts` owns every number. The navigator, the Library screen, the
+mini player and six scroll surfaces all read it from there, so no two files can
+disagree about the bar's size.
+
+- **`tabBarStyle` is applied AFTER the bar's own `backgroundColor`**
+  (`BottomTabBar.js:220` sets it, `:258` appends yours). So an opaque fill in
+  `tabBarStyle` hides the glass, silently. iOS must set no `backgroundColor`;
+  Android must keep `#1c1917`.
+- **Android must not be given a `tabBarBackground` option at all.** The bar
+  checks the returned ELEMENT, not what it renders, so a wrapper returning
+  `<TabBarBackground />` is non-null on every platform and forces the bar's own
+  fill transparent. `app/(tabs)/_layout.tsx` therefore passes the option only on
+  iOS, which keeps Android's opacity on two independent mechanisms rather than
+  on `TAB_BAR_FLAT_STYLE.backgroundColor` alone. Pinned by
+  `tabBarLayout.test.tsx`.
+- **The pill's lift is measured from the safe area, never from the screen
+  edge.** The vendored bar's own `getTabBarHeight` (`BottomTabBar.js:100`, a
+  library internal — you will not find it in this app) returns a numeric
+  `height` verbatim and never adds
+  the inset, so a screen-edge margin would make the mini player's reservation
+  differ on every device. Verified on the iPhone 17 Pro Max simulator: the
+  predicted capsule top `956 - 34 - 68 = 854pt` matched the measured edge.
+- **`paddingBottom: 0` is required.** The bar puts `insets.bottom` INSIDE a
+  numeric height, so the home indicator would otherwise eat the pill's content.
+- **The material carries a measured tint floor** (`TAB_BAR_MATERIAL_TINT`,
+  `rgba(0,0,0,0.3)`). Untinted, a bright Home backdrop drops the idle labels to
+  3.35:1, under the 4.5:1 AA floor. **A tint on the material is not the same
+  problem as a tint over bare content:** the material has already darkened the
+  ground, so contrast rises monotonically with alpha and there is no bad middle
+  value to avoid. 0.26 is the computed minimum; 0.30 ships. The plan's original
+  floor of 0.78 came from a sweep over a bare white backdrop, which crosses the
+  label's own luminance and invents both the bad middle and a 3x-too-high
+  minimum — see
+  `docs/solutions/best-practices/contrast-floor-must-be-derived-over-the-real-compositing-stack.md`.
+- **The selected tab carries a sliding lens** (`TabBarLens.tsx`). It derives its
+  cell from `useSegments()` — neither `@react-navigation/native` nor a
+  navigation-state hook resolves from this app — and animates `translateX` on
+  the native driver. `tabBarBackground` therefore returns an ELEMENT
+  (`() => <TabBarBackground />`), not the component: the bar CALLS that option,
+  so a component passed directly would run its hooks inside `BottomTabBar`.
+  `TAB_ROUTE_NAMES` must stay in the order `<Tabs.Screen>` declares, and
+  `tabBarLensOrder.guard.test.js` pins both against the group's route FILES —
+  expo-router appends an undeclared `app/(tabs)/*` file as a fifth tab, which a
+  `<Tabs.Screen>`-only scan cannot see.
+- **`tabIndexForSegments` returns `null` off the tab group, and the lens holds
+  its cell.** `app/watch/[slug].tsx` is a SIBLING of `(tabs)` on the root stack
+  and emits the bare segment `watch` — the Discover tab's own name — so scanning
+  the whole segment array slid the capsule to Discover on every video open.
+- **The lens is rim-weighted on purpose.** Its fill lifts the ground under the
+  active label from rgb(20,18,17) to rgb(35,33,32), costing that label
+  3.49:1 -> 3.11:1 (measured on a flat background, lens on vs off in the same
+  cell). Idle labels are untouched at 7.41:1.
+- **The ACTIVE label still fails AA and no tint can fix it.** `#CB333B` on the
+  app ground is 3.39:1, and it sits at a middling luminance, so it fails against
+  dark and light grounds alike. Only a colour change fixes it, and
+  `tabBarActiveTintColor` is shared with Android. Untouched deliberately.
+- **`@react-navigation/bottom-tabs` does not resolve from this app.** It runs
+  expo-router's vendored fork. Import `useBottomTabBarHeight` from
+  `expo-router/js-tabs`; the obvious import passes `tsc` and fails in Metro.
+- **No test can see the RENDERED material.** Every render suite mocks
+  `GlassView` and `PlatformBlur` to `() => null`, so only a simulator proves the
+  frosting. The branch selection and props ARE covered — see
+  `TabBarBackground.test.tsx` — and `tabBar.test.ts` computes the composited
+  WCAG ratio from the tint's full `rgba()` -- colour AND alpha, since
+  compositing a hard-coded black scored a WHITE tint 4.79:1 while it measures
+  1.52:1 -- so changing `TAB_BAR_MATERIAL_TINT` either way now fails a test.
+  `tabBarClearance.guard.test.js` is an ENUMERATION of six surfaces, not a
+  sweep — a seventh scroller escapes it silently. Add a row whenever you add
+  one. It checks the clearance is APPLIED, not merely imported, and it strips
+  `scrollIndicatorInsets` first -- that prop contains `bottom: tabBarClearance`
+  and satisfied the naive pattern on its own.
+- **`tabBarSingleSource.guard.test.js` holds the one-source claim.** It strips
+  comments before matching -- LEADING and TRAILING, because a trailing
+  `// from "../../lib/tabBar"` beside a hand-copied number is a live revert --
+  and it compares the assigned token rather than using a lookahead, whose
+  `\s*` can match zero characters and slip past the value it was told to
+  reject.
+- **A fade is not available.** `GlassView` renders nothing inside a layer whose
+  opacity an ancestor animates, so hide-on-scroll would force `PlatformBlur` on
+  every iOS version and change the look on both platforms.
+- **Fast Refresh does not reliably apply changes to the material.** A branch
+  swap looked applied and measured identically to the previous run; a magenta
+  probe proved the old code was still live. Terminate and relaunch the dev
+  client, and prove the reload landed with an unmistakable colour before
+  trusting any measurement.
+
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see

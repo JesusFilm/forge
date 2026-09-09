@@ -81,7 +81,17 @@ const WIDTH_IOS = 0.6
 // Android's 108dp canvas only shows its middle 72dp, so the same apparent size
 // needs a smaller number here. 0.6 * 72/108 = 0.4, well inside the 66/108 safe zone.
 const WIDTH_ANDROID = 0.6 * (72 / 108)
-const WIDTH_SPLASH = 0.55
+
+// The native splash carries NO symbol (KTD3). The animated splash opens on an
+// empty field, so the two frames match only if this one is flat as well. Keep
+// it equal to `splash.backgroundColor` in app.json and to BG_COLOR in the app.
+const SPLASH_GROUND = "#1c1917"
+
+// The animated splash draws the symbol as a projector screen and crossfades it
+// from white to the brand gradient. The app has no SVG renderer, so the two
+// states ship as rasters at the symbol's OWN aspect, not on a square canvas.
+const MARK_TILE_WIDTH = SIZE
+const MARK_TILE_HEIGHT = Math.round((SIZE * MH) / MW)
 
 /** Transform placing the symbol's centroid at the centre of a `size` box. */
 function markTransform(size, widthFraction) {
@@ -137,12 +147,32 @@ function fieldSvg(size, field = FIELD) {
 </svg>`
 }
 
+/** One flat colour across the whole canvas. */
+function flatSvg(size, color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${color}"/>
+</svg>`
+}
+
 /** The symbol alone on transparency. Pass `fill` for a solid colour (themed icon). */
 function markSvg(size, widthFraction, fill) {
   const defs = fill == null ? `<defs>${MARK_GRADIENT}</defs>` : ""
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   ${defs}
   <path d="${MARK}" transform="${markTransform(size, widthFraction)}" fill="${fill ?? "url(#mark)"}"/>
+</svg>`
+}
+
+/**
+ * The symbol alone, filling a tile of its own aspect ratio. The viewBox IS the
+ * path's box, so the raster has no padding and a layout can size it by width.
+ */
+function markTileSvg(width, fill) {
+  const height = Math.round((width * MH) / MW)
+  const defs = fill == null ? `<defs>${MARK_GRADIENT}</defs>` : ""
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${MW} ${MH}">
+  ${defs}
+  <path d="${MARK}" fill="${fill ?? "url(#mark)"}"/>
 </svg>`
 }
 
@@ -205,8 +235,12 @@ const ICON_JSON = {
 
 /* --------------------------------------------------------------------- main */
 
-async function png(svg, out, { alpha = true, size = SIZE } = {}) {
-  let img = sharp(Buffer.from(svg)).resize(size, size)
+async function png(
+  svg,
+  out,
+  { alpha = true, size = SIZE, height = size } = {},
+) {
+  let img = sharp(Buffer.from(svg)).resize(size, height)
   if (!alpha) img = img.flatten({ background: "#100D0C" }).removeAlpha()
   await img.png({ compressionLevel: 9 }).toFile(out)
   const m = await sharp(out).metadata()
@@ -262,6 +296,29 @@ async function verifyCentroid({ quiet = false } = {}) {
   if (!quiet) console.log("\nCentroid constants are current.")
 }
 
+/**
+ * The native splash's ground is stated twice — here and in app.json — and a
+ * mismatch shows as a colour flip at the native-to-React handover. Re-derive
+ * it rather than trusting the comment beside SPLASH_GROUND.
+ */
+async function verifySplashGround() {
+  const config = JSON.parse(
+    await fs.readFile(path.join(MOBILE, "app.json"), "utf8"),
+  )
+  const plugin = config.expo.plugins.find(
+    (entry) => Array.isArray(entry) && entry[0] === "expo-splash-screen",
+  )
+  const declared = plugin?.[1]?.backgroundColor
+  if (declared?.toLowerCase() !== SPLASH_GROUND.toLowerCase()) {
+    console.error(
+      `\nSplash ground drift — app.json declares ${declared}, this script emits ` +
+        `${SPLASH_GROUND}.\nBoth frames must be the same colour, or the ` +
+        "handover from the native splash flips colour.",
+    )
+    process.exit(1)
+  }
+}
+
 async function main() {
   // Re-derive the centroid on EVERY run, not just behind the flag. These two
   // constants place the symbol in every output, so a guard that only fires when
@@ -269,6 +326,7 @@ async function main() {
   const explicit = process.argv.includes("--verify-centroid")
   await verifyCentroid({ quiet: !explicit })
   if (explicit) return
+  await verifySplashGround()
 
   await fs.mkdir(path.join(ICON_BUNDLE, "Assets"), { recursive: true })
 
@@ -308,13 +366,32 @@ async function main() {
     path.join(ASSETS, "adaptive-icon-monochrome.png"),
   )
 
-  // Splash sits on splash.backgroundColor, so the symbol ships on transparency.
-  await png(markSvg(SIZE, WIDTH_SPLASH), path.join(ASSETS, "splash-icon.png"))
+  // The animated splash opens on an empty field, so the native splash it hands
+  // over from must be flat too — an icon here would add a beat and a colour flip.
+  await png(
+    flatSvg(SIZE, SPLASH_GROUND),
+    path.join(ASSETS, "splash-icon.png"),
+    {
+      alpha: false,
+    },
+  )
 
   await png(compositeSvg(196, WIDTH_IOS), path.join(ASSETS, "favicon.png"), {
     alpha: false,
     size: 196,
   })
+
+  console.log("\nAnimated splash — the projector screen, white then crimson")
+  await png(
+    markTileSvg(MARK_TILE_WIDTH, "#FFFFFF"),
+    path.join(ASSETS, "splash-mark-white.png"),
+    { size: MARK_TILE_WIDTH, height: MARK_TILE_HEIGHT },
+  )
+  await png(
+    markTileSvg(MARK_TILE_WIDTH),
+    path.join(ASSETS, "splash-mark-crimson.png"),
+    { size: MARK_TILE_WIDTH, height: MARK_TILE_HEIGHT },
+  )
 
   console.log(
     "\nDone. `npx expo prebuild --clean` to push these into ios/ and android/.\n",

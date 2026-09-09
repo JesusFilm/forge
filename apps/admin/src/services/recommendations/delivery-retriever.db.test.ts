@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs"
-import { PrismaClient } from "@prisma/client"
+import { Prisma, PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { VideoNotFoundError } from "@/services/scene-recommendations.service"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -75,6 +76,119 @@ function vectorAt(index: number): string {
   const values = Array.from({ length: 1536 }, () => 0)
   values[index] = 1
   return `[${values.join(",")}]`
+}
+
+async function installIncompatibleNearerChunks(client: Client): Promise<void> {
+  // Each seed is orthogonal to the valid targets. These 112 chunks are
+  // strictly nearer to every seed; 80 have incompatible parent provenance.
+  // A parent check after the 48-neighbor cap would starve the valid slate.
+  const nearerVector = `[${Array.from({ length: 1536 }, (_, index) =>
+    index < 8 ? 1 : 0,
+  ).join(",")}]`
+  await client.query(
+    `WITH incompatible_transcripts AS (
+      INSERT INTO video_transcript (
+        id, video_id, video_edition_id, language, embedding_provider, model,
+        dimensions, embedding_native_dimensions, embedding_transform_version
+      )
+      SELECT
+        'incompatible-' || mismatch, source.video_id,
+        source.video_edition_id, source.language,
+        CASE WHEN mismatch = 'provider' THEN 'other-provider'
+          ELSE source.embedding_provider END,
+        CASE WHEN mismatch = 'parent-model' THEN 'other-model'
+          ELSE source.model END,
+        CASE WHEN mismatch = 'parent-dimensions' THEN 768
+          ELSE source.dimensions END,
+        CASE WHEN mismatch = 'native-dimensions' THEN 3072
+          ELSE source.embedding_native_dimensions END,
+        CASE WHEN mismatch = 'transform' THEN 'other-transform' END
+      FROM video_transcript source
+      CROSS JOIN unnest(ARRAY[
+        'provider', 'parent-model', 'parent-dimensions',
+        'native-dimensions', 'transform', 'chunk-model', 'chunk-dimensions'
+      ]) AS mismatch
+      WHERE source.id = 'target-transcript-0'
+      RETURNING id, language
+    )
+    INSERT INTO video_transcript_chunk (
+      id, transcript_id, chunk_index, language, model, dimensions, text,
+      start_seconds, end_seconds, embedding
+    )
+    SELECT
+      transcript.id || '-' || ordinal, transcript.id, 1000 + ordinal,
+      transcript.language,
+      CASE WHEN transcript.id = 'incompatible-chunk-model'
+        THEN 'other-model' ELSE $2 END,
+      CASE WHEN transcript.id = 'incompatible-chunk-dimensions'
+        THEN 768 ELSE $3::int END,
+      'Must never be recommended', 0, 30, $1::vector
+    FROM incompatible_transcripts transcript
+    CROSS JOIN generate_series(0, 15) AS ordinal`,
+    [
+      nearerVector,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ],
+  )
+}
+
+async function installIndexedContractSkew(client: Client): Promise<void> {
+  // Continuous, distinct directions avoid disconnected duplicate-vector
+  // clusters. Incompatible chunks are closer than the valid targets, with
+  // enough distant background for the planner to naturally choose HNSW.
+  await client.query(`
+    INSERT INTO video_transcript_chunk (
+      id, transcript_id, chunk_index, language, model, dimensions, text, embedding
+    )
+    SELECT 'background-' || ordinal, 'incompatible-provider',
+      ordinal + 2000, 'en', '${ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL}',
+      1536, 'Incompatible distant background',
+      (ARRAY[0.1,0,0,0,0,0,0,0,sin(ordinal)::real,cos(ordinal)::real]
+        || array_fill(0::real, ARRAY[1526]))::vector
+    FROM generate_series(1, 1024) ordinal;
+    UPDATE video_transcript_chunk
+    SET embedding = (ARRAY[1::real] || array_fill(0::real, ARRAY[1535]))::vector
+    WHERE transcript_id = 'seed-transcript';
+    UPDATE video_transcript_chunk
+    SET embedding = (
+      ARRAY[0.6::real]
+      || array_fill(0::real, ARRAY[substring(transcript_id FROM '[0-9]+$')::int + 7])
+      || ARRAY[0.8::real]
+      || array_fill(0::real, ARRAY[1527 - substring(transcript_id FROM '[0-9]+$')::int])
+    )::vector
+    WHERE transcript_id LIKE 'target-transcript-%';
+    UPDATE video_transcript_chunk chunk
+    SET embedding = (ARRAY[1::real, numbered.ordinal::real / 1000]
+      || array_fill(0::real, ARRAY[1534]))::vector
+    FROM (
+      SELECT id, row_number() OVER (ORDER BY id) AS ordinal
+      FROM video_transcript_chunk WHERE id LIKE 'incompatible-%'
+    ) numbered
+    WHERE chunk.id = numbered.id;
+    CREATE INDEX video_transcript_chunk_embedding_hnsw_en
+      ON video_transcript_chunk USING hnsw (embedding vector_cosine_ops)
+      WHERE language = 'en';
+    CREATE INDEX video_transcript_chunk_transcript_id_idx
+      ON video_transcript_chunk (transcript_id);
+    CREATE INDEX video_transcript_video_id_idx ON video_transcript (video_id);
+    ANALYZE video_transcript_chunk;
+    ANALYZE video_transcript;
+  `)
+}
+
+type RetrievalPlan = {
+  "Index Name"?: string
+  "Actual Loops"?: number
+  Plans?: RetrievalPlan[]
+}
+
+function usedHnswIndex(plan: RetrievalPlan): boolean {
+  return (
+    (plan["Index Name"] === "video_transcript_chunk_embedding_hnsw_en" &&
+      (plan["Actual Loops"] ?? 0) > 0) ||
+    Boolean(plan.Plans?.some(usedHnswIndex))
+  )
 }
 
 const BENCHMARK_PROFILE_TOKEN_DIGEST = "4".repeat(64)
@@ -578,6 +692,7 @@ async function prepareExplicitDeliveryFixture(
       )
     }
     await installHybridDeliveryAuthority(client)
+    await installIncompatibleNearerChunks(client)
     const fixtureUrl = new URL(databaseUrl)
     fixtureUrl.searchParams.delete("options")
     fixtureUrl.searchParams.set("schema", fixtureSchema)
@@ -1015,30 +1130,285 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               limit: 12,
             })
           ).map((item) => item.videoId)
-        await prisma.$executeRaw`
-          INSERT INTO studio_project (id, lifecycle) VALUES ('fixture-studio', 'DRAFT')
-        `
-        await prisma.$executeRaw`
-          INSERT INTO studio_catalog_release (id, project_id, video_id)
-          VALUES ('fixture-release', 'fixture-studio', 'target-video-1')
-        `
-        expect(await retrieveIds()).not.toContain("target-video-1")
-        await prisma.$executeRaw`
-          INSERT INTO studio_publication (release_id) VALUES ('fixture-release')
-        `
-        // A receipt alone must not bypass canonical project lifecycle.
-        expect(await retrieveIds()).not.toContain("target-video-1")
-        await prisma.$executeRaw`
-          UPDATE studio_project SET lifecycle = 'PUBLISHED' WHERE id = 'fixture-studio'
-        `
-        expect(await retrieveIds()).toContain("target-video-1")
-        await prisma.$executeRaw`
-          UPDATE studio_publication SET revoked_at = now() WHERE release_id = 'fixture-release'
-        `
-        const revokedIds = await retrieveIds()
-        expect(revokedIds).not.toContain("target-video-1")
-        expect(revokedIds).toContain("target-video-0")
+        try {
+          await prisma.$executeRaw`
+            INSERT INTO studio_project (id, lifecycle) VALUES ('fixture-studio', 'DRAFT')
+          `
+          await prisma.$executeRaw`
+            INSERT INTO studio_catalog_release (id, project_id, video_id)
+            VALUES ('fixture-release', 'fixture-studio', 'target-video-1')
+          `
+          expect(await retrieveIds()).not.toContain("target-video-1")
+          await prisma.$executeRaw`
+            INSERT INTO studio_publication (release_id) VALUES ('fixture-release')
+          `
+          // A receipt alone must not bypass canonical project lifecycle.
+          expect(await retrieveIds()).not.toContain("target-video-1")
+          await prisma.$executeRaw`
+            UPDATE studio_project SET lifecycle = 'PUBLISHED' WHERE id = 'fixture-studio'
+          `
+          expect(await retrieveIds()).toContain("target-video-1")
+          await prisma.$executeRaw`
+            UPDATE studio_publication SET revoked_at = now() WHERE release_id = 'fixture-release'
+          `
+          const revokedIds = await retrieveIds()
+          expect(revokedIds).not.toContain("target-video-1")
+          expect(revokedIds).toContain("target-video-0")
+        } finally {
+          await prisma.$executeRaw`DELETE FROM studio_publication WHERE release_id = 'fixture-release'`
+          await prisma.$executeRaw`DELETE FROM studio_catalog_release WHERE id = 'fixture-release'`
+          await prisma.$executeRaw`DELETE FROM studio_project WHERE id = 'fixture-studio'`
+        }
       },
+    )
+
+    const deterministicInput = {
+      seedMediaId: "seed-video",
+      locale: "en",
+      audioLanguageSlug: "english",
+      limit: 6,
+    }
+    const expectedTargetIds = Array.from(
+      { length: 12 },
+      (_, index) => `target-video-${index}`,
+    ).sort()
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "fills the eligible pool despite more than 48 nearer incompatible chunks",
+      async () => {
+        const candidates = await getSemanticDeliveryCandidatePool(
+          prisma,
+          deterministicInput,
+        )
+        expect(candidates.map((item) => item.videoId)).toEqual(
+          expectedTargetIds,
+        )
+        expect(candidates.every((item) => item.sceneIndex === 0)).toBe(true)
+        const slate = await getSemanticDeliveryRecommendations(
+          prisma,
+          deterministicInput,
+        )
+        expect(slate.map((item) => item.videoId)).toEqual(
+          Array.from({ length: 6 }, (_, index) => `target-video-${index}`),
+        )
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "requires an exact non-null transform after the active contract changes",
+      async () => {
+        await prisma.$transaction(async (transaction) => {
+          await transaction.$executeRaw`
+            UPDATE content_embedding_contract
+            SET storage_transform_version = 'rotation-transform'
+            WHERE id = ${ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID}
+          `
+          await transaction.$executeRaw`
+            UPDATE video_transcript
+            SET embedding_transform_version = 'rotation-transform'
+            WHERE id = 'seed-transcript'
+          `
+          await expect(
+            getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+          ).resolves.toEqual([])
+
+          await transaction.$executeRaw`
+            UPDATE video_transcript
+            SET embedding_transform_version = 'rotation-transform'
+            WHERE id LIKE 'target-transcript-%'
+          `
+          const candidates = await getSemanticDeliveryCandidatePool(
+            transaction,
+            deterministicInput,
+          )
+          expect(candidates.map((item) => item.videoId)).toEqual(
+            expectedTargetIds,
+          )
+          expect(candidates.every((item) => item.sceneIndex === 0)).toBe(true)
+
+          await transaction.$executeRaw`
+            UPDATE content_embedding_contract
+            SET storage_transform_version = NULL
+            WHERE id = ${ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID}
+          `
+          await transaction.$executeRaw`
+            UPDATE video_transcript SET embedding_transform_version = NULL
+            WHERE id = 'seed-transcript' OR id LIKE 'target-transcript-%'
+          `
+        })
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "excludes the seed and its parents and children before filling the pool",
+      async () => {
+        await prisma.$transaction(async (transaction) => {
+          await transaction.$executeRaw`
+            INSERT INTO video_relation (parent_id, child_id) VALUES
+              ('seed-video', 'target-video-0'), ('target-video-1', 'seed-video')
+          `
+          const candidates = await getSemanticDeliveryCandidatePool(
+            transaction,
+            deterministicInput,
+          )
+          expect(candidates.map((item) => item.videoId)).toEqual(
+            expectedTargetIds.filter(
+              (id) => id !== "target-video-0" && id !== "target-video-1",
+            ),
+          )
+          await transaction.$executeRaw`DELETE FROM video_relation`
+        })
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "rejects seed embeddings when the active contract pointer is absent",
+      async () => {
+        await prisma.$transaction(async (transaction) => {
+          await transaction.$executeRaw`
+            DELETE FROM content_embedding_contract_pointer
+            WHERE id = ${CONTENT_EMBEDDING_CONTRACT_POINTER_ID}
+          `
+          await expect(
+            getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+          ).rejects.toBeInstanceOf(VideoNotFoundError)
+          await transaction.$executeRaw`
+            INSERT INTO content_embedding_contract_pointer (id, active_contract_id)
+            VALUES (${CONTENT_EMBEDDING_CONTRACT_POINTER_ID}, ${ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID})
+          `
+        })
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "restores planner and HNSW settings after retrieval commits or rolls back",
+      async () => {
+        const singleConnectionUrl = new URL(databaseUrl)
+        singleConnectionUrl.searchParams.set("connection_limit", "1")
+        const singleConnection = new PrismaClient({
+          datasources: { db: { url: singleConnectionUrl.toString() } },
+        })
+        const readSettings = (database: Pick<PrismaClient, "$queryRaw">) =>
+          database.$queryRaw<
+            Array<{ plan: string; iteration: string; max_scan: string }>
+          >`
+            SELECT current_setting('plan_cache_mode') AS plan,
+              current_setting('hnsw.iterative_scan') AS iteration,
+              current_setting('hnsw.max_scan_tuples') AS max_scan
+          `
+        const inside = [
+          {
+            plan: "force_custom_plan",
+            iteration: "strict_order",
+            max_scan: "20000",
+          },
+        ]
+        const outside = [
+          { plan: "force_generic_plan", iteration: "off", max_scan: "1000" },
+        ]
+        try {
+          await singleConnection.$queryRaw`
+            SELECT set_config('plan_cache_mode', 'force_generic_plan', false),
+              set_config('hnsw.iterative_scan', 'off', false),
+              set_config('hnsw.max_scan_tuples', '1000', false)
+          `
+          await expect(
+            runRecommendationRetrievalQuery(
+              singleConnection,
+              Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+              readSettings,
+            ),
+          ).resolves.toEqual(inside)
+          await expect(readSettings(singleConnection)).resolves.toEqual(outside)
+
+          const failure = new Error(
+            "Retrieval failed after configuring its transaction",
+          )
+          await expect(
+            runRecommendationRetrievalQuery(
+              singleConnection,
+              Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+              async (transaction) => {
+                expect(await readSettings(transaction)).toEqual(inside)
+                throw failure
+              },
+            ),
+          ).rejects.toBe(failure)
+          await expect(readSettings(singleConnection)).resolves.toEqual(outside)
+        } finally {
+          await singleConnection.$disconnect()
+        }
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "fills a six-card slate through HNSW despite nearer incompatible vectors",
+      async () => {
+        const client = new Client({ connectionString: env.DATABASE_URL })
+        await client.connect()
+        const instrumented = new PrismaClient({
+          datasources: { db: { url: databaseUrl } },
+          log: [{ level: "query", emit: "event" }],
+        })
+        let retrievalQuery: { query: string; params: string } | undefined
+        instrumented.$on("query", (event) => {
+          if (event.query.trimStart().startsWith("WITH seed_candidates")) {
+            retrievalQuery = event
+          }
+        })
+        try {
+          await client.query(`SET search_path TO "${fixtureSchema}", public`)
+          await installIndexedContractSkew(client)
+          const candidates = await runRecommendationRetrievalQuery(
+            instrumented,
+            Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+            (transaction) =>
+              getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+          )
+          expect(candidates.length).toBeGreaterThanOrEqual(6)
+          expect(
+            candidates.every(
+              (item) =>
+                expectedTargetIds.includes(item.videoId) &&
+                item.sceneIndex === 0,
+            ),
+          ).toBe(true)
+          const slate = await runRecommendationRetrievalQuery(
+            instrumented,
+            Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+            (transaction) =>
+              getSemanticDeliveryRecommendations(
+                transaction,
+                deterministicInput,
+              ),
+          )
+          expect(slate).toHaveLength(6)
+          expect(new Set(slate.map((item) => item.videoId)).size).toBe(6)
+
+          expect(retrievalQuery).toBeDefined()
+          const statement = retrievalQuery!
+          const parameters: unknown[] = JSON.parse(statement.params)
+          // Rebuild Prisma's positional bindings as tagged SQL so EXPLAIN uses
+          // the same query and the runtime's existing $queryRaw-only interface.
+          const query = Prisma.sql(
+            statement.query.split(/\$\d+\b/),
+            ...parameters,
+          )
+          const explained = await runRecommendationRetrievalQuery(
+            instrumented,
+            Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+            (transaction) =>
+              transaction.$queryRaw<
+                Array<{ "QUERY PLAN": Array<{ Plan: RetrievalPlan }> }>
+              >(Prisma.sql`EXPLAIN (ANALYZE, FORMAT JSON) ${query}`),
+          )
+          expect(usedHnswIndex(explained[0]!["QUERY PLAN"][0]!.Plan)).toBe(true)
+        } finally {
+          await instrumented.$disconnect()
+          await client.end()
+        }
+      },
+      10_000,
     )
   },
 )

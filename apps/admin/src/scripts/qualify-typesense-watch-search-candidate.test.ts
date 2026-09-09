@@ -48,7 +48,7 @@ function report(overrides: Record<string, unknown> = {}) {
     identity: {
       generationId: "candidate-1",
       indexContractRevision: "watch-search-candidate/v4",
-      rankingRevision: "title-and-brand-v2",
+      rankingRevision: "title-and-brand-v3",
       transcriptCollection: "watch_transcripts_current_42",
       ...transcriptCompatibility,
       transcriptProjectionRevision: "17",
@@ -70,7 +70,7 @@ function operatorAcceptanceBundle(overrides: Record<string, unknown> = {}) {
     identity: {
       generationId: "candidate-1",
       indexContractRevision: "watch-search-candidate/v4",
-      rankingRevision: "title-and-brand-v2",
+      rankingRevision: "title-and-brand-v3",
       transcriptCollection: "watch_transcripts_current_42",
       ...transcriptCompatibility,
       transcriptProjectionRevision: "17",
@@ -432,7 +432,7 @@ describe("watch search Candidate qualification operator", () => {
       expectedPointerVersion: 4,
       currentBindings,
       qrelsRevision: "public-watch-qrels/reviewed-v2",
-      rankingRevision: "title-and-brand-v2",
+      rankingRevision: "title-and-brand-v3",
       qualificationAudit: {
         reviewerIdentity: "reviewer@example.org",
         operatorIdentity: "operator@example.org",

@@ -1363,6 +1363,26 @@ The handoff and the app's departure are not simultaneous, and which comes first 
 
 Closing the window ends playback, while expanding it returns the same playback to the app. Both raise the same signal from the window, so they are told apart by what follows rather than by the signal itself, and a video the viewer paused inside the window stays paused through either. Only a surface armed for automatic entry can be handed off, and a video that was not playing is never handed off at all.
 
+## App launch
+
+### Splash Cover
+
+The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it.
+
+The tree beneath the cover is live: the first screen mounts and begins fetching while the animation plays, so the brand moment and the first network round trip overlap instead of running one after the other. The platform's own launch screen stays up until this layer has painted its first frame, so the handover between them shows neither a gap nor a flash of bare background. The cover holds for a fixed span even when content arrives sooner — the moment is deliberately consistent rather than adaptive — and then releases once the first screen reports it has something to paint, or reports a failure, since a failure is the point at which there is something for the viewer to retry. An unconditional ceiling releases it whatever the screen is doing, and the diagnostic panels release it at once, because nothing may sit over a surface a viewer needs in order to act. Only a cold process start raises it; a resume finds the session spent.
+
+Everything the cover holds off answers to one predicate — the covering pixels, the touches it swallows, and the removal of the tree beneath it from the screen reader — so those can never disagree about whether the cover is up. A report from the first screen belongs to the instance that made it: when the shell swaps its own element type mid-hold and remounts that screen, the report must be withdrawn, and this holds for a reported failure exactly as it holds for reported content. A report that outlives its reporter hands the cover over to whatever the replacement instance happens to be showing, which is the spinner the report was supposed to prove was gone.
+
+## App navigation chrome
+
+### Material Tint
+
+A flat colour laid on a translucent material — glass or blur — so that text on that material keeps its contrast over arbitrary content behind it. Distinct from a scrim, which is laid over bare content and carries the whole contrast burden by itself.
+
+The distinction decides the shape of the contrast curve, so a scrim's rule cannot be reused here. A material has already moved the ground away from the text before the tint is applied, so darkening it further moves the ground further away and contrast rises for every increase in the tint's opacity. A minimum is therefore computable and any value above it is safe. Over a bare backdrop on the far side of the text, the same sweep instead drags the ground through the text's own luminance, so contrast collapses to nothing at the crossing and only recovers well beyond it — which reads as a forbidden middle and a much higher floor. Both effects are artefacts of the backdrop, not properties of the tint, so the floor must be derived over the stack the pixels actually pass through, against the brightest content the app can put behind it.
+
+A tint fixes only the text it darkens the ground beneath. Text at a middling luminance fails against dark and light grounds alike, so no tint rescues it and only a colour change does.
+
 ## Offline downloads
 
 ### Download Record

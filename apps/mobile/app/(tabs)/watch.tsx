@@ -49,6 +49,7 @@ import {
 } from "../../src/components/search/searchEntrance"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { BrowseTopics } from "../../src/components/search/BrowseTopics"
+import { useTabBarClearance } from "../../src/lib/tabBar"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
@@ -65,6 +66,7 @@ const MAX_PREFETCH_INFLIGHT = 3
 
 export default function DiscoverScreen() {
   const router = useRouter()
+  const tabBarClearance = useTabBarClearance()
   const { selectExperience } = useExperienceSelection()
 
   // Warm the detail query on touch-down so navigation reads a warm cache.
@@ -750,7 +752,11 @@ export default function DiscoverScreen() {
               keyboardDismissMode="on-drag"
               onViewableItemsChanged={handleViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: 32 + tabBarClearance },
+              ]}
+              scrollIndicatorInsets={{ bottom: tabBarClearance }}
               columnWrapperStyle={styles.columnWrapper}
               ListFooterComponent={
                 <>

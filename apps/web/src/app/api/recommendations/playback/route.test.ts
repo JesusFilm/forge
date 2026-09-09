@@ -1,3 +1,4 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
@@ -247,6 +248,124 @@ describe("POST /watch/api/recommendations/playback", () => {
     )
     expect(variables).not.toHaveProperty("requestId")
     expect(variables).not.toHaveProperty("itemId")
+  })
+
+  it.each(["context", "claim", "facts"])(
+    "rejects crawler %s before any Admin mutation",
+    async (action) => {
+      const response = await POST(
+        request(JSON.stringify({ action }), {
+          "user-agent": "Mozilla/5.0 (compatible; Applebot/0.1)",
+        }),
+      )
+      expect(response.status).toBe(403)
+      expect(await response.json()).toEqual({
+        error: "machine_evidence_rejected",
+      })
+      expect(mutate).not.toHaveBeenCalled()
+    },
+  )
+
+  describe.each(["claim", "facts"] as const)("%s domain errors", (action) => {
+    const errors = [
+      {
+        message: "Invalid binding",
+        extensions: { recommendationCode: "invalid_binding" },
+      },
+    ]
+    it.each([
+      ["thrown Apollo 4", new CombinedGraphQLErrors({ errors }), true],
+      ["thrown Apollo 3", { graphQLErrors: errors }, true],
+      [
+        "returned Apollo 4",
+        { error: new CombinedGraphQLErrors({ errors }) },
+        false,
+      ],
+      ["returned legacy", { error: { graphQLErrors: errors } }, false],
+      ["returned GraphQL", { errors }, false],
+    ])("maps %s to terminal HTTP 409", async (_name, error, thrown) => {
+      if (thrown) mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce(error)
+      const body =
+        action === "claim"
+          ? { action, claimNonce: "claim-nonce-1234567890", mediaId: "media-1" }
+          : {
+              action,
+              contractVersion: "recommendation-evidence-v1",
+              capability: "episode-capability",
+              episodeId: "episode-1",
+              mediaId: "media-1",
+              events: [playbackEvent],
+            }
+      const response = await POST(request(JSON.stringify(body)))
+      expect(response.status).toBe(409)
+      expect(await response.json()).toEqual({
+        error: "playback_binding_invalid",
+      })
+      expect(mutate).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it.each([
+    ["thrown", true],
+    ["returned", false],
+  ])(
+    "maps %s invalid playback input to terminal HTTP 400",
+    async (_name, thrown) => {
+      const error = new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "Recommendation request is invalid",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      })
+      if (thrown) mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [playbackEvent],
+          }),
+        ),
+      )
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        error: "playback_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+    },
+  )
+
+  it("does not classify arbitrary GraphQL messages as binding failures", async () => {
+    mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "invalid_binding",
+            extensions: { recommendationCode: "internal" },
+          },
+        ],
+      }),
+    )
+    const response = await POST(
+      request(
+        JSON.stringify({
+          action: "claim",
+          claimNonce: "claim-nonce-1234567890",
+          mediaId: "media-1",
+        }),
+      ),
+    )
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
   })
 
   it("returns a non-retryable conflict for an invalid playback binding", async () => {

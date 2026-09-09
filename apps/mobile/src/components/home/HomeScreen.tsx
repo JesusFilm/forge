@@ -33,9 +33,11 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { useTabBarClearance } from "../../lib/tabBar"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
+import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
   muxSlideDisplayCopy,
@@ -84,6 +86,7 @@ const HERO_SWIPE_COMMIT_PX = 40
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets()
+  const tabBarClearance = useTabBarClearance()
   const navigation = useNavigation()
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
@@ -92,6 +95,24 @@ export function HomeScreen() {
   const heroHeight = Math.round(screenWidth * 1.2)
 
   const { model, loading, refreshing, error, refetch } = useWatchHome()
+
+  // The splash draws ABOVE this screen and needs to know whether there is
+  // anything to hand over TO. Report only — nothing here waits on the splash.
+  // Both branches retract, because ExperienceShell swaps its element type when
+  // the slug resolves and remounts this screen mid-hold; either report, if it
+  // outlived its reporter, hands the cover over to a spinner (R3, R15).
+  useEffect(() => {
+    const session = getSplashSession()
+    // Only when there is nothing to paint: a failed refetch over a live model
+    // is not a reason to drop the cover early.
+    if (model == null) {
+      if (error == null) return
+      session.reportHomeFailure()
+      return () => session.retractHomeFailure()
+    }
+    session.reportHomeContent()
+    return () => session.retractHomeContent()
+  }, [model, error])
 
   // ── Hero queue (referentially stable per model identity) ──────────────────
 
@@ -386,9 +407,9 @@ export function HomeScreen() {
       // Hero-less degraded render: feed starts below the absolute header
       // instead of leaving a hero-sized hole.
       paddingTop: heroVisible ? heroHeight : insets.top + HEADER_ALLOWANCE,
-      paddingBottom: 48,
+      paddingBottom: 48 + tabBarClearance,
     }),
-    [heroVisible, heroHeight, insets.top],
+    [heroVisible, heroHeight, insets.top, tabBarClearance],
   )
 
   // ── States (R12: never a blank screen) ─────────────────────────────────────

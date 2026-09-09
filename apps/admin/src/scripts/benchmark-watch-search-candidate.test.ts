@@ -33,7 +33,7 @@ const allSlices = [
 const identity: CandidateBenchmarkIdentity = {
   generationId: "generation-a",
   indexContractRevision: "revision-a",
-  rankingRevision: "title-and-brand-v2",
+  rankingRevision: "title-and-brand-v3",
   transcriptCollection: "watch_search_transcripts_1",
   contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
   transcriptChunkingVersion: "mastra-v1",
@@ -97,7 +97,7 @@ function successResponse(
       hydratedRecords: 1,
       rankingImplementation:
         profile === "CANDIDATE"
-          ? ("title-and-brand-v2" as const)
+          ? ("title-and-brand-v3" as const)
           : ("legacy-rrf" as const),
       rankingMode: "SEMANTIC" as const,
     },
@@ -162,7 +162,7 @@ function successfulAttempt(
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
-      rankingImplementation: candidate ? "title-and-brand-v2" : "legacy-rrf",
+      rankingImplementation: candidate ? "title-and-brand-v3" : "legacy-rrf",
       rankingMode: "SEMANTIC",
       ...diagnostics,
     },
@@ -588,7 +588,7 @@ describe("paired candidate qualification benchmark", () => {
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
-      rankingImplementation: "title-and-brand-v2",
+      rankingImplementation: "title-and-brand-v3",
       rankingMode: "SEMANTIC",
       rankingAnchor: {
         normalized: "private sentinel query",

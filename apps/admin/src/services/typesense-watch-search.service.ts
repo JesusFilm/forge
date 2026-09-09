@@ -319,12 +319,14 @@ type RankedCandidate = {
   watchabilityKind: IndexedWatchability["kind"]
 }
 
-function ensureCuratedGroupsOnDefaultFirstPage(
+function ensureCuratedGroupsOnFirstPage(
   groups: readonly RankedCandidateGroup[],
   offset: number,
+  nativeOffset: number,
   limit: number,
 ): RankedCandidateGroup[] {
-  if (offset !== 0 || limit !== DEFAULT_LIMIT || groups.length <= limit) {
+  const retrievalWindowStart = offset - nativeOffset
+  if (retrievalWindowStart !== 0 || groups.length <= limit) {
     return [...groups]
   }
 
@@ -1454,9 +1456,10 @@ export class TypesenseWatchSearchService {
       laneStatuses,
       diagnostics,
     })
-    const rankingGroups = ensureCuratedGroupsOnDefaultFirstPage(
+    const rankingGroups = ensureCuratedGroupsOnFirstPage(
       retrieval.groups,
       offset,
+      retrieval.nativeOffset,
       limit,
     )
     const candidates = rankingGroups.flatMap((group) => group.members)

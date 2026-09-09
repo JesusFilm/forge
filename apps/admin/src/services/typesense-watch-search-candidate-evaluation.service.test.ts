@@ -122,7 +122,7 @@ function searchResult(): {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
-      rankingImplementation: "title-and-brand-v2" as const,
+      rankingImplementation: "title-and-brand-v3" as const,
       rankingMode: "SEMANTIC" as const,
       rankingAnchor: null,
       rankingTrace: [],
@@ -157,7 +157,7 @@ function fixture() {
     renewLease: vi.fn(async () => true),
     releaseLease: vi.fn(async () => true),
     verifyCandidateProfile: vi.fn(async () => true),
-    rankingRevision: vi.fn(() => "title-and-brand-v2"),
+    rankingRevision: vi.fn(() => "title-and-brand-v3"),
     leaseReleaseTimeoutMs: 10,
     onCleanupFailure: vi.fn(),
   }
