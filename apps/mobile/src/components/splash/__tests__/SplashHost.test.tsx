@@ -219,6 +219,21 @@ describe("SplashHost", () => {
     expect(cover?.props.accessibilityViewIsModal).toBe(true)
     // The tree beneath is live. A stray tap must not navigate it.
     expect(typeof cover?.props.onStartShouldSetResponder).toBe("function")
+    expect(cover?.props.pointerEvents).toBe("auto")
+  })
+
+  it("stops holding the person off the moment the predicate clears", () => {
+    const renderer = renderHost()
+    play(renderer)
+
+    setSnapshot({ visible: false, exit: "fade" })
+    const cover = coverNodes(renderer).at(0)
+    // The cover is still on screen for the whole fade. SplashCoveredTree drops
+    // its Android isolation the instant `visible` turns false, so these two
+    // must drop with it — otherwise a screen-reader user can reach Home and
+    // have the tap swallowed by a picture (R16, one predicate).
+    expect(cover?.props.accessibilityViewIsModal).toBe(false)
+    expect(cover?.props.pointerEvents).toBe("none")
   })
 
   it("removes the cover even when the fade never reports finished", () => {

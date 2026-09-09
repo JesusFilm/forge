@@ -160,7 +160,11 @@ function SplashCover() {
   return (
     <Animated.View
       testID="splash-host"
-      accessibilityViewIsModal
+      // R16: every way the cover holds the person off — the iOS modal trap,
+      // the swallowed touches, and SplashCoveredTree's Android isolation —
+      // clears on the ONE predicate. What outlives it is a fading picture.
+      accessibilityViewIsModal={visible}
+      pointerEvents={visible ? "auto" : "none"}
       // Android applies a group's opacity to EACH CHILD unless the subtree is
       // composited offscreen first, so without this the app tree bleeds through
       // the fade and the projector layers blend against one another.

@@ -244,7 +244,11 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   if (moduleError) {
+    // Both, like the App Error path. Nothing reaches the session on this
+    // branch today, but the asymmetry is what a future require-block reorder
+    // would turn into a panel behind a cover.
     hideNativeSplash()
+    releaseSplashImmediately()
     return (
       <View
         style={{

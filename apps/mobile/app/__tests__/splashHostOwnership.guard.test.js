@@ -157,10 +157,18 @@ describe("splash host ownership", () => {
     ).toBe(true)
   })
 
-  it("releases the splash session on the App Error path", () => {
-    const derived = blockAfter(read(LAYOUT), "static getDerivedStateFromError(")
-    // R5 has two halves: the native splash AND the React cover. The boundary
-    // unmounts the host, but the session must end so nothing re-raises it.
-    expect(derived).toContain("releaseSplashImmediately()")
+  it("releases the splash session on BOTH diagnostic paths", () => {
+    const content = read(LAYOUT)
+    // R5 has two halves: the native splash AND the React cover. Asserting one
+    // panel is what let the two branches drift apart in the first place.
+    for (const header of [
+      "static getDerivedStateFromError(",
+      "if (moduleError) {",
+    ]) {
+      const block = blockAfter(content, header)
+      expect(block).not.toBeNull()
+      expect(block).toContain("hideNativeSplash()")
+      expect(block).toContain("releaseSplashImmediately()")
+    }
   })
 })

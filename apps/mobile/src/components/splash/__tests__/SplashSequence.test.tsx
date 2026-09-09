@@ -35,6 +35,12 @@ import {
   SplashSequence,
   splashGeometry,
 } from "../SplashSequence"
+// The pair below is the invariant: the hold is stated in the session, the
+// sequence's length here, and neither file can see the other's constant.
+import {
+  SPLASH_HOLD_MS,
+  SPLASH_MOUNT_LAG_ALLOWANCE_MS,
+} from "../../../lib/splash/splashSession"
 import {
   TestRenderer,
   type RenderedNode,
@@ -217,10 +223,17 @@ describe("beat ordering (R10)", () => {
     )
   })
 
-  it("fits the whole sequence inside the 2.5 second splash hold", () => {
+  it("leaves the hold room for the cover's own mount lag", () => {
     // The session owns the hold; this is the floor its hold has to cover.
     expect(SPLASH_SEQUENCE_MS).toBe(SPLASH_WORD_DELAY_MS + SPLASH_WORD_MS)
-    expect(SPLASH_SEQUENCE_MS).toBeLessThanOrEqual(2500)
+
+    // Not `<= SPLASH_HOLD_MS`: the hold starts when the session turns the
+    // cover visible, and the cover takes time to mount and paint after that.
+    // Measured at ~200ms on the iPhone 17 Pro Max simulator from a Release
+    // build; spend the margin and the exit fade clips the word's fade-in.
+    expect(SPLASH_HOLD_MS - SPLASH_SEQUENCE_MS).toBeGreaterThanOrEqual(
+      SPLASH_MOUNT_LAG_ALLOWANCE_MS,
+    )
   })
 
   it("wires those constants into the animation it starts", async () => {

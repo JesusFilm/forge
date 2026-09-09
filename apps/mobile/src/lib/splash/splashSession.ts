@@ -66,6 +66,17 @@ export const SPLASH_SKIP_DECISION_BUDGET_MS = 1_000
 /** The Reduce Motion read must land before the first animated frame (KTD7). */
 export const SPLASH_REDUCE_MOTION_BUDGET_MS = 500
 
+/**
+ * How much of the hold the cover may spend mounting and painting before its
+ * animation starts. The hold begins when this session turns the cover visible,
+ * not when the first pixel lands, so the sequence must be shorter than the hold
+ * by at least this much or the exit fade clips the end of it.
+ *
+ * Measured at about 200ms on the iPhone 17 Pro Max simulator from a Release
+ * build; the allowance is set above that for slower hardware.
+ */
+export const SPLASH_MOUNT_LAG_ALLOWANCE_MS = 300
+
 const INITIAL_SNAPSHOT: SplashSnapshot = {
   resolved: false,
   visible: false,
