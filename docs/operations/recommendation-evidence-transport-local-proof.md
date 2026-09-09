@@ -1,5 +1,9 @@
 # feat-464 local browser lifecycle proof
 
+> Historical proof from PR #2211. The Redis transport counter panel described
+> below was subsequently removed at the owner's request. Current operational
+> inspection uses Datadog logs; the PostgreSQL Watch-to-Admin lifecycle remains.
+
 Environment: isolated dev-container checkout `/tmp/forge-feat-447`, disposable PostgreSQL database `forge_feat447_validation`; local Web port 3010 and Admin port 3013. No production data or services mutated.
 
 ## Fixture and limitations

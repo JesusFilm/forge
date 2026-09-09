@@ -79,73 +79,20 @@ export function normalizeEvidenceObservation(
   }
   return result as RecommendationEvidenceObservation
 }
-export const EVIDENCE_COUNTER_PREFIX = "recommendation:evidence:v1"
-export const EVIDENCE_COUNTER_TTL_SECONDS = 48 * 60 * 60
-export const EVIDENCE_COLLECTOR_TIMEOUT_MS = 150
-export const EVIDENCE_COUNTER_SCRIPT = `
-local exists = redis.call('HEXISTS', KEYS[1], ARGV[1])
-if exists == 0 and redis.call('HLEN', KEYS[1]) >= 512 then
-  redis.call('HINCRBY', KEYS[1], 'overflow', 1)
-else
-  redis.call('HINCRBY', KEYS[1], ARGV[1], 1)
-end
-redis.call('EXPIRE', KEYS[1], ARGV[2])
-return 1
-`
-export function evidenceCounterField(
-  event: RecommendationEvidenceObservation,
-): string {
-  return [
-    event.action,
-    event.outcome,
-    event.reason ?? "none",
-    event.timeoutStage ?? "none",
-    event.retryDisposition ?? "none",
-    event.crawler ?? "unknown",
-    event.httpStatus ?? 0,
-    event.retryAttempt === undefined
-      ? "unknown"
-      : Math.min(event.retryAttempt, 4),
-  ].join("|")
-}
-export function parseEvidenceCounterField(
-  field: string,
-): RecommendationEvidenceObservation | null {
-  const parts = field.split("|")
-  if (parts.length !== 8) return null
-  return normalizeEvidenceObservation({
-    action: parts[0],
-    outcome: parts[1],
-    reason: parts[2],
-    timeoutStage: parts[3],
-    retryDisposition: parts[4],
-    crawler: parts[5],
-    ...(parts[6] === "0" ? {} : { httpStatus: Number(parts[6]) }),
-    ...(parts[7] === "unknown" ? {} : { retryAttempt: Number(parts[7]) }),
-  })
-}
 export function createEvidenceObserver(deps: {
   service: "web" | "admin"
-  write: (key: string, field: string) => Promise<unknown>
   log: (message: string) => void
-  now?: () => number
 }) {
-  let pending = 0
-  let lastCollectorLog = -Infinity
-  function log(value: object, collector = false) {
-    if (collector) {
-      const now = deps.now?.() ?? Date.now()
-      if (now - lastCollectorLog < 5_000) return
-      lastCollectorLog = now
-    }
+  return (input: RecommendationEvidenceObservation): void => {
     try {
+      // Even untyped call sites cannot place raw values in logs.
+      const event = normalizeEvidenceObservation(input)
+      if (!event) return
       deps.log(
         Object.entries({
-          event: collector
-            ? "recommendation.evidence.collector"
-            : "recommendation.evidence",
+          event: "recommendation.evidence",
           source: deps.service,
-          ...value,
+          ...event,
         })
           .map(([key, value]) => `${key}=${value}`)
           .join(" "),
@@ -153,41 +100,5 @@ export function createEvidenceObserver(deps: {
     } catch {
       /* Observability cannot affect playback. */
     }
-  }
-  return (input: RecommendationEvidenceObservation): void => {
-    // Even untyped call sites cannot place raw values in logs or Redis.
-    let event: RecommendationEvidenceObservation | null
-    try {
-      event = normalizeEvidenceObservation(input)
-    } catch {
-      return
-    }
-    if (!event) return
-    log(event)
-    if (pending >= 16) {
-      log({ reason: "dropped" }, true)
-      return
-    }
-    pending++
-    void (async () => {
-      let timer: ReturnType<typeof setTimeout> | undefined
-      try {
-        const key = `${EVIDENCE_COUNTER_PREFIX}:${deps.service}:${Math.floor((deps.now?.() ?? Date.now()) / 3_600_000)}`
-        await Promise.race([
-          deps.write(key, evidenceCounterField(event)),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(
-              () => reject(new Error("collector_timeout")),
-              EVIDENCE_COLLECTOR_TIMEOUT_MS,
-            )
-          }),
-        ])
-      } catch {
-        log({ reason: "unavailable" }, true)
-      } finally {
-        clearTimeout(timer)
-        pending--
-      }
-    })()
   }
 }

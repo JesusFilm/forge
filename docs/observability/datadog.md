@@ -345,3 +345,7 @@ Recommendation evidence transport monitors and the bounded dashboard live in
 [the evidence transport runbook](../operations/recommendation-evidence-transport.md)
 for installation, privacy limits, and the production canary. These payloads are
 not installed by the fleet-ceiling `create.sh` script.
+
+Recommendation transport observations use the existing log pipeline. The retired
+`RECOMMENDATION_EVIDENCE_REDIS_URL` counter collector and Admin transport panel
+are no longer required; PostgreSQL-backed evidence remains in authorized Admin.

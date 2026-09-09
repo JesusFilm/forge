@@ -91,15 +91,15 @@ The APM snapshot cannot prove the `feat-459` zero-current-pointer invariant. Tha
 - Audit evidence written during the affected production window. Supersede eligibility only where stored provenance proves contamination; do not heuristically relabel or delete ambiguous human evidence. Publish the bounded uncertainty and use clean post-fix evidence for activation decisions.
 - Add privacy-safe telemetry for action, HTTP outcome, normalized domain reason, timeout stage, retry attempt/disposition, transaction exhaustion, and crawler admission. Add a dashboard and actionable monitors for sustained playback `5xx`, invalid-binding retry amplification, exhausted database retries, successful crawler evidence, and reconciliation health.
 
-## Admin Evidence Gate
+## Operational and Admin Evidence Gate
 
-- Show claim, fact, and initial-evidence attempts by outcome and normalized reason without exposing profile, session, episode, capability, or event identifiers.
-- Show crawler admission outcomes and prove recognized crawler requests cannot create human-eligible episodes or facts.
-- Show ambiguous-timeout, retry, idempotent replay, payload-conflict, and exhausted-transaction counts so committed evidence can be reconciled with client-visible outcomes.
+- In Datadog, show claim, fact, and initial-evidence attempts by outcome and normalized reason without exposing profile, session, episode, capability, or event identifiers.
+- In Datadog, show crawler admission outcomes and prove recognized crawler requests cannot create human-eligible episodes or facts.
+- In Datadog, show ambiguous-timeout, retry, idempotent replay, payload-conflict, and exhausted-transaction counts so committed evidence can be reconciled with client-visible outcomes.
 - Preserve the five-minute reconciliation cadence and show no substantive scheduler error after excluding the workflow runtime's expected step/wait suspension spans.
 - Run the `feat-459` authorized current-pointer audit after reconciliation converges and prove zero current generations contain currently ineligible lineage.
 
-The ticket is not complete until these results are visible and reconcilable in the authorized Admin Recommendations area and verified against a fresh production snapshot.
+The ticket is not complete until operational results in Datadog reconcile with durable evidence in the authorized Admin Recommendations area and a fresh production snapshot. The owner's 2026-09-09 decision removes the duplicate Redis counter store and transport panel; it does not relax the current-pointer audit or production acceptance gates.
 
 ## Production Acceptance Gate
 
@@ -144,12 +144,15 @@ Use compound-engineering:lfg to implement Forge roadmap ticket feat-464, "Recomm
 The implementation branch `codex/feat-464-evidence-transport` normalizes Apollo
 binding failures, makes definitive browser failures terminal, bounds PostgreSQL
 contention, rejects recognized crawler evidence before mutation, and exposes
-privacy-bounded transport observations in Admin. See the
+privacy-bounded transport logs. The original Redis counter panel was subsequently
+removed at the owner's request because it added no recommendation or durable
+analytics input; operational visibility uses Datadog, and durable evidence stays
+in authorized Admin. See the
 [transport runbook](../../operations/recommendation-evidence-transport.md) for
 configuration, monitor installation, and post-deployment acceptance.
 
 Local validation covers the full Web and Admin unit suites, typechecks, real
-PostgreSQL concurrency, real Redis collection, and a browser Watch-to-Admin
+PostgreSQL concurrency and a browser Watch-to-Admin
 lifecycle with decoded video and telemetry failure injection. Local fixtures and
 an empty local current-pointer audit do not satisfy production acceptance.
 The two-hour production canary, historical-window reconciliation, monitor

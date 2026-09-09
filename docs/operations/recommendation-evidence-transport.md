@@ -32,26 +32,23 @@ lock namespace. Busy lock acquisition rolls back immediately; retry starts with
 a new snapshot. Canonical duplicate claims return the already committed capability
 and original signing key. Immutable receipts and payload conflicts remain authoritative.
 
-## Operational observations in Admin
+## Operational observations and durable evidence
 
-Configure the same environment-specific `RECOMMENDATION_EVIDENCE_REDIS_URL` in
-Web and Admin. It is optional: without it, playback still works and the Admin
-transport panel reports unknown. Do not point staging and production at the same
-collector. This is separate from each app's general Redis URL to avoid silently
-reading different stores.
+Web, Admin and the Admin worker emit transport observations to the existing
+Railway/Datadog log pipeline. Datadog supplies the operational dashboard and
+monitors. PostgreSQL remains the authority for claims, facts, receipts, outcomes
+and profile decisions, viewed through the authorized Admin Recommendations area.
 
-The authorized Recommendations page retains its existing
-`read:recommendation-aggregates` permission. The transport section reads at most
-48 hourly keys (24 per source), with a 150ms read deadline in parallel with the
-existing overview. It adds no browser JavaScript. Counters expire after 48 hours;
-at most 512 dimension combinations per hour/source are recorded. Writes are
-asynchronous, bounded, not retried, and never gate playback.
+The optional Redis evidence collector and its extra Admin panel have been removed.
+They duplicated these operational logs and did not contribute to recommendation
+decisions or durable analytics. `RECOMMENDATION_EVIDENCE_REDIS_URL` is no longer
+read; remove that obsolete variable from service configuration during normal
+maintenance. Previously written counter keys expire naturally within 48 hours.
+The general Redis configuration still serves cache and admission functions.
 
-These are **best-effort operational observations**, not a durable evidence ledger,
-HTTP denominator, or proof of complete collection. Unknown means no usable evidence;
-partial means a source, capacity, or parse gap. Observed means records were read,
-not that the system is healthy. Small counts are suppressed. Current-hour data is
-partial and the displayed start/end timestamps define the actual window.
+Logs are best-effort observations, not a durable evidence ledger, complete HTTP
+denominator, or recovery queue. A missing log is unknown, never a healthy zero.
+Use the existing authorized receipt, playback and profile audits for correctness.
 
 Fields are allowlisted at runtime: action, outcome, normalized reason, timeout
 stage, retry disposition, recognized-machine disposition, HTTP status and bounded
@@ -67,7 +64,6 @@ Plain `key=value` logs follow the repository's Railway-compatible format:
 
 ```text
 event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409
-event=recommendation.evidence.collector source=web reason=unavailable
 event=recommendation.reconciliation.heartbeat outcome=completed
 ```
 
@@ -76,12 +72,14 @@ The scheduler heartbeat is emitted only after its durable ledger update succeeds
 suspension is not.
 
 Definitions live in `infra/datadog-monitors/recommendation-evidence/`:
-seven monitor payloads and `dashboard.json`. The nested definitions are deliberately
+six monitor payloads and `dashboard.json`. The nested definitions are deliberately
 not installed by the older fleet-ceiling `create.sh`. Before installing through the
 Datadog Monitor/Dashboard APIs, validate payloads against the API, set an approved
 notification destination, and check for existing matching names to avoid duplicates.
 Installation/activation is a separate operational step; committed JSON is not an
-installed monitor.
+installed monitor. If the retired collector-unavailable monitor or dashboard
+widget was installed, remove that obsolete alert/widget; retain the transport,
+crawler and reconciliation monitors.
 
 Queries use quoted fixed substrings, matching the existing repo log monitor
 convention. They do not assume JSON parsing or custom facets. Verify a known local

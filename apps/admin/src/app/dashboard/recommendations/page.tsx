@@ -1,5 +1,3 @@
-import { EvidenceTransport } from "./evidence-transport"
-import { loadEvidenceTransportOverview } from "@/services/recommendations/admin-ops/evidence-transport.service"
 import type { Route } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
@@ -111,7 +109,7 @@ export default async function RecommendationsPage({
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces, playback, evidenceTransport] = await Promise.all([
+  const [overview, traces, playback] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -129,7 +127,6 @@ export default async function RecommendationsPage({
           () => null,
         )
       : null,
-    loadEvidenceTransportOverview(),
   ])
 
   return (
@@ -150,7 +147,6 @@ export default async function RecommendationsPage({
       <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
       <OperationalTruth overview={overview} />
-      <EvidenceTransport overview={evidenceTransport} />
       <EligibilityTruth overview={overview} />
       <PrivacyTruth overview={overview} />
       {traces ? (

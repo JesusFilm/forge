@@ -365,12 +365,19 @@ insertion remain intact. A losing claim revalidates once and reconstructs the
 committed capability with its original signing key.
 
 Operational observers must not become a new playback dependency. Runtime-allowlist
-fixed enums and bounded counts before logs or Redis. Bound latency, concurrency,
-retention and aggregate cardinality; guard closing a shared client when concurrent
-timeouts race. Use plain `event=… key=value` logging per the existing
+fixed enums before logging, isolate logger failures, and use plain
+`event=… key=value` logging per the existing
 [Railway logsV2 learning](../runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md).
-Missing observations are unknown, never healthy zero. Best-effort counters are not
-authoritative HTTP denominators or committed-fact counts.
+Missing observations are unknown, never healthy zero. Logs are not authoritative
+HTTP denominators, committed-fact counts, or a recovery queue.
+
+The optional Redis counter collector introduced in PR #2211 only fed an extra
+Admin panel. It had no recommendation, analytics-ledger or ranking consumer.
+After production monitoring showed collector unavailability while transport logs
+remained usable, the owner chose to remove the duplicate store. Keep operational
+aggregation in Datadog and durable playback/profile audits in authorized Admin.
+A new cache or collector needs a demonstrated consumer and measured benefit;
+an additional dashboard alone did not justify another connection lifecycle.
 
 Discriminating regression references:
 
@@ -381,8 +388,9 @@ Discriminating regression references:
 - `apps/admin/src/services/recommendations/playback-episode.db.test.ts`: eight-way
   replay and claims, mixed late/conflicting facts with concurrent finalization,
   exact receipt ordinals, immutable original facts and authoritative rebuild equality.
-- `apps/admin/src/services/recommendations/evidence-observability.redis.db.test.ts`:
-  real collector concurrency, expiry and Web/Admin aggregate reconciliation.
+- `apps/admin/src/services/recommendations/evidence-observability.test.ts` and
+  `apps/web/src/lib/recommendation-evidence-observability.test.ts`: shared safe
+  log vocabulary, identity stripping and isolation of logger failures.
 
 These tests verify local mechanisms. They do not establish historical crawler
 ownership: stored browser discovery provenance is not trusted user-agent evidence.
