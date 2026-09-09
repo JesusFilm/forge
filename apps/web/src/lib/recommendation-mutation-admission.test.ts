@@ -140,6 +140,24 @@ describe("recommendation mutation admission", () => {
     )
   })
 
+  it("does not issue EVAL when a delayed TIME reply exhausts the command budget", async () => {
+    let monotonicCall = 0
+    const evalMock = vi.fn()
+    const admit = createRecommendationMutationAdmission({
+      production: true,
+      secret: "test-secret",
+      monotonicNow: () => (monotonicCall++ === 0 ? 0 : 501),
+      redis: async () => ({ time: async () => ["100", "0"], eval: evalMock }),
+    })
+    await expect(
+      admit(headers("198.51.100.8"), "playback-context"),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    expect(evalMock).not.toHaveBeenCalled()
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining("stage=time reason=budget_exhausted"),
+    )
+  })
+
   it("fails closed in production when Redis or HMAC configuration is unavailable", async () => {
     const noRedis = createRecommendationMutationAdmission({
       production: true,
@@ -305,7 +323,7 @@ describe("recommendation mutation admission", () => {
         headers("198.51.100.42", "private-cookie"),
         "playback-context",
       )
-      await vi.advanceTimersByTimeAsync(251)
+      await vi.advanceTimersByTimeAsync(501)
       await expect(result).resolves.toEqual({
         allowed: false,
         reason: "admission_unavailable",

@@ -179,3 +179,21 @@ replaying facts. The more specific `invalid_binding` code retains HTTP 409
 Unrecognized response bodies and transport failures retain bounded retries.
 Already-loaded older browser bundles may retry until their existing limit or a
 refresh. A 400 must not be counted as an upstream availability failure.
+
+### Admission latency budget
+
+Production stage diagnostics identified TIME reply delay, Redis deadline
+rejection, command/connection timeout and subsequent backoff. Playback-context
+combined TIME/EVAL has a 500 ms ceiling; connection and other namespaces retain
+250 ms. Context admission reserves 750 ms total, leaving 1.25 seconds of margin
+after the separate three-second evidence
+upstream budget within the browser's five-second deadline. The Admin complete
+recommendation service budget remains 1.5 seconds. Event-loop stalls can delay a
+JavaScript timer; Lua still rejects expired work before any admission mutation.
+Never replace that Redis-clock fence with application wall-clock time or extend
+a queued command's deadline merely because its caller has already timed out.
+
+Render/impression evidence uses the same structured input-error mapping, with
+HTTP 400 `evidence_request_invalid`. Its existing JSON retry helper drops 400
+without retry. Timestamp validation remains strict; do not repair a viewer's
+invalid timestamp by accepting it as human-eligible evidence.

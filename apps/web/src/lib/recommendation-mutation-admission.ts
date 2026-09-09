@@ -8,6 +8,10 @@ export const RECOMMENDATION_MUTATION_CLIENT_LIMIT = 30
 export const RECOMMENDATION_MUTATION_AGGREGATE_LIMIT = 600
 const WINDOW_MS = 60_000
 const COMMAND_TIMEOUT_MS = 250
+// Context diagnostics show TIME reply delay consuming the conservative Redis
+// deadline. Its 5 s browser / 3 s upstream contract can reserve 750 ms total
+// admission (250 ms connection + 500 ms commands). Other paths stay unchanged.
+const PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS = 500
 const REDIS_RETRY_BACKOFF_MS = 1_000
 const MAX_LOCAL_BUCKETS = 10_000
 
@@ -34,7 +38,7 @@ function observeAdmissionFailure(
     : 0
   try {
     console.info(
-      `event=recommendation.admission stage=${stage} reason=${reason} durationMs=${durationMs} budgetMs=${Math.min(COMMAND_TIMEOUT_MS, Math.max(0, Math.floor(budgetMs)))}`,
+      `event=recommendation.admission stage=${stage} reason=${reason} durationMs=${durationMs} budgetMs=${Math.min(PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS, Math.max(0, Math.floor(budgetMs)))}`,
     )
   } catch {
     // Observability must not change admission or playback behavior.
@@ -253,19 +257,28 @@ export function createRecommendationMutationAdmission(dependencies?: {
     const redis = await loadRedis().catch(() => null)
 
     if (redis) {
+      const commandTimeoutMs =
+        namespace === "playback-context"
+          ? PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS
+          : COMMAND_TIMEOUT_MS
       let stage: "time" | "eval" = "time"
       let stageStartedAt = performance.now()
-      let stageBudgetMs = COMMAND_TIMEOUT_MS
+      let stageBudgetMs = commandTimeoutMs
       try {
         // The Lua script must compare against Redis's own clock. An
         // application-clock deadline can move admission into the past or let
         // a queued EVAL mutate after the caller has already timed out.
         const startedAt = monotonicNow()
-        const redisTime = await withTimeout(redis.time())
+        const redisTime = await withTimeout(redis.time(), commandTimeoutMs)
         const elapsedMs = Math.max(0, monotonicNow() - startedAt)
-        const remainingMs = Math.floor(COMMAND_TIMEOUT_MS - elapsedMs)
+        const remainingMs = Math.floor(commandTimeoutMs - elapsedMs)
         if (remainingMs <= 0) {
-          observeAdmissionFailure("time", "budget_exhausted", elapsedMs)
+          observeAdmissionFailure(
+            "time",
+            "budget_exhausted",
+            elapsedMs,
+            commandTimeoutMs,
+          )
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
@@ -273,7 +286,12 @@ export function createRecommendationMutationAdmission(dependencies?: {
           Number(redisTime[0]) * 1_000 +
           Math.floor(Number(redisTime[1]) / 1_000)
         if (!Number.isSafeInteger(redisNowMs)) {
-          observeAdmissionFailure("time", "invalid_clock", elapsedMs)
+          observeAdmissionFailure(
+            "time",
+            "invalid_clock",
+            elapsedMs,
+            commandTimeoutMs,
+          )
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }

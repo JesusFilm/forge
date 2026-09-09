@@ -68,3 +68,33 @@ Unrecognized error bodies, rate limits and upstream failures preserve bounded
 retry/replay behavior. No token validation, admission budget or durable-write
 semantics change. Cover thrown/returned Apollo errors, terminal browser behavior,
 and continued real decoded playback after a local Admin signature rejection.
+
+## Measured admission budget repair
+
+Primary diagnostic logs from 04:42:04–04:48 recorded six Redis-clock deadline
+rejections, seven EVAL timeouts, two TIME timeouts, two connection timeouts, one
+client error and eight retry-backoff observations. TIME/EVAL timers sometimes
+fired late; examples show 140–160 ms TIME reply delays and EVAL rejection while
+inside the apparent 250 ms client budget. The conservative Redis-clock fence
+intentionally subtracts the TIME round trip and must remain conservative.
+
+Increase only playback-context combined TIME/EVAL from 250 to 500 ms. Connection
+and other namespaces retain 250 ms because content-action browser transport has
+a tighter deadline. Context admission reserves at most 750 ms; upstream remains three
+seconds, browser transport remains five seconds, and the Admin recommendation
+service remains 1.5 seconds. Preserve Lua's pre-mutation absolute deadline,
+limits, shared-client retirement and backoff. This adjustment is based on the
+observed latency and must still pass the production canary; it is not proof that
+all event-loop stalls or upstream failures are resolved.
+
+A real Redis test reproduces rejection with a 160 ms delayed TIME response at
+the original budget and succeeds after adjustment. Another releases a queued
+EVAL only after caller timeout and proves no counter writes occur. A deterministic
+unit check prevents EVAL issuance when delayed TIME consumes the entire budget.
+
+The same generic input rejection also affects render/impression evidence:
+trace `370367448730537963` records an invalid timestamp rejected by Admin and
+reported as Web 503. Extend the existing structured domain-error wrapper to this
+operation, with public HTTP 400 `evidence_request_invalid`. Its existing browser
+helper already stops on 400; preserve timestamp validation and bounded retry for
+unknown failures. This shares the measured evidence-transport repair scope.

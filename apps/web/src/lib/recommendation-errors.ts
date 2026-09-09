@@ -1,6 +1,7 @@
 export type RecommendationRuntimeErrorCode =
   | "delivery_unavailable"
   | "evidence_unavailable"
+  | "evidence_request_invalid"
   | "selection_unavailable"
   | "episode_unavailable"
   | "playback_unavailable"
@@ -15,6 +16,8 @@ export type RecommendationRuntimeErrorCode =
 
 const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
   delivery_unavailable: "Semantic recommendation delivery unavailable",
+  evidence_request_invalid:
+    "Semantic recommendation evidence request is invalid",
   evidence_unavailable: "Semantic recommendation evidence unavailable",
   selection_unavailable: "Semantic recommendation selection unavailable",
   episode_unavailable: "Semantic recommendation episode unavailable",
