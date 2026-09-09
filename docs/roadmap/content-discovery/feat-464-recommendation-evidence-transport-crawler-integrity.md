@@ -27,8 +27,10 @@ tags:
 Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
 now proves current-pointer convergence, stored receipt consistency and zero
 substantive failures across 23 reconciliation batches. The previous lack of
-database access is resolved. Installed alerts and complete primary-only request
-accounting remain unverified, so production acceptance remains open.
+database access is resolved. The [Railway HTTP audit](../../operations/recommendation-evidence-primary-request-accounting-2026-09-10.md)
+also verifies the complete primary-only request gate at 2 / 6,543 playback 5xx
+(0.03057%). Required alerts are absent from the visible inventory; production
+acceptance remains open pending installation and verification.
 
 The recommendation evidence closeout hotfix shipped the replay-receipt collision fix and reconciliation scheduler recovery, but a fixed production audit window after deployment still showed an unhealthy Web-to-Admin evidence boundary. Between 2026-09-07 23:20 and 2026-09-08 01:05 UTC, `POST /api/recommendations/playback` returned 791 `503` responses, 101 `200` responses, and one `403`. Excluding Applebot still left 502 `503` responses, 84 `200` responses, and one `403`.
 

@@ -7,8 +7,9 @@ Later verification: the owner supplied production database access, and the
 [2026-09-10 NZ integrity audit](recommendation-evidence-production-integrity-2026-09-10.md)
 now establishes a clean current-pointer snapshot after scheduled reconciliation,
 stored receipt consistency, and zero substantive failures in 23 durable batches.
-The access limitations below describe the earlier observation; installed alerts
-and complete primary-only request accounting remain open.
+The access limitations below describe the earlier observation; alert installation
+remains open. The [later Railway HTTP audit](recommendation-evidence-primary-request-accounting-2026-09-10.md)
+now establishes complete primary-only request accounting for 18:30–20:30 UTC.
 
 ## Releases and scope
 

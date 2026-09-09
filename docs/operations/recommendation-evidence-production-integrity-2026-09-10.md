@@ -4,6 +4,12 @@ All timestamps below are UTC on 2026-09-09. Production database access is now
 available and the current-pointer audit passed after scheduled reconciliation.
 Overall release acceptance remains open; this record does not enable feat-447.
 
+Later verification: [Railway HTTP request accounting](recommendation-evidence-primary-request-accounting-2026-09-10.md)
+independently establishes the complete primary-only denominator for the same
+18:30–20:30 UTC window: 2 / 6,543 playback 5xx (0.03057%). The metric-scoping
+limitation below remains true of Datadog, but no longer blocks this fixed-window
+request gate. Required alert installation remains open.
+
 ## Target and method
 
 The owner supplied a Railway project token for direct PostgreSQL verification.
