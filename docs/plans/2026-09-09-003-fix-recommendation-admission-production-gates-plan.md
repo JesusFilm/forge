@@ -117,7 +117,9 @@ observation is complete: the revision-wide playback metric records 1 / 4,319
 5xx (0.02315%), with 23 committed reconciliation heartbeats. See the
 [settled production record](../operations/recommendation-evidence-production-gates-2026-09-09.md)
 for counts, traces, source-population differences and residual failures.
-This plan remains active because primary-only request reconciliation, installed
-monitors and the authorized durable/current-pointer audits remain unverified.
+The [later authorized database audit](../operations/recommendation-evidence-production-integrity-2026-09-10.md)
+verifies current-pointer convergence, stored receipts and substantive batch
+results. This plan remains active because complete primary-only request
+reconciliation and installed monitors remain unverified.
 The owner restricts Datadog work to read access; no monitor writes or production
 fault injection were performed. Feat-464/459/447 remain in progress.
