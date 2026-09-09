@@ -11,6 +11,7 @@
  */
 
 import type { ExportReportSignal } from "../components/ExportReportHost"
+import { telemetryErrorMessage } from "./downloadErrors"
 import type { DownloadTelemetry } from "./downloadRequestBuilders"
 import {
   getExportSessionStore,
@@ -116,10 +117,6 @@ export type RawExportResult =
 
 export type RawExportAdapter = ReturnType<typeof createRawExportAdapter>
 
-function errorMessageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 /** Viewer-facing reason for a block. The raw error text never reaches here. */
 function blockDetail(block: ExportBlock): string {
   switch (block.reason) {
@@ -174,7 +171,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
       warn("raw_export.album_unavailable", {
         export_state: "saved",
         export_album_intent: "library",
-        error_message: errorMessageOf(error),
+        error_message: telemetryErrorMessage(error),
       })
       return { intent: "library" }
     }
@@ -333,7 +330,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
             export_state: "failed",
             export_target: target,
             export_failure_cause: "libraryWriteError",
-            error_message: errorMessageOf(error),
+            error_message: telemetryErrorMessage(error),
           })
           return "failed"
         } finally {
@@ -391,7 +388,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
         export_state: "failed",
         export_target: note.target,
         export_failure_cause: "libraryWriteError",
-        error_message: errorMessageOf(error),
+        error_message: telemetryErrorMessage(error),
       })
       outcome = "failed"
     } finally {

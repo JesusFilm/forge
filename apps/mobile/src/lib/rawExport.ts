@@ -1,3 +1,4 @@
+import { telemetryErrorMessage } from "./downloadErrors"
 import type { TransferInterruption } from "./downloadOutcome"
 import type { DownloadTelemetry } from "./downloadRequestBuilders"
 import type { ExportOutcome } from "./exportSession"
@@ -269,6 +270,8 @@ export type ExportBlock =
 
 export type ExportFailure = {
   cause: TransferInterruption["kind"] | "transferError" | "permissionError"
+  /** Already sanitized. A transfer error carries the signed media URL, so the
+   *  field never holds raw text — not even before it reaches telemetry. */
   errorMessage: string | null
 }
 
@@ -303,10 +306,6 @@ export type RawExportStageResult =
   | { outcome: Extract<TerminalOutcome, "refused">; refusal: ExportRefusal }
   | { outcome: Extract<TerminalOutcome, "cancelled"> }
   | { outcome: Extract<TerminalOutcome, "failed">; failure: ExportFailure }
-
-function errorMessageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 /**
  * One export's decisions, from admission to a staged file. The library write,
@@ -381,7 +380,7 @@ export function createRawExportDecider(deps: RawExportDeps) {
     } catch (error) {
       const failure: ExportFailure = {
         cause: "permissionError",
-        errorMessage: errorMessageOf(error),
+        errorMessage: telemetryErrorMessage(error),
       }
       warn("raw_export.failed", {
         export_state: "failed",
@@ -442,7 +441,7 @@ export function createRawExportDecider(deps: RawExportDeps) {
       } catch (error) {
         const failure: ExportFailure = {
           cause: "transferError",
-          errorMessage: errorMessageOf(error),
+          errorMessage: telemetryErrorMessage(error),
         }
         warn("raw_export.failed", {
           export_state: "failed",
