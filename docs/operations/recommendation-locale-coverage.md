@@ -82,6 +82,13 @@ The display-text follow-up is `docs/roadmap/content-discovery/feat-475-recommend
 
 ## Verification
 
-Unit tests validate inputs and blocker classification. `coverage-diagnostics.db.test.ts` uses a uniquely named disposable database on an explicitly local PostgreSQL instance with pgvector. It verifies provenance, publication, same-BCP47 audio siblings, edition compatibility, family exclusion, and read-only connection settings. Enable it only with `RECOMMENDATION_DB_TEST=1` and a local `DATABASE_URL`; the test creates and drops its own database.
+Unit tests validate inputs and blocker classification. The coverage group in `delivery-retriever.db.test.ts` uses a uniquely named disposable database on an explicitly local PostgreSQL instance with pgvector. It verifies provenance, publication, same-BCP47 audio siblings, edition compatibility, family exclusion, and read-only connection settings. Enable it only with `RECOMMENDATION_DB_TEST=1` and a local `DATABASE_URL`; the test creates and drops its own database.
+
+The existing CI retrieval-test entry point includes this group. With `DATABASE_URL` pointing at a local test database with the `vector` extension enabled (as the Admin migrations do), run the whole entry point using its deterministic fixture:
+
+```sh
+RECOMMENDATION_DB_TEST=1 RECOMMENDATION_DELIVERY_DB_FIXTURE=deterministic \
+  pnpm --filter @forge/admin test -- src/services/recommendations/delivery-retriever.db.test.ts
+```
 
 This operator-only addition changes no serving path, schema, or frontend loading behavior. Validation of a later serving repair must include the existing 1.5-second retrieval budget, positive and negative eligibility cases, normal PR-to-main deployment, and post-deploy coverage measurements.
