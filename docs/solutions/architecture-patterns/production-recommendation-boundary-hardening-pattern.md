@@ -431,4 +431,12 @@ metric dimensions before claiming a complete environment-specific denominator;
 a shared agent hostname and a revision deployed to two environments cannot
 separate those populations. Checked-in monitor definitions are not installed
 monitors, and a local signed Admin fixture cannot establish production pointer
-integrity. Record unresolved access and cadence gaps explicitly.
+integrity. Query reconciliation heartbeats across both verified primary Admin and
+worker hosts: execution can move between them, and a worker-only filter creates
+apparent cadence gaps. Record unresolved access and actual cadence gaps explicitly.
+
+Audit adjacent evidence mutations for the same error classification. Playback
+and render fixes left selection returning 503 for structured `BAD_USER_INPUT`;
+the canary found two such requests about 400 ms apart. Share the domain-error
+wrapper across those operations, retain specific binding errors, and verify a
+terminal selection still navigates once to its trusted token-free fallback href.

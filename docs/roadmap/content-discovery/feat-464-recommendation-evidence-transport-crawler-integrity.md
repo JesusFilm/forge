@@ -159,3 +159,27 @@ The two-hour production canary, historical-window reconciliation, monitor
 installation, and fresh authorized production current-pointer audit remain
 outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
 remains fail-closed.
+
+## Production-gate continuation (2026-09-09)
+
+PRs #2217 and #2218 deployed admission diagnostics and terminal playback input
+handling. PR #2219 deployed the measured playback-context command budget repair
+and terminal render/impression input handling. Real Redis tests reproduce delayed
+TIME rejection and prove a queued EVAL cannot write after caller timeout. Full
+Web checks, the real browser lifecycle, and authorized local Admin finalization
+proof passed; detailed results and environment scoping are in
+[the production-gate record](../../operations/recommendation-evidence-production-gates-2026-09-09.md).
+
+Production acceptance remains open. The owner restricted Datadog work to read
+access, so missing installed monitors remain an unmet gate. Historical/clean
+durable reconciliation and the fresh authorized production current-pointer audit
+are unavailable with the current access. The final two-hour observation is still
+pending; metric environment ambiguity must not be reported as a passed invariant.
+The apparent heartbeat gaps resolve when querying both primary Admin and worker
+execution hosts; the full post-fix cadence observation remains pending.
+The observation found selection `BAD_USER_INPUT` still becoming 503. A focused
+follow-up applies the existing terminal mapping to selection, with real local
+Web/Admin 400, continued decoded playback and component fallback-navigation proof.
+The two-hour window restarts after that reviewed follow-up deploys.
+Keep dependent feat-459/447 in progress and live
+profile ranking fail-closed.

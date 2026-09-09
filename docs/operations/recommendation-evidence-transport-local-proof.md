@@ -6,6 +6,22 @@
 
 ## Measured admission budget regression (2026-09-09)
 
+The selection follow-up reproduced thrown/returned `BAD_USER_INPUT` becoming
+503 before applying the same structured error wrapper. Full Web tests passed
+3,938 cases; the final focused route/browser-helper/component run passed 26,
+including the subsequently added specific-binding precedence case. Web lint and
+typecheck passed. The component test proves exactly one trusted-href navigation
+and one selection attempt after terminal 400; lost-ack retry coverage still passes.
+
+Against the real local Web/Admin services, a disposable served-item fixture with
+an invalid capability produced private HTTP 400 `evidence_request_invalid`.
+Video remained unpaused, advanced 39.765 seconds and decoded another 2,384 frames.
+A missing-item binding fixture separately returned definitive 409. Subsequent
+browser navigation to the trailer measured 473 ms TTFB, 624 ms DOMContentLoaded
+and 897 ms load on the warm local development server. This was a route integration
+and playback/navigation smoke; the recommendation-card fallback itself was
+verified by the component test. No browser runtime or initial loading work changed.
+
 A real Redis delayed-TIME test failed at the original 250 ms budget and passed
 at 500 ms for playback-context commands. Connection and other namespaces retain
 250 ms; the final narrowed admission/Redis/routes/browser-helper run passed 59
