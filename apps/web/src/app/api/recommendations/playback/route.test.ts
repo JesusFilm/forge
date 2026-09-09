@@ -306,6 +306,42 @@ describe("POST /watch/api/recommendations/playback", () => {
     })
   })
 
+  it.each([
+    ["thrown", true],
+    ["returned", false],
+  ])(
+    "maps %s invalid playback input to terminal HTTP 400",
+    async (_name, thrown) => {
+      const error = new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "Recommendation request is invalid",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      })
+      if (thrown) mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+      const response = await POST(
+        request(
+          JSON.stringify({
+            action: "facts",
+            contractVersion: "recommendation-evidence-v1",
+            capability: "episode-capability",
+            episodeId: "episode-1",
+            mediaId: "media-1",
+            events: [playbackEvent],
+          }),
+        ),
+      )
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        error: "playback_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+    },
+  )
+
   it("does not classify arbitrary GraphQL messages as binding failures", async () => {
     mutate.mockRejectedValueOnce(
       new CombinedGraphQLErrors({

@@ -35,6 +35,7 @@ function upstreamContext(timeoutMs: number) {
 function hasRecommendationGraphqlCode(
   value: unknown,
   expected: string,
+  field: "recommendationCode" | "code" = "recommendationCode",
 ): boolean {
   if (!value || typeof value !== "object") return false
   const record = value as {
@@ -60,8 +61,8 @@ function hasRecommendationGraphqlCode(
     return (
       !!extensions &&
       typeof extensions === "object" &&
-      "recommendationCode" in extensions &&
-      extensions.recommendationCode === expected
+      field in extensions &&
+      (extensions as Record<string, unknown>)[field] === expected
     )
   })
 }
@@ -76,10 +77,16 @@ async function withPlaybackDomainErrors<T>(operation: Promise<T>): Promise<T> {
     if (hasRecommendationGraphqlCode(error, "invalid_binding")) {
       throw new RecommendationRuntimeError("playback_binding_invalid")
     }
+    if (hasRecommendationGraphqlCode(error, "BAD_USER_INPUT", "code")) {
+      throw new RecommendationRuntimeError("playback_request_invalid")
+    }
     throw error
   }
   if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
     throw new RecommendationRuntimeError("playback_binding_invalid")
+  }
+  if (hasRecommendationGraphqlCode(result, "BAD_USER_INPUT", "code")) {
+    throw new RecommendationRuntimeError("playback_request_invalid")
   }
   return result
 }

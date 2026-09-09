@@ -4,6 +4,37 @@
 > below was subsequently removed at the owner's request. Current operational
 > inspection uses Datadog logs; the PostgreSQL Watch-to-Admin lifecycle remains.
 
+## Terminal invalid-input regression (2026-09-09)
+
+Two retained primary production traces (`4899517045392701787` and
+`4310965155225796154`) showed fast Admin `BAD_USER_INPUT` responses becoming Web
+503s. New regressions reproduced both the wrong HTTP status and browser retry
+amplification before the fix. Structured playback input rejection now returns
+HTTP 400 `playback_request_invalid`; the recorder drops the rejected episode.
+Specific invalid binding retains HTTP 409. Unrecognized 400/409 bodies, 429 and
+503 preserve bounded identical-payload retry behavior.
+
+The normal-environment full Web suite passed 3,927 tests. The final focused
+route/recorder/claim/observation run passed 66 tests, including three subsequently
+added ambiguous-response cases. Web lint/typecheck passed. The first full run
+inherited local server fixture secrets/origin and failed 20 unrelated assertions;
+the clean-environment rerun passed. No Admin, schema or durable-write code changed;
+the preceding full Admin, PostgreSQL and Redis results remain applicable.
+
+A real browser on the same isolated fixture changed one local episode capability
+signature before sending facts through real Web/Admin HTTP. It observed exactly
+one fact HTTP 400 and one `request_invalid` dropped notification. Over the next
+28.027 seconds it made no additional fact request, remained unpaused and decoded
+1,679 more frames. A screenshot confirmed visible playback. Navigation to the
+trailer succeeded (574 ms TTFB, 701 ms DOMContentLoaded, 939 ms load on the warm
+local development server). The change adds no initial rendering work, resources
+or network requests; these timings are local smoke evidence, not a production
+performance comparison. All fault injection was local.
+
+Older already-loaded clients retain their bounded retry behavior until refreshed.
+This fix does not identify or relax the underlying failed token validity check,
+and does not resolve the separately instrumented admission failure.
+
 ## Admission diagnostics regression (2026-09-09)
 
 The follow-up diagnostic branch preserves admission behavior while exposing its

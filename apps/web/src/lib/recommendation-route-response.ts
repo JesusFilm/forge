@@ -38,5 +38,11 @@ export function recommendationError(error: unknown): NextResponse {
   ) {
     return recommendationJson({ error: error.code }, 409)
   }
+  if (
+    error instanceof RecommendationRuntimeError &&
+    error.code === "playback_request_invalid"
+  ) {
+    return recommendationJson({ error: error.code }, 400)
+  }
   return recommendationJson({ error: "recommendations_unavailable" }, 503)
 }
