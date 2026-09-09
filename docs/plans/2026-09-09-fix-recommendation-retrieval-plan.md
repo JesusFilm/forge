@@ -1,7 +1,7 @@
 ---
 title: "Preserve ANN access for recommendation contract filtering"
 type: fix
-status: active
+status: completed
 date: 2026-09-09
 ---
 
