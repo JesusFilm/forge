@@ -72,6 +72,11 @@ The scheduler heartbeat is emitted only after its durable ledger update succeeds
 suspension is not.
 Query both verified primary Admin and worker hosts: either service can execute
 the scheduled work, so a worker-only query can create apparent cadence gaps.
+Compare actual completion intervals: the scheduler waits five minutes after
+batch work, so a heartbeat can cross a fixed five-minute query boundary. A
+completed heartbeat does not expose internal `classificationsFailed`,
+`dispatchFailures` or `attemptsExhausted` counts; inspect the authorized durable
+batch result before asserting they are zero.
 
 Definitions live in `infra/datadog-monitors/recommendation-evidence/`:
 six monitor payloads and `dashboard.json`. The nested definitions are deliberately

@@ -23,6 +23,13 @@ ai-chat ticket. All times below are UTC. Production acceptance remains open.
   Observation began at 05:32 with a planned end of 07:32. It found another
   selection input-classification failure, so it is diagnostic evidence; a fresh
   two-hour window is required after the selection follow-up deploys.
+- PR #2220 (`76ae13f1a92e12527cb095a673409edc43e22c0e`) merged at 06:38:23
+  after all applicable CI checks passed. It extends the terminal domain-error
+  mapping to selection and preserves trusted-href fallback navigation.
+  Primary deployment `7b858e53-281a-4bc1-877c-e522a35b09a8` succeeded at
+  06:59:28, serving on `53a63aa9d644`. Secondary deployment succeeded at
+  06:55:12 on `12d1531e374f`. The fresh fixed observation is 07:01–09:01,
+  with a settled full-window re-query after 09:03.
 - Normal PR/main deployment only. No direct Railway publish or redeploy was used.
   All injected failures and signed Admin fixtures were local.
 
@@ -139,6 +146,105 @@ No retryable-binding signal occurred in its five-minute sample. Server policy
 classification alone does not prove the originating browser made no retries;
 the local browser/component regressions provide that separate bounded proof.
 
+The settled first hour, 05:32–06:32 on `7ee7147b`, has revision-wide playback
+request counts of 1,780 HTTP 200, 342 HTTP 403, one HTTP 401, one HTTP 409 and
+two HTTP 503: **2 / 2,126 = 0.094% 5xx**, with zero deliberate production fault
+injections or exclusions. The second context failure at 06:23:58.512 occurred
+during shared-client backoff after a 250 ms admission path exhausted TIME at
+252 ms. Both failures remain included. This first-hour result is diagnostic
+evidence, not the required two-hour observation after the final repair; the
+primary-only denominator limitation remains.
+
+In the final window, a context failure at 07:38:05.640, trace
+`4746534464412991268`, records EVAL `redis_deadline` after 28 ms with 145 ms
+remaining (TIME used approximately 355 ms). Web returned 503 after 386 ms.
+The trace confirms the mapped new container serves the primary public hostname.
+The conservative clock fence remains in force; this residual failure is included
+in the final error numerator, with no fault-injection exclusion.
+
+A separate selection failure at 08:02:35, trace `831555628094021183`, hit the
+unchanged 700 ms upstream deadline. Web returned 503 after 708 ms while Admin's
+selection operation continued for approximately 1.14 seconds. This is an
+ambiguous acknowledgement, not the definitive input classification fixed by
+PR #2220; bounded retry and the 800 ms trusted-href navigation fallback remain
+intentional. It is outside the playback metric resource and is retained in the
+broader evidence-failure count.
+
+The final window also exercises a facts binding rejection at 08:07:47,
+trace `346536961911707739`: primary Web and Admin both classify it terminal,
+and Web returns HTTP 409. Retain the distinction between this observed response,
+absence of retryable-binding signals, and the separate durable/browser
+reconciliation needed to establish full retry-amplification integrity.
+
+## Settled final observation: 07:01–09:01
+
+The full two-hour interval was re-queried after 09:03. All 24 five-minute
+snapshots and the full-window runtime query retain the same mapped Web hosts
+and revision `76ae13f1`; primary Admin/worker retain `c2af7e75` and their mapped
+hosts. All monitoring was read-only. Production fault injections and exclusions
+are both zero.
+
+The revision-wide `trace.web.request.hits` query for
+`resource_name:post_/api/recommendations/playback` returns:
+
+| HTTP status | Requests |
+| ----------- | -------: |
+| 200         |    3,838 |
+| 401         |        4 |
+| 403         |      475 |
+| 409         |        1 |
+| 503         |        1 |
+| Total       |    4,319 |
+
+**Playback 5xx: 1 / 4,319 = 0.02315%, below 1% in this metric population.**
+Both Railway environments share its env/revision dimensions. This is not a
+verified primary-only denominator or a complete durable reconciliation.
+
+Primary operational observations:
+
+| Observation                                                       |   Web | Admin / worker |
+| ----------------------------------------------------------------- | ----: | -------------: |
+| Accepted fact batches                                             | 3,029 |          3,029 |
+| All-replay fact batches                                           |    56 |             56 |
+| Definitive invalid-binding response                               |     1 |              1 |
+| Retryable invalid-binding signal                                  |     0 |              0 |
+| Recognized-crawler terminal rejection, all evidence actions       | 1,208 |              — |
+| Recognized-crawler success signal                                 |     0 |              — |
+| Logged receipt-collision candidate / exhausted transaction signal |     — |          0 / 0 |
+
+The single facts binding rejection returned 409; no repeated binding rejection
+or retryable-binding signal appears in the fixed window. This supports the
+terminal policy but does not replace browser-to-receipt reconciliation. Logs
+show retryable contention attempts up to `retryAttempt=11`; these are not
+exhausted P2034 retries. Matching batch counts do not enumerate individual
+immutable facts, receipts or eligibility decisions.
+
+There are 23 committed reconciliation heartbeats: 11 on Admin and 12 on worker,
+from 07:05:48.120 through 08:56:57.232. Interarrival times are 302.045–309.747
+seconds, consistent with five minutes of waiting after batch work. There are
+zero unavailable heartbeats. One completion at 07:21:02 crossed a fixed sample
+boundary; compare timestamps rather than requiring one completion per bucket.
+Expected workflow step/wait suspension spans are not counted as batch failures.
+Internal batch-result failure counters and the current-pointer invariant still
+require the authorized durable audit.
+
+The broader metric contains one selection 503 among five selection requests,
+four delivery 503s among 1,315 requests, and ten profile 503s among 1,840 requests.
+These remain visible separately from the ticket's playback rate. The selection
+failure is the retained 700 ms timeout described above. Other admission paths
+retain their tighter 250 ms budgets and emit residual TIME/EVAL/backoff failures;
+the playback repair does not claim all recommendation routes are failure-free.
+
+Six terminal 400 handler logs appear (two before playback action parsing and
+four evidence requests), while the APM metric has three evidence 400s and no
+playback 400 bucket. Retained traces for the three earlier unmatched logs were
+unavailable. Do not force these populations to agree or claim every logged
+handler response was observed by the client. No selection-specific 400 was
+exercised in this window; its structured mapping and fallback are locally proved.
+
+The final monitor search found only the unrelated Forge TV monitor. No matching
+recommendation or reconciliation monitor was found with the available access.
+
 ## Reconciliation and access-dependent evidence
 
 An initial worker-only query appeared to have heartbeat gaps. Re-querying both
@@ -147,8 +253,10 @@ heartbeats from 03:18:16.762 through 05:34:25.192, approximately 302–304 secon
 apart, with no unavailable heartbeat in that window. Both services execute
 reconciliation work; a worker-only filter is incomplete. The completion log is
 emitted after its durable ledger update succeeds, but does not expose lineage or
-replace the authorized current-pointer audit. Recoverable write conflicts and
-`transaction_busy retryAttempt=1` were observed; these are not themselves proof
+replace the authorized current-pointer audit. A completed batch can still report
+`classificationsFailed`, `dispatchFailures` or `attemptsExhausted` in its durable
+result; the heartbeat alone cannot establish those counts are zero. Recoverable
+write conflicts and `transaction_busy` retries were observed; these are not themselves proof
 of exhausted P2034 retries.
 
 The owner explicitly restricted Datadog work to available read access and declined
@@ -162,16 +270,16 @@ audit. Local fixtures do not substitute for those production invariants.
 ## Acceptance state
 
 - Diagnostic deployment: verified on primary; failure mechanism observed; budget repair locally verified.
-- Terminal playback input repair: deployed and locally verified; natural terminal
-  input rejection has not yet been observed in the early primary window.
+- Terminal playback input repair: deployed and locally verified; generic domain
+  input rejection is not separately established by the final handler-log sample.
 - Targeted admission and render/impression repair: deployed to primary at 05:30:52.
-- Selection input follow-up: locally verified; review/CI/deployment pending.
-- Two-hour post-fix canary: not yet complete.
+- Selection input follow-up: deployed to primary at 06:59:28 after local validation/review/CI.
+- Two-hour post-fix observation: complete; available playback metric is below 1%.
 - Primary-only complete evidence numerator/denominator: not yet established.
 - Installed monitors: unmet under read-only access.
 - Historical/clean PostgreSQL and authorized Admin reconciliation: unverified.
 - Five-minute reconciliation cadence: observed across both primary execution
-  services before the final canary; full canary observation pending.
+  services throughout the final window; internal batch failure counts remain unverified.
 - Zero ineligible current pointers: unverified.
 
 Keep feat-464, feat-459 and feat-447 in progress. Keep `active-watch-proxy-v1`

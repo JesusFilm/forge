@@ -155,9 +155,9 @@ Local validation covers the full Web and Admin unit suites, typechecks, real
 PostgreSQL concurrency and a browser Watch-to-Admin
 lifecycle with decoded video and telemetry failure injection. Local fixtures and
 an empty local current-pointer audit do not satisfy production acceptance.
-The two-hour production canary, historical-window reconciliation, monitor
-installation, and fresh authorized production current-pointer audit remain
-outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
+A two-hour production observation is recorded below. Historical-window
+reconciliation, monitor installation, and the fresh authorized production
+current-pointer audit remain outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
 remains fail-closed.
 
 ## Production-gate continuation (2026-09-09)
@@ -173,13 +173,21 @@ proof passed; detailed results and environment scoping are in
 Production acceptance remains open. The owner restricted Datadog work to read
 access, so missing installed monitors remain an unmet gate. Historical/clean
 durable reconciliation and the fresh authorized production current-pointer audit
-are unavailable with the current access. The final two-hour observation is still
-pending; metric environment ambiguity must not be reported as a passed invariant.
-The apparent heartbeat gaps resolve when querying both primary Admin and worker
-execution hosts; the full post-fix cadence observation remains pending.
-The observation found selection `BAD_USER_INPUT` still becoming 503. A focused
-follow-up applies the existing terminal mapping to selection, with real local
-Web/Admin 400, continued decoded playback and component fallback-navigation proof.
-The two-hour window restarts after that reviewed follow-up deploys.
-Keep dependent feat-459/447 in progress and live
-profile ranking fail-closed.
+are unavailable with the current access. The observation found selection
+`BAD_USER_INPUT` still becoming 503; PR #2220 deployed the same terminal mapping
+to selection at 06:59:28 after local browser/component proof and green CI.
+
+The fresh 07:01–09:01 UTC observation is complete and was re-queried after
+ingestion settled: revision-wide playback 5xx is **1 / 4,319 (0.02315%)** with
+zero injected production traffic or exclusions. Primary Web/Admin logs match
+at 3,029 accepted fact batches and 56 all-replay batches. One facts binding
+rejection is terminal HTTP 409, with no retryable-binding signal; 1,208 recognized
+crawler requests were rejected across evidence actions, with no logged crawler
+success, receipt collision or exhausted transaction signal. There are 23 committed
+heartbeats across primary Admin and worker, 302.045–309.747 seconds apart.
+
+This does not close the acceptance gate: the metric combines environments and
+does not fully reconcile with handler logs; durable receipt/eligibility and
+browser retry-amplification reconciliation, internal batch failure counts, installed
+monitors and zero ineligible current pointers remain unverified. Keep dependent
+feat-459/447 in progress and live profile ranking fail-closed.
