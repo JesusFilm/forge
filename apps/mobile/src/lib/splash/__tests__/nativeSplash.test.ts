@@ -18,6 +18,7 @@ import * as SplashScreen from "expo-splash-screen"
 
 import { datadogLog } from "../../datadog"
 import {
+  NATIVE_SPLASH_BACKSTOP_MS,
   hideNativeSplashOnce,
   preventNativeSplashAutoHide,
   resetNativeSplashState,
@@ -111,6 +112,52 @@ describe("the native splash release", () => {
       throw new Error("datadog down")
     })
     expect(() => hideNativeSplashOnce()).not.toThrow()
+  })
+})
+
+describe("the unconditional backstop", () => {
+  // Taking the hold removes the OS's own auto-hide, so every route to the
+  // release now runs in JavaScript. A person left under a flat field with no
+  // route taken has no way forward at all.
+  it("releases the splash when nothing else ever does", () => {
+    jest.useFakeTimers()
+    try {
+      preventNativeSplashAutoHide()
+      expect(hide).not.toHaveBeenCalled()
+
+      jest.advanceTimersByTime(NATIVE_SPLASH_BACKSTOP_MS)
+      expect(hide).toHaveBeenCalledTimes(1)
+      expect(warn).toHaveBeenCalledWith(
+        "splash_native_backstop_fired",
+        expect.any(Object),
+      )
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("does not fire after the ordinary release", () => {
+    jest.useFakeTimers()
+    try {
+      preventNativeSplashAutoHide()
+      hideNativeSplashOnce()
+      expect(hide).toHaveBeenCalledTimes(1)
+
+      jest.advanceTimersByTime(NATIVE_SPLASH_BACKSTOP_MS * 2)
+      expect(hide).toHaveBeenCalledTimes(1)
+      expect(warn).not.toHaveBeenCalledWith(
+        "splash_native_backstop_fired",
+        expect.any(Object),
+      )
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it("outlasts the longest legitimate path to the release", () => {
+    // Skip budget, then the ceiling, then the exit fade. Shorter than this and
+    // the backstop would cut a healthy launch short.
+    expect(NATIVE_SPLASH_BACKSTOP_MS).toBeGreaterThan(1_000 + 6_000 + 350)
   })
 })
 

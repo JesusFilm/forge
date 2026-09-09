@@ -155,14 +155,26 @@ describe("Home's handover report to the splash", () => {
     act(() => renderer.unmount())
   })
 
-  it("prefers the model when a refetch fails over live content", () => {
+  it("prefers the model when both arrive in the same render", () => {
+    // Both set BEFORE the first render, so the one-shot latch is still open
+    // and the effect has to choose. Reporting the model first is the whole
+    // property; a sequential render latches before `error` is ever seen and
+    // would pass whichever branch came first.
+    setHookState({ model: emptyModel(), error: "network" })
+    const renderer = render()
+
+    expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
+    expect(splash.reportHomeFailure).not.toHaveBeenCalled()
+    act(() => renderer.unmount())
+  })
+
+  it("does not drop the cover when a refetch fails over live content", () => {
     setHookState({ model: emptyModel() })
     const renderer = render()
     expect(splash.reportHomeContent).toHaveBeenCalledTimes(1)
 
     setHookState({ model: emptyModel(), error: "network" })
     act(() => renderer.update(createElement(HomeScreen)))
-    // A failed refetch over a live model is not a reason to drop the cover.
     expect(splash.reportHomeFailure).not.toHaveBeenCalled()
     act(() => renderer.unmount())
   })

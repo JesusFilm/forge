@@ -41,6 +41,8 @@ function placement(content) {
     shellOpen: content.indexOf("<ExperienceShell>"),
     shellClose: content.indexOf("</ExperienceShell>"),
     stack: content.indexOf("<Stack"),
+    coveredOpen: content.indexOf("<SplashCoveredTree>"),
+    coveredClose: content.indexOf("</SplashCoveredTree>"),
     playbackHost: content.indexOf("<PlaybackHost"),
     splashHost: content.indexOf("<SplashHost"),
   }
@@ -113,6 +115,21 @@ describe("splash host ownership", () => {
     expect(at.stack).toBeLessThan(at.shellClose)
     // Last child of the same parent, so the cover paints above the player.
     expect(at.splashHost).toBeGreaterThan(at.playbackHost)
+  })
+
+  it("keeps everything the cover hides inside the isolated subtree", () => {
+    const at = placement(read(LAYOUT))
+    expect(at.coveredOpen).toBeGreaterThan(-1)
+    expect(at.coveredClose).toBeGreaterThan(at.coveredOpen)
+    // R16: Android has no accessibility modal, so only this wrapper keeps the
+    // covered tree out of the accessibility tree. Both the shell and the
+    // player must be INSIDE it — "after it in the file" holds either way.
+    expect(at.shellOpen).toBeGreaterThan(at.coveredOpen)
+    expect(at.shellClose).toBeLessThan(at.coveredClose)
+    expect(at.playbackHost).toBeGreaterThan(at.coveredOpen)
+    expect(at.playbackHost).toBeLessThan(at.coveredClose)
+    // And the cover itself must sit OUTSIDE it, or it would hide itself.
+    expect(at.splashHost).toBeGreaterThan(at.coveredClose)
   })
 
   it("holds the native splash from module scope, inside the guarded require", () => {

@@ -28,8 +28,10 @@ jest.mock("../../../lib/splash/splashSession", () => {
     },
     getSnapshot: () => snapshot,
   }
+  const releaseImmediately = jest.fn()
   return {
-    getSplashSession: () => session,
+    getSplashSession: () => ({ ...session, releaseImmediately }),
+    __releaseImmediately: releaseImmediately,
     __setSnapshot: (next: Record<string, unknown>) => {
       snapshot = { ...snapshot, ...next }
       for (const listener of [...listeners]) listener()
@@ -43,14 +45,15 @@ jest.mock("../../../lib/splash/splashSession", () => {
 
 jest.mock("../SplashSequence", () => {
   const react = jest.requireActual("react") as typeof import("react")
-  const seen: { props: { reduceMotion: boolean; onFirstFrame?: () => void } } =
-    {
-      props: { reduceMotion: false },
-    }
+  const seen: {
+    props: { reduceMotion: boolean; onFirstFrame?: () => void }
+    throws: boolean
+  } = { props: { reduceMotion: false }, throws: false }
   const SplashSequence = (props: {
     reduceMotion: boolean
     onFirstFrame?: () => void
   }) => {
+    if (seen.throws) throw new Error("geometry blew up")
     seen.props = props
     return react.createElement("SplashSequenceStub", null)
   }
@@ -63,6 +66,7 @@ import { Animated, View } from "react-native"
 import {
   SplashCoveredTree,
   SplashHost,
+  SPLASH_EXIT_BACKSTOP_MS,
   SPLASH_EXIT_FADE_MS,
 } from "../SplashHost"
 import {
@@ -77,9 +81,13 @@ const nativeSplash = jest.requireMock("../../../lib/splash/nativeSplash") as {
 const sessionMock = jest.requireMock("../../../lib/splash/splashSession") as {
   __setSnapshot: (next: Record<string, unknown>) => void
   __resetSnapshot: () => void
+  __releaseImmediately: jest.Mock
 }
 const sequenceMock = jest.requireMock("../SplashSequence") as {
-  __seen: { props: { reduceMotion: boolean; onFirstFrame?: () => void } }
+  __seen: {
+    props: { reduceMotion: boolean; onFirstFrame?: () => void }
+    throws: boolean
+  }
 }
 
 type FadeSpy = {
@@ -92,6 +100,7 @@ let fade: FadeSpy
 beforeEach(() => {
   jest.clearAllMocks()
   sessionMock.__resetSnapshot()
+  sequenceMock.__seen.throws = false
   fade = { calls: 0 }
   jest.spyOn(Animated, "timing").mockImplementation(((
     _value: Animated.Value,
@@ -212,6 +221,25 @@ describe("SplashHost", () => {
     expect(typeof cover?.props.onStartShouldSetResponder).toBe("function")
   })
 
+  it("removes the cover even when the fade never reports finished", () => {
+    jest.useFakeTimers()
+    try {
+      const renderer = renderHost()
+      play(renderer)
+      setSnapshot({ visible: false, exit: "fade" })
+      expect(fade.calls).toBe(1)
+
+      // The completion callback is the only latch that unmounts the cover, and
+      // an invisible full-screen layer still swallows every touch.
+      act(() => {
+        jest.advanceTimersByTime(SPLASH_EXIT_FADE_MS + SPLASH_EXIT_BACKSTOP_MS)
+      })
+      expect(coverNodes(renderer).length).toBe(0)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
   it("hands the sequence the presentation the session resolved", () => {
     const renderer = renderHost()
     setSnapshot({ resolved: true, visible: true, presentation: "still" })
@@ -223,6 +251,31 @@ describe("SplashHost", () => {
     setSnapshot({ resolved: true, visible: true, presentation: "motion" })
     expect(sequenceMock.__seen.props.reduceMotion).toBe(false)
     act(() => second.unmount())
+  })
+})
+
+describe("a cover that throws", () => {
+  it("costs the splash, never the app", () => {
+    // The app has ONE error boundary. Without a boundary of its own, a broken
+    // animation would swap the whole tree for the App Error panel.
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {})
+    try {
+      sequenceMock.__seen.throws = true
+      const renderer = renderHost()
+      setSnapshot({ resolved: true, visible: true, presentation: "motion" })
+
+      expect(coverNodes(renderer).length).toBe(0)
+      // Both, or the failure outlives the layer: the native splash is not
+      // React's to remove, and the session still hides the tree beneath from
+      // a screen reader.
+      expect(nativeSplash.hideNativeSplashOnce).toHaveBeenCalled()
+      expect(sessionMock.__releaseImmediately).toHaveBeenCalled()
+      act(() => renderer.unmount())
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })
 

@@ -9,6 +9,7 @@
  */
 
 import {
+  Component,
   useCallback,
   useEffect,
   useRef,
@@ -18,6 +19,7 @@ import {
 } from "react"
 import { Animated, StyleSheet, View } from "react-native"
 
+import { datadogLog } from "../../lib/datadog"
 import { hideNativeSplashOnce } from "../../lib/splash/nativeSplash"
 import {
   getSplashSession,
@@ -28,6 +30,10 @@ import { SplashSequence } from "./SplashSequence"
 /** R14: long enough to read as a hand-over, short enough not to feel like one
  *  more wait. It runs AFTER the hold, so it extends it rather than eating it. */
 export const SPLASH_EXIT_FADE_MS = 350
+
+/** Grace past the fade before the cover is removed regardless of what the
+ *  animation reported. Long enough that it never races a healthy fade. */
+export const SPLASH_EXIT_BACKSTOP_MS = 250
 
 function useSplashSnapshot(): SplashSnapshot {
   const session = getSplashSession()
@@ -53,7 +59,53 @@ export function SplashCoveredTree({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * The cover is decorative, and it is the only thing in this app whose failure
+ * would cost nothing to swallow. Without this boundary a throw inside it
+ * reaches the app's ONE boundary and swaps the whole tree for the App Error
+ * panel, so a broken animation would take the app down with it.
+ */
+class SplashBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    // Losing the cover IS the fallback, so nothing renders in its place. Both
+    // calls are needed: the native splash outlives the React layer that owned
+    // it, and the session still hides the app tree from a screen reader.
+    hideNativeSplashOnce()
+    try {
+      getSplashSession().releaseImmediately()
+    } catch {
+      // A session that cannot be released must not block the app underneath.
+    }
+    return { failed: true }
+  }
+
+  componentDidCatch(error: Error) {
+    try {
+      datadogLog.warn("splash_cover_failed", { error_message: error.message })
+    } catch {
+      // Never let the report be the reason the app tree stays covered.
+    }
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
 export function SplashHost() {
+  return (
+    <SplashBoundary>
+      <SplashCover />
+    </SplashBoundary>
+  )
+}
+
+function SplashCover() {
   const { resolved, visible, presentation, exit } = useSplashSnapshot()
 
   const fade = useRef(new Animated.Value(1)).current
@@ -89,7 +141,17 @@ export function SplashHost() {
     animation.start(({ finished }) => {
       if (finished) setGone(true)
     })
-    return () => animation.stop()
+    // The callback is the only latch that unmounts the cover, and an animation
+    // that never reports finished would leave an invisible full-screen layer
+    // swallowing every touch. Nothing about the cover may depend on one signal.
+    const backstop = setTimeout(
+      () => setGone(true),
+      SPLASH_EXIT_FADE_MS + SPLASH_EXIT_BACKSTOP_MS,
+    )
+    return () => {
+      animation.stop()
+      clearTimeout(backstop)
+    }
   }, [visible, exit, painted, gone, fade])
 
   if (gone) return null
