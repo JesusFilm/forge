@@ -1,25 +1,25 @@
 export const AUTH_SCOPES = [
   {
-    key: "studio:read",
-    label: "Read Studio projects",
-    description: "Read Studio projects, history and shared assets.",
+    key: "shorts:read",
+    label: "Read Shorts projects",
+    description: "Read Shorts projects, history and shared assets.",
   },
   {
-    key: "studio:edit",
-    label: "Edit Studio drafts",
+    key: "shorts:edit",
+    label: "Edit Shorts drafts",
     description:
       "Apply revision-checked draft edits; never approve or publish.",
   },
   {
-    key: "studio:chat",
-    label: "Run Studio agent",
+    key: "shorts:chat",
+    label: "Run Shorts agent",
     description:
       "Request hosted authoring proposals; never approve narration or publication.",
   },
   {
-    key: "studio:instructions:read",
-    label: "Read Studio instructions",
-    description: "Inspect active Studio guidance without changing activation.",
+    key: "shorts:instructions:read",
+    label: "Read Shorts instructions",
+    description: "Inspect active Shorts guidance without changing activation.",
   },
   {
     key: "openid",

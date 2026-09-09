@@ -2,8 +2,8 @@ import { studioQualityReportSchema } from "./production"
 import { z } from "zod"
 import { studioIdSchema, studioApplySchema, studioProjectSchema } from "./index"
 
-export const STUDIO_AGENT_ID = "studio-authoring"
-export const STUDIO_BLOCK_ID = "studio-authoring-voice"
+export const STUDIO_AGENT_ID = "shorts-authoring"
+export const STUDIO_BLOCK_ID = "shorts-authoring-voice"
 export const STUDIO_AGENT_LIMITS = Object.freeze({
   runMs: 180_000,
   stepMs: 90_000,
@@ -143,8 +143,8 @@ export const studioDelegatedRpcSchema = z
   .object({ action: z.enum(studioDelegatedActions), input: z.unknown() })
   .strict()
 export const studioOAuthScopes = [
-  "studio:read",
-  "studio:edit",
-  "studio:chat",
-  "studio:instructions:read",
+  "shorts:read",
+  "shorts:edit",
+  "shorts:chat",
+  "shorts:instructions:read",
 ] as const

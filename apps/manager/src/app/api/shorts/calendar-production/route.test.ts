@@ -13,7 +13,7 @@ vi.mock("@/services/studio-agent/generation", () => ({
   studioGenerationBatch: (...args: unknown[]) => fixture.generate(...args),
 }))
 const request = () =>
-  new Request("http://localhost/api/studio/calendar-production", {
+  new Request("http://localhost/api/shorts/calendar-production", {
     method: "POST",
     body: JSON.stringify({
       calendarId: "calendar",

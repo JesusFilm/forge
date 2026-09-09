@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const caller = await verifyStudioRequest(
       input.grant.assertion,
       input.grant.body,
-      "forge-admin:studio:tools",
+      "forge-admin:shorts:tools",
       {
         publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS ?? "{}",
         environment: env.STUDIO_ENVIRONMENT,

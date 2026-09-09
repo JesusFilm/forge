@@ -58,17 +58,17 @@ async function request(
   const body = JSON.stringify({ projectId: project.projectId, revision: 1 })
   const assertion = await signStudioRequest(
     body,
-    "forge-admin:studio:tools",
+    "forge-admin:shorts:tools",
     {
       sub: "operator",
       authority: "delegated",
-      clientId: "studio-hosted",
-      scopes: ["studio:read", "studio:edit"],
+      clientId: "shorts-hosted",
+      scopes: ["shorts:read", "shorts:edit"],
     },
     { privateKey, keyId: "test", environment: "test" },
   )
   return POST(
-    new Request("http://localhost/api/studio/tools", {
+    new Request("http://localhost/api/shorts/tools", {
       method: "POST",
       body: JSON.stringify({
         grant: { body: tamper ? body + " " : body, assertion },

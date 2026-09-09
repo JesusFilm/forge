@@ -11,7 +11,7 @@ The native probe and operator evidence are in `docs/validation/studio-457/`.
 
 ## Boundaries
 
-Manager's `/api/studio/agent` uses its authenticated same-origin cookie session.
+Manager's `/api/shorts/agent` uses its authenticated same-origin cookie session.
 Only this interactive route may save/test/activate/restore instruction versions.
 The hosted authoring adapter deliberately changes authority to delegated before
 requesting attempts or applying proposals. Undo is an explicit interactive
@@ -20,8 +20,8 @@ revision-checked restore-document command. Owner attribution is retained.
 External `/mcp` verifies Auth issuer, Studio resource audience, resource-derived
 app/environment claims, expiry, client identity, current Operator membership,
 and each tool's Studio scope. It never promotes a human-owned bearer to
-interactive review authority. `studio:read`, `studio:edit`, `studio:chat` and
-`studio:instructions:read` are separately consented capabilities. No MCP approval,
+interactive review authority. `shorts:read`, `shorts:edit`, `shorts:chat` and
+`shorts:instructions:read` are separately consented capabilities. No MCP approval,
 activation, publication, experiment or narration-execution tool is registered.
 Existing non-Studio OAuth resources retain their policies.
 

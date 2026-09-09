@@ -34,8 +34,8 @@ export async function executeStudioProduction(
 ) {
   if (
     caller.authority !== "delegated" ||
-    caller.clientId !== "studio-production" ||
-    !caller.scopes.includes("studio:production:execute")
+    caller.clientId !== "shorts-production" ||
+    !caller.scopes.includes("shorts:production:execute")
   )
     throw new StudioBoundaryError("Trusted production execution required")
   await interactiveStudioPrincipal(db, caller.sub)

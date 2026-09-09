@@ -21,7 +21,7 @@ async function serve(handler: (r: Request) => Promise<Response>) {
     const chunks: Buffer[] = []
     for await (const chunk of req) chunks.push(chunk)
     const response = await handler(
-      new Request("http://127.0.0.1/forge-studio", {
+      new Request("http://127.0.0.1/forge-shorts", {
         method: "POST",
         headers: req.headers as Record<string, string>,
         body: Buffer.concat(chunks),
@@ -166,18 +166,18 @@ test.skipIf(!url)(
         const body = JSON.stringify(raw),
           assertion = await signStudioRequest(
             body,
-            "forge-mastra:studio",
+            "forge-mastra:shorts",
             {
               sub: "operator",
               authority,
               clientId: "studio-test",
-              scopes: ["studio:chat", "studio:instructions:read"],
+              scopes: ["shorts:chat", "shorts:instructions:read"],
             },
             { privateKey, keyId: "test", environment: "local" },
           )
         return fetch(base, {
           method: "POST",
-          headers: { "x-forge-studio-service": assertion },
+          headers: { "x-forge-shorts-service": assertion },
           body,
         })
       }
@@ -230,18 +230,18 @@ test.skipIf(!url)(
       const newer = await ins.save(saved.latest.id, "NEW ACTIVE", "operator")
       await ins.activate(newer.latest.id, saved.latest.id, "operator")
       const blocks = (await a.getStore("promptBlocks"))!,
-        latest = (await blocks.getLatestVersion("studio-authoring-voice"))!
+        latest = (await blocks.getLatestVersion("shorts-authoring-voice"))!
       await blocks.createVersion({
         id: randomUUID(),
-        blockId: "studio-authoring-voice",
+        blockId: "shorts-authoring-voice",
         versionNumber: latest.versionNumber + 1,
         name: "changed",
         content: "NEW BLOCK",
       })
       await blocks.update({
-        id: "studio-authoring-voice",
+        id: "shorts-authoring-voice",
         activeVersionId: (await blocks.getLatestVersion(
-          "studio-authoring-voice",
+          "shorts-authoring-voice",
         ))!.id,
         status: "published",
       })

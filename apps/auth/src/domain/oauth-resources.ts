@@ -13,7 +13,7 @@ import {
 import { AUTH_SCOPES, type AuthScopeKey } from "./scopes"
 
 export type OAuthResourceClass =
-  | "studio-mcp"
+  | "shorts-mcp"
   | "admin-mcp"
   | "changelog-mcp"
   | "manager-session"
@@ -114,9 +114,9 @@ export function createOAuthResourceCatalog({
   STUDIO_MCP_APP_SEED.environments.forEach((e) =>
     add({
       identifier: e.mcpResourceAudience!,
-      resourceClass: "studio-mcp",
+      resourceClass: "shorts-mcp",
       trustedProduct: "manager",
-      trustedApp: "studio-mcp",
+      trustedApp: "shorts-mcp",
       trustedEnvironment: e.kind,
       allowedScopes: e.defaultScopes,
       dcrExposure: "public",

@@ -10,10 +10,10 @@ import {
 } from "@forge/studio-server"
 import { studioServiceCall, studioServiceRequest } from "./transport"
 const worker: StudioCaller = {
-  sub: "studio-calendar-worker",
+  sub: "shorts-calendar-worker",
   authority: "delegated",
-  clientId: "studio-calendar",
-  scopes: ["studio:calendar:plan", "studio:calendar:finish"],
+  clientId: "shorts-calendar",
+  scopes: ["shorts:calendar:plan", "shorts:calendar:finish"],
 }
 /** Only the server reads an admitted canonical run; models cannot complete slots. */
 export async function executeCalendarPlan(runId: string, signal: AbortSignal) {

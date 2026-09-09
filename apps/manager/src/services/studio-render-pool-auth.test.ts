@@ -76,7 +76,7 @@ it("accepts only broker-signed exact terminal records and preserves them beyond 
   }
   const sealed = auth.sealSettlement(assignment, "c".repeat(64), record)
   expect(auth.settlement(sealed)).toEqual({
-    audience: "studio-render-settlement/1",
+    audience: "shorts-render-settlement/1",
     assignment,
     inputHash: "c".repeat(64),
     record,

@@ -97,7 +97,7 @@ it("a concurrent resume observing a running provider cannot fail the winner or p
     }),
   )
   const request = () =>
-    new Request("http://localhost/api/studio/production", {
+    new Request("http://localhost/api/shorts/production", {
       method: "POST",
       body: JSON.stringify({ kind: "resume", runId: "run" }),
     })
@@ -162,7 +162,7 @@ it.each(["RUNNING", "AMBIGUOUS", "FAILED"])(
     expect(
       (
         await POST(
-          new Request("http://localhost/api/studio/production", {
+          new Request("http://localhost/api/shorts/production", {
             method: "POST",
             body: JSON.stringify({ kind: "resume", runId: "run" }),
           }),

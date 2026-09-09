@@ -21,10 +21,10 @@ export async function executeStudioDelegated(
   }
   const { action, input } = studioDelegatedRpcSchema.parse(raw)
   const scope = ["apply", "create", "capture", "asset-upload"].includes(action)
-    ? "studio:edit"
+    ? "shorts:edit"
     : action === "request"
-      ? "studio:chat"
-      : "studio:read"
+      ? "shorts:chat"
+      : "shorts:read"
   if (!caller.scopes.includes(scope))
     throw new StudioBoundaryError("Insufficient Studio scope")
   const commands = new StudioAuthoringService(db)

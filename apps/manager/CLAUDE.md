@@ -496,7 +496,7 @@ The processing loop uses a bounded keyset cursor independently of long renders.
 Before changing pool authentication, retained-output settlement or claim pause
 behavior, read `docs/plans/2026-09-08-001-feat-studio-vm-execution-plan.md`,
 “Outbound gateway and retained-output protocol.” The scoped route is
-`/api/studio/render-pool/{claim,input,owns,retain,finish,receipt}`. Environment variables
+`/api/shorts/render-pool/{claim,input,owns,retain,finish,receipt}`. Environment variables
 are defined in `src/config/env.ts`; `STUDIO_RENDER_POOL_ENABLED` gates new
 assignment selection, while configured historical receipt recovery remains
 available. Admin remains the canonical job authority.

@@ -12,7 +12,7 @@ export async function studioCall<T>(
   action: StudioAction,
   input: unknown,
 ): Promise<T> {
-  const response = await fetch("/api/studio/command", {
+  const response = await fetch("/api/shorts/command", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ action, input }),

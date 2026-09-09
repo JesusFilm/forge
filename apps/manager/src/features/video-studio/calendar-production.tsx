@@ -53,7 +53,7 @@ export default function CalendarProduction({
           })),
       })
       controller.current = new AbortController()
-      const response = await fetch("/api/studio/calendar-production", {
+      const response = await fetch("/api/shorts/calendar-production", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(pending.current),

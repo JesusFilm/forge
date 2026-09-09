@@ -34,9 +34,9 @@ export async function POST(request: Request) {
   try {
     const body = await readStudioBytes(request, 131072)
     const caller = await verifyStudioRequest(
-      request.headers.get("x-forge-studio-service"),
+      request.headers.get("x-forge-shorts-service"),
       body,
-      "forge-admin:studio-calendar",
+      "forge-admin:shorts-calendar",
       {
         publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS ?? "{}",
         environment: env.STUDIO_ENVIRONMENT,
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     )
     if (
       caller.authority !== "delegated" ||
-      caller.clientId !== "studio-calendar" ||
-      !caller.scopes.includes("studio:calendar:finish")
+      caller.clientId !== "shorts-calendar" ||
+      !caller.scopes.includes("shorts:calendar:finish")
     )
       throw new StudioBoundaryError("Trusted calendar worker required")
     const input = schema.parse(JSON.parse(body)),

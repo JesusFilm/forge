@@ -26,7 +26,7 @@ export async function authenticateStudioMcp(
       !payload.sub ||
       typeof payload.client_id !== "string" ||
       !payload.client_id ||
-      payload["https://jesusfilm.org/claims/app"] !== "studio-mcp" ||
+      payload["https://jesusfilm.org/claims/app"] !== "shorts-mcp" ||
       payload["https://jesusfilm.org/claims/environment"] !==
         env.STUDIO_ENVIRONMENT ||
       typeof payload.exp !== "number"

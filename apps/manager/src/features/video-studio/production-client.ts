@@ -3,7 +3,7 @@ import { studioCall } from "./client"
 import { studioProductionListSchema } from "@forge/studio-contracts/production"
 export class StudioProductionClientError extends Error {}
 export async function production(input: unknown) {
-  const response = await fetch("/api/studio/production", {
+  const response = await fetch("/api/shorts/production", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),

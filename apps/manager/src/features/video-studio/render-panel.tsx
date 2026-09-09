@@ -107,7 +107,7 @@ export default function RenderPanel({
   const editable = !locked && editor.status === "saved" && !busy
   const review = async () => {
     if (!current) return
-    const response = await fetch("/api/studio/render-review", {
+    const response = await fetch("/api/shorts/render-review", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ projectId, renderAttemptId: current.id }),
@@ -133,7 +133,7 @@ export default function RenderPanel({
       await submission.prepare(
         binding,
         async (captured) => {
-          const response = await fetch("/api/studio/publication", {
+          const response = await fetch("/api/shorts/publication", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({

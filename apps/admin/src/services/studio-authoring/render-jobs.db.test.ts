@@ -670,16 +670,16 @@ class RenderFixtureError extends Error {}
   })
   it("accepts only the dedicated server render capability and never dispatches review commands", async () => {
     const caller = {
-      sub: "studio-render-worker",
+      sub: "shorts-render-worker",
       authority: "delegated" as const,
-      clientId: "studio-render",
-      scopes: ["studio:render:execute"],
+      clientId: "shorts-render",
+      scopes: ["shorts:render:execute"],
     }
     for (const untrusted of [
       { ...caller, authority: "interactive" as const },
-      { ...caller, clientId: "studio-hosted" },
+      { ...caller, clientId: "shorts-hosted" },
       { ...caller, sub: "render-owner" },
-      { ...caller, scopes: ["studio:author"] },
+      { ...caller, scopes: ["shorts:author"] },
     ])
       await expect(
         executeStudioRender(db, untrusted, {

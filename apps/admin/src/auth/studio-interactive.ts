@@ -19,7 +19,7 @@ export async function verifyStudioInteractive(
     const header = decodeProtectedHeader(assertion)
     if (
       header.alg !== "EdDSA" ||
-      header.typ !== "studio-interactive+jwt" ||
+      header.typ !== "shorts-interactive+jwt" ||
       !header.kid
     )
       throw new ForbiddenError()

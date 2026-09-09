@@ -21,7 +21,7 @@ export async function studioChat(
   raw: unknown,
   signal: AbortSignal,
 ) {
-  if (!caller.scopes.includes("studio:chat"))
+  if (!caller.scopes.includes("shorts:chat"))
     throw new StudioBoundaryError("insufficient_scope")
   const input = studioChatSchema.parse(raw)
   const delegated = { ...caller, authority: "delegated" as const }
@@ -191,8 +191,8 @@ export async function studioChat(
               "admin",
               {
                 ...delegated,
-                clientId: "studio-hosted",
-                scopes: ["studio:attempt:finish"],
+                clientId: "shorts-hosted",
+                scopes: ["shorts:attempt:finish"],
               },
               {
                 action: "finish",

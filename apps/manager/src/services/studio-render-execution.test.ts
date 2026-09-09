@@ -40,7 +40,7 @@ const server = createServer(async (req, res) => {
       null,
       bytes,
       publicKey,
-      Buffer.from(String(req.headers["x-studio-admission"]), "base64"),
+      Buffer.from(String(req.headers["x-shorts-admission"]), "base64"),
     ),
   ).toBe(true)
   const admission = JSON.parse(bytes.toString())
@@ -67,10 +67,10 @@ const server = createServer(async (req, res) => {
   res.writeHead(200, {
     "content-type": "video/mp4",
     "content-length": output.length,
-    "x-studio-attempt": "transport-attempt",
-    "x-studio-lease": leaseId,
-    "x-studio-output-sha256": digest,
-    "x-studio-verification": Buffer.from(JSON.stringify(proof)).toString(
+    "x-shorts-attempt": "transport-attempt",
+    "x-shorts-lease": leaseId,
+    "x-shorts-output-sha256": digest,
+    "x-shorts-verification": Buffer.from(JSON.stringify(proof)).toString(
       "base64",
     ),
   })

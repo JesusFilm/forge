@@ -60,7 +60,7 @@ export async function createExecutionService(config) {
       reply(404, "NOT_FOUND")
       return
     }
-    const signature = req.headers["x-studio-admission"]
+    const signature = req.headers["x-shorts-admission"]
     if (
       typeof signature !== "string" ||
       !/^[A-Za-z0-9+/]{86}==$/.test(signature)
@@ -232,10 +232,10 @@ export async function createExecutionService(config) {
       res.writeHead(200, {
         "content-type": "video/mp4",
         "content-length": output.length,
-        "x-studio-output-sha256": digest,
-        "x-studio-verification": verification.toString("base64"),
-        "x-studio-attempt": admission.attemptId,
-        "x-studio-lease": admission.leaseId,
+        "x-shorts-output-sha256": digest,
+        "x-shorts-verification": verification.toString("base64"),
+        "x-shorts-attempt": admission.attemptId,
+        "x-shorts-lease": admission.leaseId,
       })
       delivering = true
       const delivered = finished(res, { cleanup: true, signal: abort.signal })

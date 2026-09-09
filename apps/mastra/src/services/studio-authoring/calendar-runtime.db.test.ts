@@ -112,27 +112,27 @@ test.skipIf(!url)(
       const caller: StudioCaller = {
         sub: "calendar-workflow",
         authority: "delegated",
-        clientId: "studio-calendar",
-        scopes: ["studio:calendar:plan", "studio:instructions:read"],
+        clientId: "shorts-calendar",
+        scopes: ["shorts:calendar:plan", "shorts:instructions:read"],
       }
       const request = async (payload: unknown, actor = caller) => {
         const body = JSON.stringify(payload)
         const assertion = await signStudioRequest(
           body,
-          "forge-mastra:studio-calendar",
+          "forge-mastra:shorts-calendar",
           actor,
           { privateKey, keyId: "test", environment: "local" },
         )
-        return new Request("http://localhost/forge-studio-calendar", {
+        return new Request("http://localhost/forge-shorts-calendar", {
           method: "POST",
-          headers: { "x-forge-studio-service": assertion },
+          headers: { "x-forge-shorts-service": assertion },
           body,
         })
       }
       expect(
         (
           await runtime(
-            new Request("http://localhost/forge-studio-calendar", {
+            new Request("http://localhost/forge-shorts-calendar", {
               method: "POST",
               body: "{}",
             }),

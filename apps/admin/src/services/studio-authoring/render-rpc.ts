@@ -59,9 +59,9 @@ export async function executeStudioRender(
 ) {
   if (
     caller.authority !== "delegated" ||
-    caller.clientId !== "studio-render" ||
-    caller.sub !== "studio-render-worker" ||
-    !caller.scopes.includes("studio:render:execute")
+    caller.clientId !== "shorts-render" ||
+    caller.sub !== "shorts-render-worker" ||
+    !caller.scopes.includes("shorts:render:execute")
   )
     throw new StudioBoundaryError("Trusted render execution required")
   const request = studioRenderRpcSchema.parse(raw)

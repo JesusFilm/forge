@@ -42,7 +42,7 @@ export async function signStudioRequest(
   })
     .setProtectedHeader({
       alg: "EdDSA",
-      typ: "studio-service+jwt",
+      typ: "shorts-service+jwt",
       kid: config.keyId,
     })
     .setIssuer("forge-manager")
@@ -65,7 +65,7 @@ export async function verifyStudioRequest(
       .record(z.string(), z.string())
       .parse(JSON.parse(config.publicKeys))
     if (
-      header.typ !== "studio-service+jwt" ||
+      header.typ !== "shorts-service+jwt" ||
       !header.kid ||
       !Object.hasOwn(keys, header.kid)
     )

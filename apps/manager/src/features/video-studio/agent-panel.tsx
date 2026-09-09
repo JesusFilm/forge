@@ -27,7 +27,7 @@ const viewSchema = z.object({
 type View = z.infer<typeof viewSchema>
 type Proposal = z.infer<typeof studioProposalSchema>
 async function agentRequest(body: unknown, signal?: AbortSignal) {
-  const response = await fetch("/api/studio/agent", {
+  const response = await fetch("/api/shorts/agent", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),

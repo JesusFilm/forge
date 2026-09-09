@@ -26,9 +26,9 @@ export async function POST(request: Request) {
   try {
     const body = await readStudioBytes(request)
     const caller = await verifyStudioRequest(
-      request.headers.get("x-forge-studio-service"),
+      request.headers.get("x-forge-shorts-service"),
       body,
-      "forge-admin:studio:delegated",
+      "forge-admin:shorts:delegated",
       {
         publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS ?? "{}",
         environment: env.STUDIO_ENVIRONMENT,
@@ -39,9 +39,9 @@ export async function POST(request: Request) {
     let result: unknown
     if (finish.success) {
       if (
-        !caller.scopes.includes("studio:attempt:finish") ||
+        !caller.scopes.includes("shorts:attempt:finish") ||
         caller.authority !== "delegated" ||
-        caller.clientId !== "studio-hosted"
+        caller.clientId !== "shorts-hosted"
       )
         throw new StudioBoundaryError("Trusted completion required")
       result = finish.data.generation

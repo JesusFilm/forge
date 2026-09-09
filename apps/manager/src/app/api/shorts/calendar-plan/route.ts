@@ -36,8 +36,8 @@ export async function POST(request: Request) {
           {
             sub: actor.approvedByUserId,
             authority: "interactive",
-            clientId: "studio-manager",
-            scopes: ["studio:instructions:read"],
+            clientId: "shorts-manager",
+            scopes: ["shorts:instructions:read"],
           },
           input,
         ),

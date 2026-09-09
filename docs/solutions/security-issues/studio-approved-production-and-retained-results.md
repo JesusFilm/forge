@@ -18,7 +18,7 @@ registry. Validation and outstanding real-provider acceptance are recorded in
 `@forge/studio-contracts/production` defines bounded narration plans, quality
 reports, execution requests and history cursors. Admin's
 `src/services/studio-authoring/production-rpc.ts` owns production commands;
-Manager's `/api/studio/production` orchestrates them. Human attribution is not
+Manager's `/api/shorts/production` orchestrates them. Human attribution is not
 interactive approval authority. Delegated OAuth agents can propose; they cannot
 review the script, confirm an experiment or dispatch paid production. Planner-only
 capabilities do not gain these commands.

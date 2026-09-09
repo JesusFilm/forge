@@ -53,6 +53,6 @@ export function studioPlaybackUrl(
 ) {
   const config = studioPlaybackConfiguration()
   return config
-    ? `${config.origin}/api/studio/playback/${encodeURIComponent(releaseId)}/${resource}`
+    ? `${config.origin}/api/shorts/playback/${encodeURIComponent(releaseId)}/${resource}`
     : null
 }

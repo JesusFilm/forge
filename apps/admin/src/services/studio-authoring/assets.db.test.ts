@@ -78,9 +78,9 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       "LOCAL",
     )
     const query =
-      "query($reference: JSON!) { studioAsset(reference: $reference) { reference { assetId versionId digest } role } }"
+      "query($reference: JSON!) { shortsAsset(reference: $reference) { reference { assetId versionId digest } role } }"
     expect((await execute(query, { reference: bytes.reference })).data).toEqual(
-      { studioAsset: { reference: bytes.reference, role: "document" } },
+      { shortsAsset: { reference: bytes.reference, role: "document" } },
     )
     for (const principal of [null, { role: "VIEWER", id: "reader" }])
       expect(
@@ -90,7 +90,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
     expect(
       (
         await execute(
-          "query { studioAssets(input: {limit: 101}) { role } }",
+          "query { shortsAssets(input: {limit: 101}) { role } }",
           {},
         )
       ).errors,
@@ -112,20 +112,20 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       },
     }
     const created = await execute(
-      "mutation($input: JSON!) { writeStudioContentPack(input: $input) { id number document } }",
+      "mutation($input: JSON!) { writeShortsContentPack(input: $input) { id number document } }",
       { input },
     )
     expect(created.errors).toBeUndefined()
-    expect(created.data?.writeStudioContentPack).toMatchObject({
+    expect(created.data?.writeShortsContentPack).toMatchObject({
       number: 1,
       document: input.document,
     })
     const read = await execute(
-      "mutation($reference: JSON!) { issueStudioAssetRead(reference: $reference) { path method } }",
+      "mutation($reference: JSON!) { issueShortsAssetRead(reference: $reference) { path method } }",
       { reference: bytes.reference },
     )
     expect(read.errors).toBeUndefined()
-    expect(read.data?.issueStudioAssetRead).toMatchObject({ method: "GET" })
+    expect(read.data?.issueShortsAssetRead).toMatchObject({ method: "GET" })
   })
   it("keeps deletion working for ordinary unused assets", async () => {
     const generic = new MediaAssetService(db)

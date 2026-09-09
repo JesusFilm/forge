@@ -124,7 +124,7 @@ export async function executeStudioRenderRequest(
     signal,
     headers: {
       "content-type": "application/json",
-      "x-studio-admission": sign(null, body, config.privateKey).toString(
+      "x-shorts-admission": sign(null, body, config.privateKey).toString(
         "base64",
       ),
     },
@@ -137,14 +137,14 @@ export async function executeStudioRenderRequest(
   }
   try {
     if (
-      response.headers.get("x-studio-attempt") !== job.attemptId ||
-      response.headers.get("x-studio-lease") !== job.leaseId ||
+      response.headers.get("x-shorts-attempt") !== job.attemptId ||
+      response.headers.get("x-shorts-lease") !== job.leaseId ||
       response.headers.get("content-type") !== "video/mp4"
     )
       throw new StudioRenderTransportError(
         "Execution response binding rejected",
       )
-    const encoded = response.headers.get("x-studio-verification") ?? ""
+    const encoded = response.headers.get("x-shorts-verification") ?? ""
     if (encoded.length > 12000)
       throw new StudioRenderTransportError("Codec proof limit exceeded")
     const proof = studioCodecProofSchema.parse(
@@ -158,7 +158,7 @@ export async function executeStudioRenderRequest(
     if (
       !output.length ||
       digest !== proof.outputDigest ||
-      digest !== response.headers.get("x-studio-output-sha256")
+      digest !== response.headers.get("x-shorts-output-sha256")
     )
       throw new StudioRenderTransportError("Execution output digest mismatch")
     const document = job.input.document

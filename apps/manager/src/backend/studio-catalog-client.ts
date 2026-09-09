@@ -8,31 +8,31 @@ import { studioIdSchema } from "@forge/studio-contracts"
 import { z } from "zod"
 import type { StudioAdminTransport } from "./studio-client"
 const fields = adminGraphql(
-  `fragment StudioCatalogFields on StudioCatalogRelease { id projectId revision renderAttemptId videoId dubId editionId muxId snapshot }`,
+  `fragment ShortsCatalogFields on ShortsCatalogRelease { id projectId revision renderAttemptId videoId dubId editionId muxId snapshot }`,
 )
 const stage = adminGraphql(
-  `mutation StageStudioCatalog($input: JSON!) { stageStudioCatalog(input: $input) { ...StudioCatalogFields } }`,
+  `mutation StageShortsCatalog($input: JSON!) { stageShortsCatalog(input: $input) { ...ShortsCatalogFields } }`,
   [fields],
 )
 const read = adminGraphql(
-  `query StudioCatalogRelease($id: ID!) { studioCatalogRelease(id: $id) { ...StudioCatalogFields } }`,
+  `query ShortsCatalogRelease($id: ID!) { shortsCatalogRelease(id: $id) { ...ShortsCatalogFields } }`,
   [fields],
 )
 /** Server-only caller transport must carry trusted service authority for stage. */
 export function createStudioCatalogAdapter(transport: StudioAdminTransport) {
   return {
     async stage(input: z.input<typeof studioStageCatalogSchema>) {
-      return z.object({ stageStudioCatalog: studioCatalogReleaseSchema }).parse(
+      return z.object({ stageShortsCatalog: studioCatalogReleaseSchema }).parse(
         await transport(print(stage), {
           input: studioStageCatalogSchema.parse(input),
         }),
-      ).stageStudioCatalog
+      ).stageShortsCatalog
     },
     async read(id: string) {
       return z
-        .object({ studioCatalogRelease: studioCatalogReleaseSchema })
+        .object({ shortsCatalogRelease: studioCatalogReleaseSchema })
         .parse(await transport(print(read), { id: studioIdSchema.parse(id) }))
-        .studioCatalogRelease
+        .shortsCatalogRelease
     },
   }
 }

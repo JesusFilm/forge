@@ -124,7 +124,7 @@ export function createStudioAssetBroker(
       const grant = z
         .object({ path: z.string() })
         .parse(await call("asset-read", ref))
-      if (!/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path))
+      if (!/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path))
         throw new StudioBrokerError("Invalid read capability")
       const bytes = await readBounded(
         await fetch(new URL(grant.path, env.ADMIN_GRAPHQL_URL!), {
@@ -163,7 +163,7 @@ export function createStudioAssetBroker(
       const grant = z
         .object({ path: z.string() })
         .parse(await call("asset-upload", input))
-      if (!/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path))
+      if (!/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path))
         throw new StudioBrokerError("Invalid upload capability")
       const response = await fetch(
         new URL(grant.path, env.ADMIN_GRAPHQL_URL!),

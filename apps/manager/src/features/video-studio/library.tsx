@@ -150,7 +150,7 @@ export function Library({
       const form = new FormData()
       form.set("file", file)
       form.set("role", file.type.startsWith("audio/") ? "music" : "background")
-      const response = await fetch("/api/studio/upload", {
+      const response = await fetch("/api/shorts/upload", {
         method: "POST",
         body: form,
       })
@@ -183,7 +183,7 @@ export function Library({
         new File([source], "component.tsx", { type: "text/plain" }),
       )
       form.set("role", "component")
-      const res = await fetch("/api/studio/upload", {
+      const res = await fetch("/api/shorts/upload", {
         method: "POST",
         body: form,
       })

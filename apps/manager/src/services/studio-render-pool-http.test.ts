@@ -9,7 +9,7 @@ const config = {
   capabilityKey: "c".repeat(40),
 }
 function request(token = config.workerKey, signal?: AbortSignal) {
-  return new Request("https://fixture.invalid/api/studio/render-pool/claim", {
+  return new Request("https://fixture.invalid/api/shorts/render-pool/claim", {
     method: "POST",
     headers: { authorization: `Bearer ${token}` },
     body: JSON.stringify({ dispatchId: "a" }),

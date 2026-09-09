@@ -57,7 +57,7 @@ function Audition({
         onClick={async () => {
           setBusy(true)
           try {
-            const response = await fetch("/api/studio/audition", {
+            const response = await fetch("/api/shorts/audition", {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify(candidate.asset),

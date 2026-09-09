@@ -21,7 +21,7 @@ function weekStart(date: string) {
   value.setUTCDate(value.getUTCDate() - ((value.getUTCDay() + 6) % 7))
   return value.toISOString().slice(0, 10)
 }
-const calendarId = "studio-calendar"
+const calendarId = "shorts-calendar"
 type Pack = { id: string; document: { title: string } }
 type Project = {
   projectId: string
@@ -150,7 +150,7 @@ export function StudioCalendar() {
   }
   const days = view?.slots.slice(following ? 14 : 0, following ? 28 : 14) ?? []
   return (
-    <section className="studio-calendar">
+    <section className="shorts-calendar">
       <header>
         <div>
           <Link href="/dashboard/shorts">← Projects</Link>

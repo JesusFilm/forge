@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-The replacement feature is named **Shorts** and keeps `/dashboard/shorts`. Existing `studio` API, package and database identifiers are internal compatibility names, not a second product.
+The replacement feature is named **Shorts** and keeps `/dashboard/shorts`. The unshipped public API, GraphQL names, MCP tools and OAuth scopes also use Shorts, without Studio compatibility aliases. Internal package and database names remain implementation details.
 
 The replacement is complete only when Lyuba can use it end to end and obsolete Shorts behavior no longer competes with it.
 

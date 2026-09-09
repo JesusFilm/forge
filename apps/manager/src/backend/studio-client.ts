@@ -32,54 +32,54 @@ export type StudioAdminTransport = (
   variables: Record<string, unknown>,
 ) => Promise<unknown>
 const resultFragment = adminGraphql(
-  `fragment StudioCommandFields on StudioCommandResult { projectId revision outcome attemptId approvalId }`,
+  `fragment ShortsCommandFields on ShortsCommandResult { projectId revision outcome attemptId approvalId }`,
 )
 const create = adminGraphql(
-  `mutation StudioCreate($input: StudioCreateInput!) { createStudioProject(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsCreate($input: ShortsCreateInput!) { createShortsProject(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const apply = adminGraphql(
-  `mutation StudioApply($input: StudioApplyInput!) { applyStudioOperations(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsApply($input: ShortsApplyInput!) { applyShortsOperations(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const request = adminGraphql(
-  `mutation StudioRequest($input: StudioRequestInput!) { requestStudioAttempt(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsRequest($input: ShortsRequestInput!) { requestShortsAttempt(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const approve = adminGraphql(
-  `mutation StudioApprove($input: StudioApproveInput!) { approveStudioProject(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsApprove($input: ShortsApproveInput!) { approveShortsProject(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const start = adminGraphql(
-  `mutation StudioStart($input: StudioStartInput!) { startStudioAttempt(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsStart($input: ShortsStartInput!) { startShortsAttempt(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const complete = adminGraphql(
-  `mutation StudioComplete($input: StudioCompleteInput!) { completeStudioAttempt(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsComplete($input: ShortsCompleteInput!) { completeShortsAttempt(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const unpublish = adminGraphql(
-  `mutation StudioUnpublish($input: StudioRevisionCommandInput!) { unpublishStudioProject(input: $input) { ...StudioCommandFields } }`,
+  `mutation ShortsUnpublish($input: ShortsRevisionCommandInput!) { unpublishShortsProject(input: $input) { ...ShortsCommandFields } }`,
   [resultFragment],
 )
 const read = adminGraphql(
-  `query StudioRead($projectId: ID!) { studioProject(projectId: $projectId) { projectId revision lifecycle firstPublishedAt document actor { kind id } } }`,
+  `query ShortsRead($projectId: ID!) { shortsProject(projectId: $projectId) { projectId revision lifecycle firstPublishedAt document actor { kind id } } }`,
 )
 const list = adminGraphql(
-  `query StudioList($cursor: ID, $limit: Int) { studioProjects(cursor: $cursor, limit: $limit) { projectId revision lifecycle } }`,
+  `query ShortsList($cursor: ID, $limit: Int) { shortsProjects(cursor: $cursor, limit: $limit) { projectId revision lifecycle } }`,
 )
 const attempt = adminGraphql(
-  `query StudioAttempt($projectId: ID!, $attemptId: ID!) { studioAttempt(projectId: $projectId, attemptId: $attemptId) { id projectId baseRevision kind status inputHash instructions result jobReference actor { kind id } } }`,
+  `query ShortsAttempt($projectId: ID!, $attemptId: ID!) { shortsAttempt(projectId: $projectId, attemptId: $attemptId) { id projectId baseRevision kind status inputHash instructions result jobReference actor { kind id } } }`,
 )
 
 const history = adminGraphql(
-  `query StudioHistory($projectId: ID!, $beforeRevision: Int, $limit: Int) { studioHistory(projectId: $projectId, beforeRevision: $beforeRevision, limit: $limit) { revision document actor { kind id } } }`,
+  `query ShortsHistory($projectId: ID!, $beforeRevision: Int, $limit: Int) { shortsHistory(projectId: $projectId, beforeRevision: $beforeRevision, limit: $limit) { revision document actor { kind id } } }`,
 )
 const attempts = adminGraphql(
-  `query StudioAttempts($projectId: ID!, $cursor: ID, $limit: Int) { studioAttempts(projectId: $projectId, cursor: $cursor, limit: $limit) { id projectId baseRevision kind status inputHash instructions result jobReference actor { kind id } } }`,
+  `query ShortsAttempts($projectId: ID!, $cursor: ID, $limit: Int) { shortsAttempts(projectId: $projectId, cursor: $cursor, limit: $limit) { id projectId baseRevision kind status inputHash instructions result jobReference actor { kind id } } }`,
 )
 const approvals = adminGraphql(
-  `query StudioApprovals($projectId: ID!, $cursor: ID, $limit: Int) { studioApprovals(projectId: $projectId, cursor: $cursor, limit: $limit) { id projectId revision kind dependencyHash renderAttemptId actor { kind id } } }`,
+  `query ShortsApprovals($projectId: ID!, $cursor: ID, $limit: Int) { shortsApprovals(projectId: $projectId, cursor: $cursor, limit: $limit) { id projectId revision kind dependencyHash renderAttemptId actor { kind id } } }`,
 )
 
 export function createStudioAdminAdapter(transport: StudioAdminTransport) {
@@ -100,33 +100,33 @@ export function createStudioAdminAdapter(transport: StudioAdminTransport) {
   }
   return {
     create: (input: StudioCreate) =>
-      command(create, "createStudioProject", studioCreateSchema.parse(input)),
+      command(create, "createShortsProject", studioCreateSchema.parse(input)),
     apply: (input: StudioApply) =>
-      command(apply, "applyStudioOperations", studioApplySchema.parse(input)),
+      command(apply, "applyShortsOperations", studioApplySchema.parse(input)),
     request: (input: StudioRequest) =>
       command(
         request,
-        "requestStudioAttempt",
+        "requestShortsAttempt",
         studioRequestSchema.parse(input),
       ),
     approve: (input: StudioApprove) =>
       command(
         approve,
-        "approveStudioProject",
+        "approveShortsProject",
         studioApproveSchema.parse(input),
       ),
     start: (input: StudioStart) =>
-      command(start, "startStudioAttempt", studioStartSchema.parse(input)),
+      command(start, "startShortsAttempt", studioStartSchema.parse(input)),
     complete: (input: StudioComplete) =>
       command(
         complete,
-        "completeStudioAttempt",
+        "completeShortsAttempt",
         studioCompleteSchema.parse(input),
       ),
     unpublish: (input: z.infer<typeof studioCommandBaseSchema>) =>
       command(
         unpublish,
-        "unpublishStudioProject",
+        "unpublishShortsProject",
         studioCommandBaseSchema.parse(input),
       ),
     async history(
@@ -134,62 +134,62 @@ export function createStudioAdminAdapter(transport: StudioAdminTransport) {
       input: z.input<typeof studioHistorySchema> = {},
     ) {
       const data = z
-        .object({ studioHistory: z.array(studioRevisionSchema).max(20) })
+        .object({ shortsHistory: z.array(studioRevisionSchema).max(20) })
         .parse(
           await transport(print(history), {
             projectId,
             ...studioHistorySchema.parse(input),
           }),
         )
-      return data.studioHistory
+      return data.shortsHistory
     },
     async attempts(
       projectId: string,
       input: z.input<typeof studioListSchema> = {},
     ) {
       const data = z
-        .object({ studioAttempts: z.array(studioAttemptSchema).max(100) })
+        .object({ shortsAttempts: z.array(studioAttemptSchema).max(100) })
         .parse(
           await transport(print(attempts), {
             projectId,
             ...studioListSchema.parse(input),
           }),
         )
-      return data.studioAttempts
+      return data.shortsAttempts
     },
     async approvals(
       projectId: string,
       input: z.input<typeof studioListSchema> = {},
     ) {
       const data = z
-        .object({ studioApprovals: z.array(studioApprovalSchema).max(100) })
+        .object({ shortsApprovals: z.array(studioApprovalSchema).max(100) })
         .parse(
           await transport(print(approvals), {
             projectId,
             ...studioListSchema.parse(input),
           }),
         )
-      return data.studioApprovals
+      return data.shortsApprovals
     },
     async read(projectId: string) {
       const data = z
-        .object({ studioProject: studioProjectSchema })
+        .object({ shortsProject: studioProjectSchema })
         .parse(await transport(print(read), { projectId }))
-      return data.studioProject
+      return data.shortsProject
     },
     async list(input: z.input<typeof studioListSchema> = {}) {
       const data = z
         .object({
-          studioProjects: z.array(studioProjectSummarySchema).max(100),
+          shortsProjects: z.array(studioProjectSummarySchema).max(100),
         })
         .parse(await transport(print(list), studioListSchema.parse(input)))
-      return data.studioProjects
+      return data.shortsProjects
     },
     async readAttempt(projectId: string, attemptId: string) {
       const data = z
-        .object({ studioAttempt: studioAttemptSchema })
+        .object({ shortsAttempt: studioAttemptSchema })
         .parse(await transport(print(attempt), { projectId, attemptId }))
-      return data.studioAttempt
+      return data.shortsAttempt
     },
   }
 }

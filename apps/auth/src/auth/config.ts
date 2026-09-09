@@ -386,7 +386,7 @@ export const auth = betterAuth({
             : undefined
         if (
           target?.resourceClass === "admin-mcp" ||
-          target?.resourceClass === "studio-mcp"
+          target?.resourceClass === "shorts-mcp"
         ) {
           return {
             "https://jesusfilm.org/claims/environment":

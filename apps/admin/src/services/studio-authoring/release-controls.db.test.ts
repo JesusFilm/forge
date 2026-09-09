@@ -204,8 +204,8 @@ const url = process.env.STUDIO_TEST_DATABASE_URL
     const caller = {
       sub: f.user.id,
       authority: "delegated" as const,
-      clientId: "studio-production",
-      scopes: ["studio:production:execute"],
+      clientId: "shorts-production",
+      scopes: ["shorts:production:execute"],
     }
     const claim = {
       runId: run.id,

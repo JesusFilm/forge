@@ -80,7 +80,7 @@ test(
           body,
           headers: {
             "content-type": "application/json",
-            "x-studio-admission": signature,
+            "x-shorts-admission": signature,
           },
         })
       assert.equal((await send(body + " ")).status, 403)
@@ -92,7 +92,7 @@ test(
         method: "POST",
         body: expiredBody,
         headers: {
-          "x-studio-admission": sign(
+          "x-shorts-admission": sign(
             null,
             Buffer.from(expiredBody),
             privateKey,
@@ -104,9 +104,9 @@ test(
       const response = await send(body)
       assert.equal(response.status, 200, await response.clone().text())
       assert.deepEqual(Buffer.from(await response.arrayBuffer()), output)
-      assert.ok(response.headers.get("x-studio-verification"))
+      assert.ok(response.headers.get("x-shorts-verification"))
       assert.equal(
-        response.headers.get("x-studio-output-sha256"),
+        response.headers.get("x-shorts-output-sha256"),
         createHash("sha256").update(output).digest("hex"),
       )
       assert.equal((await send(body)).status, 409)
@@ -188,7 +188,7 @@ test(
       const response = await fetch(origin + "/render", {
         method: "POST",
         body,
-        headers: { "x-studio-admission": signature },
+        headers: { "x-shorts-admission": signature },
       })
       assert.ok(
         performance.now() - started < 1500,
@@ -277,7 +277,7 @@ test(
           {
             method: "POST",
             headers: {
-              "x-studio-admission": sign(
+              "x-shorts-admission": sign(
                 null,
                 Buffer.from(body),
                 privateKey,

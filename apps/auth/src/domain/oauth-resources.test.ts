@@ -117,10 +117,10 @@ describe("OAuth resource catalogue", () => {
         new Set([
           ...ADMIN_MCP_DEFAULT_SCOPES,
           ...CHANGELOG_DEFAULT_SCOPES,
-          "studio:read",
-          "studio:edit",
-          "studio:chat",
-          "studio:instructions:read",
+          "shorts:read",
+          "shorts:edit",
+          "shorts:chat",
+          "shorts:instructions:read",
         ]),
       ),
     )
@@ -139,4 +139,15 @@ describe("OAuth resource catalogue", () => {
       resolveOAuthResource(catalogue, "https://unknown.example.test"),
     ).toBeUndefined()
   })
+})
+
+it("does not advertise retired Studio scopes", () => {
+  const scopes = getPublicDcrAllowedScopes(
+    createOAuthResourceCatalog({
+      authIssuer: AUTH_ISSUER,
+      customAudiences: [],
+    }),
+  )
+  expect(scopes).toContain("shorts:read")
+  expect(scopes.some((scope) => scope.startsWith("studio:"))).toBe(false)
 })

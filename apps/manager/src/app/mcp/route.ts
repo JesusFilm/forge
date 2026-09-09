@@ -21,17 +21,17 @@ import { studioServiceCall } from "@/services/studio-agent/transport"
 import { studioChat } from "@/services/studio-agent/chat"
 const tools = [
   {
-    name: "studio.sourcePreview",
+    name: "shorts.sourcePreview",
     description:
       "Read a bounded page of exact-language retained canonical subtitle cues. Follow nextOffset until null for complete range coverage.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "source-preview",
     schema: studioSourcePreviewSchema,
   },
   {
-    name: "studio.assets",
+    name: "shorts.assets",
     description: "Discover shared assets and immutable versions.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "assets",
     schema: z
       .object({
@@ -41,110 +41,110 @@ const tools = [
       .strict(),
   },
   {
-    name: "studio.asset",
+    name: "shorts.asset",
     description: "Read asset metadata by exact immutable reference.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "asset",
     schema: studioAssetReferenceSchema,
   },
   {
-    name: "studio.packs",
+    name: "shorts.packs",
     description: "Discover reusable Content Packs.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "packs",
     schema: z.object({ search: z.string().max(200).optional() }).strict(),
   },
   {
-    name: "studio.pack",
+    name: "shorts.pack",
     description:
       "Read immutable Content Pack evidence and separate editorial guidance.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "pack",
     schema: z.object({ id: studioIdSchema }).strict(),
   },
   {
-    name: "studio.search",
+    name: "shorts.search",
     description:
       "Find exact-language video/dub/edition, subtitle and download identities for source capture.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "search",
     schema: z
       .object({ search: z.string().max(200), language: studioIdSchema })
       .strict(),
   },
   {
-    name: "studio.capture",
+    name: "shorts.capture",
     description:
       "Capture canonical source and subtitle identity, never a caller URL or replacement transcription. Media materialization remains a trusted broker step.",
-    scope: "studio:edit",
+    scope: "shorts:edit",
     action: "capture",
     schema: studioCaptureSourceSchema,
   },
   {
-    name: "studio.source",
+    name: "shorts.source",
     description: "Read canonical source snapshot.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "source",
     schema: z.object({ id: studioIdSchema }).strict(),
   },
   {
-    name: "studio.assetRead",
+    name: "shorts.assetRead",
     description:
       "Issue a five-minute scoped byte-read capability. Do not log or persist its URL.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "asset-read",
     schema: studioAssetReferenceSchema,
   },
   {
-    name: "studio.assetUpload",
+    name: "shorts.assetUpload",
     description:
-      "Issue a five-minute digest/size-bound PUT capability for a component or other asset. Upload bytes to receive the durable reference; add declarations/items with studio.apply. Never trust generated code as codec proof.",
-    scope: "studio:edit",
+      "Issue a five-minute digest/size-bound PUT capability for a component or other asset. Upload bytes to receive the durable reference; add declarations/items with shorts.apply. Never trust generated code as codec proof.",
+    scope: "shorts:edit",
     action: "asset-upload",
     schema: studioAssetUploadSchema,
   },
   {
-    name: "studio.read",
-    description: "Read a Studio project revision and attributed state.",
-    scope: "studio:read",
+    name: "shorts.read",
+    description: "Read a Shorts project revision and attributed state.",
+    scope: "shorts:read",
     action: "read",
     schema: z.object({ projectId: studioIdSchema }).strict(),
   },
   {
-    name: "studio.history",
+    name: "shorts.history",
     description: "Read attributed revision history for undo/reconciliation.",
-    scope: "studio:read",
+    scope: "shorts:read",
     action: "history",
     schema: z.object({ projectId: studioIdSchema }).strict(),
   },
   {
-    name: "studio.apply",
+    name: "shorts.apply",
     description:
       "Apply revision-checked draft operations. Never reviews, publishes or activates instructions.",
-    scope: "studio:edit",
+    scope: "shorts:edit",
     action: "apply",
     schema: studioApplySchema,
   },
   {
-    name: "studio.create",
+    name: "shorts.create",
     description: "Create a standalone draft project.",
-    scope: "studio:edit",
+    scope: "shorts:edit",
     action: "create",
     schema: studioCreateSchema,
   },
   {
-    name: "studio.instructions",
+    name: "shorts.instructions",
     description:
-      "Inspect native Studio guidance and version identities without activation authority.",
-    scope: "studio:instructions:read",
+      "Inspect native Shorts guidance and version identities without activation authority.",
+    scope: "shorts:instructions:read",
     action: "instructions",
     schema: z.object({}).strict(),
   },
   {
-    name: "studio.chat",
+    name: "shorts.chat",
     description:
-      "Run the hosted Studio agent and return its streamed diagnostics and proposed changes. Apply proposals separately; narration and publication are unavailable.",
-    scope: "studio:chat",
+      "Run the hosted Shorts agent and return its streamed diagnostics and proposed changes. Apply proposals separately; narration and publication are unavailable.",
+    scope: "shorts:chat",
     action: "chat",
     schema: studioChatSchema,
   },
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
     const tool = call ? tools.find((t) => t.name === call.name) : undefined
     const caller = await authenticateStudioMcp(
       request,
-      tool?.scope ?? "studio:read",
+      tool?.scope ?? "shorts:read",
     )
     if (rpc.method === "notifications/initialized")
       return new Response(null, { status: 202 })
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       result = {
         protocolVersion: "2025-03-26",
         capabilities: { tools: {} },
-        serverInfo: { name: "Forge Studio", version: "1.0.0" },
+        serverInfo: { name: "Forge Shorts", version: "1.0.0" },
         instructions:
           "Edits use expectedRevision. Tools never grant interactive human review, experimentation, narration or publication authority.",
       }
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
           .object({
             path: z
               .string()
-              .regex(/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/),
+              .regex(/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/),
           })
           .parse(value)
         value = {

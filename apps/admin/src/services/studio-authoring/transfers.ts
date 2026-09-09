@@ -58,7 +58,7 @@ export class StudioTransferService {
       },
     })
     return {
-      path: `/api/studio/assets/transfer/${token}`,
+      path: `/api/shorts/assets/transfer/${token}`,
       expiresAt: expiresAt.toISOString(),
       method: kind === "read" ? "GET" : "PUT",
     }

@@ -19,7 +19,7 @@ export const studioAssignedLeaseSchema = studioRenderAssignmentSchema
   .strict()
 const capabilitySchema = z
   .object({
-    audience: z.literal("studio-render-pool/1"),
+    audience: z.literal("shorts-render-pool/1"),
     assignment: studioAssignedLeaseSchema,
     inputHash: studioDigestSchema,
     capabilityExpiresAt: z.number().int().positive(),
@@ -35,7 +35,7 @@ export const studioPoolSettlementRecordSchema = z
   .strict()
 const settlementSchema = z
   .object({
-    audience: z.literal("studio-render-settlement/1"),
+    audience: z.literal("shorts-render-settlement/1"),
     assignment: studioAssignedLeaseSchema,
     inputHash: studioDigestSchema,
     record: studioPoolSettlementRecordSchema,
@@ -84,7 +84,7 @@ export class StudioRenderPoolAuth {
     const assignment = studioAssignedLeaseSchema.parse(raw)
     this.assertWorker(assignment)
     const payload = capabilitySchema.parse({
-      audience: "studio-render-pool/1",
+      audience: "shorts-render-pool/1",
       assignment,
       inputHash,
       // An expired receipt can obtain a fresh bounded retention window after
@@ -131,7 +131,7 @@ export class StudioRenderPoolAuth {
     record: z.infer<typeof studioPoolSettlementRecordSchema>,
   ) {
     const payload = settlementSchema.parse({
-      audience: "studio-render-settlement/1",
+      audience: "shorts-render-settlement/1",
       assignment,
       inputHash,
       record,

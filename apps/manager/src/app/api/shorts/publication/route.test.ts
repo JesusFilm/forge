@@ -28,7 +28,7 @@ it("rejects an unauthenticated or cross-origin preparation before provider work"
   expect(
     (
       await POST(
-        new Request("https://manager.test/api/studio/publication", {
+        new Request("https://manager.test/api/shorts/publication", {
           method: "POST",
           headers: { origin: "https://other.test" },
           body: "{}",
@@ -39,7 +39,7 @@ it("rejects an unauthenticated or cross-origin preparation before provider work"
   expect(
     (
       await POST(
-        new Request("https://manager.test/api/studio/publication", {
+        new Request("https://manager.test/api/shorts/publication", {
           method: "POST",
           headers: { origin: "https://manager.test" },
           body: "{}",
@@ -62,7 +62,7 @@ it("cancels an interrupted request body without beginning provider preparation",
     duplex: "half",
   }
   const request = new Request(
-    "https://manager.test/api/studio/publication",
+    "https://manager.test/api/shorts/publication",
     init,
   )
   const response = POST(request)

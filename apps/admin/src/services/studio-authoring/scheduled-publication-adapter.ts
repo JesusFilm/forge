@@ -34,7 +34,7 @@ export async function prepareScheduledStudioPublication(
     if (!env.MANAGER_API_BASE_URL || !env.MANAGER_TRIGGER_API_KEY)
       throw new StudioPublicationPreparationError("UNREADY")
     const url = new URL(
-      "/api/admin-trigger/studio-publication",
+      "/api/admin-trigger/shorts-publication",
       env.MANAGER_API_BASE_URL,
     )
     const local =

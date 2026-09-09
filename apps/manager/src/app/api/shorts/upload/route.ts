@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         byteSize: bytes.length,
       }),
     )
-    if (!grant.path.startsWith("/api/studio/assets/transfer/"))
+    if (!grant.path.startsWith("/api/shorts/assets/transfer/"))
       throw new StudioUploadError("Invalid grant")
     const response = await fetch(new URL(grant.path, env.ADMIN_GRAPHQL_URL!), {
       method: "PUT",

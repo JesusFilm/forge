@@ -155,7 +155,7 @@ export default function GenerationPanel({
     controller.current = new AbortController()
     setProgress([])
     setConfirmed(false)
-    const response = await fetch("/api/studio/generation", {
+    const response = await fetch("/api/shorts/generation", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ requests, confirmed: true }),
@@ -474,7 +474,7 @@ export default function GenerationPanel({
                         throw new StudioProductionClientError(
                           "Save local changes before applying a proposal",
                         )
-                      const response = await fetch("/api/studio/agent", {
+                      const response = await fetch("/api/shorts/agent", {
                         method: "POST",
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({

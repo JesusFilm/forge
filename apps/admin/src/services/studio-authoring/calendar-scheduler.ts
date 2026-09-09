@@ -24,7 +24,7 @@ export async function runStudioCalendarTick(
   if (!env.MANAGER_API_BASE_URL || !env.MANAGER_TRIGGER_API_KEY)
     return { failures }
   const target = new URL(
-    "/api/admin-trigger/studio-calendar",
+    "/api/admin-trigger/shorts-calendar",
     env.MANAGER_API_BASE_URL,
   )
   if (

@@ -37,8 +37,8 @@ it("allows the shared native run and terminal reserve but preserves earlier call
     {
       sub: "operator",
       authority: "interactive",
-      clientId: "studio-manager",
-      scopes: ["studio:chat"],
+      clientId: "shorts-manager",
+      scopes: ["shorts:chat"],
     },
     { action: "run" },
     caller.signal,

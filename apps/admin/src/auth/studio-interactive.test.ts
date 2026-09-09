@@ -21,7 +21,10 @@ beforeAll(async () => {
     "EdDSA",
   )
 })
-async function sign(overrides: Record<string, unknown> = {}) {
+async function sign(
+  overrides: Record<string, unknown> = {},
+  typ = "shorts-interactive+jwt",
+) {
   const now = Math.floor(Date.now() / 1000)
   return new SignJWT({
     sub: "trusted-user",
@@ -35,7 +38,7 @@ async function sign(overrides: Record<string, unknown> = {}) {
   })
     .setProtectedHeader({
       alg: "EdDSA",
-      typ: "studio-interactive+jwt",
+      typ,
       kid: "fixture",
     })
     .sign(key)
@@ -59,5 +62,17 @@ it.each([
 ])("rejects a wrong authority or lifetime %j", async (claims) => {
   await expect(
     verifyStudioInteractive(await sign(claims), body),
+  ).rejects.toBeInstanceOf(ForbiddenError)
+})
+
+it("rejects the retired Studio audience and token type", async () => {
+  await expect(
+    verifyStudioInteractive(
+      await sign({ aud: "forge-admin:studio:interactive" }),
+      body,
+    ),
+  ).rejects.toBeInstanceOf(ForbiddenError)
+  await expect(
+    verifyStudioInteractive(await sign({}, "studio-interactive+jwt"), body),
   ).rejects.toBeInstanceOf(ForbiddenError)
 })

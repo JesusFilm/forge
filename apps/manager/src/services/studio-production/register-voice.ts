@@ -65,7 +65,7 @@ export async function registerExperimentVoice(
     .parse(await call("asset-read", candidate.asset))
   if (
     !env.ADMIN_GRAPHQL_URL ||
-    !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path) ||
+    !/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path) ||
     preview.byteSize > 24 * 1024 * 1024
   )
     throw new StudioProductionError("Preview transfer unavailable")

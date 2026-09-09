@@ -4,7 +4,7 @@ import { attachPreparedSources, previewSignature } from "./preview-state"
 import type { StudioDocument } from "@forge/studio-contracts"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
 function releasePreview(url: string) {
-  void fetch("/api/studio/preview", {
+  void fetch("/api/shorts/preview", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ url }),
@@ -55,7 +55,7 @@ export default function Preview({
     const request = async () => {
       for (let attempt = 0; attempt < 8; attempt++) {
         controller.signal.throwIfAborted()
-        const response = await fetch("/api/studio/preview", {
+        const response = await fetch("/api/shorts/preview", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ projectId, document: requested }),
@@ -104,7 +104,7 @@ export default function Preview({
     let active = true
     const renew = async () => {
       try {
-        const response = await fetch("/api/studio/preview", {
+        const response = await fetch("/api/shorts/preview", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ url }),

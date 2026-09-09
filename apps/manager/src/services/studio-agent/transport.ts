@@ -25,12 +25,12 @@ export async function studioServiceRequest(
   const assertion = await signStudioRequest(
     body,
     target === "calendar"
-      ? "forge-mastra:studio-calendar"
+      ? "forge-mastra:shorts-calendar"
       : target === "calendar-admin"
-        ? "forge-admin:studio-calendar"
+        ? "forge-admin:shorts-calendar"
         : target === "admin"
-          ? "forge-admin:studio:delegated"
-          : "forge-mastra:studio",
+          ? "forge-admin:shorts:delegated"
+          : "forge-mastra:shorts",
     caller,
     {
       privateKey: env.STUDIO_INTERACTIVE_PRIVATE_KEY,
@@ -41,19 +41,19 @@ export async function studioServiceRequest(
   const response = await fetch(
     new URL(
       target === "calendar"
-        ? "/forge-studio-calendar"
+        ? "/forge-shorts-calendar"
         : target === "calendar-admin"
-          ? "/api/studio/calendar-worker"
+          ? "/api/shorts/calendar-worker"
           : target === "admin"
-            ? "/api/studio/delegated"
-            : "/forge-studio",
+            ? "/api/shorts/delegated"
+            : "/forge-shorts",
       base,
     ),
     {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-forge-studio-service": assertion,
+        "x-forge-shorts-service": assertion,
       },
       body,
       redirect: "error",
@@ -103,7 +103,7 @@ export async function studioToolGrant(
   const body = JSON.stringify({ projectId, revision })
   const assertion = await signStudioRequest(
     body,
-    "forge-admin:studio:tools",
+    "forge-admin:shorts:tools",
     { ...caller, authority: "delegated" },
     {
       privateKey: env.STUDIO_INTERACTIVE_PRIVATE_KEY,

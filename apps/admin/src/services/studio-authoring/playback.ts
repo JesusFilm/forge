@@ -168,7 +168,7 @@ export class StudioPlaybackGateway {
       const parsed = new URL(value, base),
         fragment = parsed.hash
       const url = muxUrl(parsed.href)
-      return `/api/studio/playback/${encodeURIComponent(releaseId)}/${this.seal(releaseId, url)}${fragment}`
+      return `/api/shorts/playback/${encodeURIComponent(releaseId)}/${this.seal(releaseId, url)}${fragment}`
     }
     if (storyboard) {
       if (!raw.startsWith("WEBVTT")) throw new PlaybackUpstreamError()

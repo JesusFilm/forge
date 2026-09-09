@@ -322,7 +322,7 @@ suite("generated catalog schema and service", () => {
         new StudioCatalogService(other).stage(worker, input),
       ])
       expect(first.id).toBe(second.id)
-      const sourceQuery = `query($id: ID!) { studioCatalogRelease(id:$id) { id videoId snapshot } }`
+      const sourceQuery = `query($id: ID!) { shortsCatalogRelease(id:$id) { id videoId snapshot } }`
       const denied = await graphql({
         schema,
         source: sourceQuery,
@@ -339,12 +339,12 @@ suite("generated catalog schema and service", () => {
       expect(allowed.errors).toBeUndefined()
       const staged = await graphql({
         schema,
-        source: `mutation($input: JSON!) { stageStudioCatalog(input:$input) { id videoId } }`,
+        source: `mutation($input: JSON!) { stageShortsCatalog(input:$input) { id videoId } }`,
         variableValues: { input },
         contextValue: { user: worker, prisma: db },
       })
       expect(staged.errors).toBeUndefined()
-      expect(staged.data?.stageStudioCatalog).toEqual({
+      expect(staged.data?.stageShortsCatalog).toEqual({
         id: first.id,
         videoId: first.videoId,
       })

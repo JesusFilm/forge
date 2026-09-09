@@ -582,7 +582,7 @@ suite("Studio command seam against disposable Postgres", () => {
       idempotencyKey: randomUUID(),
       document,
     }
-    const source = `mutation($input: StudioCreateInput!) { createStudioProject(input: $input) { projectId revision } }`
+    const source = `mutation($input: ShortsCreateInput!) { createShortsProject(input: $input) { projectId revision } }`
     const denied = await graphql({
       schema,
       source,
@@ -597,13 +597,13 @@ suite("Studio command seam against disposable Postgres", () => {
       contextValue: { user, prisma: db },
     })
     expect(created.errors).toBeUndefined()
-    expect(created.data?.createStudioProject).toEqual({
+    expect(created.data?.createShortsProject).toEqual({
       projectId,
       revision: 1,
     })
     const backend = await graphql({
       schema,
-      source: `mutation($input: StudioApproveInput!) { approveStudioProject(input: $input) { approvalId } }`,
+      source: `mutation($input: ShortsApproveInput!) { approveShortsProject(input: $input) { approvalId } }`,
       variableValues: {
         input: {
           projectId,

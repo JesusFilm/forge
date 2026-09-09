@@ -1290,20 +1290,20 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
-  applyStudioOperations(input: StudioApplyInput!): StudioCommandResult
+  applyShortsOperations(input: ShortsApplyInput!): ShortsCommandResult
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
-  approveStudioProject(input: StudioApproveInput!): StudioCommandResult
+  approveShortsProject(input: ShortsApproveInput!): ShortsCommandResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
-  attachStudioExperimentCandidate(input: JSON!): JSON
-  captureStudioSource(input: JSON!): StudioSourceSnapshot
+  attachShortsExperimentCandidate(input: JSON!): JSON
+  captureShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
   claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
-  completeStudioAttempt(input: StudioCompleteInput!): StudioCommandResult
+  completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
   """
@@ -1311,7 +1311,7 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
-  createStudioProject(input: StudioCreateInput!): StudioCommandResult
+  createShortsProject(input: ShortsCreateInput!): ShortsCommandResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
   """
@@ -1328,10 +1328,10 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
-  issueStudioAssetRead(reference: JSON!): StudioAssetTransfer
-  issueStudioAssetUpload(input: JSON!): StudioAssetTransfer
+  issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
+  issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
   issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
-  materializeStudioSource(input: JSON!): StudioSourceSnapshot
+  materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -1348,8 +1348,8 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
-  requestStudioAttempt(input: StudioRequestInput!): StudioCommandResult
-  requestStudioExperiment(input: JSON!): JSON
+  requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
+  requestShortsExperiment(input: JSON!): JSON
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -1360,8 +1360,8 @@ type Mutation {
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
   selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
-  stageStudioCatalog(input: JSON!): StudioCatalogRelease
-  startStudioAttempt(input: StudioStartInput!): StudioCommandResult
+  stageShortsCatalog(input: JSON!): ShortsCatalogRelease
+  startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
@@ -1440,7 +1440,7 @@ type Mutation {
     """
     mode: TranscriptBackfillMode
   ): JSON
-  unpublishStudioProject(input: StudioRevisionCommandInput!): StudioCommandResult
+  unpublishShortsProject(input: ShortsRevisionCommandInput!): ShortsCommandResult
   """
   Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
   """
@@ -1455,7 +1455,7 @@ type Mutation {
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
-  writeStudioContentPack(input: JSON!): ContentPackRevision
+  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -1577,22 +1577,22 @@ type Query {
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
   semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
-  studioApprovals(cursor: ID, limit: Int, projectId: ID!): [StudioApproval!]
-  studioAsset(reference: JSON!): StudioAssetVersion
-  studioAssets(input: JSON): [StudioAssetVersion!]
-  studioAttempt(attemptId: ID!, projectId: ID!): StudioAttempt
-  studioAttempts(cursor: ID, limit: Int, projectId: ID!): [StudioAttempt!]
-  studioCatalogRelease(id: ID!): StudioCatalogRelease
-  studioContentPackRevision(id: ID!): ContentPackRevision
-  studioContentPacks(input: JSON): [ContentPackRevision!]
-  studioExperiment(id: ID!): JSON
-  studioHistory(beforeRevision: Int, limit: Int, projectId: ID!): [StudioRevision!]
-  studioNarrationIdentity(language: String!, speech: JSON!): JSON
-  studioNarrationMatches(identity: JSON!): [StudioAssetVersion!]
-  studioProject(projectId: ID!): StudioProject
-  studioProjects(cursor: ID, limit: Int): [StudioProjectSummary!]
-  studioSourceEligibility(id: ID!): JSON
-  studioSourceSnapshot(id: ID!): StudioSourceSnapshot
+  shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
+  shortsAsset(reference: JSON!): ShortsAssetVersion
+  shortsAssets(input: JSON): [ShortsAssetVersion!]
+  shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
+  shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
+  shortsCatalogRelease(id: ID!): ShortsCatalogRelease
+  shortsContentPackRevision(id: ID!): ContentPackRevision
+  shortsContentPacks(input: JSON): [ContentPackRevision!]
+  shortsExperiment(id: ID!): JSON
+  shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
+  shortsNarrationIdentity(language: String!, speech: JSON!): JSON
+  shortsNarrationMatches(identity: JSON!): [ShortsAssetVersion!]
+  shortsProject(projectId: ID!): ShortsProject
+  shortsProjects(cursor: ID, limit: Int): [ShortsProjectSummary!]
+  shortsSourceEligibility(id: ID!): JSON
+  shortsSourceSnapshot(id: ID!): ShortsSourceSnapshot
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
@@ -1854,85 +1854,85 @@ type SemanticRecommendationSelectionReceipt {
   targetMediaId: ID!
 }
 
-type StudioActor {
+type ShortsActor {
   id: ID
   kind: String
 }
 
-input StudioApplyInput {
+input ShortsApplyInput {
   expectedRevision: Int!
   idempotencyKey: String!
   operations: JSON!
   projectId: ID!
 }
 
-type StudioApproval {
-  actor: StudioActor
+type ShortsApproval {
+  actor: ShortsActor
   dependencyHash: String
   id: ID
-  kind: StudioApprovalKind
+  kind: ShortsApprovalKind
   projectId: ID
   renderAttemptId: ID
   revision: Int
 }
 
-enum StudioApprovalKind {
+enum ShortsApprovalKind {
   PUBLICATION
   SCRIPT
 }
 
-input StudioApproveInput {
+input ShortsApproveInput {
   expectedRevision: Int!
   idempotencyKey: String!
-  kind: StudioApprovalKind!
+  kind: ShortsApprovalKind!
   projectId: ID!
   renderAttemptId: ID
 }
 
-type StudioAssetReference {
+type ShortsAssetReference {
   assetId: ID
   digest: String
   versionId: ID
 }
 
-type StudioAssetTransfer {
+type ShortsAssetTransfer {
   expiresAt: String
   method: String
   path: String
 }
 
-type StudioAssetVersion {
+type ShortsAssetVersion {
   byteSize: Float
   filename: String
   mediaAssetId: ID
   mimeType: String
   narration: JSON
   provenance: JSON
-  reference: StudioAssetReference
+  reference: ShortsAssetReference
   role: String
   voice: JSON
 }
 
-type StudioAttempt {
-  actor: StudioActor
+type ShortsAttempt {
+  actor: ShortsActor
   baseRevision: Int
   id: ID
   inputHash: String
   instructions: JSON
   jobReference: String
-  kind: StudioAttemptKind
+  kind: ShortsAttemptKind
   projectId: ID
   result: JSON
-  status: StudioAttemptStatus
+  status: ShortsAttemptStatus
 }
 
-enum StudioAttemptKind {
+enum ShortsAttemptKind {
   GENERATION
   NARRATION
   RENDER
 }
 
-enum StudioAttemptStatus {
+enum ShortsAttemptStatus {
   CANCELLED
   FAILED
   QUEUED
@@ -1941,7 +1941,7 @@ enum StudioAttemptStatus {
   SUCCEEDED
 }
 
-type StudioCatalogRelease {
+type ShortsCatalogRelease {
   dubId: ID
   editionId: ID
   id: ID
@@ -1953,7 +1953,7 @@ type StudioCatalogRelease {
   videoId: ID
 }
 
-type StudioCommandResult {
+type ShortsCommandResult {
   approvalId: ID
   attemptId: ID
   outcome: String
@@ -1961,65 +1961,65 @@ type StudioCommandResult {
   revision: Int
 }
 
-input StudioCompleteInput {
+input ShortsCompleteInput {
   attemptId: ID!
   expectedRevision: Int!
   idempotencyKey: String!
   operations: JSON!
   projectId: ID!
   result: JSON!
-  status: StudioAttemptStatus!
+  status: ShortsAttemptStatus!
 }
 
-input StudioCreateInput {
+input ShortsCreateInput {
   document: JSON!
   expectedRevision: Int!
   idempotencyKey: String!
   projectId: ID!
 }
 
-enum StudioLifecycle {
+enum ShortsLifecycle {
   DRAFT
   PUBLISHED
   UNPUBLISHED
 }
 
-type StudioProject {
-  actor: StudioActor
+type ShortsProject {
+  actor: ShortsActor
   document: JSON
   firstPublishedAt: String
-  lifecycle: StudioLifecycle
+  lifecycle: ShortsLifecycle
   projectId: ID
   revision: Int
 }
 
-type StudioProjectSummary {
-  lifecycle: StudioLifecycle
+type ShortsProjectSummary {
+  lifecycle: ShortsLifecycle
   projectId: ID
   revision: Int
 }
 
-input StudioRequestInput {
+input ShortsRequestInput {
   expectedRevision: Int!
   idempotencyKey: String!
   instructions: JSON!
-  kind: StudioAttemptKind!
+  kind: ShortsAttemptKind!
   projectId: ID!
 }
 
-type StudioRevision {
-  actor: StudioActor
+type ShortsRevision {
+  actor: ShortsActor
   document: JSON
   revision: Int
 }
 
-input StudioRevisionCommandInput {
+input ShortsRevisionCommandInput {
   expectedRevision: Int!
   idempotencyKey: String!
   projectId: ID!
 }
 
-type StudioSourceSnapshot {
+type ShortsSourceSnapshot {
   catalogDigest: String
   coveredRanges: JSON
   downloadId: ID
@@ -2037,7 +2037,7 @@ type StudioSourceSnapshot {
   subtitleUrl: String
 }
 
-input StudioStartInput {
+input ShortsStartInput {
   attemptId: ID!
   expectedRevision: Int!
   idempotencyKey: String!

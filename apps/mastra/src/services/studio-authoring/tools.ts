@@ -76,7 +76,7 @@ export function studioAssetTools(
               role: "component",
               provenance: {
                 status: "recorded",
-                recorded: { creator: "studio-hosted", digest },
+                recorded: { creator: "shorts-hosted", digest },
               },
             },
             digest,

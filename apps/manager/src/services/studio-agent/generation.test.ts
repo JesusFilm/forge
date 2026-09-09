@@ -5,8 +5,8 @@ vi.mock("./chat", () => ({ studioChat: vi.fn() }))
 const caller = {
   sub: "operator",
   authority: "interactive" as const,
-  clientId: "studio-manager",
-  scopes: ["studio:read", "studio:edit", "studio:chat"],
+  clientId: "shorts-manager",
+  scopes: ["shorts:read", "shorts:edit", "shorts:chat"],
 }
 const requests = ["first", "second"].map((projectId) => ({
   projectId,
@@ -55,7 +55,7 @@ it("rejects duplicate targets and planner authority before dispatch", async () =
   ).rejects.toThrow()
   await expect(
     studioGenerationBatch(
-      { ...caller, clientId: "studio-planner", authority: "delegated" },
+      { ...caller, clientId: "shorts-planner", authority: "delegated" },
       { requests, confirmed: true },
       new AbortController().signal,
     ),

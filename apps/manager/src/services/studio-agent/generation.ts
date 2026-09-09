@@ -10,7 +10,7 @@ export async function studioGenerationBatch(
 ) {
   if (
     caller.authority !== "interactive" ||
-    caller.clientId !== "studio-manager"
+    caller.clientId !== "shorts-manager"
   )
     throw new StudioBoundaryError("Interactive production admission required")
   const input = studioGenerationBatchSchema.parse(raw),

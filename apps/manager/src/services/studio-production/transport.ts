@@ -13,8 +13,8 @@ export function studioProductionClient(userId: string, runId: string) {
   const caller: StudioCaller = {
     sub: userId,
     authority: "delegated",
-    clientId: "studio-production",
-    scopes: ["studio:production:execute"],
+    clientId: "shorts-production",
+    scopes: ["shorts:production:execute"],
   }
   const call = (command: string, input: unknown) =>
     studioServiceCall("admin", caller, {
@@ -38,7 +38,7 @@ export function studioProductionClient(userId: string, runId: string) {
         }),
       )
       if (
-        !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(
+        !/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(
           capability.path,
         ) ||
         !env.ADMIN_GRAPHQL_URL

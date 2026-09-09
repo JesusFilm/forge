@@ -48,7 +48,7 @@ function fixture() {
 it("rewrites all HLS resources without exposing tokens and revokes previously issued URLs", async () => {
   const f = fixture(),
     request = new Request(
-      "https://admin.test/api/studio/playback/release/index.m3u8",
+      "https://admin.test/api/shorts/playback/release/index.m3u8",
     )
   const response = await f.gateway.serve("release", "index.m3u8", request),
     text = await response.text()
@@ -58,7 +58,7 @@ it("rewrites all HLS resources without exposing tokens and revokes previously is
   expect(text).not.toContain("upstream-secret-token")
   const urls = [
     ...text.matchAll(
-      /\/api\/studio\/playback\/release\/([A-Za-z0-9_-]+\.media)/g,
+      /\/api\/shorts\/playback\/release\/([A-Za-z0-9_-]+\.media)/g,
     ),
   ].map((match) => match[1])
   expect(urls).toHaveLength(6)

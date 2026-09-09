@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { generateKeyPair, exportPKCS8, exportSPKI } from "jose"
+import { generateKeyPair, exportPKCS8, exportSPKI, SignJWT } from "jose"
 import { signStudioRequest, verifyStudioRequest } from "./index"
 test("scoped signed request binds user, authority, body, audience and environment", async () => {
   const pair = await generateKeyPair("EdDSA", { extractable: true })
@@ -12,7 +12,7 @@ test("scoped signed request binds user, authority, body, audience and environmen
       sub: "operator",
       authority: "delegated",
       clientId: "claude",
-      scopes: ["studio:edit"],
+      scopes: ["shorts:edit"],
     },
     { privateKey, keyId: "test", environment: "local" },
   )
@@ -42,4 +42,25 @@ test("scoped signed request binds user, authority, body, audience and environmen
       environment: "production",
     }),
   ).rejects.toThrow()
+})
+
+test("rejects the retired Studio service token type", async () => {
+  const pair = await generateKeyPair("EdDSA", { extractable: true })
+  const token = await new SignJWT({})
+    .setProtectedHeader({
+      alg: "EdDSA",
+      kid: "test",
+      typ: "studio-service+jwt",
+    })
+    .setIssuer("forge-manager")
+    .setAudience("forge-admin:shorts:tools")
+    .setIssuedAt()
+    .setExpirationTime("60s")
+    .sign(pair.privateKey)
+  await expect(
+    verifyStudioRequest(token, "body", "forge-admin:shorts:tools", {
+      publicKeys: JSON.stringify({ test: await exportSPKI(pair.publicKey) }),
+      environment: "local",
+    }),
+  ).rejects.toThrow("Invalid Studio assertion")
 })

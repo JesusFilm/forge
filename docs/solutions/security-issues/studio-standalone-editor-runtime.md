@@ -13,7 +13,7 @@ Validation and reproducible harnesses: `docs/validation/studio-456/README.md`.
 Manager's same-origin cookie endpoint accepts a bounded strict command envelope.
 It obtains the human user from authenticated transport, signs the exact UTF-8
 request digest with a 60-second Ed25519 assertion, and sends it to Admin's
-`/api/studio/interactive`. Admin verifies issuer, audience, environment, key ID,
+`/api/shorts/interactive`. Admin verifies issuer, audience, environment, key ID,
 lifetime and digest, then loads current operator membership. The resulting
 `Principal.studioAuthority = interactive` is internal; payload flags and
 user-owned delegated OAuth tokens cannot set it. Human attribution stays separate

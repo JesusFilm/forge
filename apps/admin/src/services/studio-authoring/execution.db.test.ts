@@ -118,8 +118,8 @@ class FixtureError extends Error {}
     const caller = {
       sub: human.id,
       authority: "delegated" as const,
-      clientId: "studio-production",
-      scopes: ["studio:production:execute"],
+      clientId: "shorts-production",
+      scopes: ["shorts:production:execute"],
     }
     const request = {
       action: "production",
@@ -130,8 +130,8 @@ class FixtureError extends Error {}
       },
     }
     for (const denied of [
-      { ...caller, clientId: "studio-hosted" },
-      { ...caller, clientId: "studio-planner" },
+      { ...caller, clientId: "shorts-hosted" },
+      { ...caller, clientId: "shorts-planner" },
       { ...caller, authority: "interactive" as const },
       { ...caller, scopes: [] },
     ])

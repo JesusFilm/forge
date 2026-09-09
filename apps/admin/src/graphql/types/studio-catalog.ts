@@ -3,7 +3,7 @@ import { StudioCatalogService } from "@/services/studio-authoring/catalog"
 import type { StudioCatalogRelease } from "@prisma/client"
 /** @classification abac-gated */
 const release = builder
-  .objectRef<StudioCatalogRelease>("StudioCatalogRelease")
+  .objectRef<StudioCatalogRelease>("ShortsCatalogRelease")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -19,7 +19,7 @@ const release = builder
     }),
   })
 builder.queryFields((t) => ({
-  studioCatalogRelease: t.field({
+  shortsCatalogRelease: t.field({
     type: release,
     authScopes: { loggedIn: true },
     args: { id: t.arg.id({ required: true }) },
@@ -28,7 +28,7 @@ builder.queryFields((t) => ({
   }),
 }))
 builder.mutationFields((t) => ({
-  stageStudioCatalog: t.field({
+  stageShortsCatalog: t.field({
     type: release,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },

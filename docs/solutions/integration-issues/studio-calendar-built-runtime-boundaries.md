@@ -39,7 +39,7 @@ A scheduler referenced only from `instrumentation.ts` can start a durable run
 whose definition is missing from the generated executable route. A successful
 Next build does not prove the timer is registered.
 
-`apps/admin/src/app/api/studio/calendar-worker/route.ts` explicitly imports
+`apps/admin/src/app/api/shorts/calendar-worker/route.ts` explicitly imports
 `@/workflows/studioCalendar` for discovery. This import defines the workflow;
 it does not start a scheduler or change request authorization. The worker route
 still requires its signed, scoped service assertion. Normal instrumentation owns

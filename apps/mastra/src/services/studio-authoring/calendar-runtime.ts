@@ -58,17 +58,17 @@ export function createCalendarRuntime(storage: MastraStorage, config: Config) {
       const prepared = await budget.run(async () => {
         const body = await readStudioBytes(request, 262144)
         const caller = await verifyStudioRequest(
-          request.headers.get("x-forge-studio-service"),
+          request.headers.get("x-forge-shorts-service"),
           body,
-          "forge-mastra:studio-calendar",
+          "forge-mastra:shorts-calendar",
           config,
         )
         const command = calendarRuntimeRequestSchema.parse(JSON.parse(body))
         if (
           !caller.scopes.includes(
             command.action === "instructions"
-              ? "studio:instructions:read"
-              : "studio:calendar:plan",
+              ? "shorts:instructions:read"
+              : "shorts:calendar:plan",
           )
         )
           throw new StudioBoundaryError("Calendar scope required")

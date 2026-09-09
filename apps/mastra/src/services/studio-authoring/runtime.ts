@@ -53,9 +53,9 @@ export function createStudioRuntime(storage: MastraStorage, config: Config) {
     try {
       const body = await readStudioBytes(request)
       const caller = await verifyStudioRequest(
-        request.headers.get("x-forge-studio-service"),
+        request.headers.get("x-forge-shorts-service"),
         body,
-        "forge-mastra:studio",
+        "forge-mastra:shorts",
         config,
       )
       const command = studioRuntimeRequestSchema.parse(JSON.parse(body))
@@ -69,7 +69,7 @@ export function createStudioRuntime(storage: MastraStorage, config: Config) {
         const c = command.command
         const read = c.action === "inspect" || c.action === "compare"
         if (
-          !caller.scopes.includes("studio:instructions:read") ||
+          !caller.scopes.includes("shorts:instructions:read") ||
           (!read && caller.authority !== "interactive")
         )
           throw new StudioBoundaryError(
@@ -103,7 +103,7 @@ export function createStudioRuntime(storage: MastraStorage, config: Config) {
         })
         return Response.json({ result })
       }
-      if (!caller.scopes.includes("studio:chat"))
+      if (!caller.scopes.includes("shorts:chat"))
         throw new StudioBoundaryError("Studio chat scope required")
       if (command.action === "freeze") {
         const frozen = await config.serialize(() =>
@@ -344,7 +344,7 @@ function streaming(
                 toolGrant && config.adminUrl
                   ? async (action, input) => {
                       const response = await fetch(
-                        new URL("/api/studio/tools", config.adminUrl),
+                        new URL("/api/shorts/tools", config.adminUrl),
                         {
                           method: "POST",
                           headers: { "content-type": "application/json" },
@@ -367,7 +367,7 @@ function streaming(
                       if (action === "asset-upload") {
                         const transfer = result.result as { path: string }
                         if (
-                          !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(
+                          !/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(
                             transfer.path,
                           )
                         )

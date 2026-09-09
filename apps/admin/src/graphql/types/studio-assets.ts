@@ -11,7 +11,7 @@ import type { ContentPackRevision } from "@prisma/client"
 
 /** @classification abac-gated */
 const reference = builder
-  .objectRef<StudioAssetReference>("StudioAssetReference")
+  .objectRef<StudioAssetReference>("ShortsAssetReference")
   .implement({
     fields: (t) => ({
       assetId: t.exposeID("assetId"),
@@ -21,7 +21,7 @@ const reference = builder
   })
 /** @classification abac-gated */
 const asset = builder
-  .objectRef<StudioAssetVersion>("StudioAssetVersion")
+  .objectRef<StudioAssetVersion>("ShortsAssetVersion")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -54,7 +54,7 @@ const pack = builder
   })
 /** @classification abac-gated */
 const source = builder
-  .objectRef<StudioSourceSnapshot>("StudioSourceSnapshot")
+  .objectRef<StudioSourceSnapshot>("ShortsSourceSnapshot")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -83,7 +83,7 @@ const transfer = builder
     path: string
     expiresAt: string
     method: string
-  }>("StudioAssetTransfer")
+  }>("ShortsAssetTransfer")
   .implement({
     fields: (t) => ({
       path: t.exposeString("path"),
@@ -92,28 +92,28 @@ const transfer = builder
     }),
   })
 builder.queryFields((t) => ({
-  studioAssets: t.field({
+  shortsAssets: t.field({
     type: [asset],
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON" }) },
     resolve: (_, a, c) =>
       new StudioAssetService(c.prisma).list(c.user, a.input ?? {}),
   }),
-  studioAsset: t.field({
+  shortsAsset: t.field({
     type: asset,
     authScopes: { loggedIn: true },
     args: { reference: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioAssetService(c.prisma).read(c.user, a.reference),
   }),
-  studioNarrationMatches: t.field({
+  shortsNarrationMatches: t.field({
     type: [asset],
     authScopes: { loggedIn: true },
     args: { identity: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioAssetService(c.prisma).findNarration(c.user, a.identity),
   }),
-  studioNarrationIdentity: t.field({
+  shortsNarrationIdentity: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
     args: {
@@ -127,33 +127,33 @@ builder.queryFields((t) => ({
         a.speech,
       ),
   }),
-  studioContentPacks: t.field({
+  shortsContentPacks: t.field({
     type: [pack],
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON" }) },
     resolve: (_, a, c) =>
       new ContentPackService(c.prisma).list(c.user, a.input ?? {}),
   }),
-  studioContentPackRevision: t.field({
+  shortsContentPackRevision: t.field({
     type: pack,
     authScopes: { loggedIn: true },
     args: { id: t.arg.id({ required: true }) },
     resolve: (_, a, c) => new ContentPackService(c.prisma).read(c.user, a.id),
   }),
-  studioSourceEligibility: t.field({
+  shortsSourceEligibility: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
     args: { id: t.arg.id({ required: true }) },
     resolve: (_, a, c) =>
       new StudioSourceService(c.prisma).eligibility(c.user, a.id),
   }),
-  studioSourceSnapshot: t.field({
+  shortsSourceSnapshot: t.field({
     type: source,
     authScopes: { loggedIn: true },
     args: { id: t.arg.id({ required: true }) },
     resolve: (_, a, c) => new StudioSourceService(c.prisma).read(c.user, a.id),
   }),
-  studioExperiment: t.field({
+  shortsExperiment: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
     args: { id: t.arg.id({ required: true }) },
@@ -162,49 +162,49 @@ builder.queryFields((t) => ({
   }),
 }))
 builder.mutationFields((t) => ({
-  writeStudioContentPack: t.field({
+  writeShortsContentPack: t.field({
     type: pack,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new ContentPackService(c.prisma).write(c.user, a.input),
   }),
-  captureStudioSource: t.field({
+  captureShortsSource: t.field({
     type: source,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioSourceService(c.prisma).capture(c.user, a.input),
   }),
-  materializeStudioSource: t.field({
+  materializeShortsSource: t.field({
     type: source,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioSourceService(c.prisma).materialize(c.user, a.input),
   }),
-  issueStudioAssetRead: t.field({
+  issueShortsAssetRead: t.field({
     type: transfer,
     authScopes: { loggedIn: true },
     args: { reference: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioTransferService(c.prisma).issue(c.user, "read", a.reference),
   }),
-  issueStudioAssetUpload: t.field({
+  issueShortsAssetUpload: t.field({
     type: transfer,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioTransferService(c.prisma).issue(c.user, "upload", a.input),
   }),
-  requestStudioExperiment: t.field({
+  requestShortsExperiment: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },
     resolve: (_, a, c) =>
       new StudioExperimentService(c.prisma).request(c.user, a.input),
   }),
-  attachStudioExperimentCandidate: t.field({
+  attachShortsExperimentCandidate: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: "JSON", required: true }) },

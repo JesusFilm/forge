@@ -35,7 +35,7 @@ const caller = {
   sub: "operator",
   authority: "delegated" as const,
   clientId: "claude",
-  scopes: ["studio:read", "studio:chat"],
+  scopes: ["shorts:read", "shorts:chat"],
 }
 const input = {
   projectId: "project",
@@ -167,4 +167,16 @@ test("retains generation text and validated proposals alongside frozen attempt c
       },
     }),
   )
+})
+
+test("retired Studio scopes cannot start a Shorts request", async () => {
+  await expect(
+    studioChat(
+      { ...caller, scopes: ["studio:read", "studio:chat"] },
+      input,
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow("insufficient_scope")
+  expect(studioServiceCall).not.toHaveBeenCalled()
+  expect(studioServiceRequest).not.toHaveBeenCalled()
 })

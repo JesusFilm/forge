@@ -9,8 +9,8 @@ export async function POST(request: Request) {
       {
         sub: actor.approvedByUserId,
         authority: "interactive",
-        clientId: "studio-manager",
-        scopes: ["studio:read", "studio:edit", "studio:chat"],
+        clientId: "shorts-manager",
+        scopes: ["shorts:read", "shorts:edit", "shorts:chat"],
       },
       JSON.parse(
         new TextDecoder().decode(await readStudioBody(request, 65536)),

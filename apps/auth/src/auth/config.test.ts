@@ -386,7 +386,7 @@ describe("auth provider configuration", () => {
     await expect(
       options.customAccessTokenClaims({
         user: { id: "user_123", membershipStatus: "ACTIVE" },
-        scopes: ["openid", "studio:read", "studio:edit"],
+        scopes: ["openid", "shorts:read", "shorts:edit"],
         resources: ["https://manager.jesusfilm.org/mcp"],
         metadata: {
           environmentKind: "staging",
@@ -396,7 +396,7 @@ describe("auth provider configuration", () => {
       }),
     ).resolves.toEqual({
       "https://jesusfilm.org/claims/environment": "production",
-      "https://jesusfilm.org/claims/app": "studio-mcp",
+      "https://jesusfilm.org/claims/app": "shorts-mcp",
     })
   })
 

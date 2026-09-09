@@ -34,12 +34,12 @@ export async function POST(request: Request) {
     const caller: StudioCaller = {
       sub: actor.approvedByUserId,
       authority: "interactive",
-      clientId: "studio-manager",
+      clientId: "shorts-manager",
       scopes: [
-        "studio:read",
-        "studio:edit",
-        "studio:chat",
-        "studio:instructions:read",
+        "shorts:read",
+        "shorts:edit",
+        "shorts:chat",
+        "shorts:instructions:read",
       ],
     }
     if (input.kind === "chat")
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return Response.json({
         result: await studioServiceCall(
           "admin",
-          { ...caller, authority: "delegated", clientId: "studio-hosted" },
+          { ...caller, authority: "delegated", clientId: "shorts-hosted" },
           { action: "apply", input: input.input },
         ),
       })

@@ -10,13 +10,13 @@ import type {
   StudioApproval,
 } from "@forge/studio-contracts"
 
-const lifecycle = builder.enumType("StudioLifecycle", {
+const lifecycle = builder.enumType("ShortsLifecycle", {
   values: ["DRAFT", "PUBLISHED", "UNPUBLISHED"] as const,
 })
-const attemptKind = builder.enumType("StudioAttemptKind", {
+const attemptKind = builder.enumType("ShortsAttemptKind", {
   values: ["GENERATION", "NARRATION", "RENDER"] as const,
 })
-const attemptStatus = builder.enumType("StudioAttemptStatus", {
+const attemptStatus = builder.enumType("ShortsAttemptStatus", {
   values: [
     "QUEUED",
     "RUNNING",
@@ -26,15 +26,15 @@ const attemptStatus = builder.enumType("StudioAttemptStatus", {
     "STALE",
   ] as const,
 })
-const approvalKind = builder.enumType("StudioApprovalKind", {
+const approvalKind = builder.enumType("ShortsApprovalKind", {
   values: ["SCRIPT", "PUBLICATION"] as const,
 })
 /** @classification public-shape */
-const actor = builder.objectRef<StudioActor>("StudioActor").implement({
+const actor = builder.objectRef<StudioActor>("ShortsActor").implement({
   fields: (t) => ({ kind: t.exposeString("kind"), id: t.exposeID("id") }),
 })
 /** @classification abac-gated */
-const project = builder.objectRef<StudioProject>("StudioProject").implement({
+const project = builder.objectRef<StudioProject>("ShortsProject").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     projectId: t.exposeID("projectId"),
@@ -47,7 +47,7 @@ const project = builder.objectRef<StudioProject>("StudioProject").implement({
 })
 /** @classification abac-gated */
 const summary = builder
-  .objectRef<StudioProjectSummary>("StudioProjectSummary")
+  .objectRef<StudioProjectSummary>("ShortsProjectSummary")
   .implement({
     authScopes: { loggedIn: true },
     fields: (t) => ({
@@ -57,7 +57,7 @@ const summary = builder
     }),
   })
 /** @classification abac-gated */
-const attempt = builder.objectRef<StudioAttempt>("StudioAttempt").implement({
+const attempt = builder.objectRef<StudioAttempt>("ShortsAttempt").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -78,7 +78,7 @@ const attempt = builder.objectRef<StudioAttempt>("StudioAttempt").implement({
 })
 /** @classification public-shape */
 const result = builder
-  .objectRef<StudioCommandResult>("StudioCommandResult")
+  .objectRef<StudioCommandResult>("ShortsCommandResult")
   .implement({
     fields: (t) => ({
       projectId: t.exposeID("projectId"),
@@ -89,7 +89,7 @@ const result = builder
     }),
   })
 /** @classification abac-gated */
-const revision = builder.objectRef<StudioRevision>("StudioRevision").implement({
+const revision = builder.objectRef<StudioRevision>("ShortsRevision").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     revision: t.exposeInt("revision"),
@@ -98,7 +98,7 @@ const revision = builder.objectRef<StudioRevision>("StudioRevision").implement({
   }),
 })
 /** @classification abac-gated */
-const approval = builder.objectRef<StudioApproval>("StudioApproval").implement({
+const approval = builder.objectRef<StudioApproval>("ShortsApproval").implement({
   authScopes: { loggedIn: true },
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -110,14 +110,14 @@ const approval = builder.objectRef<StudioApproval>("StudioApproval").implement({
     actor: t.field({ type: actor, resolve: (row) => row.actor }),
   }),
 })
-const base = builder.inputType("StudioRevisionCommandInput", {
+const base = builder.inputType("ShortsRevisionCommandInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
     idempotencyKey: t.string({ required: true }),
   }),
 })
-const create = builder.inputType("StudioCreateInput", {
+const create = builder.inputType("ShortsCreateInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -125,7 +125,7 @@ const create = builder.inputType("StudioCreateInput", {
     document: t.field({ type: "JSON", required: true }),
   }),
 })
-const apply = builder.inputType("StudioApplyInput", {
+const apply = builder.inputType("ShortsApplyInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -133,7 +133,7 @@ const apply = builder.inputType("StudioApplyInput", {
     operations: t.field({ type: "JSON", required: true }),
   }),
 })
-const request = builder.inputType("StudioRequestInput", {
+const request = builder.inputType("ShortsRequestInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -142,7 +142,7 @@ const request = builder.inputType("StudioRequestInput", {
     instructions: t.field({ type: "JSON", required: true }),
   }),
 })
-const approve = builder.inputType("StudioApproveInput", {
+const approve = builder.inputType("ShortsApproveInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -151,7 +151,7 @@ const approve = builder.inputType("StudioApproveInput", {
     renderAttemptId: t.id(),
   }),
 })
-const start = builder.inputType("StudioStartInput", {
+const start = builder.inputType("ShortsStartInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -160,7 +160,7 @@ const start = builder.inputType("StudioStartInput", {
     jobReference: t.string({ required: true }),
   }),
 })
-const complete = builder.inputType("StudioCompleteInput", {
+const complete = builder.inputType("ShortsCompleteInput", {
   fields: (t) => ({
     projectId: t.id({ required: true }),
     expectedRevision: t.int({ required: true }),
@@ -173,7 +173,7 @@ const complete = builder.inputType("StudioCompleteInput", {
 })
 
 builder.queryFields((t) => ({
-  studioHistory: t.field({
+  shortsHistory: t.field({
     type: [revision],
     authScopes: { loggedIn: true },
     args: {
@@ -187,7 +187,7 @@ builder.queryFields((t) => ({
         limit: args.limit ?? undefined,
       }),
   }),
-  studioAttempts: t.field({
+  shortsAttempts: t.field({
     type: [attempt],
     authScopes: { loggedIn: true },
     args: {
@@ -202,7 +202,7 @@ builder.queryFields((t) => ({
         { cursor: args.cursor ?? undefined, limit: args.limit ?? undefined },
       ),
   }),
-  studioApprovals: t.field({
+  shortsApprovals: t.field({
     type: [approval],
     authScopes: { loggedIn: true },
     args: {
@@ -217,14 +217,14 @@ builder.queryFields((t) => ({
         { cursor: args.cursor ?? undefined, limit: args.limit ?? undefined },
       ),
   }),
-  studioProject: t.field({
+  shortsProject: t.field({
     type: project,
     authScopes: { loggedIn: true },
     args: { projectId: t.arg.id({ required: true }) },
     resolve: (_, args, ctx) =>
       new StudioAuthoringService(ctx.prisma).read(ctx.user, args.projectId),
   }),
-  studioProjects: t.field({
+  shortsProjects: t.field({
     type: [summary],
     authScopes: { loggedIn: true },
     args: { cursor: t.arg.id(), limit: t.arg.int() },
@@ -234,7 +234,7 @@ builder.queryFields((t) => ({
         limit: args.limit ?? undefined,
       }),
   }),
-  studioAttempt: t.field({
+  shortsAttempt: t.field({
     type: attempt,
     authScopes: { loggedIn: true },
     args: {
@@ -250,28 +250,28 @@ builder.queryFields((t) => ({
   }),
 }))
 builder.mutationFields((t) => ({
-  createStudioProject: t.field({
+  createShortsProject: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: create, required: true }) },
     resolve: (_, { input }, ctx) =>
       new StudioAuthoringService(ctx.prisma).create(ctx.user, input),
   }),
-  applyStudioOperations: t.field({
+  applyShortsOperations: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: apply, required: true }) },
     resolve: (_, { input }, ctx) =>
       new StudioAuthoringService(ctx.prisma).apply(ctx.user, input),
   }),
-  requestStudioAttempt: t.field({
+  requestShortsAttempt: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: request, required: true }) },
     resolve: (_, { input }, ctx) =>
       new StudioAuthoringService(ctx.prisma).request(ctx.user, input),
   }),
-  approveStudioProject: t.field({
+  approveShortsProject: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: approve, required: true }) },
@@ -281,21 +281,21 @@ builder.mutationFields((t) => ({
         renderAttemptId: input.renderAttemptId ?? undefined,
       }),
   }),
-  startStudioAttempt: t.field({
+  startShortsAttempt: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: start, required: true }) },
     resolve: (_, { input }, ctx) =>
       new StudioAuthoringService(ctx.prisma).start(ctx.user, input),
   }),
-  completeStudioAttempt: t.field({
+  completeShortsAttempt: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: complete, required: true }) },
     resolve: (_, { input }, ctx) =>
       new StudioAuthoringService(ctx.prisma).complete(ctx.user, input),
   }),
-  unpublishStudioProject: t.field({
+  unpublishShortsProject: t.field({
     type: result,
     authScopes: { loggedIn: true },
     args: { input: t.arg({ type: base, required: true }) },

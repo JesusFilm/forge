@@ -31,17 +31,17 @@ it("preserves canonical non-commit rejection through both HTTP adapters without 
       ),
     )
   vi.stubGlobal("fetch", async (url: string | URL, init: RequestInit) => {
-    if (String(url) === "/api/studio/command") {
+    if (String(url) === "/api/shorts/command") {
       return POST(
-        new Request("https://manager.test/api/studio/command", {
+        new Request("https://manager.test/api/shorts/command", {
           ...init,
           headers: { ...init.headers, origin: "https://manager.test" },
         }),
       )
     }
-    expect(String(url)).toBe("https://admin.test/api/studio/interactive")
+    expect(String(url)).toBe("https://admin.test/api/shorts/interactive")
     expect(
-      new Headers(init.headers).get("x-forge-studio-interactive"),
+      new Headers(init.headers).get("x-forge-shorts-interactive"),
     ).toBeTruthy()
     return canonicalResponse()
   })

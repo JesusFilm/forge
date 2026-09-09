@@ -187,7 +187,7 @@ function fixture() {
     const ref = input as StudioAssetReference
     if (action === "asset") return metadata.get(ref.versionId)
     if (action === "asset-read")
-      return { path: `/api/studio/assets/transfer/${ref.digest}` }
+      return { path: `/api/shorts/assets/transfer/${ref.digest}` }
     throw new Error(`Unexpected action ${action}`)
   }
   return { document, snapshot, call, actions, code }

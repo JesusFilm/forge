@@ -3,7 +3,9 @@ import { createStudioAdminAdapter } from "./studio-client"
 
 describe("Studio Admin adapter", () => {
   it("validates mutation input and decodes the generated result contract", async () => {
-    const adapter = createStudioAdminAdapter(async (_query, variables) => {
+    const adapter = createStudioAdminAdapter(async (query, variables) => {
+      expect(query).toContain("applyShortsOperations")
+      expect(query).not.toMatch(/Studio|studio/)
       expect(variables.input).toEqual({
         projectId: "project",
         expectedRevision: 2,
@@ -11,7 +13,7 @@ describe("Studio Admin adapter", () => {
         operations: [{ kind: "set-metadata", title: "Edited" }],
       })
       return {
-        applyStudioOperations: {
+        applyShortsOperations: {
           projectId: "project",
           revision: 3,
           outcome: "ACCEPTED",
@@ -32,7 +34,7 @@ describe("Studio Admin adapter", () => {
   })
   it("rejects malformed Admin data instead of passing an invalid project into the editor", async () => {
     const adapter = createStudioAdminAdapter(async () => ({
-      studioProject: { projectId: "project", revision: 1 },
+      shortsProject: { projectId: "project", revision: 1 },
     }))
     await expect(adapter.read("project")).rejects.toBeDefined()
   })

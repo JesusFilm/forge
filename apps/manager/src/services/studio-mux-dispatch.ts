@@ -31,7 +31,7 @@ function muxPort(signal: AbortSignal): StudioMuxPort {
         .object({ path: z.string() })
         .parse(await call("asset-read", job.snapshot.manifest.output))
       if (
-        !/^\/api\/studio\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path) ||
+        !/^\/api\/shorts\/assets\/transfer\/[a-f0-9]{64}$/.test(grant.path) ||
         !env.STUDIO_ASSET_INGEST_ORIGIN
       )
         throw new StudioRenderRunError(

@@ -18,7 +18,7 @@ const viewSchema = z.object({
   ),
 })
 export async function calendarPlanCall(payload: unknown) {
-  const response = await fetch("/api/studio/calendar-plan", {
+  const response = await fetch("/api/shorts/calendar-plan", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),

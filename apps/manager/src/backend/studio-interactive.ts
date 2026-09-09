@@ -44,7 +44,7 @@ export function createStudioInteractiveClient(
     })
       .setProtectedHeader({
         alg: "EdDSA",
-        typ: "studio-interactive+jwt",
+        typ: "shorts-interactive+jwt",
         kid: env.STUDIO_INTERACTIVE_KEY_ID,
       })
       .setIssuer("forge-manager")
@@ -54,7 +54,7 @@ export function createStudioInteractiveClient(
       .setExpirationTime("60s")
       .sign(key)
     const response = await fetch(
-      new URL("/api/studio/interactive", env.ADMIN_GRAPHQL_URL),
+      new URL("/api/shorts/interactive", env.ADMIN_GRAPHQL_URL),
       {
         method: "POST",
         headers: {

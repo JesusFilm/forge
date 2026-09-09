@@ -6,10 +6,10 @@ import { StudioBrokerError, type StudioBrokerClient } from "./studio-broker"
  * send them to the rendering service, browser, model or delegated author agent. */
 export function studioRenderClient(signal?: AbortSignal) {
   const caller: StudioCaller = {
-    sub: "studio-render-worker",
+    sub: "shorts-render-worker",
     authority: "delegated",
-    clientId: "studio-render",
-    scopes: ["studio:render:execute"],
+    clientId: "shorts-render",
+    scopes: ["shorts:render:execute"],
   }
   const call = async (command: string, input: unknown) => {
     const response = await studioServiceRequest(

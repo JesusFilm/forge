@@ -1,7 +1,7 @@
 import { z } from "zod"
 
-export const STUDIO_INTERACTIVE_AUDIENCE = "forge-admin:studio:interactive"
-export const STUDIO_INTERACTIVE_HEADER = "x-forge-studio-interactive"
+export const STUDIO_INTERACTIVE_AUDIENCE = "forge-admin:shorts:interactive"
+export const STUDIO_INTERACTIVE_HEADER = "x-forge-shorts-interactive"
 export const studioRpcSchema = z
   .object({
     action: z.enum([

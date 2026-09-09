@@ -422,7 +422,7 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
-      registerApiRoute("/forge-studio-calendar", {
+      registerApiRoute("/forge-shorts-calendar", {
         method: "POST",
         handler: async (c) => {
           if (
@@ -435,7 +435,7 @@ export const mastra = new Mastra({
           return calendarRuntime!(c.req.raw)
         },
       }),
-      registerApiRoute("/forge-studio", {
+      registerApiRoute("/forge-shorts", {
         method: "POST",
         handler: async (c) => {
           if (

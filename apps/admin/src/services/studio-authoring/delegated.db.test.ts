@@ -47,7 +47,7 @@ run(
           sub: id,
           authority: "delegated" as const,
           clientId: "claude",
-          scopes: ["studio:read", "studio:edit", "studio:chat"],
+          scopes: ["shorts:read", "shorts:edit", "shorts:chat"],
         }
       const projectId = randomUUID(),
         document = studioDocumentSchema.parse({
@@ -82,7 +82,7 @@ run(
       await expect(
         executeStudioDelegated(
           db,
-          { ...caller, scopes: ["studio:read"] },
+          { ...caller, scopes: ["shorts:read"] },
           { action: "apply", input: command },
         ),
       ).rejects.toThrow("scope")
@@ -159,7 +159,7 @@ run(
         await expect(
           executeStudioDelegated(
             db,
-            { ...caller, scopes: ["studio:read"] },
+            { ...caller, scopes: ["shorts:read"] },
             { action: "asset-upload", input: payload },
           ),
         ).rejects.toThrow("scope")

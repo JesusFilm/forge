@@ -9,7 +9,7 @@ vi.mock("@/services/studio-publication", () => ({
 import { POST } from "./route"
 it("requires service bearer and cannot accept interactive cookies as scheduler authority", async () => {
   const result = await POST(
-    new Request("https://manager.test/api/admin-trigger/studio-publication", {
+    new Request("https://manager.test/api/admin-trigger/shorts-publication", {
       method: "POST",
       headers: { cookie: "session=human" },
       body: "{}",
@@ -21,7 +21,7 @@ it("requires service bearer and cannot accept interactive cookies as scheduler a
 it("reports preparation failures as known not submitted without claiming publication", async () => {
   mocks.prepare.mockRejectedValue(new Error("UNREADY"))
   const r = await POST(
-    new Request("https://manager.test/api/admin-trigger/studio-publication", {
+    new Request("https://manager.test/api/admin-trigger/shorts-publication", {
       method: "POST",
       headers: { authorization: "Bearer owned-key" },
       body: "{}",
