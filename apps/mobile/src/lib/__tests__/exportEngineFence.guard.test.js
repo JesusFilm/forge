@@ -10,8 +10,8 @@ const path = require("path")
 // path tears that session down and cancels every one of them.
 const ENGINE_GLOBAL_CONFIG = /\b(?:configureDownloadEngine|setConfig)\s*\(/g
 
-// The export path's roots. Two of these do not exist yet, which the walker
-// tolerates — a hardcoded list that threw would make the guard un-landable.
+// The export path's roots. Every one must resolve — a root the reader cannot
+// find used to be skipped, so a rename could shrink the walk in silence.
 const EXPORT_ROOTS = [
   "src/lib/rawExport.ts",
   "src/lib/rawExportAdapter.ts",
@@ -19,6 +19,7 @@ const EXPORT_ROOTS = [
   "src/lib/exportSession.ts",
   "src/lib/rawExportRun.ts",
   "src/lib/exportSweep.ts",
+  "src/lib/exportReport.ts",
   "src/lib/rawExportConstants.ts",
   "src/components/ExportReportHost.tsx",
   // The composition root is the ONLY export file that holds the engine at all,
@@ -27,12 +28,11 @@ const EXPORT_ROOTS = [
 ]
 
 const FENCE_EXEMPT = new Set([
-  // Declares the global configure. The fence is about its CALLERS.
+  // Declares the global configure. The fence is about its CALLERS, and this is
+  // the ONLY exemption: `DownloadsProvider` held one until the call-site pin at
+  // the foot of this file, and that exemption is what left the single line
+  // holding KTD3 unguarded.
   "src/lib/downloadEngine.ts",
-  // Owns the OFFLINE path and must configure the engine for downloads. It
-  // reaches the export by CALLING attachRawExportRuntime, never the reverse,
-  // so it sits outside the closure today and stays exempt if it ever enters.
-  "src/contexts/DownloadsProvider.tsx",
 ])
 
 // Blank comments and string CONTENT so a token in prose or in a literal cannot
@@ -233,11 +233,14 @@ function resolveRelative(fromRelative, spec) {
 const REACHABLE_FLOOR = 12
 
 describe("no export-path module configures the download engine", () => {
-  const reachable = reachableFrom(
-    EXPORT_ROOTS.filter((rel) => readSource(rel) != null),
-    readSource,
-    resolveRelative,
-  )
+  const reachable = reachableFrom(EXPORT_ROOTS, readSource, resolveRelative)
+
+  it("every listed root resolves", () => {
+    // Membership, not a count. A root that no longer exists must fail here
+    // rather than drop out of the walk and shrink the fence.
+    expect(EXPORT_ROOTS.filter((rel) => readSource(rel) == null)).toEqual([])
+    for (const root of EXPORT_ROOTS) expect(reachable).toContain(root)
+  })
 
   it("the scan reaches real export code and the engine seam", () => {
     expect(reachable.length).toBeGreaterThanOrEqual(REACHABLE_FLOOR)
@@ -281,16 +284,31 @@ describe("no export-path module configures the download engine", () => {
     ])
   })
 
-  it("negative control: the two exempt owners are not flagged", () => {
+  it("positive control: the provider's own direct configure is flagged", () => {
+    // It used to be exempt. The exemption made the revert invisible, so the
+    // provider is now scanned like every other caller.
+    expect(
+      findEngineConfigCalls([
+        {
+          relative: "src/contexts/DownloadsProvider.tsx",
+          content: `configureDownloadEngine({ wifiOnly })`,
+        },
+      ]),
+    ).toEqual(["src/contexts/DownloadsProvider.tsx: configureDownloadEngine"])
+  })
+
+  it("negative control: the declaring module, and a bare reference, pass", () => {
     expect(
       findEngineConfigCalls([
         {
           relative: "src/lib/downloadEngine.ts",
           content: `export function configureDownloadEngine(o) { setConfig(o) }`,
         },
+        // Handing the engine to the fence is the permitted shape: a reference,
+        // never a call. The fence decides WHEN it runs.
         {
           relative: "src/contexts/DownloadsProvider.tsx",
-          content: `configureDownloadEngine({ wifiOnly })`,
+          content: `const fence = createEngineConfigFence({ configure: configureDownloadEngine, session })`,
         },
       ]),
     ).toEqual([])
@@ -328,5 +346,41 @@ describe("no export-path module configures the download engine", () => {
       "./rawExport",
       "./sideEffect",
     ])
+  })
+})
+
+// The closure scan above proves no export MODULE names the configure call. It
+// cannot prove the invariant, because the invariant is about a line that lives
+// OUTSIDE the closure: the provider's wifi-only effect is the only thing that
+// configures the engine at all, and routing it through the fence is what stops
+// a mid-export toggle. That is a one-line revert, and it typechecks.
+const PROVIDER = "src/contexts/DownloadsProvider.tsx"
+const FENCE_APPLY = "engineFenceRef.current?.setWifiOnly(wifiOnly)"
+const DIRECT_CONFIGURE = "configureDownloadEngine({ wifiOnly })"
+
+describe("the wifi-only preference reaches the engine only through the fence", () => {
+  const source = readSource(PROVIDER)
+
+  it("the provider builds the fence and applies the preference to it", () => {
+    expect(source).not.toBeNull()
+    expect(source).toContain("createEngineConfigFence({")
+    // The engine is handed to the fence as a REFERENCE. That is the permitted
+    // shape, and pinning it keeps the absence check below from going vacuous.
+    expect(source).toContain("configure: configureDownloadEngine,")
+    expect(source).toContain(FENCE_APPLY)
+  })
+
+  it("the provider holds no direct configure CALL", () => {
+    expect(
+      findEngineConfigCalls([{ relative: PROVIDER, content: source }]),
+    ).toEqual([])
+  })
+
+  it("the one-line revert to a direct configure is flagged", () => {
+    const reverted = source.replace(FENCE_APPLY, DIRECT_CONFIGURE)
+    expect(reverted).not.toBe(source)
+    expect(
+      findEngineConfigCalls([{ relative: PROVIDER, content: reverted }]),
+    ).toEqual([`${PROVIDER}: configureDownloadEngine`])
   })
 })

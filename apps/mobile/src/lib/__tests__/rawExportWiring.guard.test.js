@@ -27,13 +27,34 @@ function read(relative) {
 
 const RUNTIME = "src/lib/rawExportRuntime.ts"
 const PROVIDER = "src/contexts/DownloadsProvider.tsx"
+
+// There are TWO download sheets, and each starts its own kind of export. A
+// guard that reads one of them leaves the other free to dismiss and save
+// nothing — which is the failure mode this whole file is named for.
 const WATCH_ROUTE = "app/watch/download.tsx"
+const SERIES_ROUTE = "app/series/download.tsx"
+
+const WATCH_WIRING = ["getRawExportAdapter()", "exportVideo("]
+const SERIES_WIRING = [
+  "getRawExportAdapter()",
+  "buildSeriesExportRun(",
+  "runSeriesRawExport(",
+  // R21 folds a whole run into one report. Without the channel every episode
+  // saves and the viewer is told nothing.
+  "publishExportReport",
+]
 
 /** Strip comments so a mention inside prose cannot satisfy an assertion. */
 function stripComments(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/.*$/gm, "$1")
+}
+
+/** Pure detector, so a control can prove it reads code and not prose. */
+function missingWiring(source, required) {
+  const stripped = stripComments(source)
+  return required.filter((token) => !stripped.includes(token))
 }
 
 describe("the raw-export composition root wires its native bindings", () => {
@@ -95,10 +116,32 @@ describe("the raw-export composition root wires its native bindings", () => {
   it("is reachable from the app: the per-video route starts an export", () => {
     // The route dismissing the sheet and doing nothing else is exactly the
     // state this unit shipped in before the runtime existed.
-    const source = stripComments(read(WATCH_ROUTE))
+    expect(missingWiring(read(WATCH_ROUTE), WATCH_WIRING)).toEqual([])
+  })
 
-    expect(source).toContain("getRawExportAdapter()")
-    expect(source).toMatch(/exportVideo\(/)
+  it("is reachable from the app: the series route starts a run", () => {
+    // The same failure mode on the other sheet. It went uncovered because the
+    // guard named one route file and nobody counted the sheets.
+    expect(missingWiring(read(SERIES_ROUTE), SERIES_WIRING)).toEqual([])
+  })
+
+  it("positive control: a gutted series raw branch is caught", () => {
+    // The real file with its run start deleted — the shape of "Confirm
+    // dismisses and saves nothing".
+    const gutted = read(SERIES_ROUTE)
+      .replace(/runSeriesRawExport\(/g, "noop(")
+      .replace(/buildSeriesExportRun\(/g, "noop(")
+    expect(missingWiring(gutted, SERIES_WIRING)).toEqual([
+      "buildSeriesExportRun(",
+      "runSeriesRawExport(",
+    ])
+  })
+
+  it("negative control: wiring named only in prose does not satisfy it", () => {
+    // Both routes' checks read CODE. A comment describing the call is not one.
+    const prose = SERIES_WIRING.map((token) => `// ${token}`).join("\n")
+    expect(missingWiring(prose, SERIES_WIRING)).toEqual(SERIES_WIRING)
+    expect(missingWiring(prose, WATCH_WIRING)).toEqual(WATCH_WIRING)
   })
 
   it("negative control: the reader sees an absent call, not a default", () => {

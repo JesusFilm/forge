@@ -23,6 +23,9 @@ const STORAGE_WRITE =
   /\b(?:setItem|multiSet|mergeItem|removeItem|multiRemove)\s*\(/g
 const OFFLINE_KEY = /offline/i
 
+// The export path, in full. `rawExportRuntime.ts` is here because it is the
+// ONE export file that holds AsyncStorage at all, so it is where an offline
+// write would actually be reachable. `exportReport.ts` keeps the list whole.
 const EXPORT_MODULES = [
   "src/lib/rawExport.ts",
   "src/lib/rawExportAdapter.ts",
@@ -30,7 +33,9 @@ const EXPORT_MODULES = [
   "src/lib/exportSession.ts",
   "src/lib/rawExportRun.ts",
   "src/lib/exportSweep.ts",
+  "src/lib/exportReport.ts",
   "src/lib/rawExportConstants.ts",
+  "src/lib/rawExportRuntime.ts",
   "src/components/ExportReportHost.tsx",
 ]
 
@@ -190,7 +195,6 @@ function findManifestWrites(entries) {
 
 const APP_ROOT = path.resolve(__dirname, "../../..")
 
-/** Tolerates a module that does not exist yet; two are still being written. */
 function readSource(relative) {
   const full = path.join(APP_ROOT, relative)
   if (!fs.existsSync(full)) return null
@@ -207,29 +211,50 @@ function collectEntries(read) {
   return entries
 }
 
-// Six of the eight modules exist today; the rest only add. A lower floor would
-// let a broken path resolution pass by scanning nothing.
-const MODULE_FLOOR = 6
-
 describe("no export module writes offline state", () => {
   const entries = collectEntries(readSource)
 
-  it("the scan reads real export modules", () => {
-    expect(entries.length).toBeGreaterThanOrEqual(MODULE_FLOOR)
+  it("the scan reads EVERY listed export module", () => {
+    // Membership, not a count. Under a count-only floor `transferPort.ts`
+    // could vanish — the module holding every staging write — and this suite
+    // stayed green. A rename during a refactor does exactly that.
+    expect(entries.map((entry) => entry.relative)).toEqual(EXPORT_MODULES)
     for (const entry of entries) {
       expect(entry.content.length).toBeGreaterThan(200)
       expect(entry.content).toContain("export")
     }
   })
 
-  it("the floor fails when the scan matches nothing", () => {
+  it("a starved reader is caught, not tolerated", () => {
     const starved = collectEntries(() => null)
     expect(starved).toEqual([])
-    expect(starved.length).toBeLessThan(MODULE_FLOOR)
+    expect(starved.map((entry) => entry.relative)).not.toEqual(EXPORT_MODULES)
   })
 
   it("no export module touches the offline manifest", () => {
     expect(findManifestWrites(entries)).toEqual([])
+  })
+
+  it("an offline write in the real composition root is flagged", () => {
+    // `rawExportRuntime.ts` is the ONE export file holding AsyncStorage, and it
+    // went unscanned until now. This proves the scan reaches its writes.
+    const runtime = "src/lib/rawExportRuntime.ts"
+    const mutated = entries.map((entry) =>
+      entry.relative === runtime
+        ? {
+            relative: runtime,
+            content: entry.content.replace(
+              `set: (key, value) => AsyncStorage.setItem(key, value),`,
+              `set: (key, value) => AsyncStorage.setItem("offline." + key, value),`,
+            ),
+          }
+        : entry,
+    )
+    // Anti-vacuous: the substitution must have landed on real source.
+    expect(mutated).not.toEqual(entries)
+    expect(findManifestWrites(mutated)).toEqual([
+      `${runtime}: offline storage write`,
+    ])
   })
 
   it("positive control: every manifest write symbol is flagged on its own", () => {

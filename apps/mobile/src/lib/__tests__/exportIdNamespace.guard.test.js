@@ -28,6 +28,10 @@ const ID_SINKS = [
 // elsewhere in an export module cannot trip this rule.
 const SPEC_SIBLINGS = ["url", "destination", "allowCellular"]
 
+// The export path, in full. `rawExportRuntime.ts` is here because it is the
+// composition root: it BINDS the engine's stop and background-completion calls,
+// so it is the one file where a bare slug could reach a sink without any pure
+// module naming one. `exportReport.ts` keeps the list the whole export path.
 const EXPORT_MODULES = [
   "src/lib/rawExport.ts",
   "src/lib/rawExportAdapter.ts",
@@ -35,7 +39,9 @@ const EXPORT_MODULES = [
   "src/lib/exportSession.ts",
   "src/lib/rawExportRun.ts",
   "src/lib/exportSweep.ts",
+  "src/lib/exportReport.ts",
   "src/lib/rawExportConstants.ts",
+  "src/lib/rawExportRuntime.ts",
   "src/components/ExportReportHost.tsx",
 ]
 
@@ -265,7 +271,6 @@ function findBareSlugIds(entries) {
 
 const APP_ROOT = path.resolve(__dirname, "../../..")
 
-/** Tolerates a module that does not exist yet; two are still being written. */
 function readSource(relative) {
   const full = path.join(APP_ROOT, relative)
   if (!fs.existsSync(full)) return null
@@ -282,25 +287,24 @@ function collectEntries(read) {
   return entries
 }
 
-// Six of the eight modules exist today; the rest only add. A lower floor would
-// let a broken path resolution pass by scanning nothing.
-const MODULE_FLOOR = 6
-
 describe("every export transfer id carries the export namespace", () => {
   const entries = collectEntries(readSource)
 
-  it("the scan reads real export modules", () => {
-    expect(entries.length).toBeGreaterThanOrEqual(MODULE_FLOOR)
+  it("the scan reads EVERY listed export module", () => {
+    // Membership, not a count. Under a count-only floor `rawExportAdapter.ts`
+    // and `transferPort.ts` could both vanish — the two modules holding every
+    // transfer id — and this suite stayed green. A rename does exactly that.
+    expect(entries.map((entry) => entry.relative)).toEqual(EXPORT_MODULES)
     for (const entry of entries) {
       expect(entry.content.length).toBeGreaterThan(200)
       expect(entry.content).toContain("export")
     }
   })
 
-  it("the floor fails when the scan matches nothing", () => {
+  it("a starved reader is caught, not tolerated", () => {
     const starved = collectEntries(() => null)
     expect(starved).toEqual([])
-    expect(starved.length).toBeLessThan(MODULE_FLOOR)
+    expect(starved.map((entry) => entry.relative)).not.toEqual(EXPORT_MODULES)
   })
 
   it("no export module passes a bare slug as a transfer id", () => {
