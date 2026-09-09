@@ -81,7 +81,28 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-image",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "ios": {
+            "fonts": ["./assets/fonts/NotoSerif-SemiBold.ttf"]
+          },
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "NotoSerif-SemiBold",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/NotoSerif-SemiBold.ttf",
+                    "weight": 600,
+                    "style": "normal"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {
