@@ -2,6 +2,7 @@ import { buildWatchShareUrl } from "../watchShareUrl"
 import {
   consumeDeepLinkEntry,
   initDeepLinkOrigins,
+  isExternalLaunch,
   registerDeepLinkUrl,
   resetDeepLinkOrigins,
   watchSlugFromUrl,
@@ -169,5 +170,130 @@ describe("initDeepLinkOrigins", () => {
     })
     teardown()
     expect(remove).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("isExternalLaunch", () => {
+  const listener = () => ({ remove: jest.fn() })
+
+  it("reports an external launch when the opening url addresses a route", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve("forgemobile://watch/jesus"),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(true)
+  })
+
+  // The cold shape a person actually taps is the share URL, not the custom
+  // scheme. Pinning it against the real producer stops the fixture drifting.
+  it("reports an external launch for the app's own share url", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () =>
+        Promise.resolve(buildWatchShareUrl("birth-of-jesus", null)),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(true)
+  })
+
+  it("reports a non-external launch when there is no opening url", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve(null),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  // Every development-client launch carries this wrapper. Reading "url != null"
+  // would report EVERY launch an implementer can watch as external.
+  it("reports a non-external launch for a development-client wrapper url", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () =>
+        Promise.resolve(
+          "exp+jesus-film-forge-v2://expo-development-client/?url=http%3A%2F%2F192.168.1.10%3A8081",
+        ),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  it("reports a non-external launch when the initial-url read rejects", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.reject(new Error("bridge down")),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  // getInitialURL is known to hang rather than reject. The answer must still be
+  // an answer, so the caller is never left without one.
+  it("reports a non-external launch when the initial-url read never settles", async () => {
+    jest.useFakeTimers()
+    try {
+      initDeepLinkOrigins({
+        getInitialURL: () => new Promise<string | null>(() => {}),
+        addUrlListener: listener,
+      })
+      jest.advanceTimersByTime(3_000)
+      await whenDeepLinkOriginsReady()
+      expect(isExternalLaunch()).toBe(false)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  // The answer describes the LAUNCH. A link opened later belongs to a session
+  // that is already past the moment this read exists to decide.
+  it("keeps the launch answer when a url arrives while running", async () => {
+    let fire: ((e: { url: string }) => void) | undefined
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve(null),
+      addUrlListener: (handler) => {
+        fire = handler
+        return { remove: jest.fn() }
+      },
+    })
+    await whenDeepLinkOriginsReady()
+    fire?.({ url: "forgemobile://watch/rivka" })
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  it("returns the same answer on repeated reads", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve("forgemobile://watch/jesus"),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    expect(isExternalLaunch()).toBe(true)
+    expect(isExternalLaunch()).toBe(true)
+    expect(isExternalLaunch()).toBe(true)
+  })
+
+  // The read must not touch the per-slug registry: consumeDeepLinkEntry owns
+  // the deep-link attribution this module exists to provide.
+  it("leaves the per-slug entry for consumeDeepLinkEntry to claim", async () => {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve("forgemobile://watch/jesus"),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    isExternalLaunch()
+    expect(consumeDeepLinkEntry("jesus")).toBe("cold")
+    expect(consumeDeepLinkEntry("jesus")).toBeNull()
+  })
+
+  it("reports a non-external launch before anything registers", () => {
+    expect(isExternalLaunch()).toBe(false)
+  })
+
+  it("is cleared by resetDeepLinkOrigins", () => {
+    registerDeepLinkUrl("forgemobile://watch/jesus", "cold")
+    expect(isExternalLaunch()).toBe(true)
+    resetDeepLinkOrigins()
+    expect(isExternalLaunch()).toBe(false)
   })
 })
