@@ -87,9 +87,16 @@ export function consumeDeepLinkEntry(
 }
 
 /**
- * Reports whether this launch started from a URL that addresses an app route.
+ * Reports whether this launch started from a URL that addresses a WATCH route.
  * The read clears nothing, so repeated reads agree and the per-slug entries stay
  * for `consumeDeepLinkEntry`. Await the gate below before the first read.
+ *
+ * A watch slug, not "any URL", and that is a decision rather than an oversight:
+ * every development-client launch carries a wrapper URL, so the wider read
+ * would report every launch anyone can observe locally as external. The cost is
+ * that a cold launch on another app route — `experience/`, `series`, `mission` —
+ * reports NON-external, so the splash plays and delays it by the hold. Widening
+ * this means teaching the module those routes, not deleting the narrowing.
  */
 export function isExternalLaunch(): boolean {
   return launchedFromExternalUrl

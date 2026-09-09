@@ -297,3 +297,44 @@ describe("isExternalLaunch", () => {
     expect(isExternalLaunch()).toBe(false)
   })
 })
+
+// The boundary of the narrowing, pinned as a DECISION rather than left to be
+// rediscovered. "A watch slug" is not "any URL" because every development-
+// client launch carries a wrapper URL, and the wider read would skip the
+// animation on every launch anyone can observe locally.
+describe("what isExternalLaunch counts as external", () => {
+  const listener = () => ({ remove: jest.fn() })
+
+  async function launchWith(url: string | null) {
+    initDeepLinkOrigins({
+      getInitialURL: () => Promise.resolve(url),
+      addUrlListener: listener,
+    })
+    await whenDeepLinkOriginsReady()
+    return isExternalLaunch()
+  }
+
+  it("counts a watch link", async () => {
+    expect(await launchWith("forgemobile://watch/jesus")).toBe(true)
+  })
+
+  it.each([
+    ["forgemobile://experience/christmas"],
+    ["forgemobile://series/life-of-jesus"],
+    ["forgemobile://mission"],
+    ["forgemobile://library"],
+  ])(
+    "does NOT count %s — the splash plays and delays it (accepted)",
+    async (url) => {
+      expect(await launchWith(url)).toBe(false)
+    },
+  )
+
+  it("does not count the development-client wrapper, which is the point", async () => {
+    expect(
+      await launchWith(
+        "exp+jesus-film-forge-v2://expo-development-client/?url=http%3A%2F%2F192.168.1.10%3A8081",
+      ),
+    ).toBe(false)
+  })
+})
