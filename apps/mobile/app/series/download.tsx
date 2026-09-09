@@ -385,6 +385,10 @@ export default function SeriesDownloadRoute() {
    */
   const startRawSeriesExport = useCallback(() => {
     if (!RAW_EXPORT_ENABLED || !resolution || !series) return
+    // The offline path's own busy gate: Confirm is disabled off "ready", so
+    // this is what stops a second tap starting a duplicate run before the
+    // sheet finishes dismissing.
+    setPhase({ kind: "enqueuing" })
     const seriesSlug = series.slug
     // One run id for the whole series, so the host folds every episode's
     // outcome into ONE report (R21).

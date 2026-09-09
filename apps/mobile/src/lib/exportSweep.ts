@@ -50,19 +50,30 @@ export function planExportSweep(input: ExportSweepInput): ExportSweepAction[] {
   const claimed = new Set<string>()
 
   for (const note of input.notes) {
-    if (!input.existingStagedFiles.has(note.target)) {
-      // The directory stays UNCLAIMED on purpose: the orphan pass below removes
-      // it when some other leftover kept it alive.
-      actions.push({ action: "dropNote", target: note.target })
-      continue
-    }
-    claimed.add(sanitizeSegment(note.target))
+    const staged = input.existingStagedFiles.has(note.target)
+
     // R28/R33: only a finished transfer takes the irreversible step, and only
     // while the feature is on. A disabled build discards the stage instead.
     if (note.transferFinished && enabled) {
+      if (!staged) {
+        // Nothing to save without the bytes. The directory stays UNCLAIMED so
+        // the orphan pass below removes whatever kept it alive.
+        actions.push({ action: "dropNote", target: note.target })
+        continue
+      }
+      claimed.add(sanitizeSegment(note.target))
       actions.push({ action: "finish", note })
       continue
     }
+
+    // Both remaining actions delete the target's directory themselves, so the
+    // orphan pass must not queue a second removal for it.
+    claimed.add(sanitizeSegment(note.target))
+
+    // An unfinished transfer is discarded whether or not its file landed yet —
+    // the note can outlive a kill that happened before the first byte. Skipping
+    // this branch on a missing file would leave a surviving native task running
+    // with nothing tracking it, which is the hazard the id namespace exists for.
     const taskId = buildExportTaskId(note.target)
     actions.push({
       action: "discard",

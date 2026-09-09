@@ -184,7 +184,26 @@ describe("planExportSweep", () => {
     expect(actions).toEqual([{ action: "dropNote", target: SLUG }])
   })
 
-  it("removes a staged directory that survived its dropped note", () => {
+  it("discards an unfinished note whose file never landed, and stops its task", () => {
+    // The kill-before-the-first-byte case: `ensureDirectory` ran and the note
+    // was written, but the engine had not produced the file yet. Dropping the
+    // note here — the earlier behaviour — left a surviving native task running
+    // with nothing tracking it, and told the viewer nothing.
+    const stale = note({ transferFinished: false })
+
+    const actions = planExportSweep({
+      notes: [stale],
+      stagedEntries: [SLUG],
+      existingStagedFiles: new Set(),
+      liveTaskIds: new Set([buildExportTaskId(SLUG)]),
+    })
+
+    expect(actions).toEqual([
+      { action: "discard", note: stale, stopTaskId: buildExportTaskId(SLUG) },
+    ])
+  })
+
+  it("discards an unfinished note with no live task, and removes nothing twice", () => {
     const stale = note({ transferFinished: false })
 
     const actions = planExportSweep({
@@ -194,9 +213,10 @@ describe("planExportSweep", () => {
       liveTaskIds: new Set(),
     })
 
+    // `discard` deletes the directory itself, so the orphan pass must not queue
+    // a second removal for the same target.
     expect(actions).toEqual([
-      { action: "dropNote", target: SLUG },
-      { action: "removeStagedDir", target: SLUG },
+      { action: "discard", note: stale, stopTaskId: null },
     ])
   })
 
