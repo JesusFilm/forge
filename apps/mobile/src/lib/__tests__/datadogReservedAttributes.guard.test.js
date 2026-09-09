@@ -12,7 +12,13 @@ const path = require("path")
 // docs/solutions/conventions/datadog-reserved-log-attribute-name-shadowing.md
 const RESERVED = ["source", "host", "service", "status", "message", "trace_id"]
 
-const CALL = /\b(?:datadogLog|DdLogs)\.(?:info|warn|error|debug)\s*\(/g
+// `telemetry` is the INJECTED alias for the same sink (DownloadTelemetry in
+// downloadRequestBuilders.ts). A scan of the two direct sinks alone cannot see
+// a call through it, and one live `message` collision hid there.
+// `?\.` is not cosmetic: the sink is OPTIONAL on every injected port, so
+// `deps.telemetry?.info(...)` is the shape the export modules actually emit.
+const CALL =
+  /\b(?:datadogLog|DdLogs|telemetry)\??\.(?:info|warn|error|debug)\s*\(/g
 
 // Returns the source text between `open` (index of a bracket) and its match,
 // skipping strings, template literals, and comments. null if unbalanced.
@@ -250,6 +256,23 @@ describe("no Datadog log attribute shadows a reserved field", () => {
         },
       ]),
     ).toEqual(["a.tsx: message", "b.tsx: message"])
+  })
+
+  it("positive control: an injected telemetry alias is flagged", () => {
+    // The sink arrives as `DownloadTelemetry`, so the call site never names
+    // datadogLog. This is the form that hid downloadLifecycle's live drop.
+    expect(
+      findReservedAttributes([
+        {
+          relative: "local.ts",
+          content: `telemetry.warn("download.native_error", { message: raw })`,
+        },
+        {
+          relative: "member.ts",
+          content: `deps.telemetry?.info("download.begin", { status })`,
+        },
+      ]),
+    ).toEqual(["local.ts: message", "member.ts: status"])
   })
 
   it("positive control: a brace inside the first argument does not hide the object", () => {
