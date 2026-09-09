@@ -4,6 +4,52 @@
 > below was subsequently removed at the owner's request. Current operational
 > inspection uses Datadog logs; the PostgreSQL Watch-to-Admin lifecycle remains.
 
+## Admission diagnostics regression (2026-09-09)
+
+The follow-up diagnostic branch preserves admission behavior while exposing its
+failure stage and timing. Full suites passed: 3,924 Web tests and 6,233 Admin
+tests. Web/Admin lint and typechecks, repository formatting, the real Redis
+admission test, and six real PostgreSQL lifecycle/concurrency tests passed.
+The focused admission/route/recorder run passed 58 tests. Sequential review in
+the main task covered correctness, testing, standards, privacy, reliability,
+TypeScript, and the existing recommendation-boundary learning; no blocking
+finding remained. No parallel-agent result is claimed.
+
+Fresh local verification used Web development port 3050, the successful Admin
+production build on 3053, isolated PostgreSQL on 55465, and Redis on 56465.
+The seed catalog used the previously downloaded public Mux sample, relayed as
+local HLS with unchanged segment bytes. This is a decoder/transport fixture,
+not production catalog, vector or CDN evidence.
+
+- Video decoded and sent accepted facts through real Web/Admin HTTP. Pause held
+  position 19.450769 seconds unchanged, then playback resumed.
+- A deliberately lost acknowledgement after a successful fact write caused an
+  identical-payload replay, confirmed by the browser wrapper and Admin replay log.
+- Six injected fact 503 responses left video unpaused; it advanced 21.064 seconds
+  and decoded another 1,263 frames. The first browser subsequently encountered a
+  local resource error during navigation; that attempt is not a navigation pass.
+  A fresh browser successfully navigated between the feature and trailer routes.
+- A deliberately wrong fact media binding produced exactly one real HTTP 409,
+  no further fact retries, and continued decoded playback.
+- An Applebot browser received HTTP 403 for context, claim and facts. Its public
+  Watch page remained accessible.
+- A fresh viewer reached a real media `ended` event after seeking near the end.
+  The normal workflow automatically finalized the episode into two immutable
+  outcomes; no outcome service was invoked manually.
+- A separately authenticated local Admin fixture loaded the authorized playback
+  and profile eligibility sections. Its production-build navigation measured
+  46 ms TTFB, 144 ms DOMContentLoaded and 203 ms load. These are local smoke
+  measurements, not a production or baseline comparison. No browser code changes
+  are included in the diagnostic release.
+
+The initial Admin fixture omitted `REDIS_HOST`/`REDIS_PORT`, causing GraphQL 500s;
+pointing its existing limiter at the isolated Redis corrected the setup. The
+known unrelated local search-retention workflow registration error remains;
+recommendation reconciliation heartbeats and episode finalization succeeded.
+Local empty profile populations cannot establish the production pointer invariant.
+Production admission diagnosis, the two-hour canary, installed monitors and the
+fresh authorized production audit remain separate gates.
+
 ## Collector removal regression (2026-09-09)
 
 The removal was verified in an isolated host worktree with a fresh PostgreSQL 18
