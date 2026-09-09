@@ -172,3 +172,7 @@ all-language backfill execution, to staged promotion and cleanup.
 - A small scoped generation is written staged, verified invisible to search,
   promoted, observed by search, rolled back, and then cleaned up after dry-run
   confirmation.
+
+## Recommendation Coverage Handoff
+
+`feat-474` adds `docs/operations/recommendation-locale-coverage.md` and a read-only diagnostic for explicit seed/locale/audio inputs. Use its private, bounded source target list to prioritize exact edition/language source resolution. Confirm Admin/Core timed text, then Manager artifacts, before proposing enrichment or embeddings. Missing published card metadata belongs to `feat-475`, not this embedding operator. This handoff is related work, not a new hard dependency.
