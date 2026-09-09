@@ -33,6 +33,7 @@ import {
 } from "./rawExport"
 import { RAW_EXPORT_ALBUM_NAME } from "./rawExportConstants"
 import {
+  adoptStagedPath,
   buildExportTaskId,
   buildStagedExportPath,
   exportStagingDir,
@@ -248,7 +249,11 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
               await deps.fs.ensureDirectory(stagingDir)
               // The note lands BEFORE the bytes, so a process killed mid-transfer
               // leaves a discardable stage rather than an unattributable file.
-              await handle.stage({ stagedPath: initialPath, albumIntent })
+              await handle.stage({
+                stagedPath: initialPath,
+                albumIntent,
+                runSize: input.runSize,
+              })
               return deps.port.runExportTransfer(spec, hooks)
             },
             stop: (id) => deps.port.stopExportTransfer(id),
@@ -276,7 +281,11 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
             if (admission.kind === "failed") return "failed"
 
             await deps.fs.ensureDirectory(stagingDir)
-            await handle.stage({ stagedPath: initialPath, albumIntent })
+            await handle.stage({
+              stagedPath: initialPath,
+              albumIntent,
+              runSize: input.runSize,
+            })
             // R38: the library gets a DUPLICATE, so a platform that consumes
             // what it is handed cannot destroy the offline copy.
             await deps.fs.copyFile(reusable, initialPath)
@@ -293,17 +302,21 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
             }
             if (staged.outcome === "cancelled") return "cancelled"
             if (staged.outcome === "failed") return "failed"
-            // The engine reports where the bytes landed; a location outside the
-            // export root is not ours to save or delete.
-            if (isUnderExportRoot(staged.stagedPath, deps.exportRoot)) {
-              stagedPath = staged.stagedPath
-            }
+            // The engine reports where the bytes landed, with the scheme
+            // stripped, and a location outside the export root is not ours.
+            const adopted = adoptStagedPath(staged.stagedPath, deps.exportRoot)
+            if (adopted) stagedPath = adopted
           }
 
-          await handle.stage({ stagedPath, albumIntent })
+          await handle.stage({
+            stagedPath,
+            albumIntent,
+            runSize: input.runSize,
+          })
           await handle.markTransferFinished()
-          // End of staging, not end of the export: a missed signal throttles
-          // later background transfers app-wide, offline ones included.
+          // End of staging, not end of the export: the signal releases the
+          // shared background-session handler, which the library otherwise
+          // fires itself 30 seconds after the transfer ends.
           deps.port.signalBackgroundCompletion(taskId)
 
           if (handle.isCancelRequested()) return "cancelled"
@@ -363,6 +376,13 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
   }
 
   /**
+   * R27 again, not a second lock: a relaunch sweep runs beside a viewer who
+   * retries the same video, and the note's staged file and directory belong to
+   * whichever of the two holds the target's slot.
+   */
+  const SKIPPED: ExportOutcome = "abandoned"
+
+  /**
    * R28: finish the library write a killed or backgrounded process never ran.
    * The note is persisted JSON, so a path outside the export root is neither
    * saved nor deleted.
@@ -371,56 +391,70 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
     note: ExportStagingNote,
   ): Promise<ExportOutcome> {
     const stagingDir = exportStagingDir(deps.exportRoot, note.target)
-    let outcome: ExportOutcome = "abandoned"
     let intent: ExportAlbumIntent | null = null
 
-    try {
-      const usable =
-        isUnderExportRoot(note.stagedPath, deps.exportRoot) &&
-        (await deps.fs.fileExists(note.stagedPath))
-      if (usable) {
-        const written = await writeToLibrary(note.stagedPath, note.albumIntent)
-        intent = written.intent
-        outcome = "saved"
-      }
-    } catch (error) {
-      warn("raw_export.failed", {
-        export_state: "failed",
-        export_target: note.target,
-        export_failure_cause: "libraryWriteError",
-        error_message: telemetryErrorMessage(error),
-      })
-      outcome = "failed"
-    } finally {
-      await safeRemove(stagingDir)
-      await store()
-        .clearStagingNote(note.target)
-        .catch(() => undefined)
-    }
+    const result = await store().run(
+      { target: note.target, runId: note.runId },
+      async (): Promise<ExportOutcome> => {
+        try {
+          const usable =
+            isUnderExportRoot(note.stagedPath, deps.exportRoot) &&
+            (await deps.fs.fileExists(note.stagedPath))
+          if (!usable) return "abandoned"
+          const written = await writeToLibrary(
+            note.stagedPath,
+            note.albumIntent,
+          )
+          intent = written.intent
+          return "saved"
+        } catch (error) {
+          warn("raw_export.failed", {
+            export_state: "failed",
+            export_target: note.target,
+            export_failure_cause: "libraryWriteError",
+            error_message: telemetryErrorMessage(error),
+          })
+          return "failed"
+        } finally {
+          await safeRemove(stagingDir)
+        }
+      },
+    )
+
+    // The live export owns the note and reports its own outcome, so a report
+    // here would be a second card for one video.
+    if (!result.started) return SKIPPED
 
     deps.report({
       runId: note.runId,
       target: note.target,
-      outcome,
+      outcome: result.outcome,
+      runSize: note.runSize,
       albumIntent: intent ?? undefined,
     })
-    return outcome
+    return result.outcome
   }
 
   /** R18: an export interrupted during staging leaves no file behind. */
   async function discardStagedExport(
     note: ExportStagingNote,
   ): Promise<ExportOutcome> {
-    await safeRemove(exportStagingDir(deps.exportRoot, note.target))
-    await store()
-      .clearStagingNote(note.target)
-      .catch(() => undefined)
+    const result = await store().run(
+      { target: note.target, runId: note.runId },
+      async (): Promise<ExportOutcome> => {
+        await safeRemove(exportStagingDir(deps.exportRoot, note.target))
+        return "abandoned"
+      },
+    )
+    if (!result.started) return SKIPPED
+
     deps.report({
       runId: note.runId,
       target: note.target,
-      outcome: "abandoned",
+      outcome: result.outcome,
+      runSize: note.runSize,
     })
-    return "abandoned"
+    return result.outcome
   }
 
   /** R22, R30: the viewer's cancel channel for one target. */

@@ -24,6 +24,11 @@ const STAGED = `${STAGING_DIR}/The_Birth_of_Jesus.mp4`
 const OFFLINE_FILE = `file:///docs/offline-downloads/${SLUG}/rend-high.mp4`
 const OFFLINE_BYTES = "offline-bytes"
 
+/** What the engine reports back: the destination it was given, scheme removed. */
+function schemeless(uri: string): string {
+  return uri.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
+}
+
 const RENDITION: RawExportRendition = {
   documentId: "rend-high",
   qualityLabel: "High",
@@ -401,6 +406,47 @@ describe("terminal outcomes leave nothing staged", () => {
   })
 })
 
+describe("the location the engine reports (KTD2)", () => {
+  const ENGINE_NAMED = `${STAGING_DIR}/Engine_Named.mp4`
+
+  it("adopts a scheme-less location inside the export root", async () => {
+    const h = makeHarness({
+      transfer: async () => {
+        h.files.set(ENGINE_NAMED, "transferred-bytes")
+        return {
+          kind: "done",
+          stagedPath: schemeless(ENGINE_NAMED),
+          bytesTotal: 1_000,
+        }
+      },
+    })
+    await h.adapter.exportVideo(exportInput())
+
+    // The library keeps receiving a `file://` URI, never the bare path.
+    expect(h.library.createAsset).toHaveBeenCalledWith(ENGINE_NAMED)
+    expect(h.filesUnderRoot()).toEqual([])
+  })
+
+  it("keeps the initial path when the location resolves outside the root", async () => {
+    const h = makeHarness({
+      seedFiles: { [OFFLINE_FILE]: OFFLINE_BYTES },
+      transfer: async (spec) => {
+        h.files.set(spec.destination, "transferred-bytes")
+        return {
+          kind: "done",
+          stagedPath: schemeless(OFFLINE_FILE),
+          bytesTotal: 1_000,
+        }
+      },
+    })
+    await h.adapter.exportVideo(exportInput())
+
+    expect(h.library.createAsset).toHaveBeenCalledWith(STAGED)
+    expect(h.library.createAsset).toHaveBeenCalledTimes(1)
+    expect(h.files.get(OFFLINE_FILE)).toBe(OFFLINE_BYTES)
+  })
+})
+
 describe("reuse of a completed offline copy (R36, R38)", () => {
   const seeded = { [OFFLINE_FILE]: OFFLINE_BYTES }
 
@@ -506,6 +552,21 @@ describe("the library write waits for an active app (KTD4)", () => {
   })
 })
 
+describe("a series run's staged note carries its run size", () => {
+  it("keeps the run size on a deferred note so the sweep folds the run", async () => {
+    const h = makeHarness({ appState: "background" })
+    await h.adapter.exportVideo(
+      exportInput({ runSize: 12, seriesSlug: "life-of-jesus" }),
+    )
+
+    expect(await h.store.readStagingNote(SLUG)).toMatchObject({
+      target: SLUG,
+      runSize: 12,
+      transferFinished: true,
+    })
+  })
+})
+
 describe("finishing a staged export the sweep found", () => {
   function note(overrides: Partial<ExportStagingNote> = {}): ExportStagingNote {
     return {
@@ -549,6 +610,86 @@ describe("finishing a staged export the sweep found", () => {
     expect(outcome).toBe("abandoned")
     expect(h.library.createAsset).not.toHaveBeenCalled()
     expect(h.files.get(OFFLINE_FILE)).toBe(OFFLINE_BYTES)
+  })
+
+  it("reports the run size the note carries, so a run folds into one card", async () => {
+    const h = makeHarness({ seedFiles: { [STAGED]: "staged-bytes" } })
+    await h.adapter.completeStagedExport(note({ runSize: 12 }))
+    expect(h.reports[0]).toMatchObject({ outcome: "saved", runSize: 12 })
+
+    const discarded = makeHarness()
+    await discarded.adapter.discardStagedExport(
+      note({ runSize: 12, transferFinished: false }),
+    )
+    expect(discarded.reports[0]).toMatchObject({
+      outcome: "abandoned",
+      runSize: 12,
+    })
+  })
+
+  it("skips a note a live export of the same target already owns (R27)", async () => {
+    // The relaunch sweep and a retry of the same video race: saving the old
+    // partial file would also delete the directory the retry writes into.
+    const stale = `${STAGING_DIR}/Stale.mp4`
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const h = makeHarness({
+      seedFiles: { [stale]: "old-partial" },
+      transfer: async (spec) => {
+        await gate
+        h.files.set(spec.destination, "bytes")
+        return { kind: "done", stagedPath: spec.destination, bytesTotal: 1 }
+      },
+    })
+
+    const live = h.adapter.exportVideo(exportInput())
+    const swept = await h.adapter.completeStagedExport(
+      note({ stagedPath: stale }),
+    )
+
+    expect(swept).toBe("abandoned")
+    expect(h.library.createAsset).not.toHaveBeenCalled()
+    expect(h.reports).toEqual([])
+    expect(h.files.get(stale)).toBe("old-partial")
+
+    release()
+    await expect(live).resolves.toMatchObject({ outcome: "saved" })
+  })
+
+  it("skips a discard a live export of the same target already owns (R27)", async () => {
+    const stale = `${STAGING_DIR}/Stale.mp4`
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const h = makeHarness({
+      seedFiles: { [stale]: "old-partial" },
+      transfer: async (spec) => {
+        await gate
+        h.files.set(spec.destination, "bytes")
+        return { kind: "done", stagedPath: spec.destination, bytesTotal: 1 }
+      },
+    })
+
+    // The note the skip must not clear is written first, because the live
+    // export writes its own only once its admission checks settle.
+    await h.store.writeStagingNote(note({ transferFinished: false }))
+    const live = h.adapter.exportVideo(exportInput())
+    const swept = await h.adapter.discardStagedExport(
+      note({ transferFinished: false }),
+    )
+
+    expect(swept).toBe("abandoned")
+    expect(h.reports).toEqual([])
+    expect(h.files.get(stale)).toBe("old-partial")
+    expect(await h.store.readStagingNote(SLUG)).toMatchObject({
+      transferFinished: false,
+    })
+
+    release()
+    await expect(live).resolves.toMatchObject({ outcome: "saved" })
   })
 
   it("discards a staged export and reports it unfinished", async () => {

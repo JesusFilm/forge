@@ -1,6 +1,7 @@
 import { OFFLINE_INDEX_STORAGE_KEY, offlineRecordKey } from "../offlineManifest"
 import {
   createExportSessionStore,
+  EXPORT_STAGING_NOTE_VERSION,
   EXPORT_STAGING_NOTES_STORAGE_KEY,
   getExportSessionStore,
   resetExportSessionStoreForTests,
@@ -345,6 +346,40 @@ describe("cancellation", () => {
     expect(seen).toEqual([false, true])
   })
 
+  it("keeps the cancel control live until the slot is released", async () => {
+    // The snapshot still lists the target while the note clear awaits real
+    // storage, so a Stop tapped in that window must not be a silent no-op.
+    const gate = deferred<null>()
+    const store = createExportSessionStore({
+      storage: {
+        get: async () => null,
+        set: async () => undefined,
+        remove: async () => {
+          await gate.promise
+        },
+      },
+    })
+    const onCancel = jest.fn()
+
+    const run = store.run(
+      { target: TARGET, runId: "run-1", onCancel },
+      async (handle): Promise<ExportOutcome> => {
+        await handle.stage({ stagedPath: "/x.mp4", albumIntent: "album" })
+        return "saved"
+      },
+    )
+    await new Promise<void>((resolve) => setImmediate(() => resolve()))
+
+    expect(store.getSnapshot().byTarget[TARGET]).toBeDefined()
+    expect(store.requestCancel(TARGET)).toBe(true)
+    expect(onCancel).toHaveBeenCalledTimes(1)
+
+    gate.resolve(null)
+    await expect(run).resolves.toMatchObject({ outcome: "saved" })
+    expect(store.getSnapshot().activeCount).toBe(0)
+    expect(store.requestCancel(TARGET)).toBe(false)
+  })
+
   it("reports no cancel for a target with no export in flight", () => {
     const store = createExportSessionStore()
     expect(store.requestCancel(TARGET)).toBe(false)
@@ -525,6 +560,50 @@ describe("staging notes", () => {
     ])
 
     await expect(store.listStagingNotes()).resolves.toHaveLength(2)
+  })
+
+  it("carries the run size so a later sweep folds the run into one report", async () => {
+    const { port } = memoryPort()
+    const store = createExportSessionStore({ storage: port })
+    await store.run(
+      { target: TARGET, runId: "run-1" },
+      async (handle): Promise<ExportOutcome> => {
+        await handle.stage({
+          stagedPath: "/raw-exports/run-1/file.mp4",
+          albumIntent: "album",
+          runSize: 12,
+        })
+        handle.deferStagingNote()
+        return "abandoned"
+      },
+    )
+
+    await expect(store.readStagingNote(TARGET)).resolves.toMatchObject({
+      version: EXPORT_STAGING_NOTE_VERSION,
+      runSize: 12,
+    })
+  })
+
+  it("reads a note the previous build wrote with no run size", async () => {
+    const { port, values } = memoryPort()
+    values.set(
+      EXPORT_STAGING_NOTES_STORAGE_KEY,
+      JSON.stringify({
+        [TARGET]: {
+          version: 1,
+          target: TARGET,
+          runId: "run-1",
+          stagedPath: "/raw-exports/run-1/file.mp4",
+          albumIntent: "album",
+          transferFinished: true,
+        },
+      }),
+    )
+    const store = createExportSessionStore({ storage: port })
+
+    const note = await store.readStagingNote(TARGET)
+    expect(note).toMatchObject({ version: 1, transferFinished: true })
+    expect(note?.runSize).toBeUndefined()
   })
 
   it("drops a corrupt or foreign-version persisted note", async () => {

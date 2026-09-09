@@ -29,6 +29,7 @@ import {
   RAW_EXPORT_MAX_FILENAME_LENGTH,
 } from "../rawExportConstants"
 import {
+  adoptStagedPath,
   buildExportFileName,
   buildExportRoot,
   buildExportTaskId,
@@ -45,6 +46,11 @@ const ROOT = buildExportRoot("file:///docs/")
 
 function segmentsOf(path: string): string[] {
   return path.split("/")
+}
+
+/** What the engine reports back: the destination it was given, scheme removed. */
+function schemeless(uri: string): string {
+  return uri.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
 }
 
 describe("export path namespace (KTD2)", () => {
@@ -128,6 +134,34 @@ describe("normalizeUri", () => {
       false,
     )
     expect(isUnderExportRoot(`${ROOT}/a/b.mp4`, ROOT)).toBe(true)
+  })
+})
+
+describe("containment across the scheme boundary", () => {
+  it("matches the engine's scheme-less location against the root", () => {
+    const staged = `${ROOT}/v/Title.mp4`
+    expect(isUnderExportRoot(schemeless(staged), ROOT)).toBe(true)
+    expect(isUnderExportRoot(schemeless(ROOT), ROOT)).toBe(true)
+    expect(isUnderExportRoot(schemeless(OFFLINE_ROOT), ROOT)).toBe(false)
+  })
+
+  it("adopts a scheme-less location in the root's URI form", () => {
+    // The library write needs the `file://` URI, so adoption restores it.
+    expect(adoptStagedPath(schemeless(`${ROOT}/v/Title.mp4`), ROOT)).toBe(
+      `${ROOT}/v/Title.mp4`,
+    )
+    expect(adoptStagedPath(`${ROOT}/v/./Title.mp4`, ROOT)).toBe(
+      `${ROOT}/v/Title.mp4`,
+    )
+  })
+
+  it("adopts nothing that resolves outside the root", () => {
+    expect(
+      adoptStagedPath(schemeless(`${OFFLINE_ROOT}/v/f.mp4`), ROOT),
+    ).toBeNull()
+    expect(
+      adoptStagedPath(`${ROOT}/../offline-downloads/v/f.mp4`, ROOT),
+    ).toBeNull()
   })
 })
 
@@ -286,6 +320,48 @@ describe("createTransferPort", () => {
     engine.stop.mockClear()
     await port.stopExportTransfer("rawexport:nobody")
     expect(engine.stop).not.toHaveBeenCalled()
+  })
+
+  it("signals background completion on an interrupted transfer", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+
+    expect(engine.notifyBackgroundComplete).not.toHaveBeenCalled()
+    engine.handlers().onInterruption({ state: "failed", keepBytes: true })
+    await running
+
+    expect(engine.notifyBackgroundComplete).toHaveBeenCalledTimes(1)
+    expect(engine.notifyBackgroundComplete).toHaveBeenCalledWith(SPEC.id)
+  })
+
+  it("leaves a done transfer's signal to the staging path", async () => {
+    // The adapter signals after the staging note lands, so the port must not
+    // signal first and must not signal again for a late interruption.
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+    engine.handlers().onDone({ location: SPEC.destination, bytesTotal: 4 })
+    engine.handlers().onInterruption({ state: "canceled", keepBytes: false })
+    await running
+
+    expect(engine.notifyBackgroundComplete).not.toHaveBeenCalled()
+  })
+
+  it("contains a throwing sink on the interruption path", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort({
+      ...engine.deps,
+      notifyBackgroundComplete: () => {
+        throw new Error("no such job")
+      },
+    })
+    const running = port.runExportTransfer(SPEC, {})
+
+    expect(() =>
+      engine.handlers().onInterruption({ state: "failed", keepBytes: true }),
+    ).not.toThrow()
+    await expect(running).resolves.toMatchObject({ kind: "interrupted" })
   })
 
   it("signals background completion and contains a throwing sink", () => {

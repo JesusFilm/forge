@@ -101,11 +101,16 @@ export function buildStagedExportPath(args: {
   )
 }
 
-/** Resolve `.` and `..` segments so a containment check reads the real path. */
-export function normalizeUri(uri: string): string {
+/** The scheme and its separator (`file://`), or "" for a bare path. */
+function schemeOf(uri: string): string {
   const schemeEnd = uri.indexOf("://")
-  const prefix = schemeEnd >= 0 ? uri.slice(0, schemeEnd + 3) : ""
-  const body = schemeEnd >= 0 ? uri.slice(schemeEnd + 3) : uri
+  return schemeEnd >= 0 ? uri.slice(0, schemeEnd + 3) : ""
+}
+
+/** Resolve `.` and `..` segments, and drop the scheme, so two forms of one
+ *  location compare equal. */
+function normalizePathBody(uri: string): string {
+  const body = uri.slice(schemeOf(uri).length)
   const resolved: string[] = []
   for (const segment of body.split("/")) {
     if (segment === "" || segment === ".") continue
@@ -116,14 +121,33 @@ export function normalizeUri(uri: string): string {
     resolved.push(segment)
   }
   const lead = body.startsWith("/") ? "/" : ""
-  return `${prefix}${lead}${resolved.join("/")}`
+  return `${lead}${resolved.join("/")}`
 }
 
-/** True when `path` resolves to the export root or something inside it. */
+/** Resolve `.` and `..` segments so a containment check reads the real path. */
+export function normalizeUri(uri: string): string {
+  return `${schemeOf(uri)}${normalizePathBody(uri)}`
+}
+
+/**
+ * True when `path` resolves to the export root or something inside it. The
+ * engine reports a location with the scheme stripped, so only the path bodies
+ * compare — keeping the scheme makes this permanently false.
+ */
 export function isUnderExportRoot(path: string, root: string): boolean {
-  const target = normalizeUri(path)
-  const base = normalizeUri(root)
+  const target = normalizePathBody(path)
+  const base = normalizePathBody(root)
   return target === base || target.startsWith(`${base}/`)
+}
+
+/**
+ * The engine's reported location in the root's URI form, because the library
+ * write still needs the `file://` the engine stripped. Null outside the root,
+ * which is neither ours to save nor ours to delete.
+ */
+export function adoptStagedPath(location: string, root: string): string | null {
+  if (!isUnderExportRoot(location, root)) return null
+  return `${schemeOf(root)}${normalizePathBody(location)}`
 }
 
 // ── The transfer runner ─────────────────────────────────────────────
@@ -161,6 +185,16 @@ function interruptionFromClassification(
 export function createTransferPort(deps: TransferPortDeps) {
   const live = new Map<string, EngineTask>()
 
+  /** The shared background-session handler is released promptly, so this never
+   *  rejects into a staged export that has already succeeded. */
+  const signalBackgroundCompletion = (taskId: string): void => {
+    try {
+      deps.notifyBackgroundComplete(taskId)
+    } catch {
+      // Deliberately ignored; see the note above.
+    }
+  }
+
   const runExportTransfer = (
     spec: RawExportTransferSpec,
     hooks: RawExportTransferHooks,
@@ -171,6 +205,9 @@ export function createTransferPort(deps: TransferPortDeps) {
         if (settled) return
         settled = true
         live.delete(spec.id)
+        // Every engine-reported terminal path signals. The done path is the one
+        // exception: the adapter signals it after the staging note lands.
+        if (report.kind === "interrupted") signalBackgroundCompletion(spec.id)
         resolve(report)
       }
 
@@ -207,16 +244,6 @@ export function createTransferPort(deps: TransferPortDeps) {
     if (!task) return
     live.delete(taskId)
     await deps.stop(task)
-  }
-
-  /** A missed signal throttles later background transfers app-wide, so this
-   *  never rejects into a staged export that has already succeeded. */
-  const signalBackgroundCompletion = (taskId: string): void => {
-    try {
-      deps.notifyBackgroundComplete(taskId)
-    } catch {
-      // Deliberately ignored; see the note above.
-    }
   }
 
   return { runExportTransfer, stopExportTransfer, signalBackgroundCompletion }

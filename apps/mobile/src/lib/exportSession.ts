@@ -18,8 +18,15 @@ import { telemetryErrorMessage } from "./downloadErrors"
  */
 export const EXPORT_STAGING_NOTES_STORAGE_KEY = "rawexport.staging.notes"
 
-/** Schema version; a note from another version is dropped on read. */
-export const EXPORT_STAGING_NOTE_VERSION = 1
+/** Schema version; a note from an unsupported version is dropped on read. */
+export const EXPORT_STAGING_NOTE_VERSION = 2
+
+/**
+ * Version 1 carried no `runSize`, and that field is optional, so a note the
+ * previous build wrote still reconciles. Dropping it would strand its staged
+ * file and report nothing to the viewer who started that export.
+ */
+const SUPPORTED_NOTE_VERSIONS: ReadonlySet<number> = new Set([1, 2])
 
 /**
  * Where the saved video landed. iOS with an add-only grant cannot create a
@@ -55,6 +62,8 @@ export type ExportStagingNote = {
   stagedPath: string
   albumIntent: ExportAlbumIntent
   transferFinished: boolean
+  /** Episodes the run covers, so a sweep-published outcome folds into it. */
+  runSize?: number
 }
 
 /** Injected persistence, so this module needs no native module under jest. */
@@ -99,6 +108,7 @@ export type ExportRunHandle = {
   stage: (args: {
     stagedPath: string
     albumIntent: ExportAlbumIntent
+    runSize?: number
   }) => Promise<void>
   /** The bytes are on disk; only the library write remains (R28). */
   markTransferFinished: () => Promise<void>
@@ -153,12 +163,14 @@ function isStagingNote(value: unknown): value is ExportStagingNote {
   if (typeof value !== "object" || value === null) return false
   const note = value as Partial<ExportStagingNote>
   return (
-    note.version === EXPORT_STAGING_NOTE_VERSION &&
+    typeof note.version === "number" &&
+    SUPPORTED_NOTE_VERSIONS.has(note.version) &&
     typeof note.target === "string" &&
     typeof note.runId === "string" &&
     typeof note.stagedPath === "string" &&
     (note.albumIntent === "album" || note.albumIntent === "library") &&
-    typeof note.transferFinished === "boolean"
+    typeof note.transferFinished === "boolean" &&
+    (note.runSize === undefined || Number.isFinite(note.runSize))
   )
 }
 
@@ -283,6 +295,7 @@ export function createExportSessionStore(deps?: {
       if (entries.has(target)) {
         return { started: false, reason: "alreadyExporting" }
       }
+      let keepNote = false
       entries.set(target, {
         target,
         runId,
@@ -291,10 +304,8 @@ export function createExportSessionStore(deps?: {
         progress: 0,
         cancelRequested: false,
       })
-      if (input.onCancel) cancellers.set(target, input.onCancel)
-      let keepNote = false
-
       try {
+        if (input.onCancel) cancellers.set(target, input.onCancel)
         commit()
         const live = (): ExportSessionEntry | undefined => {
           const entry = entries.get(target)
@@ -314,7 +325,7 @@ export function createExportSessionStore(deps?: {
           isCancelRequested() {
             return live()?.cancelRequested ?? false
           },
-          async stage({ stagedPath, albumIntent }) {
+          async stage({ stagedPath, albumIntent, runSize }) {
             await mutateNotes((notes) => {
               notes[target] = {
                 version: EXPORT_STAGING_NOTE_VERSION,
@@ -323,6 +334,7 @@ export function createExportSessionStore(deps?: {
                 stagedPath,
                 albumIntent,
                 transferFinished: false,
+                runSize,
               }
             })
           },
@@ -354,12 +366,18 @@ export function createExportSessionStore(deps?: {
           errorMessage: telemetryErrorMessage(error),
         }
       } finally {
-        entries.delete(target)
-        cancellers.delete(target)
-        // A storage fault must not turn a saved export into a rejection; the
-        // launch sweep reconciles a note the clear could not remove.
-        if (!keepNote) await clearStagingNote(target).catch(() => undefined)
-        commit()
+        try {
+          // A storage fault must not turn a saved export into a rejection; the
+          // launch sweep reconciles a note the clear could not remove.
+          if (!keepNote) await clearStagingNote(target).catch(() => undefined)
+        } finally {
+          // The release and the notification are ONE synchronous step: a gap
+          // across the await above publishes a cancel control that cancels
+          // nothing, because the entry it reads is already gone.
+          entries.delete(target)
+          cancellers.delete(target)
+          commit()
+        }
       }
     },
 
