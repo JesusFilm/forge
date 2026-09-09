@@ -1,13 +1,17 @@
 import { useEffect } from "react"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
-import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
+import {
+  DownloadSheetContent,
+  type DownloadMode,
+} from "../../src/components/watch/DownloadSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
@@ -22,7 +26,7 @@ export default function DownloadSheetRoute() {
     activeSubtitleSlug,
     setSnackbarMessage,
   } = useWatchSession()
-  const { startDownload, swapDownload } = useDownloads()
+  const { startDownload, swapDownload, getRecord } = useDownloads()
   const { wifiOnly } = useWatchPreferences()
   // Opened via "Change quality / language" on a downloaded video → swap mode.
   const { swap } = useLocalSearchParams<{ swap?: string }>()
@@ -57,7 +61,31 @@ export default function DownloadSheetRoute() {
     activeVariantMedia?.subtitles ?? [],
   )
 
-  const onStartDownload = async (rendition: WatchDownload) => {
+  // R37: only a verified copy is reusable, so an in-flight or failed record
+  // names no quality.
+  const offlineRecord = getRecord(video.slug)
+  const offlineCopyQuality =
+    offlineRecord?.state === "downloaded" && offlineRecord.qualityLabel
+      ? offlineRecord.qualityLabel
+      : null
+
+  /**
+   * The raw branch. R33 refuses every new export, and R15 dismisses the sheet
+   * because the export outlives this route (R29). The export run attaches here.
+   */
+  const startRawExport = (rendition: WatchDownload) => {
+    if (!RAW_EXPORT_ENABLED || !rendition.url) return
+    router.back()
+  }
+
+  const onStartDownload = async (
+    rendition: WatchDownload,
+    mode: DownloadMode,
+  ) => {
+    if (mode === "raw") {
+      startRawExport(rendition)
+      return
+    }
     if (!activeVariant) return
     // Audio = active dub; subtitle = the dub's active subtitle. Store identity
     // (dub + rendition documentId, subtitle slug) so the engine re-resolves fresh
@@ -95,6 +123,7 @@ export default function DownloadSheetRoute() {
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
       subtitleLanguageName={activeSubtitle?.languageName ?? null}
+      offlineCopyQuality={offlineCopyQuality}
       onStartDownload={onStartDownload}
     />
   )

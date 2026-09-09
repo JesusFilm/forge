@@ -13,8 +13,15 @@ import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import {
+  DownloadModeControl,
   Dropdown,
+  PERSONAL_USE_NOTE,
+  SheetNote,
   TermsModal,
+  formatSeriesReuseNote,
+  suspendedInRawMode,
+  useFirstRawSelectionNotice,
+  type DownloadMode,
   type DropdownOption,
 } from "../../src/components/watch/DownloadSheet"
 import { SheetError } from "../../src/components/watch/SheetError"
@@ -22,6 +29,7 @@ import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { STORAGE_RESERVE_BYTES } from "../../src/lib/offlineConstants"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
@@ -87,6 +95,10 @@ export default function SeriesDownloadRoute() {
   const [subtitleOpen, setSubtitleOpen] = useState(false)
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
+  // R2: every opening starts on the offline mode, and nothing writes it back.
+  const [mode, setMode] = useState<DownloadMode>("offline")
+  const rawMode = mode === "raw"
+  const showPersonalUseNote = useFirstRawSelectionNotice(mode)
 
   const [phase, setPhase] = useState<SheetPhase>({ kind: "resolving" })
   const [storageError, setStorageError] = useState<string | null>(null)
@@ -223,6 +235,29 @@ export default function SeriesDownloadRoute() {
     [resolution, getRecord],
   )
   const ALREADY_DOWNLOADED = "Already downloaded"
+  // R32: an export replaces nothing, so raw mode lifts all three data gates.
+  const savedTier = suspendedInRawMode(mode, downloaded.tier) ?? null
+  const savedSubtitleSlug = suspendedInRawMode(mode, downloaded.subtitleSlug)
+
+  // R37: how many episodes hold an offline copy of the rendition this quality
+  // selects. KTD14 matches rendition identity exactly, and never on an empty id.
+  const reuse = useMemo(() => {
+    let offlineCount = 0
+    let reusableCount = 0
+    for (const episode of resolution?.resolved ?? []) {
+      const record = getRecord(episode.slug)
+      if (!record || record.state !== "downloaded") continue
+      offlineCount += 1
+      const savedId = record.renditionDocumentId
+      const selectedId = episode.rendition?.documentId
+      if (savedId && savedId === selectedId) reusableCount += 1
+    }
+    return {
+      offlineCount,
+      reusableCount,
+      totalCount: resolution?.resolvedCount ?? 0,
+    }
+  }, [resolution, getRecord])
 
   // Re-download shouldn't default to the already-saved quality (it's disabled).
   // Once the saved tier is known, move the default off it to the next tier. Runs
@@ -242,7 +277,7 @@ export default function SeriesDownloadRoute() {
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
       QUALITY_TIERS.map((t) => {
-        const isDownloaded = downloaded.tier === t
+        const isDownloaded = savedTier === t
         return {
           key: t,
           label: t,
@@ -253,7 +288,7 @@ export default function SeriesDownloadRoute() {
             : undefined,
         }
       }),
-    [resolution, downloaded.tier],
+    [resolution, savedTier],
   )
 
   // Every resolved episode already saved at this exact quality+subtitle → the
@@ -269,6 +304,9 @@ export default function SeriesDownloadRoute() {
       )
     })
   }, [resolution, subtitleSlug, getRecord])
+  // R32's third gate: an export saves a file the device library does not hold,
+  // so an already-downloaded series still has work to do.
+  const confirmBlocked = suspendedInRawMode(mode, nothingToDo) ?? false
 
   const proceed = useCallback(async () => {
     if (!resolution || !series) return
@@ -333,8 +371,24 @@ export default function SeriesDownloadRoute() {
     router,
   ])
 
+  /**
+   * The raw branch of Confirm. R33 refuses every new export, and R15 dismisses
+   * the sheet because the run outlives this route (R29). The series run module
+   * attaches here.
+   */
+  const startRawSeriesExport = useCallback(() => {
+    if (!RAW_EXPORT_ENABLED || !resolution || !series) return
+    router.back()
+  }, [resolution, series, router])
+
   const onConfirm = useCallback(() => {
     if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
+    // R32's fourth gate: an export replaces nothing, so the warning is skipped
+    // rather than reworded.
+    if (rawMode) {
+      startRawSeriesExport()
+      return
+    }
     // A new quality/subtitle on an already-saved episode replaces the old copy
     // (swap) or restarts an in-progress one (switch). Confirm before discarding
     // the current downloads; an unchanged selection just re-checks (skips).
@@ -356,7 +410,15 @@ export default function SeriesDownloadRoute() {
         { text: "Re-download", onPress: () => void proceed() },
       ],
     )
-  }, [resolution, touAccepted, subtitleSlug, getRecord, proceed])
+  }, [
+    resolution,
+    touAccepted,
+    subtitleSlug,
+    getRecord,
+    proceed,
+    rawMode,
+    startRawSeriesExport,
+  ])
 
   const onRetry = useCallback(() => {
     retryControllerRef.current?.abort()
@@ -406,6 +468,15 @@ export default function SeriesDownloadRoute() {
         {languageName}
       </Text>
 
+      <DownloadModeControl mode={mode} onChange={setMode} />
+
+      {showPersonalUseNote && <SheetNote text={PERSONAL_USE_NOTE} />}
+      {rawMode && reuse.offlineCount > 0 && (
+        <SheetNote
+          text={formatSeriesReuseNote(reuse.reusableCount, reuse.totalCount)}
+        />
+      )}
+
       <Dropdown
         sectionLabel="Quality"
         options={qualityOptions}
@@ -419,18 +490,21 @@ export default function SeriesDownloadRoute() {
       />
 
       {/* No audio picker: the download language is the series' selected dub
-          (Language button / sheet), shown in the header line above. */}
-      <SubtitlePicker
-        union={subtitleUnion}
-        selectedSlug={subtitleSlug}
-        downloadedSlug={downloaded.subtitleSlug}
-        open={subtitleOpen}
-        onToggle={() => setSubtitleOpen((o) => !o)}
-        onSelect={(slug) => {
-          setSubtitleSlug(slug)
-          setSubtitleOpen(false)
-        }}
-      />
+          (Language button / sheet), shown in the header line above. R6 removes
+          the subtitle selector in raw mode: an exported file cannot carry it. */}
+      {!rawMode && (
+        <SubtitlePicker
+          union={subtitleUnion}
+          selectedSlug={subtitleSlug}
+          downloadedSlug={savedSubtitleSlug}
+          open={subtitleOpen}
+          onToggle={() => setSubtitleOpen((o) => !o)}
+          onSelect={(slug) => {
+            setSubtitleSlug(slug)
+            setSubtitleOpen(false)
+          }}
+        />
+      )}
 
       {/* Status panel — resolving / partial / all-skipped / summary. */}
       <StatusPanel
@@ -496,7 +570,8 @@ export default function SeriesDownloadRoute() {
             phase={phase}
             resolution={resolution}
             touAccepted={touAccepted}
-            nothingToDo={nothingToDo}
+            nothingToDo={confirmBlocked}
+            mode={mode}
             onConfirm={onConfirm}
             typography={typography}
           />
@@ -642,6 +717,7 @@ function ConfirmButton({
   resolution,
   touAccepted,
   nothingToDo,
+  mode,
   onConfirm,
   typography,
 }: {
@@ -649,6 +725,7 @@ function ConfirmButton({
   resolution: SeriesDownloadResolution | null
   touAccepted: boolean
   nothingToDo: boolean
+  mode: DownloadMode
   onConfirm: () => void
   typography: ReturnType<typeof useTypography>
 }) {
@@ -663,13 +740,19 @@ function ConfirmButton({
     resolution.resolvedCount === 0 ||
     !touAccepted ||
     nothingToDo
+  const rawMode = mode === "raw"
   const label = enqueuing
     ? "Downloading"
     : resolving
       ? "Checking episodes…"
       : nothingToDo
         ? "Already downloaded"
-        : "Download all"
+        : rawMode
+          ? "Save all to device"
+          : "Download all"
+  const idleLabel = rawMode
+    ? "Save all episodes to the device"
+    : "Download all episodes"
 
   return (
     <Pressable
@@ -681,7 +764,7 @@ function ConfirmButton({
       onPress={onConfirm}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={busy ? label : "Download all episodes"}
+      accessibilityLabel={busy ? label : idleLabel}
       accessibilityState={{ disabled, busy }}
     >
       {busy ? (
