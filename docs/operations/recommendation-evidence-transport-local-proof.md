@@ -7,7 +7,9 @@
 ## Measured admission budget regression (2026-09-09)
 
 A real Redis delayed-TIME test failed at the original 250 ms budget and passed
-at 500 ms. A separately held EVAL ran only after the caller timed out and left
+at 500 ms for playback-context commands. Connection and other namespaces retain
+250 ms; the final narrowed admission/Redis/routes/browser-helper run passed 59
+tests. A separately held EVAL ran only after the caller timed out and left
 both admission buckets absent. Client/aggregate limits and privacy-control
 isolation still pass against real Redis. Focused admission/Redis/route/recorder
 checks passed 68 tests; after extending terminal mapping to render/impression

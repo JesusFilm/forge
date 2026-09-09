@@ -420,9 +420,11 @@ clock bound, which can reject work before the apparent client timer expires.
 Do not remove that subtraction: a late queued EVAL must never write after the
 caller's deadline. The real Redis regression delays the TIME reply by 160 ms,
 then separately holds EVAL until after caller timeout and checks both buckets
-remain absent. Production stage evidence justified 500 ms each for connection
-and TIME/EVAL, retaining the browser's five-second and upstream three-second
-ceilings. A local pass does not replace the production canary.
+remain absent. Production context traces justified 500 ms for its TIME/EVAL
+work, retaining 250 ms for connection and other namespaces. Audit every caller
+before widening a shared budget: content-action transport has a tighter browser
+deadline. Context admission reserves 750 ms within its five-second browser and
+three-second upstream ceilings. A local pass does not replace the production canary.
 
 APM request-count metrics and retained span/log populations differ. Verify actual
 metric dimensions before claiming a complete environment-specific denominator;

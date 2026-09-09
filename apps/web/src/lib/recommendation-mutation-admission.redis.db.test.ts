@@ -49,7 +49,6 @@ describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
     ...admissionKeys(secret, "profile-status", address),
     ...admissionKeys(secret, "privacy-control", address),
     ...admissionKeys(secret, "playback-context", address),
-    ...admissionKeys(secret, "content-action", address),
   ]
   let cleanupClient: ReturnType<typeof createClient>
 
@@ -119,6 +118,7 @@ describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
   })
 
   it("does not mutate admission buckets when a queued EVAL runs after the caller timed out", async () => {
+    await cleanupClient.del(admissionKeys(secret, "playback-context", address))
     let releaseEval!: () => void
     const release = new Promise<void>((resolve) => {
       releaseEval = resolve
@@ -136,12 +136,12 @@ describe.skipIf(!RUN_REDIS_TEST)("Watch recommendation Redis admission", () => {
       }),
     })
     await expect(
-      admit(new Headers({ "cf-connecting-ip": address }), "content-action"),
+      admit(new Headers({ "cf-connecting-ip": address }), "playback-context"),
     ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
     releaseEval()
     await expect(evaluated).resolves.toEqual(["unavailable"])
     await expect(
-      cleanupClient.mGet(admissionKeys(secret, "content-action", address)),
+      cleanupClient.mGet(admissionKeys(secret, "playback-context", address)),
     ).resolves.toEqual([null, null])
   })
 })

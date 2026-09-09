@@ -78,8 +78,9 @@ fired late; examples show 140–160 ms TIME reply delays and EVAL rejection whil
 inside the apparent 250 ms client budget. The conservative Redis-clock fence
 intentionally subtracts the TIME round trip and must remain conservative.
 
-Increase connection and combined TIME/EVAL ceilings from 250 to 500 ms each.
-The maximum admission budget is one second; evidence upstream remains three
+Increase only playback-context combined TIME/EVAL from 250 to 500 ms. Connection
+and other namespaces retain 250 ms because content-action browser transport has
+a tighter deadline. Context admission reserves at most 750 ms; upstream remains three
 seconds, browser transport remains five seconds, and the Admin recommendation
 service remains 1.5 seconds. Preserve Lua's pre-mutation absolute deadline,
 limits, shared-client retirement and backoff. This adjustment is based on the

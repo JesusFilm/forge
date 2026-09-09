@@ -88,11 +88,14 @@ scheduler delay. Shared-client retirement after timeout explains the subsequent
 backoff failures; not every client error has been individually attributed.
 
 The conservative Redis-clock fence must remain. A real Redis regression delays
-a TIME reply by 160 ms and reproduces the original rejection. Raising connection
-and combined TIME/EVAL budgets to 500 ms each passes it; a second test releases
+a TIME reply by 160 ms and reproduces the original rejection. Raising playback-context
+combined TIME/EVAL to 500 ms passes it; a second test releases
 EVAL after caller timeout and proves no admission writes occur. The proposed
-maximum admission budget is one second, leaving one second of browser margin
+context admission budget is 750 ms, leaving 1.25 seconds of browser margin
 after three seconds upstream. Admin's complete service remains 1.5 seconds.
+Connection and other namespaces retain 250 ms because some browser paths have
+tighter deadlines. The three observed context failures correlate to two EVAL
+Redis-deadline rejections and one EVAL timeout.
 This is a measured budget repair awaiting production acceptance, not a claim
 that event-loop stalls or all upstream timeouts have disappeared.
 

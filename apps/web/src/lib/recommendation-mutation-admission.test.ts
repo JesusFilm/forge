@@ -108,7 +108,7 @@ describe("recommendation mutation admission", () => {
     expect(serialized).toMatch(
       /recommendation:admission:content-action:aggregate:[a-f0-9]{64}/,
     )
-    expect(evalMock.mock.calls[0]?.[1].arguments[3]).toBe("11000")
+    expect(evalMock.mock.calls[0]?.[1].arguments[3]).toBe("10750")
   })
 
   it("checks a Redis-clock deadline before the first admission mutation", async () => {
@@ -134,7 +134,7 @@ describe("recommendation mutation admission", () => {
       reason: "admission_unavailable",
     })
     const [script, options] = evalMock.mock.calls[0]!
-    expect(options.arguments[3]).toBe("100975")
+    expect(options.arguments[3]).toBe("100725")
     expect(script.indexOf("now_ms >=")).toBeLessThan(
       script.indexOf("redis.call('GET'"),
     )
@@ -253,7 +253,7 @@ describe("recommendation mutation admission", () => {
     })
 
     const result = admit(headers("203.0.113.11"), "profile-mutation")
-    await vi.advanceTimersByTimeAsync(501)
+    await vi.advanceTimersByTimeAsync(251)
 
     await expect(result).resolves.toEqual({
       allowed: false,
@@ -265,7 +265,7 @@ describe("recommendation mutation admission", () => {
     )
     expect(redisMocks.createClient).toHaveBeenCalledWith({
       url: "redis://local.test:6379",
-      socket: { connectTimeout: 500, reconnectStrategy: false },
+      socket: { connectTimeout: 250, reconnectStrategy: false },
     })
   })
 
@@ -287,7 +287,7 @@ describe("recommendation mutation admission", () => {
     })
 
     const result = admit(headers("203.0.113.12"), "content-action")
-    await vi.advanceTimersByTimeAsync(501)
+    await vi.advanceTimersByTimeAsync(251)
 
     await expect(result).resolves.toEqual({
       allowed: false,
