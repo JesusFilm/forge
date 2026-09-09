@@ -30,7 +30,11 @@ const session = (
   for (const [target, progress] of targets) {
     byTarget[target] = exportEntry(target, progress)
   }
-  return { byTarget, activeCount: targets.length }
+  return {
+    byTarget,
+    activeCount: targets.length,
+    targets: new Set(Object.keys(byTarget)),
+  }
 }
 
 const rec = (
@@ -292,7 +296,7 @@ describe("deriveEpisodeBadges (U9)", () => {
     const badges = deriveEpisodeBadges(
       EPISODES,
       [rec("a", "downloaded", 1, 1), rec("b", "downloading")],
-      session(["a", 0.3]),
+      session(["a", 0.3]).targets,
     )
     expect(badges.get("a")).toBe("exporting")
     expect(badges.get("b")).toBe("downloading")
@@ -300,7 +304,7 @@ describe("deriveEpisodeBadges (U9)", () => {
   })
 
   it("badges an exporting episode that has no offline record at all", () => {
-    const badges = deriveEpisodeBadges(EPISODES, [], session(["c", 0]))
+    const badges = deriveEpisodeBadges(EPISODES, [], session(["c", 0]).targets)
     expect(badges.get("c")).toBe("exporting")
   })
 
@@ -308,7 +312,7 @@ describe("deriveEpisodeBadges (U9)", () => {
     const badges = deriveEpisodeBadges(
       EPISODES,
       [],
-      session(["elsewhere", 0.5]),
+      session(["elsewhere", 0.5]).targets,
     )
     expect([...badges.values()]).toEqual(["none", "none", "none"])
   })

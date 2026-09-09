@@ -147,14 +147,18 @@ export default function SeriesScreen() {
     }
   }, [downloadState.inProgress, seriesFullyDownloaded])
 
+  // Keyed on export MEMBERSHIP, never the whole snapshot. The snapshot changes
+  // identity once a second while any export runs, and this map is FlatList's
+  // `extraData` — so every visible episode row would repaint for no reason.
+  const exportingTargets = exportSession.targets
   const badgeBySlug = useMemo(
     () =>
       deriveEpisodeBadges(
         series?.episodes.map((episode) => episode.slug) ?? [],
         offlineRecords,
-        exportSession,
+        exportingTargets,
       ),
-    [series?.episodes, offlineRecords, exportSession],
+    [series?.episodes, offlineRecords, exportingTargets],
   )
 
   const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
@@ -295,8 +299,6 @@ export default function SeriesScreen() {
     downloadState.inFlightSlugs.forEach((slug) => void pauseDownload(slug))
   }, [downloadState.inFlightSlugs, pauseDownload])
 
-  // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
-  // (keeping existing copies). Replaces the old always-on batch bar.
   // R30: the only route to a running export's cancel, since the sheet has
   // dismissed. R22 keeps every episode already saved to the device library.
   const handleCancelExport = useCallback(() => {
@@ -324,6 +326,8 @@ export default function SeriesScreen() {
     }
   }, [downloadState.exportingSlugs])
 
+  // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
+  // (keeping existing copies). Replaces the old always-on batch bar.
   const handlePausedTap = useCallback(() => {
     const resumeAll = () =>
       downloadState.inFlightSlugs.forEach((slug) => void resumeDownload(slug))

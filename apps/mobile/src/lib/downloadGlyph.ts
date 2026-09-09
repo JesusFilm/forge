@@ -5,7 +5,7 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "./color"
-import type { ExportSessionEntry } from "./exportSession"
+import { clampFraction, type ExportSessionEntry } from "./exportSession"
 import type { OfflineDownloadState } from "./offlineManifest"
 
 /** Green tick for a completed offline copy. */
@@ -53,11 +53,6 @@ export type DownloadGlyphInfo = {
   /** False while an export runs: a tap must neither pause it nor open the
    *  sheet (R16, R24). */
   interactive: boolean
-}
-
-function clampFraction(value: number | null | undefined): number {
-  if (value == null || !Number.isFinite(value)) return 0
-  return Math.min(1, Math.max(0, value))
 }
 
 /** Whole percent, or null below 1% — a "0%" label reads as a stalled transfer. */

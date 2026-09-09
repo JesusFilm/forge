@@ -670,3 +670,80 @@ describe("the module singleton", () => {
     expect(getExportSessionStore()).not.toBe(first)
   })
 })
+
+describe("snapshot identity under progress", () => {
+  /** Hold a run open so progress can be published against a live slot. */
+  function openRun(store: ReturnType<typeof createExportSessionStore>) {
+    let handle: ExportRunHandle | undefined
+    let release: (outcome: ExportOutcome) => void = () => {}
+    const done = store.run({ target: "a", runId: "r" }, (h) => {
+      handle = h
+      return new Promise<ExportOutcome>((resolve) => {
+        release = resolve
+      })
+    })
+    return {
+      get handle(): ExportRunHandle {
+        if (!handle) throw new Error("run did not start")
+        return handle
+      },
+      release: (outcome: ExportOutcome) => release(outcome),
+      done,
+    }
+  }
+
+  it("keeps `targets` identity across a progress tick", async () => {
+    // The defect this pins: `targets` feeds FlatList's extraData through
+    // deriveEpisodeBadges. A new identity per tick repaints every episode row
+    // once a second for the whole transfer, with no content change.
+    const store = createExportSessionStore()
+    const run = openRun(store)
+    await Promise.resolve()
+
+    const before = store.getSnapshot().targets
+    run.handle.publishProgress(0.25)
+    run.handle.publishProgress(0.5)
+    const after = store.getSnapshot().targets
+
+    expect(after).toBe(before)
+    expect([...after]).toEqual(["a"])
+    run.release("saved")
+    await run.done
+  })
+
+  it("changes `targets` identity when membership changes", async () => {
+    // Anti-vacuous: a frozen set would pass the test above and never update.
+    const store = createExportSessionStore()
+    const empty = store.getSnapshot().targets
+    const run = openRun(store)
+    await Promise.resolve()
+
+    const running = store.getSnapshot().targets
+    expect(running).not.toBe(empty)
+    expect([...running]).toEqual(["a"])
+
+    run.release("saved")
+    await run.done
+    expect(store.getSnapshot().targets).not.toBe(running)
+    expect([...store.getSnapshot().targets]).toEqual([])
+  })
+
+  it("does not notify when a progress value repeats", async () => {
+    const store = createExportSessionStore()
+    const run = openRun(store)
+    await Promise.resolve()
+
+    let notifications = 0
+    const stop = store.subscribe(() => {
+      notifications += 1
+    })
+    run.handle.publishProgress(0.4)
+    run.handle.publishProgress(0.4)
+    run.handle.publishProgress(0.4)
+    stop()
+
+    expect(notifications).toBe(1)
+    run.release("saved")
+    await run.done
+  })
+})

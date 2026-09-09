@@ -1,4 +1,4 @@
-import type { ExportSessionSnapshot } from "./exportSession"
+import { clampFraction, type ExportSessionSnapshot } from "./exportSession"
 import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
@@ -41,12 +41,6 @@ const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["queued", "downloading", "paused"])
 
 const NO_PENDING_SWAPS: ReadonlySet<string> = new Set()
-
-/** A non-finite fraction would render as a broken ring, so it reads as 0. */
-function clampFraction(value: number | null | undefined): number {
-  if (value == null || !Number.isFinite(value)) return 0
-  return Math.min(1, Math.max(0, value))
-}
 
 export function deriveSeriesDownloadState(
   episodeSlugs: readonly string[],
@@ -163,7 +157,9 @@ export function episodeBadgeState(
 export function deriveEpisodeBadges(
   episodeSlugs: readonly string[],
   offlineRecords: readonly OfflineDownloadRecord[],
-  exportSession?: ExportSessionSnapshot | null,
+  // Membership, NOT the whole snapshot: a badge only asks WHETHER a target is
+  // exporting, and the snapshot changes identity on every progress tick.
+  exportingTargets?: ReadonlySet<string> | null,
 ): Map<string, EpisodeBadgeState> {
   const recordBySlug = new Map(
     offlineRecords.map((record) => [record.videoSlug, record] as const),
@@ -174,7 +170,7 @@ export function deriveEpisodeBadges(
       slug,
       episodeBadgeState(
         recordBySlug.get(slug),
-        exportSession?.byTarget[slug] != null,
+        exportingTargets?.has(slug) === true,
       ),
     )
   }

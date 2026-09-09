@@ -9,6 +9,8 @@
  * INJECTED port, so this module never imports AsyncStorage.
  */
 
+import { errorMessageOf } from "./downloadErrors"
+
 /**
  * KTD5/KD4: the note is NOT a Download Record. Its key sits outside the
  * `offline.` namespace so no offline reconciliation path can read it as
@@ -77,6 +79,13 @@ export type ExportSessionSnapshot = {
   byTarget: Readonly<Record<string, ExportSessionEntry>>
   /** Non-zero holds KTD3's fence over the engine's global configure call. */
   activeCount: number
+  /**
+   * Which targets are exporting, with an identity that survives a progress
+   * tick. The snapshot itself cannot: progress lands about once a second, and a
+   * consumer that only cares WHETHER a target is exporting would otherwise
+   * recompute — and re-render — on every tick.
+   */
+  targets: ReadonlySet<string>
 }
 
 /** The capabilities one run gets over its own slot and its own note. */
@@ -116,12 +125,28 @@ export type ExportRunResult =
 
 export type ExportSessionStore = ReturnType<typeof createExportSessionStore>
 
-const EMPTY_SNAPSHOT: ExportSessionSnapshot = { byTarget: {}, activeCount: 0 }
+const EMPTY_TARGETS: ReadonlySet<string> = new Set()
+
+const EMPTY_SNAPSHOT: ExportSessionSnapshot = {
+  byTarget: {},
+  activeCount: 0,
+  targets: EMPTY_TARGETS,
+}
 
 const NOOP_STORAGE: ExportStoragePort = {
   get: async () => null,
   set: async () => undefined,
   remove: async () => undefined,
+}
+
+/**
+ * Progress fractions arrive from native byte counts and from three display
+ * surfaces. A non-finite one would render as a broken ring, so every consumer
+ * bounds it the same way.
+ */
+export function clampFraction(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0
+  return Math.min(1, Math.max(0, value))
 }
 
 function isStagingNote(value: unknown): value is ExportStagingNote {
@@ -137,10 +162,6 @@ function isStagingNote(value: unknown): value is ExportStagingNote {
   )
 }
 
-function errorMessageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
 export function createExportSessionStore(deps?: {
   storage?: ExportStoragePort
 }) {
@@ -150,13 +171,24 @@ export function createExportSessionStore(deps?: {
   const cancellers = new Map<string, () => void>()
   const listeners = new Set<() => void>()
 
+  let targets: ReadonlySet<string> = EMPTY_TARGETS
+
+  /** Rebuild the target set ONLY when membership changed, so a progress tick
+   *  leaves its identity alone. */
+  function sameTargets(): boolean {
+    if (targets.size !== entries.size) return false
+    for (const target of entries.keys()) if (!targets.has(target)) return false
+    return true
+  }
+
   /** A listener's throw is contained: the terminal notification runs inside the
    *  run's `finally`, where an escaping error would replace the outcome the
    *  export actually reached. */
   function commit() {
     const byTarget: Record<string, ExportSessionEntry> = {}
     for (const [target, entry] of entries) byTarget[target] = entry
-    snapshot = { byTarget, activeCount: entries.size }
+    if (!sameTargets()) targets = new Set(entries.keys())
+    snapshot = { byTarget, activeCount: entries.size, targets }
     for (const listener of listeners) {
       try {
         listener()
@@ -272,7 +304,8 @@ export function createExportSessionStore(deps?: {
           publishProgress(fraction) {
             const entry = live()
             if (!entry) return
-            const clamped = Math.min(1, Math.max(0, fraction))
+            const clamped = clampFraction(fraction)
+            if (clamped === entry.progress) return
             entries.set(target, { ...entry, progress: clamped })
             commit()
           },
