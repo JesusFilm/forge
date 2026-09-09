@@ -11,6 +11,11 @@ type Arrival = { entry: DeepLinkEntry; at: number }
 
 const externalArrivals = new Map<string, Arrival>()
 
+// Launch-level, and deliberately separate from the per-slug map: a caller asks
+// "did this launch start from a link?" once, and must not consume the
+// attribution an arriving route still needs.
+let launchedFromExternalUrl = false
+
 // A genuine arrival is consumed within a microtask of navigation. Anything older
 // was stranded (e.g. the slug was already the active route, so no effect re-ran)
 // and must not mis-tag a later in-app open.
@@ -56,6 +61,9 @@ export function registerDeepLinkUrl(
   if (!url) return
   const slug = watchSlugFromUrl(url)
   if (!slug) return
+  // Only the cold read describes the launch. A warm url arrives while the app
+  // already runs, so it cannot change how the app started.
+  if (entry === "cold") launchedFromExternalUrl = true
   // Never downgrade cold to warm: an iOS universal link can arrive through both
   // getInitialURL and the url event on the same cold launch.
   const existing = externalArrivals.get(slug)
@@ -76,6 +84,22 @@ export function consumeDeepLinkEntry(
   if (arrival == null) return null
   externalArrivals.delete(slug)
   return now - arrival.at > ARRIVAL_TTL_MS ? null : arrival.entry
+}
+
+/**
+ * Reports whether this launch started from a URL that addresses a WATCH route.
+ * The read clears nothing, so repeated reads agree and the per-slug entries stay
+ * for `consumeDeepLinkEntry`. Await the gate below before the first read.
+ *
+ * A watch slug, not "any URL", and that is a decision rather than an oversight:
+ * every development-client launch carries a wrapper URL, so the wider read
+ * would report every launch anyone can observe locally as external. The cost is
+ * that a cold launch on another app route — `experience/`, `series`, `mission` —
+ * reports NON-external, so the splash plays and delays it by the hold. Widening
+ * this means teaching the module those routes, not deleting the narrowing.
+ */
+export function isExternalLaunch(): boolean {
+  return launchedFromExternalUrl
 }
 
 // Consumers must AWAIT this: the initial URL is only readable asynchronously and
@@ -115,6 +139,7 @@ export function initDeepLinkOrigins(deps: DeepLinkOriginDeps): () => void {
 /** Test seam only. */
 export function resetDeepLinkOrigins(): void {
   externalArrivals.clear()
+  launchedFromExternalUrl = false
   ready = new Promise<void>((resolve) => {
     resolveReady = resolve
   })
