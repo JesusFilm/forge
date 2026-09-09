@@ -345,7 +345,9 @@ compatible returned/legacy envelopes using `extensions.recommendationCode`,
 never message matching. Claims and facts map proven `invalid_binding` to terminal
 HTTP 409. Generic structured `extensions.code = BAD_USER_INPUT` on playback
 operations maps to HTTP 400 `playback_request_invalid`; this includes capability
-validation that does not carry a binding subtype. The browser retires that
+validation that does not carry a binding subtype. Render/impression input
+rejection maps to HTTP 400 `evidence_request_invalid`, which its existing JSON
+retry helper treats as terminal. The playback browser retires that
 episode only for the matching status/code pair. Unrecognized error bodies remain
 ambiguous. Real local signature rejection must leave decoded media running.
 Authentication and recognized-machine rejection must not trigger a

@@ -66,6 +66,15 @@ This confirms an ambiguous acknowledgement; retaining identical-payload retries
 is necessary. Auth introspection is a code-level hypothesis for pre-resolver
 latency, but the available trace does not contain an Auth span establishing it.
 
+A further trace, `370367448730537963` at 04:46:05, shows the render/impression
+operation returning `BAD_USER_INPUT` for an invalid timestamp, again becoming
+Web 503. The follow-up repair extends the structured HTTP 400 mapping to that
+operation. Its existing browser retry helper already treats 400 as terminal.
+The 04:43–04:53 diagnostic-revision playback metric counted 313 HTTP 200, 74 HTTP
+403 and 57 HTTP 503 (444 total); 54 of those 503s were non-timeout fact errors and
+three were context admission failures. These observations show why both repairs
+are needed. The metric environment-scoping limitation still applies.
+
 ## Admission mechanism and proposed repair
 
 The diagnostic 04:42:04–04:48 window on primary host `b049e8780ceb` recorded six

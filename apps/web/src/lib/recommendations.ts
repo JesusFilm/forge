@@ -69,7 +69,10 @@ function hasRecommendationGraphqlCode(
 
 // Apollo's default errorPolicy rejects GraphQL errors. Also accept returned
 // envelopes for compatible callers without relying on human-readable messages.
-async function withPlaybackDomainErrors<T>(operation: Promise<T>): Promise<T> {
+async function withRecommendationDomainErrors<T>(
+  operation: Promise<T>,
+  invalidInputCode: "playback_request_invalid" | "evidence_request_invalid",
+): Promise<T> {
   let result: T
   try {
     result = await operation
@@ -78,7 +81,7 @@ async function withPlaybackDomainErrors<T>(operation: Promise<T>): Promise<T> {
       throw new RecommendationRuntimeError("playback_binding_invalid")
     }
     if (hasRecommendationGraphqlCode(error, "BAD_USER_INPUT", "code")) {
-      throw new RecommendationRuntimeError("playback_request_invalid")
+      throw new RecommendationRuntimeError(invalidInputCode)
     }
     throw error
   }
@@ -86,7 +89,7 @@ async function withPlaybackDomainErrors<T>(operation: Promise<T>): Promise<T> {
     throw new RecommendationRuntimeError("playback_binding_invalid")
   }
   if (hasRecommendationGraphqlCode(result, "BAD_USER_INPUT", "code")) {
-    throw new RecommendationRuntimeError("playback_request_invalid")
+    throw new RecommendationRuntimeError(invalidInputCode)
   }
   return result
 }
@@ -570,12 +573,15 @@ export async function recordSemanticRecommendationEvidence(
     typeof adminRecordSemanticRecommendationEvidenceOperation
   >,
 ) {
-  const result = await client.mutate({
-    mutation: adminRecordSemanticRecommendationEvidenceOperation,
-    variables,
-    fetchPolicy: "no-cache",
-    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
-  })
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordSemanticRecommendationEvidenceOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+    "evidence_request_invalid",
+  )
   if (result.error || !result.data?.recordSemanticRecommendationEvidence) {
     throw new RecommendationRuntimeError("evidence_unavailable")
   }
@@ -604,13 +610,14 @@ export async function claimSemanticRecommendationEpisode(
     typeof adminClaimSemanticRecommendationEpisodeOperation
   >,
 ): Promise<SemanticRecommendationEpisodeClaim> {
-  const result = await withPlaybackDomainErrors(
+  const result = await withRecommendationDomainErrors(
     client.mutate({
       mutation: adminClaimSemanticRecommendationEpisodeOperation,
       variables,
       fetchPolicy: "no-cache",
       context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
     }),
+    "playback_request_invalid",
   )
   if (result.error || !result.data?.claimSemanticRecommendationEpisode) {
     throw new RecommendationRuntimeError("episode_unavailable")
@@ -638,13 +645,14 @@ export async function recordSemanticRecommendationPlayback(
     typeof adminRecordSemanticRecommendationPlaybackOperation
   >,
 ) {
-  const result = await withPlaybackDomainErrors(
+  const result = await withRecommendationDomainErrors(
     client.mutate({
       mutation: adminRecordSemanticRecommendationPlaybackOperation,
       variables,
       fetchPolicy: "no-cache",
       context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
     }),
+    "playback_request_invalid",
   )
   if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
     throw new RecommendationRuntimeError("playback_unavailable")

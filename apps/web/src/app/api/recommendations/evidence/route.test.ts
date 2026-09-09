@@ -1,3 +1,4 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { adminRecordSemanticRecommendationEvidenceOperation } from "@forge/admin-graphql/operations"
@@ -46,6 +47,37 @@ const body = {
 }
 
 describe("POST /watch/api/recommendations/evidence", () => {
+  it.each([true, false])(
+    "returns terminal HTTP 400 for structured Admin input rejection (thrown=%s)",
+    async (thrown) => {
+      const error = new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "Recommendation evidence timestamp is invalid",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      })
+      if (thrown) mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+      const response = await POST(request(JSON.stringify(body)))
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        error: "evidence_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+    },
+  )
+
+  it("keeps an unknown upstream failure retryable without matching its message", async () => {
+    mutate.mockRejectedValueOnce(new Error("BAD_USER_INPUT private details"))
+    const response = await POST(request(JSON.stringify(body)))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mutate.mockResolvedValue({

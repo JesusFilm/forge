@@ -90,3 +90,10 @@ A real Redis test reproduces rejection with a 160 ms delayed TIME response at
 the original budget and succeeds after adjustment. Another releases a queued
 EVAL only after caller timeout and proves no counter writes occur. A deterministic
 unit check prevents EVAL issuance when delayed TIME consumes the entire budget.
+
+The same generic input rejection also affects render/impression evidence:
+trace `370367448730537963` records an invalid timestamp rejected by Admin and
+reported as Web 503. Extend the existing structured domain-error wrapper to this
+operation, with public HTTP 400 `evidence_request_invalid`. Its existing browser
+helper already stops on 400; preserve timestamp validation and bounded retry for
+unknown failures. This shares the measured evidence-transport repair scope.

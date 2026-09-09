@@ -10,7 +10,8 @@ A real Redis delayed-TIME test failed at the original 250 ms budget and passed
 at 500 ms. A separately held EVAL ran only after the caller timed out and left
 both admission buckets absent. Client/aggregate limits and privacy-control
 isolation still pass against real Redis. Focused admission/Redis/route/recorder
-checks passed 68 tests; the full Web suite passed 3,931 tests (three Redis cases
+checks passed 68 tests; after extending terminal mapping to render/impression
+evidence, the final full Web suite passed 3,934 tests (three Redis cases
 are opt-in and ran separately). Web lint and typecheck passed.
 
 The real browser sent nine successful fact batches, paused at 13.496763 seconds,
@@ -18,7 +19,10 @@ held that position, resumed, and reached a native ended event after seeking near
 the end. The normal workflow finalized the episode with ten immutable facts;
 the authorized local Admin detail displayed the immutable fact timeline and
 revisioned outcomes. This supplements the five earlier failure perspectives;
-only the server admission budget changed in this follow-up.
+the follow-up changes server admission and error mapping, with no new browser
+loading work. Render/impression route tests reproduce thrown/returned input
+errors before the mapping fix, then verify HTTP 400. The existing browser JSON
+retry test proves one attempt for 400; arbitrary error messages still yield 503.
 
 ## Terminal invalid-input regression (2026-09-09)
 

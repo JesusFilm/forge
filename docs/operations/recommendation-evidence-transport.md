@@ -191,3 +191,8 @@ recommendation service budget remains 1.5 seconds. Event-loop stalls can delay a
 JavaScript timer; Lua still rejects expired work before any admission mutation.
 Never replace that Redis-clock fence with application wall-clock time or extend
 a queued command's deadline merely because its caller has already timed out.
+
+Render/impression evidence uses the same structured input-error mapping, with
+HTTP 400 `evidence_request_invalid`. Its existing JSON retry helper drops 400
+without retry. Timestamp validation remains strict; do not repair a viewer's
+invalid timestamp by accepting it as human-eligible evidence.
