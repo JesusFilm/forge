@@ -1,0 +1,193 @@
+{
+  "title": "Forge recommendation evidence transport",
+  "description": "Fixed-field operational observations only; absence is unknown. Production acceptance requires complete HTTP/APM denominators and authorized durable evidence audit. See docs/operations/recommendation-evidence-transport.md.",
+  "layout_type": "ordered",
+  "widgets": [
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Playback 5xx",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" (\"action=playback\" OR \"action=context\" OR \"action=claim\" OR \"action=facts\") (\"httpStatus=500\" OR \"httpStatus=502\" OR \"httpStatus=503\" OR \"httpStatus=504\")"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Binding retry",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=invalid_binding\" \"retryDisposition=retryable\""
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Transaction exhausted",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=transaction_exhausted\""
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Crawler success",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" \"crawler=recognized\" (\"httpStatus=200\" OR \"httpStatus=202\")"
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Collector unavailable",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "(env:prod OR @env:prod) \"event=recommendation.evidence.collector\""
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "timeseries",
+        "title": "Reconciliation unavailable",
+        "requests": [
+          {
+            "response_format": "timeseries",
+            "display_type": "bars",
+            "queries": [
+              {
+                "data_source": "logs",
+                "name": "observations",
+                "indexes": ["*"],
+                "search": {
+                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.reconciliation.heartbeat\" \"outcome=unavailable\""
+                },
+                "compute": {
+                  "aggregation": "count"
+                },
+                "group_by": []
+              }
+            ],
+            "formulas": [
+              {
+                "formula": "observations"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

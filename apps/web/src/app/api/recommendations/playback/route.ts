@@ -1,3 +1,5 @@
+import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 
 import {
@@ -188,7 +190,9 @@ const PlaybackInput = z.discriminatedUnion("action", [
 ])
 
 export async function POST(request: Request) {
+  let action: "playback" | "context" | "claim" | "facts" = "playback"
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_PLAYBACK_BODY_BYTES,
@@ -197,6 +201,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       throw new RecommendationRouteError(400, "invalid_body")
     }
+    action = parsed.data.action
     if (parsed.data.action === "context") {
       await assertRecommendationMutationAdmission(
         request.headers,
@@ -211,6 +216,7 @@ export async function POST(request: Request) {
       })
       const response = recommendationJson(context)
       attachRecommendationSession(response, session)
+      observeEvidenceResponse(request, action, response.status)
       return response
     }
 
@@ -229,6 +235,7 @@ export async function POST(request: Request) {
       if (!episode) {
         throw new RecommendationRouteError(502, "invalid_admin_response")
       }
+      observeEvidenceResponse(request, action, 200)
       return recommendationJson({ episode })
     }
 
@@ -240,8 +247,11 @@ export async function POST(request: Request) {
       events: parsed.data.events,
       sessionDigest: session.digest,
     })
+    observeEvidenceResponse(request, action, 200, undefined, receipts)
     return recommendationJson({ receipts })
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeEvidenceResponse(request, action, response.status, error)
+    return response
   }
 }

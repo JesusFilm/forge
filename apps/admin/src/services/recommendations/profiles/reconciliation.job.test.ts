@@ -180,4 +180,32 @@ describe("profile reconciliation scheduler", () => {
       /profileId|sessionDigest|sourceId|requestId/i,
     )
   })
+  it("emits a privacy-safe unavailable heartbeat only after persistence succeeds", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {})
+    try {
+      await recordRecommendationProfileReconciliationHeartbeat(
+        "private-ledger",
+        {
+          nextRunAt: NOW,
+          result: null,
+        },
+      )
+      expect(log).toHaveBeenCalledWith(
+        "event=recommendation.reconciliation.heartbeat outcome=unavailable",
+      )
+      log.mockClear()
+      workflowRun.update.mockRejectedValueOnce(
+        new Error("private database error"),
+      )
+      await expect(
+        recordRecommendationProfileReconciliationHeartbeat("private-ledger", {
+          nextRunAt: NOW,
+          result: null,
+        }),
+      ).rejects.toThrow("private database error")
+      expect(log).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+    }
+  })
 })

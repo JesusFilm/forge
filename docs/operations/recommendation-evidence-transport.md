@@ -1,0 +1,149 @@
+# Recommendation evidence transport operations
+
+Scope: feat-464. This release repairs evidence transport and recognized-machine
+admission. It does not authorize profile ranking, experiments, learning, or proxy
+promotion. Keep `active-watch-proxy-v1` fail-closed.
+
+## Acknowledgement contract
+
+| Boundary                        | Budget                    | Meaning                                          |
+| ------------------------------- | ------------------------- | ------------------------------------------------ |
+| Evidence Web → Admin            | 3 seconds                 | Claim, context and initial/fact evidence request |
+| Evidence browser → Web          | 5 seconds                 | Includes consuming the acknowledgement body      |
+| Episode lock contention         | 1.5 seconds / 64 attempts | Retry admission outside the transaction          |
+| Serializable conflicts          | 3 attempts                | Separate from busy-lock retries                  |
+| Recommendation complete service | Existing 1.5 seconds      | Unchanged delivery contract                      |
+
+The 3/5-second evidence budgets add headroom around the ticket's measured 1.91-second
+successful p95. They do not guarantee every transaction completes within that time.
+An upstream timeout does not undo an Admin commit. Replay uses the original
+capability, claim nonce, event identifiers, timestamps and payload. Context
+issuance has no client idempotency key and is not automatically retried.
+
+A proven `invalid_binding` from a returned or rejected Apollo result becomes Web
+HTTP 409 and terminates that capability's fact retries. A stale linked claim can
+fall back once to standalone context. Authentication and recognized-machine 403
+responses stop without that fallback. Recognized crawlers and prefetch/prerender
+requests are refused before human evidence mutations. Missing or unrecognized
+user agents are not proof of humanity.
+
+The database retains Serializable isolation and uses the same episode advisory
+lock namespace. Busy lock acquisition rolls back immediately; retry starts with
+a new snapshot. Canonical duplicate claims return the already committed capability
+and original signing key. Immutable receipts and payload conflicts remain authoritative.
+
+## Operational observations in Admin
+
+Configure the same environment-specific `RECOMMENDATION_EVIDENCE_REDIS_URL` in
+Web and Admin. It is optional: without it, playback still works and the Admin
+transport panel reports unknown. Do not point staging and production at the same
+collector. This is separate from each app's general Redis URL to avoid silently
+reading different stores.
+
+The authorized Recommendations page retains its existing
+`read:recommendation-aggregates` permission. The transport section reads at most
+48 hourly keys (24 per source), with a 150ms read deadline in parallel with the
+existing overview. It adds no browser JavaScript. Counters expire after 48 hours;
+at most 512 dimension combinations per hour/source are recorded. Writes are
+asynchronous, bounded, not retried, and never gate playback.
+
+These are **best-effort operational observations**, not a durable evidence ledger,
+HTTP denominator, or proof of complete collection. Unknown means no usable evidence;
+partial means a source, capacity, or parse gap. Observed means records were read,
+not that the system is healthy. Small counts are suppressed. Current-hour data is
+partial and the displayed start/end timestamps define the actual window.
+
+Fields are allowlisted at runtime: action, outcome, normalized reason, timeout
+stage, retry disposition, recognized-machine disposition, HTTP status and bounded
+transaction retry attempt. Browser retry attempt is unknown unless independently
+observed; server retry disposition is a policy classification. No raw request,
+error, user agent, capability, profile/session/episode/event identifier, history or
+vector is admitted. The underlying immutable receipt and authorized profile audit
+remain the source for correctness.
+
+## Logs, dashboard and monitors
+
+Plain `key=value` logs follow the repository's Railway-compatible format:
+
+```text
+event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409
+event=recommendation.evidence.collector source=web reason=unavailable
+event=recommendation.reconciliation.heartbeat outcome=completed
+```
+
+The scheduler heartbeat is emitted only after its durable ledger update succeeds.
+`outcome=unavailable` is a substantive batch failure; expected workflow step/wait
+suspension is not.
+
+Definitions live in `infra/datadog-monitors/recommendation-evidence/`:
+seven monitor payloads and `dashboard.json`. The nested definitions are deliberately
+not installed by the older fleet-ceiling `create.sh`. Before installing through the
+Datadog Monitor/Dashboard APIs, validate payloads against the API, set an approved
+notification destination, and check for existing matching names to avoid duplicates.
+Installation/activation is a separate operational step; committed JSON is not an
+installed monitor.
+
+Queries use quoted fixed substrings, matching the existing repo log monitor
+convention. They do not assume JSON parsing or custom facets. Verify a known local
+or staging event reaches the expected production log pipeline before relying on
+alerts. The sustained-5xx count alert catches bursts; it does not substitute for
+the canary's under-1% error-rate criterion. Binding amplification monitors detect
+a binding rejection incorrectly classified retryable; browser retry prevention is
+also verified by tests and actual request/receipt reconciliation.
+
+## Historical window audit
+
+Preserve the original fixed window:
+2026-09-07 23:20:00 through 2026-09-08 01:05:00 UTC.
+Use the resource filters in the
+[feat-464 ticket](../roadmap/content-discovery/feat-464-recommendation-evidence-transport-crawler-integrity.md).
+
+The current episode schema stores discovery provenance, not trusted user-agent
+classification. Browser-supplied discovery data and matching timestamps cannot
+prove a historical episode came from a crawler. Aggregate APM counts cannot be
+joined to arbitrary episode rows.
+
+Record historical attribution as unknown unless retained trusted traces establish
+an exact affected root. Only then use the existing superseding eligibility and
+reconciliation workflow; preserve immutable original facts. Do not delete,
+relabel by time range, or promote ambiguous evidence. If no trusted linkage remains,
+publish that bounded uncertainty and use clean post-fix evidence for release decisions.
+
+## Release and canary gate
+
+Deploy only through the normal PR-to-main path. Do not run direct Railway deploys,
+change live ranking pointers, or manufacture production evidence as part of local
+verification. After deployment, run the ticket's minimum two-hour canary:
+
+1. Record deployed SHA, fixed UTC start/end, complete request counts and explicit
+   exclusions. Calculate playback 5xx numerator / denominator, excluding only
+   documented deliberate fault injection; the result must be below 1%.
+2. Reconcile valid claim/fact acknowledgements with immutable receipts and facts.
+   Prove lost-ack replay does not duplicate facts or mutate original payloads.
+3. Verify every observed invalid binding receives the definitive response without
+   browser retry amplification. Verify zero receipt P2002 collisions and exhausted
+   playback P2034 retries.
+4. Verify no recognized crawler successfully creates human-eligible evidence.
+   Low traffic is insufficient evidence; use only an explicitly authorized safe
+   canary, preserving auth and admission.
+5. Verify five-minute reconciliation cadence with no substantive batch failures.
+   Run the existing authorized current-pointer audit after convergence and require
+   zero current generations with ineligible lineage.
+6. Reconcile Watch playback, finalization and the matching authorized Admin view.
+   Prove navigation/playback availability during telemetry degradation.
+
+Retain feat-464 and feat-459 in progress until these production gates pass.
+Feat-447 remains blocked. Local fixture tests, empty databases, synthetic vectors,
+and screenshots cannot satisfy the production audit or production-vector latency
+requirements.
+
+Rollback follows the normal deployment path. If evidence admission must be stopped,
+use the existing approved collection control; preserve stored evidence and semantic
+delivery. Do not repair a transport incident by loosening privacy, integrity,
+idempotency, or live-ranking policy.
+
+Forge's Railway log intake currently exposes the production environment in
+`@env`, while some Datadog sources expose the `env` tag. Monitor queries accept
+`(env:prod OR @env:prod)`. Confirm both service and environment against actual
+logs before interpreting an empty monitor result; empty results are not a healthy
+traffic window.

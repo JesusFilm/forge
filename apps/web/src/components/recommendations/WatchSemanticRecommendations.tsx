@@ -30,6 +30,7 @@ import {
   WATCH_BASE_PATH,
 } from "@/lib/routes"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
@@ -42,7 +43,7 @@ const DELIVERY_MAX_ATTEMPTS = 3
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
 const SELECTION_DEADLINE_MS = 800
-const EVIDENCE_DEADLINE_MS = 1_000
+const EVIDENCE_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
 
 async function recommendationDeliveryJsonWithDeadline(
   init: RequestInit,
@@ -731,11 +732,13 @@ export function WatchSemanticRecommendations({
               new CustomEvent("forge:recommendation-evidence-degraded", {
                 detail: {
                   reason:
-                    reason === "response_invalid"
-                      ? "receipt_missing"
-                      : willRetry
-                        ? "transport_retry"
-                        : "transport_exhausted",
+                    reason === "rejected"
+                      ? "admission_rejected"
+                      : reason === "response_invalid"
+                        ? "receipt_missing"
+                        : willRetry
+                          ? "transport_retry"
+                          : "transport_exhausted",
                   disposition: willRetry ? "retrying" : "dropped",
                   eventIds: [evidenceEventId],
                 },

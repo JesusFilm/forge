@@ -979,7 +979,8 @@ describe("RecommendationPlaybackRecorder", () => {
     )
   })
 
-  it("drops an invalid binding without amplifying it through retries", async () => {
+  it("bounds a stalled acknowledgement body and replays identical facts after the ambiguous timeout", async () => {
+    let factSignal: AbortSignal | undefined
     fetchMock
       .mockResolvedValueOnce(
         response({
@@ -991,15 +992,20 @@ describe("RecommendationPlaybackRecorder", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(
-        response({ error: "playback_binding_invalid" }, false, 409),
+      .mockImplementationOnce((_url, init) => {
+        factSignal = init.signal ?? undefined
+        return Promise.resolve({
+          ok: true,
+          json: () => new Promise(() => undefined),
+        } as unknown as Response)
+      })
+      .mockImplementationOnce((_url, init) =>
+        Promise.resolve(acceptedFactsResponse(init)),
       )
     sessionStorage.setItem(
       RECOMMENDATION_TAB_CORRELATION_KEY,
       "claim-nonce-1234567890",
     )
-    const degraded = vi.fn()
-    window.addEventListener("forge:recommendation-playback-degraded", degraded)
     const player = makePlayer()
 
     await act(async () => {
@@ -1017,24 +1023,81 @@ describe("RecommendationPlaybackRecorder", () => {
     await act(async () => {
       player.dispatch("playing")
       await Promise.resolve()
-      await Promise.resolve()
     })
-    await act(async () => vi.advanceTimersByTimeAsync(1_000))
-
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(degraded).toHaveBeenCalledWith(
-      expect.objectContaining({
-        detail: expect.objectContaining({
-          reason: "binding_invalid",
-          disposition: "dropped",
-        }),
-      }),
-    )
-    window.removeEventListener(
-      "forge:recommendation-playback-degraded",
-      degraded,
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_100)
+    })
+    expect(factSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(
+      fetchMock.mock.calls[1]?.[1]?.body,
     )
   })
+
+  it.each([401, 403, 409])(
+    "drops definitive fact HTTP %s without amplifying retries",
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce(
+          response({
+            episode: {
+              episodeId: "episode-1",
+              capability: "episode-capability-secret",
+              activeUntil: "2026-08-19T07:00:00.000Z",
+              hardUntil: "2026-08-19T09:00:00.000Z",
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          response({ error: "playback_binding_invalid" }, false, status),
+        )
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "claim-nonce-1234567890",
+      )
+      const degraded = vi.fn()
+      window.addEventListener(
+        "forge:recommendation-playback-degraded",
+        degraded,
+      )
+      const player = makePlayer()
+
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={player}
+            initiation="manual"
+            mediaId="media-1"
+            durationSeconds={120}
+          />,
+        )
+        await Promise.resolve()
+      })
+      player.paused = false
+      await act(async () => {
+        player.dispatch("playing")
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await act(async () => vi.advanceTimersByTimeAsync(1_000))
+
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(degraded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detail: expect.objectContaining({
+            reason: status === 409 ? "binding_invalid" : "admission_rejected",
+            disposition: "dropped",
+          }),
+        }),
+      )
+      window.removeEventListener(
+        "forge:recommendation-playback-degraded",
+        degraded,
+      )
+    },
+  )
 
   it("retires only accepted receipts and retries the unacknowledged event", async () => {
     fetchMock.mockResolvedValueOnce(

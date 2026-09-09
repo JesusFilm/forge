@@ -15,7 +15,10 @@ import {
 } from "@forge/admin-graphql/operations"
 import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
-import { RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS } from "@/lib/recommendation-timeouts"
+import {
+  RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+} from "@/lib/recommendation-timeouts"
 
 // Keep semantic plus contextual recovery under the browser's 12-second
 // delivery deadline. Admission, serialization, and network transit retain
@@ -23,7 +26,7 @@ import { RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS } from "@/lib/recommendation
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
 const CONTEXTUAL_RECOMMENDATION_UPSTREAM_TIMEOUT_MS = 6_500
 const SELECTION_UPSTREAM_TIMEOUT_MS = 700
-const EVIDENCE_UPSTREAM_TIMEOUT_MS = 900
+const CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
 
 function upstreamContext(timeoutMs: number) {
   return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
@@ -34,16 +37,22 @@ function hasRecommendationGraphqlCode(
   expected: string,
 ): boolean {
   if (!value || typeof value !== "object") return false
-  const record = value as { error?: unknown; errors?: unknown }
-  const direct = Array.isArray(record.errors) ? record.errors : []
+  const record = value as {
+    error?: unknown
+    errors?: unknown
+    graphQLErrors?: unknown
+  }
   const nested =
-    record.error &&
-    typeof record.error === "object" &&
-    "errors" in record.error &&
-    Array.isArray(record.error.errors)
-      ? record.error.errors
-      : []
-  return [...direct, ...nested].some((entry) => {
+    record.error && typeof record.error === "object"
+      ? (record.error as { errors?: unknown; graphQLErrors?: unknown })
+      : undefined
+  const errors = [
+    record.errors,
+    record.graphQLErrors,
+    nested?.errors,
+    nested?.graphQLErrors,
+  ].flatMap((entries) => (Array.isArray(entries) ? entries : []))
+  return errors.some((entry) => {
     if (!entry || typeof entry !== "object" || !("extensions" in entry)) {
       return false
     }
@@ -55,6 +64,24 @@ function hasRecommendationGraphqlCode(
       extensions.recommendationCode === expected
     )
   })
+}
+
+// Apollo's default errorPolicy rejects GraphQL errors. Also accept returned
+// envelopes for compatible callers without relying on human-readable messages.
+async function withPlaybackDomainErrors<T>(operation: Promise<T>): Promise<T> {
+  let result: T
+  try {
+    result = await operation
+  } catch (error) {
+    if (hasRecommendationGraphqlCode(error, "invalid_binding")) {
+      throw new RecommendationRuntimeError("playback_binding_invalid")
+    }
+    throw error
+  }
+  if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
+    throw new RecommendationRuntimeError("playback_binding_invalid")
+  }
+  return result
 }
 
 // Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
@@ -540,7 +567,7 @@ export async function recordSemanticRecommendationEvidence(
     mutation: adminRecordSemanticRecommendationEvidenceOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recordSemanticRecommendationEvidence) {
     throw new RecommendationRuntimeError("evidence_unavailable")
@@ -570,12 +597,14 @@ export async function claimSemanticRecommendationEpisode(
     typeof adminClaimSemanticRecommendationEpisodeOperation
   >,
 ): Promise<SemanticRecommendationEpisodeClaim> {
-  const result = await client.mutate({
-    mutation: adminClaimSemanticRecommendationEpisodeOperation,
-    variables,
-    fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
-  })
+  const result = await withPlaybackDomainErrors(
+    client.mutate({
+      mutation: adminClaimSemanticRecommendationEpisodeOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+  )
   if (result.error || !result.data?.claimSemanticRecommendationEpisode) {
     throw new RecommendationRuntimeError("episode_unavailable")
   }
@@ -589,7 +618,7 @@ export async function issueWatchPlaybackContext(
     mutation: adminIssueWatchPlaybackContextOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.issueWatchPlaybackContext) {
     throw new RecommendationRuntimeError("episode_unavailable")
@@ -602,15 +631,14 @@ export async function recordSemanticRecommendationPlayback(
     typeof adminRecordSemanticRecommendationPlaybackOperation
   >,
 ) {
-  const result = await client.mutate({
-    mutation: adminRecordSemanticRecommendationPlaybackOperation,
-    variables,
-    fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
-  })
-  if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
-    throw new RecommendationRuntimeError("playback_binding_invalid")
-  }
+  const result = await withPlaybackDomainErrors(
+    client.mutate({
+      mutation: adminRecordSemanticRecommendationPlaybackOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+  )
   if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
     throw new RecommendationRuntimeError("playback_unavailable")
   }
@@ -626,7 +654,7 @@ export async function recordRecommendationContentAction(
     mutation: adminRecordRecommendationContentActionOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recordRecommendationContentAction) {
     throw new RecommendationRuntimeError("content_action_unavailable")
