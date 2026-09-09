@@ -9,7 +9,22 @@
 
 import * as SplashScreen from "expo-splash-screen"
 
+import { datadogLog } from "../datadog"
+
 let hidden = false
+
+/** A failed release leaves a flat field over a working app, with nothing on
+ *  screen to say so. Report it; never let the report itself throw. */
+function report(call: "prevent" | "hide", error: unknown): void {
+  try {
+    datadogLog.warn("splash_native_call_failed", {
+      splash_call: call,
+      error_message: error instanceof Error ? error.message : String(error),
+    })
+  } catch {
+    // Telemetry must never mask the surface this module exists to reveal.
+  }
+}
 
 /**
  * Holds the native splash until the React layer has painted. The CALL must sit
@@ -18,9 +33,11 @@ let hidden = false
  */
 export function preventNativeSplashAutoHide(): void {
   try {
-    void SplashScreen.preventAutoHideAsync().catch(() => {})
-  } catch {
-    // A splash module that cannot hold is not a reason to fail startup.
+    void SplashScreen.preventAutoHideAsync().catch((error: unknown) => {
+      report("prevent", error)
+    })
+  } catch (error) {
+    report("prevent", error)
   }
 }
 
@@ -29,9 +46,11 @@ export function hideNativeSplashOnce(): void {
   if (hidden) return
   hidden = true
   try {
-    void SplashScreen.hideAsync().catch(() => {})
-  } catch {
-    // The panel or the app tree beneath must render either way.
+    void SplashScreen.hideAsync().catch((error: unknown) => {
+      report("hide", error)
+    })
+  } catch (error) {
+    report("hide", error)
   }
 }
 
