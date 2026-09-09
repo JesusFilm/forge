@@ -218,14 +218,27 @@ describe("the beam's geometry (R9)", () => {
     expect(MARK_CENTROID_Y).not.toBe(0.5)
   })
 
-  it("keeps the word inside the screen's own body", () => {
-    const geometry = splashGeometry(PHONE)
-    const risen =
-      (geometry.wordCenter.y - geometry.mark.top) / geometry.mark.height
-    // Between the left edge's own mid-height and the centroid: high enough to
-    // read as set ON the screen, not so high it crowds the top edge.
-    expect(risen).toBeGreaterThan(MARK_BOTTOM_LEFT_Y / 2)
-    expect(risen).toBeLessThan(MARK_CENTROID_Y)
+  it.each([
+    ["a phone", PHONE],
+    ["a tablet", TABLET],
+  ])("keeps the word's line box inside the screen on %s", (_label, frame) => {
+    const geometry = splashGeometry(frame)
+    const boxTop = geometry.wordCenter.y - geometry.lineHeight / 2
+    const boxBottom = geometry.wordCenter.y + geometry.lineHeight / 2
+
+    // The real constraint, replacing an earlier proxy that floored the word at
+    // the left edge's mid-height: the LINE BOX must clear the mark's top edge
+    // and stay above the point where the left edge ends, or the word reads as
+    // falling off the screen rather than set on it.
+    expect(boxTop).toBeGreaterThan(geometry.mark.top)
+    expect(boxBottom).toBeLessThan(
+      geometry.mark.top + geometry.mark.height * MARK_BOTTOM_LEFT_Y,
+    )
+    // Still above the centroid it is measured from, in the direction the lift
+    // is named for.
+    expect(geometry.wordCenter.y).toBeLessThan(
+      geometry.mark.top + geometry.mark.height * MARK_CENTROID_Y,
+    )
 
     const across =
       (geometry.wordCenter.x - geometry.mark.left) / geometry.mark.width

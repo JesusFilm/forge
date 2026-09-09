@@ -30,7 +30,7 @@ export const MARK_CENTROID_Y = 0.4158
  * The centroid weights the sloped tail, which is not part of the screen a
  * viewer reads text on, so anchoring there alone sets the word visibly low.
  */
-export const WORD_RISE_FROM_CENTROID = 0.08
+export const WORD_RISE_FROM_CENTROID = 0.136
 /**
  * How far LEFT of the centroid the word sits, as a fraction of the mark's
  * width. The sliced bottom-left corner takes weight off that side, pulling the
@@ -102,6 +102,10 @@ export type SplashGeometry = {
   mark: { left: number; top: number; width: number; height: number }
   /** Where the word is centred, in frame coordinates. */
   wordCenter: SplashPoint
+  /** The word's type size, rounded — sub-pixel sizes are blurry on Android. */
+  fontSize: number
+  /** Its line box, which is what has to stay inside the screen. */
+  lineHeight: number
   /** The beam's apex, in frame coordinates. */
   apex: SplashPoint
   /** Direction from the apex to the mark's bottom-left corner, in degrees. */
@@ -135,12 +139,16 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
     Math.hypot(topRight.x - apex.x, topRight.y - apex.y),
   )
 
+  const fontSize = Math.round(width * WORD_SIZE_RATIO)
+
   return {
     mark: { left, top, width, height },
     wordCenter: {
       x: left + width * (MARK_CENTROID_X - WORD_SHIFT_LEFT_OF_CENTROID),
       y: top + height * (MARK_CENTROID_Y - WORD_RISE_FROM_CENTROID),
     },
+    fontSize,
+    lineHeight: Math.round(fontSize * WORD_LINE_RATIO),
     apex,
     bottomLeftAngleDeg: degrees(
       Math.atan2(bottomLeft.y - apex.y, bottomLeft.x - apex.x),
@@ -178,7 +186,6 @@ export function SplashSequence({
     const geometry = splashGeometry({ width: frameWidth, height: frameHeight })
     const spread = geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg
     const step = spread / (RAY_BAND_COUNT - 1)
-    const fontSize = Math.round(geometry.mark.width * WORD_SIZE_RATIO)
     return {
       ...geometry,
       // A band is drawn pointing LEFT out of the apex, so its rotation is its
@@ -191,8 +198,6 @@ export function SplashSequence({
         geometry.rayLength *
         Math.abs((step * Math.PI) / 180) *
         RAY_BAND_OVERLAP,
-      fontSize,
-      lineHeight: Math.round(fontSize * WORD_LINE_RATIO),
     }
   }, [frameWidth, frameHeight])
 
