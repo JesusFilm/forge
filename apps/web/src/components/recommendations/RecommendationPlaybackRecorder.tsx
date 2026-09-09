@@ -105,7 +105,12 @@ function playbackPosition(
 }
 
 class DefinitivePlaybackError extends Error {
-  constructor(readonly reason: "binding_invalid" | "admission_rejected") {
+  constructor(
+    readonly reason:
+      | "binding_invalid"
+      | "request_invalid"
+      | "admission_rejected",
+  ) {
     super()
   }
 }
@@ -132,14 +137,23 @@ async function postPlayback(
       if (response.status === 401 || response.status === 403) {
         throw new DefinitivePlaybackError("admission_rejected")
       }
-      if (response.status === 409) {
+      if (response.status === 400 || response.status === 409) {
         let value: { error?: unknown } | null = null
         try {
           value = (await response.json()) as { error?: unknown }
         } catch {
           // A malformed error body remains an ambiguous transport failure.
         }
-        if (value?.error === "playback_binding_invalid") {
+        if (
+          response.status === 400 &&
+          value?.error === "playback_request_invalid"
+        ) {
+          throw new DefinitivePlaybackError("request_invalid")
+        }
+        if (
+          response.status === 409 &&
+          value?.error === "playback_binding_invalid"
+        ) {
           throw new DefinitivePlaybackError("binding_invalid")
         }
       }
@@ -166,6 +180,7 @@ function playbackFactsBody(
 type PlaybackDegradationReason =
   | "body_limit"
   | "binding_invalid"
+  | "request_invalid"
   | "admission_rejected"
   | "episode_limit"
   | "integrity_conflict"

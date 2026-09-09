@@ -52,3 +52,19 @@ and the complete recommendation deadline at 1.5 seconds.
 - Keep feat-464/459/447 in progress until their respective production gates pass.
   Keep `active-watch-proxy-v1` comparison-only; do not enable ranking, experiments,
   promotion or learning, and do not modify issues #2141–#2148.
+
+## Terminal playback rejection follow-up
+
+Diagnostic PR #2217 merged as `dafa3ab0`. During the earlier primary observation
+window, traces `4899517045392701787` and `4310965155225796154` show Admin returning
+structured `BAD_USER_INPUT` within milliseconds while Web returns HTTP 503.
+The browser consequently retries a definitive rejection. The generic public
+message and pre-write trace do not establish which token validity condition failed.
+
+Map structured `BAD_USER_INPUT` from playback operations to private HTTP 400
+`playback_request_invalid`, retaining the more specific invalid-binding HTTP 409.
+The recorder retires the rejected episode only for this exact status/code pair.
+Unrecognized error bodies, rate limits and upstream failures preserve bounded
+retry/replay behavior. No token validation, admission budget or durable-write
+semantics change. Cover thrown/returned Apollo errors, terminal browser behavior,
+and continued real decoded playback after a local Admin signature rejection.

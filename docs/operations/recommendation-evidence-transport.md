@@ -168,3 +168,14 @@ traffic window.
 Admin observations can be emitted by both `forge-admin` and
 `forge-admin-worker`. Reconciliation and background finalization normally run
 in the worker; include both service tags in Admin evidence monitors.
+
+### Definitive playback input rejection
+
+Admin playback `BAD_USER_INPUT` is a definitive rejection, including invalid
+episode capabilities. Web maps the structured code to private HTTP 400
+`playback_request_invalid`; the recorder drops the rejected episode without
+replaying facts. The more specific `invalid_binding` code retains HTTP 409
+`playback_binding_invalid`. Never infer either from human-readable error text.
+Unrecognized response bodies and transport failures retain bounded retries.
+Already-loaded older browser bundles may retry until their existing limit or a
+refresh. A 400 must not be counted as an upstream availability failure.
