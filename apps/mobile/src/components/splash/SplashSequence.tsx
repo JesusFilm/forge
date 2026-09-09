@@ -31,6 +31,13 @@ export const MARK_CENTROID_Y = 0.4158
  * viewer reads text on, so anchoring there alone sets the word visibly low.
  */
 export const WORD_RISE_FROM_CENTROID = 0.06
+/**
+ * How far LEFT of the centroid the word sits, as a fraction of the mark's
+ * width. The sliced bottom-left corner takes weight off that side, pulling the
+ * centroid right of the box centre and leaving more red to the word's left
+ * than to its right.
+ */
+export const WORD_SHIFT_LEFT_OF_CENTROID = 0.03
 /** The beam's apex sits on the right edge, four fifths of the way down. */
 export const RAY_APEX_Y_RATIO = 0.8
 /** How far the beam runs past the mark, so it dissolves rather than stopping. */
@@ -131,7 +138,7 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
   return {
     mark: { left, top, width, height },
     wordCenter: {
-      x: left + width * MARK_CENTROID_X,
+      x: left + width * (MARK_CENTROID_X - WORD_SHIFT_LEFT_OF_CENTROID),
       y: top + height * (MARK_CENTROID_Y - WORD_RISE_FROM_CENTROID),
     },
     apex,

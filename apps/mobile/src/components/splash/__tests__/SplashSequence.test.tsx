@@ -26,6 +26,7 @@ import {
   MARK_CENTROID_X,
   MARK_CENTROID_Y,
   WORD_RISE_FROM_CENTROID,
+  WORD_SHIFT_LEFT_OF_CENTROID,
   MARK_WIDTH_RATIO,
   RAY_APEX_Y_RATIO,
   SPLASH_BLOOM_RISE_MS,
@@ -194,21 +195,25 @@ describe("the beam's geometry (R9)", () => {
     )
   })
 
-  it("sets the word on the mark's alpha centroid, not its box centre", () => {
+  it("sets the word off the mark's alpha centroid, not its box centre", () => {
     const geometry = splashGeometry(PHONE)
+    // Left of it: the sliced bottom-left corner pulls the centroid right, so
+    // anchoring there leaves more red to the word's left than to its right.
     expect(geometry.wordCenter.x).toBeCloseTo(
-      geometry.mark.left + geometry.mark.width * MARK_CENTROID_X,
+      geometry.mark.left +
+        geometry.mark.width * (MARK_CENTROID_X - WORD_SHIFT_LEFT_OF_CENTROID),
       6,
     )
-    // Above it, not on it: the centroid weights the sloped tail, which is not
-    // part of the screen a viewer reads text on.
+    // Above it: the centroid weights the sloped tail, which is not part of the
+    // screen a viewer reads text on.
     expect(geometry.wordCenter.y).toBeCloseTo(
       geometry.mark.top +
         geometry.mark.height * (MARK_CENTROID_Y - WORD_RISE_FROM_CENTROID),
       6,
     )
     expect(WORD_RISE_FROM_CENTROID).toBeGreaterThan(0)
-    // The centroid is off both axes, so a box-centred word would sag.
+    expect(WORD_SHIFT_LEFT_OF_CENTROID).toBeGreaterThan(0)
+    // The centroid is off both axes, so it is not the box centre either way.
     expect(MARK_CENTROID_X).not.toBe(0.5)
     expect(MARK_CENTROID_Y).not.toBe(0.5)
   })
@@ -221,6 +226,13 @@ describe("the beam's geometry (R9)", () => {
     // read as set ON the screen, not so high it crowds the top edge.
     expect(risen).toBeGreaterThan(MARK_BOTTOM_LEFT_Y / 2)
     expect(risen).toBeLessThan(MARK_CENTROID_Y)
+
+    const across =
+      (geometry.wordCenter.x - geometry.mark.left) / geometry.mark.width
+    // Between the box centre and the centroid: the shift corrects the lean the
+    // sliced corner causes without carrying the word past the middle.
+    expect(across).toBeGreaterThan(0.5)
+    expect(across).toBeLessThan(MARK_CENTROID_X)
   })
 
   it("keeps the mark's own proportions on both frames", () => {
