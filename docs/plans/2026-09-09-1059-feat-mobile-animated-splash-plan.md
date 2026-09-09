@@ -191,6 +191,20 @@ flowchart TB
 - KTD8. **Noto Serif is embedded through the object form of the `expo-font` config plugin, with an explicit Android `fontFamily`.** Under the array form Android derives the family name from the filename while iOS reads it from inside the file, so one `fontFamily` string can resolve on one platform and silently fall back on the other. Build-time embedding also removes the async load R12 forbids. Governs R12.
 - KTD9. **The animation is built from core `Animated` values on the native driver, with `expo-linear-gradient` for the ray.** `apps/mobile/package.json` excludes `react-native-reanimated`, `react-native-worklets` and `react-native-gesture-handler` from autolinking, and the app carries no Lottie, `react-native-svg` or Skia. A looped `Animated.sequence` runs only once on Fabric, so any repeat must loop a single timing and interpolate from it. Governs R8, R9, R10, R11.
 - KTD10. **The exit fade animates the overlay's own opacity, with `needsOffscreenAlphaCompositing` on the animated wrapper; Home is never re-mounted for it.** Because the splash draws above a live tree, Home is already painted underneath, so the cross-fade has nothing to reveal that is not already there. A gate would have had to mount Home first and would have shown a blank frame doing it. The compositing flag is load-bearing on Android, which applies a group's opacity to each child unless the subtree is composited offscreen first — without it Home bleeds through the fade and the projector layers blend against each other. `src/components/watch/WatchAmbient.tsx` carries the same fix with a guard test. Governs R14.
+
+> **Correction to KTD9, added 2026-09-09 after implementation.** The premise
+> above is too narrow, and it is the reason a defect reached a device. The
+> single-run behaviour is not confined to a looped sequence: a plain
+> `Animated.sequence` nested inside an `Animated.parallel`, with no
+> `Animated.loop` anywhere, never ran at all on the Android release build,
+> while its sibling timings in the same `parallel` ran correctly. The U4 test
+> scenario below therefore draws a false conclusion where it says "No
+> `Animated.loop` wraps a sequence, so the Fabric single-run defect cannot
+> appear." The decision text itself is left as written, because the plan is the
+> record of what was believed at the time. The shipped code uses one timing plus
+> `interpolate()` and forbids `Animated.sequence` outright. See
+> `docs/solutions/ui-bugs/animated-sequence-nested-in-parallel-never-runs-on-android-fabric.md`.
+
 - KTD11. **The splash session lives in module scope and the host subscribes to it with `useSyncExternalStore`.** The host is a `<Stack>` sibling, so no React context reaches both the host and any route that might need to read the session. `src/lib/miniPlayer/store.ts` and `PlaybackHost` already solve exactly this shape, for exactly this reason. Governs R3, R4.
 
 ### High-Level Technical Design

@@ -233,8 +233,8 @@ export function SplashSequence({
 
   useEffect(() => {
     if (reduceMotion) return
-    // Every beat is one timing with its own delay. A looped Animated.sequence
-    // runs only once on Fabric, so nothing here may be wrapped in a loop.
+    // Every beat is one timing with its own delay. No Animated.sequence may
+    // appear here at all, looped or not — see the bloom's note above.
     const animation = Animated.parallel([
       Animated.timing(bloom, {
         toValue: 1,
