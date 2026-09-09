@@ -29,6 +29,7 @@ let DevEndpointNotice:
   | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
   | undefined
 let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
+let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -73,6 +74,8 @@ try {
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
   PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
+  ExportReportHost =
+    require("../src/components/ExportReportHost").ExportReportHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -395,6 +398,9 @@ export default function RootLayout() {
                           the shell swaps its element type once per cold launch,
                           remounting its subtree. The player outlives the route. */}
                       <PlaybackHost />
+                      {/* R29: a raw export outlives the sheet that started it,
+                          so its report is hosted here rather than in a route. */}
+                      <ExportReportHost />
                     </DownloadsProvider>
                   </AuthProvider>
                 </WatchPreferencesProvider>
