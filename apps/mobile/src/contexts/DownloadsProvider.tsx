@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { documentDirectory } from "expo-file-system/legacy"
 
 import {
   configureDownloadEngine,
@@ -21,12 +22,20 @@ import {
   wireExistingTask,
 } from "../lib/downloadEngine"
 import { reconcile } from "../lib/downloadReconciliation"
+import { getExportSessionStore } from "../lib/exportSession"
+import {
+  applyExportSweep,
+  createEngineConfigFence,
+  planExportSweep,
+  type EngineConfigFence,
+} from "../lib/exportSweep"
 import {
   OFFLINE_ROOT,
   downloadToFile,
   ensureVideoDir,
   fileExists,
   freeDiskBytes,
+  listDirectory,
   moveFile,
   removeUri,
   removeVideoDir,
@@ -58,7 +67,11 @@ import {
   type StartDownloadResult,
 } from "../lib/downloadLifecycle"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
-import { attachRawExportRuntime } from "../lib/rawExportRuntime"
+import {
+  attachRawExportRuntime,
+  getRawExportAdapter,
+} from "../lib/rawExportRuntime"
+import { buildExportRoot, exportStagingDir } from "../lib/transferPort"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
@@ -407,15 +420,28 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // KTD3: configureDownloadEngine recreates the shared URLSession and cancels
+  // every in-flight transfer, a raw export included. The fence holds a new
+  // wifi-only value while any export runs and applies it when the last settles.
+  const engineFenceRef = useRef<EngineConfigFence | null>(null)
+  useEffect(() => {
+    const fence = createEngineConfigFence({
+      configure: configureDownloadEngine,
+      session: getExportSessionStore(),
+    })
+    engineFenceRef.current = fence
+    return () => {
+      // The setup restores what this cleanup clears, so a StrictMode remount
+      // cannot leave the ref pointing at a disposed fence.
+      engineFenceRef.current = null
+      fence.dispose()
+    }
+  }, [])
+
   // Apply the global engine config once hydrated and whenever wifi-only changes.
   useEffect(() => {
     if (!isReady) return
-    try {
-      configureDownloadEngine({ wifiOnly })
-    } catch {
-      // Engine unavailable (build without the native module) — read surface
-      // still works; downloads are inert until a proper dev build.
-    }
+    engineFenceRef.current?.setWifiOnly(wifiOnly)
   }, [isReady, wifiOnly])
 
   // Defensive launch reattach: reconcile records vs live tasks + on-disk files,
@@ -425,9 +451,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     if (!isReady) return
     let cancelled = false
     void (async () => {
+      const tasks = await listExistingDownloadTasks().catch(() => [])
+      const liveTaskSlugs = new Set(tasks.map((task) => task.id))
       try {
-        const tasks = await listExistingDownloadTasks().catch(() => [])
-        const liveTaskSlugs = new Set(tasks.map((task) => task.id))
         const current = Object.values(recordsRef.current)
         // Snapshot pending paths up front so a cleanupOrphanPending action can
         // still find the file to delete even if the record was dropped earlier
@@ -527,6 +553,51 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         batchPumpRef.current()
       } catch {
         // Reattach is best-effort and must never break boot.
+      }
+
+      // U7/R28: reconcile the export staging root against its notes. It sits
+      // AFTER the catch above so a reattach fault cannot strand a staged file,
+      // and planExportSweep reads R33's switch itself, so this always runs.
+      try {
+        const store = getExportSessionStore()
+        const exportRoot = buildExportRoot(documentDirectory)
+        const [notes, stagedEntries] = await Promise.all([
+          store.listStagingNotes(),
+          listDirectory(exportRoot),
+        ])
+        const existingStagedFiles = new Set<string>()
+        await Promise.all(
+          notes.map(async (note) => {
+            if (await fileExists(note.stagedPath)) {
+              existingStagedFiles.add(note.target)
+            }
+          }),
+        )
+        if (cancelled) return
+        const sweep = planExportSweep({
+          notes,
+          stagedEntries,
+          existingStagedFiles,
+          liveTaskIds: liveTaskSlugs,
+        })
+        // A launch that has never exported builds no adapter and touches no
+        // photo-library binding.
+        if (sweep.length === 0) return
+        await applyExportSweep(sweep, {
+          adapter: getRawExportAdapter(),
+          clearStagingNote: (target) => store.clearStagingNote(target),
+          // Re-joined under the root rather than trusted as read, so a stray
+          // entry name can never point the removal outside the export root.
+          removeStagedDir: (target) =>
+            removeUri(exportStagingDir(exportRoot, target)),
+          stopExportTask: async (taskId) => {
+            const task = tasks.find((candidate) => candidate.id === taskId)
+            if (task) await stopTask(task)
+          },
+          isCancelled: () => cancelled,
+        })
+      } catch {
+        // Best-effort too: a fault leaves the note for the next launch.
       }
     })()
     return () => {
