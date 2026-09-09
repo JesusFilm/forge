@@ -87,6 +87,12 @@ const WIDTH_ANDROID = 0.6 * (72 / 108)
 // it equal to `splash.backgroundColor` in app.json and to BG_COLOR in the app.
 const SPLASH_GROUND = "#1c1917"
 
+// The animated splash draws the symbol as a projector screen and crossfades it
+// from white to the brand gradient. The app has no SVG renderer, so the two
+// states ship as rasters at the symbol's OWN aspect, not on a square canvas.
+const MARK_TILE_WIDTH = SIZE
+const MARK_TILE_HEIGHT = Math.round((SIZE * MH) / MW)
+
 /** Transform placing the symbol's centroid at the centre of a `size` box. */
 function markTransform(size, widthFraction) {
   const s = (size * widthFraction) / MW
@@ -157,6 +163,19 @@ function markSvg(size, widthFraction, fill) {
 </svg>`
 }
 
+/**
+ * The symbol alone, filling a tile of its own aspect ratio. The viewBox IS the
+ * path's box, so the raster has no padding and a layout can size it by width.
+ */
+function markTileSvg(width, fill) {
+  const height = Math.round((width * MH) / MW)
+  const defs = fill == null ? `<defs>${MARK_GRADIENT}</defs>` : ""
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${MW} ${MH}">
+  ${defs}
+  <path d="${MARK}" fill="${fill ?? "url(#mark)"}"/>
+</svg>`
+}
+
 /** Field + symbol composited, for the rasters no OS will enhance. */
 function compositeSvg(size, widthFraction, field = FIELD) {
   const g = gradientEndpoints(size, 176)
@@ -216,8 +235,12 @@ const ICON_JSON = {
 
 /* --------------------------------------------------------------------- main */
 
-async function png(svg, out, { alpha = true, size = SIZE } = {}) {
-  let img = sharp(Buffer.from(svg)).resize(size, size)
+async function png(
+  svg,
+  out,
+  { alpha = true, size = SIZE, height = size } = {},
+) {
+  let img = sharp(Buffer.from(svg)).resize(size, height)
   if (!alpha) img = img.flatten({ background: "#100D0C" }).removeAlpha()
   await img.png({ compressionLevel: 9 }).toFile(out)
   const m = await sharp(out).metadata()
@@ -333,6 +356,18 @@ async function main() {
     alpha: false,
     size: 196,
   })
+
+  console.log("\nAnimated splash — the projector screen, white then crimson")
+  await png(
+    markTileSvg(MARK_TILE_WIDTH, "#FFFFFF"),
+    path.join(ASSETS, "splash-mark-white.png"),
+    { size: MARK_TILE_WIDTH, height: MARK_TILE_HEIGHT },
+  )
+  await png(
+    markTileSvg(MARK_TILE_WIDTH),
+    path.join(ASSETS, "splash-mark-crimson.png"),
+    { size: MARK_TILE_WIDTH, height: MARK_TILE_HEIGHT },
+  )
 
   console.log(
     "\nDone. `npx expo prebuild --clean` to push these into ios/ and android/.\n",
