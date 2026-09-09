@@ -4,6 +4,34 @@
 > below was subsequently removed at the owner's request. Current operational
 > inspection uses Datadog logs; the PostgreSQL Watch-to-Admin lifecycle remains.
 
+## Collector removal regression (2026-09-09)
+
+The removal was verified in an isolated host worktree with a fresh PostgreSQL 18
+database. All 6,233 Admin tests (412 files), 3,918 Web tests (242 files), and six
+real PostgreSQL source-neutral lifecycle/concurrency tests passed. The latter
+include eight simultaneous claims, exact replay, late/conflicting facts and
+concurrent finalization. Web/Admin lint and typechecks, repository formatting,
+the normal commit hooks, and the Admin production build passed.
+
+The production build served `/dashboard/recommendations` to a locally signed Admin
+fixture session. A fresh Chromium session verified the retained playback,
+reconciliation, eligibility, privacy and request-trace sections, absence of the
+retired transport panel, and working navigation to `?window=7d`. It recorded zero
+console messages and zero page errors. Warm HTTP 200 loads measured 102–110 ms
+to first byte and 245–318 ms to load; the initial process-cold load took 3.90 s.
+The change removes the extra counter read and adds no client JavaScript or database
+query. These local samples are smoke evidence, not production latency estimates.
+
+Both development bundlers exposed unrelated Node-import errors through workflow
+instrumentation. The final browser check used the successful production build
+without modifying instrumentation. The empty fixture correctly displayed
+"Unavailable — activity unknown" for readiness; no live readiness or production
+integrity result is inferred. This removal did not repeat the earlier full video
+journey below: the recorder and transport paths are unchanged, and the full unit
+suites plus real PostgreSQL concurrency were rerun against the simplified logger.
+
+Screenshot retained locally as `/tmp/forge-evidence-redis-removal-admin.png`.
+
 Environment: isolated dev-container checkout `/tmp/forge-feat-447`, disposable PostgreSQL database `forge_feat447_validation`; local Web port 3010 and Admin port 3013. No production data or services mutated.
 
 ## Fixture and limitations

@@ -1,7 +1,7 @@
 ---
 title: Remove redundant recommendation evidence counters
 type: refactor
-status: active
+status: completed
 date: 2026-09-09
 ---
 
