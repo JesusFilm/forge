@@ -21,11 +21,15 @@ import {
   RecommendationConflictError,
   RecommendationInputError,
 } from "./errors"
-import { withRecommendationSerializableRetry } from "./transaction-retry"
+import {
+  lockRecommendationEpisode,
+  withRecommendationSerializableRetry,
+} from "./transaction-retry"
 import {
   recommendationEvidenceDigest,
   recordRecommendationConflict,
 } from "./evidence.service"
+import { observeRecommendationEvidence } from "./evidence-observability"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
 import { consumeEpisodeCapabilitySubmissions } from "./submission-budget"
 import {
@@ -125,6 +129,47 @@ export class RecommendationPlaybackService {
   }
 
   async record(input: PlaybackInput): Promise<RecommendationPlaybackReceipt[]> {
+    try {
+      const receipts = await this.recordOnce(input)
+      const outcome = receipts.some((receipt) => receipt.status === "conflict")
+        ? "conflict"
+        : receipts.some((receipt) => receipt.status === "accepted")
+          ? "accepted"
+          : "replay"
+      observeRecommendationEvidence({
+        action: "facts",
+        outcome,
+        reason: outcome === "conflict" ? "payload_conflict" : "none",
+        retryDisposition: outcome === "replay" ? "idempotent_replay" : "none",
+      })
+      return receipts
+    } catch (error) {
+      observeRecommendationEvidence({
+        action: "facts",
+        outcome:
+          error instanceof RecommendationBindingError ||
+          error instanceof RecommendationInputError
+            ? "rejected"
+            : "failed",
+        reason:
+          error instanceof RecommendationBindingError
+            ? "invalid_binding"
+            : error instanceof RecommendationInputError
+              ? "invalid_request"
+              : "unknown",
+        retryDisposition:
+          error instanceof RecommendationBindingError ||
+          error instanceof RecommendationInputError
+            ? "terminal"
+            : "retryable",
+      })
+      throw error
+    }
+  }
+
+  private async recordOnce(
+    input: PlaybackInput,
+  ): Promise<RecommendationPlaybackReceipt[]> {
     assertWebRecommendationCaller(input.caller)
     const payload = {
       contractVersion: input.contractVersion,
@@ -216,266 +261,269 @@ export class RecommendationPlaybackService {
       acceptedTimedOut: boolean
     }
     try {
-      transactionResult = await withRecommendationSerializableRetry(() =>
-        this.deps.prisma.$transaction(
-          async (tx) => {
-            await tx.$executeRaw`
-          SELECT pg_advisory_xact_lock(hashtextextended(${parsed.episodeId}, 368))
-        `
-            const locked = await tx.recommendationPlaybackEpisode.findUnique({
-              where: { id: parsed.episodeId },
-              include: { request: true },
-            })
-            if (
-              !locked ||
-              locked.generation !== episode.generation ||
-              (locked.request != null &&
-                locked.request.generation !== episode.generation) ||
-              locked.capabilityJti !== episode.capabilityJti ||
-              locked.expiresAt <= now
-            ) {
-              throw new RecommendationConflictError(
-                "Recommendation playback generation conflicted",
-              )
-            }
-            const pending: Array<{
-              event: RecommendationPlaybackEvent
-              digest: string
-            }> = []
-            const receipts = new Map<string, RecommendationPlaybackReceipt>()
-            let hasTerminal = false
-            const existingFacts = await tx.recommendationPlaybackFact.findMany({
-              where: {
-                episodeId: locked.id,
-              },
-              select: {
-                eventId: true,
-                kind: true,
-                payloadDigest: true,
-                sequence: true,
-              },
-            })
-            const existingByEventId = new Map(
-              existingFacts.map((fact) => [fact.eventId, fact]),
-            )
-            const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
-              []
-            const replayReceipts: Prisma.RecommendationPlaybackTransportReplayReceiptCreateManyInput[] =
-              []
-            let replayCount = 0
-            let conflictCount = 0
-            for (const event of parsed.events) {
-              const digest = this.digest(event)
-              const existing = existingByEventId.get(event.eventId)
-              if (!existing) {
-                pending.push({ event, digest })
-                continue
-              }
-              if (existing.payloadDigest === digest) {
-                replayCount += 1
-                replayReceipts.push({
-                  id: newId(),
-                  episodeId: locked.id,
-                  capabilityJti: locked.capabilityJti!,
-                  eventId: event.eventId,
-                  payloadDigest: digest,
-                  replayOrdinal: locked.transportReplayCount + replayCount,
-                  observedAt: now,
-                  expiresAt: locked.expiresAt,
-                })
-                if (locked.requestId) {
-                  replayAudits.push({
-                    requestId: locked.requestId,
-                    kind: RecommendationAuditKind.REPLAY,
-                    reasonCode: "playback_transport_replay",
-                    expiresAt: locked.expiresAt,
-                  })
-                }
-                receipts.set(event.eventId, {
-                  eventId: event.eventId,
-                  status: "replay",
-                  sequence: existing.sequence,
-                })
-              } else {
-                conflictCount += 1
-                if (locked.requestId) {
-                  await recordRecommendationConflict(tx, {
-                    requestId: locked.requestId,
-                    capabilityJti: locked.capabilityJti!,
-                    eventId: event.eventId,
-                    acceptedDigest: existing.payloadDigest,
-                    rejectedDigest: digest,
-                    expiresAt: locked.expiresAt,
-                  })
-                }
-                receipts.set(event.eventId, {
-                  eventId: event.eventId,
-                  status: "conflict",
-                  sequence: existing.sequence,
-                })
-              }
-            }
-            if (replayAudits.length > 0) {
-              await tx.recommendationEvidenceAudit.createMany({
-                data: replayAudits,
+      transactionResult = await withRecommendationSerializableRetry(
+        () =>
+          this.deps.prisma.$transaction(
+            async (tx) => {
+              await lockRecommendationEpisode(tx, parsed.episodeId)
+              const locked = await tx.recommendationPlaybackEpisode.findUnique({
+                where: { id: parsed.episodeId },
+                include: { request: true },
               })
-            }
-            if (pending.length > 0) {
-              const existingCount = existingFacts.length
-              if (existingCount + pending.length > MAX_EPISODE_FACTS) {
-                throw new PlaybackCommittedRejectionError(
-                  "playback_fact_budget_exceeded",
-                  "Recommendation playback fact budget exceeded",
+              if (
+                !locked ||
+                locked.generation !== episode.generation ||
+                (locked.request != null &&
+                  locked.request.generation !== episode.generation) ||
+                locked.capabilityJti !== episode.capabilityJti ||
+                locked.expiresAt <= now
+              ) {
+                throw new RecommendationConflictError(
+                  "Recommendation playback generation conflicted",
                 )
               }
-              const counts = new Map<string, number>()
-              for (const fact of existingFacts) {
-                counts.set(fact.kind, (counts.get(fact.kind) ?? 0) + 1)
+              const pending: Array<{
+                event: RecommendationPlaybackEvent
+                digest: string
+              }> = []
+              const receipts = new Map<string, RecommendationPlaybackReceipt>()
+              let hasTerminal = false
+              const existingFacts =
+                await tx.recommendationPlaybackFact.findMany({
+                  where: {
+                    episodeId: locked.id,
+                  },
+                  select: {
+                    eventId: true,
+                    kind: true,
+                    payloadDigest: true,
+                    sequence: true,
+                  },
+                })
+              const existingByEventId = new Map(
+                existingFacts.map((fact) => [fact.eventId, fact]),
+              )
+              const replayAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
+                []
+              const replayReceipts: Prisma.RecommendationPlaybackTransportReplayReceiptCreateManyInput[] =
+                []
+              let replayCount = 0
+              let conflictCount = 0
+              for (const event of parsed.events) {
+                const digest = this.digest(event)
+                const existing = existingByEventId.get(event.eventId)
+                if (!existing) {
+                  pending.push({ event, digest })
+                  continue
+                }
+                if (existing.payloadDigest === digest) {
+                  replayCount += 1
+                  replayReceipts.push({
+                    id: newId(),
+                    episodeId: locked.id,
+                    capabilityJti: locked.capabilityJti!,
+                    eventId: event.eventId,
+                    payloadDigest: digest,
+                    replayOrdinal: locked.transportReplayCount + replayCount,
+                    observedAt: now,
+                    expiresAt: locked.expiresAt,
+                  })
+                  if (locked.requestId) {
+                    replayAudits.push({
+                      requestId: locked.requestId,
+                      kind: RecommendationAuditKind.REPLAY,
+                      reasonCode: "playback_transport_replay",
+                      expiresAt: locked.expiresAt,
+                    })
+                  }
+                  receipts.set(event.eventId, {
+                    eventId: event.eventId,
+                    status: "replay",
+                    sequence: existing.sequence,
+                  })
+                } else {
+                  conflictCount += 1
+                  if (locked.requestId) {
+                    await recordRecommendationConflict(tx, {
+                      requestId: locked.requestId,
+                      capabilityJti: locked.capabilityJti!,
+                      eventId: event.eventId,
+                      acceptedDigest: existing.payloadDigest,
+                      rejectedDigest: digest,
+                      expiresAt: locked.expiresAt,
+                    })
+                  }
+                  receipts.set(event.eventId, {
+                    eventId: event.eventId,
+                    status: "conflict",
+                    sequence: existing.sequence,
+                  })
+                }
               }
-              for (const { event } of pending) {
-                counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1)
-                if ((counts.get(event.kind) ?? 0) > FACT_LIMITS[event.kind]) {
+              if (replayAudits.length > 0) {
+                await tx.recommendationEvidenceAudit.createMany({
+                  data: replayAudits,
+                })
+              }
+              if (pending.length > 0) {
+                const existingCount = existingFacts.length
+                if (existingCount + pending.length > MAX_EPISODE_FACTS) {
                   throw new PlaybackCommittedRejectionError(
-                    "playback_fact_cardinality_exceeded",
-                    "Recommendation playback fact cardinality exceeded",
+                    "playback_fact_budget_exceeded",
+                    "Recommendation playback fact budget exceeded",
+                  )
+                }
+                const counts = new Map<string, number>()
+                for (const fact of existingFacts) {
+                  counts.set(fact.kind, (counts.get(fact.kind) ?? 0) + 1)
+                }
+                for (const { event } of pending) {
+                  counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1)
+                  if ((counts.get(event.kind) ?? 0) > FACT_LIMITS[event.kind]) {
+                    throw new PlaybackCommittedRejectionError(
+                      "playback_fact_cardinality_exceeded",
+                      "Recommendation playback fact cardinality exceeded",
+                    )
+                  }
+                }
+                const terminalCount =
+                  (counts.get("playback_end") ?? 0) +
+                  (counts.get("playback_error") ?? 0)
+                if (terminalCount > 1) {
+                  throw new PlaybackCommittedRejectionError(
+                    "playback_terminal_cardinality_exceeded",
+                    "Recommendation playback terminal cardinality exceeded",
+                  )
+                }
+                hasTerminal = terminalCount === 1
+                const acceptedTimedOut =
+                  locked.state === RecommendationEpisodeState.TIMED_OUT
+
+                const nextFactSequence =
+                  locked.nextFactSequence + pending.length
+                const reserved =
+                  await tx.recommendationPlaybackEpisode.updateMany({
+                    where: {
+                      id: locked.id,
+                      generation: locked.generation,
+                      nextFactSequence: locked.nextFactSequence,
+                    },
+                    data: {
+                      nextFactSequence,
+                      ...(replayCount > 0
+                        ? { transportReplayCount: { increment: replayCount } }
+                        : {}),
+                      ...(conflictCount > 0
+                        ? { conflictCount: { increment: conflictCount } }
+                        : {}),
+                      ...(hasTerminal || acceptedTimedOut
+                        ? { finalizationDueAt: now }
+                        : {}),
+                    },
+                  })
+                if (reserved.count !== 1) {
+                  throw new RecommendationConflictError(
+                    "Recommendation playback sequence conflicted",
+                  )
+                }
+                const factRows: Prisma.RecommendationPlaybackFactCreateManyInput[] =
+                  []
+                const evidenceAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
+                  []
+                for (const [index, { event, digest }] of pending.entries()) {
+                  const sequence = locked.nextFactSequence + index
+                  const late = now > locked.activeUntil
+                  factRows.push({
+                    id: newId(),
+                    requestId: locked.requestId,
+                    itemId: locked.itemId,
+                    episodeId: locked.id,
+                    capabilityJti: locked.capabilityJti!,
+                    eventId: event.eventId,
+                    payloadDigest: digest,
+                    sequence,
+                    kind: event.kind,
+                    payload: event.payload as Prisma.InputJsonValue,
+                    occurredAt: new Date(event.occurredAt),
+                    receivedAt: now,
+                    late,
+                    expiresAt: locked.expiresAt,
+                  })
+                  if (locked.requestId) {
+                    evidenceAudits.push({
+                      requestId: locked.requestId,
+                      kind: late
+                        ? RecommendationAuditKind.LATE
+                        : RecommendationAuditKind.EVIDENCE_SUCCESS,
+                      reasonCode: event.kind,
+                      expiresAt: locked.expiresAt,
+                    })
+                  }
+                  receipts.set(event.eventId, {
+                    eventId: event.eventId,
+                    status: "accepted",
+                    sequence,
+                  })
+                }
+                await tx.recommendationPlaybackFact.createMany({
+                  data: factRows,
+                })
+                if (evidenceAudits.length > 0) {
+                  await tx.recommendationEvidenceAudit.createMany({
+                    data: evidenceAudits,
+                  })
+                }
+              } else if (replayCount > 0 || conflictCount > 0) {
+                const counted =
+                  await tx.recommendationPlaybackEpisode.updateMany({
+                    where: {
+                      id: locked.id,
+                      generation: locked.generation,
+                    },
+                    data: {
+                      ...(replayCount > 0
+                        ? { transportReplayCount: { increment: replayCount } }
+                        : {}),
+                      ...(conflictCount > 0
+                        ? { conflictCount: { increment: conflictCount } }
+                        : {}),
+                    },
+                  })
+                if (counted.count !== 1) {
+                  throw new RecommendationConflictError(
+                    "Recommendation playback integrity count conflicted",
                   )
                 }
               }
-              const terminalCount =
-                (counts.get("playback_end") ?? 0) +
-                (counts.get("playback_error") ?? 0)
-              if (terminalCount > 1) {
-                throw new PlaybackCommittedRejectionError(
-                  "playback_terminal_cardinality_exceeded",
-                  "Recommendation playback terminal cardinality exceeded",
+              // Reserve the transport replay ordinals on the episode before
+              // inserting immutable receipts. A concurrent Serializable
+              // transaction with a concurrent snapshot must fail and retry
+              // at the episode update instead
+              // of reaching the unique receipt constraint with a stale ordinal.
+              if (replayReceipts.length > 0) {
+                await tx.recommendationPlaybackTransportReplayReceipt.createMany(
+                  {
+                    data: replayReceipts,
+                  },
                 )
               }
-              hasTerminal = terminalCount === 1
-              const acceptedTimedOut =
-                locked.state === RecommendationEpisodeState.TIMED_OUT
-
-              const nextFactSequence = locked.nextFactSequence + pending.length
-              const reserved =
-                await tx.recommendationPlaybackEpisode.updateMany({
-                  where: {
-                    id: locked.id,
-                    generation: locked.generation,
-                    nextFactSequence: locked.nextFactSequence,
-                  },
-                  data: {
-                    nextFactSequence,
-                    ...(replayCount > 0
-                      ? { transportReplayCount: { increment: replayCount } }
-                      : {}),
-                    ...(conflictCount > 0
-                      ? { conflictCount: { increment: conflictCount } }
-                      : {}),
-                    ...(hasTerminal || acceptedTimedOut
-                      ? { finalizationDueAt: now }
-                      : {}),
-                  },
-                })
-              if (reserved.count !== 1) {
-                throw new RecommendationConflictError(
-                  "Recommendation playback sequence conflicted",
-                )
+              return {
+                receipts: parsed.events.map(
+                  (event) => receipts.get(event.eventId)!,
+                ),
+                acceptedFact: pending.length > 0,
+                acceptedTerminal: pending.some(({ event }) =>
+                  isTerminalRecommendationFactKind(event.kind),
+                ),
+                hasTerminal,
+                acceptedTimedOut:
+                  pending.length > 0 &&
+                  locked.state === RecommendationEpisodeState.TIMED_OUT,
               }
-              const factRows: Prisma.RecommendationPlaybackFactCreateManyInput[] =
-                []
-              const evidenceAudits: Prisma.RecommendationEvidenceAuditCreateManyInput[] =
-                []
-              for (const [index, { event, digest }] of pending.entries()) {
-                const sequence = locked.nextFactSequence + index
-                const late = now > locked.activeUntil
-                factRows.push({
-                  id: newId(),
-                  requestId: locked.requestId,
-                  itemId: locked.itemId,
-                  episodeId: locked.id,
-                  capabilityJti: locked.capabilityJti!,
-                  eventId: event.eventId,
-                  payloadDigest: digest,
-                  sequence,
-                  kind: event.kind,
-                  payload: event.payload as Prisma.InputJsonValue,
-                  occurredAt: new Date(event.occurredAt),
-                  receivedAt: now,
-                  late,
-                  expiresAt: locked.expiresAt,
-                })
-                if (locked.requestId) {
-                  evidenceAudits.push({
-                    requestId: locked.requestId,
-                    kind: late
-                      ? RecommendationAuditKind.LATE
-                      : RecommendationAuditKind.EVIDENCE_SUCCESS,
-                    reasonCode: event.kind,
-                    expiresAt: locked.expiresAt,
-                  })
-                }
-                receipts.set(event.eventId, {
-                  eventId: event.eventId,
-                  status: "accepted",
-                  sequence,
-                })
-              }
-              await tx.recommendationPlaybackFact.createMany({
-                data: factRows,
-              })
-              if (evidenceAudits.length > 0) {
-                await tx.recommendationEvidenceAudit.createMany({
-                  data: evidenceAudits,
-                })
-              }
-            } else if (replayCount > 0 || conflictCount > 0) {
-              const counted = await tx.recommendationPlaybackEpisode.updateMany(
-                {
-                  where: {
-                    id: locked.id,
-                    generation: locked.generation,
-                  },
-                  data: {
-                    ...(replayCount > 0
-                      ? { transportReplayCount: { increment: replayCount } }
-                      : {}),
-                    ...(conflictCount > 0
-                      ? { conflictCount: { increment: conflictCount } }
-                      : {}),
-                  },
-                },
-              )
-              if (counted.count !== 1) {
-                throw new RecommendationConflictError(
-                  "Recommendation playback integrity count conflicted",
-                )
-              }
-            }
-            // Reserve the transport replay ordinals on the episode before
-            // inserting immutable receipts. A concurrent Serializable
-            // transaction that took its snapshot while waiting on the
-            // advisory lock must fail and retry at the episode update instead
-            // of reaching the unique receipt constraint with a stale ordinal.
-            if (replayReceipts.length > 0) {
-              await tx.recommendationPlaybackTransportReplayReceipt.createMany({
-                data: replayReceipts,
-              })
-            }
-            return {
-              receipts: parsed.events.map(
-                (event) => receipts.get(event.eventId)!,
-              ),
-              acceptedFact: pending.length > 0,
-              acceptedTerminal: pending.some(({ event }) =>
-                isTerminalRecommendationFactKind(event.kind),
-              ),
-              hasTerminal,
-              acceptedTimedOut:
-                pending.length > 0 &&
-                locked.state === RecommendationEpisodeState.TIMED_OUT,
-            }
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        ),
+            },
+            { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+          ),
+        "facts",
       )
     } catch (error) {
       if (error instanceof PlaybackCommittedRejectionError) {

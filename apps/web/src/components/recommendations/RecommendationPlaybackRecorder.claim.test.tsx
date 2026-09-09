@@ -193,6 +193,48 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it("accepts a healthy 1.91-second claim acknowledgement without retrying", async () => {
+    let claimSignal: AbortSignal | undefined
+    fetchMock.mockImplementationOnce((_url, init) => {
+      claimSignal = init.signal ?? undefined
+      return new Promise((resolve) =>
+        window.setTimeout(
+          () =>
+            resolve(
+              response({
+                episode: {
+                  episodeId: "episode-1",
+                  capability: "episode-capability",
+                  activeUntil: "2026-08-19T07:00:00.000Z",
+                  hardUntil: "2026-08-19T09:00:00.000Z",
+                },
+              }),
+            ),
+          1_910,
+        ),
+      )
+    })
+    sessionStorage.setItem(
+      RECOMMENDATION_TAB_CORRELATION_KEY,
+      "claim-nonce-1234567890",
+    )
+    await act(async () => {
+      root.render(
+        <RecommendationPlaybackRecorder
+          player={makePlayer()}
+          initiation={null}
+          mediaId="media-1"
+        />,
+      )
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(1_910))
+    expect(claimSignal?.aborted).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+    ).toBeNull()
+  })
+
   it("aborts a claim whose headers arrive but JSON body exceeds the deadline", async () => {
     let claimSignal: AbortSignal | undefined
     fetchMock.mockImplementationOnce(
@@ -222,63 +264,95 @@ describe("RecommendationPlaybackRecorder claim lifecycle", () => {
     })
     expect(claimSignal?.aborted).toBe(false)
 
-    await act(async () => vi.advanceTimersByTime(1_000))
+    await act(async () => vi.advanceTimersByTime(5_000))
     expect(claimSignal?.aborted).toBe(true)
     expect(sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY)).toBe(
       "claim-nonce-1234567890",
     )
   })
 
-  it("falls back once to a standalone context after a stale recommendation nonce", async () => {
-    fetchMock
-      .mockResolvedValueOnce(response({ error: "invalid_body" }, false, 400))
-      .mockResolvedValueOnce(
-        response({ claimNonce: "standalone-context-nonce" }),
+  it.each([401, 403])(
+    "stops claim admission %s without retry or standalone fallback",
+    async (status) => {
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "rejected-claim-nonce",
       )
-      .mockResolvedValueOnce(
-        response({
-          episode: {
-            episodeId: "standalone-episode",
-            capability: "standalone-capability",
-            activeUntil: "2026-08-19T07:00:00.000Z",
-            hardUntil: "2026-08-19T09:00:00.000Z",
-          },
-        }),
+      fetchMock.mockResolvedValue(
+        response({ error: "machine_evidence_rejected" }, false, status),
       )
-      .mockImplementation((_url, init) =>
-        Promise.resolve(acceptedFactsResponse(init)),
-      )
-    sessionStorage.setItem(
-      RECOMMENDATION_TAB_CORRELATION_KEY,
-      "claim-nonce-1234567890",
-    )
-    const player = makePlayer()
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={makePlayer()}
+            initiation="manual"
+            mediaId="media-1"
+          />,
+        )
+      })
+      await act(async () => vi.advanceTimersByTime(20_000))
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+      ).toBeNull()
+    },
+  )
 
-    await act(async () => {
-      root.render(
-        <RecommendationPlaybackRecorder
-          player={player}
-          initiation="manual"
-          mediaId="media-1"
-          durationSeconds={120}
-        />,
+  it.each([400, 409])(
+    "falls back once to a standalone context after stale nonce HTTP %s",
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce(
+          response({ error: "playback_binding_invalid" }, false, status),
+        )
+        .mockResolvedValueOnce(
+          response({ claimNonce: "standalone-context-nonce" }),
+        )
+        .mockResolvedValueOnce(
+          response({
+            episode: {
+              episodeId: "standalone-episode",
+              capability: "standalone-capability",
+              activeUntil: "2026-08-19T07:00:00.000Z",
+              hardUntil: "2026-08-19T09:00:00.000Z",
+            },
+          }),
+        )
+        .mockImplementation((_url, init) =>
+          Promise.resolve(acceptedFactsResponse(init)),
+        )
+      sessionStorage.setItem(
+        RECOMMENDATION_TAB_CORRELATION_KEY,
+        "claim-nonce-1234567890",
       )
-      await Promise.resolve()
-    })
-    player.paused = false
-    await act(async () => {
-      player.dispatch("playing")
-      await Promise.resolve()
-    })
+      const player = makePlayer()
 
-    const actions = fetchMock.mock.calls
-      .slice(0, 3)
-      .map(([, init]) => JSON.parse(init.body as string).action)
-    expect(actions).toEqual(["claim", "context", "claim"])
-    expect(sessionStorage.length).toBe(0)
-    expect(localStorage.length).toBe(0)
-    expect(player.addEventListener).toHaveBeenCalled()
-  })
+      await act(async () => {
+        root.render(
+          <RecommendationPlaybackRecorder
+            player={player}
+            initiation="manual"
+            mediaId="media-1"
+            durationSeconds={120}
+          />,
+        )
+        await Promise.resolve()
+      })
+      player.paused = false
+      await act(async () => {
+        player.dispatch("playing")
+        await Promise.resolve()
+      })
+
+      const actions = fetchMock.mock.calls
+        .slice(0, 3)
+        .map(([, init]) => JSON.parse(init.body as string).action)
+      expect(actions).toEqual(["claim", "context", "claim"])
+      expect(sessionStorage.length).toBe(0)
+      expect(localStorage.length).toBe(0)
+      expect(player.addEventListener).toHaveBeenCalled()
+    },
+  )
 
   it("retries an ambiguous committed claim with the same nonce and preserves pending facts", async () => {
     fetchMock

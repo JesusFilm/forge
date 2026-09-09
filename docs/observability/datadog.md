@@ -339,3 +339,13 @@ Browser apps should each get their own Datadog RUM application so sessions,
 replays, and frontend performance can be scoped independently while still
 correlating with backend traces through matching `service`, `env`, and
 `version` tags.
+
+Recommendation evidence transport monitors and the bounded dashboard live in
+`infra/datadog-monitors/recommendation-evidence/`. See
+[the evidence transport runbook](../operations/recommendation-evidence-transport.md)
+for installation, privacy limits, and the production canary. These payloads are
+not installed by the fleet-ceiling `create.sh` script.
+
+Recommendation transport observations use the existing log pipeline. The retired
+`RECOMMENDATION_EVIDENCE_REDIS_URL` counter collector and Admin transport panel
+are no longer required; PostgreSQL-backed evidence remains in authorized Admin.

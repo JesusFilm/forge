@@ -381,6 +381,49 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(navigate).toHaveBeenCalledOnce()
   })
 
+  it("navigates once to the trusted href without retrying terminal selection input", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/api/recommendations")) {
+        return Promise.resolve(jsonResponse({ delivery }))
+      }
+      if (url.endsWith("/select")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: "evidence_request_invalid" }), {
+            status: 400,
+          }),
+        )
+      }
+      return Promise.resolve(jsonResponse({ receipts: [] }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const navigate = vi.fn()
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      ),
+    )
+    await flush()
+    act(() => {
+      container
+        .querySelector("a")!
+        .dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+    })
+    await flush()
+    await act(async () => vi.advanceTimersByTimeAsync(5_000))
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
+    ).toHaveLength(1)
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/watch/target.html")
+  })
+
   it("reuses the client handoff nonce after a lost selection response", async () => {
     let selectionAttempts = 0
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {

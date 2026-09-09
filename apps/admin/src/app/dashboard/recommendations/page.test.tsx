@@ -341,6 +341,13 @@ describe("Admin Recommendations pages", () => {
     })
   })
 
+  it("does not query evidence before aggregate authorization", async () => {
+    requireSessionMock.mockResolvedValue({ id: "viewer", role: "VIEWER" })
+    await expect(RecommendationsPage()).rejects.toThrow("REDIRECT:/dashboard")
+    expect(loadOverviewMock).not.toHaveBeenCalled()
+    expect(loadTracePageMock).not.toHaveBeenCalled()
+  })
+
   it("renders aggregate truth for EDITOR without requesting or leaking trace data", async () => {
     requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
 

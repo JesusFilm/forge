@@ -8,8 +8,42 @@ export const RECOMMENDATION_MUTATION_CLIENT_LIMIT = 30
 export const RECOMMENDATION_MUTATION_AGGREGATE_LIMIT = 600
 const WINDOW_MS = 60_000
 const COMMAND_TIMEOUT_MS = 250
+// Context diagnostics show TIME reply delay consuming the conservative Redis
+// deadline. Its 5 s browser / 3 s upstream contract can reserve 750 ms total
+// admission (250 ms connection + 500 ms commands). Other paths stay unchanged.
+const PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS = 500
 const REDIS_RETRY_BACKOFF_MS = 1_000
 const MAX_LOCAL_BUCKETS = 10_000
+
+// Failure-only diagnostics: never pass Redis errors, keys, URLs or headers to
+// the logger. Durations distinguish a fired timer from delayed event-loop work.
+function observeAdmissionFailure(
+  stage: "configuration" | "connect" | "backoff" | "load" | "time" | "eval",
+  reason:
+    | "secret_missing"
+    | "redis_missing"
+    | "retry_backoff"
+    | "unavailable"
+    | "timeout"
+    | "client_error"
+    | "budget_exhausted"
+    | "invalid_clock"
+    | "redis_deadline"
+    | "invalid_result",
+  elapsedMs = 0,
+  budgetMs = COMMAND_TIMEOUT_MS,
+): void {
+  const durationMs = Number.isFinite(elapsedMs)
+    ? Math.min(60_000, Math.max(0, Math.round(elapsedMs)))
+    : 0
+  try {
+    console.info(
+      `event=recommendation.admission stage=${stage} reason=${reason} durationMs=${durationMs} budgetMs=${Math.min(PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS, Math.max(0, Math.floor(budgetMs)))}`,
+    )
+  } catch {
+    // Observability must not change admission or playback behavior.
+  }
+}
 
 const ADMIT_LUA = `
 local server_time = redis.call('TIME')
@@ -103,8 +137,14 @@ async function withTimeout<T>(
 
 async function defaultRedis(): Promise<MutationRedis | null> {
   const url = process.env.REDIS_URL?.trim()
-  if (!url) return null
-  if (Date.now() < redisRetryAt) return null
+  if (!url) {
+    observeAdmissionFailure("configuration", "redis_missing")
+    return null
+  }
+  if (Date.now() < redisRetryAt) {
+    observeAdmissionFailure("backoff", "retry_backoff")
+    return null
+  }
   if (redisPromise) return redisPromise
 
   const attempt = (async () => {
@@ -116,11 +156,17 @@ async function defaultRedis(): Promise<MutationRedis | null> {
       },
     }) as unknown as MutationRedis & { connect(): Promise<unknown> }
     client.on?.("error", () => undefined)
+    const startedAt = performance.now()
     try {
       await withTimeout(client.connect())
       redisClient = client
       return client
-    } catch {
+    } catch (error) {
+      observeAdmissionFailure(
+        "connect",
+        error instanceof RecommendationRouteError ? "timeout" : "client_error",
+        performance.now() - startedAt,
+      )
       try {
         client.destroy?.()
       } catch {
@@ -191,7 +237,10 @@ export function createRecommendationMutationAdmission(dependencies?: {
       dependencies && "secret" in dependencies
         ? dependencies.secret
         : admissionSecret(production)
-    if (!secret) return { allowed: false, reason: "admission_unavailable" }
+    if (!secret) {
+      observeAdmissionFailure("configuration", "secret_missing")
+      return { allowed: false, reason: "admission_unavailable" }
+    }
     const clientDigest = hmacKey(
       secret,
       `recommendation-admission-client-v2:${namespace}`,
@@ -204,18 +253,32 @@ export function createRecommendationMutationAdmission(dependencies?: {
     )
     const clientKey = `recommendation:admission:${namespace}:client:${clientDigest}`
     const aggregateKey = `recommendation:admission:${namespace}:aggregate:${aggregateDigest}`
+    const loadStartedAt = performance.now()
     const redis = await loadRedis().catch(() => null)
 
     if (redis) {
+      const commandTimeoutMs =
+        namespace === "playback-context"
+          ? PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS
+          : COMMAND_TIMEOUT_MS
+      let stage: "time" | "eval" = "time"
+      let stageStartedAt = performance.now()
+      let stageBudgetMs = commandTimeoutMs
       try {
         // The Lua script must compare against Redis's own clock. An
         // application-clock deadline can move admission into the past or let
         // a queued EVAL mutate after the caller has already timed out.
         const startedAt = monotonicNow()
-        const redisTime = await withTimeout(redis.time())
+        const redisTime = await withTimeout(redis.time(), commandTimeoutMs)
         const elapsedMs = Math.max(0, monotonicNow() - startedAt)
-        const remainingMs = Math.floor(COMMAND_TIMEOUT_MS - elapsedMs)
+        const remainingMs = Math.floor(commandTimeoutMs - elapsedMs)
         if (remainingMs <= 0) {
+          observeAdmissionFailure(
+            "time",
+            "budget_exhausted",
+            elapsedMs,
+            commandTimeoutMs,
+          )
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
@@ -223,9 +286,18 @@ export function createRecommendationMutationAdmission(dependencies?: {
           Number(redisTime[0]) * 1_000 +
           Math.floor(Number(redisTime[1]) / 1_000)
         if (!Number.isSafeInteger(redisNowMs)) {
+          observeAdmissionFailure(
+            "time",
+            "invalid_clock",
+            elapsedMs,
+            commandTimeoutMs,
+          )
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
+        stage = "eval"
+        stageBudgetMs = remainingMs
+        stageStartedAt = performance.now()
         const result = (await withTimeout(
           redis.eval(ADMIT_LUA, {
             keys: [clientKey, aggregateKey],
@@ -242,13 +314,34 @@ export function createRecommendationMutationAdmission(dependencies?: {
         if (result[0] === "rate_limited") {
           return { allowed: false, reason: "rate_limited" }
         }
+        observeAdmissionFailure(
+          "eval",
+          result[0] === "unavailable" ? "redis_deadline" : "invalid_result",
+          performance.now() - stageStartedAt,
+          stageBudgetMs,
+        )
         return { allowed: false, reason: "admission_unavailable" }
-      } catch {
+      } catch (error) {
+        observeAdmissionFailure(
+          stage,
+          error instanceof RecommendationRouteError
+            ? "timeout"
+            : "client_error",
+          performance.now() - stageStartedAt,
+          stageBudgetMs,
+        )
         retireDefaultRedis(redis)
         return { allowed: false, reason: "admission_unavailable" }
       }
     }
-    if (production) return { allowed: false, reason: "admission_unavailable" }
+    if (production) {
+      observeAdmissionFailure(
+        "load",
+        "unavailable",
+        performance.now() - loadStartedAt,
+      )
+      return { allowed: false, reason: "admission_unavailable" }
+    }
 
     const currentTime = now()
     pruneLocal(currentTime)

@@ -47,6 +47,7 @@ function harness(input: {
   const created: Array<Record<string, unknown>> = []
   const tx = {
     $executeRaw: vi.fn(async () => 1),
+    $queryRaw: vi.fn(async () => [{ locked: true }]),
     recommendationPlaybackEpisode: {
       findUnique: vi.fn(async () => current),
       updateMany: vi.fn(async () => ({ count: 1 })),
@@ -102,7 +103,7 @@ describe("RecommendationOutcomeService", () => {
     await expect(
       service.finalize({ episodeId: "episode-1", generation: 2 }),
     ).resolves.toMatchObject({ status: "published", revision: 1 })
-    expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    expect(tx.$queryRaw).toHaveBeenCalledOnce()
     expect(created[0]).toMatchObject({
       factWatermark: 3,
       revision: 1,

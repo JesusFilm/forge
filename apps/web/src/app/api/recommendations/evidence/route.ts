@@ -1,3 +1,5 @@
+import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
+import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 import { recordSemanticRecommendationEvidence } from "@/lib/recommendations"
@@ -40,6 +42,7 @@ const EvidenceInput = z
 
 export async function POST(request: Request) {
   try {
+    assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
       maxBytes: RECOMMENDATION_EVIDENCE_BODY_BYTES,
@@ -56,8 +59,11 @@ export async function POST(request: Request) {
       ...parsed.data,
       sessionDigest: session.digest,
     })
+    observeEvidenceResponse(request, "evidence", 200, undefined, receipts)
     return recommendationJson({ receipts })
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    observeEvidenceResponse(request, "evidence", response.status, error)
+    return response
   }
 }

@@ -83,6 +83,16 @@ export async function recordRecommendationProfileReconciliationHeartbeat(
       },
     },
   })
+  // Emitted only after the durable heartbeat commits. Do not include ledger
+  // identity or batch contents in operational telemetry.
+  try {
+    console.info(
+      "event=recommendation.reconciliation.heartbeat outcome=" +
+        (input.result ? "completed" : "unavailable"),
+    )
+  } catch {
+    // Observability cannot interrupt the five-minute scheduler.
+  }
 }
 
 export async function ensureRecommendationProfileReconciliationSchedulerStarted(): Promise<{
