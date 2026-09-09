@@ -343,7 +343,12 @@ Apollo's default mutation error policy rejects GraphQL failures before returned
 result inspection. Normalize both rejected `CombinedGraphQLErrors.errors` and
 compatible returned/legacy envelopes using `extensions.recommendationCode`,
 never message matching. Claims and facts map proven `invalid_binding` to terminal
-HTTP 409. Authentication and recognized-machine rejection must not trigger a
+HTTP 409. Generic structured `extensions.code = BAD_USER_INPUT` on playback
+operations maps to HTTP 400 `playback_request_invalid`; this includes capability
+validation that does not carry a binding subtype. The browser retires that
+episode only for the matching status/code pair. Unrecognized error bodies remain
+ambiguous. Real local signature rejection must leave decoded media running.
+Authentication and recognized-machine rejection must not trigger a
 standalone context fallback. Ambiguous acknowledgements retain the original nonce,
 event identifiers, timestamps and payload.
 
@@ -398,3 +403,28 @@ Do not relabel episodes by timestamps or aggregate APM counts. Preserve bounded
 uncertainty and require the separate production canary and authorized
 zero-ineligible-current-pointer audit before closing feat-464/feat-459 or advancing
 profile ranking. `active-watch-proxy-v1` remains fail-closed.
+
+### Diagnose admission before tuning its budget
+
+An `admission_unavailable` label does not distinguish configuration, connection,
+TIME, EVAL, Redis-clock rejection or subsequent client backoff. Log fixed stage
+and reason values plus clamped durations; exclude raw errors, Redis URLs, keys,
+headers and capabilities. Isolate logging failures from admission behavior.
+Do not count both a backoff and its load-unavailable observation as two requests.
+
+A Redis TIME sample has round-trip uncertainty. Computing the Lua deadline as
+`redisTime + (commandBudget - elapsedTime)` deliberately uses a conservative
+clock bound, which can reject work before the apparent client timer expires.
+Do not remove that subtraction: a late queued EVAL must never write after the
+caller's deadline. The real Redis regression delays the TIME reply by 160 ms,
+then separately holds EVAL until after caller timeout and checks both buckets
+remain absent. Production stage evidence justified 500 ms each for connection
+and TIME/EVAL, retaining the browser's five-second and upstream three-second
+ceilings. A local pass does not replace the production canary.
+
+APM request-count metrics and retained span/log populations differ. Verify actual
+metric dimensions before claiming a complete environment-specific denominator;
+a shared agent hostname and a revision deployed to two environments cannot
+separate those populations. Checked-in monitor definitions are not installed
+monitors, and a local signed Admin fixture cannot establish production pointer
+integrity. Record unresolved access and cadence gaps explicitly.

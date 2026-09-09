@@ -7,7 +7,11 @@ import { RecommendationRouteError } from "@/lib/recommendation-route-policy"
 export const RECOMMENDATION_MUTATION_CLIENT_LIMIT = 30
 export const RECOMMENDATION_MUTATION_AGGREGATE_LIMIT = 600
 const WINDOW_MS = 60_000
-const COMMAND_TIMEOUT_MS = 250
+// Primary production diagnostics show 140–160 ms TIME reply delays. The
+// conservative Redis-clock fence subtracts that round trip from this budget.
+// Bound connection plus TIME/EVAL to 1 s, leaving 1 s of browser margin after
+// the separate 3 s evidence upstream deadline. The Admin service stays at 1.5 s.
+const COMMAND_TIMEOUT_MS = 500
 const REDIS_RETRY_BACKOFF_MS = 1_000
 const MAX_LOCAL_BUCKETS = 10_000
 

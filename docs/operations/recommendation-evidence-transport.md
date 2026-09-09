@@ -179,3 +179,15 @@ replaying facts. The more specific `invalid_binding` code retains HTTP 409
 Unrecognized response bodies and transport failures retain bounded retries.
 Already-loaded older browser bundles may retry until their existing limit or a
 refresh. A 400 must not be counted as an upstream availability failure.
+
+### Admission latency budget
+
+Production stage diagnostics identified TIME reply delay, Redis deadline
+rejection, command/connection timeout and subsequent backoff. Connection and
+combined TIME/EVAL now each have a 500 ms ceiling. Their maximum total is one
+second, leaving one second of margin after the separate three-second evidence
+upstream budget within the browser's five-second deadline. The Admin complete
+recommendation service budget remains 1.5 seconds. Event-loop stalls can delay a
+JavaScript timer; Lua still rejects expired work before any admission mutation.
+Never replace that Redis-clock fence with application wall-clock time or extend
+a queued command's deadline merely because its caller has already timed out.
