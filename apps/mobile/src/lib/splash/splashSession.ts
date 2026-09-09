@@ -155,10 +155,12 @@ export function createSplashSession(deps: SplashSessionDeps): SplashSession {
         deps.whenDeepLinkOriginsReady(),
         SPLASH_SKIP_DECISION_BUDGET_MS,
       )
+      // Inside the try: a throwing read would reject resolve(), and a session
+      // stuck unresolved holds the native splash with nobody left to lower it.
+      return deps.isExternalLaunch()
     } catch {
       return false
     }
-    return deps.isExternalLaunch()
   }
 
   async function readReduceMotion(): Promise<boolean> {

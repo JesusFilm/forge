@@ -520,3 +520,47 @@ describe("a retracted report", () => {
     expect(session.getSnapshot().visible).toBe(false)
   })
 })
+
+// A session stuck at `resolved: false` is the worst state this store has: the
+// host's skip-path effect never fires, so nothing lowers the native splash and
+// the person is left under a flat field.
+describe("a dependency that throws", () => {
+  it("still resolves when the launch read throws", async () => {
+    const session = await visibleSession({
+      isExternalLaunch: () => {
+        throw new Error("registry gone")
+      },
+    })
+    expect(session.getSnapshot().resolved).toBe(true)
+    // Play, not skip: the same failure direction a timed-out gate takes.
+    expect(session.getSnapshot().visible).toBe(true)
+  })
+
+  it("still resolves when the gate itself throws", async () => {
+    const session = await visibleSession({
+      whenDeepLinkOriginsReady: () => Promise.reject(new Error("no gate")),
+    })
+    expect(session.getSnapshot().resolved).toBe(true)
+    expect(session.getSnapshot().visible).toBe(true)
+  })
+
+  it("still resolves when the accessibility read throws", async () => {
+    const session = await visibleSession({
+      isReduceMotionEnabled: () => {
+        throw new Error("no native module")
+      },
+    })
+    expect(session.getSnapshot().resolved).toBe(true)
+    expect(session.getSnapshot().presentation).toBe("motion")
+  })
+
+  it("still ends at the ceiling after a throwing read", async () => {
+    const session = await visibleSession({
+      isExternalLaunch: () => {
+        throw new Error("registry gone")
+      },
+    })
+    await settle(SPLASH_CEILING_MS)
+    expect(session.getSnapshot().visible).toBe(false)
+  })
+})
