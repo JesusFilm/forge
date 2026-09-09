@@ -81,7 +81,11 @@ const WIDTH_IOS = 0.6
 // Android's 108dp canvas only shows its middle 72dp, so the same apparent size
 // needs a smaller number here. 0.6 * 72/108 = 0.4, well inside the 66/108 safe zone.
 const WIDTH_ANDROID = 0.6 * (72 / 108)
-const WIDTH_SPLASH = 0.55
+
+// The native splash carries NO symbol (KTD3). The animated splash opens on an
+// empty field, so the two frames match only if this one is flat as well. Keep
+// it equal to `splash.backgroundColor` in app.json and to BG_COLOR in the app.
+const SPLASH_GROUND = "#1c1917"
 
 /** Transform placing the symbol's centroid at the centre of a `size` box. */
 function markTransform(size, widthFraction) {
@@ -134,6 +138,13 @@ function fieldSvg(size, field = FIELD) {
     </linearGradient>
   </defs>
   <rect width="${size}" height="${size}" fill="url(#field)"/>
+</svg>`
+}
+
+/** One flat colour across the whole canvas. */
+function flatSvg(size, color) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${color}"/>
 </svg>`
 }
 
@@ -308,8 +319,15 @@ async function main() {
     path.join(ASSETS, "adaptive-icon-monochrome.png"),
   )
 
-  // Splash sits on splash.backgroundColor, so the symbol ships on transparency.
-  await png(markSvg(SIZE, WIDTH_SPLASH), path.join(ASSETS, "splash-icon.png"))
+  // The animated splash opens on an empty field, so the native splash it hands
+  // over from must be flat too — an icon here would add a beat and a colour flip.
+  await png(
+    flatSvg(SIZE, SPLASH_GROUND),
+    path.join(ASSETS, "splash-icon.png"),
+    {
+      alpha: false,
+    },
+  )
 
   await png(compositeSvg(196, WIDTH_IOS), path.join(ASSETS, "favicon.png"), {
     alpha: false,
