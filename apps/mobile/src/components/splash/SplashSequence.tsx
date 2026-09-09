@@ -30,7 +30,7 @@ export const MARK_CENTROID_Y = 0.4158
  * The centroid weights the sloped tail, which is not part of the screen a
  * viewer reads text on, so anchoring there alone sets the word visibly low.
  */
-export const WORD_RISE_FROM_CENTROID = 0.06
+export const WORD_RISE_FROM_CENTROID = 0.08
 /**
  * How far LEFT of the centroid the word sits, as a fraction of the mark's
  * width. The sliced bottom-left corner takes weight off that side, pulling the
