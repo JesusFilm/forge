@@ -8,6 +8,25 @@
  * break every hook.
  */
 
+// The composition root binds expo-media-library, the download engine and
+// AsyncStorage at module scope. This suite renders the series route while
+// mocking DownloadsProvider away, so nothing else keeps those out of its graph.
+jest.mock("../../../lib/rawExportRuntime", () => ({
+  getRawExportAdapter: () => ({
+    // A settled result, not a bare jest.fn(): the run reads `result.kind`, so
+    // an undefined return throws inside the confirm handler.
+    exportVideo: async () => ({
+      kind: "settled",
+      outcome: "saved",
+      albumIntent: "library",
+      reused: false,
+    }),
+    completeStagedExport: async () => "saved",
+    discardStagedExport: async () => "abandoned",
+    cancelExport: () => false,
+  }),
+  attachRawExportRuntime: () => undefined,
+}))
 jest.mock("../../../lib/rawExportConstants", () => ({
   ...jest.requireActual("../../../lib/rawExportConstants"),
 }))

@@ -32,6 +32,7 @@ import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider
 import { getExportSessionStore } from "../../src/lib/exportSession"
 import { STORAGE_RESERVE_BYTES } from "../../src/lib/offlineConstants"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
 import {
   buildSeriesExportRun,
   runSeriesRawExport,
@@ -396,12 +397,7 @@ export default function SeriesDownloadRoute() {
     })
     router.back()
     void runSeriesRawExport(run, {
-      // Loaded on demand: the runtime binds expo-media-library and the download
-      // engine, and rendering this sheet must not evaluate them.
-      exportVideo: async (input) => {
-        const runtime = await import("../../src/lib/rawExportRuntime")
-        return runtime.getRawExportAdapter().exportVideo(input)
-      },
+      exportVideo: (input) => getRawExportAdapter().exportVideo(input),
       // R22: the in-flight episode reports its own cancel, so this stops the
       // run when the cancel lands on an episode another surface registered.
       isCancelRequested: () =>

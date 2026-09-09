@@ -67,7 +67,7 @@ export type SeriesExportRunSummary = {
 }
 
 /** A catalogue size of 0, "" or a non-number is UNKNOWN, never zero bytes. */
-function sizeBytesOf(size: string | null | undefined): number | null {
+export function sizeBytesOf(size: string | null | undefined): number | null {
   const bytes = Number(size)
   return Number.isFinite(bytes) && bytes > 0 ? bytes : null
 }

@@ -12,6 +12,7 @@ import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { sizeBytesOf } from "../../src/lib/rawExportRun"
 import { getRawExportAdapter } from "../../src/lib/rawExportRuntime"
 import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
@@ -85,7 +86,7 @@ export default function DownloadSheetRoute() {
         documentId: rendition.documentId,
         qualityLabel: rendition.quality,
         url: rendition.url,
-        sizeBytes: Number(rendition.size) || null,
+        sizeBytes: sizeBytesOf(rendition.size),
       },
       wifiOnly,
       // R23: the subtitle raw mode hid is passed so the core can PROVE it

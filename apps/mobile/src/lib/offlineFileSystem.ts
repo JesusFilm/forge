@@ -28,10 +28,15 @@ export function offlineVideoDir(videoSlug: string): string {
   return `${OFFLINE_ROOT}/${sanitizeSegment(videoSlug)}`
 }
 
+/** Ensure any directory exists. `ensureVideoDir` is the offline-root case. */
+export async function ensureDirectory(uri: string): Promise<void> {
+  await makeDirectoryAsync(uri, { intermediates: true }).catch(() => undefined)
+}
+
 /** Ensure a video's directory exists; returns the directory path. */
 export async function ensureVideoDir(videoSlug: string): Promise<string> {
   const dir = offlineVideoDir(videoSlug)
-  await makeDirectoryAsync(dir, { intermediates: true }).catch(() => undefined)
+  await ensureDirectory(dir)
   return dir
 }
 
@@ -74,11 +79,6 @@ export async function totalDiskBytes(): Promise<number> {
 /** Move a file (e.g. a verified pending download → its committed path). */
 export async function moveFile(from: string, to: string): Promise<void> {
   await moveAsync({ from, to })
-}
-
-/** Ensure any directory exists. `ensureVideoDir` is the offline-root case. */
-export async function ensureDirectory(uri: string): Promise<void> {
-  await makeDirectoryAsync(uri, { intermediates: true }).catch(() => undefined)
 }
 
 /**

@@ -31,9 +31,10 @@ import { buildExportRoot, createTransferPort } from "./transferPort"
  * pure and unit-testable, which is why no other module imports
  * `expo-media-library` or the download engine for export.
  *
- * Built lazily. Module scope would load the native media library during the
- * bundle's first evaluation, which is the shape that turns a module-level throw
- * into a white screen.
+ * The ADAPTER is built lazily, so a throw while wiring it cannot happen during
+ * module evaluation. That is the only deferral here: the native imports above
+ * are evaluated when this module loads, and `DownloadsProvider` imports it at
+ * the root layout, so they load at app start regardless of any call site.
  */
 
 /**
