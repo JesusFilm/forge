@@ -362,8 +362,6 @@ export const env = createEnv({
       .default("local"),
     SEO_APPROVAL_PUBLIC_KEYS: z.string().min(1).optional(),
     SEO_WORKLOAD_PUBLIC_KEYS: z.string().min(1).optional(),
-    // Explicit shared Web/Admin operational collector.
-    RECOMMENDATION_EVIDENCE_REDIS_URL: z.string().url().optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -841,9 +839,6 @@ export const env = createEnv({
     ),
     SEO_WORKLOAD_PUBLIC_KEYS: emptyToUndefined(
       process.env.SEO_WORKLOAD_PUBLIC_KEYS,
-    ),
-    RECOMMENDATION_EVIDENCE_REDIS_URL: emptyToUndefined(
-      process.env.RECOMMENDATION_EVIDENCE_REDIS_URL,
     ),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),

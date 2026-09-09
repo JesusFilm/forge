@@ -130,37 +130,6 @@
     {
       "definition": {
         "type": "timeseries",
-        "title": "Collector unavailable",
-        "requests": [
-          {
-            "response_format": "timeseries",
-            "display_type": "bars",
-            "queries": [
-              {
-                "data_source": "logs",
-                "name": "observations",
-                "indexes": ["*"],
-                "search": {
-                  "query": "(env:prod OR @env:prod) \"event=recommendation.evidence.collector\""
-                },
-                "compute": {
-                  "aggregation": "count"
-                },
-                "group_by": []
-              }
-            ],
-            "formulas": [
-              {
-                "formula": "observations"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "definition": {
-        "type": "timeseries",
         "title": "Reconciliation unavailable",
         "requests": [
           {
