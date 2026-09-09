@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { documentDirectory } from "expo-file-system/legacy"
-import * as MediaLibrary from "expo-media-library"
+// The `/legacy` subpath, NOT the package root. Since SDK 54 the root re-exports
+// `legacyWarnings`, whose saveToLibraryAsync / createAssetAsync / createAlbumAsync
+// are stubs that THROW — "This method will throw in runtime." The root's typed
+// surface is identical, so nothing but a device run catches the difference.
+import * as MediaLibrary from "expo-media-library/legacy"
 import { AppState, Platform } from "react-native"
 
 import { publishExportReport } from "../components/ExportReportHost"
