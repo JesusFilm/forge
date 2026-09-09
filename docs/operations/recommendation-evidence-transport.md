@@ -70,6 +70,8 @@ event=recommendation.reconciliation.heartbeat outcome=completed
 The scheduler heartbeat is emitted only after its durable ledger update succeeds.
 `outcome=unavailable` is a substantive batch failure; expected workflow step/wait
 suspension is not.
+Query both verified primary Admin and worker hosts: either service can execute
+the scheduled work, so a worker-only query can create apparent cadence gaps.
 
 Definitions live in `infra/datadog-monitors/recommendation-evidence/`:
 six monitor payloads and `dashboard.json`. The nested definitions are deliberately
@@ -99,14 +101,18 @@ the command budget; `redis_deadline` means Lua refused the Redis-clock deadline.
 `client_error`, `invalid_clock` and `invalid_result` remain distinct. Correlate
 the diagnostic with the existing request trace and evidence outcome.
 
-`durationMs` is clamped to 0–60,000 and `budgetMs` to 0–250. EVAL's budget is what
-remained after TIME, not a fresh 250 ms. A duration above its budget can indicate
+`durationMs` is clamped to 0–60,000 and `budgetMs` to 0–500. Playback-context
+TIME/EVAL commands share 500 ms; connection and other admission namespaces retain
+250 ms. EVAL receives only the budget remaining after TIME. The conservative
+Redis-clock deadline prevents admission writes after caller timeout. A duration above its budget can indicate
 delayed timer processing; it does not independently prove the source of latency.
 Connection failures may be followed by immediate backoff refusals. Load records
 can accompany connection/configuration/backoff diagnostics; do not sum diagnostic
 records as failed requests. These logs contain no Redis error text, URL, keys,
-headers, identity or capability. Existing admission behavior and deadlines remain
-unchanged while the production failure mechanism is being established.
+headers, identity or capability. The playback-context budget repair preserves
+fail-closed admission, rate limits and retry backoff; see the
+[production acceptance record](recommendation-evidence-production-gates-2026-09-09.md)
+for the measured failure mechanism and remaining gates.
 
 ## Historical window audit
 

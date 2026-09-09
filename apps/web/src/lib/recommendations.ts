@@ -593,12 +593,15 @@ export async function selectSemanticRecommendation(
     typeof adminSelectSemanticRecommendationOperation
   >,
 ): Promise<SemanticRecommendationSelection> {
-  const result = await client.mutate({
-    mutation: adminSelectSemanticRecommendationOperation,
-    variables,
-    fetchPolicy: "no-cache",
-    context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
-  })
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminSelectSemanticRecommendationOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+    }),
+    "evidence_request_invalid",
+  )
   if (result.error || !result.data?.selectSemanticRecommendation) {
     throw new RecommendationRuntimeError("selection_unavailable")
   }

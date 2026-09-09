@@ -167,4 +167,53 @@ describe("POST /watch/api/recommendations/select", () => {
     expect(duplicate.status).toBe(400)
     expect(mutate).not.toHaveBeenCalled()
   })
+
+  it.each(["thrown", "returned"])(
+    "makes %s structured invalid selection input terminal without exposing details",
+    async (mode) => {
+      const error = {
+        errors: [
+          {
+            message: "private capability rejection",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      }
+      if (mode === "thrown") mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+
+      const response = await POST(request(JSON.stringify(body)))
+      expect(response.status).toBe(400)
+      expect(response.headers.get("cache-control")).toContain("no-store")
+      expect(await response.json()).toEqual({
+        error: "evidence_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it("preserves retryable failures without a structured invalid-input code", async () => {
+    mutate.mockRejectedValueOnce(new Error("Recommendation request is invalid"))
+    const response = await POST(request(JSON.stringify(body)))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
+  })
+
+  it("retains the more specific definitive binding response", async () => {
+    mutate.mockRejectedValueOnce({
+      errors: [
+        {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            recommendationCode: "invalid_binding",
+          },
+        },
+      ],
+    })
+    const response = await POST(request(JSON.stringify(body)))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: "playback_binding_invalid" })
+  })
 })

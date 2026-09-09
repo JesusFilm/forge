@@ -98,3 +98,14 @@ reported as Web 503. Extend the existing structured domain-error wrapper to this
 operation, with public HTTP 400 `evidence_request_invalid`. Its existing browser
 helper already stops on 400; preserve timestamp validation and bounded retry for
 unknown failures. This shares the measured evidence-transport repair scope.
+
+## Selection rejection found during the canary
+
+At 06:15:33, traces `3968472780564022866` and `4286251054126801484`
+show the selection operation returning `BAD_USER_INPUT` in approximately 13 ms
+while Web returns two retryable 503s. Apply the same structured error wrapper to
+selection: generic input is terminal HTTP 400 `evidence_request_invalid`, while
+specific binding rejection is HTTP 409. Preserve the selection deadline,
+trusted-href fallback and retries for ambiguous failures. Verify thrown/returned
+errors, message-only failures, and one browser navigation without retry after 400.
+Deploy through another reviewed PR and restart the post-fix observation window.

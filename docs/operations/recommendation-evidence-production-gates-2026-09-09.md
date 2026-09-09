@@ -12,7 +12,17 @@ ai-chat ticket. All times below are UTC. Production acceptance remains open.
   evidence requests. Secondary host `f516e83f7fc5` also reports this revision.
 - PR #2218 (`fb3eb50ad273b5b8efd84dd016e764aff7e139db`) merged at 04:42:49
   after local tests, real browser proof, sequential review and green CI. It
-  makes structured playback `BAD_USER_INPUT` terminal. Deployment is pending.
+  makes structured playback `BAD_USER_INPUT` terminal. Primary deployment
+  `b3916a63-63a1-4846-83c2-25f480085909` succeeded at 05:00:46, serving on
+  `ad09faa4f37e`; secondary host is `182e151a5b81`.
+- PR #2219 (`7ee7147b31a8b2d06e28cc6bbaaacc9148a944f5`) merged at 05:12:54
+  after all CI checks passed. It gives playback-context commands 500 ms, retains
+  250 ms connection/other namespaces, and makes render/impression input errors
+  terminal. Primary deployment `3d7d9073-79d4-4d2d-a960-dd63cffe606e` succeeded
+  at 05:30:52, serving on `08f0af1aa08a`; secondary host is `31ef3f559cb8`.
+  Observation began at 05:32 with a planned end of 07:32. It found another
+  selection input-classification failure, so it is diagnostic evidence; a fresh
+  two-hour window is required after the selection follow-up deploys.
 - Normal PR/main deployment only. No direct Railway publish or redeploy was used.
   All injected failures and signed Admin fixtures were local.
 
@@ -75,7 +85,14 @@ The 04:43–04:53 diagnostic-revision playback metric counted 313 HTTP 200, 74 H
 three were context admission failures. These observations show why both repairs
 are needed. The metric environment-scoping limitation still applies.
 
-## Admission mechanism and proposed repair
+The 05:01–05:06 primary Web/Admin logged acceptance counts match at 140 fact
+batches and six exact replays. There were 19 terminal Web crawler playback
+rejections and no logged playback 5xx. Admin recorded six first-attempt and one
+second-attempt recoverable transaction-busy observations. The 05:01–05:09
+revision-wide request metric contains 268 HTTP 200 and 42 HTTP 403, zero 5xx;
+this is an interim eight-minute sample, not the final canary or durable audit.
+
+## Admission mechanism and deployed repair
 
 The diagnostic 04:42:04–04:48 window on primary host `b049e8780ceb` recorded six
 Redis-clock deadline rejections, seven EVAL timeouts, two TIME timeouts, two
@@ -90,7 +107,7 @@ backoff failures; not every client error has been individually attributed.
 The conservative Redis-clock fence must remain. A real Redis regression delays
 a TIME reply by 160 ms and reproduces the original rejection. Raising playback-context
 combined TIME/EVAL to 500 ms passes it; a second test releases
-EVAL after caller timeout and proves no admission writes occur. The proposed
+EVAL after caller timeout and proves no admission writes occur. The deployed
 context admission budget is 750 ms, leaving 1.25 seconds of browser margin
 after three seconds upstream. Admin's complete service remains 1.5 seconds.
 Connection and other namespaces retain 250 ms because some browser paths have
@@ -99,13 +116,38 @@ Redis-deadline rejections and one EVAL timeout.
 This is a measured budget repair awaiting production acceptance, not a claim
 that event-loop stalls or all upstream timeouts have disappeared.
 
+The observation has a residual context failure at 06:08:48.568,
+trace `5571421142438653530`: EVAL `redis_deadline`, duration 120 ms, remaining
+budget 218 ms (TIME consumed approximately 282 ms of the 500 ms budget).
+The request returned 503 after 406 ms, with no upstream mutation in the trace.
+This is a retained fail-closed clock rejection under higher latency, not fault
+injection, and remains in the production error numerator. Nearby diagnostics
+using the unchanged 250 ms budget belong to other admission paths and must not
+be counted as playback failures without a matching playback outcome.
+
+At 06:15:33, selection traces `3968472780564022866` and `4286251054126801484`
+show structured Admin `BAD_USER_INPUT` in approximately 13 ms becoming Web 503
+after 39 and 29 ms. The selection operation had not used the error wrapper.
+The follow-up applies terminal HTTP 400 `evidence_request_invalid` to selection,
+retaining specific binding HTTP 409, the existing short deadline and trusted-href
+fallback. These two selection failures are outside the playback metric resource
+and remain included in broader evidence-failure reporting.
+
+A natural claim rejection at 06:15:41, trace `7735611335039890176`, was
+classified `invalid_binding`, terminal HTTP 409, by primary Web and Admin.
+No retryable-binding signal occurred in its five-minute sample. Server policy
+classification alone does not prove the originating browser made no retries;
+the local browser/component regressions provide that separate bounded proof.
+
 ## Reconciliation and access-dependent evidence
 
-Primary worker retained completed heartbeat logs at 03:18:16, 03:28:21,
-03:43:29, 03:48:32, 03:53:34, 04:03:38, 04:08:41, 04:18:47 and 04:23:49.
-The gaps do not establish the required five-minute cadence. Logs are best effort;
-missing entries could reflect missing telemetry or delayed runs. Durable workflow
-state is needed to resolve that ambiguity. Recoverable write conflicts and
+An initial worker-only query appeared to have heartbeat gaps. Re-querying both
+verified primary Admin and worker hosts resolves them: 28 consecutive completed
+heartbeats from 03:18:16.762 through 05:34:25.192, approximately 302–304 seconds
+apart, with no unavailable heartbeat in that window. Both services execute
+reconciliation work; a worker-only filter is incomplete. The completion log is
+emitted after its durable ledger update succeeds, but does not expose lineage or
+replace the authorized current-pointer audit. Recoverable write conflicts and
 `transaction_busy retryAttempt=1` were observed; these are not themselves proof
 of exhausted P2034 retries.
 
@@ -120,13 +162,17 @@ audit. Local fixtures do not substitute for those production invariants.
 ## Acceptance state
 
 - Diagnostic deployment: verified on primary; failure mechanism observed; budget repair locally verified.
-- Terminal invalid-input repair: merged and locally verified; rollout pending.
+- Terminal playback input repair: deployed and locally verified; natural terminal
+  input rejection has not yet been observed in the early primary window.
+- Targeted admission and render/impression repair: deployed to primary at 05:30:52.
+- Selection input follow-up: locally verified; review/CI/deployment pending.
 - Two-hour post-fix canary: not yet complete.
 - Primary-only complete evidence numerator/denominator: not yet established.
 - Installed monitors: unmet under read-only access.
 - Historical/clean PostgreSQL and authorized Admin reconciliation: unverified.
-- Five-minute reconciliation cadence and zero ineligible current pointers:
-  unverified.
+- Five-minute reconciliation cadence: observed across both primary execution
+  services before the final canary; full canary observation pending.
+- Zero ineligible current pointers: unverified.
 
 Keep feat-464, feat-459 and feat-447 in progress. Keep `active-watch-proxy-v1`
 comparison-only and fail closed for live ranking. No personalization, experiment,
