@@ -219,7 +219,9 @@ export function createExportSessionStore(deps?: {
 
   /**
    * Read-modify-write on one key loses an update when two runs interleave, so
-   * every mutation queues behind the last one.
+   * every mutation queues behind the last one. Same idiom, same reason, as
+   * `onQueue` in watchProgress/sync.ts — a private closure there, so extracting
+   * one owner would touch an unrelated feature.
    */
   let noteTail: Promise<unknown> = Promise.resolve()
   function serializeNotes<T>(operation: () => Promise<T>): Promise<T> {
