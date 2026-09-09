@@ -24,12 +24,18 @@ import {
   type DownloadMode,
   type DropdownOption,
 } from "../../src/components/watch/DownloadSheet"
+import { publishExportReport } from "../../src/components/ExportReportHost"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { getExportSessionStore } from "../../src/lib/exportSession"
 import { STORAGE_RESERVE_BYTES } from "../../src/lib/offlineConstants"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import {
+  buildSeriesExportRun,
+  runSeriesRawExport,
+} from "../../src/lib/rawExportRun"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   ACCENT,
@@ -378,8 +384,33 @@ export default function SeriesDownloadRoute() {
    */
   const startRawSeriesExport = useCallback(() => {
     if (!RAW_EXPORT_ENABLED || !resolution || !series) return
+    const seriesSlug = series.slug
+    // One run id for the whole series, so the host folds every episode's
+    // outcome into ONE report (R21).
+    const run = buildSeriesExportRun({
+      runId: `${seriesSlug}:${Date.now()}`,
+      seriesSlug,
+      seriesTitle: series.title ?? null,
+      wifiOnly,
+      episodes: resolution.resolved,
+    })
     router.back()
-  }, [resolution, series, router])
+    void runSeriesRawExport(run, {
+      // Loaded on demand: the runtime binds expo-media-library and the download
+      // engine, and rendering this sheet must not evaluate them.
+      exportVideo: async (input) => {
+        const runtime = await import("../../src/lib/rawExportRuntime")
+        return runtime.getRawExportAdapter().exportVideo(input)
+      },
+      // R22: the in-flight episode reports its own cancel, so this stops the
+      // run when the cancel lands on an episode another surface registered.
+      isCancelRequested: () =>
+        Object.values(getExportSessionStore().getSnapshot().byTarget).some(
+          (entry) => entry.seriesSlug === seriesSlug && entry.cancelRequested,
+        ),
+      report: publishExportReport,
+    })
+  }, [resolution, series, wifiOnly, router])
 
   const onConfirm = useCallback(() => {
     if (!resolution || resolution.resolvedCount === 0 || !touAccepted) return
