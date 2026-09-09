@@ -109,3 +109,15 @@ specific binding rejection is HTTP 409. Preserve the selection deadline,
 trusted-href fallback and retries for ambiguous failures. Verify thrown/returned
 errors, message-only failures, and one browser navigation without retry after 400.
 Deploy through another reviewed PR and restart the post-fix observation window.
+
+## Execution state
+
+PRs #2217–#2220 are merged and deployed through main. The final 07:01–09:01 UTC
+observation is complete: the revision-wide playback metric records 1 / 4,319
+5xx (0.02315%), with 23 committed reconciliation heartbeats. See the
+[settled production record](../operations/recommendation-evidence-production-gates-2026-09-09.md)
+for counts, traces, source-population differences and residual failures.
+This plan remains active because primary-only request reconciliation, installed
+monitors and the authorized durable/current-pointer audits remain unverified.
+The owner restricts Datadog work to read access; no monitor writes or production
+fault injection were performed. Feat-464/459/447 remain in progress.
