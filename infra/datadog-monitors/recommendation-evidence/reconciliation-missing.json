@@ -1,7 +1,7 @@
 {
   "name": "[forge] Profile reconciliation heartbeat missing",
   "type": "log alert",
-  "query": "logs(\"service:forge-admin (env:prod OR @env:prod) \\\"event=recommendation.reconciliation.heartbeat\\\"\").index(\"*\").rollup(\"count\").last(\"15m\") < 1",
+  "query": "logs(\"(service:forge-admin OR service:forge-admin-worker) (env:prod OR @env:prod) \\\"event=recommendation.reconciliation.heartbeat\\\"\").index(\"*\").rollup(\"count\").last(\"15m\") < 1",
   "message": "No committed reconciliation heartbeat in 15 minutes. Check the log pipeline and durable scheduler watchdog before interpreting this as a scheduler outage. Confirm the authorized Admin audit; do not promote ranking.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
   "tags": ["team:forge", "env:prod", "feature:feat-464"],
   "priority": 2,

@@ -147,3 +147,7 @@ Forge's Railway log intake currently exposes the production environment in
 `(env:prod OR @env:prod)`. Confirm both service and environment against actual
 logs before interpreting an empty monitor result; empty results are not a healthy
 traffic window.
+
+Admin observations can be emitted by both `forge-admin` and
+`forge-admin-worker`. Reconciliation and background finalization normally run
+in the worker; include both service tags in Admin evidence monitors.

@@ -79,7 +79,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=transaction_exhausted\""
+                  "query": "(service:forge-admin OR service:forge-admin-worker) (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=transaction_exhausted\""
                 },
                 "compute": {
                   "aggregation": "count"
@@ -172,7 +172,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.reconciliation.heartbeat\" \"outcome=unavailable\""
+                  "query": "(service:forge-admin OR service:forge-admin-worker) (env:prod OR @env:prod) \"event=recommendation.reconciliation.heartbeat\" \"outcome=unavailable\""
                 },
                 "compute": {
                   "aggregation": "count"
