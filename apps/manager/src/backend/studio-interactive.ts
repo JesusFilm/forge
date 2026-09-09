@@ -32,7 +32,7 @@ export function createStudioInteractiveClient(
       !env.STUDIO_INTERACTIVE_PRIVATE_KEY ||
       !env.STUDIO_INTERACTIVE_KEY_ID
     )
-      throw new StudioTransportError(503, "Studio authoring is not configured")
+      throw new StudioTransportError(503, "Shorts authoring is not configured")
     const body = JSON.stringify(studioRpcSchema.parse({ action, input }))
     const key = await importPKCS8(
       env.STUDIO_INTERACTIVE_PRIVATE_KEY.replaceAll("\\n", "\n"),
@@ -80,7 +80,7 @@ export function createStudioInteractiveClient(
     if (!response.ok)
       throw new StudioTransportError(
         response.status,
-        payload.error ?? "Studio request failed",
+        payload.error ?? "Shorts request failed",
         payload.publicationRejected === true,
       )
     return payload.result

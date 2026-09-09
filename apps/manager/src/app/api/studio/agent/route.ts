@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         error:
           e instanceof StudioBoundaryError
             ? e.message
-            : "Invalid Studio agent request",
+            : "Invalid Shorts agent request",
       },
       { status: e instanceof StudioBoundaryError ? e.status : 400 },
     )

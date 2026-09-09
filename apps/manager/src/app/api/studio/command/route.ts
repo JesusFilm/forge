@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         error:
           error instanceof StudioTransportError
             ? error.code
-            : "Invalid Studio request",
+            : "Invalid Shorts request",
       },
       { status: error instanceof StudioTransportError ? error.status : 400 },
     )

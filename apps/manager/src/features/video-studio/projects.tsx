@@ -67,7 +67,7 @@ export function StudioProjects() {
       </nav>
       <header>
         <div>
-          <p className="nle-eyebrow">VIDEO STUDIO</p>
+          <p className="nle-eyebrow">SHORTS</p>
           <h1>Your projects</h1>
           <p>Build a story with footage, sound and your own composition.</p>
         </div>
@@ -144,7 +144,7 @@ export function StudioCreate() {
         <ArrowLeft size={14} />
         Projects
       </Link>
-      <p className="nle-eyebrow">VIDEO STUDIO</p>
+      <p className="nle-eyebrow">SHORTS</p>
       <h1>Start a new project</h1>
       <p>A standalone composition, ready for your ideas.</p>
       <form onSubmit={create}>

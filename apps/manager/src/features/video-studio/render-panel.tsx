@@ -81,7 +81,7 @@ export default function RenderPanel({
     try {
       await work()
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Studio command failed")
+      setError(error instanceof Error ? error.message : "Shorts command failed")
     } finally {
       try {
         await refresh()

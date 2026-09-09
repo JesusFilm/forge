@@ -35,7 +35,7 @@ async function agentRequest(body: unknown, signal?: AbortSignal) {
   })
   if (!response.ok) {
     const data = await response.json()
-    throw new Error(data.error ?? "Studio request failed")
+    throw new Error(data.error ?? "Shorts request failed")
   }
   return response
 }
@@ -74,7 +74,7 @@ export default function AgentPanel({
     try {
       await work()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Studio failed")
+      setError(e instanceof Error ? e.message : "Shorts request failed")
     } finally {
       setBusy(false)
     }
@@ -109,7 +109,7 @@ export default function AgentPanel({
         const { value, done } = await reader.read()
         if (done) break
         size += value.length
-        if (size > 262144) throw new Error("Studio response too large")
+        if (size > 262144) throw new Error("Shorts response too large")
         buffer += decoder.decode(value, { stream: true })
         let index: number
         while ((index = buffer.indexOf("\n")) >= 0) {
@@ -131,7 +131,7 @@ export default function AgentPanel({
         }
       }
       if (!completed || buffer.trim())
-        throw new Error("Studio stream ended before completion")
+        throw new Error("Shorts stream ended before completion")
     } catch (e) {
       setProposals([])
       throw e
@@ -146,10 +146,10 @@ export default function AgentPanel({
         className="nle-dialog nle-agent"
         role="dialog"
         aria-modal="true"
-        aria-label="Studio assistant"
+        aria-label="Shorts assistant"
       >
         <header>
-          <h2>Studio assistant</h2>
+          <h2>Shorts assistant</h2>
           <button onClick={onClose}>Close</button>
         </header>
         <nav>

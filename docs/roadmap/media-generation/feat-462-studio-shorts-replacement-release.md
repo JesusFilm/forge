@@ -1,6 +1,6 @@
 ---
 id: "feat-462"
-title: "Studio Shorts replacement release verification"
+title: "Shorts replacement release verification"
 owner: "tataihono"
 priority: "P1"
 status: "in-progress"
@@ -15,6 +15,8 @@ tags:
 ---
 
 ## Problem
+
+The replacement feature is named **Shorts** and keeps `/dashboard/shorts`. Existing `studio` API, package and database identifiers are internal compatibility names, not a second product.
 
 The replacement is complete only when Lyuba can use it end to end and obsolete Shorts behavior no longer competes with it.
 

@@ -154,7 +154,7 @@ export function StudioCalendar() {
       <header>
         <div>
           <Link href="/dashboard/shorts">← Projects</Link>
-          <p>VIDEO STUDIO</p>
+          <p>SHORTS</p>
           <h1>Planning calendar</h1>
           <p>
             Plan titles and themes, then choose which projects to produce and

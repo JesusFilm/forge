@@ -273,7 +273,7 @@ const navItems: Array<{
   {
     key: "shorts",
     href: "/dashboard/shorts",
-    label: "Video editor",
+    label: "Shorts",
     icon: Clapperboard,
   },
   {
@@ -357,19 +357,19 @@ function getBreadcrumbs(pathname: string): string[] {
   }
 
   if (pathname.startsWith("/dashboard/shorts/new")) {
-    return ["Studio", "Video editor", "New project"]
+    return ["Studio", "Shorts", "New project"]
   }
 
   if (pathname === "/dashboard/shorts/calendar") {
-    return ["Studio", "Video editor", "Planning calendar"]
+    return ["Studio", "Shorts", "Planning calendar"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/")) {
-    return ["Studio", "Video editor", "Project"]
+    return ["Studio", "Shorts", "Project"]
   }
 
   if (pathname.startsWith("/dashboard/shorts")) {
-    return ["Studio", "Video editor"]
+    return ["Studio", "Shorts"]
   }
 
   return ["Studio", "Coverage"]
@@ -863,7 +863,7 @@ export function ManagerDashboardShell({
                     <Clapperboard size={18} />
                   </span>
                   <span className="design-system-workspace-copy">
-                    <strong>Video editor</strong>
+                    <strong>Shorts</strong>
                     <small>Standalone projects</small>
                   </span>
                 </Link>
