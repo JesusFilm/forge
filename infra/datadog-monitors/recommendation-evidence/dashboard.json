@@ -17,7 +17,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-web env:prod \"event=recommendation.evidence\" (\"action=playback\" OR \"action=context\" OR \"action=claim\" OR \"action=facts\") (\"httpStatus=500\" OR \"httpStatus=502\" OR \"httpStatus=503\" OR \"httpStatus=504\")"
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" (\"action=playback\" OR \"action=context\" OR \"action=claim\" OR \"action=facts\") (\"httpStatus=500\" OR \"httpStatus=502\" OR \"httpStatus=503\" OR \"httpStatus=504\")"
                 },
                 "compute": {
                   "aggregation": "count"
@@ -48,7 +48,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-web env:prod \"event=recommendation.evidence\" \"reason=invalid_binding\" \"retryDisposition=retryable\""
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=invalid_binding\" \"retryDisposition=retryable\""
                 },
                 "compute": {
                   "aggregation": "count"
@@ -79,7 +79,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-admin env:prod \"event=recommendation.evidence\" \"reason=transaction_exhausted\""
+                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.evidence\" \"reason=transaction_exhausted\""
                 },
                 "compute": {
                   "aggregation": "count"
@@ -110,7 +110,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-web env:prod \"event=recommendation.evidence\" \"crawler=recognized\" (\"httpStatus=200\" OR \"httpStatus=202\")"
+                  "query": "service:forge-web (env:prod OR @env:prod) \"event=recommendation.evidence\" \"crawler=recognized\" (\"httpStatus=200\" OR \"httpStatus=202\")"
                 },
                 "compute": {
                   "aggregation": "count"
@@ -141,7 +141,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "env:prod \"event=recommendation.evidence.collector\""
+                  "query": "(env:prod OR @env:prod) \"event=recommendation.evidence.collector\""
                 },
                 "compute": {
                   "aggregation": "count"
@@ -172,7 +172,7 @@
                 "name": "observations",
                 "indexes": ["*"],
                 "search": {
-                  "query": "service:forge-admin env:prod \"event=recommendation.reconciliation.heartbeat\" \"outcome=unavailable\""
+                  "query": "service:forge-admin (env:prod OR @env:prod) \"event=recommendation.reconciliation.heartbeat\" \"outcome=unavailable\""
                 },
                 "compute": {
                   "aggregation": "count"

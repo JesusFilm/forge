@@ -1,7 +1,7 @@
 {
   "name": "[forge] Profile reconciliation batch unavailable",
   "type": "log alert",
-  "query": "logs(\"service:forge-admin env:prod \\\"event=recommendation.reconciliation.heartbeat\\\" \\\"outcome=unavailable\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "query": "logs(\"service:forge-admin (env:prod OR @env:prod) \\\"event=recommendation.reconciliation.heartbeat\\\" \\\"outcome=unavailable\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
   "message": "Inspect durable scheduler and authorized current-pointer audit. Expected workflow step/wait suspension is not a batch failure.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
   "tags": ["team:forge", "env:prod", "feature:feat-464"],
   "priority": 2,

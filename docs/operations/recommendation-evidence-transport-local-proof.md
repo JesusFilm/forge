@@ -38,3 +38,48 @@ Warm local development server, independent browser contexts:
 These are development-environment smoke measurements, not a baseline/main comparison or production performance acceptance. External thumbnail and Mux analytics requests were blocked by the container network.
 
 Artifacts: `lifecycle.json`, `scenarios.json`, and redacted screenshots retained locally at `/tmp/feat464-browser-proof/`. No raw traces, capabilities, cookie values, or request bodies are included.
+
+## Stronger regression run (2026-09-09)
+
+This follow-up supersedes the manual-finalization limitation for the local
+recommendation lifecycle. Two independent regression agents and the primary
+agent covered viewer playback, navigation, transport faults, crawler admission,
+and Admin evidence. Further agent launches were rejected by the platform's agent
+limit. Browser interactions used agent-browser; the media fixture only relayed
+original public media bytes.
+
+The disposable setup required the documented `workflow:setup:postgres` command,
+`WORKFLOW_RUNNER_ENABLED=true`, and
+`WORKFLOW_LOCAL_BASE_URL=http://127.0.0.1:3013`. Prisma migrations alone do not
+create Workflow's runtime schema. Generating the normal stored Watch route
+manifest also repaired fixture-only implicit-language/parent-child 404s; no
+catalog rows or product routing code changed.
+
+- The ordinary viewer decoded 5,558 frames over 83.468 seconds. Pause held
+  59.175281 seconds unchanged for 18 seconds; Play resumed playback.
+- Four browser-created episodes finalized automatically into eight immutable
+  outcomes from 41 ordered facts. Workflow runtime completion and durable
+  finalization ledgers were verified; no outcome service was invoked manually.
+- Navigation across two media titles produced separate finalized episodes with
+  zero conflicts. The generated parent-child recommendation route loaded after
+  normal manifest initialization.
+- A deliberately wrong media binding returned one claim 409 and no retries while
+  video decoded 1,263 frames. Injected context 503 left playback running and
+  generated no claim attempts.
+- An Applebot browser received terminal context 403 and made no claim/fact
+  requests or playback episode. It could still view the public video.
+- Reconciliation completed real scheduled batches at 00:07 and 00:12 UTC, with
+  zero dispatch failures. Five stale local projection runs were recovered.
+- An authorized Admin browser displayed the automatically finalized viewer episode,
+  all 16 immutable facts, both outcomes, and 90,311 ms active viewing.
+- Both viewer outcome classifiers remained ineligible for learning. No live
+  profile ranking was enabled.
+
+An unrelated local development manifest omitted `searchTraceRetention`, whose
+scheduler failed registration. Recommendation finalization and reconciliation
+were registered and completed. The minimal seed still lacks the hard-coded home
+`jesus` category, so this is not a full-catalog website certification.
+
+Artifacts are retained locally in `/tmp/feat464-regression/`; identifiers and
+capabilities are omitted from public reports. These local results still do not
+substitute for the production canary or authorized current-pointer audit.

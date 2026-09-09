@@ -141,3 +141,9 @@ Rollback follows the normal deployment path. If evidence admission must be stopp
 use the existing approved collection control; preserve stored evidence and semantic
 delivery. Do not repair a transport incident by loosening privacy, integrity,
 idempotency, or live-ranking policy.
+
+Forge's Railway log intake currently exposes the production environment in
+`@env`, while some Datadog sources expose the `env` tag. Monitor queries accept
+`(env:prod OR @env:prod)`. Confirm both service and environment against actual
+logs before interpreting an empty monitor result; empty results are not a healthy
+traffic window.
