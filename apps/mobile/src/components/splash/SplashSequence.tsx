@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import {
   Animated,
   Easing,
@@ -9,7 +9,7 @@ import {
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import { BG_COLOR, hexToRgba } from "../../lib/color"
+import { BG_COLOR, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import markCrimson from "../../../assets/splash-mark-crimson.png"
 import markWhite from "../../../assets/splash-mark-white.png"
 
@@ -58,15 +58,17 @@ export const SPLASH_SEQUENCE_MS = Math.max(
 
 // ── The beam ───────────────────────────────────────────────────────────────
 
-const WHITE = "#ffffff"
 /** Rotated gradient bands stand in for a wedge this app has no renderer for.
  *  Their low alphas sum into a soft cone; the outermost two ARE R9's edges. */
-const RAY_BAND_COUNT = 14
-/** Band thickness as a multiple of the gap between neighbours at the far end.
- *  Above 1 the bands overlap, which is what removes the seams between them. */
-const RAY_BAND_OVERLAP = 1.7
-const RAY_APEX_ALPHA = 0.09
-const RAY_MID_ALPHA = 0.05
+const RAY_BAND_COUNT = 28
+/** Band thickness as a multiple of the gap between neighbours at the FAR end,
+ *  where the bands are furthest apart. Measured on the iPhone 17 Pro Max
+ *  simulator: 14 bands at 1.7 read as separate streaks, these read as one cone. */
+const RAY_BAND_OVERLAP = 2.6
+/** Per-band, so the stack composites to about the same brightness as before:
+ *  1 - (1 - 0.05)^28 is close to 1 - (1 - 0.09)^14. */
+const RAY_APEX_ALPHA = 0.05
+const RAY_MID_ALPHA = 0.028
 const RAY_MID_STOP = 0.35
 
 const WORD = "Jesus"
@@ -149,8 +151,32 @@ export function SplashSequence({
   reduceMotion,
   onFirstFrame,
 }: SplashSequenceProps): React.JSX.Element {
-  const frame = useWindowDimensions()
-  const geometry = splashGeometry(frame)
+  const { width: frameWidth, height: frameHeight } = useWindowDimensions()
+
+  // Every number below is a pure function of the frame, and the cover
+  // re-renders three times on a cold start — one of them from inside the
+  // first-frame callback, the most latency-sensitive instant in the feature.
+  const layout = useMemo(() => {
+    const geometry = splashGeometry({ width: frameWidth, height: frameHeight })
+    const spread = geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg
+    const step = spread / (RAY_BAND_COUNT - 1)
+    const fontSize = Math.round(geometry.mark.width * WORD_SIZE_RATIO)
+    return {
+      ...geometry,
+      // A band is drawn pointing LEFT out of the apex, so its rotation is its
+      // direction in the frame turned back by half a turn.
+      bandAngles: Array.from(
+        { length: RAY_BAND_COUNT },
+        (_, index) => geometry.bottomLeftAngleDeg + step * index - 180,
+      ),
+      bandThickness:
+        geometry.rayLength *
+        Math.abs((step * Math.PI) / 180) *
+        RAY_BAND_OVERLAP,
+      fontSize,
+      lineHeight: Math.round(fontSize * WORD_LINE_RATIO),
+    }
+  }, [frameWidth, frameHeight])
 
   // Reduce Motion seeds every value at its END, so the finished frame is the
   // first frame and nothing has to animate to reach it.
@@ -217,20 +243,16 @@ export function SplashSequence({
     return () => animation.stop()
   }, [reduceMotion, bloom, rayGrow, crimson, wordFade])
 
-  const { apex, mark, rayLength, wordCenter } = geometry
-  const spread = geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg
-  const step = spread / (RAY_BAND_COUNT - 1)
-  const bandThickness =
-    rayLength * Math.abs((step * Math.PI) / 180) * RAY_BAND_OVERLAP
-  // A band is drawn pointing LEFT out of the apex, so its rotation is its
-  // direction in the frame turned back by half a turn.
-  const bandAngles = Array.from(
-    { length: RAY_BAND_COUNT },
-    (_, index) => geometry.bottomLeftAngleDeg + step * index - 180,
-  )
-
-  const fontSize = Math.round(mark.width * WORD_SIZE_RATIO)
-  const lineHeight = Math.round(fontSize * WORD_LINE_RATIO)
+  const {
+    apex,
+    bandAngles,
+    bandThickness,
+    fontSize,
+    lineHeight,
+    mark,
+    rayLength,
+    wordCenter,
+  } = layout
 
   return (
     <View style={styles.root}>
@@ -253,9 +275,9 @@ export function SplashSequence({
           <LinearGradient
             key={index}
             colors={[
-              hexToRgba(WHITE, RAY_APEX_ALPHA),
-              hexToRgba(WHITE, RAY_MID_ALPHA),
-              hexToRgba(WHITE, 0),
+              hexToRgba(TEXT_ON_OVERLAY, RAY_APEX_ALPHA),
+              hexToRgba(TEXT_ON_OVERLAY, RAY_MID_ALPHA),
+              hexToRgba(TEXT_ON_OVERLAY, 0),
             ]}
             locations={[0, RAY_MID_STOP, 1]}
             start={{ x: 1, y: 0.5 }}
@@ -351,7 +373,7 @@ const styles = StyleSheet.create({
   },
   word: {
     position: "absolute",
-    color: WHITE,
+    color: TEXT_ON_OVERLAY,
     fontFamily: WORD_FAMILY,
     textAlign: "center",
   },

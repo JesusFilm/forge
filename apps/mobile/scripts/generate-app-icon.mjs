@@ -296,6 +296,29 @@ async function verifyCentroid({ quiet = false } = {}) {
   if (!quiet) console.log("\nCentroid constants are current.")
 }
 
+/**
+ * The native splash's ground is stated twice — here and in app.json — and a
+ * mismatch shows as a colour flip at the native-to-React handover. Re-derive
+ * it rather than trusting the comment beside SPLASH_GROUND.
+ */
+async function verifySplashGround() {
+  const config = JSON.parse(
+    await fs.readFile(path.join(MOBILE, "app.json"), "utf8"),
+  )
+  const plugin = config.expo.plugins.find(
+    (entry) => Array.isArray(entry) && entry[0] === "expo-splash-screen",
+  )
+  const declared = plugin?.[1]?.backgroundColor
+  if (declared?.toLowerCase() !== SPLASH_GROUND.toLowerCase()) {
+    console.error(
+      `\nSplash ground drift — app.json declares ${declared}, this script emits ` +
+        `${SPLASH_GROUND}.\nBoth frames must be the same colour, or the ` +
+        "handover from the native splash flips colour.",
+    )
+    process.exit(1)
+  }
+}
+
 async function main() {
   // Re-derive the centroid on EVERY run, not just behind the flag. These two
   // constants place the symbol in every output, so a guard that only fires when
@@ -303,6 +326,7 @@ async function main() {
   const explicit = process.argv.includes("--verify-centroid")
   await verifyCentroid({ quiet: !explicit })
   if (explicit) return
+  await verifySplashGround()
 
   await fs.mkdir(path.join(ICON_BUNDLE, "Assets"), { recursive: true })
 
