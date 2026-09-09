@@ -9,7 +9,7 @@
  * INJECTED port, so this module never imports AsyncStorage.
  */
 
-import { errorMessageOf } from "./downloadErrors"
+import { telemetryErrorMessage } from "./downloadErrors"
 
 /**
  * KTD5/KD4: the note is NOT a Download Record. Its key sits outside the
@@ -351,7 +351,7 @@ export function createExportSessionStore(deps?: {
         return {
           started: true,
           outcome: cancelled ? "cancelled" : "failed",
-          errorMessage: errorMessageOf(error),
+          errorMessage: telemetryErrorMessage(error),
         }
       } finally {
         entries.delete(target)

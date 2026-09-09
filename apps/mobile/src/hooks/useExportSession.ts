@@ -23,7 +23,11 @@ export function useExportSession(): ExportSessionSnapshot {
 export function useExportEntry(
   videoSlug: string | null | undefined,
 ): ExportSessionEntry | null {
-  const session = useExportSession()
-  if (!videoSlug) return null
-  return session.byTarget[videoSlug] ?? null
+  const store = getExportSessionStore()
+  // Per-target, NOT the whole snapshot: progress lands about once a second per
+  // export, and the store keeps an untouched target's entry reference, so this
+  // bails on every tick that belongs to another video.
+  return useSyncExternalStore(store.subscribe, () =>
+    videoSlug ? (store.getSnapshot().byTarget[videoSlug] ?? null) : null,
+  )
 }
