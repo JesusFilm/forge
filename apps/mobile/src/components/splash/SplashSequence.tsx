@@ -37,6 +37,11 @@ export const SPLASH_BLOOM_RISE_MS = 460
 /** Its settle back. Longer than the rise, so the screen does not snap. */
 export const SPLASH_BLOOM_SETTLE_MS = 540
 const BLOOM_OVERSHOOT_SCALE = 1.08
+/** Where in the bloom's progress the overshoot sits, so ONE timing can carry
+ *  both halves. A nested Animated.sequence does not run on Android/Fabric —
+ *  the mark simply never appeared, while its sibling timings did. */
+const BLOOM_OVERSHOOT_AT =
+  SPLASH_BLOOM_RISE_MS / (SPLASH_BLOOM_RISE_MS + SPLASH_BLOOM_SETTLE_MS)
 /** The beam starts while the screen is still settling. */
 export const SPLASH_RAY_DELAY_MS = 380
 export const SPLASH_RAY_MS = 620
@@ -182,6 +187,16 @@ export function SplashSequence({
   // first frame and nothing has to animate to reach it.
   const rest = reduceMotion ? 1 : 0
   const bloom = useRef(new Animated.Value(rest)).current
+  // The bloom's progress carries the overshoot through this interpolation
+  // rather than through a second timing, so nothing here is a nested sequence.
+  const bloomScale = useMemo(
+    () =>
+      bloom.interpolate({
+        inputRange: [0, BLOOM_OVERSHOOT_AT, 1],
+        outputRange: [0, BLOOM_OVERSHOOT_SCALE, 1],
+      }),
+    [bloom],
+  )
   const rayGrow = useRef(new Animated.Value(rest)).current
   const crimson = useRef(new Animated.Value(rest)).current
   const wordFade = useRef(new Animated.Value(rest)).current
@@ -203,20 +218,15 @@ export function SplashSequence({
     // Every beat is one timing with its own delay. A looped Animated.sequence
     // runs only once on Fabric, so nothing here may be wrapped in a loop.
     const animation = Animated.parallel([
-      Animated.sequence([
-        Animated.timing(bloom, {
-          toValue: BLOOM_OVERSHOOT_SCALE,
-          duration: SPLASH_BLOOM_RISE_MS,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bloom, {
-          toValue: 1,
-          duration: SPLASH_BLOOM_SETTLE_MS,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(bloom, {
+        toValue: 1,
+        duration: SPLASH_BLOOM_RISE_MS + SPLASH_BLOOM_SETTLE_MS,
+        // Decelerating, so the overshoot is reached early in wall-clock time
+        // and the settle back takes the rest — R8's "settle slower than the
+        // rise" expressed as one curve rather than two timings.
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
       Animated.timing(rayGrow, {
         toValue: 1,
         delay: SPLASH_RAY_DELAY_MS,
@@ -310,7 +320,7 @@ export function SplashSequence({
             top: mark.top,
             width: mark.width,
             height: mark.height,
-            transform: [{ scale: bloom }],
+            transform: [{ scale: bloomScale }],
           },
         ]}
       >

@@ -27,6 +27,8 @@ import {
   MARK_CENTROID_Y,
   MARK_WIDTH_RATIO,
   RAY_APEX_Y_RATIO,
+  SPLASH_BLOOM_RISE_MS,
+  SPLASH_BLOOM_SETTLE_MS,
   SPLASH_CRIMSON_DELAY_MS,
   SPLASH_CRIMSON_MS,
   SPLASH_SEQUENCE_MS,
@@ -320,6 +322,31 @@ describe("the Fabric single-run defect (KTD9)", () => {
     const loop = jest.spyOn(Animated, "loop")
     await render({ reduceMotion: false })
     expect(loop).not.toHaveBeenCalled()
+  })
+
+  it("uses no Animated.sequence at all", async () => {
+    // Observed on the Android release build, emulator API 35: the bloom was an
+    // Animated.sequence nested in the Animated.parallel and simply never ran,
+    // while its sibling plain timings did. Glide logged both mark rasters
+    // decoded at 1024x748, so the images were fine — the scale stayed at 0 and
+    // the projector screen never appeared. iOS ran the same code correctly.
+    const sequence = jest.spyOn(Animated, "sequence")
+    await render({ reduceMotion: false })
+    expect(sequence).not.toHaveBeenCalled()
+  })
+
+  it("drives the bloom's overshoot by interpolation, not a second timing", async () => {
+    const timing = jest.spyOn(Animated, "timing")
+    await render({ reduceMotion: false })
+
+    // One timing per beat and no more: bloom, ray, crimson, word.
+    expect(timing).toHaveBeenCalledTimes(4)
+    const bloomConfig = timing.mock.calls
+      .map(([, config]) => config)
+      .find((config) => config.toValue === 1 && config.delay === undefined)
+    expect(bloomConfig?.duration).toBe(
+      SPLASH_BLOOM_RISE_MS + SPLASH_BLOOM_SETTLE_MS,
+    )
   })
 })
 
