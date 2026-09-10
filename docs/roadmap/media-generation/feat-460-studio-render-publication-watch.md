@@ -102,3 +102,5 @@ acceptance or mark this ticket complete.
 ## Production source preview follow-up
 
 Mux playback varies its CDN regions. The Manager broker admits mux.com and its subdomains, plus the existing exact Core media host. HTTPS, credentials, ports, redirect rejection and bounded transfers remain enforced. The focused broker-host regression covers regional Mux playback and rejects lookalike domains.
+
+Source import follow-up: accept canonical WebVTT bold/italic/underline as plain dialogue while retaining original bytes; use the renamed `materializeShortsSource` Admin mutation.
