@@ -24,6 +24,7 @@ function harness() {
     capabilityJti: "jti-1",
     expiresAt: new Date("2026-09-17T03:00:00.000Z"),
     request: {
+      surfaceVersion: "watch-below-player-v1",
       id: "request-1",
       state: "ISSUED",
       manifestId: "semantic-transcript-pgvector-v1",

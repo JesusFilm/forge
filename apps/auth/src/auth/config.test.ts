@@ -1,3 +1,4 @@
+import type { BetterAuthOptions } from "better-auth"
 import { google, type GoogleOptions } from "better-auth/social-providers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -76,6 +77,7 @@ vi.mock("@/services/changelog-oauth-grant.service", () => ({
 }))
 
 type CapturedAuthOptions = {
+  advanced?: BetterAuthOptions["advanced"]
   plugins: unknown[]
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
@@ -209,6 +211,53 @@ describe("auth provider configuration", () => {
     authConfigCapture.decideChangelogGrant.mockReset()
   })
 
+  it("isolates OAuth authorization limits between Cloudflare clients", async () => {
+    const options = await captureAuthOptions()
+    const { betterAuth } =
+      await vi.importActual<typeof import("better-auth")>("better-auth")
+    const { oauthProvider } = await vi.importActual<
+      typeof import("@better-auth/oauth-provider")
+    >("@better-auth/oauth-provider")
+    const { jwt } = await vi.importActual<typeof import("better-auth/plugins")>(
+      "better-auth/plugins",
+    )
+    const instance = betterAuth({
+      baseURL: "https://auth.example.test",
+      secret: "test-only-secret-for-client-rate-limit-isolation",
+      advanced: options.advanced,
+      rateLimit: { enabled: true, storage: "memory" },
+      plugins: [
+        jwt(),
+        oauthProvider({ loginPage: "/login", consentPage: "/consent" }),
+      ],
+      logger: { disabled: true },
+    })
+    const authorize = (
+      ip: string,
+      forwardedFor = "198.51.100.1, 198.51.100.2",
+    ) =>
+      instance.handler(
+        new Request(
+          "https://auth.example.test/api/auth/oauth2/authorize?client_id=unknown-client&response_type=code",
+          {
+            headers: {
+              "cf-connecting-ip": ip,
+              "x-forwarded-for": forwardedFor,
+            },
+          },
+        ),
+      )
+
+    // Invalid clients still traverse the real OAuth endpoint's limiter;
+    // no production account, database, or sign-in credential is needed.
+    for (let i = 0; i < 30; i++) {
+      expect((await authorize("203.0.113.10")).status).not.toBe(429)
+    }
+    expect((await authorize("203.0.113.10")).status).toBe(429)
+    expect((await authorize("203.0.113.10", "192.0.2.99")).status).toBe(429)
+    expect((await authorize("203.0.113.11")).status).not.toBe(429)
+  })
+
   it("always requests Google account selection when Google is enabled", async () => {
     const options = await captureAuthOptions()
 
@@ -277,6 +326,10 @@ describe("auth provider configuration", () => {
       "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
     expect(options.resources.map(({ identifier }) => identifier)).toEqual(
       expect.arrayContaining([
@@ -319,6 +372,10 @@ describe("auth provider configuration", () => {
       "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
   })
 
@@ -371,6 +428,25 @@ describe("auth provider configuration", () => {
       "https://jesusfilm.org/claims/app": "admin-mcp",
     })
     expect(authConfigCapture.decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
+  it("derives Studio claims from the exact resource without granting review authority", async () => {
+    const options = await captureOAuthProviderOptions()
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "shorts:read", "shorts:edit"],
+        resources: ["https://manager.jesusfilm.org/mcp"],
+        metadata: {
+          environmentKind: "staging",
+          appKey: "manager",
+          studioAuthority: "interactive",
+        },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "shorts-mcp",
+    })
   })
 
   it("fails closed when an issuance-time Changelog grant changes", async () => {

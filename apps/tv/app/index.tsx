@@ -9,6 +9,7 @@ import {
 } from "react"
 import {
   Platform,
+  BackHandler,
   ScrollView,
   StyleSheet,
   View,
@@ -25,6 +26,7 @@ import { HomeRail } from "../src/components/home/HomeRail"
 import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
 import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
 import { ScreenStateView } from "../src/components/ScreenStateView"
+import { AndroidLoadingDialog } from "../src/components/AndroidLoadingDialog"
 import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
@@ -543,6 +545,17 @@ export default function HomeScreen() {
 
   // ── Loading state (no model yet — initial load or a retry) ──
   if (screenState === "loading") {
+    if (IS_ANDROID) {
+      return (
+        <View style={styles.screen}>
+          <ScreenStateView kind="loading" message="Loading Home…" />
+          <AndroidLoadingDialog
+            message="Loading Home…"
+            onBack={() => BackHandler.exitApp()}
+          />
+        </View>
+      )
+    }
     // Non-focusable skeleton (KTD2): no focus claim of its own — the top bar's
     // Search tab (hasTVPreferredFocus) owns initial focus in this state too.
     // Shown only when model == null (cold load); a warm re-entry skips straight

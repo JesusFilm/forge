@@ -130,12 +130,7 @@ function GoogleAnalyticsRouteChanges({
   return null
 }
 
-export default function GoogleAnalytics({
-  analyticsConsent = false,
-}: {
-  analyticsConsent?: boolean
-}) {
-  if (!analyticsConsent) return null
+export default function GoogleAnalytics() {
   const measurementId = getGoogleAnalyticsMeasurementId()
   if (measurementId == null) return null
 

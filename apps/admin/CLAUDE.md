@@ -2837,3 +2837,30 @@ seed:first-party-apps` (updates the `scope` table + stored client scopes),
 - Next.js App Router route handlers cannot directly export the Yoga instance:
   type signatures mismatch. Wrap in a `(request, context) => yoga.handle(...)`
   function and export that as `GET`/`POST`/`OPTIONS`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.
+
+### Studio release admission controls
+
+`STUDIO_PRODUCTION_ENABLED` and `STUDIO_PUBLICATION_ENABLED` default to `false`.
+The canonical checks live in `src/services/studio-authoring/release-controls.ts`:
+new attempts/experiments/paid runs and execution claims are separate from accepted
+receipts, consumed calls and late settlement. New publication checks follow exact
+receipt lookup, including stored scheduled envelopes. Unpublish and Watch delivery
+reconciliation stay available. Configure all Admin HTTP/workflow replicas and drain
+old processes; process environment is not an instantaneous fleet barrier. See
+`docs/runbooks/studio-release-canary-and-rollback.md` at the repository root for the
+operation map, rollout order and external acceptance gates. Local DB fixtures that
+exercise enabled production/publication must explicitly set both flags to `true`;
+do not change default-off production behavior to accommodate tests.

@@ -175,6 +175,13 @@ type ContainerSlotSpans {
   xs: Int
 }
 
+type ContentPackRevision {
+  document: JSON
+  id: ID
+  number: Int
+  packId: ID
+}
+
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -300,7 +307,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -385,6 +392,15 @@ type ExperiencePreview {
   ogTitle: String
   pathSegment: String
   slug: String!
+  title: String
+}
+
+"""
+A page-level personalized video row. The consumer resolves recommendations privately at viewing time.
+"""
+type HomepageRecommendationsBlock {
+  sectionKey: String
+  t: String
   title: String
 }
 
@@ -1283,15 +1299,20 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
+  applyShortsOperations(input: ShortsApplyInput!): ShortsCommandResult
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
+  approveShortsProject(input: ShortsApproveInput!): ShortsCommandResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  attachShortsExperimentCandidate(input: JSON!): JSON
+  captureShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
-  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
+  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
+  completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
   """
@@ -1299,6 +1320,8 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
+  createRecommendationViewer: RecommendationViewer!
+  createShortsProject(input: ShortsCreateInput!): ShortsCommandResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
   """
@@ -1315,16 +1338,19 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
-  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
+  issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
+  issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
+  materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
   recommendationProfileStatus(consentContractVersion: String, consentReceiptDigest: String, contractVersion: String!, profileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
-  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String!): RecommendationContentActionReceipt!
-  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String!): [RecommendationEvidenceReceipt!]!
-  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
+  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String, sessionToken: String, viewerToken: String): RecommendationContentActionReceipt!
+  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationEvidenceReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
@@ -1332,6 +1358,8 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
+  requestShortsExperiment(input: JSON!): JSON
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -1341,7 +1369,9 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
+  stageShortsCatalog(input: JSON!): ShortsCatalogRelease
+  startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
@@ -1420,6 +1450,7 @@ type Mutation {
     """
     mode: TranscriptBackfillMode
   ): JSON
+  unpublishShortsProject(input: ShortsRevisionCommandInput!): ShortsCommandResult
   """
   Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
   """
@@ -1433,7 +1464,9 @@ type Mutation {
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
+  updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
+  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -1555,10 +1588,27 @@ type Query {
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
   semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
+  shortsAsset(reference: JSON!): ShortsAssetVersion
+  shortsAssets(input: JSON): [ShortsAssetVersion!]
+  shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
+  shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
+  shortsCatalogRelease(id: ID!): ShortsCatalogRelease
+  shortsContentPackRevision(id: ID!): ContentPackRevision
+  shortsContentPacks(input: JSON): [ContentPackRevision!]
+  shortsExperiment(id: ID!): JSON
+  shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
+  shortsNarrationIdentity(language: String!, speech: JSON!): JSON
+  shortsNarrationMatches(identity: JSON!): [ShortsAssetVersion!]
+  shortsProject(projectId: ID!): ShortsProject
+  shortsProjects(cursor: ID, limit: Int): [ShortsProjectSummary!]
+  shortsSourceEligibility(id: ID!): JSON
+  shortsSourceSnapshot(id: ID!): ShortsSourceSnapshot
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -1705,6 +1755,18 @@ type RecommendationProfileReceipt {
   state: String!
 }
 
+type RecommendationViewer {
+  expiresAt: String!
+  personalization: Boolean!
+  sessionToken: String!
+  viewerToken: String!
+}
+
+type RecommendationViewerStatus {
+  personalization: Boolean!
+  state: String!
+}
+
 """Single entry in RelatedQuestionsBlock.questions."""
 type RelatedQuestionItem {
   answer: String
@@ -1816,6 +1878,203 @@ type SemanticRecommendationSelectionReceipt {
   targetMediaId: ID!
 }
 
+type ShortsActor {
+  id: ID
+  kind: String
+}
+
+input ShortsApplyInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+}
+
+type ShortsApproval {
+  actor: ShortsActor
+  dependencyHash: String
+  id: ID
+  kind: ShortsApprovalKind
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+}
+
+enum ShortsApprovalKind {
+  PUBLICATION
+  SCRIPT
+}
+
+input ShortsApproveInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  kind: ShortsApprovalKind!
+  projectId: ID!
+  renderAttemptId: ID
+}
+
+type ShortsAssetReference {
+  assetId: ID
+  digest: String
+  versionId: ID
+}
+
+type ShortsAssetTransfer {
+  expiresAt: String
+  method: String
+  path: String
+}
+
+type ShortsAssetVersion {
+  byteSize: Float
+  filename: String
+  mediaAssetId: ID
+  mimeType: String
+  narration: JSON
+  provenance: JSON
+  reference: ShortsAssetReference
+  role: String
+  voice: JSON
+}
+
+type ShortsAttempt {
+  actor: ShortsActor
+  baseRevision: Int
+  id: ID
+  inputHash: String
+  instructions: JSON
+  jobReference: String
+  kind: ShortsAttemptKind
+  projectId: ID
+  result: JSON
+  status: ShortsAttemptStatus
+}
+
+enum ShortsAttemptKind {
+  GENERATION
+  NARRATION
+  RENDER
+}
+
+enum ShortsAttemptStatus {
+  CANCELLED
+  FAILED
+  QUEUED
+  RUNNING
+  STALE
+  SUCCEEDED
+}
+
+type ShortsCatalogRelease {
+  durationMs: Int
+  fps: Int
+  height: Int
+  id: ID
+  languageSlug: String
+  muxAssetId: ID
+  muxPlaybackId: ID
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+  snapshot: JSON
+  title: String
+  width: Int
+}
+
+type ShortsCommandResult {
+  approvalId: ID
+  attemptId: ID
+  outcome: String
+  projectId: ID
+  revision: Int
+}
+
+input ShortsCompleteInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+  result: JSON!
+  status: ShortsAttemptStatus!
+}
+
+input ShortsCreateInput {
+  document: JSON!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+  sourceVideoDubId: ID
+}
+
+enum ShortsLifecycle {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+type ShortsProject {
+  actor: ShortsActor
+  document: JSON
+  firstPublishedAt: String
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+  sourceVideoDubId: ID
+}
+
+type ShortsProjectSummary {
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+}
+
+input ShortsRequestInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  instructions: JSON!
+  kind: ShortsAttemptKind!
+  projectId: ID!
+}
+
+type ShortsRevision {
+  actor: ShortsActor
+  document: JSON
+  revision: Int
+}
+
+input ShortsRevisionCommandInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+}
+
+type ShortsSourceSnapshot {
+  catalogDigest: String
+  coveredRanges: JSON
+  downloadId: ID
+  downloadUrl: String
+  durationMs: Float
+  exportHeight: Int
+  hlsUrl: String
+  id: ID
+  materialization: String
+  originalByteDigest: String
+  restrictions: [String!]
+  source: JSON
+  subtitleAiGenerated: Boolean
+  subtitlePrimary: Boolean
+  subtitleUrl: String
+}
+
+input ShortsStartInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  jobReference: String!
+  projectId: ID!
+}
+
 """Rich text block with heading, subtitle, and paragraphs."""
 type TextBlock {
   backgroundColor: String
@@ -1854,6 +2113,37 @@ enum TranscriptBackfillMode {
   IDEMPOTENT
   MODEL_UPGRADE
   REPAIR
+}
+
+type UserRecommendationDelivery {
+  cohort: String!
+  contractVersion: String!
+  curatedCount: Int!
+  expiresAt: String
+  items: [UserRecommendationItem!]!
+  poolVersion: String
+  profileCount: Int!
+  reason: String
+  requestId: ID
+  requestedCount: Int!
+  result: String!
+  surfaceVersion: String!
+}
+
+type UserRecommendationItem {
+  canonicalHref: String!
+  capability: String!
+  description: String!
+  durationSeconds: Float
+  generator: String!
+  id: ID!
+  imageUrl: String
+  poolKey: String
+  poolVersion: String
+  position: Int!
+  targetMediaId: ID!
+  videoSlug: String!
+  videoTitle: String!
 }
 
 """

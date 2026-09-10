@@ -9,6 +9,9 @@ export function middleware(request: NextRequest) {
   const session = request.cookies.get(MANAGER_SESSION_COOKIE)?.value
   const { pathname } = request.nextUrl
 
+  if (pathname === "/mcp" || pathname.startsWith("/.well-known/"))
+    return NextResponse.next()
+
   // Public assets in /public (for example SVG logos) should never be
   // redirected through the login guard.
   if (pathname.includes(".")) {

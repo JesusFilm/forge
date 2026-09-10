@@ -28,7 +28,7 @@ Every scheduled run reads recent GA4 evidence for `/watch/*` not-found traffic, 
 
 ### Problem Frame
 
-GA4 currently contains thousands of page views whose title is `Page not found` under `/watch/*`, including high-volume paths assembled from otherwise valid content and language slugs. The exact custom `page_not_found` event currently has no rows, and the repository-owned Web GA collector remains disabled pending the consent decision in `feat-444`. Search Console alone is too delayed and cannot distinguish a route admission defect from a malformed external URL. The system needs a deterministic daily control loop that can consume the explicit event when available and use a locale-independent all-Watch-path heuristic, with page title excluded as a discriminator, until it is available.
+GA4 currently contains thousands of page views whose title is `Page not found` under `/watch/*`, including high-volume paths assembled from otherwise valid content and language slugs. The exact custom `page_not_found` event currently has no rows, and the repository-owned Web GA collector was disabled by the regression subsequently fixed in PR #2229. The restored collector must remain active under `docs/analytics-and-recommendation-policy.md`. Search Console alone is too delayed and cannot distinguish a route admission defect from a malformed external URL. The system needs a deterministic daily control loop that can consume the explicit event when available and use a locale-independent all-Watch-path heuristic, with page title excluded as a discriminator, until it is available.
 
 ### Key Decisions
 
@@ -80,7 +80,7 @@ GA4 currently contains thousands of page views whose title is `Page not found` u
 
 - R20. The workflow is default-off unless all required GA4 and Admin workload credentials are valid; configuration failure must not prevent Mastra startup.
 - R21. Existing signed SEO workload identity may be reused only through a new narrow Watch-alert capability; no broad Web/Admin consumer bearer may be added to Mastra or Manager.
-- R22. The implementation must not enable GA collection, change consent behavior, mutate Watch routes, or change sitemap/canonical behavior.
+- R22. The implementation must preserve the configured GA and Datadog baseline without changing the collector, Watch routes, or sitemap/canonical behavior.
 - R23. Receiver migrations and Admin APIs must deploy before Mastra is enabled; disabling the workflow must stop new runs without hiding existing Manager alerts.
 
 ### Actors
@@ -119,7 +119,7 @@ GA4 currently contains thousands of page views whose title is `Page not found` u
 
 ### Scope Boundaries
 
-- Do not enable or redesign Web analytics consent; that remains in `feat-444`.
+- Preserve configured Web analytics under `docs/analytics-and-recommendation-policy.md`; collector improvements remain in `feat-444` and have no consent prerequisite.
 - Do not change Watch route admission, redirects, canonical URLs, sitemap output, or content availability.
 - Do not create Linear issues, send Slack/email notifications, or auto-remediate routes in v1.
 - Do not add an LLM/model agent to a closed deterministic classification problem.
@@ -130,7 +130,7 @@ GA4 currently contains thousands of page views whose title is `Page not found` u
 
 - The Admin route manifest remains the canonical exact admission contract for Watch.
 - GA4 Data API service-account credentials and the existing signed Mastra-to-Admin workload identity are the intended provider/auth mechanisms.
-- The explicit `page_not_found` event will become the preferred source when the consent-approved follow-up `feat-456` ships and its coverage is verified; until then, `dual` mode keeps the locale-independent all-Watch-path heuristic active with a visible quality caveat.
+- The explicit `page_not_found` event will become the preferred source when the collector follow-up `feat-456` ships and its coverage is verified; until then, `dual` mode keeps the locale-independent all-Watch-path heuristic active with a visible quality caveat.
 
 ### Sources
 
@@ -197,7 +197,7 @@ stateDiagram-v2
 - Prisma schema/migration and Admin GraphQL schema are additive, but deployment order matters. The ledger separates run, property progress, stable alert, episode, and idempotent daily observation records.
 - GA4 reporting limits and delayed/thresholded data can cause false absence; quality gating prevents recovery in that condition.
 - Live GET validation can amplify load or be blocked by edge controls; concurrency, candidate limits, timeouts, and a fixed host cap exposure.
-- The current signal is heuristic until the consent-approved explicit Web event ships. The UI must make that visible rather than overstating certainty.
+- The current signal is heuristic until the explicit Web event ships. The UI must make that visible rather than overstating certainty.
 - Manifest/classifier drift could misclassify exact pairs; a version/hash and fixture parity tests make drift observable.
 
 ### Rollout and Rollback

@@ -157,6 +157,8 @@ jobs:
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
           src/services/recommendations/profile.service.db.test.ts
+          src/services/recommendations/viewer-identity.service.db.test.ts
+          src/services/recommendations/curated-pools.service.db.test.ts
           src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
           --no-file-parallelism
@@ -435,6 +437,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install renderer native security test prerequisites
+        if: matrix.service == '@forge/studio-render'
+        run: bash apps/studio-render/scripts/install-native-test-prerequisites.sh
       - name: Load CI env files
         run: |
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do

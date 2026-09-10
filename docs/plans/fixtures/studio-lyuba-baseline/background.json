@@ -1,0 +1,34 @@
+{
+  "provenance": "Synthetic timing vectors derived from recovered a5df2445 DevotionalVideo.tsx and devotional-render.ts; no saved render manifest or actual frame proof exists",
+  "cardKinds": ["cover", "video", "reflection", "questions"],
+  "durationInFrames": [100, 200, 300, 400],
+  "cases": [
+    {
+      "continuousClip": false,
+      "bgPlaybackRate": 1,
+      "expectedSourceStartFrames": [0, 0, 100, 400]
+    },
+    {
+      "continuousClip": true,
+      "bgPlaybackRate": 1,
+      "expectedSourceStartFrames": [0, 100, 300, 600]
+    },
+    {
+      "continuousClip": true,
+      "bgPlaybackRate": 0.5,
+      "expectedSourceStartFrames": [0, 50, 150, 300]
+    }
+  ],
+  "restart": {
+    "introHoldSec": 1,
+    "cardTailSec": 0.5,
+    "cards": [
+      { "kind": "cover", "durationSec": 3 },
+      { "kind": "scripture", "durationSec": 4 },
+      { "kind": "video", "durationSec": 6 },
+      { "kind": "reflection", "durationSec": 5 }
+    ],
+    "fullDevotionalRestartAtSec": 0,
+    "episodeRestartAtSec": 9
+  }
+}

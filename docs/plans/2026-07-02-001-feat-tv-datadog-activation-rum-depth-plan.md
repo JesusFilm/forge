@@ -15,7 +15,7 @@ execution: code
 
 - **Objective:** Finish the TV Datadog rollout in one branch: remove the dev boot-smoke scaffolding, add route-level RUM views, per-operation GraphQL attribution, a series render timing, and a dev-visible SDK init-failure warning; provision the development and preview EAS profiles with real Datadog credentials; document the remaining operational steps as a runbook.
 - **Authority:** This plan > `docs/roadmap/platform/feat-225-tv-datadog-production-activation.md` + `docs/roadmap/platform/feat-226-tv-rum-instrumentation-depth.md` > repo conventions (`apps/tv/CLAUDE.md`). Where this plan's Key Technical Decisions diverge from a ticket's literal code suggestion (view naming), the plan wins — the divergences were user-confirmed.
-- **Stop conditions:** Never provision the production EAS profile (privacy-gated, out of scope). Never bump `@datadog/mobile-react-native` (pnpm patch coupling). Surface a genuine blocker (contradicts the Product Contract or needs credentials the session can't obtain) instead of guessing.
+- **Stop conditions:** Production provisioning is handled by the follow-up completion plan; it is not blocked on consent approval. Never bump `@datadog/mobile-react-native` (pnpm patch coupling). Surface a genuine blocker (contradicts the Product Contract or needs credentials the session can't obtain) instead of guessing.
 - **Execution profile:** Pure helpers first with colocated unit tests, then wiring; verify with the three `@forge/tv` package commands plus a live provisioned simulator session.
 
 ---
@@ -28,13 +28,13 @@ One branch delivers both remaining P1 TV observability tickets: the RUM integrat
 
 ### Problem Frame
 
-PR #1434 shipped opt-in Mobile RUM for `apps/tv`, but no EAS profile carries the credentials, so every real build boots with telemetry silently off. What the integration does capture is too shallow to act on: every event lands under the implicit ApplicationLaunch view, every GraphQL call is an indistinguishable POST to `/api/graphql`, and the dominant felt cost from the 2026-06-30 perf sweep — roughly three seconds of client-side parse/render on series detail — has no tracked number. Meanwhile the dev-only boot-smoke event fires a fake error into Error Tracking on every dev launch, and a failed SDK init is completely silent.
+PR #1434 shipped environment-configured Mobile RUM for `apps/tv`, but no EAS profile carries the credentials, so every real build boots with telemetry silently off. What the integration does capture is too shallow to act on: every event lands under the implicit ApplicationLaunch view, every GraphQL call is an indistinguishable POST to `/api/graphql`, and the dominant felt cost from the 2026-06-30 perf sweep — roughly three seconds of client-side parse/render on series detail — has no tracked number. Meanwhile the dev-only boot-smoke event fires a fake error into Error Tracking on every dev launch, and a failed SDK init is completely silent.
 
 ### Key Decisions
 
 - **Both tickets on one branch.** feat-226's instrumentation is verified against the same credentials feat-225 provisions, and the two tickets touch the same handful of files; one PR avoids a stacked-review round trip.
 - **Session scope is code plus provisioning.** All code from both tickets lands, and the development and preview EAS profiles get real credentials. Real builds, hardware verification, the intake alert, and production credentials move to a runbook.
-- **Production provisioning stays behind the privacy gate.** `TrackingConsent.GRANTED` at 100% session sampling needs product/legal sign-off before the production profile gets credentials; this branch does not pre-empt that decision.
+- **Production provisioning follows configuration.** `TrackingConsent.GRANTED` at 100% session sampling is an SDK configuration, not a consent prerequisite. The completion plan owns provisioning under `docs/analytics-and-recommendation-policy.md`.
 - **Roadmap consequence:** feat-226 can close when this branch merges; feat-225 stays in progress until the runbook's hardware verification completes.
 
 ### Requirements
@@ -56,7 +56,7 @@ PR #1434 shipped opt-in Mobile RUM for `apps/tv`, but no EAS profile carries the
 
 **Operational handoff**
 
-- R9. A runbook covers the deferred steps: the Datadog usage/intake alert for `service:forge-tv`, Android TV preview-APK verification, Apple TV TestFlight verification, and production-profile provisioning gated on the privacy sign-off.
+- R9. A runbook covers the deferred steps: the Datadog usage/intake alert for `service:forge-tv`, Android TV preview-APK verification, Apple TV TestFlight verification, and production-profile provisioning under `docs/analytics-and-recommendation-policy.md`.
 
 ### Acceptance Examples
 
@@ -86,7 +86,7 @@ PR #1434 shipped opt-in Mobile RUM for `apps/tv`, but no EAS profile carries the
 
 ### Open Questions
 
-- Deferred, blocks only the post-merge production step (not this branch): product/legal sign-off on `TrackingConsent.GRANTED` at 100% session sampling before the production profile is provisioned.
+- Deferred to the completion plan: provision the production profile and record its telemetry inventory; no separate consent approval blocks this step.
 
 ### Sources
 
@@ -113,7 +113,7 @@ Product Contract preservation: R1-R9, AE1-AE4, Key Decisions, and Scope Boundari
 - KTD3. **Init watchdog is one-shot per JS process, mirroring the SDK's own singleton.** SDK init runs behind a `globalThis`-keyed guard, so `onInitialization` never re-fires after the first init; a per-mount timer would false-warn on every remount (Fast Refresh, ErrorBoundary re-render). The watchdog arms once per process, only when provisioned, is cleared by `onInitialization`, and warns only in dev.
 - KTD4. **Attribution link mirrors the auth link and must spread-merge headers.** A raw `ApolloLink` (same shape as the existing auth link) sets the SDK's exported operation-name (and operation-type) headers from a pure `operationName -> headers` helper; anonymous operations get no headers. It merges over `operation.getContext().headers` so the search bearer survives. It attaches whenever the config gate passes, independent of SDK init state — during the brief cold-launch window before the SDK patches XHR, the custom header reaches admin un-stripped, which is benign (React Native enforces no CORS; the GraphQL server ignores unknown headers) and accepted so the first heavy series query stays attributed.
 - KTD5. **Pure helpers in plain `.ts` modules; components stay thin.** jest-expo cannot load `.tsx` module graphs, so every new decision (view naming, header mapping, timing latch, watchdog state) is a pure exported function with colocated tests, following the existing telemetry-helper and screen-state precedent. All Datadog calls go through never-throw wrappers.
-- KTD6. **Provisioning: `eas env:create` per environment with plaintext visibility.** Values are bundle-inlined by design, so `sensitive`/`secret` buys nothing and breaks later read-back (`secret` never reaches `EXPO_PUBLIC_*` bundles at update time at all). Preview gets an explicit `EXPO_PUBLIC_DATADOG_ENV=preview`: preview is a release build (`__DEV__` false), so the SDK's two-bucket default would tag external testers' sessions `env:production` before the privacy gate clears. Development leaves ENV unset (defaults to development); `EXPO_PUBLIC_DATADOG_VERSION` stays unset everywhere (defaults to the app version).
+- KTD6. **Provisioning: `eas env:create` per environment with plaintext visibility.** Values are bundle-inlined by design, so `sensitive`/`secret` buys nothing and breaks later read-back (`secret` never reaches `EXPO_PUBLIC_*` bundles at update time at all). Preview gets an explicit `EXPO_PUBLIC_DATADOG_ENV=preview`: preview is a release build (`__DEV__` false), so the SDK's two-bucket default would tag external testers' sessions `env:production` before production activation. Development leaves ENV unset (defaults to development); `EXPO_PUBLIC_DATADOG_VERSION` stays unset everywhere (defaults to the app version).
 - KTD7. **Runbook extends the existing docs, no new doc.** Operational steps land in `docs/observability/datadog.md` under the TV section, with `apps/tv/CLAUDE.md`'s Observability section updated to drop the boot-smoke note and describe the new instrumentation.
 - KTD8. **No SDK version change.** The tvOS pnpm patch is keyed to `@datadog/mobile-react-native@3.5.2` and pnpm only warns on key mismatch; a bump would silently reintroduce the tvOS build break and is out of scope.
 
@@ -206,7 +206,7 @@ The prose in KTD1-KTD4 is authoritative for every relationship shown.
 - **Requirements:** R2, R9, R3 (AE1 unchanged for unprovisioned builds)
 - **Dependencies:** U1-U6 (the live-sim verification in this unit exercises all instrumentation)
 - **Files:** `docs/observability/datadog.md`, `apps/tv/CLAUDE.md`, plus EAS-side state (no `eas.json` diff — env vars live server-side per environment)
-- **Approach:** Pull the client token + application ID from the "Forge TV" RUM application page (browser session or user paste); `eas env:create` the vars per KTD6 for the `development` and `preview` environments with plaintext visibility (three vars on development; those plus `EXPO_PUBLIC_DATADOG_ENV=preview` on preview). Extend the observability doc's TV section with the runbook: intake/usage alert for `service:forge-tv`, Android TV preview-APK verification, Apple TV TestFlight verification (altool path per `apps/tv/DISTRIBUTION.md`), production provisioning gated on the privacy sign-off, and the no-dedicated-player-view note. Update `apps/tv/CLAUDE.md`'s Observability section: drop the boot-smoke sentence, describe route views / attribution / timing / watchdog, note the verified-live status.
+- **Approach:** Pull the client token + application ID from the "Forge TV" RUM application page (browser session or user paste); `eas env:create` the vars per KTD6 for the `development` and `preview` environments with plaintext visibility (three vars on development; those plus `EXPO_PUBLIC_DATADOG_ENV=preview` on preview). Extend the observability doc's TV section with the runbook: intake/usage alert for `service:forge-tv`, Android TV preview-APK verification, Apple TV TestFlight verification (altool path per `apps/tv/DISTRIBUTION.md`), production provisioning through environment configuration, and the no-dedicated-player-view note. Update `apps/tv/CLAUDE.md`'s Observability section: drop the boot-smoke sentence, describe route views / attribution / timing / watchdog, note the verified-live status.
 - **Execution note:** Operational unit — the proof is a live provisioned simulator session and `eas env:list` output, not unit coverage.
 - **Test scenarios:** Test expectation: none — config/doc unit; behavior proven by the live smoke below.
 - **Verification:** `eas env:list --environment development` (and preview) shows the vars per KTD6; a cold sim session with creds appears in RUM Explorer under `service:forge-tv` with per-route views, operation-named resources, the series timing, and no boot-smoke error.
@@ -231,6 +231,6 @@ Cold-relaunch before judging any playback-adjacent behavior in the sim — a hot
 - R1-R10 delivered via U1-U7; the three package commands green.
 - A live provisioned simulator session verified in RUM Explorer: per-route pattern-named views, operation-named GraphQL resources, `series_first_rail_ready` in the 2-4s range, a `recent-search` action, no boot-smoke error.
 - Development and preview EAS environments provisioned; the runbook and CLAUDE.md updates merged with the code.
-- Deferred items (hardware verification, intake alert, production credentials + privacy sign-off) live in the runbook — none silently dropped.
+- Deferred items (hardware verification, intake alert, production credentials and telemetry inventory) live in the runbook — none silently dropped.
 - Roadmap statuses updated per repo convention: feat-225 and feat-226 `in-progress` on branch start; feat-226 eligible for `complete` on merge, feat-225 stays `in-progress` pending runbook execution.
 - No dead or experimental code left in the diff.

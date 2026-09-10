@@ -21,6 +21,7 @@ export { adminVideoFragment } from "./blocks/video"
 export { adminVideoCarouselFragment } from "./blocks/video-carousel"
 export { adminVideoHeroFragment } from "./blocks/video-hero"
 export { adminVideoRecommendationsFragment } from "./blocks/video-recommendations"
+export { adminHomepageRecommendationsFragment } from "./blocks/homepage-recommendations"
 export { adminWatchHomeCategoryRailFragment } from "./blocks/watch-home-category-rail"
 export { adminWatchHomeHeroFragment } from "./blocks/watch-home-hero"
 export {

@@ -16,14 +16,14 @@ export type MediaAssetUsageRow = {
   experienceId: string | null
   /** @deprecated Use resourceLocaleId when resourceType is EXPERIENCE_LOCALE. */
   experienceLocaleId: string | null
-  resourceType: "EXPERIENCE_LOCALE" | "VIDEO_LOCALE"
+  resourceType: string
   resourceId: string
   resourceLocaleId: string
   locale: string
   title: string | null
   editUrl: string
   recoverable: boolean
-  location: "metadata" | "blocks" | "search-social"
+  location: "metadata" | "blocks" | "search-social" | "studio"
   fieldPath: string
   fieldName: string
   value: string
@@ -58,7 +58,7 @@ export async function scanMediaAssetUsage(
   prisma: PrismaClient,
   target: MediaAssetUsageTarget,
 ): Promise<MediaAssetUsageRow[]> {
-  const [experienceLocales, videoLocales] = await Promise.all([
+  const [experienceLocales, videoLocales, versions] = await Promise.all([
     prisma.experienceLocale.findMany({
       select: {
         id: true,
@@ -83,9 +83,34 @@ export async function scanMediaAssetUsage(
       },
       orderBy: { updatedAt: "desc" },
     }),
+    prisma.shortAssetVersion.findMany({
+      where: { mediaAssetId: target.assetId },
+      include: { usages: true },
+    }),
   ])
 
   return [
+    ...versions.flatMap((version) =>
+      [
+        { ownerType: "SHORT_ASSET_VERSION", ownerId: version.id },
+        ...version.usages,
+      ].map((edge) => ({
+        experienceId: null,
+        experienceLocaleId: null,
+        resourceType: edge.ownerType,
+        resourceId: edge.ownerId,
+        resourceLocaleId: edge.ownerId,
+        locale: "und",
+        title: "Retained Studio dependency",
+        editUrl: `/dashboard/media?asset=${encodeURIComponent(target.assetId)}`,
+        recoverable: true,
+        location: "studio" as const,
+        fieldPath: "version",
+        fieldName: "versionId",
+        value: version.id,
+        match: "asset-id" as const,
+      })),
+    ),
     ...findMediaAssetUsages(target, experienceLocales),
     ...findVideoLocaleMediaAssetUsages(target, videoLocales),
   ]

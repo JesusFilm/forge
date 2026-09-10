@@ -23,11 +23,12 @@ import {
   DEFAULT_WATCH_HOME_TILE_ICON,
   WATCH_HOME_CATEGORY_TILE_DEFAULTS,
   WATCH_HOME_TILE_ICON_KEYS,
-  isExternalWatchHomeTileHref,
-  isSafeWatchHomeTileHref,
+  classifyWatchHomeTileHref,
   watchHomeTileGradient,
+  type WatchHomeTileDestination,
   type WatchHomeTileIconKey,
 } from "@forge/watch-url-policy/watch-home-tiles"
+import { WATCH_BASE_PATH } from "@/lib/watch-paths"
 
 import { tryAsContentSlug, watchVideoPath, type LocaleSlug } from "@/lib/routes"
 import {
@@ -54,9 +55,14 @@ export type ResolvedWatchHomeTile = {
    */
   titleKey: string | null
   title: string | null
+  /**
+   * For `kind: "watch"` this is BASE-PATH-RELATIVE — `next/link` prepends the
+   * base path itself, so a stored `/watch/...` has already had that prefix
+   * stripped. For `kind: "external"` it is the absolute `https:` URL.
+   */
   href: string
-  /** An `https:` destination — rendered as a plain anchor, not `next/link`. */
-  external: boolean
+  /** Decides the element: `next/link` for `watch`, a plain anchor for `external`. */
+  kind: WatchHomeTileDestination["kind"]
   iconKey: WatchHomeTileIconKey
   gradient: string
 }
@@ -116,14 +122,21 @@ function resolveTile(
   // A custom tile has no catalog copy to fall back on.
   if (category == null && authoredTitle == null) return null
 
+  // Only an AUTHORED href goes through the policy. A catalog href is built by
+  // `categoryHref` and is already base-path-relative, so classifying it would
+  // be asking a validator to second-guess our own route builder.
   const authoredHref = nonEmpty(tile.href)
-  let href: string | null = null
+  let destination: WatchHomeTileDestination | null = null
   if (authoredHref != null) {
-    href = isSafeWatchHomeTileHref(authoredHref) ? authoredHref : null
+    destination = classifyWatchHomeTileHref(authoredHref, WATCH_BASE_PATH)
   } else if (categoryId != null) {
-    href = categoryHref(categoryId, locale)
+    // Null when the catalog slug fails the ContentSlug shape — a tile with no
+    // resolvable destination is dropped, same as an unsafe authored one.
+    const catalogHref = categoryHref(categoryId, locale)
+    destination =
+      catalogHref == null ? null : { kind: "watch", href: catalogHref }
   }
-  if (href == null) return null
+  if (destination == null) return null
 
   const authoredStyle = nonEmpty(tile.style)
   const gradient =
@@ -138,8 +151,8 @@ function resolveTile(
     titleKey:
       authoredTitle == null && category != null ? category.titleKey : null,
     title: authoredTitle,
-    href,
-    external: isExternalWatchHomeTileHref(href),
+    href: destination.href,
+    kind: destination.kind,
     iconKey: iconKeyFor(tile.icon, categoryId),
     gradient,
   }

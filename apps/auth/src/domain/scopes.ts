@@ -1,5 +1,27 @@
 export const AUTH_SCOPES = [
   {
+    key: "shorts:read",
+    label: "Read Shorts projects",
+    description: "Read Shorts projects, history and shared assets.",
+  },
+  {
+    key: "shorts:edit",
+    label: "Edit Shorts drafts",
+    description:
+      "Apply revision-checked draft edits; never approve or publish.",
+  },
+  {
+    key: "shorts:chat",
+    label: "Run Shorts agent",
+    description:
+      "Request hosted authoring proposals; never approve narration or publication.",
+  },
+  {
+    key: "shorts:instructions:read",
+    label: "Read Shorts instructions",
+    description: "Inspect active Shorts guidance without changing activation.",
+  },
+  {
     key: "openid",
     label: "Sign you in",
     description: "Confirm your identity for the requesting application.",

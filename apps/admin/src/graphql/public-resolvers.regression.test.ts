@@ -47,6 +47,12 @@ const INTENDED_PUBLIC_RESOLVERS = [
   // feat-369. Issues the bounded, opaque context used by Watch playback
   // episodes; caller identity is still enforced inside the resolver body.
   "issueWatchPlaybackContext",
+  // feat-477 / PR #2249. Public-shaped installation and source-free APIs;
+  // service bodies enforce consumer bearer identity and opaque viewer/session
+  // possession. Raw digest authority remains restricted to the Web backend.
+  "createRecommendationViewer",
+  "updateRecommendationViewer",
+  "userRecommendations",
   // consumer-migration U2 (2026-05-11) — see
   // docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md
   "video",
