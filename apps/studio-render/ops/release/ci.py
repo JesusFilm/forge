@@ -93,7 +93,7 @@ def install_tools():
 
 def login():
     actor, token = os.environ.get('GITHUB_ACTOR', ''), os.environ.get('GH_TOKEN', '')
-    if not matches(actor, '[A-Za-z0-9_-]{1,100}') or not matches(token, '[A-Za-z0-9_]{10,1024}'):
+    if not matches(actor, '[A-Za-z0-9_-]{1,100}') or not matches(token, '[A-Za-z0-9_.-]{10,8192}'):
         raise ReleaseRefused('Scoped registry identity required')
     path = workspace() / 'registry.json'
     run([tool(), 'login', 'ghcr.io', '--registry-config', str(path), '--username', actor, '--password-stdin'],
