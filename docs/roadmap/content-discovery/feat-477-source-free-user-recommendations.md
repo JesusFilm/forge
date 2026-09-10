@@ -27,6 +27,11 @@ fill. The same API must support independent anonymous mobile and TV installs.
 The API and Web implementation are complete in the isolated local preview.
 Production activation remains gated on feat-476 coverage and current production
 validation; this ticket stays in progress until that rollout is resolved.
+The code release is PR #2249, with both new serving flags defaulting off and no
+production pool promotion or homepage publication. Before activation, also verify
+cold-process delivery latency: one production-mode local startup request exceeded
+the deadline, followed by successful six-card deliveries. The detailed merge
+validation is in `docs/operations/user-recommendations-validation-2026-09-10.md`.
 
 ## Entry Points — Read These First
 

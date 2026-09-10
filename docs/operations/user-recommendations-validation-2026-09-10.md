@@ -191,3 +191,34 @@ registration measured median TTFB 326.5 ms, DOMContentLoaded
 663 bytes above the previous enabled widget. The block keeps the same deferred
 private request and card geometry. These small development samples remain a
 smoke comparison, not a production performance guarantee.
+
+## Merge validation against current main
+
+PR #2249 merges the implementation with both new release flags defaulting off.
+No production pool promotion or homepage publication is included. After merging
+main `ab801776`, Admin and Web production builds passed, including the Admin
+workflow-registration checks. Admin/Web lint and TypeScript plus the regenerated
+shared GraphQL client passed. The existing seeded request default is preserved.
+
+The recommendation suite and focused database-fixture reruns passed 503 tests;
+local Redis integration added two Admin and three Web passing tests. The latest
+block run passed 231 Admin tests; 206 focused Web tests covered the new row,
+old-schema retries, layout analytics and playback event preservation. The first
+CI run exposed the missing registration of three intentional public-shaped,
+service-authenticated resolvers; the central manifest now records their identity
+boundary. CI must be green on the final PR revision before merge.
+
+Production-mode local browser checks used isolated PostgreSQL and Redis. Desktop
+and mobile both passed six-card distinctness, authored placement/heading, stable
+focus, full-video navigation and refetch on return, with no page errors. Three
+warm page-load samples measured median TTFB 28.4 ms, DOMContentLoaded 74.6 ms,
+LCP 1,760 ms, CLS 0.0291 and 1,008,769 encoded script bytes. These local smoke
+samples are not a production benchmark. One request immediately after starting
+the server exceeded the delivery deadline; subsequent cold-start requests served
+six cards. Recheck cold-process latency before production activation.
+
+The live and preview Experience loaders now recognize an unknown
+`HomepageRecommendationsBlock` and retry the existing legacy projection. This
+protects independent Web/Admin deployment order even while the row flag is off.
+It supersedes the earlier requirement to deploy Admin before Web code; publishing
+the new block still requires every Admin instance to understand its discriminator.
