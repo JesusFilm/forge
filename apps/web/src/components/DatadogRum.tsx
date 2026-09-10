@@ -104,15 +104,10 @@ function safeReportDatadogRum(
   }
 }
 
-export default function DatadogRum({
-  analyticsConsent = false,
-}: {
-  analyticsConsent?: boolean
-}) {
+export default function DatadogRum() {
   const isInitialized = useRef(false)
 
   useEffect(() => {
-    if (!analyticsConsent) return
     if (isInitialized.current) return
 
     const config = getDatadogRumInitConfig()
@@ -124,7 +119,7 @@ export default function DatadogRum({
     } catch (error) {
       console.error("[datadog-rum] failed to initialize:", error)
     }
-  }, [analyticsConsent])
+  }, [])
 
   return null
 }
