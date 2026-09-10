@@ -10,6 +10,7 @@ import {
 } from "./studio-render-pool-auth"
 import type { StudioRenderPoolGateway } from "./studio-render-pool-gateway"
 const limits = {
+  mux: { ms: 45000, bytes: 1049600 },
   claim: { ms: 10000, bytes: 4096 },
   input: { ms: STUDIO_RENDER_PROFILE.preparationMs, bytes: 4096 },
   owns: { ms: 5000, bytes: 4096 },
@@ -87,7 +88,7 @@ export function createStudioPoolHandler(
           ),
         ])
         result = await gateway.retain(token, raw, transfer)
-      } else if (name === "finish" || name === "receipt")
+      } else if (name === "finish" || name === "receipt" || name === "mux")
         result = await gateway[name](token, raw, signal)
       else {
         if (

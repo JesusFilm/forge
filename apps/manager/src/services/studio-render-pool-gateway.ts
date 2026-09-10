@@ -35,6 +35,11 @@ export const studioRenderSnapshotSchema = z.object({
 export type StudioRenderSnapshot = z.infer<typeof studioRenderSnapshotSchema>
 type Assignment = z.infer<typeof studioAssignedLeaseSchema>
 type GatewayPort = {
+  upload(
+    attemptId: string,
+    leaseId: string,
+    signal: AbortSignal,
+  ): Promise<unknown>
   allowNewClaims?(): boolean
   call(command: string, input: unknown, signal: AbortSignal): Promise<unknown>
   prepare(snapshot: StudioRenderSnapshot, signal: AbortSignal): Promise<unknown>
@@ -159,6 +164,23 @@ export class StudioRenderPoolGateway {
         },
       ),
     }
+  }
+  async mux(token: string | null, raw: unknown, signal: AbortSignal) {
+    const { capability, sealed } = await this.validatedSettlement(
+      token,
+      raw,
+      signal,
+    )
+    const receipt = await this.receipt(token, raw, signal)
+    if (!receipt?.admitted || sealed.record.status !== "SUCCEEDED")
+      return { state: "skipped" }
+    if (capability.assignment.expiresAt <= Date.now())
+      throw new StudioRenderPoolBindingError("Mux upload lease expired")
+    return this.port.upload(
+      capability.assignment.attemptId,
+      capability.assignment.leaseId,
+      signal,
+    )
   }
   private async validatedSettlement(
     token: string | null,

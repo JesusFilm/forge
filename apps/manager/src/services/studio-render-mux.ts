@@ -5,25 +5,46 @@ import { studioCatalogReadinessProofSchema } from "@forge/studio-contracts/publi
 /** Studio never uses the legacy public-playback ingest helper. A durable intent
  * must be consumed before calling this method; an ambiguous create is observed
  * and reconciled, never automatically retried as another provider purchase. */
-export async function createStudioMuxAsset(
-  inputUrl: string,
+// Upload URLs are bearer capabilities returned only to the assigned host.
+export async function createStudioMuxUpload(
   intentId: string,
   signal: AbortSignal,
 ) {
-  const url = z.url().parse(inputUrl),
-    passthrough = z.string().min(1).max(255).parse(intentId)
-  const asset = await getMux().video.assets.create(
+  const upload = await getMux().video.uploads.create(
     {
-      input: [{ url }],
-      playback_policy: ["signed"],
-      passthrough,
-      video_quality: "basic",
-      max_resolution_tier: "2160p",
-      master_access: "none",
+      // Host PUTs have no Origin header; do not authorize a browser origin.
+      cors_origin: "https://shorts-worker.invalid",
+      timeout: 3600,
+      new_asset_settings: {
+        playback_policy: ["signed"],
+        passthrough: z.string().min(1).max(255).parse(intentId),
+        video_quality: "basic",
+        max_resolution_tier: "2160p",
+        master_access: "none",
+      },
     },
     { maxRetries: 0, timeout: 30000, signal },
   )
-  return z.object({ id: z.string().min(1), status: z.string() }).parse(asset)
+  return z.object({ id: z.string().min(1) }).parse(upload)
+}
+export async function observeStudioMuxUpload(
+  uploadId: string,
+  signal: AbortSignal,
+) {
+  return z
+    .object({
+      id: z.string().min(1),
+      status: z.string(),
+      url: z.url().optional(),
+      asset_id: z.string().optional(),
+    })
+    .parse(
+      await getMux().video.uploads.retrieve(uploadId, {
+        maxRetries: 0,
+        timeout: 10000,
+        signal,
+      }),
+    )
 }
 const muxAssetSchema = z.object({
   id: z.string().min(1),

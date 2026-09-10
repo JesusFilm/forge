@@ -1,21 +1,23 @@
 import { expect, it, vi } from "vitest"
 const create = vi.hoisted(() =>
-  vi.fn(async () => ({ id: "mux-asset", status: "preparing" })),
+  vi.fn(async (..._args: unknown[]) => ({
+    id: "mux-upload",
+    status: "waiting",
+  })),
 )
-vi.mock("./mux", () => ({ getMux: () => ({ video: { assets: { create } } }) }))
-import { createStudioMuxAsset, studioMuxReadyProof } from "./studio-render-mux"
+vi.mock("./mux", () => ({ getMux: () => ({ video: { uploads: { create } } }) }))
+import { createStudioMuxUpload, studioMuxReadyProof } from "./studio-render-mux"
 it("creates only signed playback with no automatic provider retries", async () => {
-  await createStudioMuxAsset(
-    "https://storage.example.test/immutable.mp4",
-    "render-intent-1",
-    new AbortController().signal,
-  )
+  await createStudioMuxUpload("render-intent-1", new AbortController().signal)
+  expect(create.mock.calls[0]?.[0]).not.toHaveProperty("input")
   expect(create).toHaveBeenCalledWith(
     expect.objectContaining({
-      input: [{ url: "https://storage.example.test/immutable.mp4" }],
-      playback_policy: ["signed"],
-      passthrough: "render-intent-1",
-      master_access: "none",
+      timeout: 3600,
+      new_asset_settings: expect.objectContaining({
+        playback_policy: ["signed"],
+        passthrough: "render-intent-1",
+        master_access: "none",
+      }),
     }),
     expect.objectContaining({ maxRetries: 0, timeout: 30000 }),
   )

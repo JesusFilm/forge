@@ -22,6 +22,7 @@ it("rejects generic authorization before parsing or invoking the gateway and nev
   })
   const handler = createStudioPoolHandler(new StudioRenderPoolAuth(config), {
     claim,
+    mux: vi.fn(),
     input: vi.fn(),
     owns: vi.fn(),
     retain: vi.fn(),
@@ -46,6 +47,7 @@ it("bounds disconnected responses while retaining capacity for noncancellable wo
   })
   const handler = createStudioPoolHandler(new StudioRenderPoolAuth(config), {
     claim,
+    mux: vi.fn(),
     input: vi.fn(),
     owns: vi.fn(),
     retain: vi.fn(),

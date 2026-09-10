@@ -31,3 +31,7 @@ Disable new production/publication admissions, then drain the VM before switchin
 Cancel unconsumed schedules explicitly where required. Disablement does not erase existing receipts, reset deadlines or undo completed publication. Use permanent unpublish to revoke a Short; preserve its immutable release and retained assets. Keep the receiver, storage and revocation path available while draining.
 
 Treat an uncertain switch or unfinished physical cleanup as unavailable capacity until reconciled. Do not delete unknown runtime identities or blindly retry provider actions. No production deployment, account mutation or paid action is implied by this runbook.
+
+## Mux transfer
+
+The trusted VM uploads verified local output directly to a Mux Direct Upload URL after canonical render settlement. Manager supplies only a scoped upload URL and observes processing; Mux no longer fetches from Forge storage. Forge retains its review/download copy. Keep upload identity across retries; unresolved window expiry retains the local file and quarantines that cycle for reconciliation. See `apps/studio-render/ops/README.md`.

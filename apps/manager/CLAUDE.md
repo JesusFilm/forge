@@ -485,10 +485,12 @@ approval; adding these code fields does not authorize deployment.
 
 `STUDIO_MUX_INGEST_ENABLED=true` enables the separate durable Mux processing
 reconciler; enabling it is an external spending/release step, never a local
-validation requirement. `STUDIO_ASSET_INGEST_ORIGIN` is the public HTTPS Admin
-origin for short-lived retained-byte read capabilities consumed by Mux. Signed
-Studio ingest never uses the legacy public playback helper. Consumed ambiguous
-creates remain unresolved and cannot automatically create another paid asset.
+validation requirement. Manager issues a signed Mux Direct Upload URL to the
+exact render host after its canonical successful receipt. The VM PUTs the
+verified local MP4 directly; Mux does not fetch retained bytes from Admin.
+`STUDIO_ASSET_INGEST_ORIGIN` is retired. Only the trusted host receives the URL;
+authored containers remain offline. Consumed ambiguous creates remain unresolved
+and cannot automatically create another paid asset.
 The processing loop uses a bounded keyset cursor independently of long renders.
 
 ### VM outbound Studio render gateway

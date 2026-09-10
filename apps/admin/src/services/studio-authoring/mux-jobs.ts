@@ -64,7 +64,7 @@ export class StudioMuxJobs {
     LEFT JOIN short_mux_job job ON job.attempt_id=attempt.id
     LEFT JOIN short_release release ON release.render_attempt_id=attempt.id
     WHERE attempt.kind='RENDER' AND attempt.status='SUCCEEDED'
-      AND (job.state='PROCESSING' OR (
+      AND (job.state IN ('UPLOADING','PROCESSING') OR (
         project.current_revision=attempt.base_revision AND project.first_published_at IS NULL
         AND ((job.id IS NULL AND release.id IS NULL) OR job.state='PENDING' OR (job.state='READY' AND release.id IS NULL))
       ))
@@ -213,6 +213,69 @@ export class StudioMuxJobs {
       })
     })
   }
+  async uploadCreated(
+    user: Principal | null,
+    id: string,
+    dispatchId: string,
+    uploadId: string,
+  ) {
+    worker(user)
+    z.string().min(1).max(255).parse(uploadId)
+    return this.db.$transaction(async (tx) => {
+      const { job } = await lockMux(tx, id)
+      if (
+        job.dispatchId !== dispatchId ||
+        (job.uploadId && job.uploadId !== uploadId)
+      )
+        throw new StudioCommandError("CONFLICT")
+      if (job.uploadId === uploadId) return job
+      if (!["DISPATCHING", "AMBIGUOUS"].includes(job.state))
+        throw new StudioCommandError("CONFLICT")
+      return tx.shortMuxJob.update({
+        where: { id },
+        data: { state: "UPLOADING", uploadId },
+      })
+    })
+  }
+  async uploadFailed(user: Principal | null, id: string, uploadId: string) {
+    worker(user)
+    return this.db.$transaction(async (tx) => {
+      const { job } = await lockMux(tx, id)
+      if (
+        job.uploadId !== uploadId ||
+        job.assetId ||
+        !["UPLOADING", "FAILED"].includes(job.state)
+      )
+        throw new StudioCommandError("CONFLICT")
+      return tx.shortMuxJob.update({ where: { id }, data: { state: "FAILED" } })
+    })
+  }
+  async uploadEligible(user: Principal | null, id: string) {
+    worker(user)
+    return this.db.$transaction(async (tx) => {
+      const { project, job } = await lockMux(tx, id)
+      assertStudioProductionEnabled()
+      const { manifest } = muxSnapshotSchema.parse(job.snapshot)
+      assertEditable(project, manifest.revision)
+      const attempt = await tx.shortAttempt.findUniqueOrThrow({
+        where: { id: job.attemptId },
+      })
+      if (attempt.status !== "SUCCEEDED")
+        throw new StudioCommandError("UNREADY")
+      const revision = await tx.shortRevision.findUniqueOrThrow({
+        where: {
+          projectId_number: {
+            projectId: project.id,
+            number: manifest.revision,
+          },
+        },
+      })
+      const document = studioDocumentSchema.parse(revision.document)
+      await resolveStudioPackSources(tx, document.packRevisionIds)
+      await resolveStudioDocumentSources(tx, document)
+      return job
+    })
+  }
   async created(
     user: Principal | null,
     id: string,
@@ -229,7 +292,7 @@ export class StudioMuxJobs {
       )
         throw new StudioCommandError("CONFLICT")
       if (job.assetId === assetId) return job
-      if (!["DISPATCHING", "AMBIGUOUS"].includes(job.state))
+      if (job.state !== "UPLOADING" || !job.uploadId)
         throw new StudioCommandError("CONFLICT")
       return tx.shortMuxJob.update({
         where: { id },

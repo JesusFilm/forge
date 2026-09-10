@@ -755,8 +755,9 @@ CREATE TABLE short_mux_job (
  id TEXT PRIMARY KEY,
  attempt_id VARCHAR(128) UNIQUE NOT NULL REFERENCES short_attempt(id) ON DELETE RESTRICT,
  snapshot JSONB NOT NULL,
- state TEXT NOT NULL DEFAULT 'PENDING' CHECK(state IN ('PENDING','DISPATCHING','AMBIGUOUS','PROCESSING','READY','FAILED')),
+ state TEXT NOT NULL DEFAULT 'PENDING' CHECK(state IN ('PENDING','DISPATCHING','AMBIGUOUS','UPLOADING','PROCESSING','READY','FAILED')),
  dispatch_id TEXT UNIQUE,
+ upload_id TEXT UNIQUE,
  asset_id TEXT UNIQUE,
  readiness JSONB,
  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -766,6 +767,7 @@ CREATE FUNCTION short_guard_mux_job() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF TG_OP='DELETE' OR NEW.id<>OLD.id OR NEW.attempt_id<>OLD.attempt_id OR NEW.snapshot IS DISTINCT FROM OLD.snapshot
  OR NEW.created_at<>OLD.created_at OR (OLD.dispatch_id IS NOT NULL AND NEW.dispatch_id IS DISTINCT FROM OLD.dispatch_id)
+ OR (OLD.upload_id IS NOT NULL AND NEW.upload_id IS DISTINCT FROM OLD.upload_id)
  OR (OLD.asset_id IS NOT NULL AND NEW.asset_id IS DISTINCT FROM OLD.asset_id)
  OR (NEW.state='PENDING' AND OLD.state<>'PENDING')
  OR (OLD.state IN ('READY','FAILED') AND NEW.state<>OLD.state)

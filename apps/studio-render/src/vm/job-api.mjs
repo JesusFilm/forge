@@ -1,6 +1,7 @@
 import { VmInvariantError, VmUnconfirmedError } from "./errors.mjs"
 const capabilityPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/
 const operationMs = Object.freeze({
+  mux: 45000,
   receipt: 5000,
   input: 90000,
   owns: 5000,
@@ -129,9 +130,15 @@ export class VmJobApi {
 
   async json(action, input, parentSignal, capability) {
     if (
-      !["claim", "input", "owns", "retain", "finish", "receipt"].includes(
-        action,
-      )
+      ![
+        "claim",
+        "input",
+        "owns",
+        "retain",
+        "finish",
+        "receipt",
+        "mux",
+      ].includes(action)
     )
       throw new VmInvariantError("Unsupported job API operation")
     if (

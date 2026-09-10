@@ -538,6 +538,44 @@ class PublicationFixtureError extends Error {}
         await expect(
           jobs.created(worker, intent.id, randomUUID(), "wrong-asset"),
         ).rejects.toThrow()
+        const uploadId = `upload-${randomUUID()}`
+        await expect(
+          jobs.uploadCreated(worker, intent.id, randomUUID(), uploadId),
+        ).rejects.toThrow()
+        expect(
+          (
+            await jobs.uploadCreated(
+              worker,
+              intent.id,
+              dispatched.dispatchId!,
+              uploadId,
+            )
+          ).state,
+        ).toBe("UPLOADING")
+        expect(
+          (
+            await jobs.uploadCreated(
+              worker,
+              intent.id,
+              dispatched.dispatchId!,
+              uploadId,
+            )
+          ).uploadId,
+        ).toBe(uploadId)
+        await expect(
+          jobs.uploadCreated(
+            worker,
+            intent.id,
+            dispatched.dispatchId!,
+            "replacement-upload",
+          ),
+        ).rejects.toThrow()
+        await expect(
+          db.shortMuxJob.update({
+            where: { id: intent.id },
+            data: { uploadId: "changed-upload" },
+          }),
+        ).rejects.toThrow("immutable")
         const created = await jobs.created(
           worker,
           intent.id,

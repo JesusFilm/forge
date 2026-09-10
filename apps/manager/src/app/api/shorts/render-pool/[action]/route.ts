@@ -5,6 +5,7 @@ import { createStudioPoolHandler } from "@/services/studio-render-pool-http"
 import { studioRenderClient } from "@/services/studio-render-transport"
 import { prepareStudioRenderInput } from "@/services/studio-render-input"
 import { retainStudioRenderOutput } from "@/services/studio-render-retention"
+import { prepareStudioMuxUpload } from "@/services/studio-mux-upload"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 let handler: ReturnType<typeof createStudioPoolHandler> | undefined
@@ -26,6 +27,7 @@ export async function POST(
       handler = createStudioPoolHandler(
         auth,
         new StudioRenderPoolGateway(auth, {
+          upload: prepareStudioMuxUpload,
           allowNewClaims: () => env.STUDIO_RENDER_POOL_ENABLED === "true",
           call: (command, input, signal) =>
             studioRenderClient(signal).call(command, input),

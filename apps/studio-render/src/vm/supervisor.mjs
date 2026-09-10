@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url"
 import { readCycleState } from "./cycle-state.mjs"
 import { pruneCycleArtifacts } from "./cycle-artifacts.mjs"
 import { loadHostConfig } from "./config.mjs"
+import { uploadVmOutput, MuxUploadUnresolvedError } from "./mux-upload.mjs"
 import { VmJournal } from "./journal.mjs"
 import { VmJobApi } from "./job-api.mjs"
 import { DockerJobRuntime } from "./docker-runtime.mjs"
@@ -355,6 +356,22 @@ export async function runVmSupervisor() {
       const receipt = await settle(directory, config, claim)
       if (!receipt || typeof receipt.admitted !== "boolean")
         throw new VmInvariantError("Canonical receipt required")
+      if (receipt.admitted && (await journal.read("verified-output.json"))) {
+        const uploadStop = new AbortController()
+        activeStop = () => uploadStop.abort()
+        if (stopping) uploadStop.abort()
+        try {
+          await uploadVmOutput({
+            journal,
+            api,
+            claim,
+            path: identity.directory + "/output.mp4",
+            signal: uploadStop.signal,
+          })
+        } finally {
+          activeStop = undefined
+        }
+      }
       await journal.writeOnce("complete.json", { id, receipt })
       await pruneCycleArtifacts(journal)
       await status({
@@ -378,7 +395,10 @@ if (
     const retry = isRetryableVmFailure(error)
     await status({
       state: retry ? "retrying" : "quarantined",
-      message: "Exact journal/runtime reconciliation required",
+      message:
+        error instanceof MuxUploadUnresolvedError
+          ? "Mux upload unresolved; local output retained"
+          : "Exact journal/runtime reconciliation required",
     }).catch(() => {})
     process.stderr.write(
       "Studio worker incomplete; preserved journal requires reconciliation\n",

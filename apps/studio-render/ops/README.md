@@ -43,3 +43,21 @@ Large local job artifacts are pruned only after exact physical retirement and ca
 The owned VM fixture is not a production deployment. Before production: provide durable codec supply, reviewed hosted CI publication and immutable digest approvals, approved VM image pull/bundle installation, scoped HTTPS endpoint/key provisioning, durable Admin bucket write/read-after-restart verification, and named activation/rollback checks. The existing `RAILWAY_S3_BUCKET` stores originals at `media-assets/{assetId}/original/{filename}`; absent bucket uses local `.tmp/media-assets`, as the fixture does.
 
 Actual Mux/provider readiness, public publication/Watch acceptance and the remaining creative/ElevenLabs gates stay distinct. No paid calls, production connection, image publication, Railway changes or support contact were performed by these scripts or the VM qualification.
+
+## Direct Mux upload
+
+After independent verification and canonical render settlement, the trusted host
+uploads its local MP4 directly to Mux's signed Direct Upload URL. Manager holds
+Mux API credentials; authored containers remain offline. Forge also retains the
+original for review/download, but Mux never pulls that copy. `STUDIO_MUX_INGEST_ENABLED`
+controls upload admission; the retired asset-ingest origin setting is unnecessary.
+
+One immutable `short_mux_job.upload_id` binds each provider upload. The host
+queries the resumable endpoint and resumes its confirmed byte range after response
+loss. The observer resolves that upload's asset/readiness; it never replaces an
+ambiguous create. A persisted 60-second host upload window is additionally bounded
+by the original lease expiry. Expiry/reboot with an unresolved upload quarantines
+the cycle and preserves the local MP4 for operator reconciliation; it does not
+renew the render deadline or silently prune incomplete uploads. Mux processing and
+publication remain separate from successful rendering. Deploy updated Manager,
+Admin migration and host bundle together through the normal release path.

@@ -26,6 +26,9 @@ export const studioRenderRpcSchema = z
       "mux-read",
       "mux-claim",
       "mux-created",
+      "mux-upload-created",
+      "mux-upload-failed",
+      "mux-upload-eligible",
       "mux-ambiguous",
       "mux-ready",
       "mux-stage",
@@ -88,6 +91,31 @@ export async function executeStudioRender(
       return muxJobs.read(worker, studioIdSchema.parse(request.input))
     case "mux-claim":
       return muxJobs.claim(worker, studioIdSchema.parse(request.input))
+    case "mux-upload-failed": {
+      const input = z
+        .object({ id: studioIdSchema, uploadId: studioIdSchema })
+        .strict()
+        .parse(request.input)
+      return muxJobs.uploadFailed(worker, input.id, input.uploadId)
+    }
+    case "mux-upload-eligible":
+      return muxJobs.uploadEligible(worker, studioIdSchema.parse(request.input))
+    case "mux-upload-created": {
+      const input = z
+        .object({
+          id: studioIdSchema,
+          dispatchId: z.uuid(),
+          uploadId: studioIdSchema,
+        })
+        .strict()
+        .parse(request.input)
+      return muxJobs.uploadCreated(
+        worker,
+        input.id,
+        input.dispatchId,
+        input.uploadId,
+      )
+    }
     case "mux-created": {
       const input = z
         .object({

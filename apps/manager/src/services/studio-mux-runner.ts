@@ -1,36 +1,36 @@
+import { StudioRenderRunError } from "./studio-render-runner"
 export interface StudioMuxPort {
   read(attemptId: string): Promise<{
     id: string
     state: string
     dispatchId: string | null
+    uploadId: string | null
     assetId: string | null
   }>
-  source(attemptId: string): Promise<string>
-  claim(id: string): Promise<{ execute: boolean; dispatchId: string | null }>
-  create(url: string, intentId: string): Promise<{ id: string }>
+  upload(
+    uploadId: string,
+  ): Promise<{ id: string; status: string; asset_id?: string }>
+  failed(id: string, uploadId: string): Promise<unknown>
   created(id: string, dispatchId: string, assetId: string): Promise<unknown>
-  ambiguous(id: string, dispatchId: string): Promise<unknown>
   observe(assetId: string, intentId: string): Promise<{ status: string }>
   ready(id: string, evidence: unknown): Promise<unknown>
   stage(attemptId: string): Promise<unknown>
 }
-/** No retry of an ambiguous paid create. Processing observations remain safe
- * after edits/unpublish; canonical staging/publication revalidate eligibility. */
+/** Observation only: the render host initiates the direct upload. Never create
+ * an asset by pulling a retained Forge URL or replacing an uncertain upload. */
 export async function runStudioMuxCandidate(
   attemptId: string,
   port: StudioMuxPort,
 ) {
   const job = await port.read(attemptId)
-  if (job.state === "PENDING") {
-    const url = await port.source(attemptId)
-    const claim = await port.claim(job.id)
-    if (!claim.execute || !claim.dispatchId) return
-    try {
-      const asset = await port.create(url, job.id)
-      await port.created(job.id, claim.dispatchId, asset.id)
-    } catch {
-      await port.ambiguous(job.id, claim.dispatchId)
-    }
+  if (job.state === "UPLOADING" && job.uploadId && job.dispatchId) {
+    const upload = await port.upload(job.uploadId)
+    if (upload.id !== job.uploadId)
+      throw new StudioRenderRunError("Mux upload identity changed")
+    if (upload.asset_id)
+      await port.created(job.id, job.dispatchId, upload.asset_id)
+    else if (["errored", "timed_out", "cancelled"].includes(upload.status))
+      await port.failed(job.id, job.uploadId)
     return
   }
   if (job.state === "PROCESSING" && job.assetId) {

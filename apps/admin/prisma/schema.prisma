@@ -5006,6 +5006,7 @@ model ShortMuxJob {
   snapshot   Json
   state      String       @default("PENDING")
   dispatchId String?      @unique @map("dispatch_id")
+  uploadId   String?      @unique @map("upload_id")
   assetId    String?      @unique @map("asset_id")
   readiness  Json?
   createdAt  DateTime     @default(now()) @map("created_at")

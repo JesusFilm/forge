@@ -65,11 +65,18 @@ function fixture() {
     costMicros: null,
     diagnostic: "retained fixture",
   }))
-  const gateway = new StudioRenderPoolGateway(auth, { call, prepare, retain })
+  const upload = vi.fn(async () => ({ state: "upload" }))
+  const gateway = new StudioRenderPoolGateway(auth, {
+    call,
+    prepare,
+    retain,
+    upload,
+  })
   const token = auth.issue(assignment, snapshot.inputHash)
   return {
     auth,
     gateway,
+    upload,
     call,
     prepare,
     retain,
@@ -274,3 +281,59 @@ it("reads the exact accepted receipt after a recording window, without another c
     ),
   ).toBe(true)
 })
+
+it.each([true, false])(
+  "only an admitted successful render can request a direct upload (admitted=%s)",
+  async (admitted) => {
+    const f = fixture()
+    const record = {
+      attemptId: f.assignment.attemptId,
+      leaseId: f.assignment.leaseId,
+      status: "SUCCEEDED" as const,
+      result: { assets: [], costMicros: null },
+    }
+    const { studioHash } = await import("@forge/studio-server")
+    const raw = {
+      settlement: f.auth.sealSettlement(
+        f.assignment,
+        f.snapshot.inputHash,
+        record,
+      ),
+    }
+    f.call.mockImplementation(async (command) => {
+      if (command === "assigned")
+        return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
+      if (command === "context")
+        return {
+          snapshot: f.snapshot,
+          executions: [
+            {
+              leaseId: record.leaseId,
+              requestHash: studioHash(record),
+              admitted,
+            },
+          ],
+        }
+      throw new Error("Unexpected operation")
+    })
+    await f.gateway.mux(f.token, raw, new AbortController().signal)
+    expect(f.upload).toHaveBeenCalledTimes(admitted ? 1 : 0)
+    if (admitted)
+      expect(f.upload).toHaveBeenCalledWith(
+        f.assignment.attemptId,
+        f.assignment.leaseId,
+        expect.any(AbortSignal),
+      )
+    const otherLease = randomUUID()
+    const other = {
+      settlement: f.auth.sealSettlement(
+        { ...f.assignment, leaseId: otherLease },
+        f.snapshot.inputHash,
+        { ...record, leaseId: otherLease },
+      ),
+    }
+    await expect(
+      f.gateway.mux(f.token, other, new AbortController().signal),
+    ).rejects.toThrow()
+  },
+)
