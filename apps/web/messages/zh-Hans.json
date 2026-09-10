@@ -343,7 +343,8 @@
     "nextVideoPreview": "预览下一个视频",
     "featured": "精选",
     "mediaCollection": "媒体合集",
-    "scrollToVideo": "滚动到视频“{title}”"
+    "scrollToVideo": "滚动到视频“{title}”",
+    "forYou": "为你推荐"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "语言",

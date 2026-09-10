@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview vídeo liuba",
     "nextVideoPreview": "Preview vídeo tuir mai",
     "mediaCollection": "Koleksaun média",
-    "scrollToVideo": "Hamutuk ba vídeo {title}"
+    "scrollToVideo": "Hamutuk ba vídeo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project uma",

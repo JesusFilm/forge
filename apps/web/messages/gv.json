@@ -527,7 +527,8 @@
     "previousVideoPreview": "Roish eisht roihaghyn video",
     "nextVideoPreview": "Video roihaghyn er-dy-chooyl",
     "mediaCollection": "Co-chruinnaght media",
-    "scrollToVideo": "Scroll dys video {title}"
+    "scrollToVideo": "Scroll dys video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Cheead Jesus Film Project",

@@ -527,7 +527,8 @@
     "previousVideoPreview": "پێشبینی ویدۆی پێشووتر",
     "nextVideoPreview": "پێشبینی ویدۆی داهاتوو",
     "mediaCollection": "کۆمەڵەی میدیا",
-    "scrollToVideo": "بڕۆ بۆ ویدۆی {title}"
+    "scrollToVideo": "بڕۆ بۆ ویدۆی {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "سەرەکیی Jesus Film Project",

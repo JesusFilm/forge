@@ -38,6 +38,18 @@ const videoLibrary: VideoLibraryItem[] = [
 ]
 
 describe("experience editor block helpers", () => {
+  it("creates a movable recommendation block with a localized default heading", () => {
+    const block = createTemplateBlock("homepageRecommendations", 2)
+    expect(block).toEqual({
+      t: "homepageRecommendations",
+      sectionKey: "user-recommendations-2",
+    })
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+    expect(summarizeBlock(block, 2, [])).toMatchObject({
+      typeLabel: "Homepage Recommendations Block",
+      title: "Recommended for You",
+    })
+  })
   const nonComposingBlockKeys = BLOCK_TEMPLATE_KEYS.filter(
     (
       key,
@@ -48,7 +60,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(24)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(25)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))

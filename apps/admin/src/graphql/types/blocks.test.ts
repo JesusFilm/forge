@@ -197,6 +197,11 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  homepageRecommendations: {
+    t: "homepageRecommendations",
+    sectionKey: "recommended",
+    title: "Recommended for You",
+  },
   watchHomeCategoryRail: {
     t: "watchHomeCategoryRail",
     categoryIds: ["family", "gospels", "jesus"],

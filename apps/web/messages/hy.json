@@ -527,7 +527,8 @@
     "previousVideoPreview": "Նախորդ տեսանյութի նախադիտում",
     "nextVideoPreview": "Հաջորդ տեսանյութի նախադիտում",
     "mediaCollection": "Մեդիա հավաքածու",
-    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը"
+    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
+    "forYou": "Ձեզ համար"
   },
   "WatchFooter": {
     "home": "Jesus Film Project գլխավոր էջ",

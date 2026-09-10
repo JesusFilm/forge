@@ -527,7 +527,8 @@
     "previousVideoPreview": "תצוגה מקדימה של הסרטון הקודם",
     "nextVideoPreview": "תצוגה מקדימה של הסרטון הבא",
     "mediaCollection": "אוסף מדיה",
-    "scrollToVideo": "גללו לסרטון {title}"
+    "scrollToVideo": "גללו לסרטון {title}",
+    "forYou": "בשבילך"
   },
   "WatchFooter": {
     "home": "דף הבית של Jesus Film Project",

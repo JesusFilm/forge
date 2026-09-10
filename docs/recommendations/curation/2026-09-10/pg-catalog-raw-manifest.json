@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "source": "read-only restored local PG catalog; not production",
+  "database": "forge_feat477_20260910",
+  "snapshotAt": "2026-09-10 03:52:38.824179+00",
+  "transactionSnapshot": "6113:6113:",
+  "tablesInspected": [
+    "video",
+    "language",
+    "language_locale",
+    "video_relation",
+    "video_edition",
+    "mux_video",
+    "video_dub",
+    "video_locale",
+    "video_image",
+    "keyword",
+    "video_keyword",
+    "video_origin",
+    "video_subtitle",
+    "video_transcript",
+    "video_transcript_chunk"
+  ],
+  "independentCounts": {
+    "video": 1175,
+    "language": 2321,
+    "language_locale": 2868,
+    "video_relation": 1605,
+    "video_edition": 1612,
+    "mux_video": 176293,
+    "video_dub": 212171,
+    "video_locale": 25522,
+    "video_image": 2358,
+    "keyword": 6417,
+    "video_keyword": 19044,
+    "video_origin": 18,
+    "video_subtitle": 12225,
+    "video_transcript": 164700,
+    "video_transcript_chunk": 280107
+  },
+  "invariants": {
+    "dubDistinctVideos": 1175,
+    "dubDistinctLanguages": 2318,
+    "videoLanguagePairsIncludingNull": 211780,
+    "dubRowsWithHls": 176281,
+    "dubRowsWithMuxPlayback": 176220,
+    "orphanDubVideos": 0,
+    "orphanDubLanguages": 0,
+    "orphanDubEditions": 0,
+    "orphanDubMux": 0,
+    "nullDubLanguage": 478,
+    "nullDubMux": 35890,
+    "orphanVideoRelations": 0,
+    "orphanVideoLocales": 0,
+    "orphanDisplayLanguages": 0,
+    "displayLanguageMirrorMismatches": 0,
+    "orphanKeywordRelations": 0,
+    "orphanVideoImages": 0,
+    "orphanTranscripts": 0,
+    "orphanTranscriptChunks": 0
+  },
+  "sourceTiers": [
+    {
+      "table_name": "video",
+      "source": "core",
+      "count": 1175,
+      "oldest_sync": "2026-08-03 11:02:49.226+00",
+      "newest_sync": "2026-08-03 11:11:26.326+00"
+    },
+    {
+      "table_name": "language",
+      "source": "core",
+      "count": 2321,
+      "oldest_sync": "2026-06-04 23:05:30.955364+00",
+      "newest_sync": "2026-09-03 07:00:06.934937+00"
+    },
+    {
+      "table_name": "video_dub",
+      "source": "core",
+      "count": 212171,
+      "oldest_sync": "2026-05-20 21:50:02.757743+00",
+      "newest_sync": "2026-09-05 07:00:49.771652+00"
+    },
+    {
+      "table_name": "video_locale",
+      "source": "core",
+      "count": 25522,
+      "oldest_sync": "2026-08-03 11:02:49.228",
+      "newest_sync": "2026-08-03 11:11:26.328"
+    }
+  ],
+  "files": [
+    {
+      "table": "video",
+      "rows": 1175,
+      "bytes": 610625,
+      "sha256": "47e27a452f1e75f1ef79948801d754e80a46fdc1531b04320325d6fac23e205e",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video.jsonl",
+      "verified": true
+    },
+    {
+      "table": "language",
+      "rows": 2321,
+      "bytes": 1163474,
+      "sha256": "66d6f64d68d0bd93f7e2d09c56e0173096ba8e61f8aac96e798b2e68a01f0e4b",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/language.jsonl",
+      "verified": true
+    },
+    {
+      "table": "language_locale",
+      "rows": 2868,
+      "bytes": 837049,
+      "sha256": "1178c45e54c7dda495d7ab7bfecc680cdce196cb9b2b283eab27f71e1bb04126",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/language_locale.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_relation",
+      "rows": 1605,
+      "bytes": 294011,
+      "sha256": "c813d519c0ea2c2c4687286893134c00a348baee7177177146b39cc5d997fbfe",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_relation.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_edition",
+      "rows": 1612,
+      "bytes": 433077,
+      "sha256": "8f29d2f52620dcfd5f2c74c808d733047b7f49b0ed106234034ab14aa12feff7",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_edition.jsonl",
+      "verified": true
+    },
+    {
+      "table": "mux_video",
+      "rows": 176293,
+      "bytes": 75058787,
+      "sha256": "ede20a5c0c02fdfce011890ea205348bc4c727f26cafb8b05a0ecbfbfe8c4a71",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/mux_video.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_image",
+      "rows": 2358,
+      "bytes": 3490483,
+      "sha256": "9a291c912217f0e16a1f1f1096194170ff4776a0e68b88591374cbbe8b7f569f",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_image.jsonl",
+      "verified": true
+    },
+    {
+      "table": "keyword",
+      "rows": 6417,
+      "bytes": 2144696,
+      "sha256": "f2109cd08c035d95ed365c2a542b7bb65a5ea58454f7183f09b562dd1bcce548",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/keyword.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_keyword",
+      "rows": 19044,
+      "bytes": 2683617,
+      "sha256": "2fa77269b3dd22eaae4a3f50493f661b33f74ac22205356c27e21444798de265",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_keyword.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_origin",
+      "rows": 18,
+      "bytes": 4829,
+      "sha256": "9fe624aed94d8d19118cd12b9c34c2fe974af577113e6ef502edf4f39fef84b9",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_origin.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_subtitle",
+      "rows": 12225,
+      "bytes": 9525221,
+      "sha256": "7fe6327088cf69fe04e4077a3bba35c36dfade332ad2e150b663799d437b8fca",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_subtitle.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_locale",
+      "rows": 25522,
+      "bytes": 25798578,
+      "sha256": "91dcebe8488fd906656d3ec79f92f9920104cc7456619260c19627a737766c97",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_locale.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_dub",
+      "rows": 212171,
+      "bytes": 289070198,
+      "sha256": "941a334fb207bbf7faf02e74c9cf6cc800352ce1afd7545abe46231c0c117cc3",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_dub.jsonl",
+      "verified": true
+    },
+    {
+      "table": "video_transcript",
+      "rows": 164700,
+      "bytes": 101642109,
+      "sha256": "692c42215b8222c00c10ec2fed7e133c45d882445bc63612b668a2a4e8b66477",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/video_transcript.jsonl",
+      "verified": true
+    },
+    {
+      "table": "transcript_chunk_counts",
+      "rows": 164700,
+      "bytes": 24729546,
+      "sha256": "380bc74519677d5325ab84fc8b939528801ce7a73bf129034b013e1ba2d5f92a",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/transcript_chunk_counts.jsonl",
+      "verified": true
+    },
+    {
+      "table": "normalized_all_dubs",
+      "rows": 212171,
+      "bytes": 96154287,
+      "sha256": "83561ed7caa139dd7d62b0bffcb1f5f45b8c81d00e37e48bf00e299d9cacafd1",
+      "path": "/home/nisal/.cache/forge-477-preview/pg-catalog-map/pg-catalog-all-dubs.csv",
+      "verified": true
+    }
+  ]
+}

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview ya video oyo eleki",
     "nextVideoPreview": "Preview ya video oyo elandi",
     "mediaCollection": "Laibɛli ya media",
-    "scrollToVideo": "Kende ti video {title}"
+    "scrollToVideo": "Kende ti video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",

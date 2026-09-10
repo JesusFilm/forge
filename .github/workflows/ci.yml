@@ -157,6 +157,8 @@ jobs:
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
           src/services/recommendations/profile.service.db.test.ts
+          src/services/recommendations/viewer-identity.service.db.test.ts
+          src/services/recommendations/curated-pools.service.db.test.ts
           src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
           --no-file-parallelism

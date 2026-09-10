@@ -527,7 +527,8 @@
     "previousVideoPreview": "ކުރިއަށް އޮތް ވީޑިއޯ preview",
     "nextVideoPreview": "ފަހަތަށް އޮތް ވީޑިއޯ preview",
     "mediaCollection": "މީޑިއާ ކޮލެކްޝަން",
-    "scrollToVideo": "{title} ވީޑިއޯއަށް ސްކްރޯލް ކުރާ"
+    "scrollToVideo": "{title} ވީޑިއޯއަށް ސްކްރޯލް ކުރާ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ހޯމް",

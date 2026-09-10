@@ -527,7 +527,8 @@
     "previousVideoPreview": "Авал видео preview",
     "nextVideoPreview": "Къваналаб видео preview",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеоялде кӏолӏе"
+    "scrollToVideo": "{title} видеоялде кӏолӏе",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project хона",

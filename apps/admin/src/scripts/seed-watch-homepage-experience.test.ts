@@ -11,9 +11,10 @@ describe("buildWatchHomeSeedBlocks", () => {
     )
 
     expect(BlocksSchema.safeParse(blocks).success).toBe(true)
-    expect(blocks.slice(0, 2).map((block) => block.t)).toEqual([
+    expect(blocks.slice(0, 3).map((block) => block.t)).toEqual([
       "watchHomeHero",
       "watchHomeCategoryRail",
+      "homepageRecommendations",
     ])
     expect(categoryBlocks).toHaveLength(1)
     expect(categoryBlocks[0]).toEqual({

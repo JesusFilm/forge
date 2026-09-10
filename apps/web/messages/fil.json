@@ -527,7 +527,8 @@
     "previousVideoPreview": "Nakaraang preview ng video",
     "nextVideoPreview": "Susunod na preview ng video",
     "mediaCollection": "Koleksyon ng media",
-    "scrollToVideo": "Mag-scroll sa video na {title}"
+    "scrollToVideo": "Mag-scroll sa video na {title}",
+    "forYou": "Para sa iyo"
   },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",

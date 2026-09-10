@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview ya video yo fhiraho",
     "nextVideoPreview": "Preview ya video i tevhelaho",
     "mediaCollection": "Muṱaṱisano wa media",
-    "scrollToVideo": "Iḓani kha video ya {title}"
+    "scrollToVideo": "Iḓani kha video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Muhuri wa Jesus Film Project",

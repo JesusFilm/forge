@@ -527,7 +527,8 @@
     "previousVideoPreview": "Xikombiso xa vhidiyo leyi hundzeke",
     "nextVideoPreview": "Xikombiso xa vhidiyo leyi landzelaka",
     "mediaCollection": "Muqoqo wa swihangalasamahungu",
-    "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}"
+    "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Tluka ra le kaya ra Jesus Film Project",

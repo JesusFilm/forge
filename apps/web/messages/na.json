@@ -527,7 +527,8 @@
     "previousVideoPreview": "Video kinano preview",
     "nextVideoPreview": "Video re preview",
     "mediaCollection": "Media collection eo",
-    "scrollToVideo": "{title} video ne scroll ae"
+    "scrollToVideo": "{title} video ne scroll ae",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project home eo",

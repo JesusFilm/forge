@@ -19,6 +19,7 @@ import {
   adminVideoFragment,
   adminVideoHeroFragment,
   adminVideoRecommendationsFragment,
+  adminHomepageRecommendationsFragment,
   adminWatchHomeCategoryRailFragment,
   adminWatchHomeHeroFragment,
 } from "@forge/admin-graphql/fragments"
@@ -92,6 +93,9 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
           ... on VideoRecommendationsBlock {
             ...AdminVideoRecommendations
           }
+          ... on HomepageRecommendationsBlock {
+            ...AdminHomepageRecommendations
+          }
           ... on WatchHomeCategoryRailBlock {
             ...AdminWatchHomeCategoryRail
           }
@@ -120,6 +124,7 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
     adminVideoCarouselFragment,
     adminVideoHeroFragment,
     adminVideoRecommendationsFragment,
+    adminHomepageRecommendationsFragment,
     adminWatchHomeCategoryRailFragment,
     adminWatchHomeHeroFragment,
   ],

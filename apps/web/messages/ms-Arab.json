@@ -527,7 +527,8 @@
     "previousVideoPreview": "Pratonton video sebelumnya",
     "nextVideoPreview": "Pratonton video seterusnya",
     "mediaCollection": "Koleksi media",
-    "scrollToVideo": "Tatal ke video {title}"
+    "scrollToVideo": "Tatal ke video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Laman utama Jesus Film Project",

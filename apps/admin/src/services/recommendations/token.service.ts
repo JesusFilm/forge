@@ -116,12 +116,17 @@ const CommonClaims = z.object({
   exp: z.number().int(),
 })
 
+export const RecommendationSurfaceSchema = z.enum([
+  RECOMMENDATION_CONTRACTS.surface,
+  "watch-for-you-v1",
+])
+
 const DeliveryClaims = CommonClaims.extend({
   typ: z.literal(DELIVERY_TYP),
   requestId: z.string().min(1).max(191),
   itemId: z.string().min(1).max(191),
   sessionDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  surface: z.literal(RECOMMENDATION_CONTRACTS.surface),
+  surface: RecommendationSurfaceSchema,
   manifestId: z.string().min(1).max(191),
   assignmentId: z.string().min(1).max(191).optional(),
   experimentId: z.string().min(1).max(191).optional(),

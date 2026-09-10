@@ -159,6 +159,7 @@ export const env = createEnv({
     // a separate future unit.
     STRAPI_PREVIEW_SECRET: z.string().optional(),
     REVALIDATION_SECRET: z.string(),
+    WATCH_FOR_YOU_ENABLED: z.enum(["true", "false"]).default("false"),
     // Optional Cloudflare cache-tag purge credentials. The dynamic collection
     // route emits shared edge-cache headers only when both are configured, so
     // a long-lived edge object can always be purged after content publication.
@@ -335,6 +336,7 @@ export const env = createEnv({
   runtimeEnv: {
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
+    WATCH_FOR_YOU_ENABLED: process.env.WATCH_FOR_YOU_ENABLED,
     CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
     CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
       process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,

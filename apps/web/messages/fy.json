@@ -527,7 +527,8 @@
     "previousVideoPreview": "Foarbyld fan foarige fideo",
     "nextVideoPreview": "Foarbyld fan folgjende fideo",
     "mediaCollection": "Mediakolleksje",
-    "scrollToVideo": "Skowje nei de fideo {title}"
+    "scrollToVideo": "Skowje nei de fideo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-startside",

@@ -39,6 +39,7 @@ vi.mock("@forge/admin-graphql/fragments", () => ({
   adminVideoCarouselFragment: {},
   adminVideoHeroFragment: {},
   adminVideoRecommendationsFragment: {},
+  adminHomepageRecommendationsFragment: { kind: "Document", definitions: [] },
   adminWatchHomeCategoryRailFragment: {
     kind: "Document",
     definitions: [],

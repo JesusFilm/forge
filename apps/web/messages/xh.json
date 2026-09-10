@@ -527,7 +527,8 @@
     "previousVideoPreview": "Umboniso wangaphambili wevidiyo",
     "nextVideoPreview": "Umboniso wangaphambili wevidiyo elandelayo",
     "mediaCollection": "Ingqokelela yemidiya",
-    "scrollToVideo": "Skrolela kwividiyo ethi {title}"
+    "scrollToVideo": "Skrolela kwividiyo ethi {title}",
+    "forYou": "Eyakho"
   },
   "WatchFooter": {
     "home": "Ikhaya leJesus Film Project",

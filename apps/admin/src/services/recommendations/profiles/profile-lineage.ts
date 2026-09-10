@@ -100,7 +100,7 @@ export function profileContributionInvalidPredicateSql(now: Date): Prisma.Sql {
             AND impression.item_id = selection.item_id
             AND impression.expires_at > ${now}
             AND impression.expires_at >= selection.attribution_eligible_at
-            AND impression.visibility_policy = ${RECOMMENDATION_CONTRACTS.surface}
+            AND impression.visibility_policy IN (${RECOMMENDATION_CONTRACTS.surface}, 'watch-for-you-v1')
         )
       )
     )

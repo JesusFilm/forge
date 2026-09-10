@@ -527,7 +527,8 @@
     "previousVideoPreview": "Ukubuka kuqala kwevidiyo edlule",
     "nextVideoPreview": "Ukubuka kuqala kwevidiyo elandelayo",
     "mediaCollection": "Iqoqo lemidiya",
-    "scrollToVideo": "Skrola uye kuvidiyo ye-{title}"
+    "scrollToVideo": "Skrola uye kuvidiyo ye-{title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ikhasi lasekhaya le-Jesus Film Project",

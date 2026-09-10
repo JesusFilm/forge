@@ -421,6 +421,9 @@ export const env = createEnv({
     RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
     // Fail-closed startup ceiling. The shared Postgres serving-control row is
     // the replica-wide runtime switch; this flag can only narrow it.
+    RECOMMENDATION_USER_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
       .enum(["true", "false"])
       .optional()
@@ -898,6 +901,9 @@ export const env = createEnv({
     ),
     RECOMMENDATION_REDIS_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_REDIS_TEST,
+    ),
+    RECOMMENDATION_USER_SERVING_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_USER_SERVING_ENABLED,
     ),
     RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,

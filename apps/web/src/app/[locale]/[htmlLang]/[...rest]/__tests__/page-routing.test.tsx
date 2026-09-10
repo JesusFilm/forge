@@ -642,6 +642,8 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
         },
         blocks: [],
         legacyCategoryRailCompatibility: true,
+        locale: "es",
+        languageSlug: "spanish-castilian",
       }),
       undefined,
     )

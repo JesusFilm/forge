@@ -17,6 +17,7 @@ export type AdminMcpToolDefinition = {
 }
 
 const WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE =
+  `The homepageRecommendations block is a top-level singleton with shape {t:"homepageRecommendations",sectionKey?:string,title?:string}. It renders six private viewer recommendations; leave title blank for the localized default heading. ` +
   `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",categoryIds:[...],tiles?:[...]}. ` +
   `categoryIds must be a non-empty unique subset of ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id).join(", ")}. ` +
   `tiles is the authoritative ordered tile list when present; each tile is {id, categoryId?, title?, href?, icon?, style?} with a unique id, at most one tile per categoryId, and title/href/icon/style overriding that category's defaults. ` +

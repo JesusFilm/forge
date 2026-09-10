@@ -527,7 +527,8 @@
     "previousVideoPreview": "Əvvəlki video önizləməsi",
     "nextVideoPreview": "Növbəti video önizləməsi",
     "mediaCollection": "Media kolleksiyası",
-    "scrollToVideo": "{title} videosuna sürüşdürün"
+    "scrollToVideo": "{title} videosuna sürüşdürün",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
