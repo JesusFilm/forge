@@ -71,8 +71,8 @@ clean, and each looked like a valid signal that the upgrade was safe:
 ## Solution
 
 Add `enableFullScreenImage_legacy: true` to the `expo-splash-screen`
-plugin entry in `apps/mobile/app.json`. Current state on this branch
-(`apps/mobile/app.json`, plugin entry, matches PR #1926):
+plugin entry in `apps/mobile/app.json`. Current state on `main`
+(`apps/mobile/app.json:106-114`, unchanged since PR #1926):
 
 ```json
 [
@@ -86,7 +86,22 @@ plugin entry in `apps/mobile/app.json`. Current state on this branch
 ]
 ```
 
-The fix landed on this branch in the commit that carries the subject
+> **Note added 2026-09-11 — the flag is now a guard, not a live fix.** PR #2216
+> made `apps/mobile/assets/splash-icon.png` a flat `#1c1917` field, because the
+> animated splash in `apps/mobile/src/components/splash/` opens on a matching
+> ground and the handover must show no colour flip.
+> `apps/mobile/scripts/generate-app-icon.mjs` emits the asset from
+> `flatSvg(SIZE, SPLASH_GROUND)`, and a decode of the committed PNG gives
+> 1024x1024 with exactly one colour, `(28,25,23)`. A flat field drawn full-bleed
+> and the same field drawn at 100pt on a `#1c1917` ground are the same pixels.
+> So removing the flag today still changes the generated storyboard, but it
+> changes nothing on screen. Keep the flag: it is what holds the layout
+> full-bleed if anyone puts a symbol back into `splash-icon.png`. Note that
+> `docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md:285` calls the
+> flag "load-bearing", which stays true of the artifact and is no longer true of
+> the pixels.
+
+The fix landed in the commit that carries the subject
 `fix(mobile): apply review findings 2 and 4 (splash parity, real-shape
 fixture)`. Its `apps/mobile/app.json` hunk:
 
@@ -102,8 +117,10 @@ fixture)`. Its `apps/mobile/app.json` hunk:
        "expo-status-bar"
 ```
 
-That SHA will be rewritten when PR #1926 squash-merges, so treat the PR,
-not the SHA, as the durable anchor for this fix.
+PR #1926 has since squash-merged. The durable anchor is `91028058a`,
+`chore(mobile): upgrade to Expo SDK 57 and React Native 0.86 (#1926)`, which
+`git log -S "enableFullScreenImage_legacy" -- apps/mobile/app.json` returns as
+the only commit that ever touched the flag.
 
 Verification at the time of the fix: the regenerated iOS storyboard
 (image asset `SplashScreenLegacy` in `SplashScreen.storyboard`) constrains the image to all four edges, confirming
@@ -134,10 +151,17 @@ _generated native output_ did not change.
 - **Diff generated native artifacts, not just `app.json`.** Run `expo
 prebuild --clean` before and after the upgrade and diff the generated
   iOS storyboard / Android splash XML, not only the source config files.
+  Run the prebuild explicitly. `expo run:ios` skips prebuild when `ios/`
+  already exists and does not say so, so a comparison can diff two identical
+  stale artifacts and report no drift.
 - **Visually compare cold-launch frames.** Record or screenshot the
   first frame of a cold launch before and after the upgrade. Config
   plugin defaults render natively; no build error or lint warning marks
-  a visual default change.
+  a visual default change. In a dev-client build the launcher paints the app
+  icon before any JavaScript runs, and that frame reads as the app's own
+  splash. Stop Metro and cold-launch first, so every pixel you then see is
+  native. See
+  `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md`.
 - **Grep upgrade changelogs for `_legacy` flags.** A newly introduced
   `_legacy`-suffixed option in a plugin's changelog is a direct signal
   that the plugin's default behavior changed and that the flag exists
@@ -152,4 +176,5 @@ prebuild --clean` before and after the upgrade and diff the generated
 
 - `docs/solutions/best-practices/icon-composer-schema-recovery-and-actool-silent-validation-20260810.md` — the closest sibling: another apps/mobile Expo config plugin (withIosIcons) whose native visual output changes silently and needs a real build plus visual inspection to verify.
 - `docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md` — another silent native/publish-layer change with no source-diff signal.
+- `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md` — the follow-on. After PR #2216 a cold-launch frame comparison on this same surface needs an artifact-identity check first, because the dev launcher's own frame reads as this splash.
 - The SDK 57 upgrade family from this branch: `docs/solutions/build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md` and `docs/solutions/ui-bugs/android-home-hero-black-refreshcontrol-surfaceview-compositing.md` — the same upgrade's other silent-until-observed regressions.

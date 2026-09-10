@@ -10,6 +10,7 @@ applies_when:
   - "Deciding whether a renderer animates by md5-diffing sequential adb screencap frames"
   - "Choosing a sample time window for a Mux animated preview or its poster thumbnail"
   - "Byte-identical sequential frames could mean static SOURCE content, not a static renderer"
+  - "Verifying a timed animation on iOS by `simctl io recordVideo` or a screenshot burst — the law is platform-general even though the recipe below is Android"
 symptoms:
   - "12 sequential screencap frames returned byte-identical md5s, suggesting the webp never animated"
   - "Preview and poster looked visually identical because both sampled the same title-card timestamp"
@@ -23,9 +24,13 @@ tags:
   - "on-device-verification"
   - "frame-diffing"
   - "screencap"
+  - "simctl"
+  - "ios"
+  - "apps-mobile"
 related_components:
   - "testing_framework"
   - "tooling"
+  - "apps/mobile"
 title: "Frame-diffing to verify on-device animation needs a motion-rich sample window"
 ---
 
@@ -86,4 +91,5 @@ This is a device-side instance of the broader **prove the mechanism, not a proxy
 - [verify-infra-writes-via-independent-read-path](../best-practices/verify-infra-writes-via-independent-read-path-20260420.md) — the md5 frame-diff IS the independent read path for animation, but it's only trustworthy if the sample window can reveal the outcome.
 - [idempotence-property-test-vacuous-on-malformed-fixed-point](../best-practices/idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md) — analog of a vacuous pass on a fixed-point input; a title-card window is the "fixed point" where the diff succeeds trivially.
 - [verifying-mobile-expo-worktree-changes-in-simulator](../developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md) — sibling in the "how to actually confirm a TV/mobile change on hardware" family (this adds the Android TV `adb screencap` + `md5` technique).
+- [mobile-dev-build-verification-false-signals](../developer-experience/mobile-dev-build-verification-false-signals.md) — the iOS route to this law: a 6 fps `simctl` capture was too slow for the beat under test and reported a splash beat missing that was present. It also adds the prior question — prove the binary on the device came from your tree.
 - [android-tv-density-scaling-and-native-view-clipping](../ui-bugs/android-tv-density-scaling-and-native-view-clipping-20260416.md) — same app + platform + component (expo-image on Android TV) where visual verification is subtle and platform-specific painting bites.
