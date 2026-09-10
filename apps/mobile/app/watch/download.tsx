@@ -58,10 +58,8 @@ export default function DownloadSheetRoute() {
   // The bundled subtitle is inherited from the watch session, not picked here:
   // the dub's active subtitle (set on the Video Details sheet), regardless of the
   // toggle. null when none is active or the active language has no track here.
-  const activeSubtitle = resolveActiveSubtitle(
-    activeSubtitleSlug,
-    activeVariantMedia?.subtitles ?? [],
-  )
+  const subtitles = activeVariantMedia?.subtitles ?? []
+  const activeSubtitle = resolveActiveSubtitle(activeSubtitleSlug, subtitles)
 
   // R37: only a verified copy is reusable, so an in-flight or failed record
   // names no quality.
@@ -105,13 +103,19 @@ export default function DownloadSheetRoute() {
   const onStartDownload = async (
     rendition: WatchDownload,
     mode: DownloadMode,
+    subtitleSlug: string | null,
   ) => {
+    // The SHEET owns the subtitle now, so raw mode's R23 payload has to name
+    // the track the sheet hid — not whatever the watch session was showing.
+    const chosenSubtitle = subtitles.find(
+      (sub) => sub.languageSlug === subtitleSlug,
+    )
     if (mode === "raw") {
       startRawExport(rendition)
       return
     }
     if (!activeVariant) return
-    // Audio = active dub; subtitle = the dub's active subtitle. Store identity
+    // Audio = active dub; subtitle = the one picked in the sheet. Store identity
     // (dub + rendition documentId, subtitle slug) so the engine re-resolves fresh
     // URLs before each (re)start; title + poster feed the offline library.
     const enqueue = isSwap ? swapDownload : startDownload
@@ -120,8 +124,8 @@ export default function DownloadSheetRoute() {
       title: video.title ?? "",
       dubDocumentId: activeVariant.documentId,
       rendition,
-      subtitleLanguageSlug: activeSubtitle?.languageSlug ?? null,
-      subtitleUrl: activeSubtitle?.vttSrc ?? null,
+      subtitleLanguageSlug: chosenSubtitle?.languageSlug ?? null,
+      subtitleUrl: chosenSubtitle?.vttSrc ?? null,
       posterUrl: video.posterUrl,
       allowCellular: !wifiOnly,
       // seriesEpisodeIndex stays undefined here — episode order is a series-batch
@@ -136,6 +140,13 @@ export default function DownloadSheetRoute() {
       setSnackbarMessage("Not enough storage to download this video.")
       return
     }
+    // `exists` means the pipeline did NOTHING — the same rendition AND the same
+    // subtitle are already held, or a live record blocks a fresh start. Saying
+    // "Download started" there is a lie the subtitle picker makes easy to hit.
+    if (!result.ok && result.reason === "exists") {
+      setSnackbarMessage("This download is already saved at that quality.")
+      return
+    }
     setSnackbarMessage(isSwap ? "Updating download…" : "Download started")
     router.back()
   }
@@ -146,8 +157,14 @@ export default function DownloadSheetRoute() {
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
-      subtitleLanguageName={activeSubtitle?.languageName ?? null}
+      subtitles={subtitles}
+      subtitleLanguageSlug={activeSubtitle?.languageSlug ?? null}
       offlineCopyQuality={offlineCopyQuality}
+      offlineCopySubtitleSlug={
+        offlineRecord?.state === "downloaded"
+          ? offlineRecord.subtitleLanguageSlug
+          : undefined
+      }
       onStartDownload={onStartDownload}
     />
   )

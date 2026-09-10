@@ -110,7 +110,7 @@ import {
 } from "../../../lib/seriesDownloadResolver"
 import type { QualityTier } from "../../../lib/downloadTiers"
 import type { OfflineDownloadRecord } from "../../../lib/offlineManifest"
-import type { WatchDownload } from "../../../lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../../lib/normalizeVideo"
 import {
   TestRenderer,
   hasText,
@@ -225,10 +225,38 @@ function savedRecord(slug: string): OfflineDownloadRecord {
 
 // ── Render helpers ──────────────────────────────────────────────────
 
+/** Two tracks, deliberately NOT alphabetical, so ordering is observable. */
+const SUBTITLES: WatchSubtitle[] = [
+  {
+    documentId: "s-es",
+    languageSlug: "spanish",
+    languageName: "Spanish",
+    languageBcp47: "es",
+    vttSrc: "https://cdn.example.com/es.vtt",
+    primary: false,
+    aiGenerated: false,
+  },
+  {
+    documentId: "s-en",
+    languageSlug: "english",
+    languageName: "English",
+    languageBcp47: "en",
+    vttSrc: "https://cdn.example.com/en.vtt",
+    primary: true,
+    aiGenerated: false,
+  },
+]
+
 type SheetProps = {
-  subtitleLanguageName?: string | null
+  subtitles?: WatchSubtitle[]
+  subtitleLanguageSlug?: string | null
   offlineCopyQuality?: string | null
-  onStartDownload?: (rendition: WatchDownload, mode: DownloadMode) => void
+  offlineCopySubtitleSlug?: string | null
+  onStartDownload?: (
+    rendition: WatchDownload,
+    mode: DownloadMode,
+    subtitleSlug: string | null,
+  ) => void
 }
 
 function element(props: SheetProps = {}) {
@@ -238,12 +266,14 @@ function element(props: SheetProps = {}) {
       duration={1800}
       languageName="English"
       downloads={DOWNLOADS}
-      subtitleLanguageName={
-        props.subtitleLanguageName === undefined
-          ? "Spanish"
-          : props.subtitleLanguageName
+      subtitles={props.subtitles ?? SUBTITLES}
+      subtitleLanguageSlug={
+        props.subtitleLanguageSlug === undefined
+          ? "spanish"
+          : props.subtitleLanguageSlug
       }
       offlineCopyQuality={props.offlineCopyQuality ?? null}
+      offlineCopySubtitleSlug={props.offlineCopySubtitleSlug}
       onStartDownload={props.onStartDownload ?? (() => {})}
     />
   )
@@ -414,6 +444,7 @@ describe("DownloadSheetContent mode control", () => {
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.objectContaining({ documentId: "d-high" }),
       "offline",
+      "spanish",
     )
 
     await chooseMode(renderer, "raw")
@@ -421,21 +452,100 @@ describe("DownloadSheetContent mode control", () => {
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.objectContaining({ documentId: "d-high" }),
       "raw",
+      null,
     )
 
     await unmount(renderer)
   })
 
-  it("hides the subtitle pill in raw mode and shows it in offline mode", async () => {
-    const renderer = await renderSheet({ subtitleLanguageName: "Spanish" })
-    expect(hasText(renderer, "Spanish")).toBe(true)
+  // Keyed on the dropdown SECTION, not on the language name: the picker renders
+  // the same string as the pill, so a hasText("Spanish") assertion would pass
+  // whichever of the two is on screen.
+  it("offers the subtitle picker in offline mode and withdraws it in raw", async () => {
+    const renderer = await renderSheet()
+    expect(hasDropdownSection(renderer, "Subtitles")).toBe(true)
 
     await chooseMode(renderer, "raw")
+    expect(hasDropdownSection(renderer, "Subtitles")).toBe(false)
+    // R5: raw carries no subtitle, so the pill goes with the picker.
     expect(hasText(renderer, "Spanish")).toBe(false)
 
     await chooseMode(renderer, "offline")
-    expect(hasText(renderer, "Spanish")).toBe(true)
+    expect(hasDropdownSection(renderer, "Subtitles")).toBe(true)
 
+    await unmount(renderer)
+  })
+
+  it("seeds the picker from the watch screen's subtitle, not 'No subtitles'", async () => {
+    // The regression this guards: defaulting to null like the series sheet
+    // would hand a viewer watching with Spanish captions a caption-less file.
+    const onStartDownload = jest.fn()
+    const renderer = await renderSheet({ onStartDownload })
+    expect(nodeByLabel(renderer, "Subtitles, Spanish")).not.toBeNull()
+
+    await acceptTerms(renderer)
+    await press(pressableByLabel(renderer, "Download video"))
+    expect(onStartDownload).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "offline",
+      "spanish",
+    )
+    await unmount(renderer)
+  })
+
+  it("falls back to no subtitle when the dub lacks the watched track", async () => {
+    const renderer = await renderSheet({ subtitleLanguageSlug: "klingon" })
+    expect(nodeByLabel(renderer, "Subtitles, No subtitles")).not.toBeNull()
+    await unmount(renderer)
+  })
+
+  it("sends the PICKED subtitle, and null once raw mode hides it", async () => {
+    const onStartDownload = jest.fn()
+    const renderer = await renderSheet({ onStartDownload })
+
+    await press(pressableByLabel(renderer, "Subtitles, Spanish"))
+    await press(pressableByLabel(renderer, "English"))
+    await acceptTerms(renderer)
+    await press(pressableByLabel(renderer, "Download video"))
+    expect(onStartDownload).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "offline",
+      "english",
+    )
+
+    // The slug survives the hide, but raw mode must never send one.
+    await chooseMode(renderer, "raw")
+    await press(pressableByLabel(renderer, "Save video to the device"))
+    expect(onStartDownload).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "raw",
+      null,
+    )
+    await unmount(renderer)
+  })
+
+  it("orders the tracks by name under a 'No subtitles' first row", async () => {
+    const renderer = await renderSheet()
+    await press(pressableByLabel(renderer, "Subtitles, Spanish"))
+    // Scoped to the picker's own panel — the mode control's radios sit earlier
+    // in the tree and would otherwise be what this reads.
+    // Deduped, because one row matches at several tree levels (composite plus
+    // hosts) — the same reason this suite's `labelled` helper returns a list.
+    // The mode control's own radios are excluded by name; everything left is
+    // the open picker's panel.
+    const modeLabels: string[] = [
+      DOWNLOAD_MODE_LABELS.offline,
+      DOWNLOAD_MODE_LABELS.raw,
+    ]
+    const rows = [
+      ...new Set(
+        renderer.root
+          .findAll((n) => n.props.accessibilityRole === "radio")
+          .map((n) => String(n.props.accessibilityLabel)),
+      ),
+    ].filter((label) => !modeLabels.includes(label))
+    // The fixture is Spanish-then-English, so unsorted input would fail this.
+    expect(rows).toEqual(["No subtitles", "English", "Spanish"])
     await unmount(renderer)
   })
 
@@ -462,7 +572,11 @@ describe("DownloadSheetContent mode control", () => {
     await chooseMode(first, "raw")
     await acceptTerms(first)
     await press(pressableByLabel(first, "Save video to the device"))
-    expect(onStartDownload).toHaveBeenLastCalledWith(expect.anything(), "raw")
+    expect(onStartDownload).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "raw",
+      null,
+    )
     await unmount(first)
 
     const second = await renderSheet({ onStartDownload })
@@ -479,6 +593,7 @@ describe("DownloadSheetContent mode control", () => {
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.anything(),
       "offline",
+      "spanish",
     )
 
     await unmount(second)
@@ -550,6 +665,7 @@ describe("build-time switch", () => {
     expect(onStartDownload).toHaveBeenLastCalledWith(
       expect.anything(),
       "offline",
+      "spanish",
     )
 
     await unmount(renderer)

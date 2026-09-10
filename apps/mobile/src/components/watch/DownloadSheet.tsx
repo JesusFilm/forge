@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
   Modal,
@@ -23,7 +23,7 @@ import {
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
-import type { WatchDownload } from "../../lib/normalizeVideo"
+import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
@@ -335,6 +335,82 @@ export function formatSeriesReuseNote(
  * R32: an export replaces nothing, so raw mode lifts every already-downloaded
  * gate the offline path applies. Offline mode keeps the value it computed.
  */
+/** Sentinel for the "bundle no subtitle" row; a slug can never collide with it. */
+export const NO_SUBTITLE_KEY = "__none__"
+
+/**
+ * The subtitle choice, shared by BOTH sheets rather than copied into each — a
+ * duplicated control is this repo's recorded way for a fix to reach only one
+ * screen. `union` is slug → display name, so a dub carrying two tracks for one
+ * language (normalizeDubMedia does not dedupe) cannot produce duplicate rows.
+ */
+export function SubtitlePicker({
+  union,
+  selectedSlug,
+  downloadedSlug,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  union: Map<string, string>
+  selectedSlug: string | null
+  /** Already-saved subtitle (null = saved with none, undefined = n/a) → disabled. */
+  downloadedSlug?: string | null
+  open: boolean
+  onToggle: () => void
+  onSelect: (slug: string | null) => void
+}) {
+  const options = useMemo<DropdownOption[]>(() => {
+    // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
+    // row is never disabled (re-downloading "no subtitle" isn't a thing).
+    const disabledKey =
+      typeof downloadedSlug === "string" ? downloadedSlug : null
+    const mark = (opt: DropdownOption): DropdownOption =>
+      opt.key === disabledKey
+        ? { ...opt, disabled: true, note: "Already downloaded" }
+        : opt
+    const base: DropdownOption[] = [
+      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
+    ]
+    const sorted = [...union.entries()].sort((a, b) =>
+      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
+    )
+    for (const [slug, name] of sorted)
+      base.push(mark({ key: slug, label: name }))
+    return base
+  }, [union, downloadedSlug])
+
+  return (
+    <Dropdown
+      sectionLabel="Subtitles"
+      options={options}
+      selectedKey={selectedSlug ?? NO_SUBTITLE_KEY}
+      open={open}
+      onToggle={onToggle}
+      onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
+    />
+  )
+}
+
+/**
+ * slug → display name for one dub's tracks. A Map because the normalizer does
+ * not dedupe by language, and `languageName` can normalize to "" — an empty
+ * label would render a blank row.
+ */
+export function subtitleUnionOf(
+  subtitles: readonly {
+    languageSlug: string
+    languageName: string
+  }[],
+): Map<string, string> {
+  const union = new Map<string, string>()
+  for (const sub of subtitles) {
+    if (!sub.languageSlug) continue
+    union.set(sub.languageSlug, sub.languageName || sub.languageSlug)
+  }
+  return union
+}
+
 export function suspendedInRawMode<T>(
   mode: DownloadMode,
   value: T,
@@ -422,32 +498,43 @@ export type DownloadSheetProps = {
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
+  /** The dub's subtitle tracks, offered beside the quality in offline mode. */
+  subtitles: readonly WatchSubtitle[]
   /**
-   * The subtitle language that will be bundled with the download — the dub's
-   * active subtitle as chosen on the Video Details subtitle sheet, or null when
-   * none is active. Display-only; the route resolves and enqueues the track.
+   * The subtitle active on the watch screen. It SEEDS the picker, so a viewer
+   * watching with Spanish captions who just taps Download still gets them —
+   * defaulting to "No subtitles" like the series sheet would silently ship a
+   * caption-less copy.
    */
-  subtitleLanguageName: string | null
+  subtitleLanguageSlug: string | null
   /**
    * R37: the quality label of a completed offline copy, or null when the video
    * has none. It names the copy the export can reuse, not the current choice.
    */
   offlineCopyQuality?: string | null
+  /** The subtitle language of a completed offline copy, for the reuse note. */
+  offlineCopySubtitleSlug?: string | null
   /**
-   * Start the chosen rendition in the chosen mode. The active subtitle is
-   * inherited from the watch session (not picked here); the route builds the
-   * full request, dismisses the sheet, and downloads via DownloadsProvider.
+   * Start the chosen rendition in the chosen mode, with the subtitle picked
+   * HERE (null = none). The route builds the full request, dismisses the sheet,
+   * and downloads via DownloadsProvider.
    */
-  onStartDownload: (rendition: WatchDownload, mode: DownloadMode) => void
+  onStartDownload: (
+    rendition: WatchDownload,
+    mode: DownloadMode,
+    subtitleSlug: string | null,
+  ) => void
 }
 
 export function DownloadSheetContent({
   videoTitle,
   duration,
   languageName,
+  subtitles,
+  subtitleLanguageSlug,
   downloads,
-  subtitleLanguageName,
   offlineCopyQuality = null,
+  offlineCopySubtitleSlug = undefined,
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -458,9 +545,24 @@ export function DownloadSheetContent({
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
+  const [subtitleOpen, setSubtitleOpen] = useState(false)
   // R2: every opening starts here, and nothing writes the choice back.
   const [mode, setMode] = useState<DownloadMode>("offline")
   const rawMode = mode === "raw"
+
+  const subtitleUnion = useMemo(() => subtitleUnionOf(subtitles), [subtitles])
+  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
+  // The dub's tracks arrive lazily, so a useState initializer would seed from
+  // an empty union and stick at null. Seed when they land, and only ONCE — a
+  // re-render must never overwrite a manual pick. Only a slug the dub actually
+  // carries is selectable; anything else names a row the picker never renders.
+  const subtitleSeededRef = useRef(false)
+  useEffect(() => {
+    if (subtitleSeededRef.current || subtitleUnion.size === 0) return
+    subtitleSeededRef.current = true
+    if (subtitleLanguageSlug != null && subtitleUnion.has(subtitleLanguageSlug))
+      setSubtitleSlug(subtitleLanguageSlug)
+  }, [subtitleUnion, subtitleLanguageSlug])
 
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
   // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
@@ -489,8 +591,16 @@ export function DownloadSheetContent({
     if (!selected) return
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
-    onStartDownload(selected, mode)
-  }, [touAccepted, tiered, selectedIndex, mode, onStartDownload])
+    onStartDownload(selected, mode, rawMode ? null : subtitleSlug)
+  }, [
+    touAccepted,
+    tiered,
+    selectedIndex,
+    mode,
+    rawMode,
+    subtitleSlug,
+    onStartDownload,
+  ])
 
   if (downloads.length === 0) {
     return (
@@ -552,7 +662,9 @@ export function DownloadSheetContent({
               </View>
             )}
             {/* R5: an exported file cannot carry the subtitle, so raw mode
-                removes the pill instead of describing an empty promise. */}
+                removes the pill instead of describing an empty promise. It
+                mirrors the PICKED subtitle, so the header and the picker below
+                can never disagree. */}
             {!rawMode && (
               <View style={styles.metaPill}>
                 <MaterialCommunityIcons
@@ -561,7 +673,9 @@ export function DownloadSheetContent({
                   color={TEXT_SECONDARY}
                 />
                 <Text style={[styles.metaPillText, typography.bodySmall]}>
-                  {subtitleLanguageName ?? "No subtitles"}
+                  {(subtitleSlug != null
+                    ? subtitleUnion.get(subtitleSlug)
+                    : null) ?? "No subtitles"}
                 </Text>
               </View>
             )}
@@ -585,6 +699,23 @@ export function DownloadSheetContent({
             setQualityOpen(false)
           }}
         />
+
+        {/* R5: only an offline copy can carry a subtitle, so the picker leaves
+            with raw mode. The chosen slug SURVIVES the hide, mirroring the
+            series sheet, so switching back restores the choice. */}
+        {!rawMode && subtitleUnion.size > 0 && (
+          <SubtitlePicker
+            union={subtitleUnion}
+            selectedSlug={subtitleSlug}
+            downloadedSlug={offlineCopySubtitleSlug}
+            open={subtitleOpen}
+            onToggle={() => setSubtitleOpen((o) => !o)}
+            onSelect={(slug) => {
+              setSubtitleSlug(slug)
+              setSubtitleOpen(false)
+            }}
+          />
+        )}
 
         <View style={styles.touRow}>
           <Pressable

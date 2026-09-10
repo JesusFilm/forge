@@ -15,6 +15,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import {
   DownloadModeControl,
   Dropdown,
+  SubtitlePicker,
   SheetNote,
   TermsModal,
   formatSeriesReuseNote,
@@ -71,7 +72,6 @@ import { freeDiskBytes } from "../../src/lib/offlineFileSystem"
 
 // Series locale matches the series detail query (app/series/[slug].tsx).
 const QUALITY_TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
-const NO_SUBTITLE_KEY = "__none__"
 
 type SheetPhase =
   | { kind: "resolving" }
@@ -618,55 +618,6 @@ export default function SeriesDownloadRoute() {
 }
 
 // ── Subcomponents ───────────────────────────────────────────────────
-
-function SubtitlePicker({
-  union,
-  selectedSlug,
-  downloadedSlug,
-  open,
-  onToggle,
-  onSelect,
-}: {
-  /** slug → display name, the union of subtitle tracks across resolved episodes. */
-  union: Map<string, string>
-  selectedSlug: string | null
-  /** Already-saved subtitle (null = saved with none, undefined = n/a) → disabled. */
-  downloadedSlug: string | null | undefined
-  open: boolean
-  onToggle: () => void
-  onSelect: (slug: string | null) => void
-}) {
-  const options = useMemo<DropdownOption[]>(() => {
-    // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
-    // row is never disabled (re-downloading "no subtitle" isn't a thing).
-    const disabledKey =
-      typeof downloadedSlug === "string" ? downloadedSlug : null
-    const mark = (opt: DropdownOption): DropdownOption =>
-      opt.key === disabledKey
-        ? { ...opt, disabled: true, note: "Already downloaded" }
-        : opt
-    const base: DropdownOption[] = [
-      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
-    ]
-    const sorted = [...union.entries()].sort((a, b) =>
-      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
-    )
-    for (const [slug, name] of sorted)
-      base.push(mark({ key: slug, label: name }))
-    return base
-  }, [union, downloadedSlug])
-
-  return (
-    <Dropdown
-      sectionLabel="Subtitles"
-      options={options}
-      selectedKey={selectedSlug ?? NO_SUBTITLE_KEY}
-      open={open}
-      onToggle={onToggle}
-      onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
-    />
-  )
-}
 
 function StatusPanel({
   phase,
