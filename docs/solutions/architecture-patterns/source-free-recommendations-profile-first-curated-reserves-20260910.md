@@ -121,3 +121,19 @@ production success claim.
 - [Exhaustive local coverage evidence](../../recommendations/curation/2026-09-10/all-context-coverage-report.md)
 - [Recommendation boundary hardening](production-recommendation-boundary-hardening-pattern.md)
 - [Recover transient admission on profile refresh](../ui-bugs/watch-recommendation-consent-refresh-in-flight-admission-race.md)
+
+## Release integration checks
+
+A disabled UI flag does not remove an unknown GraphQL type from a shared
+Experience fragment. Admin and Web deploy independently: extend the existing
+legacy-query fallback for `HomepageRecommendationsBlock` in both content and
+preview loaders. Test homepage resolution, explicit Experience lookup, and the
+bounded retry using both older block schemas. Publish the new discriminator only
+after Admin has deployed; no content migration should introduce it early.
+
+Database tests that create isolated schemas must include new migrations whenever
+they call current Prisma services. Adding `RecommendationRequest.purpose` affects
+Prisma reads and insert return values even in seeded delivery tests; adding viewer
+retention also affects the existing purge test. Updating only the production
+migration chain leaves these fixtures inconsistent. Run the real PostgreSQL suite,
+including seeded delivery, retention, profile concurrency and the new pool tests.

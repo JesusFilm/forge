@@ -121,9 +121,10 @@ Migration 0082 makes a source-free request explicit (`purpose='user'`, null seed
 and adds opaque installation handles. Migration 0083 adds sealed curated
 generations, pools, memberships and the dedicated active pointer. Deploy the
 migrations and regenerated Admin SDL/client artifacts together through the normal
-PR-to-main flow. Deploy the Admin block schema before Web's new Experience
-fragment, then add/publish the block through the editor or MCP after all Admin
-instances accept the new discriminator. Do not backfill Experience JSON in a
+PR-to-main flow. Web retries its existing legacy Experience projection when
+Admin does not yet know the new block type, including when the row flag is off.
+Publish the block through the editor or MCP only after all Admin instances
+accept the new discriminator. Do not backfill Experience JSON in a
 pre-deploy database migration. Existing seeded requests default to `purpose='seeded'`.
 
 Flags default off: Admin `RECOMMENDATION_USER_SERVING_ENABLED`, Web
