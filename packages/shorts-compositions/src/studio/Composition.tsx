@@ -29,8 +29,8 @@ function compile(source: string) {
       }
     throw new StudioRuntimeError("Unsupported dependency")
   }
-  // Evaluation occurs only in the isolated browser: opaque sandboxed preview or
-  // credential-free, network-isolated render child. Never import into server execution.
+  // Preview evaluates custom components in the editor browser. Final renders use
+  // the credential-free render child. Never evaluate authored code on the server.
   new Function("React", "exports", "require", code)(React, exports, require)
   if (typeof exports.default !== "function")
     throw new StudioRuntimeError("Default component export required")
@@ -40,18 +40,22 @@ function HlsVideo({
   url,
   start,
   volume,
+  onError,
 }: {
   url: string
   start: number
   volume: number
+  onError?: (message: string) => void
 }) {
   const ref = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     const video = ref.current
     if (!video) return
-    const onError = () =>
-      send({ type: "error", message: "Source media could not decode" })
-    video.addEventListener("error", onError)
+    const reportError = () => {
+      if (onError) onError("Source media could not decode")
+      else send({ type: "error", message: "Source media could not decode" })
+    }
+    video.addEventListener("error", reportError)
     let hls: Hls | undefined
     if (Hls.isSupported()) {
       hls = new Hls({
@@ -60,16 +64,16 @@ function HlsVideo({
         enableWorker: true,
       })
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal) onError()
+        if (data.fatal) reportError()
       })
       hls.loadSource(url)
       hls.attachMedia(video)
     }
     return () => {
       hls?.destroy()
-      video.removeEventListener("error", onError)
+      video.removeEventListener("error", reportError)
     }
-  }, [url])
+  }, [url, onError])
   return (
     <Remotion.Html5Video
       ref={ref}
@@ -87,11 +91,13 @@ function Layer({
   mode,
   mediaBaseUrl,
   mediaUrls,
+  onError,
 }: {
   item: StudioTimelineItem
   input: StudioPreview
   mode: "preview" | "render"
   mediaBaseUrl: string
+  onError?: (message: string) => void
   mediaUrls?: Record<string, string>
   compiled: Record<
     string,
@@ -163,6 +169,7 @@ function Layer({
             url={url}
             start={((item.source.startMs - media.sourceStartMs) * fps) / 1000}
             volume={item.volume}
+            onError={onError}
           />
         )
       ) : item.kind === "audio" && media ? (
@@ -185,10 +192,12 @@ export function StudioComposition({
   mode = "preview",
   mediaBaseUrl = location.href,
   mediaUrls,
+  onError,
 }: {
   input: StudioPreview
   mode?: "preview" | "render"
   mediaBaseUrl?: string
+  onError?: (message: string) => void
   mediaUrls?: Record<string, string>
 }) {
   const activeVersions = JSON.stringify(
@@ -229,6 +238,7 @@ export function StudioComposition({
                 mode={mode}
                 mediaBaseUrl={mediaBaseUrl}
                 mediaUrls={mediaUrls}
+                onError={onError}
               />
             </Remotion.Sequence>
           )),

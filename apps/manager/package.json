@@ -3,8 +3,8 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "dev": "node scripts/build-shorts-preview.mjs && next dev --port 3002",
-    "build": "node scripts/build-shorts-preview.mjs && next build && node scripts/package-standalone-public.mjs",
+    "dev": "next dev --port 3002",
+    "build": "next build && node scripts/package-standalone-public.mjs",
     "start": "next start",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-manager .env",
     "lint": "eslint .",
@@ -51,7 +51,6 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.3",
     "typescript": "^5",
-    "vitest": "3.2.4",
-    "esbuild": "0.27.3"
+    "vitest": "3.2.4"
   }
 }

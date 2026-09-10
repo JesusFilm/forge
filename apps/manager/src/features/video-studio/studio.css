@@ -316,7 +316,6 @@
   container-type: size;
 }
 .nle-preview,
-.nle-preview iframe,
 .nle-canvas-overlay {
   position: absolute;
   inset: 0;

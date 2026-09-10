@@ -1,82 +1,138 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Player, type PlayerRef } from "@remotion/player"
+import { StudioComposition } from "@forge/shorts-compositions/studio/Composition"
+import {
+  studioPreviewSchema,
+  type StudioPreview,
+} from "@forge/studio-contracts/preview"
 import { previewSignature } from "./preview-state"
-import type { StudioDocument } from "@forge/studio-contracts"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
-import type { StudioPreview } from "@forge/studio-contracts/preview"
-import { previewFrame } from "./preview-frame"
+
+class StudioPreviewError extends Error {}
 type BrowserPreview = {
   input: StudioPreview
   urls: Record<string, string>
   files: { name: string; type: string; base64: string }[]
 }
-let runtimePromise: Promise<string> | undefined
-function loadRuntime() {
-  return (runtimePromise ??= fetch("/shorts-preview/runtime.js")
-    .then((response) => {
-      if (!response.ok)
-        throw new StudioPreviewError("Preview player could not load")
-      return response.text()
-    })
-    .catch((error) => {
-      runtimePromise = undefined
-      throw error
-    }))
+type Prepared = {
+  input: StudioPreview
+  mediaUrls: Record<string, string>
+  signature: string
 }
-class StudioPreviewError extends Error {}
-
-export default function Preview({
-  session,
-  state,
-  projectId,
-  playing,
-  onPlaying,
-}: {
+type Props = {
   session: Pick<EditorSession, "edit" | "seek">
   state: EditorSnapshot
   projectId: string
   playing: boolean
-  onPlaying: (v: boolean) => void
+  onPlaying: (value: boolean) => void
+}
+function PlaybackError({
+  error,
+  onError,
+}: {
+  error: Error
+  onError: (message: string) => void
 }) {
-  const [url, setUrl] = useState<string | null>(null),
-    [error, setError] = useState(""),
-    [attempt, setAttempt] = useState(0),
-    [ready, setReady] = useState(false)
-  const frame = useRef<HTMLIFrameElement>(null),
-    latest = useRef(state),
-    lastSent = useRef(-1),
-    lastFrame = useRef(-1),
-    heartbeat = useRef(0),
-    lastDocument = useRef<StudioDocument | null>(null),
-    prepared = useRef<BrowserPreview | null>(null)
+  useEffect(() => onError(error.message), [error, onError])
+  return <p>Preview failed</p>
+}
+function LivePlayer({
+  prepared,
+  state,
+  session,
+  playing,
+  onPlaying,
+  onError,
+}: Props & { prepared: Prepared; onError: (message: string) => void }) {
+  const player = useRef<PlayerRef>(null)
+  const input = useMemo(
+    () => ({ ...prepared.input, document: state.document }),
+    [prepared.input, state.document],
+  )
+  const inputProps = useMemo(
+    () => ({ input, mediaUrls: prepared.mediaUrls, onError }),
+    [input, prepared.mediaUrls, onError],
+  )
+  useEffect(() => {
+    const current = player.current
+    if (!current) return
+    const frame = () => session.seek(current.getCurrentFrame())
+    const pause = () => onPlaying(false)
+    current.addEventListener("frameupdate", frame)
+    current.addEventListener("pause", pause)
+    current.addEventListener("ended", pause)
+    return () => {
+      current.removeEventListener("frameupdate", frame)
+      current.removeEventListener("pause", pause)
+      current.removeEventListener("ended", pause)
+    }
+  }, [session, onPlaying])
+  useEffect(() => {
+    const current = player.current
+    if (current && current.getCurrentFrame() !== state.playhead)
+      current.seekTo(state.playhead)
+  }, [state.playhead])
+  useEffect(() => {
+    if (playing) player.current?.play()
+    else player.current?.pause()
+  }, [playing])
+  return (
+    <Player
+      ref={player}
+      component={StudioComposition}
+      inputProps={inputProps}
+      compositionWidth={input.document.width}
+      compositionHeight={input.document.height}
+      durationInFrames={input.document.durationInFrames}
+      fps={input.document.fps}
+      acknowledgeRemotionLicense
+      style={{ width: "100%", height: "100%" }}
+      errorFallback={({ error }) => (
+        <PlaybackError error={error} onError={onError} />
+      )}
+    />
+  )
+}
+export default function Preview(props: Props) {
+  const { state, projectId, onPlaying } = props
+  const [prepared, setPrepared] = useState<Prepared | null>(null)
+  const [error, setError] = useState("")
+  const [attempt, setAttempt] = useState(0)
+  const latest = useRef(state)
   useEffect(() => {
     latest.current = state
   }, [state])
   const signature = previewSignature(state.document)
-  const preparedSignature = useRef<string | null>(null)
+  const fail = useCallback(
+    (message: string) => {
+      setError(message.slice(0, 1000))
+      onPlaying(false)
+    },
+    [onPlaying],
+  )
   useEffect(() => {
-    if (preparedSignature.current === signature) return
-    const requested = latest.current.document
-    const requestedSignature = previewSignature(requested)
     const controller = new AbortController()
+    const ownedUrls: string[] = []
+    const requested = latest.current.document
     queueMicrotask(() => {
-      if (controller.signal.aborted) return
-      setUrl(null)
-      setError("")
-      setReady(false)
+      if (!controller.signal.aborted) {
+        setPrepared(null)
+        setError("")
+      }
     })
-    const request = async () => {
+    async function prepare(): Promise<BrowserPreview> {
       if (
         !requested.items.some((item) =>
           ["video", "audio", "image", "component"].includes(item.kind),
         )
       )
-        return Response.json({
+        return {
           input: { document: requested, media: {}, code: {} },
           urls: {},
           files: [],
-        })
-      for (let attempt = 0; attempt < 8; attempt++) {
+        }
+      for (let retry = 0; retry < 8; retry++) {
         controller.signal.throwIfAborted()
         const response = await fetch("/api/shorts/preview", {
           method: "POST",
@@ -84,143 +140,66 @@ export default function Preview({
           body: JSON.stringify({ projectId, document: requested }),
           signal: controller.signal,
         })
-        if (response.status !== 503 || attempt === 7) return response
-        await new Promise((resolve) => setTimeout(resolve, 250))
+        if (response.status === 503 && retry < 7) {
+          await response.body?.cancel()
+          await new Promise((resolve) => setTimeout(resolve, 250))
+          continue
+        }
+        const value = (await response.json()) as BrowserPreview & {
+          error?: string
+        }
+        if (!response.ok)
+          throw new StudioPreviewError(value.error ?? "Preview unavailable")
+        return value
       }
       throw new StudioPreviewError("Preview remains busy; retry shortly")
     }
-    Promise.all([request(), loadRuntime()])
-      .then(async ([r, runtime]) => {
-        const value = (await r.json()) as BrowserPreview & { error?: string }
-        if (!r.ok)
-          throw new StudioPreviewError(value.error ?? "Preview unavailable")
+    prepare()
+      .then((value) => {
         if (
           controller.signal.aborted ||
-          previewSignature(latest.current.document) !== requestedSignature
+          previewSignature(latest.current.document) !== signature
         )
           return
-        prepared.current = value
-        preparedSignature.current = requestedSignature
-        heartbeat.current = performance.now()
-        lastDocument.current = null
-        lastSent.current = -1
-        lastFrame.current = -1
-        setUrl(previewFrame(runtime))
+        const input = studioPreviewSchema.parse(value.input)
+        const mediaUrls = { ...value.urls }
+        for (const file of value.files) {
+          const bytes = Uint8Array.from(atob(file.base64), (c) =>
+            c.charCodeAt(0),
+          )
+          const url = URL.createObjectURL(
+            new Blob([bytes], { type: file.type }),
+          )
+          ownedUrls.push(url)
+          mediaUrls[file.name] = url
+        }
+        setPrepared({ input, mediaUrls, signature })
       })
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message)
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          fail(error instanceof Error ? error.message : "Preview failed")
       })
-    return () => controller.abort()
-  }, [projectId, signature, attempt, session])
-  useEffect(() => {
-    if (!url) return
-    const receive = (event: MessageEvent) => {
-      if (
-        event.source !== frame.current?.contentWindow ||
-        event.origin !== "null"
-      )
-        return
-      const data = event.data
-      if (!data || typeof data !== "object") return
-      if (data.type === "boot" && prepared.current) {
-        frame.current?.contentWindow?.postMessage(
-          { type: "initialize", ...prepared.current },
-          "*",
-        )
-      }
-      if (data.type === "heartbeat") heartbeat.current = performance.now()
-      if (data.type === "ready") {
-        setReady(true)
-        heartbeat.current = performance.now()
-        frame.current?.contentWindow?.postMessage(
-          { type: "seek", frame: latest.current.playhead },
-          "*",
-        )
-      }
-      if (
-        data.type === "frame" &&
-        Number.isInteger(data.frame) &&
-        data.frame >= 0 &&
-        data.frame < latest.current.document.durationInFrames
-      ) {
-        lastFrame.current = data.frame
-        session.seek(data.frame)
-      }
-      if (data.type === "error") {
-        setError(
-          typeof data.message === "string"
-            ? data.message.slice(0, 1000)
-            : "Preview failed",
-        )
-        setUrl(null)
-        onPlaying(false)
-      }
-    }
-    window.addEventListener("message", receive)
-    const timer = setInterval(() => {
-      if (performance.now() - heartbeat.current > 2500) {
-        setError("Preview stopped responding. Your edits are safe.")
-        setUrl(null)
-        onPlaying(false)
-      }
-    }, 250)
     return () => {
-      clearInterval(timer)
-      window.removeEventListener("message", receive)
+      controller.abort()
+      ownedUrls.forEach((url) => URL.revokeObjectURL(url))
     }
-  }, [url, session, onPlaying])
-  useEffect(() => {
-    if (!ready) return
-    if (lastDocument.current !== state.document) {
-      frame.current?.contentWindow?.postMessage(
-        { type: "document", document: state.document },
-        "*",
-      )
-      lastDocument.current = state.document
-    }
-  }, [state.document, ready])
-  useEffect(() => {
-    if (!ready) return
-    if (
-      state.playhead !== lastFrame.current &&
-      state.playhead !== lastSent.current
-    ) {
-      frame.current?.contentWindow?.postMessage(
-        { type: "seek", frame: state.playhead },
-        "*",
-      )
-      lastSent.current = state.playhead
-    }
-  }, [state.playhead, ready])
-  useEffect(() => {
-    if (ready)
-      frame.current?.contentWindow?.postMessage(
-        { type: playing ? "play" : "pause" },
-        "*",
-      )
-  }, [playing, ready])
+  }, [projectId, signature, attempt, fail])
+  const ready = prepared?.signature === signature && !error
   return (
-    <div className="nle-preview" data-preview-ready={ready}>
+    <div className="nle-preview" data-preview-ready={Boolean(ready)}>
       {error ? (
         <div className="nle-preview-message" role="alert">
           <p>{error}</p>
-          <button
-            onClick={() => {
-              preparedSignature.current = null
-              setAttempt((n) => n + 1)
-            }}
-          >
+          <button onClick={() => setAttempt((value) => value + 1)}>
             Retry preview
           </button>
         </div>
-      ) : url ? (
-        <iframe
-          ref={frame}
-          title="Live composition preview"
-          srcDoc={url}
-          sandbox="allow-scripts"
-          referrerPolicy="no-referrer"
-          allow="autoplay"
+      ) : ready && prepared ? (
+        <LivePlayer
+          key={`${projectId}:${signature}:${attempt}`}
+          {...props}
+          prepared={prepared}
+          onError={fail}
         />
       ) : (
         <div className="nle-preview-message">Preparing live preview…</div>
