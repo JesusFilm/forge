@@ -111,8 +111,8 @@ flowchart TB
     a smooth bump whose value and slope both reach zero at the edges. This
     removes the fall-off along each band, so one overlay of the ground colour
     now lies square across the corner line. That overlay dissolves every band's
-    end together. `rayEntryStop` and the per-band gradient stops it belonged to
-    are gone with it.
+    end together. `RAY_APEX_ALPHA`, `RAY_MID_ALPHA` and `RAY_MID_STOP`, the
+    per-band gradient stops that ran ALONG each band, are gone with it.
 
     Measured on the iPhone 17 Pro Max simulator on 2026-09-10. Light 20 px past
     the top-right corner fell from 6.2 levels over the ground to 0. It reads 0

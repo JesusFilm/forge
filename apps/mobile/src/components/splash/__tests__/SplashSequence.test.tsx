@@ -58,6 +58,9 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 
 const PHONE = { width: 390, height: 844 }
+/** Wider than the 5.37:1 ratio at which the angular sweep crosses atan2's
+ *  branch cut. Both other fixtures are portrait and cannot reach it. */
+const WIDE = { width: 1200, height: 220 }
 const TABLET = { width: 1024, height: 1366 }
 
 /** The mark's corners, re-derived here rather than read back off the helper. */
@@ -259,6 +262,23 @@ describe("the beam's geometry (R9)", () => {
   it.each([
     ["a phone", PHONE],
     ["a tablet", TABLET],
+  ])("sizes band thickness off the far-end gap, on %s", (_label, frame) => {
+    const geometry = splashGeometry(frame)
+    // Derived here from the arc the cone subtends at its far end, in RADIANS.
+    // Compared only against itself, a reinstated degrees-to-radians conversion
+    // would leave the whole suite green while every band became hair-thin.
+    const gapAtFarEnd =
+      (geometry.rayLength * Math.abs((geometry.sweepDeg * Math.PI) / 180)) /
+      (RAY_BAND_COUNT - 1)
+    expect(geometry.bandThickness / gapAtFarEnd).toBeCloseTo(4, 6)
+    // Sanity on the unit itself: a degrees-denominated step would be ~57x too
+    // small, so pin the thickness to a real fraction of the frame.
+    expect(geometry.bandThickness).toBeGreaterThan(frame.width * 0.04)
+  })
+
+  it.each([
+    ["a phone", PHONE],
+    ["a tablet", TABLET],
   ])("squares the dissolve onto the corner line, on %s", (_label, frame) => {
     const geometry = splashGeometry(frame)
     const corners = expectedCorners(frame)
@@ -302,7 +322,39 @@ describe("the beam's geometry (R9)", () => {
     )
     // Fully opaque BEFORE its own far edge, so nothing shows past the line.
     expect(dissolve.stop).toBeGreaterThan(0)
-    expect(dissolve.stop).toBeLessThanOrEqual(1)
+    expect(dissolve.stop).toBeLessThan(1)
+    // And that tail has to be deep enough to cover the outermost band's own
+    // half-thickness, which overhangs the corner line perpendicular to it.
+    expect(dissolve.height * (1 - dissolve.stop)).toBeGreaterThan(
+      geometry.bandThickness / 2,
+    )
+
+    // TESTING (#1): the position is derived here from the corners and the apex,
+    // NOT read back off the helper. Every other assertion in this file compares
+    // the dissolve's box to the same value production computed, so a sign flip
+    // or an x/y swap in `dissolveCentre` would leave the whole suite green.
+    const lineMiddle = {
+      x: (corners.bottomLeft.x + corners.topRight.x) / 2,
+      y: (corners.bottomLeft.y + corners.topRight.y) / 2,
+    }
+    const away = { x: -span.y / spanLength, y: span.x / spanLength }
+    const facing = apexToLine.x * away.x + apexToLine.y * away.y < 0 ? -1 : 1
+    const depthOfCentre =
+      lineDepth * (1 - RAY_DISSOLVE_DEPTH_RATIO) + dissolve.height / 2
+    const expected = {
+      x:
+        lineMiddle.x +
+        away.x * facing * (depthOfCentre - lineDepth) -
+        geometry.apex.x +
+        geometry.rayLength,
+      y:
+        lineMiddle.y +
+        away.y * facing * (depthOfCentre - lineDepth) -
+        geometry.apex.y +
+        geometry.rayLength,
+    }
+    expect(dissolve.left).toBeCloseTo(expected.x - dissolve.width / 2, 4)
+    expect(dissolve.top).toBeCloseTo(expected.y - dissolve.height / 2, 4)
   })
 
   it.each([
@@ -334,10 +386,7 @@ describe("the beam's geometry (R9)", () => {
     // Narrower than the 37.7 degrees the on-edge apex gave. Pinned on BOTH
     // sides: the cone stops reading as a cone at about 17 degrees, and stops
     // hiding its origin below about 1.09 of the frame's width.
-    expect(geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg).toBeCloseTo(
-      29.4,
-      1,
-    )
+    expect(geometry.sweepDeg).toBeCloseTo(29.4, 1)
   })
 
   it.each([
@@ -448,6 +497,7 @@ describe("the beam's geometry (R9)", () => {
       { width: 0, height: 0 },
       { width: 0, height: 844 },
       { width: 390, height: 0 },
+      WIDE,
     ]) {
       const geometry = splashGeometry(frame)
       expect(geometry.bands).toHaveLength(RAY_BAND_COUNT)
@@ -456,6 +506,12 @@ describe("the beam's geometry (R9)", () => {
         expect(band.length).toBeGreaterThanOrEqual(0)
       }
       expect(Number.isFinite(geometry.bandThickness)).toBe(true)
+      // Finiteness alone passed on a fan that swept the long way round the
+      // circle. The cone is a narrow wedge, so bound the sweep and the reach.
+      expect(Math.abs(geometry.sweepDeg)).toBeLessThan(90)
+      expect(geometry.rayLength).toBeLessThanOrEqual(
+        Math.hypot(frame.width, frame.height) * 2 + 1,
+      )
       for (const value of [
         geometry.dissolve.left,
         geometry.dissolve.top,
@@ -521,6 +577,17 @@ describe("the beam's geometry (R9)", () => {
   it("lays the dissolve over the bands' shared far end", async () => {
     const renderer = await render({ reduceMotion: true })
     const geometry = splashGeometry(Dimensions.get("window"))
+    // Paint order is the whole mechanism: the dissolve covers the bands only
+    // because it is drawn AFTER them. Moved above `bands.map(...)` it would
+    // render underneath, go inert, and every other assertion here would pass.
+    const painted = renderer.root.findAll(
+      (node) =>
+        Array.isArray(node.props.locations) &&
+        typeof node.props.start === "object",
+    )
+    expect(painted).toHaveLength(RAY_BAND_COUNT + 1)
+    expect(painted[painted.length - 1].props.testID).toBe("splash-ray-dissolve")
+
     const found = renderer.root.findAll(
       (node) => node.props.testID === "splash-ray-dissolve",
     )

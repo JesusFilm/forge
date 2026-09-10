@@ -102,18 +102,12 @@ export const RAY_DISSOLVE_DEPTH_RATIO = 0.45
  *  Both are spelled as non-empty tuples because that is how
  *  expo-linear-gradient types the two props. */
 const RAY_BAND_SPAN = RAY_BAND_PROFILE.length - 1
-const RAY_BAND_COLORS: readonly [string, string, ...string[]] = [
-  hexToRgba(TEXT_ON_OVERLAY, RAY_BAND_ALPHA * RAY_BAND_PROFILE[0]),
-  hexToRgba(TEXT_ON_OVERLAY, RAY_BAND_ALPHA * RAY_BAND_PROFILE[1]),
-  ...RAY_BAND_PROFILE.slice(2).map((weight) =>
-    hexToRgba(TEXT_ON_OVERLAY, RAY_BAND_ALPHA * weight),
-  ),
-]
-const RAY_BAND_LOCATIONS: readonly [number, number, ...number[]] = [
-  0,
-  1 / RAY_BAND_SPAN,
-  ...RAY_BAND_PROFILE.slice(2).map((_, index) => (index + 2) / RAY_BAND_SPAN),
-]
+const RAY_BAND_COLORS = RAY_BAND_PROFILE.map((weight) =>
+  hexToRgba(TEXT_ON_OVERLAY, RAY_BAND_ALPHA * weight),
+) as unknown as readonly [string, string, ...string[]]
+const RAY_BAND_LOCATIONS = RAY_BAND_PROFILE.map(
+  (_, index) => index / RAY_BAND_SPAN,
+) as unknown as readonly [number, number, ...number[]]
 
 const WORD = "Jesus"
 const WORD_FAMILY = "NotoSerif-SemiBold"
@@ -161,6 +155,10 @@ export type SplashGeometry = {
   bottomLeftAngleDeg: number
   /** Direction from the apex to the mark's top-right corner, in degrees. */
   topRightAngleDeg: number
+  /** The angle the cone opens, normalized. Subtracting the two edge angles
+   *  above does NOT give this: they straddle atan2's branch cut on a very
+   *  wide frame, where their difference reads the long way round. */
+  sweepDeg: number
   /** The bands the beam is drawn from, from its lower edge to its upper one. */
   bands: SplashBand[]
   /** The overlay that fades their shared far end out. */
@@ -201,7 +199,14 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
     bottomLeft.x - apex.x,
   )
   const topRightAngle = Math.atan2(topRight.y - apex.y, topRight.x - apex.x)
-  const step = (topRightAngle - bottomLeftAngle) / (RAY_BAND_COUNT - 1)
+  // Normalized, because atan2 has a branch cut at half a turn: on a frame wider
+  // than about 5.37:1 the raw difference reads the long way round the circle,
+  // and the fan sweeps away from the mark instead of across it.
+  const sweep = Math.atan2(
+    Math.sin(topRightAngle - bottomLeftAngle),
+    Math.cos(topRightAngle - bottomLeftAngle),
+  )
+  const step = sweep / (RAY_BAND_COUNT - 1)
 
   // The beam's far end is the LINE joining the two corners it lights, so each
   // band stops where its own direction meets that line. Drawing them all to one
@@ -291,6 +296,7 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
     apex,
     bottomLeftAngleDeg: degrees(bottomLeftAngle),
     topRightAngleDeg: degrees(topRightAngle),
+    sweepDeg: degrees(sweep),
     bands,
     dissolve,
     // Taken from the LONGEST band, so neighbours still overlap where both run.

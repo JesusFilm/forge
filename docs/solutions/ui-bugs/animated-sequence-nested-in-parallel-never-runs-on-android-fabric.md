@@ -145,7 +145,7 @@ took the written law and drew a conclusion from it. Decision KTD9 says, at line
 > A looped `Animated.sequence` runs only once on Fabric, so any repeat must loop
 > a single timing and interpolate from it.
 
-The plan then turned that decision into a test scenario for unit U4, in its Approach list:
+The plan then turned that decision into a test scenario for unit U4, in its Test scenarios list:
 
 > No `Animated.loop` wraps a sequence, so the Fabric single-run defect cannot
 > appear.
@@ -325,7 +325,7 @@ ray's scale, the crimson layer's opacity and the word's opacity
 A second case drives the bloom to the same fraction `BLOOM_OVERSHOOT_AT` holds —
 recomputed inline from the two duration constants, because the constant itself
 is not exported — and asserts the rendered scale is greater than 1, which pins
-the overshoot itself (lines 451-469).
+the overshoot itself (`it("drives the bloom's overshoot by interpolation, not a second timing")`).
 
 ### 3. A rest-state assertion is ALSO insufficient — this is the subtle part
 
