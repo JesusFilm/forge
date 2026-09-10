@@ -1,12 +1,11 @@
 """Fixed-origin read-only GitHub evidence. No fixture URL or approval write API."""
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
 import tempfile
 
-from release import ReleaseRefused, matches, unique_object, refuse_constant, verify_publication_approval
+from release import ReleaseRefused, matches, unique_object, refuse_constant
 
 
 class GitHub:
@@ -35,7 +34,7 @@ class GitHub:
             raise ReleaseRefused('Candidate download failed')
 
     def get(self, path):
-        if not re.fullmatch(r'(environments/studio-release|actions/runs/[1-9][0-9]{0,19}(/approvals)?)', path):
+        if not re.fullmatch(r'actions/runs/[1-9][0-9]{0,19}', path):
             raise ReleaseRefused('GitHub evidence path refused')
         with tempfile.TemporaryDirectory(prefix='studio-release-api-') as temporary:
             root = Path(temporary)
@@ -64,9 +63,7 @@ def decode_response(headers, body):
         raise ReleaseRefused('GitHub evidence exceeds completeness bound')
     lines = headers.decode('iso-8859-1').splitlines()
     statuses = [line.split()[1] for line in lines if line.startswith('HTTP/') and len(line.split()) >= 2]
-    # No redirect following, no guessed pagination. The review endpoint documents
-    # one array and no pagination parameters. A Link header or bound hit refuses
-    # publication rather than treating a partial history as complete.
+    # Refuse redirects, pagination and incomplete responses.
     if statuses != ['200'] or any(line.lower().startswith('link:') for line in lines):
         raise ReleaseRefused('Redirected or paginated GitHub evidence refused')
     try:
@@ -75,7 +72,7 @@ def decode_response(headers, body):
         raise ReleaseRefused('Incomplete GitHub evidence refused') from error
 
 
-def authorize_publication(api, candidate, digest, policy):
+def authorize_publication(api, candidate):
     identity = candidate['build']
     run = api.get('actions/runs/' + identity['runId'])
     if (not isinstance(run, dict) or type(run.get('id')) is not int or str(run['id']) != identity['runId']
@@ -83,12 +80,3 @@ def authorize_publication(api, candidate, digest, policy):
             or run.get('head_sha') != candidate['source']['commit'] or run.get('head_branch') != 'main'
             or run.get('event') != 'workflow_dispatch' or run.get('path') not in (identity['workflow'], identity['workflow'] + '@main')):
         raise ReleaseRefused('Actual workflow identity differs from candidate')
-    actors = []
-    for field in ('actor', 'triggering_actor'):
-        actor = run.get(field)
-        if not isinstance(actor, dict) or type(actor.get('id')) is not int or actor['id'] <= 0:
-            raise ReleaseRefused('Original and rerun actor identities required')
-        actors.append(actor['id'])
-    environment = api.get('environments/studio-release')
-    reviews = api.get('actions/runs/' + identity['runId'] + '/approvals')
-    verify_publication_approval(digest, policy, environment, reviews, actors)

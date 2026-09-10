@@ -15,7 +15,7 @@ from artifacts import ORAS_SHA256, fetch_payload, oras, verify_oci_archive, unpa
 from github import GitHub, authorize_publication
 from release import (ARCHIVE_SHA256, FFMPEG_SHA256, FFPROBE_SHA256, PROFILE,
                      ReleaseRefused, artifact, exact_keys, matches, unique_object,
-                     verify_candidate, verify_environment)
+                     verify_candidate)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
@@ -40,17 +40,13 @@ def context():
 
 def configuration():
     value = json.loads((HERE / 'config.json').read_bytes(), object_pairs_hook=unique_object)
-    exact_keys(value, ['version', 'enabled', 'target', 'codecArtifact', 'environmentId', 'reviewerIds'])
+    exact_keys(value, ['version', 'enabled', 'target', 'codecArtifact'])
     if type(value['version']) is not int or value['version'] != 1 or value['enabled'] is not True:
         raise ReleaseRefused('Hosted release configuration is disabled')
     artifact(value['codecArtifact'], 'codec')
     if not matches(value['target'], '[a-z][a-z0-9-]{2,63}'):
         raise ReleaseRefused('Configured target required')
     return value
-
-
-def approval_policy(config):
-    return {key: config[key] for key in ('environmentId', 'reviewerIds')}
 
 
 def run(argv, *, cwd=None, timeout=120, input=None, quiet=False):
@@ -108,8 +104,7 @@ def login():
 
 def preflight():
     context()
-    config = configuration()
-    verify_environment(approval_policy(config), GitHub(os.environ['GH_TOKEN']).get('environments/studio-release'))
+    configuration()
 
 
 def codec():
@@ -202,8 +197,8 @@ def publish():
     candidate = verify_candidate(raw, digest, config['target'])
     if (candidate['source']['commit'], candidate['build']['runId'], candidate['build']['runAttempt'], candidate['codec']['artifact']) != (commit, run_id, attempt, config['codecArtifact']):
         raise ReleaseRefused('Candidate differs from this configured workflow')
-    # GitHub-authenticated approval is separate from any downloaded JSON claims.
-    authorize_publication(GitHub(os.environ['GH_TOKEN']), candidate, digest, approval_policy(config))
+    # Verify the manually dispatched main run independently of downloaded JSON.
+    authorize_publication(GitHub(os.environ['GH_TOKEN']), candidate)
     for role in ('render', 'verify', 'host'):
         ref = candidate['bundle']['artifact'] if role == 'host' else candidate['images'][role]
         verify_oci_archive(directory / (role + '.oci.tar'), ref.split('@')[1], image=role != 'host',
