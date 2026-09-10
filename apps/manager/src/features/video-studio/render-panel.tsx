@@ -13,6 +13,7 @@ import {
 } from "@forge/studio-contracts/publication-state"
 import type { EditorSession } from "./editor-session"
 import { studioCall, StudioClientError } from "./client"
+import { prepareRender } from "./prepare-render"
 import { PublicationSubmission } from "./publication-submission"
 
 export default function RenderPanel({
@@ -224,8 +225,10 @@ export default function RenderPanel({
           }
           onClick={() =>
             void run(async () => {
+              const revision = await prepareRender(session, projectId)
               await studioCall("request", {
                 ...base(),
+                expectedRevision: revision,
                 kind: "RENDER",
                 instructions: [],
               })

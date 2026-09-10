@@ -443,19 +443,19 @@ browser supplies commands and expected revisions, while the server signs the
 validated session user's identity. Admin checks current operator membership.
 Delegated OAuth attribution does not grant interactive review authority.
 
-The preview broker is `src/services/studio-broker.ts`; generated code executes in
-`apps/studio-preview`, in a sandboxed iframe on a different registrable site.
-Read `docs/solutions/security-issues/studio-standalone-editor-runtime.md` before
-changing preview isolation, source reuse, deployment configuration or save recovery.
+Live preview runs in an opaque sandboxed browser frame using the fixed bundle
+built by `scripts/build-shorts-preview.mjs`. `src/services/shorts-browser-preview.ts`
+resolves authorized HLS URLs and retained assets; no separate preview service is
+required. Source codec materialization in `src/services/studio-broker.ts` runs on
+explicit render preparation. Read
+`docs/solutions/security-issues/shorts-browser-preview.md` when changing this boundary.
 
 | Variable                       | Purpose                                                                                |
 | ------------------------------ | -------------------------------------------------------------------------------------- |
 | STUDIO_ENVIRONMENT             | Explicit local/preview/production assertion binding; use separate keys per environment |
 | STUDIO_INTERACTIVE_KEY_ID      | Active Manager Ed25519 signing key ID                                                  |
 | STUDIO_INTERACTIVE_PRIVATE_KEY | PKCS8 key; matching Admin `STUDIO_INTERACTIVE_PUBLIC_KEYS` JSON keyring                |
-| STUDIO_PREVIEW_ORIGIN          | Public, distinct-site HTTPS preview origin; loopback allowed for local verification    |
-| STUDIO_PREVIEW_SERVICE_URL     | Server-reachable preview service URL                                                   |
-| STUDIO_PREVIEW_API_KEY         | Dedicated random service credential, also authenticates retained broker codec proofs   |
+| STUDIO_PREVIEW_API_KEY         | Retained render-source proof signing key (legacy variable name; not used for preview)  |
 | STUDIO_FFMPEG_PATH             | Explicit provisioned FFmpeg 7.0.2 proof binary; never a generated-code executor        |
 | STUDIO_FFPROBE_PATH            | Explicit provisioned probe; local verification uses Remotion 4.0.475 bundled n7.1      |
 

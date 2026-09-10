@@ -8,6 +8,12 @@ tags: [studio, nle, remotion, isolation, revisions, interactive-authority]
 
 Validation and reproducible harnesses: `docs/validation/studio-456/README.md`.
 
+## Current preview
+
+The separate-site preview deployment below is historical. The editor now uses
+[the browser preview](shorts-browser-preview.md); codec materialization is deferred
+to explicit render preparation. Canonical authority and revision rules still apply.
+
 ## Trust boundaries
 
 Manager's same-origin cookie endpoint accepts a bounded strict command envelope.

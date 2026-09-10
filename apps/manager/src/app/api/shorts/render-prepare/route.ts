@@ -11,8 +11,8 @@ import {
   StudioBrokerError,
   StudioBrokerBusyError,
 } from "@/services/studio-broker"
-import { prepareBrowserPreview } from "@/services/shorts-browser-preview"
-export const maxDuration = 60
+import { prepareStudioRenderSources } from "@/services/studio-broker"
+export const maxDuration = 300
 export async function POST(request: Request) {
   const actor = await authenticateStudioRequest(request)
   if (actor instanceof NextResponse) return actor
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       .strict()
       .parse(JSON.parse(raw))
     return Response.json(
-      await prepareBrowserPreview(
+      await prepareStudioRenderSources(
         createStudioInteractiveClient(actor),
         input.projectId,
         input.document,

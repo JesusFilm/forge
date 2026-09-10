@@ -74,3 +74,12 @@ recorded there. Deployment configuration and durable boundaries:
 This completes the standalone operator checkpoint. Agent transport/generation and
 production export/publication remain their dependent tickets, including 457,
 458 and 460; no publishing/calendar dependency was added to standalone creation.
+
+## Browser preview simplification — 2026-09-11
+
+Preview now runs from Manager's fixed static browser bundle in an opaque sandbox.
+No separate preview host, session quota, renewal, codec binary or proof key is
+required for editing. Canonical HLS streams directly; retained assets stay scoped.
+Explicit render preparation retains codec verification and saves the prepared
+source references before requesting the exact revision. See
+`docs/solutions/security-issues/shorts-browser-preview.md` for validation and limits.
