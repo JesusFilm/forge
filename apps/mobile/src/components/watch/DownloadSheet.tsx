@@ -288,15 +288,16 @@ export type DownloadMode = "offline" | "raw"
  * wording permanently unexercised.
  */
 export function rawModeLabel(platformOS: string): string {
-  return platformOS === "ios" ? "Download to Photos" : "Download to Gallery"
+  return platformOS === "ios" ? "Save to Photos" : "Save to Gallery"
 }
 
 /**
  * The label carries the whole choice — there is no description beside it — so
- * each one names its destination.
+ * each one names its destination. Short enough to sit on ONE line in a
+ * half-width card; lengthening either one wraps both.
  */
 export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
-  offline: "Download for Offline Watching",
+  offline: "Offline Watching",
   raw: rawModeLabel(Platform.OS),
 }
 
@@ -313,10 +314,6 @@ const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
   offline: "Offline copy selected. The subtitle choice is available.",
   raw: "Device file selected. The subtitle choice is hidden. A saved file carries no subtitles.",
 }
-
-/** R35: stated once, on the first raw selection, and never per file. */
-export const PERSONAL_USE_NOTE =
-  "The saved file is for your personal use. It leaves this app's control when it reaches your device library."
 
 /** R37, per-video sheet: the offline copy names the quality it already holds. */
 export function formatOfflineReuseNote(qualityLabel: string): string {
@@ -343,26 +340,6 @@ export function suspendedInRawMode<T>(
   value: T,
 ): T | undefined {
   return mode === "raw" ? undefined : value
-}
-
-// R35 counts per app session, not per sheet: every sheet mounts fresh, so a
-// component state would repeat the note for every file.
-let personalUseNoteSeen = false
-
-/** Test-only: forget that this session already stated the personal-use note. */
-export function resetPersonalUseNoteForTests(): void {
-  personalUseNoteSeen = false
-}
-
-/** True while the sheet that made the session's first raw selection is open. */
-export function useFirstRawSelectionNotice(mode: DownloadMode): boolean {
-  const [claimed, setClaimed] = useState(false)
-  useEffect(() => {
-    if (mode !== "raw" || personalUseNoteSeen) return
-    personalUseNoteSeen = true
-    setClaimed(true)
-  }, [mode])
-  return claimed && mode === "raw"
 }
 
 /**
@@ -484,7 +461,6 @@ export function DownloadSheetContent({
   // R2: every opening starts here, and nothing writes the choice back.
   const [mode, setMode] = useState<DownloadMode>("offline")
   const rawMode = mode === "raw"
-  const showPersonalUseNote = useFirstRawSelectionNotice(mode)
 
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
   // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
@@ -594,7 +570,6 @@ export function DownloadSheetContent({
 
         <DownloadModeControl mode={mode} onChange={setMode} />
 
-        {showPersonalUseNote && <SheetNote text={PERSONAL_USE_NOTE} />}
         {rawMode && offlineCopyQuality != null && (
           <SheetNote text={formatOfflineReuseNote(offlineCopyQuality)} />
         )}

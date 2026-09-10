@@ -1,7 +1,10 @@
 /**
  * U4: the download mode control on both sheets (R1, R2, R3, R5, R6, R7, R15,
- * R32, R33, R35, R37). Every raw-mode case carries an offline companion,
- * because R3 keeps the offline path exactly as it is today.
+ * R32, R33, R37). Every raw-mode case carries an offline companion, because R3
+ * keeps the offline path exactly as it is today.
+ *
+ * R35's personal-use note is GONE by owner decision (2026-09-11). The Terms of
+ * Use gate is untouched and remains the consent surface.
  *
  * The build-time switch is mocked through a GETTER, not a fresh module
  * registry: `jest.isolateModules` would hand the sheet a second React copy and
@@ -95,11 +98,9 @@ import SeriesDownloadRoute from "../../../../app/series/download"
 import {
   DOWNLOAD_MODE_LABELS,
   DownloadSheetContent,
-  PERSONAL_USE_NOTE,
   formatOfflineReuseNote,
   formatSeriesReuseNote,
   rawModeLabel,
-  resetPersonalUseNoteForTests,
   suspendedInRawMode,
   type DownloadMode,
 } from "../DownloadSheet"
@@ -333,7 +334,6 @@ beforeEach(() => {
     async (_episodes: unknown, choice: { qualityTier: QualityTier }) =>
       buildResolution(choice.qualityTier),
   )
-  resetPersonalUseNoteForTests()
   jest.spyOn(Alert, "alert").mockImplementation(() => undefined)
 })
 
@@ -347,15 +347,15 @@ afterEach(() => {
 // header, no description beside either label.
 describe("mode control copy", () => {
   it("names each mode by its destination", () => {
-    expect(DOWNLOAD_MODE_LABELS.offline).toBe("Download for Offline Watching")
-    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Download to Photos")
+    expect(DOWNLOAD_MODE_LABELS.offline).toBe("Offline Watching")
+    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Save to Photos")
   })
 
   it("names the platform's OWN photos app on each platform", () => {
     // jest runs this app as iOS only, so the Android wording is unreachable
     // through the rendered sheet. Pin the resolver directly instead.
-    expect(rawModeLabel("ios")).toBe("Download to Photos")
-    expect(rawModeLabel("android")).toBe("Download to Gallery")
+    expect(rawModeLabel("ios")).toBe("Save to Photos")
+    expect(rawModeLabel("android")).toBe("Save to Gallery")
   })
 
   it("renders no section header above the two rows", async () => {
@@ -485,18 +485,22 @@ describe("DownloadSheetContent mode control", () => {
   })
 })
 
+// Owner decision 2026-09-11: the sheet states no personal-use note. The Terms
+// of Use gate is unchanged and still the consent surface.
 describe("personal-use note", () => {
-  it("states the personal-use terms on the first raw selection only", async () => {
-    const first = await renderSheet()
-    expect(hasText(first, PERSONAL_USE_NOTE)).toBe(false)
-    await chooseMode(first, "raw")
-    expect(hasText(first, PERSONAL_USE_NOTE)).toBe(true)
-    await unmount(first)
-
-    const second = await renderSheet()
-    await chooseMode(second, "raw")
-    expect(hasText(second, PERSONAL_USE_NOTE)).toBe(false)
-    await unmount(second)
+  it("states no personal-use note in raw mode", async () => {
+    const renderer = await renderSheet()
+    await chooseMode(renderer, "raw")
+    expect(hasText(renderer, "for your personal use")).toBe(false)
+    expect(hasText(renderer, "leaves this app's control")).toBe(false)
+    // Anti-vacuous: raw mode IS selected — its own CTA is on screen — and the
+    // Terms gate still holds the download, so the two false assertions above
+    // are not passing because nothing rendered.
+    expect(nodeByLabel(renderer, "Save video to the device")).not.toBeNull()
+    expect(
+      nodeByLabel(renderer, "Save video to the device")?.props.disabled,
+    ).toBe(true)
+    await unmount(renderer)
   })
 })
 

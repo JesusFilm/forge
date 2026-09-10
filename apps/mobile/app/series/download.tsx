@@ -15,12 +15,10 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import {
   DownloadModeControl,
   Dropdown,
-  PERSONAL_USE_NOTE,
   SheetNote,
   TermsModal,
   formatSeriesReuseNote,
   suspendedInRawMode,
-  useFirstRawSelectionNotice,
   type DownloadMode,
   type DropdownOption,
 } from "../../src/components/watch/DownloadSheet"
@@ -105,7 +103,6 @@ export default function SeriesDownloadRoute() {
   // R2: every opening starts on the offline mode, and nothing writes it back.
   const [mode, setMode] = useState<DownloadMode>("offline")
   const rawMode = mode === "raw"
-  const showPersonalUseNote = useFirstRawSelectionNotice(mode)
 
   const [phase, setPhase] = useState<SheetPhase>({ kind: "resolving" })
   const [storageError, setStorageError] = useState<string | null>(null)
@@ -501,7 +498,6 @@ export default function SeriesDownloadRoute() {
 
       <DownloadModeControl mode={mode} onChange={setMode} />
 
-      {showPersonalUseNote && <SheetNote text={PERSONAL_USE_NOTE} />}
       {rawMode && reuse.offlineCount > 0 && (
         <SheetNote
           text={formatSeriesReuseNote(reuse.reusableCount, reuse.totalCount)}
