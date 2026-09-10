@@ -17,6 +17,7 @@ const exportEntry = (
   seriesSlug: null,
   progress: 0.42,
   cancelRequested: false,
+  paused: false,
   ...overrides,
 })
 
@@ -131,28 +132,59 @@ describe("downloadGlyphInfo", () => {
     }
   })
 
-  describe("raw export (R16, R24)", () => {
-    it("shows the export as its own state, distinct from every offline one", () => {
+  // Owner decision 2026-09-10: an export reads as a download. Same arrow, same
+  // red ring, and the ring IS a pause/resume control. This supersedes R16's
+  // tell-them-apart styling and R24's cancel-only rule.
+  describe("raw export mirrors the offline affordance (R16, R24 revised)", () => {
+    it("uses the offline download arrow and the offline red, not a white export state", () => {
       const g = downloadGlyphInfo(null, null, exportEntry())
       expect(g.inProgress).toBe(true)
-      expect(g.icon).toBe("arrow-up")
-      expect(g.ringIcon).toBe("arrow-up")
+      expect(g.icon).toBe("arrow-down")
+      expect(g.color).toBe(ACCENT_ON_DARK)
       expect(g.color).toBe(EXPORT_IN_PROGRESS_COLOR)
-      expect(g.color).not.toBe(ACCENT_ON_DARK)
       expect(g.ringProgress).toBe(0.42)
     })
 
-    it("names the export in the label and never offers a pause", () => {
+    it("puts a pause in the ring while running, and offers the tap", () => {
       const g = downloadGlyphInfo(null, null, exportEntry())
-      expect(g.a11yLabel).toBe("Saving to Photos, 42%")
-      expect(g.a11yLabel.toLowerCase()).not.toContain("pause")
-      expect(g.interactive).toBe(false)
+      expect(g.ringIcon).toBe("pause")
+      expect(g.a11yLabel).toBe("Saving to Photos, 42%. Tap to pause")
+      expect(g.interactive).toBe(true)
+    })
+
+    it("swaps the pause for a resume triangle once paused", () => {
+      const g = downloadGlyphInfo(null, null, exportEntry({ paused: true }))
+      expect(g.ringIcon).toBe("play")
+      expect(g.icon).toBe("pause")
+      expect(g.color).toBe(ACCENT_ON_DARK)
+      expect(g.a11yLabel).toBe(
+        "Saving to Photos, paused at 42%. Tap to resume or stop",
+      )
+      expect(g.interactive).toBe(true)
+    })
+
+    it("keeps the paused ring at the progress it reached", () => {
+      // The bytes survive a pause, so the arc must not reset to zero.
+      expect(
+        downloadGlyphInfo(
+          null,
+          null,
+          exportEntry({ paused: true, progress: 0.7 }),
+        ).ringProgress,
+      ).toBe(0.7)
     })
 
     it("drops the percentage until the transfer reports one", () => {
       expect(
         downloadGlyphInfo(null, null, exportEntry({ progress: 0 })).a11yLabel,
-      ).toBe("Saving to Photos")
+      ).toBe("Saving to Photos. Tap to pause")
+      expect(
+        downloadGlyphInfo(
+          null,
+          null,
+          exportEntry({ progress: 0, paused: true }),
+        ).a11yLabel,
+      ).toBe("Saving to Photos, paused. Tap to resume or stop")
     })
 
     it("clamps an out-of-range export progress", () => {
@@ -177,9 +209,11 @@ describe("downloadGlyphInfo", () => {
       ]
       for (const state of states) {
         const g = downloadGlyphInfo(state, 0.9, exportEntry())
-        expect(g.ringIcon).toBe("arrow-up")
-        expect(g.interactive).toBe(false)
+        // The export's OWN progress and its own control, never the offline
+        // record's — 0.9 here would be the offline transfer's.
+        expect(g.ringIcon).toBe("pause")
         expect(g.ringProgress).toBe(0.42)
+        expect(g.a11yLabel).toContain("Saving to Photos")
       }
     })
 
@@ -192,7 +226,7 @@ describe("downloadGlyphInfo", () => {
     })
   })
 
-  it("emits exactly one glyph beyond the five offline ones", () => {
+  it("adds NO glyph of its own — an export reuses the offline vocabulary", () => {
     const states: (OfflineDownloadState | null | undefined)[] = [
       null,
       undefined,
@@ -203,7 +237,9 @@ describe("downloadGlyphInfo", () => {
       "downloaded",
       "canceled",
     ]
-    const offline = new Set(states.map((s) => downloadGlyphInfo(s, 0.5).icon))
+    const offline = new Set<string>(
+      states.map((s) => downloadGlyphInfo(s, 0.5).icon),
+    )
     expect([...offline].sort()).toEqual([
       "alert-circle-outline",
       "arrow-down",
@@ -211,8 +247,16 @@ describe("downloadGlyphInfo", () => {
       "download-outline",
       "pause",
     ])
-    const withExport = new Set(offline)
-    withExport.add(downloadGlyphInfo(null, null, exportEntry()).icon)
-    expect(withExport.size).toBe(offline.size + 1)
+    // Both export states draw from the SAME five. Falsify by restoring
+    // "arrow-up" on either branch and this goes red.
+    const withExport = new Set<string>(offline)
+    for (const entry of [exportEntry(), exportEntry({ paused: true })]) {
+      const g = downloadGlyphInfo(null, null, entry)
+      withExport.add(g.icon)
+      withExport.add(g.ringIcon)
+    }
+    // "play" is the ring-only resume glyph the offline paused state already
+    // uses, so the union grows by exactly that one and nothing else.
+    expect([...withExport].sort()).toEqual([...offline, "play"].sort())
   })
 })

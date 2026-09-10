@@ -57,17 +57,23 @@ const state = (
   exporting: false,
   exportProgress: 0,
   exportingSlugs: [],
+
+  pausedExport: false,
   ...overrides,
 })
 
 const onDownload = jest.fn()
-const onCancelExport = jest.fn()
+const onPauseExport = jest.fn()
+const onResumeExport = jest.fn()
 
-// `null` means the route wired no cancel handler. It cannot be `undefined`: a
+// `null` means the route wired no export handlers. It cannot be `undefined`: a
 // default parameter fires for an explicit undefined, restoring the handler.
 async function render(
   downloadState: SeriesDownloadState,
-  cancel: (() => void) | null = onCancelExport,
+  exportHandlers: { pause: () => void; resume: () => void } | null = {
+    pause: onPauseExport,
+    resume: onResumeExport,
+  },
 ): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
@@ -78,7 +84,8 @@ async function render(
         onDownload={onDownload}
         onShare={() => {}}
         downloadState={downloadState}
-        onCancelExport={cancel ?? undefined}
+        onPauseExport={exportHandlers?.pause}
+        onResumeExport={exportHandlers?.resume}
       />,
     )
   })
@@ -113,7 +120,8 @@ async function pressAll(nodes: RenderedNode[]) {
 beforeEach(() => {
   mockIcons.length = 0
   onDownload.mockClear()
-  onCancelExport.mockClear()
+  onPauseExport.mockClear()
+  onResumeExport.mockClear()
 })
 
 describe("SeriesActionRow download-all control", () => {
@@ -122,30 +130,46 @@ describe("SeriesActionRow download-all control", () => {
       exporting: true,
       exportProgress: 0.4,
       exportingSlugs: ["b"],
+
+      pausedExport: false,
     })
 
-    it("names the export and never speaks of a pause (R16, R24)", async () => {
+    it("offers the pause while the export runs (R16, R24 revised)", async () => {
       const renderer = await render(exporting)
-      const label = downloadLabel(renderer)
-      expect(label).toBe("Saving to Photos. Tap to cancel")
-      expect(label.toLowerCase()).not.toContain("pause")
+      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
     })
 
-    it("draws the export glyph in the ring", async () => {
+    it("draws the RED pause in the ring, like an offline download", async () => {
       await render(exporting)
       const names = mockIcons.map((icon) => icon.name)
-      expect(names).toContain("arrow-up")
-      expect(names).not.toContain("pause")
-      expect(mockIcons.find((icon) => icon.name === "arrow-up")?.color).toBe(
+      expect(names).toContain("pause")
+      expect(names).not.toContain("arrow-up")
+      expect(mockIcons.find((icon) => icon.name === "pause")?.color).toBe(
         EXPORT_IN_PROGRESS_COLOR,
       )
     })
 
-    it("reaches the cancel control, never the pause-all handler (R30)", async () => {
+    it("reaches the export's pause, never the pause-all handler (R30)", async () => {
       const renderer = await render(exporting)
-      await pressAll(labelled(renderer, "Saving to Photos. Tap to cancel"))
-      expect(onCancelExport).toHaveBeenCalledTimes(1)
+      await pressAll(labelled(renderer, "Saving to Photos. Tap to pause"))
+      expect(onPauseExport).toHaveBeenCalledTimes(1)
       expect(onDownload).not.toHaveBeenCalled()
+    })
+
+    it("swaps to the resume triangle and reaches resume once paused", async () => {
+      const paused = state({
+        exporting: true,
+        exportProgress: 0.4,
+        exportingSlugs: ["b"],
+        pausedExport: true,
+      })
+      const renderer = await render(paused)
+      const label = downloadLabel(renderer)
+      expect(label).toBe("Saving to Photos, paused. Tap to resume or stop")
+      expect(mockIcons.map((icon) => icon.name)).toContain("play")
+      await pressAll(labelled(renderer, label))
+      expect(onResumeExport).toHaveBeenCalledTimes(1)
+      expect(onPauseExport).not.toHaveBeenCalled()
     })
 
     it("shows the export over live episode downloads (R16)", async () => {
@@ -154,13 +178,15 @@ describe("SeriesActionRow download-all control", () => {
           exporting: true,
           exportProgress: 0.4,
           exportingSlugs: ["b"],
+
+          pausedExport: false,
           inProgress: true,
           inFlightSlugs: ["a"],
           progress: 0.7,
         }),
       )
-      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to cancel")
-      await pressAll(labelled(renderer, "Saving to Photos. Tap to cancel"))
+      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
+      await pressAll(labelled(renderer, "Saving to Photos. Tap to pause"))
       expect(onDownload).not.toHaveBeenCalled()
     })
 
@@ -171,15 +197,17 @@ describe("SeriesActionRow download-all control", () => {
           exporting: true,
           exportProgress: 0.4,
           exportingSlugs: ["b"],
+
+          pausedExport: false,
         }),
       )
-      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to cancel")
+      expect(downloadLabel(renderer)).toBe("Saving to Photos. Tap to pause")
       expect(mockIcons.map((icon) => icon.name)).not.toContain(
         "checkmark-circle-outline",
       )
     })
 
-    it("promises no tap it cannot honour when no cancel is wired", async () => {
+    it("promises no tap it cannot honour when no handler is wired", async () => {
       const renderer = await render(exporting, null)
       const label = downloadLabel(renderer)
       expect(label).toBe("Saving to Photos")
@@ -204,7 +232,7 @@ describe("SeriesActionRow download-all control", () => {
       expect(mockIcons.map((icon) => icon.name)).toContain("pause")
       await pressAll(labelled(renderer, label))
       expect(onDownload).toHaveBeenCalledTimes(1)
-      expect(onCancelExport).not.toHaveBeenCalled()
+      expect(onPauseExport).not.toHaveBeenCalled()
     })
 
     it("keeps the resume affordance while episodes are paused", async () => {

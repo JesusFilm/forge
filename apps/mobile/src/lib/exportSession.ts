@@ -82,6 +82,12 @@ export type ExportSessionEntry = {
   /** Transfer progress, 0 to 1. */
   progress: number
   cancelRequested: boolean
+  /**
+   * The viewer paused this export. The slot stays HELD while paused: releasing
+   * it clears the staging note and deletes the partial file the pause exists to
+   * keep. Process-local — a paused export does not survive a relaunch.
+   */
+  paused: boolean
 }
 
 export type ExportSessionSnapshot = {
@@ -104,6 +110,8 @@ export type ExportRunHandle = {
   /** Publish transfer progress; a fraction outside 0 to 1 is clamped. */
   publishProgress: (fraction: number) => void
   isCancelRequested: () => boolean
+  /** True while the viewer has this export paused (R24 revised). */
+  isPauseRequested: () => boolean
   /** Write (or refresh) the staging note for the file being staged. */
   stage: (args: {
     stagedPath: string
@@ -126,6 +134,10 @@ export type ExportRunInput = {
   seriesSlug?: string | null
   /** Stops the underlying transfer when the viewer cancels (R22, R30). */
   onCancel?: () => void
+  /** Suspends the underlying transfer, keeping its task handle and its bytes. */
+  onPause?: () => void
+  /** Continues the suspended transfer in place — never a restart from zero. */
+  onResume?: () => void
 }
 
 export type ExportRunResult =
@@ -181,6 +193,8 @@ export function createExportSessionStore(deps?: {
   let snapshot: ExportSessionSnapshot = EMPTY_SNAPSHOT
   const entries = new Map<string, ExportSessionEntry>()
   const cancellers = new Map<string, () => void>()
+  const pausers = new Map<string, () => void>()
+  const resumers = new Map<string, () => void>()
   const listeners = new Set<() => void>()
 
   let targets: ReadonlySet<string> = EMPTY_TARGETS
@@ -303,9 +317,12 @@ export function createExportSessionStore(deps?: {
         seriesSlug: input.seriesSlug ?? null,
         progress: 0,
         cancelRequested: false,
+        paused: false,
       })
       try {
         if (input.onCancel) cancellers.set(target, input.onCancel)
+        if (input.onPause) pausers.set(target, input.onPause)
+        if (input.onResume) resumers.set(target, input.onResume)
         commit()
         const live = (): ExportSessionEntry | undefined => {
           const entry = entries.get(target)
@@ -324,6 +341,9 @@ export function createExportSessionStore(deps?: {
           },
           isCancelRequested() {
             return live()?.cancelRequested ?? false
+          },
+          isPauseRequested() {
+            return live()?.paused ?? false
           },
           async stage({ stagedPath, albumIntent, runSize }) {
             await mutateNotes((notes) => {
@@ -376,6 +396,8 @@ export function createExportSessionStore(deps?: {
           // nothing, because the entry it reads is already gone.
           entries.delete(target)
           cancellers.delete(target)
+          pausers.delete(target)
+          resumers.delete(target)
           commit()
         }
       }
@@ -390,6 +412,31 @@ export function createExportSessionStore(deps?: {
         commit()
       }
       cancellers.get(target)?.()
+      return true
+    },
+
+    /**
+     * Viewer pause. The flag is set BEFORE the transfer is asked to suspend, so
+     * the port can tell this apart from a real cancel — the native engine
+     * reports a pause AS a cancellation, and the offline path survives it the
+     * same way (downloadLifecycle's `wasPaused`).
+     */
+    requestPause(target: string): boolean {
+      const entry = entries.get(target)
+      if (!entry || entry.cancelRequested || entry.paused) return false
+      entries.set(target, { ...entry, paused: true })
+      commit()
+      pausers.get(target)?.()
+      return true
+    },
+
+    /** Viewer resume. Continues the suspended transfer, never a restart. */
+    requestResume(target: string): boolean {
+      const entry = entries.get(target)
+      if (!entry || entry.cancelRequested || !entry.paused) return false
+      entries.set(target, { ...entry, paused: false })
+      commit()
+      resumers.get(target)?.()
       return true
     },
 

@@ -41,9 +41,11 @@ const BADGE: Record<
     a11y: "queued",
   },
   paused: { icon: "pause-circle", color: "#f5c451", a11y: "paused" },
-  // R16: the export outranks the offline state, so it gets its own glyph here.
+  // R16: the export outranks the offline state. Same arrow as a download now
+  // (owner decision 2026-09-10) — the export red is what tells them apart.
+  // Decorative: this badge has no tap, so it draws no pause/resume split.
   exporting: {
-    icon: "arrow-up-circle",
+    icon: "arrow-down-circle",
     color: EXPORT_IN_PROGRESS_COLOR,
     a11y: "saving to Photos",
   },

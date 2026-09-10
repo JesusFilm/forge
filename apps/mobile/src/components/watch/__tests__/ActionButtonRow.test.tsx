@@ -1,8 +1,11 @@
 /**
- * AE12 / R16 / R24 on the RENDERED control. The resolver's return value is not
- * the seam KTD6 names: this row used to compute its own in-progress glyph and
- * label, so a widened resolver alone would leave the ring offering a pause.
- * Every assertion here reads the rendered Pressable and the glyph inside it.
+ * AE12 / R16 on the RENDERED control. The resolver's return value is not the
+ * seam KTD6 names: this row used to compute its own in-progress glyph and
+ * label, so a widened resolver alone would leave the two disagreeing. Every
+ * assertion here reads the rendered Pressable and the glyph inside it.
+ *
+ * R24 is REVISED (owner, 2026-09-10): an export now offers pause and resume,
+ * drawn exactly like an offline download.
  */
 
 jest.mock("react", () => {
@@ -34,6 +37,7 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
 import { act } from "react"
 
 import { ActionButtonRow } from "../ActionButtonRow"
+import { ACCENT_ON_DARK } from "../../../lib/color"
 import { EXPORT_IN_PROGRESS_COLOR } from "../../../lib/downloadGlyph"
 import type { ExportSessionEntry } from "../../../lib/exportSession"
 import type { OfflineDownloadState } from "../../../lib/offlineManifest"
@@ -56,6 +60,7 @@ const exportEntry = (
   seriesSlug: null,
   progress: 0.42,
   cancelRequested: false,
+  paused: false,
   ...overrides,
 })
 
@@ -118,33 +123,44 @@ beforeEach(() => {
 
 describe("ActionButtonRow download control", () => {
   describe("with a raw export in flight (AE12)", () => {
-    it("names the export and never speaks of a pause", async () => {
+    it("names the export and offers the pause", async () => {
       const renderer = await render({ exportEntry: exportEntry() })
-      const label = downloadLabel(renderer)
-      expect(label).toBe("Saving to Photos, 42%")
-      expect(label.toLowerCase()).not.toContain("pause")
-    })
-
-    it("neither opens the sheet nor pauses the transfer when pressed", async () => {
-      const renderer = await render({ exportEntry: exportEntry() })
-      const nodes = labelled(renderer, "Saving to Photos, 42%")
-      expect(nodes.length).toBeGreaterThan(0)
-      expect(nodes.some((n) => typeof n.props.onPress === "function")).toBe(
-        false,
+      expect(downloadLabel(renderer)).toBe(
+        "Saving to Photos, 42%. Tap to pause",
       )
-      expect(nodes.some((n) => n.props.disabled === true)).toBe(true)
-      await pressAll(nodes)
-      expect(onDownload).not.toHaveBeenCalled()
     })
 
-    it("draws the export glyph in the ring, not a download one", async () => {
+    it("routes the press to the caller so it can pause the EXPORT", async () => {
+      const renderer = await render({ exportEntry: exportEntry() })
+      const nodes = labelled(renderer, "Saving to Photos, 42%. Tap to pause")
+      expect(nodes.length).toBeGreaterThan(0)
+      expect(nodes.some((n) => n.props.disabled === true)).toBe(false)
+      await pressAll(nodes)
+      expect(onDownload).toHaveBeenCalledTimes(1)
+    })
+
+    it("draws the RED pause inside the ring, like an offline download", async () => {
       await render({ exportEntry: exportEntry() })
       const names = mockIcons.map((icon) => icon.name)
-      expect(names).toContain("arrow-up")
-      expect(names).not.toContain("pause")
-      expect(names).not.toContain("arrow-down")
-      expect(mockIcons.find((icon) => icon.name === "arrow-up")?.color).toBe(
+      expect(names).toContain("pause")
+      expect(names).not.toContain("arrow-up")
+      expect(mockIcons.find((icon) => icon.name === "pause")?.color).toBe(
         EXPORT_IN_PROGRESS_COLOR,
+      )
+      expect(EXPORT_IN_PROGRESS_COLOR).toBe(ACCENT_ON_DARK)
+    })
+
+    it("draws the resume triangle once the export is paused", async () => {
+      const renderer = await render({
+        exportEntry: exportEntry({ paused: true }),
+      })
+      expect(downloadLabel(renderer)).toBe(
+        "Saving to Photos, paused at 42%. Tap to resume or stop",
+      )
+      const names = mockIcons.map((icon) => icon.name)
+      expect(names).toContain("play")
+      expect(mockIcons.find((icon) => icon.name === "play")?.color).toBe(
+        ACCENT_ON_DARK,
       )
     })
 
@@ -153,20 +169,24 @@ describe("ActionButtonRow download control", () => {
         downloadState: "downloaded",
         exportEntry: exportEntry(),
       })
-      expect(downloadLabel(renderer)).toBe("Saving to Photos, 42%")
-      const names = mockIcons.map((icon) => icon.name)
-      expect(names).toContain("arrow-up")
-      expect(names).not.toContain("checkmark-circle-outline")
+      expect(downloadLabel(renderer)).toBe(
+        "Saving to Photos, 42%. Tap to pause",
+      )
+      expect(mockIcons.map((icon) => icon.name)).not.toContain(
+        "checkmark-circle-outline",
+      )
     })
 
-    it("shows the export over a live offline transfer (R16)", async () => {
+    it("shows the export's own progress over a live offline transfer (R16)", async () => {
       const renderer = await render({
         downloadState: "downloading",
         downloadProgress: 0.9,
         exportEntry: exportEntry(),
       })
-      expect(downloadLabel(renderer)).toBe("Saving to Photos, 42%")
-      expect(mockIcons.map((icon) => icon.name)).not.toContain("pause")
+      // The offline transfer is at 90%; the label must be the EXPORT's 42%.
+      expect(downloadLabel(renderer)).toBe(
+        "Saving to Photos, 42%. Tap to pause",
+      )
     })
   })
 

@@ -68,6 +68,8 @@ export type ExportTransferPort = {
     hooks: RawExportTransferHooks,
   ) => Promise<RawExportTransferReport>
   stopExportTransfer: (taskId: string) => Promise<void>
+  pauseExportTransfer: (taskId: string) => Promise<void>
+  resumeExportTransfer: (taskId: string) => Promise<void>
   signalBackgroundCompletion: (taskId: string) => void
 }
 
@@ -222,6 +224,12 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
         seriesSlug: input.seriesSlug ?? null,
         onCancel: () => {
           void deps.port.stopExportTransfer(taskId)
+        },
+        onPause: () => {
+          void deps.port.pauseExportTransfer(taskId)
+        },
+        onResume: () => {
+          void deps.port.resumeExportTransfer(taskId)
         },
       },
       async (handle): Promise<ExportOutcome> => {
@@ -462,10 +470,22 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
     return store().requestCancel(videoSlug)
   }
 
+  /** The viewer's pause channel. The slot and the partial file both survive. */
+  function pauseExport(videoSlug: string): boolean {
+    return store().requestPause(videoSlug)
+  }
+
+  /** The viewer's resume channel — continues in place, never a restart. */
+  function resumeExport(videoSlug: string): boolean {
+    return store().requestResume(videoSlug)
+  }
+
   return {
     exportVideo,
     completeStagedExport,
     discardStagedExport,
     cancelExport,
+    pauseExport,
+    resumeExport,
   }
 }

@@ -80,8 +80,21 @@ describe("SeriesEpisodeCard download badge", () => {
   it("draws the export badge and speaks the export (R16)", async () => {
     const renderer = await render("exporting")
     expect(cardLabel(renderer)).toBe("Episode One, saving to Photos")
-    expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-up-circle"])
+    // Same arrow as a download badge now; the export red is what separates
+    // them (owner decision 2026-09-10).
+    expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
     expect(mockIcons[0].color).toBe(EXPORT_IN_PROGRESS_COLOR)
+  })
+
+  it("is told apart from a plain download by COLOUR, not by glyph", async () => {
+    const exporting = await render("exporting")
+    const exportColor = mockIcons[0].color
+    expect(cardLabel(exporting)).toBe("Episode One, saving to Photos")
+
+    mockIcons.length = 0
+    await render("downloading")
+    expect(mockIcons.map((icon) => icon.name)).toEqual(["arrow-down-circle"])
+    expect(mockIcons[0].color).not.toBe(exportColor)
   })
 
   // Anti-vacuous control: the offline badges still render their own glyphs.

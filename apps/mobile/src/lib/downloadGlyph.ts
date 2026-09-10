@@ -2,7 +2,6 @@ import {
   ACCENT_ON_DARK,
   STATUS_DONE_COLOR,
   STATUS_FAILED_COLOR,
-  TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "./color"
 import { clampFraction, type ExportSessionEntry } from "./exportSession"
@@ -13,10 +12,12 @@ export const DOWNLOAD_DONE_COLOR = STATUS_DONE_COLOR
 /** Rose for a failed transfer (retry). */
 export const DOWNLOAD_FAILED_COLOR = STATUS_FAILED_COLOR
 /**
- * One colour for a raw export on every indicator. It is NOT the download accent
- * on purpose: R16 wants a state the viewer tells apart from the offline ones.
+ * One colour for a raw export on every indicator. It is the SAME red the
+ * offline ring uses, by owner decision (2026-09-10): an export is a download
+ * and reads as one. This supersedes R16's tell-them-apart styling, which had
+ * this at TEXT_PRIMARY (white).
  */
-export const EXPORT_IN_PROGRESS_COLOR = TEXT_PRIMARY
+export const EXPORT_IN_PROGRESS_COLOR = ACCENT_ON_DARK
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
   new Set<OfflineDownloadState>(["downloading", "queued", "paused"])
@@ -93,16 +94,36 @@ export function downloadGlyphInfo(
   exporting?: ExportSessionEntry | null,
 ): DownloadGlyphInfo {
   // R16: an export outranks every offline state, a finished copy included.
+  // It now mirrors the offline affordance exactly — same arrow, same red ring,
+  // pause while running, resume once paused (owner decision, 2026-09-10;
+  // supersedes R24's cancel-only control).
   if (exporting) {
     const pct = percentOf(exporting.progress)
+    if (exporting.paused) {
+      return {
+        inProgress: true,
+        icon: "pause",
+        color: EXPORT_IN_PROGRESS_COLOR,
+        a11yLabel:
+          pct != null
+            ? `Saving to Photos, paused at ${pct}%. Tap to resume or stop`
+            : "Saving to Photos, paused. Tap to resume or stop",
+        ringIcon: "play",
+        ringProgress: clampFraction(exporting.progress),
+        interactive: true,
+      }
+    }
     return {
       inProgress: true,
-      icon: "arrow-up",
+      icon: "arrow-down",
       color: EXPORT_IN_PROGRESS_COLOR,
-      a11yLabel: pct != null ? `Saving to Photos, ${pct}%` : "Saving to Photos",
-      ringIcon: "arrow-up",
+      a11yLabel:
+        pct != null
+          ? `Saving to Photos, ${pct}%. Tap to pause`
+          : "Saving to Photos. Tap to pause",
+      ringIcon: "pause",
       ringProgress: clampFraction(exporting.progress),
-      interactive: false,
+      interactive: true,
     }
   }
   if (state != null && IN_PROGRESS_STATES.has(state)) {

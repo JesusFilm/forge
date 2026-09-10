@@ -11,6 +11,8 @@ import { publishExportReport } from "../components/ExportReportHost"
 import { datadogLog } from "./datadog"
 import {
   notifyIosBackgroundComplete,
+  pauseTask,
+  resumeTask,
   startMediaDownload,
   stopTask,
 } from "./downloadEngine"
@@ -76,6 +78,8 @@ export function getRawExportAdapter(): RawExportAdapter {
     port: createTransferPort({
       start: startMediaDownload,
       stop: stopTask,
+      pause: pauseTask,
+      resume: resumeTask,
       notifyBackgroundComplete: notifyIosBackgroundComplete,
     }),
     fs: {

@@ -209,10 +209,14 @@ function fakeEngine() {
   const holder: { handlers: MediaDownloadHandlers | null } = { handlers: null }
   const task = { id: "native-task" } as unknown as EngineTask
   const stop = jest.fn(async () => undefined)
+  const pause = jest.fn(async () => undefined)
+  const resume = jest.fn(async () => undefined)
   const notifyBackgroundComplete = jest.fn()
   return {
     started,
     stop,
+    pause,
+    resume,
     notifyBackgroundComplete,
     task,
     handlers: () => {
@@ -226,6 +230,8 @@ function fakeEngine() {
         return task
       },
       stop,
+      pause,
+      resume,
       notifyBackgroundComplete,
     },
   }
@@ -377,6 +383,113 @@ describe("createTransferPort", () => {
       },
     })
     expect(() => throwing.signalBackgroundCompletion(SPEC.id)).not.toThrow()
+  })
+})
+
+/**
+ * The viewer's pause. The native engine reports a pause AS a cancellation, and
+ * the vendor suppresses that event on a HEALTHY pause — so the leak is a race a
+ * device smoke test will not show. Only firing the event at a paused entry
+ * proves the guard is there.
+ */
+describe("pause and resume (R24 revised)", () => {
+  const paused = () => ({ kind: "userCancel" }) as const
+
+  it("suspends without settling, so the run keeps its slot and its bytes", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    let settled = false
+    const running = port
+      .runExportTransfer(SPEC, {})
+      .then((report) => ((settled = true), report))
+
+    await port.pauseExportTransfer(SPEC.id)
+    expect(engine.pause).toHaveBeenCalledWith(engine.task)
+
+    // The engine's pause-as-cancel arrives; it must be swallowed.
+    engine
+      .handlers()
+      .onInterruption({ state: "canceled", keepBytes: false }, undefined)
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    // A swallowed pause must NOT tell iOS the background job is finished.
+    expect(engine.notifyBackgroundComplete).not.toHaveBeenCalled()
+
+    await port.resumeExportTransfer(SPEC.id)
+    expect(engine.resume).toHaveBeenCalledWith(engine.task)
+
+    engine.handlers().onDone({ location: "/f.mp4", bytesTotal: 10 })
+    await expect(running).resolves.toMatchObject({ kind: "done" })
+  })
+
+  it("anti-vacuous: the SAME interruption settles when NOT paused", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+    engine
+      .handlers()
+      .onInterruption({ state: "canceled", keepBytes: false }, undefined)
+    await expect(running).resolves.toMatchObject({
+      kind: "interrupted",
+      interruption: paused(),
+    })
+  })
+
+  it("a real failure DURING a pause still settles — connectivity is the catch-all", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+    await port.pauseExportTransfer(SPEC.id)
+    // Not a userCancel, so the swallow must not apply.
+    engine
+      .handlers()
+      .onInterruption({ state: "failed", keepBytes: true }, undefined)
+    await expect(running).resolves.toMatchObject({ kind: "interrupted" })
+  })
+
+  it("stop while PAUSED settles the promise itself — the engine never will", async () => {
+    // Without this the run awaits forever: the target's session slot, its
+    // staging directory and the engine-config fence are all held for the life
+    // of the process, and every retry answers already-exporting.
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+    await port.pauseExportTransfer(SPEC.id)
+    await port.stopExportTransfer(SPEC.id)
+    await expect(running).resolves.toMatchObject({
+      kind: "interrupted",
+      interruption: paused(),
+    })
+    expect(engine.stop).toHaveBeenCalledWith(engine.task)
+  })
+
+  it("stop while RUNNING settles too, without waiting on an engine event", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    const running = port.runExportTransfer(SPEC, {})
+    await port.stopExportTransfer(SPEC.id)
+    await expect(running).resolves.toMatchObject({ kind: "interrupted" })
+  })
+
+  it("ignores pause and resume for an id it does not hold", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    await port.pauseExportTransfer("rawexport:missing")
+    await port.resumeExportTransfer("rawexport:missing")
+    expect(engine.pause).not.toHaveBeenCalled()
+    expect(engine.resume).not.toHaveBeenCalled()
+  })
+
+  it("is idempotent: a second pause or resume does not re-ask the engine", async () => {
+    const engine = fakeEngine()
+    const port = createTransferPort(engine.deps)
+    void port.runExportTransfer(SPEC, {})
+    await port.pauseExportTransfer(SPEC.id)
+    await port.pauseExportTransfer(SPEC.id)
+    expect(engine.pause).toHaveBeenCalledTimes(1)
+    await port.resumeExportTransfer(SPEC.id)
+    await port.resumeExportTransfer(SPEC.id)
+    expect(engine.resume).toHaveBeenCalledTimes(1)
   })
 })
 

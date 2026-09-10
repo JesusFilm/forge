@@ -398,6 +398,8 @@ function adapterHarness(seedFiles: Record<string, string>) {
         }),
       ),
       stopExportTransfer: jest.fn(async () => undefined),
+      pauseExportTransfer: jest.fn(async () => undefined),
+      resumeExportTransfer: jest.fn(async () => undefined),
       signalBackgroundCompletion: jest.fn(),
     },
     fs: {

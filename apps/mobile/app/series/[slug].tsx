@@ -299,29 +299,43 @@ export default function SeriesScreen() {
     downloadState.inFlightSlugs.forEach((slug) => void pauseDownload(slug))
   }, [downloadState.inFlightSlugs, pauseDownload])
 
-  // R30: the only route to a running export's cancel, since the sheet has
-  // dismissed. R22 keeps every episode already saved to the device library.
-  const handleCancelExport = useCallback(() => {
+  // Running → the ring's pause glyph suspends every exporting episode. The
+  // bytes and the staged files survive (owner decision 2026-09-10; supersedes
+  // R24's cancel-only control).
+  const handlePauseExport = useCallback(() => {
     const store = getExportSessionStore()
-    const stopAll = () =>
-      downloadState.exportingSlugs.forEach((slug) => store.requestCancel(slug))
-    const STOP = "Stop saving"
+    downloadState.exportingSlugs.forEach((slug) => store.requestPause(slug))
+  }, [downloadState.exportingSlugs])
+
+  // Paused → resume, or stop. Stop ends the WHOLE remaining run, not just this
+  // episode, so the wording says so. R22 keeps every episode already saved.
+  const handleResumeExport = useCallback(() => {
+    const store = getExportSessionStore()
+    const slugs = downloadState.exportingSlugs
+    const resumeAll = () => slugs.forEach((slug) => store.requestResume(slug))
+    const stopAll = () => slugs.forEach((slug) => store.requestCancel(slug))
+    const STOP =
+      slugs.length > 1 ? "Stop Download (all episodes)" : "Stop Download"
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [STOP, "Keep saving"],
+          title: "Saving to Photos",
+          message: "This export is paused.",
+          options: [STOP, "Resume", "Cancel"],
           destructiveButtonIndex: 0,
-          cancelButtonIndex: 1,
+          cancelButtonIndex: 2,
           userInterfaceStyle: "dark",
         },
         (index) => {
           if (index === 0) stopAll()
+          else if (index === 1) resumeAll()
         },
       )
     } else {
-      Alert.alert("Saving to Photos", undefined, [
+      Alert.alert("Saving to Photos", "This export is paused.", [
         { text: STOP, style: "destructive", onPress: stopAll },
-        { text: "Keep saving", style: "cancel" },
+        { text: "Resume", onPress: resumeAll },
+        { text: "Cancel", style: "cancel" },
       ])
     }
   }, [downloadState.exportingSlugs])
@@ -493,7 +507,8 @@ export default function SeriesScreen() {
                 <SeriesActionRow
                   onLanguage={() => router.push("/series/language")}
                   onSubtitles={() => router.push("/series/subtitle")}
-                  onCancelExport={handleCancelExport}
+                  onPauseExport={handlePauseExport}
+                  onResumeExport={handleResumeExport}
                   // The single download control carries every state: paused →
                   // resume/cancel sheet; downloading → pause; saved → manage
                   // sheet; idle → the download picker. (No separate batch bar.)

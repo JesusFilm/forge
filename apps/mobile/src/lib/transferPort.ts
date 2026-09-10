@@ -158,6 +158,8 @@ export type TransferPortDeps = {
     handlers: MediaDownloadHandlers,
   ) => EngineTask
   stop: (task: EngineTask) => Promise<void> | void
+  pause: (task: EngineTask) => Promise<void> | void
+  resume: (task: EngineTask) => Promise<void> | void
   /** iOS: tells the OS the background-session work for this id is finished. */
   notifyBackgroundComplete: (taskId: string) => void
 }
@@ -182,8 +184,16 @@ function interruptionFromClassification(
   }
 }
 
+type LiveTransfer = {
+  task: EngineTask
+  /** Set BEFORE the engine is asked to pause — see `onInterruption` below. */
+  paused: boolean
+  /** Lets a viewer stop settle the promise the engine will never settle. */
+  settle: (report: RawExportTransferReport) => void
+}
+
 export function createTransferPort(deps: TransferPortDeps) {
-  const live = new Map<string, EngineTask>()
+  const live = new Map<string, LiveTransfer>()
 
   /** The shared background-session handler is released promptly, so this never
    *  rejects into a staged export that has already succeeded. */
@@ -226,25 +236,66 @@ export function createTransferPort(deps: TransferPortDeps) {
               stagedPath: location || spec.destination,
               bytesTotal,
             }),
-          onInterruption: (classification, meta) =>
-            settle({
-              kind: "interrupted",
-              interruption:
-                meta?.interruption ??
-                interruptionFromClassification(classification),
-            }),
+          onInterruption: (classification, meta) => {
+            const interruption =
+              meta?.interruption ??
+              interruptionFromClassification(classification)
+            // The engine reports a viewer pause AS a cancellation, so a paused
+            // entry swallows exactly that one kind and stays pending. Anything
+            // else — `connectivity` is the mapper's catch-all — must still
+            // settle, or a real failure during a paused window goes unreported.
+            if (
+              live.get(spec.id)?.paused &&
+              interruption.kind === "userCancel"
+            ) {
+              return
+            }
+            settle({ kind: "interrupted", interruption })
+          },
         },
       )
-      live.set(spec.id, task)
+      live.set(spec.id, { task, paused: false, settle })
     })
 
-  /** R24: cancel is the only control an export exposes over its transfer. */
+  /**
+   * Viewer cancel. It settles the promise ITSELF: a paused task has already
+   * delivered its terminal event, so `deps.stop` produces no further callback
+   * and the run would otherwise await forever — holding the target's session
+   * slot, its staging directory and the engine-config fence for the whole
+   * process.
+   */
   const stopExportTransfer = async (taskId: string): Promise<void> => {
-    const task = live.get(taskId)
-    if (!task) return
+    const entry = live.get(taskId)
+    if (!entry) return
     live.delete(taskId)
-    await deps.stop(task)
+    entry.settle({
+      kind: "interrupted",
+      interruption: { kind: "userCancel" },
+    })
+    await deps.stop(entry.task)
   }
 
-  return { runExportTransfer, stopExportTransfer, signalBackgroundCompletion }
+  /** Suspend in place, keeping the handle and the bytes already on disk. */
+  const pauseExportTransfer = async (taskId: string): Promise<void> => {
+    const entry = live.get(taskId)
+    if (!entry || entry.paused) return
+    entry.paused = true
+    await deps.pause(entry.task)
+  }
+
+  /** Continue the suspended transfer — never a restart from zero. */
+  const resumeExportTransfer = async (taskId: string): Promise<void> => {
+    const entry = live.get(taskId)
+    if (!entry || !entry.paused) return
+    entry.paused = false
+    await deps.resume(entry.task)
+  }
+
+  return {
+    runExportTransfer,
+    stopExportTransfer,
+    pauseExportTransfer,
+    resumeExportTransfer,
+    signalBackgroundCompletion,
+  }
 }

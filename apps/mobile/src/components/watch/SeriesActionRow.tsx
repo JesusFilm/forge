@@ -44,11 +44,13 @@ export type SeriesActionRowProps = {
   /** Series-wide download progress driving the Download icon/ring. */
   downloadState: SeriesDownloadState
   /**
-   * Opens the running export's cancel control (R30). While an export runs this
-   * REPLACES the download tap, so the pause-all handler stays unreachable
-   * (R24) even when nothing is wired here.
+   * The running export's controls. While an export runs these REPLACE the
+   * download tap: a tap pauses, and a tap on the paused ring opens the
+   * stop/resume alert. Owner decision 2026-09-10, superseding R24's
+   * cancel-only rule.
    */
-  onCancelExport?: () => void
+  onPauseExport?: () => void
+  onResumeExport?: () => void
 }
 
 export function SeriesActionRow({
@@ -60,7 +62,8 @@ export function SeriesActionRow({
   subtitleLabel,
   subtitleActive,
   downloadState,
-  onCancelExport,
+  onPauseExport,
+  onResumeExport,
 }: SeriesActionRowProps) {
   const typography = useTypography()
 
@@ -69,17 +72,26 @@ export function SeriesActionRow({
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   const allDownloaded = seriesAllDownloaded(downloadState)
-  // R16: an export outranks every offline state, and its tap goes to the cancel
-  // control. Unwired, the control is inert — never a pause the export forbids.
+  // R16: an export outranks every offline state, and its tap drives the
+  // export's own pause/resume. Unwired, the control stays inert.
   const exporting = downloadState.exporting
-  const onPress = exporting ? onCancelExport : onDownload
+  const pausedExport = downloadState.pausedExport
+  const onPress = exporting
+    ? pausedExport
+      ? onResumeExport
+      : onPauseExport
+    : onDownload
   // The ring IS the control: it holds a pause glyph while downloading (tap →
   // pause) and a play glyph once paused (tap → resume/cancel sheet). Icon-only,
   // so the spoken label carries the action.
   const downloadA11y = exporting
-    ? onCancelExport
-      ? "Saving to Photos. Tap to cancel"
-      : "Saving to Photos"
+    ? pausedExport
+      ? onResumeExport
+        ? "Saving to Photos, paused. Tap to resume or stop"
+        : "Saving to Photos, paused"
+      : onPauseExport
+        ? "Saving to Photos. Tap to pause"
+        : "Saving to Photos"
     : downloadState.pausedAggregate
       ? "Downloads paused. Tap for resume or cancel options"
       : downloadState.inProgress
@@ -149,7 +161,7 @@ export function SeriesActionRow({
               cutoutColor={SURFACE_COLOR}
             >
               <Ionicons
-                name="arrow-up"
+                name={downloadState.pausedExport ? "play" : "pause"}
                 size={12}
                 color={EXPORT_IN_PROGRESS_COLOR}
               />

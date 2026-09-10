@@ -69,7 +69,10 @@ import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
-import { useExportEntry } from "../../src/hooks/useExportSession"
+import {
+  exportControls,
+  useExportEntry,
+} from "../../src/hooks/useExportSession"
 import {
   progressBarState,
   resumePositionSeconds,
@@ -752,6 +755,34 @@ export default function WatchVideoPage() {
                   : null
               })()}
               onDownload={() => {
+                // An export outranks every offline state (R16), so it is tested
+                // FIRST. Falling through would pause the offline download of a
+                // video that is being exported over an existing transfer.
+                if (exportEntry) {
+                  if (exportEntry.paused) {
+                    Alert.alert("Saving to Photos", "This export is paused.", [
+                      {
+                        text: "Stop Download",
+                        style: "destructive",
+                        onPress: () => {
+                          exportControls.stop(video.slug)
+                        },
+                      },
+                      {
+                        text: "Resume",
+                        onPress: () => {
+                          exportControls.resume(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ])
+                  } else {
+                    // Running → the ring's pause glyph pauses it immediately,
+                    // mirroring the offline control.
+                    exportControls.pause(video.slug)
+                  }
+                  return
+                }
                 const state = getRecord(video.slug)?.state
                 if (state === "downloaded") {
                   // Saved: offer a non-destructive quality/language swap or a

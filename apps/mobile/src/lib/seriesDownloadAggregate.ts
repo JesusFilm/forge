@@ -35,6 +35,8 @@ export type SeriesDownloadState = {
   exportProgress: number
   /** The episodes exporting now — the cancel control acts on these (R30). */
   exportingSlugs: string[]
+  /** Every exporting episode is paused, so the row offers a resume. */
+  pausedExport: boolean
 }
 
 const IN_PROGRESS_STATES: ReadonlySet<OfflineDownloadState> =
@@ -90,11 +92,13 @@ export function deriveSeriesDownloadState(
 
   const exportingSlugs: string[] = []
   let exportUnits = 0
+  let anyExportRunning = false
   for (const slug of episodeSlugs) {
     const entry = exportSession?.byTarget[slug]
     if (!entry) continue
     exportingSlugs.push(slug)
     exportUnits += clampFraction(entry.progress)
+    if (!entry.paused) anyExportRunning = true
   }
 
   const total = episodeSlugs.length
@@ -114,6 +118,9 @@ export function deriveSeriesDownloadState(
     exportProgress:
       exportingSlugs.length === 0 ? 0 : exportUnits / exportingSlugs.length,
     exportingSlugs,
+    // Mirrors `pausedAggregate`: the row shows a resume only when NOTHING is
+    // still transferring, so one running episode keeps the pause glyph.
+    pausedExport: exportingSlugs.length > 0 && !anyExportRunning,
   }
 }
 

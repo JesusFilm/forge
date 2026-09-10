@@ -20,6 +20,7 @@ const exportEntry = (target: string, progress: number): ExportSessionEntry => ({
   seriesSlug: "series",
   progress,
   cancelRequested: false,
+  paused: false,
 })
 
 /** An export session snapshot holding one entry per named target. */
@@ -73,6 +74,8 @@ describe("deriveSeriesDownloadState", () => {
       exporting: false,
       exportProgress: 0,
       exportingSlugs: [],
+
+      pausedExport: false,
     })
   })
 
@@ -232,6 +235,8 @@ describe("seriesDownloadLabel", () => {
       exporting: false,
       exportProgress: 0,
       exportingSlugs: [],
+
+      pausedExport: false,
     })
 
   it("reads 'Download all' when nothing is downloaded", () => {
@@ -258,6 +263,7 @@ describe("seriesAllDownloaded", () => {
     exporting: false,
     exportProgress: 0,
     exportingSlugs: [] as string[],
+    pausedExport: false,
   })
 
   it("is true only when total > 0 and every episode is downloaded", () => {

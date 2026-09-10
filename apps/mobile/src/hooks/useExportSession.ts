@@ -31,3 +31,21 @@ export function useExportEntry(
     videoSlug ? (store.getSnapshot().byTarget[videoSlug] ?? null) : null,
   )
 }
+
+/**
+ * The viewer's controls over one running export. Plain functions, not hooks —
+ * they read the module-scope store, so a tap handler can call them directly and
+ * they never need to be dependencies. Each answers false when no run is there.
+ *
+ * The store, not the caller, owns the ordering that makes a pause safe: it sets
+ * `paused` BEFORE the transfer is asked to suspend, because the native engine
+ * reports a pause as a cancellation.
+ */
+export const exportControls = {
+  pause: (videoSlug: string): boolean =>
+    getExportSessionStore().requestPause(videoSlug),
+  resume: (videoSlug: string): boolean =>
+    getExportSessionStore().requestResume(videoSlug),
+  stop: (videoSlug: string): boolean =>
+    getExportSessionStore().requestCancel(videoSlug),
+}
