@@ -29,7 +29,7 @@ function compile(source: string) {
       }
     throw new StudioRuntimeError("Unsupported dependency")
   }
-  // Evaluation occurs only in the isolated browser: distinct-site preview or
+  // Evaluation occurs only in the isolated browser: opaque sandboxed preview or
   // credential-free, network-isolated render child. Never import into server execution.
   new Function("React", "exports", "require", code)(React, exports, require)
   if (typeof exports.default !== "function")
@@ -86,18 +86,22 @@ function Layer({
   compiled,
   mode,
   mediaBaseUrl,
+  mediaUrls,
 }: {
   item: StudioTimelineItem
   input: StudioPreview
   mode: "preview" | "render"
   mediaBaseUrl: string
+  mediaUrls?: Record<string, string>
   compiled: Record<
     string,
     React.ComponentType<Record<string, string | number | boolean>>
   >
 }) {
   const media = input.media[item.id],
-    url = media ? new URL(media.file, mediaBaseUrl).href : "",
+    url = media
+      ? (mediaUrls?.[media.file] ?? new URL(media.file, mediaBaseUrl).href)
+      : "",
     fps = input.document.fps
   const t = item.transform ?? {
       x: 0,
@@ -180,10 +184,12 @@ export function StudioComposition({
   input,
   mode = "preview",
   mediaBaseUrl = location.href,
+  mediaUrls,
 }: {
   input: StudioPreview
   mode?: "preview" | "render"
   mediaBaseUrl?: string
+  mediaUrls?: Record<string, string>
 }) {
   const activeVersions = JSON.stringify(
     [
@@ -222,6 +228,7 @@ export function StudioComposition({
                 compiled={compiled}
                 mode={mode}
                 mediaBaseUrl={mediaBaseUrl}
+                mediaUrls={mediaUrls}
               />
             </Remotion.Sequence>
           )),

@@ -1,15 +1,27 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
-import { attachPreparedSources, previewSignature } from "./preview-state"
+import { previewSignature } from "./preview-state"
 import type { StudioDocument } from "@forge/studio-contracts"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
-function releasePreview(url: string) {
-  void fetch("/api/shorts/preview", {
-    method: "DELETE",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url }),
-    keepalive: true,
-  }).catch(() => {})
+import type { StudioPreview } from "@forge/studio-contracts/preview"
+import { previewFrame } from "./preview-frame"
+type BrowserPreview = {
+  input: StudioPreview
+  urls: Record<string, string>
+  files: { name: string; type: string; base64: string }[]
+}
+let runtimePromise: Promise<string> | undefined
+function loadRuntime() {
+  return (runtimePromise ??= fetch("/shorts-preview/runtime.js")
+    .then((response) => {
+      if (!response.ok)
+        throw new StudioPreviewError("Preview player could not load")
+      return response.text()
+    })
+    .catch((error) => {
+      runtimePromise = undefined
+      throw error
+    }))
 }
 class StudioPreviewError extends Error {}
 
@@ -35,7 +47,8 @@ export default function Preview({
     lastSent = useRef(-1),
     lastFrame = useRef(-1),
     heartbeat = useRef(0),
-    lastDocument = useRef<StudioDocument | null>(null)
+    lastDocument = useRef<StudioDocument | null>(null),
+    prepared = useRef<BrowserPreview | null>(null)
   useEffect(() => {
     latest.current = state
   }, [state])
@@ -53,6 +66,16 @@ export default function Preview({
       setReady(false)
     })
     const request = async () => {
+      if (
+        !requested.items.some((item) =>
+          ["video", "audio", "image", "component"].includes(item.kind),
+        )
+      )
+        return Response.json({
+          input: { document: requested, media: {}, code: {} },
+          urls: {},
+          files: [],
+        })
       for (let attempt = 0; attempt < 8; attempt++) {
         controller.signal.throwIfAborted()
         const response = await fetch("/api/shorts/preview", {
@@ -66,72 +89,29 @@ export default function Preview({
       }
       throw new StudioPreviewError("Preview remains busy; retry shortly")
     }
-    request()
-      .then(async (r) => {
-        const value = (await r.json()) as {
-          url: string
-          document: StudioDocument
-          error?: string
-        }
+    Promise.all([request(), loadRuntime()])
+      .then(async ([r, runtime]) => {
+        const value = (await r.json()) as BrowserPreview & { error?: string }
         if (!r.ok)
           throw new StudioPreviewError(value.error ?? "Preview unavailable")
         if (
           controller.signal.aborted ||
           previewSignature(latest.current.document) !== requestedSignature
-        ) {
-          releasePreview(value.url)
-          return
-        }
-        const next = attachPreparedSources(
-          latest.current.document,
-          requested,
-          value.document,
         )
-        preparedSignature.current = previewSignature(next)
-        session.edit(() => next)
-        setUrl(value.url)
+          return
+        prepared.current = value
+        preparedSignature.current = requestedSignature
         heartbeat.current = performance.now()
         lastDocument.current = null
+        lastSent.current = -1
+        lastFrame.current = -1
+        setUrl(previewFrame(runtime))
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message)
       })
     return () => controller.abort()
   }, [projectId, signature, attempt, session])
-  useEffect(() => {
-    if (!url) return
-    const release = () => releasePreview(url)
-    let active = true
-    const renew = async () => {
-      try {
-        const response = await fetch("/api/shorts/preview", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ url }),
-          signal: AbortSignal.timeout(10000),
-        })
-        if (!response.ok) throw new StudioPreviewError("Preview renewal failed")
-      } catch {
-        if (active) {
-          preparedSignature.current = null
-          setAttempt((n) => n + 1)
-        }
-      }
-    }
-    const timer = window.setInterval(() => void renew(), 5 * 60000)
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void renew()
-    }
-    document.addEventListener("visibilitychange", onVisible)
-    window.addEventListener("pagehide", release)
-    return () => {
-      active = false
-      window.clearInterval(timer)
-      document.removeEventListener("visibilitychange", onVisible)
-      window.removeEventListener("pagehide", release)
-      release()
-    }
-  }, [url])
   useEffect(() => {
     if (!url) return
     const receive = (event: MessageEvent) => {
@@ -142,6 +122,12 @@ export default function Preview({
         return
       const data = event.data
       if (!data || typeof data !== "object") return
+      if (data.type === "boot" && prepared.current) {
+        frame.current?.contentWindow?.postMessage(
+          { type: "initialize", ...prepared.current },
+          "*",
+        )
+      }
       if (data.type === "heartbeat") heartbeat.current = performance.now()
       if (data.type === "ready") {
         setReady(true)
@@ -231,7 +217,7 @@ export default function Preview({
         <iframe
           ref={frame}
           title="Live composition preview"
-          src={url}
+          srcDoc={url}
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
           allow="autoplay"

@@ -6,11 +6,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { getDomain } from "tldts"
 import { z } from "zod"
 import {
   studioDocumentSchema,
-  studioAssetReferenceSchema,
   type StudioAssetReference,
 } from "@forge/studio-contracts"
 import {
@@ -23,10 +21,6 @@ import {
   studioSourceSnapshotSchema,
   type ShortSourceSnapshot,
 } from "@forge/studio-contracts/sources"
-import {
-  studioPreviewSchema,
-  type StudioPreview,
-} from "@forge/studio-contracts/preview"
 import type { StudioAction } from "@forge/studio-contracts/transport"
 export type StudioBrokerClient = (
   action: StudioAction,
@@ -69,7 +63,6 @@ export function canonicalMediaUrl(raw: string): URL {
   return url
 }
 const LIMIT = 256 * 1024 * 1024
-const reference = studioAssetReferenceSchema
 const resolvedSchema = z.array(
   z.object({
     snapshot: studioSourceSnapshotSchema,
@@ -80,28 +73,8 @@ const resolvedSchema = z.array(
     eligibility: z.unknown(),
   }),
 )
-type File = { name: string; bytes: Buffer; type: string }
 type Segment = { url: string; duration: number; startMs: number; endMs: number }
 
-export function assertDistinctPreviewSite(manager: string, preview: string) {
-  const a = new URL(manager),
-    b = new URL(preview)
-  if (
-    a.username ||
-    a.password ||
-    b.username ||
-    b.password ||
-    (b.protocol !== "https:" &&
-      !["127.0.0.1", "localhost"].includes(b.hostname))
-  )
-    throw new StudioBrokerError(
-      "Preview origin must be HTTPS, or loopback for local verification",
-    )
-  const site = (u: URL) =>
-    getDomain(u.hostname, { allowPrivateDomains: true }) ?? u.hostname
-  if (site(a) === site(b))
-    throw new StudioBrokerError("Preview requires a distinct registrable site")
-}
 async function readBounded(response: Response, max: number) {
   if (!response.ok || !response.body)
     throw new StudioBrokerError(`Media transfer failed (${response.status})`)
@@ -320,43 +293,6 @@ export async function materialize(
   return studioSourceSnapshotSchema.parse(payload.data?.materializeShortsSource)
 }
 
-export async function releaseStudioPreview(rawUrl: string) {
-  await updateStudioPreviewSession(rawUrl, "DELETE")
-}
-export async function renewStudioPreview(rawUrl: string) {
-  await updateStudioPreviewSession(rawUrl, "PATCH")
-}
-async function updateStudioPreviewSession(
-  rawUrl: string,
-  method: "DELETE" | "PATCH",
-) {
-  if (
-    !env.STUDIO_PREVIEW_ORIGIN ||
-    !env.STUDIO_PREVIEW_SERVICE_URL ||
-    !env.STUDIO_PREVIEW_API_KEY
-  )
-    throw new StudioBrokerError("Preview service is not configured")
-  const url = new URL(rawUrl)
-  if (
-    url.origin !== new URL(env.STUDIO_PREVIEW_ORIGIN).origin ||
-    url.search ||
-    url.hash ||
-    !/^\/s\/[a-f0-9]{64}\/$/.test(url.pathname)
-  )
-    throw new StudioBrokerError("Invalid preview session")
-  const response = await fetch(
-    new URL(url.pathname, env.STUDIO_PREVIEW_SERVICE_URL),
-    {
-      method,
-      headers: { authorization: `Bearer ${env.STUDIO_PREVIEW_API_KEY}` },
-      redirect: "error",
-      signal: AbortSignal.timeout(5000),
-    },
-  )
-  if (!response.ok)
-    throw new StudioBrokerError("Preview session is no longer available")
-}
-
 /** Validates retained media authority, independently of interactive attribution.
  * The caller resolves current source eligibility before invoking this reader. */
 export async function readRetainedStudioSource(
@@ -418,7 +354,7 @@ export async function readRetainedStudioSource(
 
 // One active preparation per Manager process bounds aggregate memory and extraction work.
 let preparing = false
-export async function prepareStudioPreview(
+export async function prepareStudioRenderSources(
   call: StudioBrokerClient,
   projectId: string,
   rawDocument: unknown,
@@ -426,31 +362,18 @@ export async function prepareStudioPreview(
 ) {
   if (preparing)
     throw new StudioBrokerBusyError(
-      "Another preview is preparing. Try again shortly.",
+      "Another render is preparing. Try again shortly.",
     )
   preparing = true
   let directory: string | undefined
-  let stagedUrl: string | undefined
-  let published = false
   try {
     signal?.throwIfAborted()
     directory = await mkdtemp(join(tmpdir(), "studio-preview-"))
-    if (
-      !env.STUDIO_PREVIEW_ORIGIN ||
-      !env.STUDIO_PREVIEW_SERVICE_URL ||
-      !env.STUDIO_PREVIEW_API_KEY ||
-      !env.MANAGER_BASE_URL
-    )
-      throw new StudioBrokerError("Preview service is not configured")
-    assertDistinctPreviewSite(env.MANAGER_BASE_URL, env.STUDIO_PREVIEW_ORIGIN)
     let document = studioDocumentSchema.parse(rawDocument)
     const resolved = resolvedSchema.parse(
         await call("preview-sources", { projectId, document }),
       ),
-      assets = createStudioAssetBroker(call, signal),
-      files: File[] = [],
-      media: StudioPreview["media"] = {},
-      code: StudioPreview["code"] = {}
+      assets = createStudioAssetBroker(call, signal)
     let transferred = 0
     async function download(raw: string, max = LIMIT) {
       const url = canonicalMediaUrl(raw)
@@ -465,6 +388,10 @@ export async function prepareStudioPreview(
       return bytes
     }
     for (const entry of resolved) {
+      if (!env.STUDIO_PREVIEW_API_KEY)
+        throw new StudioBrokerError(
+          "Render source verification key is not configured",
+        )
       signal?.throwIfAborted()
       const snapshot = entry.snapshot,
         id = entry.itemId
@@ -483,44 +410,9 @@ export async function prepareStudioPreview(
           entry,
           env.STUDIO_PREVIEW_API_KEY,
         )
-        if (retained.length === 2) {
-          const { manifest, proof } = retained[0]!
-          const info = z
-            .object({
-              playlist: reference,
-              sourceStartMs: z.number().nonnegative(),
-              segmentDurations: z.array(z.number().positive()),
-              verification: z.literal("decoded-h264-v1"),
-            })
-            .parse(proof)
-          // Hash-check the retained playlist, then rebuild safe local names from immutable media.
-          await assets.read(info.playlist, 1048576)
-          if (info.segmentDurations.length !== manifest.media.length)
-            throw new StudioBrokerError("Invalid retained segment proof")
-          const prefix = id.replace(/[^a-zA-Z0-9_-]/g, "_") + "-retained",
-            names = manifest.media.map((_, i) => `${prefix}-${i}.ts`)
-          for (let i = 0; i < manifest.media.length; i++) {
-            const bytes = await assets.read(
-              manifest.media[i]!,
-              LIMIT - transferred,
-            )
-            transferred += bytes.length
-            files.push({ name: names[i]!, bytes, type: "video/mp2t" })
-          }
-          const name = `${prefix}.m3u8`
-          files.push({
-            name,
-            bytes: playlist(info.segmentDurations, names),
-            type: "application/vnd.apple.mpegurl",
-          })
-          media[id] = {
-            file: name,
-            sourceStartMs: info.sourceStartMs,
-            kind: "hls",
-          }
-          continue
-        }
+        if (retained.length === 2) continue
       }
+
       if (!env.STUDIO_FFMPEG_PATH || !env.STUDIO_FFPROBE_PATH)
         throw new StudioBrokerError(
           "Source codec verification is not configured",
@@ -565,8 +457,6 @@ export async function prepareStudioPreview(
               },
             ),
           )
-          if (purpose === "preview")
-            files.push({ name: names[i]!, bytes, type: "video/mp2t" })
         }
         const list = playlist(
             segments.map((s) => s.duration),
@@ -665,19 +555,8 @@ export async function prepareStudioPreview(
             { ...proof, proofSignature },
           ),
         )
-        if (purpose === "preview") {
-          files.push({
-            name: listName,
-            bytes: list,
-            type: "application/vnd.apple.mpegurl",
-          })
-          media[id] = {
-            file: listName,
-            sourceStartMs: segments[0]!.startMs,
-            kind: "hls",
-          }
-        }
       }
+
       const verified = await materialize(snapshot, manifests[0]!, manifests[1]!)
       document = {
         ...document,
@@ -695,105 +574,10 @@ export async function prepareStudioPreview(
         ),
       }
     }
-    for (const item of document.items) {
-      if (item.kind !== "audio" && item.kind !== "image") continue
-      const asset = studioAssetVersionSchema.parse(
-        await call("asset", item.asset),
-      )
-      if (
-        (item.kind === "image" &&
-          !["image/png", "image/jpeg", "image/webp"].includes(
-            asset.mimeType,
-          )) ||
-        (item.kind === "audio" &&
-          !["audio/mpeg", "audio/wav", "audio/mp4", "audio/ogg"].includes(
-            asset.mimeType,
-          ))
-      )
-        throw new StudioBrokerError("Unsupported preview asset type")
-      const bytes = await assets.read(
-        item.asset,
-        Math.min(32 * 1024 * 1024, LIMIT - transferred),
-      )
-      transferred += bytes.length
-      const name = `asset-${item.asset.versionId}`
-      if (!files.some((f) => f.name === name))
-        files.push({ name, bytes, type: asset.mimeType })
-      media[item.id] = { file: name, sourceStartMs: 0, kind: item.kind }
-    }
-    const activeComponents = new Set(
-      document.items.flatMap((item) =>
-        item.kind === "component" ? [item.componentVersionId] : [],
-      ),
-    )
-    for (const component of document.components.filter((c) =>
-      activeComponents.has(c.versionId),
-    )) {
-      const bytes = await assets.read(
-        component.code,
-        Math.min(32768, LIMIT - transferred),
-      )
-      transferred += bytes.length
-      code[component.versionId] = bytes.toString("utf8")
-    }
     signal?.throwIfAborted()
-    const input = studioPreviewSchema.parse({ document, media, code })
-    const headers = {
-      authorization: `Bearer ${env.STUDIO_PREVIEW_API_KEY}`,
-      "content-type": "application/json",
-    }
-    const response = await fetch(
-      new URL("/sessions", env.STUDIO_PREVIEW_SERVICE_URL),
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(input),
-        redirect: "error",
-        signal: AbortSignal.timeout(15000),
-      },
-    )
-    if (!response.ok)
-      throw new StudioBrokerError("Preview service rejected preparation")
-    const { token } = z
-      .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
-      .parse(await response.json())
-    stagedUrl = new URL(`/s/${token}/`, env.STUDIO_PREVIEW_ORIGIN).href
-    const sessionUrl = stagedUrl
-    signal?.addEventListener(
-      "abort",
-      () => {
-        void releaseStudioPreview(sessionUrl).catch(() => {})
-      },
-      { once: true },
-    )
-    for (const file of files) {
-      signal?.throwIfAborted()
-      const res = await fetch(
-        new URL(`/s/${token}/${file.name}`, env.STUDIO_PREVIEW_SERVICE_URL),
-        {
-          method: "PUT",
-          headers: {
-            authorization: headers.authorization,
-            "content-type": file.type,
-          },
-          body: new Uint8Array(file.bytes),
-          redirect: "error",
-          signal: AbortSignal.timeout(30000),
-        },
-      )
-      if (!res.ok) throw new StudioBrokerError("Preview staging failed")
-    }
-    signal?.throwIfAborted()
-    published = true
-    return {
-      url: stagedUrl,
-      document,
-      transferredBytes: transferred,
-    }
+    return { document }
   } finally {
     preparing = false
-    if (stagedUrl && !published)
-      await releaseStudioPreview(stagedUrl).catch(() => {})
     if (directory) await rm(directory, { recursive: true, force: true })
   }
 }
