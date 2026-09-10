@@ -30,10 +30,16 @@ tags:
 A class of React Native bug depends on **persisted state or native events you
 can't see**: which AsyncStorage records exist mid-flight, what byte counts a
 download has, what `errorCode` a native task fired and when. The instinct is to
-`console.log` it — but in an Expo dev build the RN `console.log` polyfill ships
-output to the **Metro dev-tools websocket**, not to Metro's **stdout** (so a
-captured stdout log file stays empty) and not to **`os_log`** (so
-`xcrun simctl spawn <udid> log show` never sees it). Native-module logs (NSLog /
+`console.log` it — but in an Expo dev build React Native's Metro log forwarding
+is dead code, so nothing is sent at all. `Libraries/Core/setUpDeveloperTools.js`
+gates the forwarding on `console._isPolyfilled`, which React Native never
+assigns. Verified 2026-09-11 against `react-native@0.86.3` and
+`react-native-tvos@0.81.5-2`. Metro's **stdout** therefore stays empty (so a
+captured stdout log file is blank) and **`os_log`** never sees it either (so
+`xcrun simctl spawn <udid> log show` finds nothing). The RECEIVING half is
+live — `@expo/cli` still prints a `client_log` event to the terminal — so
+re-check that gate before you conclude you are blind. If a future React Native
+sets `_isPolyfilled`, stdout starts carrying logs and this premise inverts. Native-module logs (NSLog /
 DLog) reach `os_log`, but a third-party module's may be gated off. When every log
 channel you reach for is silent, you're blind to the exact state the bug turns on.
 
@@ -60,8 +66,15 @@ xcrun simctl get_app_container <udid> <bundle-id> data
 **2. Read AsyncStorage records** (the `@react-native-async-storage` community
 module) at
 `<container>/Library/Application Support/<bundle-id>/RCTAsyncLocalStorage_V1/manifest.json`.
-Small values sit inline in `manifest.json`; large values live in a sibling file
-named `md5(key)`. A few lines of Python dumps them while the app runs:
+Values of 1024 characters or fewer sit inline in `manifest.json`
+(`RCTInlineValueThreshold`); larger values live in a sibling file named
+`md5(key)`. **On tvOS the path is different**: the native module builds it from
+`NSCachesDirectory` and appends no bundle-id component, so read
+`<container>/Library/Caches/RCTAsyncLocalStorage_V1/manifest.json`. The module
+also warns there that persistent storage is unsupported and the data can vanish
+at any point. Verified against
+`@react-native-async-storage/async-storage@2.2.0`, `ios/RNCAsyncStorage.mm:17`,
+`:21`, `:118-135`, `:158-160`. A few lines of Python dumps them while the app runs:
 
 ```python
 import json, os, hashlib
@@ -105,7 +118,9 @@ export function dlDebug(line: string): void {
 ```
 
 Then `cat "<container>/Documents/dl-debug.log"`. The app's other `Documents/`
-files (e.g. an offline-download dir) give byte-level state the same way.
+files give byte-level state the same way. The offline downloads live under
+`Documents/offline-downloads` (`OFFLINE_ROOT`,
+`apps/mobile/src/lib/offlineFileSystem.ts`).
 
 **Remove the file logger and its call sites before committing** — it is scratch
 instrumentation, not shipping code.
@@ -130,7 +145,7 @@ _what is happening_ when a state/native-event bug won't surface any other way.
   websocket and switch to reading state off disk instead of chasing the log.
 - The bug hinges on **persisted state** (AsyncStorage records, an offline
   manifest) or **native-event timing** you need to observe live.
-- You can pair it with `idb describe-all` for the live a11y tree (the
+- You can pair it with `idb ui describe-all` for the live a11y tree (the
   verification-side companion — see Related) when you also need on-screen state.
 - Not for logic you can unit-test off-device; reach for this only when the
   signal genuinely lives in the simulator's persisted/native layer.
@@ -167,3 +182,6 @@ failure. The file-based event log then confirmed it:
   output, so capture through a channel that actually carries ("logging lies").
 - `docs/solutions/developer-experience/measurement-driven-layout-iteration-chrome-mcp-20260505.md`
   — the web analog of "measure ground truth instead of eyeballing it."
+- `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md`
+  — read the app BUNDLE the same way. This doc reads the DATA container; that one
+  proves the installed `.app` carries the resource its config files declare.

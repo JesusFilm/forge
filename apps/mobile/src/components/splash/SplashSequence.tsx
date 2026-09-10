@@ -38,10 +38,10 @@ export const WORD_RISE_FROM_CENTROID = 0.108
  * than to its right.
  */
 export const WORD_SHIFT_LEFT_OF_CENTROID = 0.03
-/** The beam's apex sits on the right edge, four fifths of the way down. */
+/** The beam's apex, in fractions of the frame. The x ratio is past 1 on
+ *  purpose: on the edge, the bands converge to a point the viewer can see. */
+export const RAY_APEX_X_RATIO = 1.3
 export const RAY_APEX_Y_RATIO = 0.8
-/** How far the beam runs past the mark, so it dissolves rather than stopping. */
-const RAY_OVERSHOOT = 1.15
 
 // ── The beats ──────────────────────────────────────────────────────────────
 
@@ -78,16 +78,36 @@ export const SPLASH_SEQUENCE_MS = Math.max(
 
 /** Rotated gradient bands stand in for a wedge this app has no renderer for.
  *  Their low alphas sum into a soft cone; the outermost two ARE R9's edges. */
-const RAY_BAND_COUNT = 28
-/** Band thickness as a multiple of the gap between neighbours at the FAR end,
- *  where the bands are furthest apart. Measured on the iPhone 17 Pro Max
- *  simulator: 14 bands at 1.7 read as separate streaks, these read as one cone. */
-const RAY_BAND_OVERLAP = 2.6
-/** Per-band, so the stack composites to about the same brightness as before:
- *  1 - (1 - 0.05)^28 is close to 1 - (1 - 0.09)^14. */
-const RAY_APEX_ALPHA = 0.05
-const RAY_MID_ALPHA = 0.028
-const RAY_MID_STOP = 0.35
+export const RAY_BAND_COUNT = 28
+/** Band thickness as a multiple of the gap between neighbours at the FAR end.
+ *  Raised from 2.6 when the bands gained soft edges: a bump needs wider
+ *  neighbours to sum flat, and 4 measured smoothest at this band count. */
+const RAY_BAND_OVERLAP = 4
+/** Each band's alpha at its own centre line. The stack's brightness at a point
+ *  is set by how many bands cover it, which falls with distance from the apex.
+ *  Set so the beam measures the same on a device as it did with flat bands. */
+const RAY_BAND_ALPHA = 0.076
+/** The band's cross-section, sampled at eighths. A FLAT one steps at each band
+ *  edge, and those steps let a viewer count the bands: measured at 1.0 cycles
+ *  per band. Zero slope at the edges as well, so the sum has no kink. */
+export const RAY_BAND_PROFILE = [
+  0, 0.156, 0.5, 0.844, 1, 0.844, 0.5, 0.156, 0,
+] as const
+/** How much of the beam's DEPTH the dissolve covers, square to the corner line
+ *  every band ends on. NOT a fraction of a band's length: that is the other
+ *  axis, and it made the dissolve deeper on a tablet than on a phone. */
+export const RAY_DISSOLVE_DEPTH_RATIO = 0.45
+
+/** Precomputed: the profile never changes, and this is the cover's hot path.
+ *  Both are spelled as non-empty tuples because that is how
+ *  expo-linear-gradient types the two props. */
+const RAY_BAND_SPAN = RAY_BAND_PROFILE.length - 1
+const RAY_BAND_COLORS = RAY_BAND_PROFILE.map((weight) =>
+  hexToRgba(TEXT_ON_OVERLAY, RAY_BAND_ALPHA * weight),
+) as unknown as readonly [string, string, ...string[]]
+const RAY_BAND_LOCATIONS = RAY_BAND_PROFILE.map(
+  (_, index) => index / RAY_BAND_SPAN,
+) as unknown as readonly [number, number, ...number[]]
 
 const WORD = "Jesus"
 const WORD_FAMILY = "NotoSerif-SemiBold"
@@ -96,6 +116,29 @@ const WORD_LINE_RATIO = 1.25
 
 export type SplashPoint = { x: number; y: number }
 export type SplashFrame = { width: number; height: number }
+
+/** One of the rotated bands the beam is built from. */
+export type SplashBand = {
+  /** Its direction from the apex, in degrees. */
+  angleDeg: number
+  /** How far it runs: to the line joining the two corners the beam lights. */
+  length: number
+}
+
+/** The one overlay that dissolves the beam's far end into the ground. Its
+ *  gradient runs SQUARE at the line joining the two lit corners, so every
+ *  band's end fades on one schedule and none of them shows an edge. */
+export type SplashDissolve = {
+  /** Its box, in the ray group's own coordinates. */
+  left: number
+  top: number
+  width: number
+  height: number
+  /** Its rotation, which puts its gradient square at that line. */
+  angleDeg: number
+  /** How far down its own height the ground colour becomes fully opaque. */
+  stop: number
+}
 
 export type SplashGeometry = {
   /** The projector screen's tile, in frame coordinates. */
@@ -112,12 +155,26 @@ export type SplashGeometry = {
   bottomLeftAngleDeg: number
   /** Direction from the apex to the mark's top-right corner, in degrees. */
   topRightAngleDeg: number
-  /** How far the beam runs from its apex. */
+  /** The angle the cone opens, normalized. Subtracting the two edge angles
+   *  above does NOT give this: they straddle atan2's branch cut on a very
+   *  wide frame, where their difference reads the long way round. */
+  sweepDeg: number
+  /** The bands the beam is drawn from, from its lower edge to its upper one. */
+  bands: SplashBand[]
+  /** The overlay that fades their shared far end out. */
+  dissolve: SplashDissolve
+  /** Every band's thickness. One value, so neighbours overlap everywhere. */
+  bandThickness: number
+  /** The longest band, which is what the group's box has to hold. */
   rayLength: number
 }
 
 function degrees(radians: number): number {
   return (radians * 180) / Math.PI
+}
+
+function cross(a: SplashPoint, b: SplashPoint): number {
+  return a.x * b.y - a.y * b.x
 }
 
 /**
@@ -132,12 +189,99 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
 
   const bottomLeft = { x: left, y: top + height * MARK_BOTTOM_LEFT_Y }
   const topRight = { x: left + width, y: top }
-  const apex = { x: frame.width, y: frame.height * RAY_APEX_Y_RATIO }
+  const apex = {
+    x: frame.width * RAY_APEX_X_RATIO,
+    y: frame.height * RAY_APEX_Y_RATIO,
+  }
 
-  const reach = Math.max(
-    Math.hypot(bottomLeft.x - apex.x, bottomLeft.y - apex.y),
-    Math.hypot(topRight.x - apex.x, topRight.y - apex.y),
+  const bottomLeftAngle = Math.atan2(
+    bottomLeft.y - apex.y,
+    bottomLeft.x - apex.x,
   )
+  const topRightAngle = Math.atan2(topRight.y - apex.y, topRight.x - apex.x)
+  // Normalized, because atan2 has a branch cut at half a turn: on a frame wider
+  // than about 5.37:1 the raw difference reads the long way round the circle,
+  // and the fan sweeps away from the mark instead of across it.
+  const sweep = Math.atan2(
+    Math.sin(topRightAngle - bottomLeftAngle),
+    Math.cos(topRightAngle - bottomLeftAngle),
+  )
+  const step = sweep / (RAY_BAND_COUNT - 1)
+
+  // The beam's far end is the LINE joining the two corners it lights, so each
+  // band stops where its own direction meets that line. Drawing them all to one
+  // length instead ran the shorter upper edge well past its corner.
+  const cornerLine = {
+    x: topRight.x - bottomLeft.x,
+    y: topRight.y - bottomLeft.y,
+  }
+  const apexToCorner = { x: bottomLeft.x - apex.x, y: bottomLeft.y - apex.y }
+
+  const bands: SplashBand[] = Array.from(
+    { length: RAY_BAND_COUNT },
+    (_, index) => {
+      const angle = bottomLeftAngle + step * index
+      const direction = { x: Math.cos(angle), y: Math.sin(angle) }
+      // Zero only on a frame with no size, which a cold start can measure
+      // before layout: 0/0 is NaN, and NaN would reach 28 native gradient views.
+      const closingRate = cross(direction, cornerLine)
+      return {
+        angleDeg: degrees(angle),
+        length:
+          closingRate === 0
+            ? 0
+            : Math.max(0, cross(apexToCorner, cornerLine) / closingRate),
+      }
+    },
+  )
+
+  const rayLength = bands.reduce((longest, band) => {
+    return band.length > longest ? band.length : longest
+  }, 0)
+
+  // The dissolve sits SQUARE at the corner line: its own height runs along that
+  // line's normal, so its gradient reaches the line everywhere at once.
+  const cornerLineLength = Math.hypot(cornerLine.x, cornerLine.y)
+  const normal =
+    cornerLineLength > 0
+      ? {
+          x: -cornerLine.y / cornerLineLength,
+          y: cornerLine.x / cornerLineLength,
+        }
+      : { x: 1, y: 0 }
+  const facing =
+    apexToCorner.x * normal.x + apexToCorner.y * normal.y < 0 ? -1 : 1
+  const away = { x: normal.x * facing, y: normal.y * facing }
+  const lineDepth = apexToCorner.x * away.x + apexToCorner.y * away.y
+
+  const dissolveStart = Math.max(0, lineDepth * (1 - RAY_DISSOLVE_DEPTH_RATIO))
+  const dissolveHeight = Math.max(rayLength - dissolveStart, 0)
+  // Centred on the corner line's own MIDPOINT, not on the foot of the apex's
+  // perpendicular — those are far apart, and the foot leaves the beam's lower
+  // side uncovered.
+  const lineMiddle = {
+    x: (bottomLeft.x + topRight.x) / 2,
+    y: (bottomLeft.y + topRight.y) / 2,
+  }
+  const depthOfCentre = dissolveStart + dissolveHeight / 2
+  const dissolveCentre = {
+    x: lineMiddle.x + away.x * (depthOfCentre - lineDepth) - apex.x + rayLength,
+    y: lineMiddle.y + away.y * (depthOfCentre - lineDepth) - apex.y + rayLength,
+  }
+  // Twice the corner line, so the bands' soft edges cannot reach past its ends.
+  const dissolveWidth = cornerLineLength * 2
+  const dissolve: SplashDissolve = {
+    left: dissolveCentre.x - dissolveWidth / 2,
+    top: dissolveCentre.y - dissolveHeight / 2,
+    width: dissolveWidth,
+    height: dissolveHeight,
+    // Its local +y must point along `away`, so its local +x is a quarter turn back.
+    angleDeg: degrees(Math.atan2(away.y, away.x)) - 90,
+    stop:
+      dissolveHeight > 0
+        ? Math.min(Math.max((lineDepth - dissolveStart) / dissolveHeight, 0), 1)
+        : 1,
+  }
 
   const fontSize = Math.round(width * WORD_SIZE_RATIO)
 
@@ -150,13 +294,14 @@ export function splashGeometry(frame: SplashFrame): SplashGeometry {
     fontSize,
     lineHeight: Math.round(fontSize * WORD_LINE_RATIO),
     apex,
-    bottomLeftAngleDeg: degrees(
-      Math.atan2(bottomLeft.y - apex.y, bottomLeft.x - apex.x),
-    ),
-    topRightAngleDeg: degrees(
-      Math.atan2(topRight.y - apex.y, topRight.x - apex.x),
-    ),
-    rayLength: reach * RAY_OVERSHOOT,
+    bottomLeftAngleDeg: degrees(bottomLeftAngle),
+    topRightAngleDeg: degrees(topRightAngle),
+    sweepDeg: degrees(sweep),
+    bands,
+    dissolve,
+    // Taken from the LONGEST band, so neighbours still overlap where both run.
+    bandThickness: rayLength * Math.abs(step) * RAY_BAND_OVERLAP,
+    rayLength,
   }
 }
 
@@ -169,7 +314,7 @@ export type SplashSequenceProps = {
 
 /**
  * The projector sequence: a white screen blooms in, one ray of light reaches it
- * from the right edge, the screen takes the brand crimson as the ray arrives,
+ * from beyond the right edge, the screen takes the brand crimson as the ray arrives,
  * and the word settles on top. A Reduce Motion viewer gets the last frame of
  * that, held still.
  */
@@ -182,24 +327,10 @@ export function SplashSequence({
   // Every number below is a pure function of the frame, and the cover
   // re-renders three times on a cold start — one of them from inside the
   // first-frame callback, the most latency-sensitive instant in the feature.
-  const layout = useMemo(() => {
-    const geometry = splashGeometry({ width: frameWidth, height: frameHeight })
-    const spread = geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg
-    const step = spread / (RAY_BAND_COUNT - 1)
-    return {
-      ...geometry,
-      // A band is drawn pointing LEFT out of the apex, so its rotation is its
-      // direction in the frame turned back by half a turn.
-      bandAngles: Array.from(
-        { length: RAY_BAND_COUNT },
-        (_, index) => geometry.bottomLeftAngleDeg + step * index - 180,
-      ),
-      bandThickness:
-        geometry.rayLength *
-        Math.abs((step * Math.PI) / 180) *
-        RAY_BAND_OVERLAP,
-    }
-  }, [frameWidth, frameHeight])
+  const layout = useMemo(
+    () => splashGeometry({ width: frameWidth, height: frameHeight }),
+    [frameWidth, frameHeight],
+  )
 
   // Reduce Motion seeds every value at its END, so the finished frame is the
   // first frame and nothing has to animate to reach it.
@@ -273,8 +404,9 @@ export function SplashSequence({
 
   const {
     apex,
-    bandAngles,
     bandThickness,
+    bands,
+    dissolve,
     fontSize,
     lineHeight,
     mark,
@@ -299,34 +431,61 @@ export function SplashSequence({
           },
         ]}
       >
-        {bandAngles.map((angle, index) => (
+        {bands.map((band, index) => (
           <LinearGradient
             key={index}
-            colors={[
-              hexToRgba(TEXT_ON_OVERLAY, RAY_APEX_ALPHA),
-              hexToRgba(TEXT_ON_OVERLAY, RAY_MID_ALPHA),
-              hexToRgba(TEXT_ON_OVERLAY, 0),
-            ]}
-            locations={[0, RAY_MID_STOP, 1]}
-            start={{ x: 1, y: 0.5 }}
-            end={{ x: 0, y: 0.5 }}
+            // ACROSS the band, not along it. A band that is uniform across its
+            // thickness puts a step at each of its two edges, and those steps
+            // are what make the individual bands visible inside the beam.
+            colors={RAY_BAND_COLORS}
+            locations={RAY_BAND_LOCATIONS}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
             style={[
-              styles.rayBand,
+              styles.rayPart,
               {
+                // `right` keeps every band's right edge on the apex, whatever
+                // its own length is.
                 right: rayLength,
                 top: rayLength - bandThickness / 2,
-                width: rayLength,
+                width: band.length,
                 height: bandThickness,
-                // Rotate about the band's RIGHT edge, which sits on the apex.
+                // Rotate about that right edge. A band points LEFT out of the
+                // apex, so its rotation is its direction turned back half a turn.
                 transform: [
-                  { translateX: rayLength / 2 },
-                  { rotate: `${angle}deg` },
-                  { translateX: -rayLength / 2 },
+                  { translateX: band.length / 2 },
+                  { rotate: `${band.angleDeg - 180}deg` },
+                  { translateX: -band.length / 2 },
                 ],
               },
             ]}
           />
         ))}
+
+        {/* Every band ENDS on the corner line, so their ends would read as one
+            hard cut. This lays the ground colour over that line to dissolve
+            them, and rides the same scale so it tracks the beam as it grows. */}
+        <LinearGradient
+          testID="splash-ray-dissolve"
+          colors={[
+            hexToRgba(BG_COLOR, 0),
+            hexToRgba(BG_COLOR, 1),
+            hexToRgba(BG_COLOR, 1),
+          ]}
+          locations={[0, dissolve.stop, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={[
+            styles.rayPart,
+            {
+              left: dissolve.left,
+              top: dissolve.top,
+              width: dissolve.width,
+              height: dissolve.height,
+              transform: [{ rotate: `${dissolve.angleDeg}deg` }],
+            },
+          ]}
+        />
       </Animated.View>
 
       <Animated.View
@@ -393,7 +552,7 @@ const styles = StyleSheet.create({
   rayGroup: {
     position: "absolute",
   },
-  rayBand: {
+  rayPart: {
     position: "absolute",
   },
   mark: {
