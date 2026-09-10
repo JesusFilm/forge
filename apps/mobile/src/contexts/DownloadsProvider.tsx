@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { AppState } from "react-native"
+import { documentDirectory } from "expo-file-system/legacy"
 
 import {
   configureDownloadEngine,
@@ -21,12 +23,20 @@ import {
   wireExistingTask,
 } from "../lib/downloadEngine"
 import { reconcile } from "../lib/downloadReconciliation"
+import { getExportSessionStore } from "../lib/exportSession"
+import {
+  applyExportSweep,
+  createEngineConfigFence,
+  planExportSweep,
+  type EngineConfigFence,
+} from "../lib/exportSweep"
 import {
   OFFLINE_ROOT,
   downloadToFile,
   ensureVideoDir,
   fileExists,
   freeDiskBytes,
+  listDirectory,
   moveFile,
   removeUri,
   removeVideoDir,
@@ -58,6 +68,11 @@ import {
   type StartDownloadResult,
 } from "../lib/downloadLifecycle"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
+import {
+  attachRawExportRuntime,
+  getRawExportAdapter,
+} from "../lib/rawExportRuntime"
+import { buildExportRoot, exportStagingDir } from "../lib/transferPort"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
@@ -397,15 +412,37 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [writeRecord],
   )
 
+  // R13: the export path reads offline records and never writes one, so it gets
+  // the reader rather than the manifest. Attaching here keeps the export's own
+  // modules free of both React and AsyncStorage.
+  useEffect(() => {
+    attachRawExportRuntime({
+      findOfflineRecord: (videoSlug) => recordsRef.current[videoSlug] ?? null,
+    })
+  }, [])
+
+  // KTD3: configureDownloadEngine recreates the shared URLSession and cancels
+  // every in-flight transfer, a raw export included. The fence holds a new
+  // wifi-only value while any export runs and applies it when the last settles.
+  const engineFenceRef = useRef<EngineConfigFence | null>(null)
+  useEffect(() => {
+    const fence = createEngineConfigFence({
+      configure: configureDownloadEngine,
+      session: getExportSessionStore(),
+    })
+    engineFenceRef.current = fence
+    return () => {
+      // The setup restores what this cleanup clears, so a StrictMode remount
+      // cannot leave the ref pointing at a disposed fence.
+      engineFenceRef.current = null
+      fence.dispose()
+    }
+  }, [])
+
   // Apply the global engine config once hydrated and whenever wifi-only changes.
   useEffect(() => {
     if (!isReady) return
-    try {
-      configureDownloadEngine({ wifiOnly })
-    } catch {
-      // Engine unavailable (build without the native module) — read surface
-      // still works; downloads are inert until a proper dev build.
-    }
+    engineFenceRef.current?.setWifiOnly(wifiOnly)
   }, [isReady, wifiOnly])
 
   // Defensive launch reattach: reconcile records vs live tasks + on-disk files,
@@ -415,114 +452,209 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     if (!isReady) return
     let cancelled = false
     void (async () => {
-      try {
-        const tasks = await listExistingDownloadTasks().catch(() => [])
-        const liveTaskSlugs = new Set(tasks.map((task) => task.id))
-        const current = Object.values(recordsRef.current)
-        // Snapshot pending paths up front so a cleanupOrphanPending action can
-        // still find the file to delete even if the record was dropped earlier
-        // in the action loop (e.g. a canceled record).
-        const pendingPathBySlug = new Map<string, string>()
-        for (const record of current) {
-          if (record.pendingPath) {
-            pendingPathBySlug.set(record.videoSlug, record.pendingPath)
+      const tasks = await listExistingDownloadTasks().catch(() => [])
+      const liveTaskSlugs = new Set(tasks.map((task) => task.id))
+
+      // Both phases need only `tasks`/`liveTaskSlugs`, resolved above, so
+      // serializing the sweep behind the restart loop would delay the report
+      // and the staged-file cleanup for nothing. Each keeps its own catch.
+      const reattachSurvivors = async (): Promise<void> => {
+        try {
+          const current = Object.values(recordsRef.current)
+          // Snapshot pending paths up front so a cleanupOrphanPending action can
+          // still find the file to delete even if the record was dropped earlier
+          // in the action loop (e.g. a canceled record).
+          const pendingPathBySlug = new Map<string, string>()
+          for (const record of current) {
+            if (record.pendingPath) {
+              pendingPathBySlug.set(record.videoSlug, record.pendingPath)
+            }
           }
-        }
-        const committedFileSlugs = new Set<string>()
-        const pendingFileSlugs = new Set<string>()
-        await Promise.all(
-          current.map(async (record) => {
-            if (
-              record.committedPath &&
-              (await fileExists(record.committedPath))
-            ) {
-              committedFileSlugs.add(record.videoSlug)
-            }
-            if (record.pendingPath && (await fileExists(record.pendingPath))) {
-              pendingFileSlugs.add(record.videoSlug)
-            }
-          }),
-        )
-        if (cancelled) return
-        const actions = reconcile({
-          records: current,
-          liveTaskSlugs,
-          pendingFileSlugs,
-          committedFileSlugs,
-        })
-
-        // R27: one disposition tally per cold start — the diagnostic for
-        // "downloads lost / stuck / duplicated after relaunch."
-        const reconcileTally = actions.reduce<Record<string, number>>(
-          (acc, a) => ({ ...acc, [a.action]: (acc[a.action] ?? 0) + 1 }),
-          {},
-        )
-        datadogLog.info("downloads.reconcile", {
-          total: actions.length,
-          ...reconcileTally,
-        })
-
-        const droppedSlugs = new Set<string>()
-        for (const action of actions) {
+          const committedFileSlugs = new Set<string>()
+          const pendingFileSlugs = new Set<string>()
+          await Promise.all(
+            current.map(async (record) => {
+              if (
+                record.committedPath &&
+                (await fileExists(record.committedPath))
+              ) {
+                committedFileSlugs.add(record.videoSlug)
+              }
+              if (
+                record.pendingPath &&
+                (await fileExists(record.pendingPath))
+              ) {
+                pendingFileSlugs.add(record.videoSlug)
+              }
+            }),
+          )
           if (cancelled) return
-          if (action.action === "dropRecord") {
-            droppedSlugs.add(action.videoSlug)
-            await removeRecord(action.videoSlug)
-          } else if (
-            action.action === "requeue" ||
-            action.action === "repair"
-          ) {
-            const record = recordsRef.current[action.videoSlug]
-            if (record && isBatchPlaceholderRecord(record)) {
-              // A relaunched batch placeholder re-enters the sequential queue —
-              // restarting it directly would fan out every queued episode as a
-              // concurrent native task, abandoning R14 ordering (review #2).
-              batchQueueRef.current = [
-                ...batchQueueRef.current,
-                buildReattachRequest(record, !wifiOnlyRef.current),
-              ]
-              batchSlugsRef.current.add(record.videoSlug)
-            } else if (record) {
-              await lifecycle.restart(record)
-            }
-          } else if (action.action === "cleanupOrphanPending") {
-            // A `.pending` partial with no in-flight record backing it — delete
-            // the leaked bytes and clear the stale path so it isn't re-flagged
-            // on the next launch.
-            const pending = pendingPathBySlug.get(action.videoSlug)
-            if (pending) await removeUri(pending)
-            const record = recordsRef.current[action.videoSlug]
-            if (record?.pendingPath) {
-              await writeRecord({ ...record, pendingPath: null })
+          const actions = reconcile({
+            records: current,
+            liveTaskSlugs,
+            pendingFileSlugs,
+            committedFileSlugs,
+          })
+
+          // R27: one disposition tally per cold start — the diagnostic for
+          // "downloads lost / stuck / duplicated after relaunch."
+          const reconcileTally = actions.reduce<Record<string, number>>(
+            (acc, a) => ({ ...acc, [a.action]: (acc[a.action] ?? 0) + 1 }),
+            {},
+          )
+          datadogLog.info("downloads.reconcile", {
+            total: actions.length,
+            ...reconcileTally,
+          })
+
+          const droppedSlugs = new Set<string>()
+          for (const action of actions) {
+            if (cancelled) return
+            if (action.action === "dropRecord") {
+              droppedSlugs.add(action.videoSlug)
+              await removeRecord(action.videoSlug)
+            } else if (
+              action.action === "requeue" ||
+              action.action === "repair"
+            ) {
+              const record = recordsRef.current[action.videoSlug]
+              if (record && isBatchPlaceholderRecord(record)) {
+                // A relaunched batch placeholder re-enters the sequential queue —
+                // restarting it directly would fan out every queued episode as a
+                // concurrent native task, abandoning R14 ordering (review #2).
+                batchQueueRef.current = [
+                  ...batchQueueRef.current,
+                  buildReattachRequest(record, !wifiOnlyRef.current),
+                ]
+                batchSlugsRef.current.add(record.videoSlug)
+              } else if (record) {
+                await lifecycle.restart(record)
+              }
+            } else if (action.action === "cleanupOrphanPending") {
+              // A `.pending` partial with no in-flight record backing it — delete
+              // the leaked bytes and clear the stale path so it isn't re-flagged
+              // on the next launch.
+              const pending = pendingPathBySlug.get(action.videoSlug)
+              if (pending) await removeUri(pending)
+              const record = recordsRef.current[action.videoSlug]
+              if (record?.pendingPath) {
+                await writeRecord({ ...record, pendingPath: null })
+              }
             }
           }
-        }
-        if (cancelled) return
-        for (const task of tasks) {
-          const record = recordsRef.current[task.id]
-          if (!record || droppedSlugs.has(task.id)) continue
-          if (
-            record.state !== "downloading" &&
-            record.state !== "queued" &&
-            record.state !== "paused"
-          ) {
-            continue
+          if (cancelled) return
+          for (const task of tasks) {
+            const record = recordsRef.current[task.id]
+            if (!record || droppedSlugs.has(task.id)) continue
+            if (
+              record.state !== "downloading" &&
+              record.state !== "queued" &&
+              record.state !== "paused"
+            ) {
+              continue
+            }
+            // U6/R3: wireTask re-binds handlers and re-resolves the subtitle URL
+            // lazily at commit, so wiring is never blocked on the network.
+            lifecycle.wireTask(task, record)
           }
-          // U6/R3: wireTask re-binds handlers and re-resolves the subtitle URL
-          // lazily at commit, so wiring is never blocked on the network.
-          lifecycle.wireTask(task, record)
+          // Drain any placeholders reseeded above (a pure-requeue reconcile may
+          // not touch `records`, so the records-effect alone won't wake the pump).
+          batchPumpRef.current()
+        } catch {
+          // Reattach is best-effort and must never break boot.
         }
-        // Drain any placeholders reseeded above (a pure-requeue reconcile may
-        // not touch `records`, so the records-effect alone won't wake the pump).
-        batchPumpRef.current()
-      } catch {
-        // Reattach is best-effort and must never break boot.
       }
+
+      // U7/R28: reconcile the export staging root against its notes. Its own
+      // catch is what keeps a reattach fault from stranding a staged file,
+      // and planExportSweep reads R33's switch itself, so this always runs.
+      const sweepExportStaging = async (): Promise<void> => {
+        try {
+          const store = getExportSessionStore()
+          const exportRoot = buildExportRoot(documentDirectory)
+          const [notes, stagedEntries] = await Promise.all([
+            store.listStagingNotes(),
+            listDirectory(exportRoot),
+          ])
+          const existingStagedFiles = new Set<string>()
+          await Promise.all(
+            notes.map(async (note) => {
+              if (await fileExists(note.stagedPath)) {
+                existingStagedFiles.add(note.target)
+              }
+            }),
+          )
+          if (cancelled) return
+          const sweep = planExportSweep({
+            notes,
+            stagedEntries,
+            existingStagedFiles,
+            liveTaskIds: liveTaskSlugs,
+          })
+          // A launch that has never exported builds no adapter and touches no
+          // photo-library binding.
+          if (sweep.length === 0) return
+          await applyExportSweep(sweep, {
+            adapter: getRawExportAdapter(),
+            clearStagingNote: (target) => store.clearStagingNote(target),
+            // Re-joined under the root rather than trusted as read, so a stray
+            // entry name can never point the removal outside the export root.
+            removeStagedDir: (target) =>
+              removeUri(exportStagingDir(exportRoot, target)),
+            stopExportTask: async (taskId) => {
+              const task = tasks.find((candidate) => candidate.id === taskId)
+              if (task) await stopTask(task)
+            },
+            isCancelled: () => cancelled,
+          })
+        } catch {
+          // Best-effort too: a fault leaves the note for the next launch.
+        }
+      }
+
+      await Promise.allSettled([reattachSurvivors(), sweepExportStaging()])
     })()
     return () => {
       cancelled = true
     }
   }, [isReady, removeRecord, writeRecord, lifecycle])
+
+  /**
+   * R28/KTD4: a completed transfer whose library write waited for the
+   * foreground. The launch sweep alone would leave it unsaved for the whole
+   * session, because returning from the background is not a relaunch.
+   */
+  useEffect(() => {
+    if (!isReady) return
+    let running = false
+    const finishDeferred = async (): Promise<void> => {
+      if (running) return
+      running = true
+      try {
+        const store = getExportSessionStore()
+        const notes = await store.listStagingNotes()
+        const ready = notes.filter((note) => note.transferFinished)
+        if (ready.length === 0) return
+        const adapter = getRawExportAdapter()
+        for (const note of ready) {
+          // Skip a target this session is still exporting: its own run owns
+          // the note, and R27's slot is what keeps the two from colliding.
+          if (getExportSessionStore().getSnapshot().targets.has(note.target)) {
+            continue
+          }
+          await adapter.completeStagedExport(note)
+        }
+      } catch {
+        // Best-effort: the launch sweep is still the backstop.
+      } finally {
+        running = false
+      }
+    }
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") void finishDeferred()
+    })
+    return () => subscription.remove()
+  }, [isReady])
 
   // R14: drain the batch queue — start the head episode when the single slot
   // is free, drop stale heads. Single-flight; every terminal path mutates

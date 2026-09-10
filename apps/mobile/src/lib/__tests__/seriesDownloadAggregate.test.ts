@@ -8,6 +8,34 @@ import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
 } from "../offlineManifest"
+import type {
+  ExportSessionEntry,
+  ExportSessionSnapshot,
+} from "../exportSession"
+
+const exportEntry = (target: string, progress: number): ExportSessionEntry => ({
+  target,
+  runId: "run-1",
+  title: null,
+  seriesSlug: "series",
+  progress,
+  cancelRequested: false,
+})
+
+/** An export session snapshot holding one entry per named target. */
+const session = (
+  ...targets: [target: string, progress: number][]
+): ExportSessionSnapshot => {
+  const byTarget: Record<string, ExportSessionEntry> = {}
+  for (const [target, progress] of targets) {
+    byTarget[target] = exportEntry(target, progress)
+  }
+  return {
+    byTarget,
+    activeCount: targets.length,
+    targets: new Set(Object.keys(byTarget)),
+  }
+}
 
 const rec = (
   videoSlug: string,
@@ -42,6 +70,9 @@ describe("deriveSeriesDownloadState", () => {
       pausedAggregate: false,
       inFlightSlugs: [],
       progress: 0,
+      exporting: false,
+      exportProgress: 0,
+      exportingSlugs: [],
     })
   })
 
@@ -198,6 +229,9 @@ describe("seriesDownloadLabel", () => {
       pausedAggregate: false,
       inFlightSlugs: [],
       progress: 0,
+      exporting: false,
+      exportProgress: 0,
+      exportingSlugs: [],
     })
 
   it("reads 'Download all' when nothing is downloaded", () => {
@@ -221,6 +255,9 @@ describe("seriesAllDownloaded", () => {
     pausedAggregate: false,
     inFlightSlugs: [] as string[],
     progress: 0,
+    exporting: false,
+    exportProgress: 0,
+    exportingSlugs: [] as string[],
   })
 
   it("is true only when total > 0 and every episode is downloaded", () => {
@@ -253,5 +290,117 @@ describe("deriveEpisodeBadges (U9)", () => {
     expect(badges.get("q")).toBe("queued")
     expect(badges.get("p")).toBe("paused")
     expect(badges.get("x")).toBe("none")
+  })
+
+  it("badges an exporting episode over its own offline state (R16)", () => {
+    const badges = deriveEpisodeBadges(
+      EPISODES,
+      [rec("a", "downloaded", 1, 1), rec("b", "downloading")],
+      session(["a", 0.3]).targets,
+    )
+    expect(badges.get("a")).toBe("exporting")
+    expect(badges.get("b")).toBe("downloading")
+    expect(badges.get("c")).toBe("none")
+  })
+
+  it("badges an exporting episode that has no offline record at all", () => {
+    const badges = deriveEpisodeBadges(EPISODES, [], session(["c", 0]).targets)
+    expect(badges.get("c")).toBe("exporting")
+  })
+
+  it("ignores an export of a video outside this series", () => {
+    const badges = deriveEpisodeBadges(
+      EPISODES,
+      [],
+      session(["elsewhere", 0.5]).targets,
+    )
+    expect([...badges.values()]).toEqual(["none", "none", "none"])
+  })
+})
+
+describe("deriveSeriesDownloadState with a raw export (R16, R24, R30)", () => {
+  it("reports no export when no session is passed", () => {
+    const state = deriveSeriesDownloadState(EPISODES, [], [])
+    expect(state.exporting).toBe(false)
+    expect(state.exportProgress).toBe(0)
+    expect(state.exportingSlugs).toEqual([])
+  })
+
+  it("flags the export and names the episodes the cancel acts on", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["b", 0.5]),
+    )
+    expect(state.exporting).toBe(true)
+    expect(state.exportingSlugs).toEqual(["b"])
+    expect(state.exportProgress).toBeCloseTo(0.5)
+  })
+
+  it("averages the in-flight episodes' progress for the ring", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["a", 0.25], ["b", 0.75]),
+    )
+    expect(state.exportProgress).toBeCloseTo(0.5)
+  })
+
+  it("ignores an export of a video outside this series", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["elsewhere", 0.5]),
+    )
+    expect(state.exporting).toBe(false)
+    expect(state.exportingSlugs).toEqual([])
+  })
+
+  it("clamps an out-of-range progress and never yields NaN", () => {
+    const high = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["a", 4]),
+    )
+    expect(high.exportProgress).toBe(1)
+    const low = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["a", -1]),
+    )
+    expect(low.exportProgress).toBe(0)
+    const broken = deriveSeriesDownloadState(
+      EPISODES,
+      [],
+      [],
+      undefined,
+      session(["a", Number.NaN]),
+    )
+    expect(Number.isNaN(broken.exportProgress)).toBe(false)
+  })
+
+  it("leaves the offline aggregate untouched — an export pauses nothing", () => {
+    const state = deriveSeriesDownloadState(
+      EPISODES,
+      ["c"],
+      [rec("a", "paused"), rec("c", "downloaded", 10, 10)],
+      undefined,
+      session(["a", 0.5]),
+    )
+    expect(state.exporting).toBe(true)
+    expect(state.pausedAggregate).toBe(true)
+    expect(state.inProgress).toBe(true)
+    expect(state.downloaded).toBe(1)
+    expect(state.inFlightSlugs).toEqual(["a"])
   })
 })

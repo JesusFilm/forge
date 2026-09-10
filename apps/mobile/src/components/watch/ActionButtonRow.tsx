@@ -26,6 +26,7 @@ import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import type { OfflineDownloadState } from "../../lib/offlineManifest"
+import type { ExportSessionEntry } from "../../lib/exportSession"
 import { downloadGlyphInfo } from "../../lib/downloadGlyph"
 import { DownloadProgressRing } from "./DownloadProgressRing"
 
@@ -78,6 +79,9 @@ export interface ActionButtonRowProps {
   downloadState?: OfflineDownloadState | null
   /** Download progress (0..1) for the in-progress ring; null when unknown. */
   downloadProgress?: number | null
+  /** This video's raw export while one runs; it outranks every offline state
+   *  and makes the control inert (R16, R24). */
+  exportEntry?: ExportSessionEntry | null
   /** Selected dub language name shown on the Language row. */
   languageLabel?: string | null
   /** Selected subtitle name (or "Off") shown on the Subtitles row. */
@@ -93,6 +97,7 @@ export function ActionButtonRow({
   onShare,
   downloadState,
   downloadProgress,
+  exportEntry,
   languageLabel,
   subtitleLabel,
   subtitleActive,
@@ -120,23 +125,9 @@ export function ActionButtonRow({
   const subtitle = subtitleLabel?.trim() || "Subtitles"
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
-  const dl = downloadGlyphInfo(downloadState, downloadProgress)
-  // The in-progress ring IS the control (mirrors the series button): pause while
-  // transferring (tap→pause), play while paused (tap→resume/remove), neutral
-  // download glyph while queued (no live transfer to pause yet).
-  const inProgressIcon =
-    downloadState === "paused"
-      ? "play"
-      : downloadState === "queued"
-        ? "arrow-down"
-        : "pause"
-  const downloadA11y = !dl.inProgress
-    ? dl.a11yLabel
-    : downloadState === "paused"
-      ? "Download paused. Tap to resume or remove"
-      : downloadState === "queued"
-        ? "Download queued. Tap to remove"
-        : "Pause download"
+  // The ring IS the control, so its glyph, its label and whether it accepts a
+  // tap are ONE decision — downloadGlyphInfo owns all three (KTD6).
+  const dl = downloadGlyphInfo(downloadState, downloadProgress, exportEntry)
   // The completed tick reads a touch larger than the idle/failed glyphs.
   const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
@@ -224,25 +215,26 @@ export function ActionButtonRow({
           the roomy column (actionRowSpacing). */}
       <View style={{ width: spacers.dividerIcon }} />
       <Pressable
-        onPress={onDownload}
+        onPress={dl.interactive ? onDownload : undefined}
+        disabled={!dl.interactive}
         style={({ pressed }) => [
           styles.iconButton,
           pressed && feedback.pressed,
         ]}
         hitSlop={downloadSlop}
         accessibilityRole="button"
-        accessibilityLabel={downloadA11y}
+        accessibilityLabel={dl.a11yLabel}
       >
         {dl.inProgress ? (
           <DownloadProgressRing
             size={26}
             strokeWidth={2.5}
-            progress={downloadProgress ?? 0}
+            progress={dl.ringProgress}
             color={dl.color}
             trackColor="rgba(255, 255, 255, 0.18)"
             cutoutColor={BG_COLOR}
           >
-            <Ionicons name={inProgressIcon} size={12} color={dl.color} />
+            <Ionicons name={dl.ringIcon} size={12} color={dl.color} />
           </DownloadProgressRing>
         ) : (
           <Ionicons name={dl.icon} size={staticIconSize} color={dl.color} />

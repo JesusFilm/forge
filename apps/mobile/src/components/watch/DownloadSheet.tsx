@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
+  AccessibilityInfo,
   Modal,
   Platform,
   Pressable,
@@ -23,6 +24,7 @@ import {
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
 import type { WatchDownload } from "../../lib/normalizeVideo"
+import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
 import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
@@ -274,6 +276,156 @@ export function Dropdown({
   )
 }
 
+/** R1: what the viewer asked the sheet to do with the video. */
+export type DownloadMode = "offline" | "raw"
+
+export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
+  offline: "Keep an offline copy in the app",
+  raw: "Save a video file to the device",
+}
+
+const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
+  offline: "Watch it in the app without a network.",
+  raw: "Keep it in your device library, outside the app.",
+}
+
+const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
+  offline: "Offline copy selected. The subtitle choice is available.",
+  raw: "Device file selected. The subtitle choice is hidden. A saved file carries no subtitles.",
+}
+
+/** R35: stated once, on the first raw selection, and never per file. */
+export const PERSONAL_USE_NOTE =
+  "The saved file is for your personal use. It leaves this app's control when it reaches your device library."
+
+/** R37, per-video sheet: the offline copy names the quality it already holds. */
+export function formatOfflineReuseNote(qualityLabel: string): string {
+  return `You already have an offline copy in ${qualityLabel}. ${qualityLabel} reuses that file. Any other quality downloads the video again.`
+}
+
+/** R37, series sheet: a count at the selected quality, not one named quality. */
+export function formatSeriesReuseNote(
+  reusableCount: number,
+  totalCount: number,
+): string {
+  const head = `${reusableCount} of ${totalCount} episodes reuse an offline copy at this quality.`
+  return reusableCount >= totalCount
+    ? head
+    : `${head} The other episodes download again.`
+}
+
+/**
+ * R32: an export replaces nothing, so raw mode lifts every already-downloaded
+ * gate the offline path applies. Offline mode keeps the value it computed.
+ */
+export function suspendedInRawMode<T>(
+  mode: DownloadMode,
+  value: T,
+): T | undefined {
+  return mode === "raw" ? undefined : value
+}
+
+// R35 counts per app session, not per sheet: every sheet mounts fresh, so a
+// component state would repeat the note for every file.
+let personalUseNoteSeen = false
+
+/** Test-only: forget that this session already stated the personal-use note. */
+export function resetPersonalUseNoteForTests(): void {
+  personalUseNoteSeen = false
+}
+
+/** True while the sheet that made the session's first raw selection is open. */
+export function useFirstRawSelectionNotice(mode: DownloadMode): boolean {
+  const [claimed, setClaimed] = useState(false)
+  useEffect(() => {
+    if (mode !== "raw" || personalUseNoteSeen) return
+    personalUseNoteSeen = true
+    setClaimed(true)
+  }, [mode])
+  return claimed && mode === "raw"
+}
+
+/**
+ * R1: the two modes, on both sheets, from one implementation. R33's switch
+ * removes it entirely rather than disabling it — a disabled control describes
+ * something this build cannot do.
+ */
+export function DownloadModeControl({
+  mode,
+  onChange,
+}: {
+  mode: DownloadMode
+  onChange: (mode: DownloadMode) => void
+}) {
+  const typography = useTypography()
+  if (!RAW_EXPORT_ENABLED) return null
+
+  const select = (next: DownloadMode) => {
+    if (next === mode) return
+    onChange(next)
+    // The subtitle region leaves with the mode, so a screen reader hears why.
+    AccessibilityInfo.announceForAccessibility(
+      DOWNLOAD_MODE_ANNOUNCEMENTS[next],
+    )
+  }
+
+  return (
+    <View style={styles.modeSection}>
+      <Text style={[styles.dropdownSectionLabel, typography.bodySmall]}>
+        What do you want to do?
+      </Text>
+      <View accessibilityRole="radiogroup" style={styles.modeGroup}>
+        {(["offline", "raw"] as const).map((option) => {
+          const checked = option === mode
+          return (
+            <Pressable
+              key={option}
+              style={({ pressed }) => [
+                styles.modeOption,
+                checked && styles.modeOptionSelected,
+                pressed && feedback.pressed,
+              ]}
+              onPress={() => select(option)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked }}
+              accessibilityLabel={DOWNLOAD_MODE_LABELS[option]}
+              accessibilityHint={DOWNLOAD_MODE_HINTS[option]}
+            >
+              {/* The filled dot carries the choice too, so the selected row
+                  never rests on colour alone. */}
+              <Ionicons
+                name={checked ? "radio-button-on" : "radio-button-off"}
+                size={20}
+                color={checked ? ACCENT : TEXT_SECONDARY}
+              />
+              <View style={styles.modeTextGroup}>
+                <Text
+                  style={[
+                    styles.modeLabel,
+                    typography.body,
+                    checked && styles.modeLabelSelected,
+                  ]}
+                >
+                  {DOWNLOAD_MODE_LABELS[option]}
+                </Text>
+                <Text style={[styles.modeHint, typography.bodySmall]}>
+                  {DOWNLOAD_MODE_HINTS[option]}
+                </Text>
+              </View>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+/** A note the sheet states above the pickers, in raw mode only. */
+export function SheetNote({ text }: { text: string }) {
+  const typography = useTypography()
+  return <Text style={[styles.sheetNote, typography.bodySmall]}>{text}</Text>
+}
+
 export type DownloadSheetProps = {
   videoTitle: string | null
   duration: number | null
@@ -286,11 +438,16 @@ export type DownloadSheetProps = {
    */
   subtitleLanguageName: string | null
   /**
-   * Enqueue the chosen rendition for offline download. The active subtitle is
+   * R37: the quality label of a completed offline copy, or null when the video
+   * has none. It names the copy the export can reuse, not the current choice.
+   */
+  offlineCopyQuality?: string | null
+  /**
+   * Start the chosen rendition in the chosen mode. The active subtitle is
    * inherited from the watch session (not picked here); the route builds the
    * full request, dismisses the sheet, and downloads via DownloadsProvider.
    */
-  onStartDownload: (rendition: WatchDownload) => void
+  onStartDownload: (rendition: WatchDownload, mode: DownloadMode) => void
 }
 
 export function DownloadSheetContent({
@@ -299,6 +456,7 @@ export function DownloadSheetContent({
   languageName,
   downloads,
   subtitleLanguageName,
+  offlineCopyQuality = null,
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -309,6 +467,10 @@ export function DownloadSheetContent({
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
+  // R2: every opening starts here, and nothing writes the choice back.
+  const [mode, setMode] = useState<DownloadMode>("offline")
+  const rawMode = mode === "raw"
+  const showPersonalUseNote = useFirstRawSelectionNotice(mode)
 
   // Key by tier-array index, not documentId: ids aren't unique (normalizeVideo
   // defaults documentId to "" and doesn't dedupe), so they'd collide React keys
@@ -337,8 +499,8 @@ export function DownloadSheetContent({
     if (!selected) return
     // Enqueue and hand off to the background engine; the parent dismisses the
     // sheet. One copy per video is enforced by DownloadsProvider.
-    onStartDownload(selected)
-  }, [touAccepted, tiered, selectedIndex, onStartDownload])
+    onStartDownload(selected, mode)
+  }, [touAccepted, tiered, selectedIndex, mode, onStartDownload])
 
   if (downloads.length === 0) {
     return (
@@ -399,18 +561,29 @@ export function DownloadSheetContent({
                 </Text>
               </View>
             )}
-            <View style={styles.metaPill}>
-              <MaterialCommunityIcons
-                name="closed-caption-outline"
-                size={16}
-                color={TEXT_SECONDARY}
-              />
-              <Text style={[styles.metaPillText, typography.bodySmall]}>
-                {subtitleLanguageName ?? "No subtitles"}
-              </Text>
-            </View>
+            {/* R5: an exported file cannot carry the subtitle, so raw mode
+                removes the pill instead of describing an empty promise. */}
+            {!rawMode && (
+              <View style={styles.metaPill}>
+                <MaterialCommunityIcons
+                  name="closed-caption-outline"
+                  size={16}
+                  color={TEXT_SECONDARY}
+                />
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
+                  {subtitleLanguageName ?? "No subtitles"}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
+
+        <DownloadModeControl mode={mode} onChange={setMode} />
+
+        {showPersonalUseNote && <SheetNote text={PERSONAL_USE_NOTE} />}
+        {rawMode && offlineCopyQuality != null && (
+          <SheetNote text={formatOfflineReuseNote(offlineCopyQuality)} />
+        )}
 
         <Dropdown
           sectionLabel="Select a file size"
@@ -465,12 +638,14 @@ export function DownloadSheetContent({
           onPress={handleDownload}
           disabled={!touAccepted}
           accessibilityRole="button"
-          accessibilityLabel="Download video"
+          accessibilityLabel={
+            rawMode ? "Save video to the device" : "Download video"
+          }
           accessibilityState={{ disabled: !touAccepted }}
         >
           <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            Download
+            {rawMode ? "Save to device" : "Download"}
           </Text>
         </Pressable>
       </ScrollView>
@@ -537,6 +712,47 @@ const styles = StyleSheet.create({
   },
   dropdownSection: {
     marginBottom: 24,
+  },
+  modeSection: {
+    marginBottom: 24,
+  },
+  modeGroup: {
+    gap: 8,
+  },
+  modeOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+  },
+  modeOptionSelected: {
+    borderColor: ACCENT,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+  },
+  modeTextGroup: {
+    flexShrink: 1,
+  },
+  modeLabel: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+  },
+  modeLabelSelected: {
+    fontWeight: "600",
+  },
+  modeHint: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+  },
+  sheetNote: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+    marginBottom: 16,
   },
   dropdownSectionLabel: {
     color: TEXT_SECONDARY,

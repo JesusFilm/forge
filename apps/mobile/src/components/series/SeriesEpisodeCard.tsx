@@ -17,6 +17,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { EXPORT_IN_PROGRESS_COLOR } from "../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
 
 // Grid corner badge per download state (U9). Also spoken via accessibilityLabel.
@@ -40,6 +41,12 @@ const BADGE: Record<
     a11y: "queued",
   },
   paused: { icon: "pause-circle", color: "#f5c451", a11y: "paused" },
+  // R16: the export outranks the offline state, so it gets its own glyph here.
+  exporting: {
+    icon: "arrow-up-circle",
+    color: EXPORT_IN_PROGRESS_COLOR,
+    a11y: "saving to Photos",
+  },
 }
 
 type SeriesEpisodeCardProps = {

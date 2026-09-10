@@ -69,6 +69,7 @@ import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import { useExportEntry } from "../../src/hooks/useExportSession"
 import {
   progressBarState,
   resumePositionSeconds,
@@ -302,6 +303,8 @@ export default function WatchVideoPage() {
   // auto-seek and autostart.
   const progressEntry = useWatchProgressEntry(video?.documentId)
   const progressState = progressBarState(progressEntry)
+  // R16: a raw export outranks the offline state on this video's control.
+  const exportEntry = useExportEntry(video?.slug)
   const resumeAtSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
@@ -740,6 +743,7 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
+              exportEntry={exportEntry}
               downloadState={getRecord(video.slug)?.state ?? null}
               downloadProgress={(() => {
                 const record = getRecord(video.slug)
