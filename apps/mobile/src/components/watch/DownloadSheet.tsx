@@ -279,11 +279,31 @@ export function Dropdown({
 /** R1: what the viewer asked the sheet to do with the video. */
 export type DownloadMode = "offline" | "raw"
 
-export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
-  offline: "Keep an offline copy in the app",
-  raw: "Save a video file to the device",
+/**
+ * The raw label names the PLATFORM's own photos app: Apple's is called Photos,
+ * and "Gallery" is the term Android users recognise whatever the OEM ships.
+ *
+ * A function of the OS, not a `Platform.OS` conditional read inline, because
+ * jest runs this app as iOS ONLY — an inline read would leave the Android
+ * wording permanently unexercised.
+ */
+export function rawModeLabel(platformOS: string): string {
+  return platformOS === "ios" ? "Download to Photos" : "Download to Gallery"
 }
 
+/**
+ * The label carries the whole choice — there is no description beside it — so
+ * each one names its destination.
+ */
+export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
+  offline: "Download for Offline Watching",
+  raw: rawModeLabel(Platform.OS),
+}
+
+/**
+ * Screen-reader only. The visible descriptions are gone, but a hint costs a
+ * sighted viewer nothing and still explains where the file ends up.
+ */
 const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
   offline: "Watch it in the app without a network.",
   raw: "Keep it in your device library, outside the app.",
@@ -371,9 +391,6 @@ export function DownloadModeControl({
 
   return (
     <View style={styles.modeSection}>
-      <Text style={[styles.dropdownSectionLabel, typography.bodySmall]}>
-        What do you want to do?
-      </Text>
       <View accessibilityRole="radiogroup" style={styles.modeGroup}>
         {(["offline", "raw"] as const).map((option) => {
           const checked = option === mode
@@ -407,9 +424,6 @@ export function DownloadModeControl({
                   ]}
                 >
                   {DOWNLOAD_MODE_LABELS[option]}
-                </Text>
-                <Text style={[styles.modeHint, typography.bodySmall]}>
-                  {DOWNLOAD_MODE_HINTS[option]}
                 </Text>
               </View>
             </Pressable>
@@ -744,10 +758,6 @@ const styles = StyleSheet.create({
   },
   modeLabelSelected: {
     fontWeight: "600",
-  },
-  modeHint: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   sheetNote: {
     color: TEXT_BODY,

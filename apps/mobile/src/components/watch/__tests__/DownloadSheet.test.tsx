@@ -98,6 +98,7 @@ import {
   PERSONAL_USE_NOTE,
   formatOfflineReuseNote,
   formatSeriesReuseNote,
+  rawModeLabel,
   resetPersonalUseNoteForTests,
   suspendedInRawMode,
   type DownloadMode,
@@ -341,6 +342,49 @@ afterEach(() => {
 })
 
 // ── Per-video sheet ─────────────────────────────────────────────────
+
+// Owner decision 2026-09-11: the two rows carry the whole choice. No section
+// header, no description beside either label.
+describe("mode control copy", () => {
+  it("names each mode by its destination", () => {
+    expect(DOWNLOAD_MODE_LABELS.offline).toBe("Download for Offline Watching")
+    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Download to Photos")
+  })
+
+  it("names the platform's OWN photos app on each platform", () => {
+    // jest runs this app as iOS only, so the Android wording is unreachable
+    // through the rendered sheet. Pin the resolver directly instead.
+    expect(rawModeLabel("ios")).toBe("Download to Photos")
+    expect(rawModeLabel("android")).toBe("Download to Gallery")
+  })
+
+  it("renders no section header above the two rows", async () => {
+    const renderer = await renderSheet()
+    expect(hasText(renderer, "What do you want to do?")).toBe(false)
+  })
+
+  it("renders no description under either row", async () => {
+    const renderer = await renderSheet()
+    // Anti-vacuous: the labels themselves ARE rendered, so a blanket-false
+    // hasText cannot be what makes this pass.
+    expect(hasText(renderer, DOWNLOAD_MODE_LABELS.offline)).toBe(true)
+    expect(hasText(renderer, DOWNLOAD_MODE_LABELS.raw)).toBe(true)
+    expect(hasText(renderer, "Watch it in the app without a network.")).toBe(
+      false,
+    )
+    expect(
+      hasText(renderer, "Keep it in your device library, outside the app."),
+    ).toBe(false)
+  })
+
+  it("keeps the explanation for a screen reader as an accessibilityHint", async () => {
+    const renderer = await renderSheet()
+    const raw = radioByLabel(renderer, DOWNLOAD_MODE_LABELS.raw)
+    expect(raw?.props.accessibilityHint).toBe(
+      "Keep it in your device library, outside the app.",
+    )
+  })
+})
 
 describe("DownloadSheetContent mode control", () => {
   it("opens on the offline mode and exposes radio semantics", async () => {
