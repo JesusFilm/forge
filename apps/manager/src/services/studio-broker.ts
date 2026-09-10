@@ -52,12 +52,22 @@ function canonical(value: unknown): string {
   return JSON.stringify(value) ?? "null"
 }
 const exec = promisify(execFile)
-const allowedHosts = new Set([
-  "stream.mux.com",
-  "api-media-core.jesusfilm.org",
-  "manifest-gcp-us-east1-vop1.fastly.mux.com",
-  "chunk-oci-us-ashburn-1-vop1.fastly.mux.com",
-])
+export function canonicalMediaUrl(raw: string): URL {
+  const url = new URL(raw)
+  if (
+    url.protocol !== "https:" ||
+    url.port ||
+    url.username ||
+    url.password ||
+    !(
+      url.hostname === "api-media-core.jesusfilm.org" ||
+      url.hostname === "mux.com" ||
+      url.hostname.endsWith(".mux.com")
+    )
+  )
+    throw new StudioBrokerError("Unapproved canonical media host")
+  return url
+}
 const LIMIT = 256 * 1024 * 1024
 const reference = studioAssetReferenceSchema
 const resolvedSchema = z.array(
@@ -443,15 +453,7 @@ export async function prepareStudioPreview(
       code: StudioPreview["code"] = {}
     let transferred = 0
     async function download(raw: string, max = LIMIT) {
-      const url = new URL(raw)
-      if (
-        url.protocol !== "https:" ||
-        url.port ||
-        url.username ||
-        url.password ||
-        !allowedHosts.has(url.hostname)
-      )
-        throw new StudioBrokerError("Unapproved canonical media host")
+      const url = canonicalMediaUrl(raw)
       const bytes = await readBounded(
         await fetch(url, {
           redirect: "error",
