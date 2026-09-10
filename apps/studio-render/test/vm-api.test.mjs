@@ -134,6 +134,34 @@ test("lease operations never send the host worker key and require an exact-lease
   assert.equal(await api.json("owns", {}, undefined, capability), false)
   assert.deepEqual(headers, [`Bearer ${capability}`])
 })
+test("a slow valid lease response survives Internet latency without another request", async (t) => {
+  let requests = 0
+  let timer
+  const owned = await fixture(t, (req, res) => {
+    requests++
+    timer = setTimeout(() => res.end("true"), 6000)
+  })
+  t.after(() => clearTimeout(timer))
+  const capability = "a".repeat(64) + "." + "b".repeat(43)
+  assert.equal(
+    await new VmJobApi(owned.config).json("owns", {}, undefined, capability),
+    true,
+  )
+  assert.equal(requests, 1)
+})
+test("caller cancellation still interrupts a pending lease check", async (t) => {
+  const owned = await fixture(t, () => {})
+  const capability = "a".repeat(64) + "." + "b".repeat(43)
+  await assert.rejects(
+    new VmJobApi(owned.config).json(
+      "owns",
+      {},
+      AbortSignal.timeout(50),
+      capability,
+    ),
+    /unconfirmed/,
+  )
+})
 test("lost finish response replays the durably sealed record on restart without a new retain or execution", async (t) => {
   let owned
   const seen = []

@@ -4,7 +4,9 @@ const operationMs = Object.freeze({
   mux: 45000,
   receipt: 5000,
   input: 90000,
-  owns: 5000,
+  // This read crosses the public gateway. Leave room for response latency;
+  // caller cancellation and the native execution deadline still apply earlier.
+  owns: 10000,
   retain: 45000,
   finish: 15000,
 })
