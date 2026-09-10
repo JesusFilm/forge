@@ -56,7 +56,7 @@ Playback must be represented as recomputable episodes so elapsed time, player po
 - Issue a source-neutral server playback context for every eligible Watch arrival, optionally linked to recommendation, search, share, or acquisition provenance, then exchange it for an episode-scoped token.
 - Record immutable playback facts, union foreground-playing intervals, and finalize episodes through a fenced idempotent workflow.
 - Publish revisioned outcomes with exact input watermarks and compare the legacy rule with active-watch-proxy-v1 by duration cohort.
-- Publish finalized outcomes through a stable source-neutral consumer boundary regardless of whether the viewer arrived through recommendations, search, direct navigation, a shared link, acquisition, or editorial discovery; retain discovery source as provenance. Downstream consumers—not playback collection—own consent, integrity, privacy, and preference-eligibility policy.
+- Publish finalized outcomes through a stable source-neutral consumer boundary regardless of whether the viewer arrived through recommendations, search, direct navigation, a shared link, acquisition, or editorial discovery; retain discovery source as provenance. Downstream consumers—not playback collection—own integrity, explicit personalization settings, privacy, and preference-eligibility policy.
 - Record a per-proxy Admin readiness decision without making the proxy live ranking input.
 
 ## Admin Evidence Gate
@@ -72,7 +72,7 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Late evidence supersedes prior outcome revisions; it never mutates history or double-counts intervals.
 - Discovery source may affect later analysis and rank features, but the playback episode pipeline must process equivalent outcomes identically across sources and consent states.
 - The readiness decision is eligible-for-shadow-evaluation, revise, retire, or inconclusive—not live promotion.
-- Do not add consent branching, consent UI, recommendation-specific privacy schema, recommendation eligibility gates, erasure workflows, retention machinery, or a new privacy-review gate in this ticket. Any downstream recommendation consumer owns those policies at its ingestion boundary.
+- Do not add consent branching, consent UI, recommendation-specific privacy schema, recommendation eligibility gates, erasure workflows, retention machinery, or a new privacy-review gate in this ticket. Downstream recommendation consumers own integrity, retention, erasure, and explicit personalization settings at their ingestion boundary under `docs/analytics-and-recommendation-policy.md`; they add no consent prerequisite.
 - Preserve player startup and Watch availability when recommendation telemetry or Admin is degraded.
 
 ## Verification

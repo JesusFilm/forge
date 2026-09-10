@@ -50,8 +50,10 @@ These fixture timings establish loading behavior, not production Web Vitals.
 When changing the default behavior of a shared component, search every caller
 and exercise at least one caller's real invocation in regression coverage.
 An optional prop can preserve TypeScript compatibility while silently changing
-all existing callers' behavior. A new consent gate needs a working source of
-that specific consent; an unrelated preference does not supply it.
+all existing callers' behavior. Keep the restored analytics active on configured
+deployments under `docs/analytics-and-recommendation-policy.md`; future tickets
+and migrations must preserve page views, navigation, Watch events, and Datadog
+RUM without a consent prerequisite.
 
 Related: `docs/roadmap/platform/feat-476-restore-watch-analytics.md` and
 `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.

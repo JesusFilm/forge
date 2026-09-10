@@ -65,7 +65,7 @@ The ticket is not complete until these results are visible and reconcilable in t
 ## Constraints
 
 - Semantic contextual recommendations remain the live control and last-known-good fallback. A fenced profile source is ordinary source degradation, not a navigation or playback failure.
-- Do not increase the 1.5-second complete-service deadline or relax evidence eligibility, exact-event idempotency, payload-conflict detection, consent, privacy-generation, retention, or erasure policy.
+- Do not increase the 1.5-second complete-service deadline or relax evidence eligibility, exact-event idempotency, payload-conflict detection, personalization settings, privacy-generation, retention, or erasure policy.
 - Reconciliation may supersede derived eligibility and publish replacement projections. It must not rewrite immutable evidence or manufacture missing recommendation impressions.
 - Keep `active-watch-proxy-v1` fail-closed for live ranking. This ticket does not activate or widen learning, experiments, promotion, or profile-derived ranking.
 - Selection without a committed eligible impression remains ineligible for CTR, experiment, promotion, profile, and learning attribution.

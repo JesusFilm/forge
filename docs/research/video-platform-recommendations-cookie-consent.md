@@ -1,5 +1,7 @@
 # Video recommendations after cookie rejection
 
+> **Historical external research, not current Forge requirements.** The platform descriptions and source summaries below are research findings from their recorded dates. Forge's September 10, 2026 product decision is `docs/analytics-and-recommendation-policy.md`: recommendations, profile learning, and analytics require no consent prerequisite. Consent recommendations below are superseded and must not become future ticket blockers.
+
 **Date:** 2026-08-26
 **Question:** Can Watch continue recommending videos when a viewer chooses “Essential only,” and does another platform doing so make Forge's durable personalization cookie essential?
 **Evidence standard:** Official platform documentation, legislation, and regulator guidance only. This is product research, not legal advice; rollout policy still needs counsel for each jurisdiction and audience.
