@@ -1,5 +1,5 @@
 import { Component, useCallback, useRef } from "react"
-import { ScrollView, Text, View } from "react-native"
+import { Platform, ScrollView, Text, View } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
 import {
@@ -13,6 +13,9 @@ import {
   useWatchSession,
 } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
+import { NativeSwiftPlayer } from "../src/components/NativeSwiftPlayer"
+import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
+import { shouldUseNativeSwiftPlayer } from "../src/components/watch/nativePlayerSelection"
 import {
   queueMeaningfulWatchEvent,
   type PlaybackSnapshot,
@@ -59,6 +62,8 @@ try {
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
   const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
+  const { nativePlayerVariant, hydrated: watchPreferencesHydrated } =
+    useWatchPreferences()
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback
@@ -133,8 +138,42 @@ function VideoPlayerOverlay() {
     )
   }, [])
 
+  const handlePlayNext = useCallback(
+    (slug: string) => {
+      markUpNextChain()
+      dismissVideo()
+      router.replace(`/watch/${encodeURIComponent(slug)}?autoplay=1`)
+    },
+    [dismissVideo, markUpNextChain],
+  )
+
   if (!state.isVisible || state.currentUrl == null) {
     return null
+  }
+
+  if (
+    shouldUseNativeSwiftPlayer({
+      variant: nativePlayerVariant,
+      hydrated: watchPreferencesHydrated,
+      platform: Platform.OS,
+    })
+  ) {
+    return (
+      <NativeSwiftPlayer
+        streamingUrl={state.currentUrl}
+        playerVariant={
+          nativePlayerVariant === "native-b" ? "native-b" : "native-a"
+        }
+        title={state.currentTitle ?? undefined}
+        onDismiss={dismissVideo}
+        onMeaningfulPlayback={handleMeaningfulPlayback}
+        meaningfulResetKey={liveDubId}
+        startAtSeconds={state.currentStartAtSeconds}
+        onPlaybackPosition={handlePlaybackPosition}
+        upNextTarget={state.currentUpNext}
+        onPlayNext={handlePlayNext}
+      />
+    )
   }
 
   return (
@@ -154,15 +193,7 @@ function VideoPlayerOverlay() {
       // route with the next episode's in autoplay pass-through mode — the
       // same path a Continue Watching card takes, so playback opens without
       // painting the details page first.
-      onPlayNext={(slug) => {
-        // Mark BEFORE dismissing: the pass-through screen's pop-back effect
-        // observes the dismiss and must know this close is a hop, not a
-        // viewer exit — otherwise hop 2+ (autoplay-entered routes) pops the
-        // replaced next episode and the binge chain dies on Home.
-        markUpNextChain()
-        dismissVideo()
-        router.replace(`/watch/${encodeURIComponent(slug)}?autoplay=1`)
-      }}
+      onPlayNext={handlePlayNext}
     />
   )
 }
