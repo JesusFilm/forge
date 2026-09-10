@@ -21,6 +21,7 @@ const backHome = document.getElementById("back-home")
 const toast = document.getElementById("toast")
 
 let shakaPlayer = null
+let shakaReady = null
 let captionsVisible = false
 let preferredTextTrack = null
 let loadToken = 0
@@ -101,7 +102,7 @@ function selectContent(card) {
 }
 
 async function ensureShakaPlayer() {
-  if (shakaPlayer) return shakaPlayer
+  if (shakaReady) return shakaReady
   if (!window.shaka) throw new Error("shaka_library_missing")
 
   window.shaka.polyfill.installAll()
@@ -109,22 +110,36 @@ async function ensureShakaPlayer() {
     throw new Error("shaka_browser_unsupported")
   }
 
-  shakaPlayer = new window.shaka.Player()
-  await shakaPlayer.attach(demoVideo)
-  shakaPlayer.configure({
-    abr: { enabled: true },
-    streaming: {
-      bufferingGoal: 20,
-      rebufferingGoal: 2,
-    },
-  })
-  shakaPlayer.addEventListener("error", (event) => {
-    if (playerScreen.hidden) return
-    const code = event.detail?.code ?? "unknown"
-    setPlayerStatus(`Error ${code}`, "error")
-    showToast(`Shaka playback error ${code}`)
-  })
-  return shakaPlayer
+  const player = new window.shaka.Player()
+  shakaReady = player
+    .attach(demoVideo)
+    .then(() => {
+      player.configure({
+        abr: { enabled: true },
+        streaming: {
+          bufferingGoal: 20,
+          rebufferingGoal: 2,
+        },
+      })
+      player.addEventListener("error", (event) => {
+        if (playerScreen.hidden) return
+        const code = event.detail?.code ?? "unknown"
+        setPlayerStatus(`Error ${code}`, "error")
+        showToast(`Shaka playback error ${code}`)
+      })
+      shakaPlayer = player
+      return player
+    })
+    .catch(async (error) => {
+      try {
+        await player.destroy()
+      } finally {
+        shakaPlayer = null
+        shakaReady = null
+      }
+      throw error
+    })
+  return shakaReady
 }
 
 function updateCaptionsButton(available) {
@@ -173,11 +188,14 @@ async function openPlayer() {
   setPlayerStatus("Connecting")
   home.hidden = true
   playerScreen.hidden = false
-  requestAnimationFrame(() => playerScreen.classList.add("visible"))
+  requestAnimationFrame(() => {
+    if (token === loadToken) playerScreen.classList.add("visible")
+  })
   playToggle.focus()
 
   try {
     const player = await ensureShakaPlayer()
+    if (token !== loadToken) return
     await player.load(selected.hls)
     if (token !== loadToken) return
     enableEnglishCaptions()
@@ -193,12 +211,18 @@ async function openPlayer() {
 }
 
 function closePlayer() {
-  loadToken++
+  const token = ++loadToken
   demoVideo.pause()
   captionsVisible = false
   preferredTextTrack = null
   updateCaptionsButton(false)
-  if (shakaPlayer) void shakaPlayer.unload().catch(() => {})
+  if (shakaReady) {
+    void shakaReady
+      .then((player) => {
+        if (token === loadToken) return player.unload()
+      })
+      .catch(() => {})
+  }
   playerScreen.classList.remove("visible")
   playerScreen.hidden = true
   home.hidden = false

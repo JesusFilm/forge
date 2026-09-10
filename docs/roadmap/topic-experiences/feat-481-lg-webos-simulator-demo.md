@@ -3,7 +3,7 @@ id: "feat-481"
 title: "LG webOS simulator demo"
 owner: "ekkasit"
 priority: "P2"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-04"
 duration: 1
 depends_on: []
@@ -60,4 +60,9 @@ Vendored Shaka Player 5.2.8 and replaced the native MP4 proof with the real
 JESUS Mux HLS stream. In webOS TV 26 Simulator 1.5.0, Shaka reported the
 2:07:53 duration, decoded advancing video frames, selected the English WebVTT
 track, toggled captions on/off, paused/resumed from the remote, and returned to
-Home with Back. The player remains open and playing for inspection.
+Home with Back. This is the original simulator evidence, not a current session.
+
+Review follow-up (2026-09-10): fixed cancellation during Shaka attachment, rapid
+reopening, and stale reveal callbacks. Executable regressions and fresh browser
+playback/captions/Back checks pass. The target webOS simulator rerun remains
+pending, so the ticket is in progress.
