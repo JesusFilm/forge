@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "node scripts/build-shorts-preview.mjs && next dev --port 3002",
-    "build": "node scripts/build-shorts-preview.mjs && next build",
+    "build": "node scripts/build-shorts-preview.mjs && next build && node scripts/package-standalone-public.mjs",
     "start": "next start",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-manager .env",
     "lint": "eslint .",
