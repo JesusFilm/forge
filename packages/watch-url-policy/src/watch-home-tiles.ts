@@ -13,6 +13,7 @@
  * Kept free of React/Next imports for the same reason as
  * `watch-home-categories.ts`: plain-Node scripts and Zod schemas import it.
  */
+import { DEFAULT_PUBLIC_WATCH_BASE_PATH } from "./routes"
 import {
   WATCH_HOME_CATEGORY_CATALOG,
   type WatchHomeCategoryId,
@@ -221,46 +222,124 @@ export const MAX_WATCH_HOME_TILE_TITLE_LENGTH = 80
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/
 
 /**
- * Destinations an admin may type into a tile.
+ * A destination that survived the policy, already normalized for the element
+ * that will render it.
  *
- * Two accepted shapes and nothing else:
- *   - a same-origin absolute PATH (`/watch/jesus.html`), which must NOT start
- *     with `//` — a protocol-relative URL is a cross-origin destination
- *     wearing a path's clothes.
+ * `kind` decides the element, and `href` is what that element receives — the
+ * two travel together on purpose. Classifying and normalizing in separate
+ * steps is what lets an ordering mistake reclassify a path as external after
+ * a prefix strip has mangled it.
+ *
+ * - `watch` — a page inside the Watch app. `href` is BASE-PATH-RELATIVE, ready
+ *   for `next/link`, which prepends the base path itself.
+ * - `external` — an absolute `https:` URL for a plain anchor.
+ */
+export type WatchHomeTileDestination =
+  | { kind: "watch"; href: string }
+  | { kind: "external"; href: string }
+
+// `..` escapes the Watch tree, and a backslash is treated as a separator by
+// the URL parser, so `/watch\evil.example` resolves cross-origin even though
+// it reads as a path. Neither is ever legitimate in an authored destination.
+const PATH_TRAVERSAL = /(^|\/)\.\.(\/|$)/
+
+// Same-origin stand-in used only to normalize an authored PATH through the
+// URL parser. Never rendered — a `.invalid` TLD is guaranteed unresolvable,
+// so a bug that leaked it into an href fails loudly instead of navigating.
+const DESTINATION_PROBE_ORIGIN = "https://watch.invalid"
+
+/**
+ * Classifies a destination an admin may type into a tile, or returns null to
+ * drop it.
+ *
+ * Accepted shapes:
+ *   - a same-origin absolute PATH, which must NOT start with `//` — a
+ *     protocol-relative URL is a cross-origin destination wearing a path's
+ *     clothes. A leading base path is stripped, so both `/watch/jesus.html`
+ *     (what an admin copies out of the address bar) and `/jesus.html` produce
+ *     the same base-path-relative result. Without that strip `next/link`
+ *     prepends the base path a second time and renders `/watch/watch/…`.
  *   - an absolute `https:` URL.
  *
  * Rejected at the admin write boundary AND re-checked at render, because the
  * persisted JSON outlives any one validator: `javascript:` and `data:` are
  * script-execution sinks, and plain `http:` downgrades the viewer's
- * connection.
+ * connection. An API path is rejected because a Watch destination is
+ * prefetchable — the browser may request it before anyone clicks — and a
+ * side-effecting GET must never be reachable that way.
  */
-export function isSafeWatchHomeTileHref(value: unknown): value is string {
-  if (typeof value !== "string") return false
+export function classifyWatchHomeTileHref(
+  value: unknown,
+  basePath: string = DEFAULT_PUBLIC_WATCH_BASE_PATH,
+): WatchHomeTileDestination | null {
+  if (typeof value !== "string") return null
   const href = value.trim()
   if (href.length === 0 || href.length > MAX_WATCH_HOME_TILE_HREF_LENGTH) {
-    return false
+    return null
   }
-  if (CONTROL_CHARACTERS.test(href)) return false
+  if (CONTROL_CHARACTERS.test(href)) return null
+  if (href.includes("\\")) return null
 
-  if (href.startsWith("//")) return false
-  if (href.startsWith("/")) return true
+  if (href.startsWith("//")) return null
+
+  if (href.startsWith("/")) {
+    if (PATH_TRAVERSAL.test(href)) return null
+
+    // Resolve through the URL parser BEFORE any check, so dot segments
+    // collapse the way the browser will. Validating the raw string is not
+    // enough: `/./api/x` and `/%2e%2e/watch/api/x` both survive a literal
+    // `..` test and a literal `/api` prefix test, and then resolve onto the
+    // API route anyway once the browser normalizes them.
+    let resolved: URL
+    try {
+      resolved = new URL(href, DESTINATION_PROBE_ORIGIN)
+    } catch {
+      return null
+    }
+    if (resolved.origin !== DESTINATION_PROBE_ORIGIN) return null
+
+    const pathname = resolved.pathname
+    // An empty segment survives URL parsing, and stripping the base path off
+    // `/watch//api/x` would manufacture `//api/x` — the protocol-relative
+    // shape rejected above, and one the server collapses back onto the very
+    // path the API check exists to forbid.
+    if (pathname.includes("//")) return null
+
+    // Only a whole leading segment counts: `/watchlist` keeps its name, and
+    // the bare base path means the Watch root.
+    let relative = pathname
+    if (pathname === basePath) {
+      relative = "/"
+    } else if (pathname.startsWith(`${basePath}/`)) {
+      relative = pathname.slice(basePath.length)
+    }
+
+    if (relative === "/api" || relative.startsWith("/api/")) return null
+    // A strip that consumed the whole string would leave `next/link` with an
+    // empty href resolving against the current page.
+    if (!relative.startsWith("/") || relative.startsWith("//")) return null
+    return {
+      kind: "watch",
+      href: `${relative}${resolved.search}${resolved.hash}`,
+    }
+  }
 
   let parsed: URL
   try {
     parsed = new URL(href)
   } catch {
-    return false
+    return null
   }
-  return parsed.protocol === "https:"
+  if (parsed.protocol !== "https:") return null
+  return { kind: "external", href }
 }
 
 /**
- * Only meaningful for an href that already passed
- * `isSafeWatchHomeTileHref` — by then the only non-path shape left is an
- * absolute `https:` URL.
+ * Write-boundary predicate. Shares `classifyWatchHomeTileHref`'s rules so the
+ * admin editor cannot accept a shape the renderer will drop.
  */
-export function isExternalWatchHomeTileHref(href: string): boolean {
-  return !href.startsWith("/")
+export function isSafeWatchHomeTileHref(value: unknown): value is string {
+  return classifyWatchHomeTileHref(value) != null
 }
 
 /**
