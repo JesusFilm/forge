@@ -8,12 +8,11 @@ OPS = Path(__file__).resolve().parents[1] / 'ops/release'
 
 
 class ReleaseEntryPoints(unittest.TestCase):
-    def test_default_disabled_preflight_exits_before_network(self):
+    def test_non_main_preflight_exits_before_network(self):
         env = {'PATH': '/usr/bin:/bin', 'PYTHONDONTWRITEBYTECODE': '1',
-               'GITHUB_REPOSITORY': 'JesusFilm/forge', 'GITHUB_REF': 'refs/heads/main',
+               'GITHUB_REPOSITORY': 'JesusFilm/forge', 'GITHUB_REF': 'refs/heads/feature',
                'GITHUB_SHA': '1' * 40, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1'}
-        # No GH_TOKEN or RUNNER_TEMP: either is accessed only after default-off
-        # configuration refusal. stderr remains a token-free public failure.
+        # Non-main dispatch must fail before any token or network access.
         result = subprocess.run([sys.executable, str(OPS / 'ci.py'), 'preflight'], env=env,
                                 capture_output=True, timeout=5)
         self.assertEqual(result.returncode, 1)
