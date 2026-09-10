@@ -33,14 +33,18 @@ vi.mock("next/script", () => ({
     children,
     id,
     src,
+    strategy,
   }: {
     children?: string
     id?: string
     src?: string
+    strategy?: string
   }) => {
-    if (src) return <div data-next-script="" data-src={src} />
+    if (src) {
+      return <div data-next-script="" data-src={src} data-strategy={strategy} />
+    }
     return (
-      <div data-next-script="" id={id}>
+      <div data-next-script="" id={id} data-strategy={strategy}>
         {children}
       </div>
     )
@@ -103,7 +107,7 @@ describe("GoogleAnalytics", () => {
     expect(getGoogleAnalyticsMeasurementId()).toBeNull()
   })
 
-  it("does not render GA4 without a separate analytics consent signal", async () => {
+  it("renders GA4 when configured with the no-prop Watch layout contract", async () => {
     mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
 
     act(() => {
@@ -111,19 +115,11 @@ describe("GoogleAnalytics", () => {
     })
     await flushEffects()
 
-    expect(container.querySelectorAll("[data-next-script]")).toHaveLength(0)
-  })
-
-  it("renders the GA4 bootstrap scripts after a separate analytics consent signal", async () => {
-    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
-
-    act(() => {
-      root.render(<GoogleAnalytics analyticsConsent />)
-    })
-    await flushEffects()
-
     const scripts = Array.from(container.querySelectorAll("[data-next-script]"))
     expect(scripts).toHaveLength(2)
+    expect(
+      scripts.map((script) => script.getAttribute("data-strategy")),
+    ).toEqual(["afterInteractive", "afterInteractive"])
     expect(scripts[0]?.getAttribute("data-src")).toBe(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST12345",
     )
@@ -139,7 +135,7 @@ describe("GoogleAnalytics", () => {
     mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
 
     act(() => {
-      root.render(<GoogleAnalytics analyticsConsent />)
+      root.render(<GoogleAnalytics />)
     })
     await flushEffects()
 
@@ -148,7 +144,7 @@ describe("GoogleAnalytics", () => {
     navigationState.pathname = "/watch/languages.html"
     navigationState.queryString = "source=header"
     act(() => {
-      root.render(<GoogleAnalytics analyticsConsent />)
+      root.render(<GoogleAnalytics />)
     })
     await flushEffects()
 
