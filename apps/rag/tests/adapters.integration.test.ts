@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- one real-Postgres lifecycle shared across adapter integration scenarios */
-import { PrismaClient } from "../src/generated/prisma/index.js"
+import { setTimeout as delay } from "node:timers/promises"
+import { Prisma, PrismaClient } from "../src/generated/prisma/index.js"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import {
@@ -92,6 +93,37 @@ const raw = (body: string, slug = "raw"): RawDocument => ({
     notModified: false,
   },
 })
+
+// Occupy a real connection (and optionally a row lock) before starting the
+// adapter. No fake timers, transaction mocks, or production delay hooks.
+async function whileTransactionHeld<T>(
+  client: PrismaClient,
+  holdMs: number,
+  prepare: (tx: Prisma.TransactionClient) => Promise<unknown>,
+  operation: () => Promise<T>,
+): Promise<T> {
+  let signalReady!: () => void
+  let signalFailure!: (error: unknown) => void
+  const ready = new Promise<void>((resolve, reject) => {
+    signalReady = resolve
+    signalFailure = reject
+  })
+  const holding = client.$transaction(
+    async (tx) => {
+      await prepare(tx)
+      signalReady()
+      await delay(holdMs)
+    },
+    { maxWait: 10_000, timeout: holdMs + 10_000 },
+  )
+  void holding.catch(signalFailure)
+  try {
+    await ready
+    return await operation()
+  } finally {
+    await holding
+  }
+}
 
 beforeAll(() => db.$connect())
 afterAll(async () => {
@@ -190,6 +222,126 @@ describe("Prisma-backed RAG adapters", () => {
       }),
     ).resolves.toEqual([])
   })
+
+  it("acquires a corpus transaction after waiting beyond two seconds", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    const singleConnectionUrl = new URL(databaseUrl)
+    singleConnectionUrl.searchParams.set("connection_limit", "1")
+    const client = new PrismaClient({ datasourceUrl: singleConnectionUrl.href })
+    try {
+      const writer = new PostgresCorpusWriteStore(client)
+      await whileTransactionHeld(
+        client,
+        3_000,
+        (tx) => tx.$queryRaw`SELECT 1`,
+        () =>
+          writer.replaceDocument(document("waited", "en"), [
+            chunk(0, "Waited", 0),
+          ]),
+      )
+      expect(await writes.getDedup(key, `${prefix}hope`)).toMatchObject({
+        contentHash: "waited",
+      })
+    } finally {
+      await client.$disconnect()
+    }
+  }, 15_000)
+
+  it("commits corpus and staging after a write exceeds five seconds", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    await rawStore.putRawDocument(raw("Delayed write", "hope"))
+    const [pending] = await rawReader.listPending({ sourceKey: key })
+    const blocker = new PrismaClient({ datasourceUrl: databaseUrl })
+    try {
+      await whileTransactionHeld(
+        blocker,
+        6_000,
+        (tx) => tx.$queryRaw`
+          SELECT id FROM raw_documents WHERE id = ${pending.id}::uuid FOR UPDATE
+        `,
+        () =>
+          writes.replaceDocument(
+            document("delayed", "en"),
+            [chunk(0, "Delayed write", 0)],
+            {
+              rawDocumentId: pending.id,
+              attemptedModel: "fixture/model",
+            },
+          ),
+      )
+      expect(await writes.getDedup(key, `${prefix}hope`)).toEqual({
+        contentHash: "delayed",
+        embeddingModel: "fixture/model",
+      })
+      expect(await db.chunk.count({ where: { source: { key } } })).toBe(1)
+      expect(
+        await db.rawDocument.findUniqueOrThrow({ where: { id: pending.id } }),
+      ).toMatchObject({
+        ingestedAt: expect.any(Date),
+        indexAttemptedAt: expect.any(Date),
+        indexAttemptedModel: "fixture/model",
+      })
+    } finally {
+      await blocker.$disconnect()
+    }
+  }, 20_000)
+
+  it("rolls back the entire replacement when the 30-second deadline expires", async () => {
+    await resetCorpusFixture()
+    await writes.upsertSource(source)
+    await writes.replaceDocument(document("original", "en"), [
+      chunk(0, "Original", 0),
+    ])
+    await rawStore.putRawDocument(raw("Replacement", "hope"))
+    const [pending] = await rawReader.listPending({ sourceKey: key })
+    const snapshot = async () => ({
+      documents: await db.document.findMany({
+        where: { source: { key } },
+        include: { chunks: { orderBy: { ord: "asc" } } },
+      }),
+      embeddings: await db.$queryRaw`
+        SELECT e.chunk_id, e.embedding::text, e.embedding_model, e.embedded_at
+        FROM chunk_embeddings e JOIN chunks c ON c.id = e.chunk_id
+        JOIN sources s ON s.id = c.source_id WHERE s.key = ${key}
+        ORDER BY e.chunk_id
+      `,
+      staging: await db.rawDocument.findUniqueOrThrow({
+        where: { id: pending.id },
+      }),
+    })
+    const before = await snapshot()
+    const blocker = new PrismaClient({ datasourceUrl: databaseUrl })
+    try {
+      // The final staging update blocks after document/chunk/vector writes.
+      // Releasing the lock after 32s must not allow an expired write to commit.
+      await expect(
+        whileTransactionHeld(
+          blocker,
+          32_000,
+          (tx) => tx.$queryRaw`
+          SELECT id FROM raw_documents WHERE id = ${pending.id}::uuid FOR UPDATE
+        `,
+          () =>
+            writes.replaceDocument(
+              document("replacement", "fr"),
+              [chunk(0, "Replacement", 1, "fixture/new-model")],
+              {
+                rawDocumentId: pending.id,
+                attemptedModel: "fixture/new-model",
+              },
+            ),
+        ),
+      ).rejects.toMatchObject({ code: "P2028" })
+      expect(await snapshot()).toEqual(before)
+      expect(
+        (await rawReader.listPending({ sourceKey: key })).map(({ id }) => id),
+      ).toEqual([pending.id])
+    } finally {
+      await blocker.$disconnect()
+    }
+  }, 45_000)
 
   it("applies literal path boundaries before limits in normal and forced reads", async () => {
     await resetCorpusFixture()
