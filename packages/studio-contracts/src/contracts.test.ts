@@ -157,3 +157,14 @@ it.each([
     ),
   ).toThrow("Unsupported subtitle cue")
 })
+
+it("rejects long malformed formatting without repeatedly scanning its prefix", async () => {
+  const { parseStudioVtt } = await import("./sources")
+  expect(() =>
+    parseStudioVtt(
+      new TextEncoder().encode(
+        "WEBVTT\n\n00:00.000 --> 00:01.000\n" + "<".repeat(100000),
+      ),
+    ),
+  ).toThrow("Unsupported subtitle cue")
+})
