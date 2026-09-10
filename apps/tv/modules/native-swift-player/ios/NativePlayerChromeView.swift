@@ -355,7 +355,14 @@ private final class NativeTimelineControl: UIControl {
   func handlePan(_ gesture: UIPanGestureRecognizer) {
     guard (isFocused || navigationActive), duration > 0 else { return }
     onActivity?()
-    if gesture.state == .began { beginCandidate() }
+    if gesture.state == .cancelled || gesture.state == .failed {
+      cancelScrubbing()
+      return
+    }
+    if gesture.state == .began {
+      beginCandidate()
+      scrubOriginTime = candidateTime ?? committedTime
+    }
     guard candidateTime != nil else { return }
     if gesture.state == .began || gesture.state == .changed || gesture.state == .ended {
       let trackWidth = max(1, bounds.width)
@@ -745,6 +752,7 @@ final class NativePlayerChromeView: UIView {
   }
 
   func focusPrimaryTransport() {
+    timeline.cancelScrubbing()
     timelineNavigationActive = false
     timeline.navigationActive = false
     lastFocusedControl = playPauseButton
@@ -870,6 +878,7 @@ final class NativePlayerChromeView: UIView {
       }
       button.onFocus = { [weak self, weak button] in
         guard let self, let button else { return }
+        self.timeline.cancelScrubbing()
         self.timelineNavigationActive = false
         self.timeline.navigationActive = false
         self.lastFocusedControl = button

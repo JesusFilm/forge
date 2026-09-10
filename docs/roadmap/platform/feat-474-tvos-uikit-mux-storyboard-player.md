@@ -3,7 +3,7 @@ id: "feat-474"
 title: "tvOS UIKit Mux storyboard player chrome"
 owner: "ekkasit"
 priority: "P0"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-02"
 duration: 2
 depends_on:
@@ -20,6 +20,11 @@ tags:
 ---
 
 ## Problem
+
+Review status (2026-09-10): repeated touchpad gestures now start from the current
+candidate, and leaving the timeline cancels the preview. Regression guards and
+tvOS SDK typechecking pass; physical Siri Remote verification remains pending
+because Office Apple TV is unavailable.
 
 AVKit owns a stable playback engine but does not expose the uncommitted candidate
 time from its native timeline. The existing post-seek preview therefore cannot

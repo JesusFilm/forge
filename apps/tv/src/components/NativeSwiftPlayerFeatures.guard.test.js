@@ -27,13 +27,15 @@ describe("native Swift player feature parity wiring", () => {
     expect(swift).toContain(
       "replaceSource(preservingPosition: loadedSourceUrl != nil)",
     )
-    expect(swift).toContain(
-      "pendingSeekSeconds = preservingPosition && current.isFinite ? current : startAtSeconds",
-    )
+    expect(swift).toContain("else if !sourceSeekPending, current.isFinite")
+    expect(swift).toContain("pendingSeekSeconds = current")
+    expect(swift).toContain("pendingSeekSeconds = startAtSeconds")
     expect(swift).toContain(
       "shouldAutoplay = player.rate > 0 || loadedSourceUrl == nil",
     )
-    expect(swift).toContain("if self.shouldAutoplay { self.player.play() }")
+    expect(swift).toContain(
+      "if finished, self.shouldAutoplay { self.player.play() }",
+    )
   })
 
   it("connects the native language menu to the active video dub", () => {

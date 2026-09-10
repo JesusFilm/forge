@@ -3,7 +3,7 @@ id: "feat-472"
 title: "tvOS native Swift player experiment"
 owner: "ekkasit"
 priority: "P0"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-28"
 duration: 3
 depends_on: []
@@ -47,3 +47,10 @@ compare without removing or destabilizing the existing player.
 - Signed tvOS simulator and physical Apple TV builds.
 - Physical device comparison of Resume focus, scrubbing, language, subtitles,
   Explore, progress persistence, Up Next, and Back.
+
+## Review follow-up (2026-09-10)
+
+PR #2222 review fixes cover full-workspace TV type resolution, batched initial
+resume props, obsolete item/subtitle callbacks, dub watch-credit baselines, and
+Apple-only Settings visibility. Local checks do not complete the physical QA
+above: Office Apple TV is unavailable, so this ticket remains in progress.

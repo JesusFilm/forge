@@ -3,7 +3,14 @@
 
 import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useMemo, useRef } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -98,40 +105,42 @@ export function SettingsScreen() {
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionHeading}>Player Experiment</Text>
-        <Text style={styles.sectionNote}>
-          Native A keeps Apple’s AVKit controls. Native B uses our UIKit
-          controls and Mux thumbnails while keeping AVPlayer underneath.
-        </Text>
-        <SettingsRow
-          testID="settings-existing-player-row"
-          icon="tv-outline"
-          label="Existing Player"
-          selected={nativePlayerVariant === "existing"}
-          disabled={!watchPreferencesHydrated}
-          onPress={() => setNativePlayerVariant("existing")}
-          onFocusNode={captureFocusedNode}
-        />
-        <SettingsRow
-          testID="settings-native-a-player-row"
-          icon="logo-apple"
-          label="Native A — AVKit Controls"
-          selected={nativePlayerVariant === "native-a"}
-          disabled={!watchPreferencesHydrated}
-          onPress={() => setNativePlayerVariant("native-a")}
-          onFocusNode={captureFocusedNode}
-        />
-        <SettingsRow
-          testID="settings-native-b-player-row"
-          icon="film-outline"
-          label="Native B — UIKit + Mux Preview"
-          selected={nativePlayerVariant === "native-b"}
-          disabled={!watchPreferencesHydrated}
-          onPress={() => setNativePlayerVariant("native-b")}
-          onFocusNode={captureFocusedNode}
-        />
-      </View>
+      {Platform.OS === "ios" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Player Experiment</Text>
+          <Text style={styles.sectionNote}>
+            Native A keeps Apple’s AVKit controls. Native B uses our UIKit
+            controls and Mux thumbnails while keeping AVPlayer underneath.
+          </Text>
+          <SettingsRow
+            testID="settings-existing-player-row"
+            icon="tv-outline"
+            label="Existing Player"
+            selected={nativePlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("existing")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-a-player-row"
+            icon="logo-apple"
+            label="Native A — AVKit Controls"
+            selected={nativePlayerVariant === "native-a"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-a")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-b-player-row"
+            icon="film-outline"
+            label="Native B — UIKit + Mux Preview"
+            selected={nativePlayerVariant === "native-b"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-b")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
     </View>
   )
 }

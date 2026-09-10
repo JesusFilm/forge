@@ -68,6 +68,7 @@ export function NativeSwiftPlayer({
 }: NativeSwiftPlayerProps) {
   const session = useWatchSession()
   const baselineRef = useRef(startAtSeconds ?? 0)
+  const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
   const meaningfulStateRef = useRef(initialMeaningfulState)
   const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
   const onPlaybackPositionRef = useRef(onPlaybackPosition)
@@ -75,7 +76,8 @@ export function NativeSwiftPlayer({
   onPlaybackPositionRef.current = onPlaybackPosition
 
   useEffect(() => {
-    baselineRef.current = startAtSeconds ?? 0
+    baselineRef.current =
+      lastPositionRef.current?.positionSeconds ?? startAtSeconds ?? 0
     meaningfulStateRef.current = initialMeaningfulState
   }, [meaningfulResetKey, startAtSeconds])
 
@@ -234,6 +236,7 @@ export function NativeSwiftPlayer({
           positionSeconds: snapshot.positionSeconds,
           durationSeconds: duration,
         }
+        lastPositionRef.current = normalized
         onPlaybackPositionRef.current?.(normalized)
         const result = evaluateMeaningfulPlayback(
           meaningfulStateRef.current,

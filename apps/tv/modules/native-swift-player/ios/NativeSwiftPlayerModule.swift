@@ -71,6 +71,9 @@ public final class NativeSwiftPlayerModule: Module {
       Prop("upNextTitle") { (view, value: String?) in
         view.upNextTitle = value
       }
+      OnViewDidUpdateProps { (view: NativeSwiftPlayerView) in
+        view.commitProps()
+      }
     }
   }
 }

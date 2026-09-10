@@ -165,6 +165,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private var endObserver: NSObjectProtocol?
   private var timeJumpObserver: NSObjectProtocol?
   private var subtitleTask: URLSessionDataTask?
+  private var subtitleGeneration = 0
   private var storyboardMetadataTask: URLSessionDataTask?
   private var storyboardImageTask: URLSessionDataTask?
   private var subtitleCues: [NativeSubtitleCue] = []
@@ -179,6 +180,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private var suppressScrubPreviewUntil: TimeInterval = 0
   private var loadedSourceUrl: String?
   private var pendingSeekSeconds: Double = 0
+  private var sourceSeekPending = false
   private var shouldAutoplay = true
   private var endHandled = false
   private var playbackFailureHandled = false
@@ -198,12 +200,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     }
   }
 
-  var sourceUrl: String? {
-    didSet {
-      guard sourceUrl != oldValue else { return }
-      replaceSource(preservingPosition: loadedSourceUrl != nil)
-    }
-  }
+  var sourceUrl: String?
   var storyboardUrl: String? {
     didSet {
       guard storyboardUrl != oldValue else { return }
@@ -255,6 +252,11 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
   var upNextSlug: String?
   var upNextTitle: String?
+
+  func commitProps() {
+    guard sourceUrl != loadedSourceUrl else { return }
+    replaceSource(preservingPosition: loadedSourceUrl != nil)
+  }
 
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -384,6 +386,11 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     presentationGeneration += 1
     dismissalMonitorGeneration += 1
     player.pause()
+    itemStatusObservation?.invalidate()
+    sourceSeekPending = true
+    player.replaceCurrentItem(with: nil)
+    subtitleGeneration += 1
+    subtitleTask?.cancel()
     storyboardMetadataTask?.cancel()
     storyboardImageTask?.cancel()
     scrubPreviewHideWorkItem?.cancel()
@@ -544,16 +551,20 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
 
   private func commitCustomScrub(at time: Double) {
+    guard let item = player.currentItem else { return }
     let resumePlayback = customScrubWasPlaying
     customScrubWasPlaying = false
     player.seek(
       to: CMTime(seconds: time, preferredTimescale: 600),
       toleranceBefore: .zero,
       toleranceAfter: .zero
-    ) { [weak self] _ in
-      guard let self else { return }
-      if resumePlayback { self.player.play() }
-      self.refreshCustomChromePlaybackState()
+    ) { [weak self] finished in
+      DispatchQueue.main.async {
+        guard let self, finished, self.player.currentItem === item,
+              !self.userDismissalHandled, !self.programmaticDismissal else { return }
+        if resumePlayback { self.player.play() }
+        self.refreshCustomChromePlaybackState()
+      }
     }
   }
 
@@ -592,7 +603,12 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     if usesCustomChrome { customChromeView.resetForSourceChange() }
     lastObservedPosition = nil
     let current = player.currentTime().seconds
-    pendingSeekSeconds = preservingPosition && current.isFinite ? current : startAtSeconds
+    if !preservingPosition {
+      pendingSeekSeconds = startAtSeconds
+    } else if !sourceSeekPending, current.isFinite {
+      pendingSeekSeconds = current
+    }
+    sourceSeekPending = true
     shouldAutoplay = player.rate > 0 || loadedSourceUrl == nil
     loadedSourceUrl = sourceUrl
     endHandled = false
@@ -616,7 +632,8 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       object: item,
       queue: .main
     ) { [weak self] _ in
-      self?.handleEnded()
+      guard let self, self.player.currentItem === item else { return }
+      self.handleEnded()
     }
     timeJumpObserver = NotificationCenter.default.addObserver(
       forName: AVPlayerItem.timeJumpedNotification,
@@ -632,15 +649,18 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
 
   private func handleItemStatus(_ item: AVPlayerItem) {
+    guard player.currentItem === item, !userDismissalHandled else { return }
     switch item.status {
     case .readyToPlay:
       NSLog("[NativeSwiftPlayer] item ready")
       let target = CMTime(seconds: max(0, pendingSeekSeconds), preferredTimescale: 600)
       suppressScrubPreview()
-      player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
-        guard let self else { return }
-        if self.shouldAutoplay { self.player.play() }
+      player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
         DispatchQueue.main.async {
+          guard let self, self.player.currentItem === item,
+                !self.userDismissalHandled, !self.programmaticDismissal else { return }
+          self.sourceSeekPending = false
+          if finished, self.shouldAutoplay { self.player.play() }
           self.customChromeView.setLoading(false)
           self.playerController.showsPlaybackControls = !self.usesCustomChrome
           if self.usesCustomChrome {
@@ -855,7 +875,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
 
   private func handleTimeUpdate(_ position: Double) {
-    guard position.isFinite else { return }
+    guard position.isFinite, !sourceSeekPending else { return }
     updateScrubPreview(position: position)
     let duration = currentDuration
     if usesCustomChrome {
@@ -1129,6 +1149,8 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
 
   private func loadSubtitles() {
+    subtitleGeneration += 1
+    let generation = subtitleGeneration
     subtitleTask?.cancel()
     subtitleCues = []
     subtitleLabel.isHidden = true
@@ -1143,7 +1165,8 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
             let text = String(data: data, encoding: .utf8) else { return }
       let cues = NativeVttParser.parse(text)
       DispatchQueue.main.async {
-        guard let self else { return }
+        guard let self, self.subtitleGeneration == generation,
+              self.selectedSubtitleUrl == selectedSubtitleUrl else { return }
         NSLog("[NativeSwiftPlayer] loaded subtitle cues=%d", cues.count)
         self.subtitleCues = cues
       }
