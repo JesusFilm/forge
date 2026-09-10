@@ -238,9 +238,10 @@ export type WatchHomeTileDestination =
   | { kind: "watch"; href: string }
   | { kind: "external"; href: string }
 
-// `..` escapes the Watch tree, and a backslash is treated as a separator by
-// the URL parser, so `/watch\evil.example` resolves cross-origin even though
-// it reads as a path. Neither is ever legitimate in an authored destination.
+// `..` escapes the Watch tree. A backslash is treated as a separator by the
+// URL parser, so a backslash in first position (`/\evil.example`) resolves
+// cross-origin even though it reads as a path; later ones stay same-origin but
+// still let a path be spelled two ways. Neither is legitimate here.
 const PATH_TRAVERSAL = /(^|\/)\.\.(\/|$)/
 
 // Same-origin stand-in used only to normalize an authored PATH through the

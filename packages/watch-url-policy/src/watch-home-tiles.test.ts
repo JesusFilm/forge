@@ -225,8 +225,10 @@ describe("classifyWatchHomeTileHref", () => {
     },
   )
 
-  // The URL parser treats a backslash as a separator, so this resolves
-  // cross-origin while reading as a path.
+  // The URL parser treats a backslash as a separator. Only a backslash in
+  // first position actually resolves cross-origin (`/\evil.example` ->
+  // https://evil.example/); a later one stays same-origin but still lets one
+  // path be spelled two ways. Both are rejected.
   it("rejects a backslash that would resolve cross-origin", () => {
     expect(classifyWatchHomeTileHref("/watch\\evil.example")).toBeNull()
     expect(classifyWatchHomeTileHref("/\\evil.example")).toBeNull()
