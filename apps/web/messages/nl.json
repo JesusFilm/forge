@@ -343,7 +343,8 @@
     "nextVideoPreview": "Voorbeeld van volgende video",
     "featured": "Uitgelicht",
     "mediaCollection": "Mediacollectie",
-    "scrollToVideo": "Scroll naar de video van {title}"
+    "scrollToVideo": "Scroll naar de video van {title}",
+    "forYou": "Aanbevolen voor jou"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Talen",

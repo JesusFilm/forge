@@ -343,7 +343,8 @@
     "nextVideoPreview": "Pratinjau video berikutnya",
     "featured": "Unggulan",
     "mediaCollection": "Koleksi media",
-    "scrollToVideo": "Gulir ke video {title}"
+    "scrollToVideo": "Gulir ke video {title}",
+    "forYou": "Direkomendasikan untuk Anda"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Bahasa",

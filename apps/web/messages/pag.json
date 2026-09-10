@@ -527,7 +527,8 @@
     "previousVideoPreview": "Nakasabin a preview na video",
     "nextVideoPreview": "Susundan a preview na video",
     "mediaCollection": "Koleksyon na Media",
-    "scrollToVideo": "I-scroll so video a {title}"
+    "scrollToVideo": "I-scroll so video a {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Home na Jesus Film Project",

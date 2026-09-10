@@ -527,7 +527,8 @@
     "previousVideoPreview": "Aperçu ya video ya liboso",
     "nextVideoPreview": "Aperçu ya video oyo ekolanda",
     "mediaCollection": "Collection ya média",
-    "scrollToVideo": "Kende na video ya {title}"
+    "scrollToVideo": "Kende na video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Topimaso lahatsary teo aloha",
     "nextVideoPreview": "Topimaso lahatsary manaraka",
     "mediaCollection": "Fitambaran'ny media",
-    "scrollToVideo": "Tadiavo ny lahatsary {title}"
+    "scrollToVideo": "Tadiavo ny lahatsary {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Pejy fandraisana Jesus Film Project",

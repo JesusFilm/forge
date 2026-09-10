@@ -81,6 +81,8 @@ export type Principal = {
    * of the flat per-key `consumer:<key>`. Bucketing-only; never a permission.
    */
   fleet?: boolean
+  /** Internal proof set only after resolving an anonymous recommendation handle. */
+  recommendationViewerVerified?: boolean
 }
 
 export type ManagerRole = "OPERATOR"

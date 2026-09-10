@@ -527,7 +527,8 @@
     "previousVideoPreview": "Преглед на претходното видео",
     "nextVideoPreview": "Преглед на следното видео",
     "mediaCollection": "Медиумска колекција",
-    "scrollToVideo": "Скролувај до видеото {title}"
+    "scrollToVideo": "Скролувај до видеото {title}",
+    "forYou": "За вас"
   },
   "WatchFooter": {
     "home": "Почетна страница на Jesus Film Project",

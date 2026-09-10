@@ -76,7 +76,7 @@ export type RecommendationRequestDetailData = Readonly<{
   surfaceVersion: string
   strategyVersion: string
   classifierVersion: string
-  seedMediaId: string
+  seedMediaId: string | null
   locale: string
   expectedItemCount: number
   state: "prepared" | "issued" | "issuance_failed"
@@ -377,7 +377,7 @@ export type DetailRootRow = Readonly<{
   surfaceVersion: string
   strategyVersion: string
   classifierVersion: string
-  seedMediaId: string
+  seedMediaId: string | null
   locale: string
   expectedItemCount: number
   state: RecommendationRequestState

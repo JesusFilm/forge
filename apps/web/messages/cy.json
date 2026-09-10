@@ -527,7 +527,8 @@
     "previousVideoPreview": "Rhagolwg fideo blaenorol",
     "nextVideoPreview": "Rhagolwg fideo nesaf",
     "mediaCollection": "Casgliad cyfryngau",
-    "scrollToVideo": "Sgrolio i fideo {title}"
+    "scrollToVideo": "Sgrolio i fideo {title}",
+    "forYou": "I chi"
   },
   "WatchFooter": {
     "home": "Hafan Jesus Film Project",

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Iepriekšējā video priekšskatījums",
     "nextVideoPreview": "Nākamā video priekšskatījums",
     "mediaCollection": "Mediju kolekcija",
-    "scrollToVideo": "Ritināt līdz {title} video"
+    "scrollToVideo": "Ritināt līdz {title} video",
+    "forYou": "Jums"
   },
   "WatchFooter": {
     "home": "Jesus Film Project sākumlapa",

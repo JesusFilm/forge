@@ -307,7 +307,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -392,6 +392,15 @@ type ExperiencePreview {
   ogTitle: String
   pathSegment: String
   slug: String!
+  title: String
+}
+
+"""
+A page-level personalized video row. The consumer resolves recommendations privately at viewing time.
+"""
+type HomepageRecommendationsBlock {
+  sectionKey: String
+  t: String
   title: String
 }
 
@@ -1301,7 +1310,7 @@ type Mutation {
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
-  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
+  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
   completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
@@ -1311,6 +1320,7 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
+  createRecommendationViewer: RecommendationViewer!
   createShortsProject(input: ShortsCreateInput!): ShortsCommandResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
@@ -1330,7 +1340,7 @@ type Mutation {
   duplicateExperience(id: ID!): Experience!
   issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
   issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
-  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
   materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
@@ -1338,9 +1348,9 @@ type Mutation {
   publishExperienceLocale(id: ID!): ExperienceLocale
   recommendationProfileStatus(consentContractVersion: String, consentReceiptDigest: String, contractVersion: String!, profileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
-  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String!): RecommendationContentActionReceipt!
-  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String!): [RecommendationEvidenceReceipt!]!
-  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String!): [RecommendationPlaybackReceipt!]!
+  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String, sessionToken: String, viewerToken: String): RecommendationContentActionReceipt!
+  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationEvidenceReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
@@ -1359,7 +1369,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
@@ -1454,6 +1464,7 @@ type Mutation {
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
+  updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
   writeShortsContentPack(input: JSON!): ContentPackRevision
 }
@@ -1597,6 +1608,7 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -1740,6 +1752,18 @@ type RecommendationProfileReceipt {
   erasureState: String
   expiresAt: String
   privacyGeneration: Int
+  state: String!
+}
+
+type RecommendationViewer {
+  expiresAt: String!
+  personalization: Boolean!
+  sessionToken: String!
+  viewerToken: String!
+}
+
+type RecommendationViewerStatus {
+  personalization: Boolean!
   state: String!
 }
 
@@ -2089,6 +2113,37 @@ enum TranscriptBackfillMode {
   IDEMPOTENT
   MODEL_UPGRADE
   REPAIR
+}
+
+type UserRecommendationDelivery {
+  cohort: String!
+  contractVersion: String!
+  curatedCount: Int!
+  expiresAt: String
+  items: [UserRecommendationItem!]!
+  poolVersion: String
+  profileCount: Int!
+  reason: String
+  requestId: ID
+  requestedCount: Int!
+  result: String!
+  surfaceVersion: String!
+}
+
+type UserRecommendationItem {
+  canonicalHref: String!
+  capability: String!
+  description: String!
+  durationSeconds: Float
+  generator: String!
+  id: ID!
+  imageUrl: String
+  poolKey: String
+  poolVersion: String
+  position: Int!
+  targetMediaId: ID!
+  videoSlug: String!
+  videoTitle: String!
 }
 
 """

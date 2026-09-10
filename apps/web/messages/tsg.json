@@ -527,7 +527,8 @@
     "previousVideoPreview": "Preview han nauna nga video",
     "nextVideoPreview": "Preview han sunod nga video",
     "mediaCollection": "Koleksyon sin Media",
-    "scrollToVideo": "I-scroll ngadto ha {title} nga video"
+    "scrollToVideo": "I-scroll ngadto ha {title} nga video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Homan han Jesus Film Project",

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Video siornaartoq",
     "nextVideoPreview": "Video tulleq takussutissaq",
     "mediaCollection": "Media-katersugaasivik",
-    "scrollToVideo": "{title}-mik video-mut ingerlaarit"
+    "scrollToVideo": "{title}-mik video-mut ingerlaarit",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-imi angerlarsimaffik",

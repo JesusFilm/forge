@@ -250,7 +250,7 @@ export async function loadDatabaseProfileProjectionEvidence(
         JOIN recommendation_impression impression
           ON impression.request_id = selection.request_id
           AND impression.item_id = selection.item_id
-          AND impression.visibility_policy = ${RECOMMENDATION_CONTRACTS.surface}
+          AND impression.visibility_policy IN (${RECOMMENDATION_CONTRACTS.surface}, 'watch-for-you-v1')
           AND impression.expires_at > ${input.now}
           AND impression.expires_at >= selection.attribution_eligible_at
         JOIN recommendation_eligibility_decision decision
@@ -301,7 +301,7 @@ export async function loadDatabaseProfileProjectionEvidence(
         JOIN recommendation_impression impression
           ON impression.request_id = selection.request_id
           AND impression.item_id = selection.item_id
-          AND impression.visibility_policy = ${RECOMMENDATION_CONTRACTS.surface}
+          AND impression.visibility_policy IN (${RECOMMENDATION_CONTRACTS.surface}, 'watch-for-you-v1')
           AND impression.expires_at > ${input.now}
           AND impression.expires_at >= selection.attribution_eligible_at
         JOIN recommendation_eligibility_decision decision

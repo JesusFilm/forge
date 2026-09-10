@@ -3119,8 +3119,9 @@ model RecommendationRequest {
   strategyVersion        String                              @map("strategy_version") @db.VarChar(64)
   classifierVersion      String                              @map("classifier_version") @db.VarChar(64)
   sessionDigest          String                              @map("session_digest") @db.Char(64)
-  seedMediaId            String                              @map("seed_media_id") @db.VarChar(191)
+  seedMediaId            String?                             @map("seed_media_id") @db.VarChar(191)
   locale                 String                              @db.VarChar(32)
+  purpose                String                              @default("seeded") @db.VarChar(32)
   expectedItemCount      Int                                 @map("expected_item_count")
   state                  RecommendationRequestState          @default(PREPARED)
   result                 RecommendationDeliveryResult
@@ -4580,6 +4581,80 @@ model WhatsNewFeatureVote {
   @@index([featureId, retractedAt], map: "whats_new_feature_vote_feature_idx")
   @@index([ballotId, retractedAt], map: "whats_new_feature_vote_ballot_idx")
   @@map("whats_new_feature_vote")
+}
+
+/// Anonymous installation credential. Raw handles never enter storage or logs.
+model RecommendationViewer {
+  tokenDigest String @id @map("token_digest") @db.Char(64)
+  profileDigest String? @map("profile_digest") @db.Char(64)
+  consentReceiptDigest String @map("consent_receipt_digest") @db.Char(64)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([expiresAt])
+  @@map("recommendation_viewer")
+}
+
+/// Immutable, validated editorial input and its exact coverage report.
+model RecommendationCuratedGeneration {
+  id                String   @id @default(cuid())
+  version           String   @unique @db.VarChar(128)
+  sourceDigest      String   @map("source_digest") @db.Char(64)
+  validationVersion String   @map("validation_version") @db.VarChar(96)
+  sourceManifest    Json     @map("source_manifest")
+  coverageReport    Json     @map("coverage_report")
+  createdAt         DateTime @default(now()) @map("created_at")
+  sealedAt          DateTime? @map("sealed_at")
+
+  pools            RecommendationCuratedPool[]
+  memberships      RecommendationCuratedMembership[]
+  activePointers   RecommendationCuratedPointer[] @relation("CuratedActiveGeneration")
+  previousPointers RecommendationCuratedPointer[] @relation("CuratedPreviousGeneration")
+
+  @@map("recommendation_curated_generation")
+}
+
+/// Stored Admin IDs, scoped by the locale/audio pair actually validated.
+model RecommendationCuratedPool {
+  id                String @id @default(cuid())
+  generationId      String @map("generation_id")
+  generation        RecommendationCuratedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  locale            String @db.VarChar(35)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(191)
+  coreLanguageId    String @map("core_language_id") @db.VarChar(191)
+  poolKey           String @map("pool_key") @db.VarChar(64)
+  videoIds          String[] @map("video_ids")
+
+  @@unique([generationId, locale, audioLanguageSlug, poolKey], map: "recommendation_curated_pool_context_key")
+  @@map("recommendation_curated_pool")
+}
+
+/// Private mapping from reviewed support videos to editorial content themes.
+/// IDs are historical import identities; current content is rehydrated at read.
+model RecommendationCuratedMembership {
+  id            String @id @default(cuid())
+  generationId  String @map("generation_id")
+  generation    RecommendationCuratedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  videoId       String @map("video_id") @db.VarChar(191)
+  coreVideoId   String @map("core_video_id") @db.VarChar(191)
+  themeKeys     String[] @map("theme_keys")
+  editorialRank Int @map("editorial_rank")
+  metadata      Json
+
+  @@unique([generationId, videoId], map: "recommendation_curated_membership_video_key")
+  @@map("recommendation_curated_membership")
+}
+
+/// Dedicated serving pointer. Prior generation supports explicit rollback.
+model RecommendationCuratedPointer {
+  id                   String @id @db.VarChar(96)
+  generationId         String @map("generation_id")
+  generation           RecommendationCuratedGeneration @relation("CuratedActiveGeneration", fields: [generationId], references: [id], onDelete: Restrict)
+  previousGenerationId String? @map("previous_generation_id")
+  previousGeneration   RecommendationCuratedGeneration? @relation("CuratedPreviousGeneration", fields: [previousGenerationId], references: [id], onDelete: Restrict)
+  revision             Int @default(1)
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("recommendation_curated_pointer")
 }
 
 // Shorts authoring is independent of Manager render jobs and catalog lifecycle.

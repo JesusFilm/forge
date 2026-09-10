@@ -24,3 +24,12 @@ export {
   adminTransitionRecommendationProfileMutation,
   adminTransitionRecommendationProfileOperation,
 } from "./recommendations"
+
+export {
+  adminUserRecommendationsQuery,
+  adminUserRecommendationsOperation,
+  adminCreateRecommendationViewerMutation,
+  adminCreateRecommendationViewerOperation,
+  adminUpdateRecommendationViewerMutation,
+  adminUpdateRecommendationViewerOperation,
+} from "./user-recommendations"

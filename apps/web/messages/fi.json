@@ -527,7 +527,8 @@
     "previousVideoPreview": "Edellisen videon esikatselu",
     "nextVideoPreview": "Seuraavan videon esikatselu",
     "mediaCollection": "Mediakokoelma",
-    "scrollToVideo": "Vieritä videoon {title}"
+    "scrollToVideo": "Vieritä videoon {title}",
+    "forYou": "Sinulle"
   },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",

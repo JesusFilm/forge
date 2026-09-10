@@ -19,6 +19,10 @@ function buildPrisma() {
       .mockResolvedValueOnce([
         { id: "expired-profile-1", privacyGeneration: 3 },
       ]),
+    recommendationViewer: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     recommendationRequest: {
       findMany: vi.fn(async () => requestIds),
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
@@ -160,6 +164,10 @@ function buildPrisma() {
       create: vi.fn(async () => ({ id: "retention-run-1" })),
       update: vi.fn(async (args) => args),
       findFirst: vi.fn(),
+    },
+    recommendationViewer: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     recommendationRequest: { findFirst: vi.fn() },
     recommendationContentAction: { findFirst: vi.fn() },

@@ -527,7 +527,8 @@
     "previousVideoPreview": "Førehandsvising av førre video",
     "nextVideoPreview": "Førehandsvising av neste video",
     "mediaCollection": "Mediesamling",
-    "scrollToVideo": "Rull til videoen {title}"
+    "scrollToVideo": "Rull til videoen {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-heimesida",

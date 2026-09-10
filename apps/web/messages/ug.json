@@ -527,7 +527,8 @@
     "previousVideoPreview": "ئالدىنقى سىن ئالدىن كۆرۈشى",
     "nextVideoPreview": "كېيىنكى سىن ئالدىن كۆرۈشى",
     "mediaCollection": "مېدىيا يىغقۇسى",
-    "scrollToVideo": "{title} سىنىغا سۈرۈش"
+    "scrollToVideo": "{title} سىنىغا سۈرۈش",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project باش بېتى",

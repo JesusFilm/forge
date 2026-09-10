@@ -527,7 +527,8 @@
     "previousVideoPreview": "Pòprzédny pòdzérk wideo",
     "nextVideoPreview": "Nôstãpny pòdzérk wideo",
     "mediaCollection": "Kolekcjô mediów",
-    "scrollToVideo": "Przesuń do wideo {title}"
+    "scrollToVideo": "Przesuń do wideo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Strona domô Jesus Film Project",

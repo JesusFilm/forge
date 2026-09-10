@@ -14,6 +14,7 @@ import {
   ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
   CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
 } from "@/services/content-embedding-contract"
+import { getUserWatchHistory } from "../user-history.service"
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
@@ -23,7 +24,10 @@ const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
 const recommendationMigrations = readdirSync(migrationRoot)
   .filter((name) => {
     const ordinal = Number(name.slice(0, 4))
-    return ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")
+    return (
+      (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
+      name === "0082_user_recommendation_identity"
+    )
   })
   .sort()
   .map((name) =>
@@ -419,6 +423,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         scope: "durable",
         generation: 1,
         interestCount: 1,
+        qualifiedInterestCount: 1,
       })
       expect(
         candidates?.nominations.find(
@@ -433,6 +438,38 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(JSON.stringify(candidates)).not.toMatch(
         /profileTokenDigest|sessionDigest|vectorText/,
       )
+
+      const sourceFree = await getLiveProfileCandidates(prisma, {
+        sessionDigest,
+        profileTokenDigest,
+        context: {
+          surface: "watch-below-player-v1",
+          purpose: "watch",
+          locale: "en",
+          audioLanguageSlug: "english",
+          seedMediaId: null,
+          manifestId: "semantic-profile-hybrid-v1",
+        },
+        now: projectAt,
+      })
+      expect(
+        sourceFree?.nominations.some(
+          (candidate) => candidate.targetMediaId === "profile-learning-similar",
+        ),
+      ).toBe(true)
+      expect(
+        await getUserWatchHistory(prisma, {
+          sessionDigest,
+          profileTokenDigest,
+          now: projectAt,
+        }),
+      ).toEqual([
+        {
+          mediaId: "profile-learning-source",
+          videoCoreId: "profile-learning-core-0",
+          completed: false,
+        },
+      ])
 
       await admin.query(
         `UPDATE recommendation_playback_episode

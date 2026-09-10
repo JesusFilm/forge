@@ -527,7 +527,8 @@
     "previousVideoPreview": "Hor-u-muujinta fiidiyowga hore",
     "nextVideoPreview": "Hor-u-muujinta fiidiyowga xiga",
     "mediaCollection": "Uruurinta warbaahinta",
-    "scrollToVideo": "U deg fiidiyowga {title}"
+    "scrollToVideo": "U deg fiidiyowga {title}",
+    "forYou": "Adiga kuu gaar ah"
   },
   "WatchFooter": {
     "home": "Bogga hore ee Jesus Film Project",

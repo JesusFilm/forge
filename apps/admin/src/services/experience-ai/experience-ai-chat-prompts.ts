@@ -71,7 +71,7 @@ const ENVELOPE_SHAPE_HINT = `Envelope shape (illustrative — values vary):
 
 const BLOCK_KIND_REFERENCE = `Block kinds (the "t" discriminator on each block must be one of these literals — anything else triggers schema_violation). Every block schema is STRICT: only the listed fields are allowed. Only omit optional/defaulted fields; required fields in the examples must be present. Never add a field not shown.
 
-Top-level: "videoHero" | "watchHomeCategoryRail" | "text" | "video" | "card" | "cta" | "infoBlocks" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
+Top-level: "videoHero" | "homepageRecommendations" | "watchHomeCategoryRail" | "text" | "video" | "card" | "cta" | "infoBlocks" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
 Inside section.content: "mediaCollection" | "text" | "promoBanner" | "infoBlocks" | "cta" | "container" | "relatedQuestions" | "bibleQuotesCarousel" | "card" | "video" | "quizButton" | "videoCarousel" | "navigationCarousel". Do not put "videoHero", "videoRecommendations", or another "section" inside section.content.
 "sectionKey" is an OPTIONAL string identifier on every block — use it when you need to anchor a navigationCarousel item to a section. Otherwise omit.
 
@@ -128,6 +128,10 @@ videoCarousel:
 navigationCarousel:
   {"t":"navigationCarousel","items":[{"contentId":"s02","title":"Forgiveness"}]}
   - "contentId" must match the target block/section "sectionKey". DO NOT use "label", "href", or "sectionRef".
+
+homepageRecommendations (top-level only, at most one per Experience):
+  {"t":"homepageRecommendations","sectionKey":"recommended"}
+  Optional title overrides the localized "Recommended for You" heading. Items are personalized at viewing time, never authored video IDs.
 
 watchHomeCategoryRail (homepage-only and top-level only):
   {"t":"watchHomeCategoryRail","categoryIds":["jesus","family","hope"]}

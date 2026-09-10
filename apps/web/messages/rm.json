@@ -527,7 +527,8 @@
     "previousVideoPreview": "Previsiun dal video precedent",
     "nextVideoPreview": "Previsiun dal proxim video",
     "mediaCollection": "Collecziun da medias",
-    "scrollToVideo": "Scrolar tar il video {title}"
+    "scrollToVideo": "Scrolar tar il video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Pagina principala da Jesus Film Project",

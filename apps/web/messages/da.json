@@ -527,7 +527,8 @@
     "previousVideoPreview": "Forhåndsvisning af forrige video",
     "nextVideoPreview": "Forhåndsvisning af næste video",
     "mediaCollection": "Mediesamling",
-    "scrollToVideo": "Rul til videoen {title}"
+    "scrollToVideo": "Rul til videoen {title}",
+    "forYou": "Til dig"
   },
   "WatchFooter": {
     "home": "Jesus Film Project forside",

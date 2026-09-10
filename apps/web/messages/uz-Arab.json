@@ -527,7 +527,8 @@
     "previousVideoPreview": "پیش‌نمایش ویدیوی قبلی",
     "nextVideoPreview": "پیش‌نمایش ویدیوی بعدی",
     "mediaCollection": "مجموعهٔ رسانه‌ای",
-    "scrollToVideo": "به ویدیوی {title} بروید"
+    "scrollToVideo": "به ویدیوی {title} بروید",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",

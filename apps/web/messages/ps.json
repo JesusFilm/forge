@@ -527,7 +527,8 @@
     "previousVideoPreview": "د مخکینۍ ویډیو مخکتنه",
     "nextVideoPreview": "د راتلونکې ویډیو مخکتنه",
     "mediaCollection": "د رسنیو ټولګه",
-    "scrollToVideo": "د {title} ویډیو ته ولېږئ"
+    "scrollToVideo": "د {title} ویډیو ته ولېږئ",
+    "forYou": "ستاسو لپاره"
   },
   "WatchFooter": {
     "home": "د Jesus Film Project کورپاڼه",

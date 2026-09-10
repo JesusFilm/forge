@@ -1,0 +1,60 @@
+{
+  "status": "draft-core-only",
+  "sourceFiles": [
+    {
+      "file": "videos.json",
+      "sha256": "6d3fc987852bca729ac23ec6cf2b372d2ab6263d8a063d1a930c4e8553c3a240",
+      "recordCount": 1129,
+      "metadata": {
+        "source": "https://api-gateway.central.jesusfilm.org/",
+        "fetchedAt": "2026-09-09T22:14:43.569359+00:00",
+        "sourceScope": "Public Core metadata visible to watch client; Admin-only records, restrictions and current Admin eligibility unverified"
+      }
+    },
+    {
+      "file": "languages.json",
+      "sha256": "6d01ed25d8fbe2d063c45be6c57440604d8f3167bb98229b0254cc6c02aec72d",
+      "recordCount": 2318,
+      "metadata": {
+        "source": "https://api-gateway.central.jesusfilm.org/",
+        "query": "query CurationLanguages($offset:Int!,$limit:Int!){\n      languages(offset:$offset,limit:$limit){id slug bcp47}}",
+        "startedAt": "2026-09-09T22:19:38.684178+00:00",
+        "finishedAt": "2026-09-09T22:19:42.332972+00:00",
+        "pageSize": 1000,
+        "pages": 3,
+        "completePagination": true,
+        "sourceScope": "Public Core; not current Admin eligibility; offset pagination is not an atomic snapshot",
+        "projection": "HLS URL reduced to nonempty boolean; all other requested fields preserved"
+      }
+    },
+    {
+      "file": "videoVariants.json",
+      "sha256": "f46495a2f595a0a51fe9b6b783b5110f55d7c059919c8f54230102c87e6f4cba",
+      "recordCount": 211904,
+      "metadata": {
+        "source": "https://api-gateway.central.jesusfilm.org/",
+        "query": "query CurationAvailability($offset:Int!,$limit:Int!){\n      videoVariants(offset:$offset,limit:$limit){id videoId duration hls published\n        language{id}}}",
+        "startedAt": "2026-09-09T22:19:42.336696+00:00",
+        "finishedAt": "2026-09-09T22:30:42.965412+00:00",
+        "pageSize": 5000,
+        "pages": 43,
+        "completePagination": true,
+        "sourceScope": "Public Core; not current Admin eligibility; offset pagination is not an atomic snapshot",
+        "projection": "HLS URL reduced to nonempty boolean; all other requested fields preserved"
+      }
+    }
+  ],
+  "sourceVariantCount": 211904,
+  "variantsForVisibleVideos": 207144,
+  "variantsForVideosOutsideVisibleSnapshot": 4760,
+  "projection": "Distinct video-language membership; published flag and nonempty HLS only. Durations aggregate across published HLS dubs, not selected Admin dubs. No streams were played.",
+  "retainedEvidenceSha256": {
+    "core-video-availability.csv": "dd25ecf908f9b57ce278ceaee9a30756d58f967d0bcb543cecdb3dc427ebe281",
+    "core-languages.csv": "6772a67fb04eb69ffadcc830c88a9f8c49e6bec34e702ae884d3162799549850"
+  },
+  "adminValidation": {
+    "verifiedCandidates": 0,
+    "status": "pending",
+    "blocker": "Admin GraphQL returned HTTP 403; no authenticated Admin catalog/database access available in this session. Core restrictViewPlatforms is authorization-only and returned Not authorized."
+  }
+}

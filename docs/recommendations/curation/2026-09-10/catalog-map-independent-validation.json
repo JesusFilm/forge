@@ -1,0 +1,106 @@
+{
+  "status": "passed",
+  "scope": "Primary independent raw-export checks, SQL control totals, normalized identities and counts, editorial overlay, prior eligibility joins, and historical health attribution. Current production and untested streams are outside this validation.",
+  "files": [
+    {
+      "table": "video",
+      "rows": 1175,
+      "sha256": "47e27a452f1e75f1ef79948801d754e80a46fdc1531b04320325d6fac23e205e"
+    },
+    {
+      "table": "language",
+      "rows": 2321,
+      "sha256": "66d6f64d68d0bd93f7e2d09c56e0173096ba8e61f8aac96e798b2e68a01f0e4b"
+    },
+    {
+      "table": "language_locale",
+      "rows": 2868,
+      "sha256": "1178c45e54c7dda495d7ab7bfecc680cdce196cb9b2b283eab27f71e1bb04126"
+    },
+    {
+      "table": "video_relation",
+      "rows": 1605,
+      "sha256": "c813d519c0ea2c2c4687286893134c00a348baee7177177146b39cc5d997fbfe"
+    },
+    {
+      "table": "video_edition",
+      "rows": 1612,
+      "sha256": "8f29d2f52620dcfd5f2c74c808d733047b7f49b0ed106234034ab14aa12feff7"
+    },
+    {
+      "table": "mux_video",
+      "rows": 176293,
+      "sha256": "ede20a5c0c02fdfce011890ea205348bc4c727f26cafb8b05a0ecbfbfe8c4a71"
+    },
+    {
+      "table": "video_image",
+      "rows": 2358,
+      "sha256": "9a291c912217f0e16a1f1f1096194170ff4776a0e68b88591374cbbe8b7f569f"
+    },
+    {
+      "table": "keyword",
+      "rows": 6417,
+      "sha256": "f2109cd08c035d95ed365c2a542b7bb65a5ea58454f7183f09b562dd1bcce548"
+    },
+    {
+      "table": "video_keyword",
+      "rows": 19044,
+      "sha256": "2fa77269b3dd22eaae4a3f50493f661b33f74ac22205356c27e21444798de265"
+    },
+    {
+      "table": "video_origin",
+      "rows": 18,
+      "sha256": "9fe624aed94d8d19118cd12b9c34c2fe974af577113e6ef502edf4f39fef84b9"
+    },
+    {
+      "table": "video_subtitle",
+      "rows": 12225,
+      "sha256": "7fe6327088cf69fe04e4077a3bba35c36dfade332ad2e150b663799d437b8fca"
+    },
+    {
+      "table": "video_locale",
+      "rows": 25522,
+      "sha256": "91dcebe8488fd906656d3ec79f92f9920104cc7456619260c19627a737766c97"
+    },
+    {
+      "table": "video_dub",
+      "rows": 212171,
+      "sha256": "941a334fb207bbf7faf02e74c9cf6cc800352ce1afd7545abe46231c0c117cc3"
+    },
+    {
+      "table": "video_transcript",
+      "rows": 164700,
+      "sha256": "692c42215b8222c00c10ec2fed7e133c45d882445bc63612b668a2a4e8b66477"
+    },
+    {
+      "table": "transcript_chunk_counts",
+      "rows": 164700,
+      "sha256": "380bc74519677d5325ab84fc8b939528801ce7a73bf129034b013e1ba2d5f92a"
+    }
+  ],
+  "independentSqlControlFile": "catalog-source-boundary-check.json",
+  "comparisons": [
+    "video row count",
+    "dub row count",
+    "language row count",
+    "null language foreign key count"
+  ],
+  "consumerMapChecks": {
+    "status": "passed",
+    "videoRows": 1175,
+    "languageRows": 2321,
+    "editorialReferences": 233,
+    "editorialChoices": 208,
+    "uncuratedCandidateRows": 834,
+    "videoRelationRows": 1605,
+    "keywordLinkRows": 19044,
+    "normalizedDubRows": 212171,
+    "exactVariantHealthStates": {
+      "untested": 212109,
+      "manifest_pass": 1,
+      "manifest_failed": 61
+    },
+    "priorEligibilityLanguageComparisons": 2317,
+    "normalizedAllDubsSha256": "83561ed7caa139dd7d62b0bffcb1f5f45b8c81d00e37e48bf00e299d9cacafd1"
+  }
+}

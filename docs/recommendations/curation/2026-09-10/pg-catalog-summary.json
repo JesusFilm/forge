@@ -1,0 +1,118 @@
+{
+  "status": "rebuilt-unfiltered-local-PG-catalog-with-separated-derived-inventory",
+  "snapshotAt": "2026-09-10 03:52:38.824179+00",
+  "database": "forge_feat477_20260910",
+  "editorialSourceVersion": "2026-09-10.astra-admin-preview.v2",
+  "editorialSourceSha256": "8f3dac3ab7f4f3a77b89b92e733cd774a091506aa8c45a6a7b6736f73381d15b",
+  "rawTableCounts": {
+    "video": 1175,
+    "language": 2321,
+    "language_locale": 2868,
+    "video_relation": 1605,
+    "video_edition": 1612,
+    "mux_video": 176293,
+    "video_dub": 212171,
+    "video_locale": 25522,
+    "video_image": 2358,
+    "keyword": 6417,
+    "video_keyword": 19044,
+    "video_origin": 18,
+    "video_subtitle": 12225,
+    "video_transcript": 164700,
+    "video_transcript_chunk": 280107
+  },
+  "videoLabels": {
+    "segment": 398,
+    "episode": 486,
+    "collection": 47,
+    "series": 61,
+    "shortFilm": 171,
+    "featureFilm": 12
+  },
+  "videoSourceTiers": {
+    "core": 1175
+  },
+  "languageSourceTiers": {
+    "core": 2321
+  },
+  "sourceTiersAndSyncRanges": [
+    {
+      "table_name": "video",
+      "source": "core",
+      "count": 1175,
+      "oldest_sync": "2026-08-03 11:02:49.226+00",
+      "newest_sync": "2026-08-03 11:11:26.326+00"
+    },
+    {
+      "table_name": "language",
+      "source": "core",
+      "count": 2321,
+      "oldest_sync": "2026-06-04 23:05:30.955364+00",
+      "newest_sync": "2026-09-03 07:00:06.934937+00"
+    },
+    {
+      "table_name": "video_dub",
+      "source": "core",
+      "count": 212171,
+      "oldest_sync": "2026-05-20 21:50:02.757743+00",
+      "newest_sync": "2026-09-05 07:00:49.771652+00"
+    },
+    {
+      "table_name": "video_locale",
+      "source": "core",
+      "count": 25522,
+      "oldest_sync": "2026-08-03 11:02:49.228",
+      "newest_sync": "2026-08-03 11:11:26.328"
+    }
+  ],
+  "editorialChoices": 208,
+  "editorialCoreReferences": 233,
+  "resolvedEditorialReferences": 233,
+  "uncuratedLeafVideosWithPublishedDeclaredSources": 834,
+  "languagesWithSixPublishedLeafDeclaredSources": 2283,
+  "languagesWithThirtyPublishedLeafDeclaredSources": 2278,
+  "nondeletedNamedLanguages": 2317,
+  "nullLanguageDubRows": 478,
+  "orphanAndIdentityChecks": {
+    "dubDistinctVideos": 1175,
+    "dubDistinctLanguages": 2318,
+    "videoLanguagePairsIncludingNull": 211780,
+    "dubRowsWithHls": 176281,
+    "dubRowsWithMuxPlayback": 176220,
+    "orphanDubVideos": 0,
+    "orphanDubLanguages": 0,
+    "orphanDubEditions": 0,
+    "orphanDubMux": 0,
+    "nullDubLanguage": 478,
+    "nullDubMux": 35890,
+    "orphanVideoRelations": 0,
+    "orphanVideoLocales": 0,
+    "orphanDisplayLanguages": 0,
+    "displayLanguageMirrorMismatches": 0,
+    "orphanKeywordRelations": 0,
+    "orphanVideoImages": 0,
+    "orphanTranscripts": 0,
+    "orphanTranscriptChunks": 0
+  },
+  "priorExactVariantHealth": {
+    "observedAt": "2026-09-10T03:39:11.459016+00:00",
+    "matchedVariantIds": 62,
+    "passedManifest": 1,
+    "failedManifest": 61,
+    "allOtherVariantRows": "untested-at-exact-variant-identity-by-reused-evidence"
+  },
+  "priorVideoLanguagePairHealth": {
+    "finishedAt": "2026-09-10T02:39:52.400Z",
+    "pairs": 233,
+    "meaning": "one selected English dub per Core reference; cannot assign success to every variant sharing that pair"
+  },
+  "validation": {
+    "passed": true,
+    "verifiedRawFiles": 15,
+    "normalizedDubRows": 212171,
+    "independentPerLanguageSQLComparisons": 2321,
+    "transcriptChunkCountReconciled": true,
+    "allEditorialIdsResolved": true,
+    "allExistingPersianVariantObservationsMatched": true
+  }
+}

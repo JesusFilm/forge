@@ -301,6 +301,7 @@ export class RecommendationIntegrityService {
               request: {
                 select: {
                   sessionDigest: true,
+                  surfaceVersion: true,
                   promotionSlateFence: {
                     select: { reasonCode: true, fencedAt: true },
                   },
@@ -352,7 +353,10 @@ export class RecommendationIntegrityService {
           const measures = await measureSelectionSource(tx, selection)
           const hasEligibleImpression =
             impression != null &&
-            impression.visibilityPolicy === RECOMMENDATION_CONTRACTS.surface &&
+            impression.visibilityPolicy === selection.request.surfaceVersion &&
+            [RECOMMENDATION_CONTRACTS.surface, "watch-for-you-v1"].includes(
+              impression.visibilityPolicy,
+            ) &&
             selection.attributionEligibleAt != null &&
             impression.expiresAt >= selection.attributionEligibleAt &&
             impression.expiresAt > now

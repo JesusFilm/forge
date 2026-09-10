@@ -343,7 +343,8 @@
     "nextVideoPreview": "Previzualizarea videoclipului următor",
     "featured": "Recomandate",
     "mediaCollection": "Colecție media",
-    "scrollToVideo": "Derulează la videoclipul {title}"
+    "scrollToVideo": "Derulează la videoclipul {title}",
+    "forYou": "Pentru tine"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Limbi",

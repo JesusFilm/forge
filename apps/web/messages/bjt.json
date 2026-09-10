@@ -527,7 +527,8 @@
     "previousVideoPreview": "Video tɔɲɛn preview",
     "nextVideoPreview": "Video kaŋ preview",
     "mediaCollection": "Koleksyɔn media",
-    "scrollToVideo": "Kɛ scroll ka {title} video"
+    "scrollToVideo": "Kɛ scroll ka {title} video",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kɔnɔ",
