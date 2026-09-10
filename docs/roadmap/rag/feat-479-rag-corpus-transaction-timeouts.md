@@ -50,6 +50,8 @@ paths unchanged. Tests use synthetic vectors and isolated local/CI PostgreSQL.
 
 ## Resolution
 
+Implemented in [Forge PR #2233](https://github.com/JesusFilm/forge/pull/2233).
+
 The corpus writer now explicitly allows 10 seconds to acquire its transaction
 and 30 seconds to execute it. Before the fix, the three-second connection wait
 and six-second write tests reproduced the acquisition and expired-transaction
