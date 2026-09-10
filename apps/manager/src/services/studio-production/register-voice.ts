@@ -40,11 +40,10 @@ export async function registerExperimentVoice(
   if (
     experiment.request.kind !== "voice" ||
     !candidate ||
-    experiment.selection?.candidateKey !== candidate.candidateKey ||
-    !rate
+    experiment.selection?.candidateKey !== candidate.candidateKey
   )
     throw new StudioProductionError(
-      "Select an auditioned voice and verify registration rate before registration",
+      "Select an auditioned voice before registration",
     )
   const preview = studioAssetVersionSchema.parse(
     await call("asset", candidate.asset),
@@ -116,7 +115,7 @@ export async function registerExperimentVoice(
       await production.call("claim", {
         key,
         inputDigest,
-        reserveMicros: Math.ceil(rate.registrationMicros),
+        reserveMicros: Math.ceil(rate?.registrationMicros ?? 0),
       }),
     )
   let registered: z.infer<typeof studioAssetReferenceSchema>

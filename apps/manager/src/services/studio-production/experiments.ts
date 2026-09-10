@@ -31,16 +31,16 @@ const voiceSettings = z
 export function experimentQuote(raw: unknown) {
   const draft = experimentDraftSchema.parse(raw),
     card = readStudioRates(env.STUDIO_PRODUCTION_RATE_CARD)
-  if (draft.provider !== "elevenlabs" || !card)
+  if (draft.provider !== "elevenlabs" || (draft.kind === "music" && !card))
     throw new StudioProductionError(
       "Verified account rates are required before a creative experiment",
     )
-  let amountMicros: number
+  let amountMicros: number | null
   if (draft.kind === "music") {
     z.enum(["music_v1", "music_v2"]).parse(draft.model)
     z.string().min(1).max(4100).parse(draft.prompt)
     const settings = musicSettings.parse(draft.settings),
-      rate = card.music.find(
+      rate = card?.music.find(
         (r) => r.model === draft.model && settings.lengthMs <= r.maxDurationMs,
       )
     if (!rate)
@@ -52,23 +52,32 @@ export function experimentQuote(raw: unknown) {
     z.enum(["eleven_multilingual_ttv_v2", "eleven_ttv_v3"]).parse(draft.model)
     z.string().min(20).max(1000).parse(draft.prompt)
     const settings = voiceSettings.parse(draft.settings),
-      rate = card.voice.find((r) => r.model === draft.model)
-    if (!rate || draft.candidateCount !== 3)
+      rate = card?.voice.find((r) => r.model === draft.model)
+    if (draft.candidateCount !== 3)
       throw new StudioProductionError(
-        "Voice design requires a verified three-preview estimate",
+        "Voice design requires exactly three previews",
       )
-    amountMicros = Math.ceil(
-      settings.text.length * rate.microsPerPreviewCharacter +
-        rate.registrationMicros,
-    )
+    amountMicros = rate
+      ? Math.ceil(
+          settings.text.length * rate.microsPerPreviewCharacter +
+            rate.registrationMicros,
+        )
+      : null
   }
   return {
     draft,
     estimate: {
       currency: "USD" as const,
       amountMicros,
-      basis: card.basis,
-      expiresAt: card.verifiedUntil,
+      basis:
+        amountMicros === null
+          ? "Pricing unavailable; ElevenLabs charges apply"
+          : card!.basis,
+      expiresAt:
+        card?.verifiedUntil ??
+        new Date(
+          (Math.floor(Date.now() / 3600000) + 1) * 3600000,
+        ).toISOString(),
     },
   }
 }
@@ -89,13 +98,13 @@ export async function executeStudioExperiment(
     .parse(await production.call("context", {}))
   if (context.run.state !== "READY") return context
   const spec = context.experiment.request
-  let card: NonNullable<ReturnType<typeof readStudioRates>>,
-    provider: ElevenStudioProvider
+  let card: ReturnType<typeof readStudioRates>, provider: ElevenStudioProvider
   try {
     const quote = experimentQuote(experimentDraftSchema.strip().parse(spec))
-    card = readStudioRates(env.STUDIO_PRODUCTION_RATE_CARD)!
+    card = readStudioRates(env.STUDIO_PRODUCTION_RATE_CARD)
     if (
-      quote.estimate.amountMicros > spec.maxCostMicros ||
+      (quote.estimate.amountMicros !== null &&
+        quote.estimate.amountMicros > spec.maxCostMicros) ||
       quote.estimate.basis !== spec.estimate.basis
     )
       throw new StudioProductionError(
@@ -119,14 +128,14 @@ export async function executeStudioExperiment(
         .digest("hex")
     const reserve =
       spec.kind === "music"
-        ? card.music.find(
+        ? card!.music.find(
             (r) =>
               r.model === spec.model &&
               Number(spec.settings.lengthMs) <= r.maxDurationMs,
           )!.microsPerGeneration
         : Number(spec.settings.text?.toString().length) *
-          card.voice.find((r) => r.model === spec.model)!
-            .microsPerPreviewCharacter
+          (card?.voice.find((r) => r.model === spec.model)
+            ?.microsPerPreviewCharacter ?? 0)
     const claim = z
       .object({ execute: z.boolean(), call: z.object({ state: z.string() }) })
       .parse(

@@ -17,7 +17,7 @@ export const studioExperimentRequestSchema = z
     estimate: z
       .object({
         currency: z.literal("USD"),
-        amountMicros: z.number().int().nonnegative().max(100000000),
+        amountMicros: z.number().int().nonnegative().max(100000000).nullable(),
         basis: z.string().min(1).max(1000),
         expiresAt: z.string().datetime(),
       })

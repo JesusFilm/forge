@@ -8,6 +8,7 @@ import { studioCall } from "./client"
 const quoteSchema = z.object({
   plan: studioNarrationPlanSchema,
   estimateMicros: z.number().nullable(),
+  reservationMicros: z.number(),
   basis: z.string(),
   unavailable: z.string().nullable(),
 })
@@ -322,7 +323,7 @@ export default function ProductionPanel({
                 }),
               )
               setQuote(value)
-              setBudget(String((value.estimateMicros ?? 0) / 1000000))
+              setBudget(String(value.reservationMicros / 1000000))
               setReviewed(false)
               setApproved(false)
             })
@@ -411,33 +412,33 @@ export default function ProductionPanel({
             >
               Approve complete effective script
             </button>
-            <label>
-              Maximum authorized USD{" "}
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.001"
-                value={budget}
-                onChange={(e) => {
-                  setBudget(e.target.value)
-                  setConfirmed(false)
-                }}
-              />
-            </label>
+            {quote.estimateMicros !== null && (
+              <label>
+                Estimated charge limit USD{" "}
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.001"
+                  value={budget}
+                  onChange={(e) => {
+                    setBudget(e.target.value)
+                    setConfirmed(false)
+                  }}
+                />
+              </label>
+            )}
             <label>
               <input
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
-              Request narration within this budget. Retain all outputs and
-              report unknown costs or overruns.
+              Generate this narration. I accept ElevenLabs charges, including
+              when the exact price is unavailable.
             </label>
             <button
-              disabled={
-                busy || !approved || !confirmed || quote.estimateMicros === null
-              }
+              disabled={busy || !approved || !confirmed}
               onClick={() =>
                 void action(async () => {
                   const result = await production({
@@ -447,7 +448,10 @@ export default function ProductionPanel({
                       expectedRevision: quote.plan.revision,
                       idempotencyKey: crypto.randomUUID(),
                     },
-                    maxCostMicros: Math.floor(Number(budget) * 1000000),
+                    maxCostMicros:
+                      quote.estimateMicros === null
+                        ? quote.reservationMicros
+                        : Math.round(Number(budget) * 1000000),
                     confirmed: true,
                   })
                   setRunId(result.runId)

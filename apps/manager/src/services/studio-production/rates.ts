@@ -47,16 +47,23 @@ export function readStudioRates(raw: string | undefined) {
   const card = studioRateCardSchema.parse(JSON.parse(raw))
   return Date.parse(card.verifiedUntil) > Date.now() ? card : null
 }
-export function narrationReserve(
+export function narrationEstimate(
   card: StudioRateCard | null,
   identity: StudioNarrationIdentity,
 ) {
   const rate = card?.narration.find(
     (r) => r.model === identity.model && r.voiceId === identity.voiceId,
   )
-  if (!rate || identity.provider !== "elevenlabs")
-    throw new StudioProductionError(
-      "Verify account-specific model and voice rate before requesting paid narration",
-    )
-  return Math.ceil(identity.text.length * rate.microsPerCharacter)
+  if (identity.provider !== "elevenlabs")
+    throw new StudioProductionError("Unsupported narration provider")
+  return rate ? Math.ceil(identity.text.length * rate.microsPerCharacter) : null
+}
+
+// Reservations track priced funds only. Zero here never means free audio:
+// provider results retain actualCostMicros:null when no charge is reported.
+export function narrationReserve(
+  card: StudioRateCard | null,
+  identity: StudioNarrationIdentity,
+) {
+  return narrationEstimate(card, identity) ?? 0
 }

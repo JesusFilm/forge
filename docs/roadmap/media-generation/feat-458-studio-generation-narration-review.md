@@ -74,3 +74,10 @@ The narrow correction returns complete bounded canonical speech (or explicit una
 ### Retained generation-command isolation checkpoint
 
 `generation.read` now clones the selected operations only for projection, preserving original response command provenance alongside the unchanged final document. See `docs/solutions/integration-issues/studio-generation-read-command-isolation.md` and `docs/validation/studio-458/generation-read-isolation/README.md`. Existing 680 evidence entries, closed paid batches, tool/prompt bytes and the inconclusive performance limitation remain unchanged. Full creative/ElevenLabs acceptance remains open.
+
+## Narration pricing follow-up — 2026-09-11
+
+Implemented owner-authorized narration and voice setup without an account rate
+card. Unknown estimates/actual costs remain explicit; mixed scripts preserve the
+known reservation subtotal. Focused tests/types/review passed. Live speech test
+succeeded. See `docs/solutions/integration-issues/shorts-narration-without-account-pricing.md`.
