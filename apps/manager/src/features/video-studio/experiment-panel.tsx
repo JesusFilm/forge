@@ -350,7 +350,7 @@ export default function ExperimentPanel({
                 })
                 const estimate = estimateSchema.parse(result.estimate)
                 setQuote(estimate)
-                setBudget(String(estimate.amountMicros / 1000000))
+                setBudget(String((estimate.amountMicros ?? 0) / 1000000))
               })
             }
           >
@@ -362,31 +362,37 @@ export default function ExperimentPanel({
             <legend>Review and confirm</legend>
             <pre>{JSON.stringify(draft(), null, 2)}</pre>
             <p>
-              Estimate ${(quote.amountMicros / 1000000).toFixed(6)} USD.{" "}
-              {quote.basis} Valid until {quote.expiresAt}. Actual charges remain
-              unknown unless the provider reports them.
+              Estimate:{" "}
+              {quote.amountMicros === null
+                ? "Unavailable"
+                : `$${(quote.amountMicros / 1000000).toFixed(6)} USD`}
+              . {quote.basis} Valid until {quote.expiresAt}. Actual charges
+              remain unknown unless the provider reports them.
             </p>
-            <label>
-              Maximum authorized USD{" "}
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.001"
-                value={budget}
-                onChange={(e) => {
-                  setBudget(e.target.value)
-                  setConfirmed(false)
-                }}
-              />
-            </label>
+            {quote.amountMicros !== null && (
+              <label>
+                Estimated charge limit USD{" "}
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.001"
+                  value={budget}
+                  onChange={(e) => {
+                    setBudget(e.target.value)
+                    setConfirmed(false)
+                  }}
+                />
+              </label>
+            )}
             <label>
               <input
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
               />
-              I explicitly request this fixed experiment within this budget.
+              I request these previews and accept provider charges, including
+              when the exact price is unavailable.
             </label>
             <button
               disabled={!confirmed}
@@ -397,7 +403,7 @@ export default function ExperimentPanel({
                     input: {
                       ...draft(),
                       estimate: quote,
-                      maxCostMicros: Math.floor(Number(budget) * 1000000),
+                      maxCostMicros: Math.round(Number(budget) * 1000000),
                       confirmed: true,
                       idempotencyKey: crypto.randomUUID(),
                     },
@@ -557,7 +563,7 @@ export default function ExperimentPanel({
                     checked={registerConfirmed}
                     onChange={(e) => setRegisterConfirmed(e.target.checked)}
                   />
-                  Register this selected voice within the existing budget using
+                  Register this selected voice and accept provider charges using
                   an available voice slot.
                 </label>
                 <button

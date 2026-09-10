@@ -192,3 +192,74 @@ it("preserves preview language provenance instead of registering a wrong-languag
     languageMatch: false,
   })
 })
+
+it("generates fixed voice previews without account rates and retains unknown actual cost", async () => {
+  testEnv.STUDIO_PRODUCTION_RATE_CARD = undefined
+  const voice = {
+    ...draft,
+    kind: "voice",
+    model: "eleven_multilingual_ttv_v2",
+    candidateCount: 3,
+    settings: {
+      text: "A".repeat(120),
+      loudness: 0.5,
+      guidanceScale: 5,
+      languageCode: "en",
+      narrationModel: "eleven_multilingual_v2",
+    },
+  }
+  const quote = experimentQuote(voice)
+  expect(quote.estimate.amountMicros).toBeNull()
+  const spec = {
+    ...voice,
+    estimate: quote.estimate,
+    maxCostMicros: 0,
+    confirmed: true,
+    idempotencyKey: "unpriced-voice",
+  }
+  let consumed = false
+  call.mockImplementation(async (command) => {
+    if (command === "context")
+      return {
+        run: { state: "READY" },
+        experiment: { id: "experiment", request: spec },
+      }
+    if (command === "claim") {
+      const execute = !consumed
+      consumed = true
+      return { execute, call: { state: execute ? "RUNNING" : "COMPLETED" } }
+    }
+    return {}
+  })
+  const design = vi
+    .spyOn(ElevenStudioProvider.prototype, "designVoice")
+    .mockResolvedValue({
+      requestId: "voice-request",
+      credits: null,
+      text: voice.settings.text,
+      candidates: [1, 2, 3].map((i) => ({
+        bytes: Buffer.from("audio"),
+        voiceId: `voice-${i}`,
+        language: "en",
+        durationMs: 1000,
+      })),
+    })
+  await executeStudioExperiment("operator", interactive, "run")
+  await executeStudioExperiment("operator", interactive, "run")
+  expect(design).toHaveBeenCalledTimes(1)
+  expect(upload).toHaveBeenCalledTimes(3)
+  expect(call).toHaveBeenCalledWith(
+    "claim",
+    expect.objectContaining({ reserveMicros: 0 }),
+  )
+  expect(call).toHaveBeenCalledWith(
+    "finish",
+    expect.objectContaining({
+      state: "COMPLETED",
+      result: expect.objectContaining({ actualCostMicros: null }),
+    }),
+  )
+  expect(() => experimentQuote({ ...voice, candidateCount: 4 })).toThrow(
+    "exactly three",
+  )
+})

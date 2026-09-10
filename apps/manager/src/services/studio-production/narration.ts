@@ -21,7 +21,7 @@ import {
   runStudioNarration,
   type NarrationAudio,
 } from "./runner"
-import { narrationReserve, readStudioRates } from "./rates"
+import { narrationEstimate, narrationReserve, readStudioRates } from "./rates"
 export async function narrationQuote(
   call: StudioInteractiveClient,
   input: { projectId: string; expectedRevision: number },
@@ -37,16 +37,16 @@ export async function narrationQuote(
     const digest = narrationInputDigest(s.identity)
     if (s.matches.length || identities.has(digest)) continue
     identities.add(digest)
-    try {
-      estimateMicros += narrationReserve(card, s.identity)
-    } catch (e) {
-      unavailable = e instanceof Error ? e.message : "Rate unavailable"
-    }
+    const estimate = narrationEstimate(card, s.identity)
+    if (estimate === null)
+      unavailable = "Pricing is unavailable. ElevenLabs charges still apply."
+    else estimateMicros += estimate
   }
   return {
     plan,
     estimateMicros: unavailable ? null : estimateMicros,
-    basis: card?.basis ?? "Existing exact cache only",
+    reservationMicros: estimateMicros,
+    basis: card?.basis ?? "ElevenLabs charges are recorded when reported",
     expiresAt: card?.verifiedUntil ?? null,
     unavailable,
   }

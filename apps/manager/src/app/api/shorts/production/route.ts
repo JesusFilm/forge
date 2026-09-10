@@ -63,8 +63,7 @@ export async function POST(request: Request) {
           expectedRevision: input.input.expectedRevision,
         })
         if (
-          quote.estimateMicros === null ||
-          quote.estimateMicros > input.maxCostMicros ||
+          quote.reservationMicros > input.maxCostMicros ||
           !quote.plan.segments.length
         )
           throw new StudioProductionError(

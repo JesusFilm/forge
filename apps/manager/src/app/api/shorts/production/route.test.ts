@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest"
 import { runStudioNarration } from "@/services/studio-production/runner"
 import { POST } from "./route"
+import { narrationQuote } from "@/services/studio-production/narration"
 const fixture = vi.hoisted(() => ({
   tasks: [] as Array<() => Promise<void>>,
   execute: vi.fn(),
@@ -178,3 +179,71 @@ it.each(["RUNNING", "AMBIGUOUS", "FAILED"])(
     expect(finish).not.toHaveBeenCalled()
   },
 )
+
+it("admits confirmed narration with unknown pricing while retaining its known subtotal", async () => {
+  vi.mocked(narrationQuote).mockResolvedValue({
+    plan: {
+      projectId: "project",
+      revision: 1,
+      segments: [
+        {
+          itemId: "speech",
+          identity: {
+            text: "Peace",
+            role: "reflection",
+            language: "en",
+            provider: "elevenlabs",
+            model: "eleven_multilingual_v2",
+            voiceId: "voice",
+            settings: {},
+            pronunciation: null,
+          },
+          matches: [],
+          pronunciationLocators: [],
+        },
+      ],
+    },
+    estimateMicros: null,
+    reservationMicros: 249,
+    basis: "Pricing unavailable",
+    expiresAt: null,
+    unavailable: "Provider charges apply",
+  })
+  fixture.call.mockImplementation(async (action) =>
+    action === "request"
+      ? {
+          projectId: "project",
+          revision: 1,
+          outcome: "ACCEPTED",
+          attemptId: "attempt",
+        }
+      : { id: "run" },
+  )
+  const request = (maxCostMicros: number) =>
+    new Request("http://localhost/api/shorts/production", {
+      method: "POST",
+      body: JSON.stringify({
+        kind: "narrate",
+        input: {
+          projectId: "project",
+          expectedRevision: 1,
+          idempotencyKey: "narration",
+        },
+        confirmed: true,
+        maxCostMicros,
+      }),
+    })
+  expect((await POST(request(248))).status).toBe(400)
+  expect(fixture.call).not.toHaveBeenCalled()
+  expect((await POST(request(249))).status).toBe(200)
+  expect(fixture.call).toHaveBeenCalledWith("production-admit", {
+    attemptId: "attempt",
+    maxCostMicros: 249,
+  })
+  await fixture.tasks[0]!()
+  expect(fixture.execute).toHaveBeenCalledWith(
+    "operator",
+    expect.any(Function),
+    "run",
+  )
+})

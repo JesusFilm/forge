@@ -54,7 +54,9 @@ export class StudioExperimentService {
       assertStudioProductionEnabled()
       if (
         Date.parse(input.estimate.expiresAt) <= Date.now() ||
-        input.maxCostMicros < input.estimate.amountMicros
+        (input.kind === "music" && input.estimate.amountMicros === null) ||
+        (input.estimate.amountMicros !== null &&
+          input.maxCostMicros < input.estimate.amountMicros)
       )
         throw new StudioCommandError("INVALID")
       return tx.shortExperiment.create({
@@ -180,7 +182,9 @@ export class StudioExperimentService {
       0n,
     )
     const costUnknown = row.candidates.some((c) => c.actualCostMicros === null)
-    const costExceeded = actualCost > BigInt(request.maxCostMicros)
+    const costExceeded =
+      request.estimate.amountMicros !== null &&
+      actualCost > BigInt(request.maxCostMicros)
     const countExceeded = row.candidates.length > request.candidateCount
     return {
       ...row,
