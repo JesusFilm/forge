@@ -113,6 +113,48 @@ Set `RAW_EXPORT_ENABLED` to `false` in
 | The launch sweep STILL runs                      |          |
 | A completed stage is DISCARDED rather than saved |          |
 
+## Page-load performance evidence
+
+The repo requires this whenever client-side initialization changes, and this
+change mounts `<ExportReportHost />` at the app root and adds a launch sweep —
+both on the startup path for every screen. See
+`docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.
+Lighthouse does not apply here; the mobile loops are the bundle gate and the
+Datadog scorecard (`project_mobile_perf_measurement`).
+
+**Bundle size.** `expo export --platform ios` on this branch produces a
+**6.5 MB** Hermes bundle (`entry-08d208042783aca35592429d29cb0214.hbc`, 8.3 MB
+total export). The feature contributes 11 new shipped modules totalling
+**91.5 KB of TypeScript source**, plus **39.0 KB** of `expo-media-library`
+build JS. Both are pre-compilation upper bounds — types erase and comments
+strip — so the real Hermes contribution is smaller than the ~2% those numbers
+suggest against a 6.5 MB bundle.
+
+**Delta against main: NOT MEASURED.** A like-for-like baseline needs a bundle
+built from the merge base, and the feature adds a native dependency, so the
+baseline needs its own install. This session is worktree-isolated and will not
+build in another checkout to get it. The absolute figure above is the datum.
+
+**Startup cost: reasoned from the code, not timed.** Three properties keep the
+root mount off the critical path, and all three are worth re-checking if this
+code moves:
+
+- `ExportReportHost` returns `null` while `reports.length === 0`
+  (`ExportReportHost.tsx:138`). A launch with nothing to report renders no view.
+- The sweep runs in a `useEffect` gated on `isReady`, dispatched as
+  `void (async () => …)()`, and shares one `Promise.allSettled` with the
+  `reattachSurvivors` pass that already existed. It never blocks a render.
+- `if (sweep.length === 0) return` fires BEFORE any adapter is built
+  (`DownloadsProvider.tsx:596`), so a launch that has never exported touches no
+  photo-library binding at all.
+
+**Cold-launch timing: NOT MEASURED, deliberately.** A dev-client cold launch on
+this app has a ±6 s noise floor, which is larger than any effect this change
+could have. A number from it would be noise wearing a decimal point. The real
+measurement is a release build reporting Datadog `js_tti`, and that needs a
+production build this session has not made. Recorded as unmeasured rather than
+dressed up.
+
 ## Findings from the 2026-09-10 simulator run
 
 Neither blocks the feature. Both are real and both were invisible to the suite.
