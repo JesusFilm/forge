@@ -527,8 +527,7 @@
     "previousVideoPreview": "Foorgaande Video-foarsehoon",
     "nextVideoPreview": "Neiste Video-foarsehoon",
     "mediaCollection": "Media-sammlung",
-    "scrollToVideo": "Na {title} Video skrolle",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "Na {title} Video skrolle"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-hooftside",

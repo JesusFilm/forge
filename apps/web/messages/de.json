@@ -343,8 +343,7 @@
     "nextVideoPreview": "Vorschau des nächsten Videos",
     "featured": "Empfohlen",
     "mediaCollection": "Mediensammlung",
-    "scrollToVideo": "Zum Video {title} scrollen",
-    "forYou": "Für dich empfohlen"
+    "scrollToVideo": "Zum Video {title} scrollen"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Sprachen",

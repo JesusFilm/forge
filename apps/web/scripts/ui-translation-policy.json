@@ -121,8 +121,7 @@
     "WatchHomeCategories.eyebrow",
     "WatchHomeCategories.seeAll",
     "WatchHomeCategories.title",
-    "WatchNotFound.languageDescription",
-    "WatchHome.forYou"
+    "WatchNotFound.languageDescription"
   ],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",

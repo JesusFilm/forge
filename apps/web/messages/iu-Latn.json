@@ -527,8 +527,7 @@
     "previousVideoPreview": "Video siulleq saqqummiutaa",
     "nextVideoPreview": "Video tullinnguuppoq saqqummiutaa",
     "mediaCollection": "Media katersaq",
-    "scrollToVideo": "{title}-mik video-mut qummukarit",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "{title}-mik video-mut qummukarit"
   },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",

@@ -527,8 +527,7 @@
     "previousVideoPreview": "上一段影片預覽",
     "nextVideoPreview": "下一段影片預覽",
     "mediaCollection": "媒體合集",
-    "scrollToVideo": "捲去 {title} 影片",
-    "forYou": "Recommended for You"
+    "scrollToVideo": "捲去 {title} 影片"
   },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",

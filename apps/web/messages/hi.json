@@ -527,8 +527,7 @@
     "previousVideoPreview": "पिछले वीडियो का पूर्वावलोकन",
     "nextVideoPreview": "अगले वीडियो का पूर्वावलोकन",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} वीडियो पर स्क्रॉल करें",
-    "forYou": "आपके लिए सुझाए गए वीडियो"
+    "scrollToVideo": "{title} वीडियो पर स्क्रॉल करें"
   },
   "WatchFooter": {
     "home": "Jesus Film Project होम",
