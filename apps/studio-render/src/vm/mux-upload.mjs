@@ -113,11 +113,12 @@ export async function uploadVmOutput({
     throw new VmInvariantError("Mux upload identity changed")
   bounded.throwIfAborted()
   try {
+    // Inspect resumable 308 responses without following any redirects.
     // Query the resumable endpoint before sending bytes. A restarted host resumes
     // the same upload rather than allocating another asset after response loss.
     const probe = await fetcher(url, {
       method: "PUT",
-      redirect: "error",
+      redirect: "manual",
       signal: bounded,
       headers: {
         "content-range": `bytes */${bytes.length}`,
@@ -136,7 +137,7 @@ export async function uploadVmOutput({
       throw new VmInvariantError("Invalid Mux upload offset")
     const result = await fetcher(url, {
       method: "PUT",
-      redirect: "error",
+      redirect: "manual",
       signal: bounded,
       headers: {
         "content-type": "video/mp4",
