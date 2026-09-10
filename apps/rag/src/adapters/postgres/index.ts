@@ -362,6 +362,10 @@ export class PostgresRawDocumentReader implements RawDocumentReader {
   }
 }
 
+// Corpus replacement spans several database round trips. Bound acquisition and
+// execution explicitly instead of inheriting Prisma's 2s/5s defaults.
+const CORPUS_WRITE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 }
+
 export class PostgresCorpusWriteStore implements CorpusWriteStore {
   constructor(private readonly db: PrismaClient) {}
 
@@ -492,7 +496,7 @@ export class PostgresCorpusWriteStore implements CorpusWriteStore {
             indexAttemptedModel: staging.attemptedModel,
           },
         })
-    })
+    }, CORPUS_WRITE_TRANSACTION_OPTIONS)
   }
 }
 
