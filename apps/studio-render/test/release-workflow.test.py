@@ -17,7 +17,7 @@ class HostedWorkflow(unittest.TestCase):
             self.assertIn("github.ref == 'refs/heads/main'", job['if'])
             self.assertIn("github.repository == 'JesusFilm/forge'", job['if'])
         config = json.loads((ROOT / 'apps/studio-render/ops/release/config.json').read_text())
-        self.assertIs(config['enabled'], False)
+        self.assertIs(config['enabled'], True)
         self.assertEqual(config['codecArtifact'], 'ghcr.io/jesusfilm/forge-studio-codec@sha256:a60de84e61cded686c703768809e34dc20bc0e501273fe1a5d4b9af5400f9cad')
         self.assertNotIn('environmentId', config)
         self.assertNotIn('reviewerIds', config)
