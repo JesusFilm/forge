@@ -1,8 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import type { ComponentProps, CSSProperties } from "react"
-import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import type { Route } from "next"
+import type { ComponentProps, CSSProperties, ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
@@ -722,6 +724,63 @@ function mediaItemBackdropImageUrl(item: EnrichedMediaItem) {
   return item.blurDataUrl ?? item.imageUrl
 }
 
+/**
+ * The card's outer element. A routable card is a `next/link` so the click is a
+ * client-side navigation — a raw anchor here tears the document down and
+ * re-executes the whole bundle before anything paints. A card with no
+ * destination stays a plain `div` with no handlers.
+ *
+ * Mirrors `WatchHomeCard`'s `CardFrame`, which already solves this split.
+ */
+function CardFrame({
+  href,
+  prefetch,
+  className,
+  ariaLabel,
+  onPointerMove,
+  onFocus,
+  style,
+  children,
+}: {
+  /** Base-path-relative; `next/link` prepends `/watch`. */
+  href: string | undefined
+  prefetch: boolean | undefined
+  className: string
+  ariaLabel: string | undefined
+  onPointerMove: (() => void) | undefined
+  onFocus: (() => void) | undefined
+  style?: CSSProperties
+  children: ReactNode
+}) {
+  if (href == null) {
+    return (
+      <div className={className} data-testid="VideoCard" style={style}>
+        {children}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      // Built by `watchVideoPath`, which returns a typed base-path-relative
+      // Route; the cast covers the enriched-item slug widening only.
+      href={href as Route}
+      prefetch={prefetch}
+      className={className}
+      aria-label={ariaLabel}
+      data-testid="VideoCard"
+      // Surfaced so a test can assert the production URL shape without a
+      // configured basePath, the way SiblingCarousel does.
+      data-href={href}
+      onPointerMove={onPointerMove}
+      onFocus={onFocus}
+      style={style}
+    >
+      {children}
+    </Link>
+  )
+}
+
 function VideoCard({
   item,
   index,
@@ -742,18 +801,37 @@ function VideoCard({
   onHover?: () => void
 }) {
   const t = useTranslations("WatchHome")
-  // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
-  // manually. Prefer the resolved item dub language; fall back to the current
-  // page language for route-derived items or legacy payloads.
+  // `next/link` prepends the `/watch` basePath itself, so this stays
+  // base-path-relative — hand-prefixing it here renders `/watch/watch/...`.
+  // Prefer the resolved item dub language; fall back to the current page
+  // language for route-derived items or legacy payloads.
   const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
   const itemLanguageSlug = tryAsLocaleSlug(item.languageSlug ?? "")
   const cardLanguageSlug =
     itemLanguageSlug ?? fallbackLanguageSlug ?? DEFAULT_COLLECTION_LOCALE
-  const href = slug
-    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, cardLanguageSlug)}`
-    : undefined
+  const href = slug ? watchVideoPath(slug, cardLanguageSlug) : undefined
   const isInteractive = Boolean(href)
-  const Wrapper = href ? "a" : "div"
+  // Prefetch stays off until the viewer shows intent. `/watch` is a windowed
+  // infinite feed, so viewport-eligible prefetch across every mounted card
+  // would fan out into on-demand origin renders for slugs nobody asked for.
+  const [prefetchArmed, setPrefetchArmed] = useState(false)
+  const armPrefetch = useCallback(() => {
+    setPrefetchArmed(true)
+  }, [])
+  // `pointerenter` also fires when the feed scrolls under a still pointer,
+  // which is not intent; require actual movement over the card.
+  const handlePointerMove = isInteractive
+    ? () => {
+        armPrefetch()
+        onHover?.()
+      }
+    : undefined
+  const handleFocus = isInteractive
+    ? () => {
+        armPrefetch()
+        onHover?.()
+      }
+    : undefined
   const imageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
   const blurDataUrl = item.blurDataUrl ?? undefined
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
@@ -777,22 +855,22 @@ function VideoCard({
     item.title || [item.label, item.videoSlug].filter(Boolean).join(" ")
 
   return (
-    <Wrapper
+    <CardFrame
       href={href}
+      prefetch={prefetchArmed ? undefined : false}
       className={cn(
         "relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         isInteractive
-          ? "group cursor-pointer hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]"
+          ? "group cursor-pointer hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] active:scale-[0.985] active:opacity-90 motion-reduce:active:scale-100"
           : "cursor-default",
         isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
         className,
       )}
-      aria-label={
+      ariaLabel={
         isInteractive ? t("showVideo", { title: accessibleTitle }) : undefined
       }
-      data-testid="VideoCard"
-      onPointerEnter={isInteractive ? onHover : undefined}
-      onFocus={isInteractive ? onHover : undefined}
+      onPointerMove={handlePointerMove}
+      onFocus={handleFocus}
     >
       <div
         className={cn(
@@ -911,7 +989,7 @@ function VideoCard({
           ) : null}
         </VideoThumbnailCaption>
       </div>
-    </Wrapper>
+    </CardFrame>
   )
 }
 

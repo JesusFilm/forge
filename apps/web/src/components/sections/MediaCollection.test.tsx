@@ -163,6 +163,17 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
   expect(outlineClasses).not.toContain("landscape")
 }
 
+/**
+ * Card hrefs here are BASE-PATH-RELATIVE on purpose. `next/link` prepends the
+ * configured `/watch` basePath itself, and `__NEXT_ROUTER_BASEPATH` is unset
+ * under vitest, so the rendered attribute has no prefix. Re-adding `/watch` to
+ * these expectations would mean hand-prefixing in the component again, which
+ * renders `/watch/watch/...` in production.
+ *
+ * The production URL is pinned separately in
+ * `MediaCollection.basepath.test.tsx`, which sets the basePath env before the
+ * module graph loads.
+ */
 describe("MediaCollection VideoCard href", () => {
   it("keeps authored carousel callers on the existing default snap behavior", () => {
     act(() => {
@@ -285,12 +296,12 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/spanish-castilian.html']",
+        "a[href='/jesus.html/spanish-castilian.html']",
       ),
     ).not.toBeNull()
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/english.html']",
+        "a[href='/jesus.html/english.html']",
       ),
     ).toBeNull()
   })
@@ -315,7 +326,7 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(
       container.querySelector<HTMLAnchorElement>(
-        "a[href='/watch/jesus.html/spanish-castilian.html']",
+        "a[href='/jesus.html/spanish-castilian.html']",
       ),
     ).not.toBeNull()
   })
@@ -805,7 +816,7 @@ describe("MediaCollection VideoCard href", () => {
       'a[data-testid="VideoCard"]',
     )
     expect(link).not.toBeNull()
-    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-john.html")
+    expect(link?.getAttribute("href")).toBe("/the-gospel-of-john.html")
   })
 
   it("renders a non-link <div> wrapper when the item has no videoSlug", () => {
@@ -855,7 +866,7 @@ describe("MediaCollection VideoCard href", () => {
     const link = container.querySelector<HTMLAnchorElement>(
       'a[data-testid="VideoCard"]',
     )
-    expect(link?.getAttribute("href")).toBe("/watch/the-gospel-of-luke.html")
+    expect(link?.getAttribute("href")).toBe("/the-gospel-of-luke.html")
   })
 
   it("renders the Admin-resolved linked video title", () => {
