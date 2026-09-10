@@ -127,3 +127,27 @@ it("does not disclose URL after an eligibility change during provider observatio
     prepareStudioMuxUpload("attempt", "lease", new AbortController().signal),
   ).rejects.toThrow("Revision changed")
 })
+it("accepts the Mux-owned direct upload host returned by the provider", async () => {
+  f.observe.mockResolvedValue({
+    id: "upload",
+    status: "waiting",
+    url: "https://direct-uploads-oci-us-phoenix-1-vop1.mux.com/upload?signature=fixture",
+  })
+  await expect(
+    prepareStudioMuxUpload("attempt", "lease", new AbortController().signal),
+  ).resolves.toMatchObject({ state: "upload" })
+})
+it.each([
+  "mux.com.evil.example",
+  "notmux.com",
+  "storage.googleapis.com.evil.example",
+])("rejects upload host lookalike %s", async (host) => {
+  f.observe.mockResolvedValue({
+    id: "upload",
+    status: "waiting",
+    url: `https://${host}/upload`,
+  })
+  await expect(
+    prepareStudioMuxUpload("attempt", "lease", new AbortController().signal),
+  ).rejects.toThrow("destination refused")
+})

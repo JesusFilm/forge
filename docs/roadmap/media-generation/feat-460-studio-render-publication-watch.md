@@ -108,3 +108,7 @@ Source import follow-up: accept canonical WebVTT bold/italic/underline as plain 
 Render storage follow-up: real 1080p source footage exhausted the 256 MiB temporary filesystem during Chrome frame capture. Increase render scratch to 1 GiB within the unchanged 2 GiB RAM cap; keep verifier scratch and output limits unchanged.
 
 Lease-check follow-up: allow ten seconds for the read-only public gateway request instead of overlapping five-second client timers. A six-second valid-response regression preserves one request; cancellation and the absolute render deadline remain enforced.
+
+### Direct upload host compatibility
+
+Mux may return regional `*.mux.com` direct-upload endpoints as well as Google Storage. The Manager gateway and trusted VM uploader accept these Mux-owned HTTPS hosts, reject hostname lookalikes, and never forward API credentials to the upload endpoint. Covered by focused gateway and resumable-upload tests.

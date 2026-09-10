@@ -56,7 +56,7 @@ test("PUTs verified local bytes directly with no gateway credential and resumes 
     assert.equal(requests[1].url.hostname, "storage.googleapis.com")
     assert.deepEqual(requests[1].options.body, f.bytes)
     assert.equal(requests[1].options.headers.authorization, undefined)
-    assert.equal(requests[1].options.redirect, "error")
+    assert.equal(requests[1].options.redirect, "manual")
     let calls = 0
     assert.deepEqual(
       await uploadVmOutput({
@@ -116,4 +116,71 @@ test("expired persisted window cannot renew or issue a provider request", async 
       /window exhausted; local output retained/,
     )
     assert.equal(await f.journal.read("mux-outcome.json"), null)
+  }))
+test("uploads to the Mux-owned direct upload host", async () =>
+  fixture(async (f) => {
+    f.target.url =
+      "https://direct-uploads-oci-us-phoenix-1-vop1.mux.com/upload?signature=fixture"
+    let calls = 0
+    await uploadVmOutput({
+      ...f,
+      fetcher: async (url, options) => {
+        assert.equal(
+          url.hostname,
+          "direct-uploads-oci-us-phoenix-1-vop1.mux.com",
+        )
+        assert.equal(options.headers.authorization, undefined)
+        return new Response(null, { status: ++calls === 1 ? 308 : 200 })
+      },
+    })
+    assert.equal(calls, 2)
+  }))
+for (const host of [
+  "mux.com.evil.example",
+  "notmux.com",
+  "storage.googleapis.com.evil.example",
+])
+  test(`rejects upload host lookalike ${host}`, async () =>
+    fixture(async (f) => {
+      f.target.url = `https://${host}/upload`
+      await assert.rejects(
+        uploadVmOutput({
+          ...f,
+          fetcher: async () => {
+            throw Error("must not fetch")
+          },
+        }),
+        /Invalid Mux upload destination/,
+      )
+    }))
+test("handles a resumable 308 with Location without following it", async () =>
+  fixture(async (f) => {
+    const { createServer } = await import("node:http")
+    let calls = 0
+    const server = createServer((req, res) => {
+      calls++
+      req.resume()
+      req.on("end", () => {
+        if (calls === 1) {
+          res.writeHead(308, { Location: "/must-not-follow" })
+          res.end()
+        } else {
+          assert.equal(req.url, "/upload")
+          res.writeHead(200)
+          res.end()
+        }
+      })
+    })
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
+    try {
+      await uploadVmOutput({
+        ...f,
+        fetcher: (_url, options) =>
+          fetch(`http://127.0.0.1:${server.address().port}/upload`, options),
+      })
+      assert.equal(calls, 2)
+    } finally {
+      server.closeAllConnections()
+      await new Promise((resolve) => server.close(resolve))
+    }
   }))
