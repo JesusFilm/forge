@@ -248,6 +248,7 @@ const SUBTITLES: WatchSubtitle[] = [
 ]
 
 type SheetProps = {
+  initialMode?: DownloadMode
   subtitles?: WatchSubtitle[]
   subtitleLanguageSlug?: string | null
   offlineCopyQuality?: string | null
@@ -266,6 +267,7 @@ function element(props: SheetProps = {}) {
       duration={1800}
       languageName="English"
       downloads={DOWNLOADS}
+      initialMode={props.initialMode}
       subtitles={props.subtitles ?? SUBTITLES}
       subtitleLanguageSlug={
         props.subtitleLanguageSlug === undefined
@@ -491,6 +493,23 @@ describe("DownloadSheetContent mode control", () => {
       "spanish",
     )
     await unmount(renderer)
+  })
+
+  it("opens straight on export when the caller asks for it", async () => {
+    // The "Save to Photos" entry on a downloaded video. R2 still holds — the
+    // sheet remembers nothing — so the DEFAULT stays offline, asserted below.
+    const renderer = await renderSheet({ initialMode: "raw" })
+    expect(checkedState(radioByLabel(renderer, DOWNLOAD_MODE_LABELS.raw))).toBe(
+      true,
+    )
+    expect(hasDropdownSection(renderer, "Subtitles")).toBe(false)
+    await unmount(renderer)
+
+    const plain = await renderSheet()
+    expect(
+      checkedState(radioByLabel(plain, DOWNLOAD_MODE_LABELS.offline)),
+    ).toBe(true)
+    await unmount(plain)
   })
 
   it("falls back to no subtitle when the dub lacks the watched track", async () => {

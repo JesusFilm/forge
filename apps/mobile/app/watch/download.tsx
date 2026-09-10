@@ -31,8 +31,13 @@ export default function DownloadSheetRoute() {
   const { startDownload, swapDownload, getRecord } = useDownloads()
   const { wifiOnly } = useWatchPreferences()
   // Opened via "Change quality / language" on a downloaded video → swap mode.
-  const { swap } = useLocalSearchParams<{ swap?: string }>()
+  // `mode=raw` is the "Save to Photos" entry, which opens straight on export.
+  const { swap, mode: modeParam } = useLocalSearchParams<{
+    swap?: string
+    mode?: string
+  }>()
   const isSwap = swap === "1"
+  const initialMode: DownloadMode = modeParam === "raw" ? "raw" : "offline"
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).
@@ -157,6 +162,7 @@ export default function DownloadSheetRoute() {
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
+      initialMode={initialMode}
       subtitles={subtitles}
       subtitleLanguageSlug={activeSubtitle?.languageSlug ?? null}
       offlineCopyQuality={offlineCopyQuality}

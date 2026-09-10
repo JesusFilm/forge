@@ -5,6 +5,7 @@ import {
   Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -67,6 +68,8 @@ import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkele
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { rawModeLabel } from "../../src/components/watch/DownloadSheet"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import {
@@ -795,6 +798,20 @@ export default function WatchVideoPage() {
                         text: "Change quality / language",
                         onPress: () => router.push("/watch/download?swap=1"),
                       },
+                      // R33's switch removes the whole export feature, so the
+                      // option goes with it rather than opening a sheet that
+                      // cannot offer the mode. It routes to the sheet instead
+                      // of exporting straight away, because the Terms gate is
+                      // the consent surface and lives there.
+                      ...(RAW_EXPORT_ENABLED
+                        ? [
+                            {
+                              text: rawModeLabel(Platform.OS),
+                              onPress: () =>
+                                router.push("/watch/download?mode=raw"),
+                            },
+                          ]
+                        : []),
                       {
                         text: "Remove download",
                         style: "destructive",

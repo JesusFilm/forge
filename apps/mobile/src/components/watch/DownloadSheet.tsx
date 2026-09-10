@@ -515,6 +515,12 @@ export type DownloadSheetProps = {
   /** The subtitle language of a completed offline copy, for the reuse note. */
   offlineCopySubtitleSlug?: string | null
   /**
+   * Which mode the sheet OPENS on. R2 still holds — the sheet never remembers
+   * the last choice — but an entry point that exists to do one specific thing
+   * ("Save to Photos" on a downloaded video) may say so, once, on the way in.
+   */
+  initialMode?: DownloadMode
+  /**
    * Start the chosen rendition in the chosen mode, with the subtitle picked
    * HERE (null = none). The route builds the full request, dismisses the sheet,
    * and downloads via DownloadsProvider.
@@ -535,6 +541,7 @@ export function DownloadSheetContent({
   downloads,
   offlineCopyQuality = null,
   offlineCopySubtitleSlug = undefined,
+  initialMode = "offline",
   onStartDownload,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
@@ -546,8 +553,9 @@ export function DownloadSheetContent({
   const [termsVisible, setTermsVisible] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [subtitleOpen, setSubtitleOpen] = useState(false)
-  // R2: every opening starts here, and nothing writes the choice back.
-  const [mode, setMode] = useState<DownloadMode>("offline")
+  // R2: nothing writes the choice back; a fresh sheet takes `initialMode`,
+  // which the caller sets per entry point and defaults to offline.
+  const [mode, setMode] = useState<DownloadMode>(initialMode)
   const rawMode = mode === "raw"
 
   const subtitleUnion = useMemo(() => subtitleUnionOf(subtitles), [subtitles])
