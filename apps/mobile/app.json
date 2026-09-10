@@ -64,6 +64,7 @@
         }
       ],
       "@kesha-antonov/react-native-background-downloader",
+      "./plugins/withMmkvSecureWipeFix",
       "./plugins/withBackgroundDownloaderAppDelegate",
       "./plugins/withCastOptionsVolume",
       "./plugins/withCastUIStyle",
