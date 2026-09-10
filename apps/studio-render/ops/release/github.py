@@ -10,7 +10,7 @@ from release import ReleaseRefused, matches, unique_object, refuse_constant
 
 class GitHub:
     def __init__(self, token):
-        if not matches(token, '[A-Za-z0-9_]{10,1024}'):
+        if not matches(token, '[A-Za-z0-9_.-]{10,8192}'):
             raise ReleaseRefused('Scoped GitHub read token required')
         self.token = token
 
