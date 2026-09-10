@@ -277,6 +277,10 @@ describe("auth provider configuration", () => {
       "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
     expect(options.resources.map(({ identifier }) => identifier)).toEqual(
       expect.arrayContaining([
@@ -319,6 +323,10 @@ describe("auth provider configuration", () => {
       "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
+      "http://localhost:3002/mcp",
+      "https://manager-preview.jesusfilm.org/mcp",
+      "https://manager-stage.jesusfilm.org/mcp",
+      "https://manager.jesusfilm.org/mcp",
     ])
   })
 
@@ -371,6 +379,25 @@ describe("auth provider configuration", () => {
       "https://jesusfilm.org/claims/app": "admin-mcp",
     })
     expect(authConfigCapture.decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
+  it("derives Studio claims from the exact resource without granting review authority", async () => {
+    const options = await captureOAuthProviderOptions()
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "shorts:read", "shorts:edit"],
+        resources: ["https://manager.jesusfilm.org/mcp"],
+        metadata: {
+          environmentKind: "staging",
+          appKey: "manager",
+          studioAuthority: "interactive",
+        },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "shorts-mcp",
+    })
   })
 
   it("fails closed when an issuance-time Changelog grant changes", async () => {

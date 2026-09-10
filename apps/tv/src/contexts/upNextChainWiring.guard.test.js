@@ -36,7 +36,7 @@ describe("up next chain wiring", () => {
     expect(markAt).toBeGreaterThan(-1)
     expect(dismissAt).toBeGreaterThan(markAt)
     expect(replaceAt).toBeGreaterThan(dismissAt)
-    expect(src.match(/onPlayNext=\{handlePlayNext\}/g)).toHaveLength(2)
+    expect(src.match(/onPlayNext=\{handlePlayNext\}/g)).toHaveLength(3)
   })
 
   it("pass-through pop-back consumes the chain mark before router.back()", () => {
@@ -49,6 +49,7 @@ describe("up next chain wiring", () => {
     // deleting the pop-back entirely would strand Back on pages the viewer
     // never chose (the behavior the effect exists to prevent).
     expect(src.includes("router.back()")).toBe(true)
+    expect(src.includes('router.replace("/")')).toBe(true)
   })
 
   it("playVideo clears the latch so a stale mark cannot survive a hop", () => {

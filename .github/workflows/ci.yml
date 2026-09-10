@@ -435,6 +435,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install renderer native security test prerequisites
+        if: matrix.service == '@forge/studio-render'
+        run: bash apps/studio-render/scripts/install-native-test-prerequisites.sh
       - name: Load CI env files
         run: |
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do

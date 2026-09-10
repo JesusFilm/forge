@@ -30,7 +30,9 @@ Forge will make profile contribution eligibility revisable from immutable eviden
 
 ### Problem Frame
 
-Published profile generations preserve exact contribution lineage, but live candidate reads validate only generation, profile, consent, and expiry state. A later eligibility revision or finalized outcome can therefore invalidate a contribution without invalidating the pointer that still serves it. Projection work also has claim timestamps without a bounded reclaim protocol, leaving abandoned work durably pending.
+Published profile generations preserve exact contribution lineage, but live candidate reads validate only generation, profile, stored personalization state, and expiry state. A later eligibility revision or finalized outcome can therefore invalidate a contribution without invalidating the pointer that still serves it. Projection work also has claim timestamps without a bounded reclaim protocol, leaving abandoned work durably pending.
+
+Follow `docs/analytics-and-recommendation-policy.md`: these checks retain explicit viewer controls and require no advance consent.
 
 The original 2026-09-06 audit recorded 45 ineligible contributions, 23 affected current generations, 78 later hybrid requests, and 73 stale runs. A read-only production refresh at 2026-09-06 23:17 UTC found 25 ineligible contributions across 24 current pointer generations, 82 hybrid requests referencing affected generations, and 73 pending runs older than 15 minutes. Of the affected outcome sources, 20 have a current `replay_velocity_exceeded` decision and zero committed `playback_transport_replay` receipts; those rows cannot be promoted by policy reinterpretation alone.
 

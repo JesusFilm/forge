@@ -79,5 +79,5 @@ outside this implementation. Local screenshots are collected under
 `test-results/android-native-parity-2026-09-05/`; no build is published.
 
 Remaining verification: the unchanged React fallback opens on Chromecast but
-its captured picture is black. This is recorded in `feat-476`, not treated as a
+its captured picture is black. This is recorded in `feat-482`, not treated as a
 fallback playback pass. Native On was restored; feat-475 remains in progress.

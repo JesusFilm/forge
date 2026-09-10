@@ -82,5 +82,5 @@ Switching the experiment Off opens the unchanged React player, but the current
 Chromecast capture shows a black picture while React controls/time remain visible.
 Do not equate correct selection routing with a successful fallback playback pass.
 The approved scope explicitly excluded changes to the React player; investigate
-under `feat-476` after authorization. Native is restored On on the test Chromecast.
+under `feat-482` after authorization. Native is restored On on the test Chromecast.
 This ticket remains in progress until the fallback verification issue is resolved.

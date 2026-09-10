@@ -15,6 +15,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
@@ -61,6 +62,7 @@ export function DetailsActionRow({
     Platform.OS === "android"
       ? deriveDetailsPlayState(metadataReady, activeVariant?.hls)
       : "ready"
+  const { nativePlayerVariant } = useWatchPreferences()
 
   // One-shot preferred focus on Play: armed on mount, and re-armed whenever the
   // overlay closes so focus returns to Play (R7). Cleared the render after it
@@ -129,6 +131,14 @@ export function DetailsActionRow({
   // this chooser exists only on the details page's Play pill.
   const [resumeChoiceOpen, setResumeChoiceOpen] = useState(false)
   const handlePlay = () => {
+    if (Platform.OS === "ios" && nativePlayerVariant !== "existing") {
+      startPlayback(
+        shouldOfferResumeChoice(resumeAtSeconds)
+          ? (resumeAtSeconds ?? undefined)
+          : undefined,
+      )
+      return
+    }
     if (shouldOfferResumeChoice(resumeAtSeconds)) {
       setResumeChoiceOpen(true)
       return

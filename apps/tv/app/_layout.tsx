@@ -14,6 +14,8 @@ import {
   useWatchSession,
 } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
+import { NativeSwiftPlayer } from "../src/components/NativeSwiftPlayer"
+import { shouldUseNativeSwiftPlayer } from "../src/components/watch/nativePlayerSelection"
 import { NativeAndroidPlayer } from "../src/components/NativeAndroidPlayer"
 import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
 import { shouldUseNativeAndroidPlayer } from "../src/components/watch/nativeAndroidPlayerSelection"
@@ -63,8 +65,11 @@ try {
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
   const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
-  const { androidPlayerVariant, hydrated: watchPreferencesHydrated } =
-    useWatchPreferences()
+  const {
+    androidPlayerVariant,
+    nativePlayerVariant,
+    hydrated: watchPreferencesHydrated,
+  } = useWatchPreferences()
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback
@@ -150,6 +155,31 @@ function VideoPlayerOverlay() {
 
   if (!state.isVisible || state.currentUrl == null) {
     return null
+  }
+
+  if (
+    shouldUseNativeSwiftPlayer({
+      variant: nativePlayerVariant,
+      hydrated: watchPreferencesHydrated,
+      platform: Platform.OS,
+    })
+  ) {
+    return (
+      <NativeSwiftPlayer
+        streamingUrl={state.currentUrl}
+        playerVariant={
+          nativePlayerVariant === "native-b" ? "native-b" : "native-a"
+        }
+        title={state.currentTitle ?? undefined}
+        onDismiss={dismissVideo}
+        onMeaningfulPlayback={handleMeaningfulPlayback}
+        meaningfulResetKey={liveDubId}
+        startAtSeconds={state.currentStartAtSeconds}
+        onPlaybackPosition={handlePlaybackPosition}
+        upNextTarget={state.currentUpNext}
+        onPlayNext={handlePlayNext}
+      />
+    )
   }
 
   if (

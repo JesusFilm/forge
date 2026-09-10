@@ -11,6 +11,8 @@ vi.mock("@/lib/watch-font", () => ({
 }))
 
 import RootLayout from "./layout"
+import DatadogRum from "@/components/DatadogRum"
+import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
@@ -31,6 +33,16 @@ function findElement(
 }
 
 describe("Watch root layout", () => {
+  it("mounts both environment-configured analytics integrations", async () => {
+    const layout = await RootLayout({
+      children: <main>Watch page</main>,
+      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
+    })
+
+    expect(findElement(layout, GoogleAnalytics)).not.toBeNull()
+    expect(findElement(layout, DatadogRum)).not.toBeNull()
+  })
+
   it("leaves the runtime beta tester CTA flag out of the static layout", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,

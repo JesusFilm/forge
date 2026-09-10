@@ -65,7 +65,7 @@ The ticket is not complete until these results are visible and reconcilable in t
 ## Constraints
 
 - Semantic contextual recommendations remain the live control and last-known-good fallback. A fenced profile source is ordinary source degradation, not a navigation or playback failure.
-- Do not increase the 1.5-second complete-service deadline or relax evidence eligibility, exact-event idempotency, payload-conflict detection, consent, privacy-generation, retention, or erasure policy.
+- Do not increase the 1.5-second complete-service deadline or relax evidence eligibility, exact-event idempotency, payload-conflict detection, personalization settings, privacy-generation, retention, or erasure policy.
 - Reconciliation may supersede derived eligibility and publish replacement projections. It must not rewrite immutable evidence or manufacture missing recommendation impressions.
 - Keep `active-watch-proxy-v1` fail-closed for live ranking. This ticket does not activate or widen learning, experiments, promotion, or profile-derived ranking.
 - Selection without a committed eligible impression remains ineligible for CTR, experiment, promotion, profile, and learning attribution.
@@ -96,3 +96,19 @@ The ticket is not complete until these results are visible and reconcilable in t
 - The deployed hotfix eliminated the replay-receipt `P2002` collision and restored the five-minute reconciliation cadence in the reviewed production window.
 - The same fixed-window audit found residual Web-to-Admin timeout/error-normalization failures, exhausted playback write conflicts, and successful recognized-crawler traffic on the human playback evidence path.
 - `feat-464` now owns that transport, crawler-integrity, observability, and production-canary work. This ticket remains blocked until `feat-464` is complete and the fresh authorized Admin audit proves zero current pointers with ineligible lineage.
+
+## Authorized Production Audit — 2026-09-10 NZ
+
+The owner supplied access to the primary production PostgreSQL database.
+The existing Admin current-pointer query initially reported a suppressed
+violation, then returned zero ineligible current pointers and zero rebuild
+backlog at 2026-09-09 21:02:43 UTC after scheduled reconciliation. The stored
+replacement chain preserves original generations and advances pointers to
+published replacements. All 23 audited reconciliation batches in 18:30–20:30
+have zero classification failures, dispatch failures, and exhausted attempts.
+See the [production integrity record](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
+for snapshot populations, concurrency-fence outcomes and receipt verification.
+
+The fresh production invariant is now evidenced. Keep this ticket in progress
+because its feat-464 transport acceptance dependency remains open; this audit
+does not enable ranking or satisfy feat-447's separate browser lifecycle gate.

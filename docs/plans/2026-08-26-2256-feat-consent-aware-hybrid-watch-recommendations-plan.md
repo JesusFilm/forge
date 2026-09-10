@@ -4,7 +4,8 @@ type: feat
 date: 2026-08-26
 topic: consent-aware-hybrid-watch-recommendations
 artifact_contract: ce-unified-plan/v1
-artifact_readiness: implementation-ready
+artifact_readiness: historical
+status: superseded
 product_contract_source: canonical-recommendation-plan-with-session-amendments
 execution: code
 origin: docs/plans/2026-08-18-2219-feat-watch-recommendation-learning-system-plan.md
@@ -13,6 +14,8 @@ deepened: 2026-08-26
 ---
 
 # Consent-Aware Hybrid Watch Recommendations - Plan
+
+> **Historical implementation record; do not implement its consent requirements.** The September 10, 2026 decision in `docs/analytics-and-recommendation-policy.md` supersedes every consent prerequisite, first-visit acceptance flow, and analytics consent rule below. Configured recommendations/profile learning run by default; the GA and Datadog integrations restored in PR #2229 must remain active. Receipt schemas and transition examples below describe the earlier implementation, not new consent requirements.
 
 > **Superseded operating model (post-#2137):** This implementation-era plan preserves historical rationale, but its cookie-banner, bounded-assignment, shadow-authorization, and promotion-gate instructions no longer describe ordinary production delivery. Current `main` establishes personalization automatically, provides persistent reset/withdraw/delete controls, authorizes published profiles directly without requiring an experiment assignment, and records actual execution mode plus optional historical assignment evidence. The canonical plan's amended U30 contract is authoritative.
 
@@ -75,7 +78,7 @@ A first-visit cookie banner explains essential storage and optional recommendati
 - R55. Essential-only mode must keep contextual semantic recommendations available without reading or updating the anonymous recommendation profile.
 - R56. Accept-all mode must grant recommendation personalization, enable the protected anonymous profile, and permit qualified recommendation outcomes to influence later requests.
 - R57. Withdrawal, reset, expiry, erasure, or privacy-generation change must remove future profile influence, fence stale profile publication and capabilities, notify open tabs, and refresh any visible personalized slate.
-- R58. The banner and settings UI must state only behavior the implementation can enforce; Watch analytics that lack a separately valid consent signal must remain inactive, and production release still requires jurisdiction-specific wording review.
+- R58. **Replaced September 10, 2026:** configured Watch analytics remain active independently of recommendation settings. Preserve the GA and Datadog baseline restored in PR #2229; no separate consent signal or consent approval is required.
 
 **Learning, evidence, and Admin proof**
 
@@ -289,16 +292,16 @@ sequenceDiagram
 
 ### Risks and Mitigations
 
-| Risk                                                  | Consequence                                                             | Mitigation                                                                                                                                          |
-| ----------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Semantic/profile score scales differ                  | One source dominates for numerical rather than relevance reasons        | Use source-relative deterministic features and preserve per-source evidence per KTD3                                                                |
-| Sparse profile source replaces semantic coverage      | One-card or repeated-title slate                                        | One shared union plus deterministic semantic refill per KTD1 and KTD4                                                                               |
-| Concurrent generators contend for the DB pool         | Cold requests exceed 1,500 ms                                           | Measure acquisition and stage latency, preserve bounded fanout, and tune concurrency without raising the deadline                                   |
-| Consent removal breaks attribution                    | Essential-only telemetry or player flow fails                           | Preserve purpose-limited operational-session capabilities per KTD8 while categorically excluding profile, rank, experiment, and learning use        |
-| Withdrawal races an already-issued slate              | A stale personalized card or event influences the profile after opt-out | Bind consent generation to capabilities, fail closed, broadcast the change, and refetch contextual delivery                                         |
-| Banner overstates site-wide compliance                | Viewers receive inaccurate privacy claims                               | Limit v1 claims to recommendation personalization, keep analytics inactive without separate valid consent, and retain the legal release gate in R58 |
-| Existing immutable evidence is reinterpreted          | Experiment and rollback analysis becomes invalid                        | Add a new exact hybrid manifest per KTD2                                                                                                            |
-| Composer scope expands into unfinished editorial work | Branch falsely claims feat-393 complete                                 | Implement only refill/repetition behavior and defer pins/editorial policy                                                                           |
+| Risk                                                  | Consequence                                                             | Mitigation                                                                                                                                                 |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Semantic/profile score scales differ                  | One source dominates for numerical rather than relevance reasons        | Use source-relative deterministic features and preserve per-source evidence per KTD3                                                                       |
+| Sparse profile source replaces semantic coverage      | One-card or repeated-title slate                                        | One shared union plus deterministic semantic refill per KTD1 and KTD4                                                                                      |
+| Concurrent generators contend for the DB pool         | Cold requests exceed 1,500 ms                                           | Measure acquisition and stage latency, preserve bounded fanout, and tune concurrency without raising the deadline                                          |
+| Consent removal breaks attribution                    | Essential-only telemetry or player flow fails                           | Preserve purpose-limited operational-session capabilities per KTD8 while categorically excluding profile, rank, experiment, and learning use               |
+| Withdrawal races an already-issued slate              | A stale personalized card or event influences the profile after opt-out | Bind consent generation to capabilities, fail closed, broadcast the change, and refetch contextual delivery                                                |
+| Banner overstates site-wide compliance                | Viewers receive inaccurate privacy claims                               | Keep recommendation controls accurate and preserve configured analytics under the current enablement policy; the former consent release gate is superseded |
+| Existing immutable evidence is reinterpreted          | Experiment and rollback analysis becomes invalid                        | Add a new exact hybrid manifest per KTD2                                                                                                                   |
+| Composer scope expands into unfinished editorial work | Branch falsely claims feat-393 complete                                 | Implement only refill/repetition behavior and defer pins/editorial policy                                                                                  |
 
 ---
 

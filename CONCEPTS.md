@@ -26,6 +26,16 @@ Registering a Dynamic MCP Client identifies the client but grants no application
 
 A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
 
+## Studio authoring
+
+### Content Pack
+
+A reusable set of source material and editorial guidance used to plan or generate
+content. A Content Pack can guide an individual project or a period of calendar
+planning; it is distinct from a viewer-facing video collection.
+
+_Avoid_: Source Collection, Preacher Pack.
+
 ## Devotional generation
 
 ### Devotional Workspace
@@ -924,10 +934,10 @@ history.
 
 ### Recommendation Profile
 
-A consent-gated, pseudonymous continuity record for anonymous recommendation
-personalization. The browser holds the opaque first-party identifier while the
+A pseudonymous continuity record for anonymous recommendation personalization,
+created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
 recommendation system retains only its one-way identity and server-owned
-interests; withdrawing consent severs relinkable continuity and begins erasure.
+interests; disabling personalization severs relinkable continuity and begins erasure.
 
 ### Recommendation Profile Projection
 
@@ -950,7 +960,7 @@ without exposing profile identifiers, histories, or vectors to Watch or Admin.
 ### Hybrid Recommendation Manifest
 
 An immutable Recommendation Strategy Manifest whose semantic and
-consent-permitted profile generators nominate into one canonical union,
+profile generators enabled by the viewer's personalization settings nominate into one canonical union,
 eligibility, deterministic ranker, repetition-aware composer, and exact-six
 slate. Semantic-only remains the control, fallback, kill-switch target, and
 last-known-good strategy. Historic `profile_challenger` assignment evidence is
@@ -1352,6 +1362,16 @@ The state in which the operating system's own floating window carries the app's 
 The handoff and the app's departure are not simultaneous, and which comes first is platform-dependent: one platform reports the app backgrounded before the window announces itself, the other completes the handoff before the app is reported backgrounded at all. So a decision that depends on "the window took over" has to be made when the window announces itself; asked at the moment the app is reported backgrounded, the answer is right on one platform and wrong on the other. Because the app cannot know in advance that a handoff is coming, it stops playback on leaving as it would for any other departure, and the window's announcement is what undoes that stop; suppressing the stop in anticipation instead would leave a viewer who has the platform feature switched off playing audio indefinitely.
 
 Closing the window ends playback, while expanding it returns the same playback to the app. Both raise the same signal from the window, so they are told apart by what follows rather than by the signal itself, and a video the viewer paused inside the window stays paused through either. Only a surface armed for automatic entry can be handed off, and a video that was not playing is never handed off at all.
+
+## App launch
+
+### Splash Cover
+
+The branded layer drawn over the app's own tree on a cold start, holding a brand moment while the first screen loads underneath it rather than behind a gate in front of it.
+
+The tree beneath the cover is live: the first screen mounts and begins fetching while the animation plays, so the brand moment and the first network round trip overlap instead of running one after the other. The platform's own launch screen stays up until this layer has painted its first frame, so the handover between them shows neither a gap nor a flash of bare background. The cover holds for a fixed span even when content arrives sooner — the moment is deliberately consistent rather than adaptive — and then releases once the first screen reports it has something to paint, or reports a failure, since a failure is the point at which there is something for the viewer to retry. An unconditional ceiling releases it whatever the screen is doing, and the diagnostic panels release it at once, because nothing may sit over a surface a viewer needs in order to act. Only a cold process start raises it; a resume finds the session spent.
+
+Everything the cover holds off answers to one predicate — the covering pixels, the touches it swallows, and the removal of the tree beneath it from the screen reader — so those can never disagree about whether the cover is up. A report from the first screen belongs to the instance that made it: when the shell swaps its own element type mid-hold and remounts that screen, the report must be withdrawn, and this holds for a reported failure exactly as it holds for reported content. A report that outlives its reporter hands the cover over to whatever the replacement instance happens to be showing, which is the spinner the report was supposed to prove was gone.
 
 ## App navigation chrome
 

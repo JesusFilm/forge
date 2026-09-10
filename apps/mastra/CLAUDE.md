@@ -2278,3 +2278,7 @@ each devotional release attestation.
 
 Keep `PinoLogger` configured as the app logger so runtime logs continue to flow
 to stdout/stderr for Railway's platform logs.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

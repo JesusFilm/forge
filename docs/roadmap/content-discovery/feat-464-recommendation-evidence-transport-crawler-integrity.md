@@ -24,6 +24,14 @@ tags:
 
 ## Problem
 
+Latest verification: the [authorized production integrity audit](../../operations/recommendation-evidence-production-integrity-2026-09-10.md)
+now proves current-pointer convergence, stored receipt consistency and zero
+substantive failures across 23 reconciliation batches. The previous lack of
+database access is resolved. The [Railway HTTP audit](../../operations/recommendation-evidence-primary-request-accounting-2026-09-10.md)
+also verifies the complete primary-only request gate at 2 / 6,543 playback 5xx
+(0.03057%). Required alerts are absent from the visible inventory; production
+acceptance remains open pending installation and verification.
+
 The recommendation evidence closeout hotfix shipped the replay-receipt collision fix and reconciliation scheduler recovery, but a fixed production audit window after deployment still showed an unhealthy Web-to-Admin evidence boundary. Between 2026-09-07 23:20 and 2026-09-08 01:05 UTC, `POST /api/recommendations/playback` returned 791 `503` responses, 101 `200` responses, and one `403`. Excluding Applebot still left 502 `503` responses, 84 `200` responses, and one `403`.
 
 The failures are not a recurrence of the resolved replay-receipt collision. Production traces showed 300 claim mutations ending in `invalid_binding`, while Web converted the actual Admin GraphQL error shape into the generic `episode_unavailable` path and returned `503`. The browser treats `503` as retryable, so a definitive binding failure is amplified into repeated traffic. Playback writes also exhausted ten PostgreSQL `P2034` write-conflict retries. At the same time, the 900 ms Web upstream deadline is below observed successful production latency, making a committed or still-running Admin mutation indistinguishable from a retryable transport failure at the browser boundary.
@@ -116,7 +124,7 @@ If traffic is too low to exercise a criterion, use an authorized production-safe
 
 ## Constraints
 
-- Preserve immutable evidence, superseding eligibility, source attribution, retention, consent, erasure, and privacy-generation contracts.
+- Preserve immutable evidence, superseding eligibility, source attribution, retention, personalization settings, erasure, and privacy-generation contracts.
 - Preserve the shipped exact replay-receipt idempotency and payload-conflict behavior; do not turn a collision fix into last-write-wins behavior.
 - Do not broaden a crawler heuristic into a claim that arbitrary malicious automation can be detected. The invariant is that recognized or intentionally supported machine traffic is never silently classified as human evidence.
 - Do not log raw capabilities, session digests, profile identifiers, event identifiers, histories, vectors, or small-cohort data.
@@ -155,9 +163,9 @@ Local validation covers the full Web and Admin unit suites, typechecks, real
 PostgreSQL concurrency and a browser Watch-to-Admin
 lifecycle with decoded video and telemetry failure injection. Local fixtures and
 an empty local current-pointer audit do not satisfy production acceptance.
-The two-hour production canary, historical-window reconciliation, monitor
-installation, and fresh authorized production current-pointer audit remain
-outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
+A two-hour production observation is recorded below. Historical-window
+reconciliation, monitor installation, and the fresh authorized production
+current-pointer audit remain outstanding. This ticket remains in progress and feat-459 remains blocked; live profile ranking
 remains fail-closed.
 
 ## Production-gate continuation (2026-09-09)
@@ -173,13 +181,21 @@ proof passed; detailed results and environment scoping are in
 Production acceptance remains open. The owner restricted Datadog work to read
 access, so missing installed monitors remain an unmet gate. Historical/clean
 durable reconciliation and the fresh authorized production current-pointer audit
-are unavailable with the current access. The final two-hour observation is still
-pending; metric environment ambiguity must not be reported as a passed invariant.
-The apparent heartbeat gaps resolve when querying both primary Admin and worker
-execution hosts; the full post-fix cadence observation remains pending.
-The observation found selection `BAD_USER_INPUT` still becoming 503. A focused
-follow-up applies the existing terminal mapping to selection, with real local
-Web/Admin 400, continued decoded playback and component fallback-navigation proof.
-The two-hour window restarts after that reviewed follow-up deploys.
-Keep dependent feat-459/447 in progress and live
-profile ranking fail-closed.
+are unavailable with the current access. The observation found selection
+`BAD_USER_INPUT` still becoming 503; PR #2220 deployed the same terminal mapping
+to selection at 06:59:28 after local browser/component proof and green CI.
+
+The fresh 07:01–09:01 UTC observation is complete and was re-queried after
+ingestion settled: revision-wide playback 5xx is **1 / 4,319 (0.02315%)** with
+zero injected production traffic or exclusions. Primary Web/Admin logs match
+at 3,029 accepted fact batches and 56 all-replay batches. One facts binding
+rejection is terminal HTTP 409, with no retryable-binding signal; 1,208 recognized
+crawler requests were rejected across evidence actions, with no logged crawler
+success, receipt collision or exhausted transaction signal. There are 23 committed
+heartbeats across primary Admin and worker, 302.045–309.747 seconds apart.
+
+This does not close the acceptance gate: the metric combines environments and
+does not fully reconcile with handler logs; durable receipt/eligibility and
+browser retry-amplification reconciliation, internal batch failure counts, installed
+monitors and zero ineligible current pointers remain unverified. Keep dependent
+feat-459/447 in progress and live profile ranking fail-closed.

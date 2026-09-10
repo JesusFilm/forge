@@ -45,14 +45,14 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         `INSERT INTO recommendation_request (
           id, contract_version, surface_version, manifest_id,
           strategy_version, classifier_version, session_digest,
-          seed_media_id, locale, expected_item_count, result, expires_at
+          seed_media_id, locale, expected_item_count, result, created_at, expires_at
         ) VALUES (
           'migration-request', 'semantic-recommendation-v1',
           'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
           'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
-          'migration-seed', 'en', 2, 'served', $2
+          'migration-seed', 'en', 2, 'served', $3, $2
         )`,
-        ["a".repeat(64), expiresAt],
+        ["a".repeat(64), expiresAt, receivedAt],
       )
       for (const position of [0, 1]) {
         await client.query(

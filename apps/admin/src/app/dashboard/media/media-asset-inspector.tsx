@@ -39,7 +39,7 @@ type LocaleActionResult =
     }
 
 type UsageItem = {
-  resourceType: "EXPERIENCE_LOCALE" | "VIDEO_LOCALE"
+  resourceType: string
   resourceLocaleId: string
   locale: string
   title: string | null
@@ -419,7 +419,9 @@ export function MediaAssetInspector({
                 <div className="mono-meta text-[var(--color-text-muted)]">
                   {item.resourceType === "VIDEO_LOCALE"
                     ? "Video"
-                    : "Experience"}
+                    : item.resourceType === "EXPERIENCE_LOCALE"
+                      ? "Experience"
+                      : "Studio"}
                   {item.recoverable ? " (recoverable)" : ""} / {item.locale} /{" "}
                   {item.fieldPath}
                 </div>
@@ -427,8 +429,8 @@ export function MediaAssetInspector({
             ))}
             {usage.length === 0 ? (
               <div className="px-3 py-6 text-[12px] text-[var(--color-text-muted)]">
-                This asset is not currently referenced by any experience or
-                video locale field.
+                This asset is not currently referenced by any content or video
+                locale field.
               </div>
             ) : null}
           </div>

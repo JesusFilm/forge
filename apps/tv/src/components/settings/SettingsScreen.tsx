@@ -32,6 +32,8 @@ export function SettingsScreen() {
   const {
     androidPlayerVariant,
     setAndroidPlayerVariant,
+    nativePlayerVariant,
+    setNativePlayerVariant,
     hydrated: watchPreferencesHydrated,
   } = useWatchPreferences()
 
@@ -127,6 +129,42 @@ export function SettingsScreen() {
           />
         </View>
       ) : null}
+      {Platform.OS === "ios" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Player Experiment</Text>
+          <Text style={styles.sectionNote}>
+            Native A keeps Apple’s AVKit controls. Native B uses our UIKit
+            controls and Mux thumbnails while keeping AVPlayer underneath.
+          </Text>
+          <SettingsRow
+            testID="settings-existing-player-row"
+            icon="tv-outline"
+            label="Existing Player"
+            selected={nativePlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("existing")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-a-player-row"
+            icon="logo-apple"
+            label="Native A — AVKit Controls"
+            selected={nativePlayerVariant === "native-a"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-a")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-b-player-row"
+            icon="film-outline"
+            label="Native B — UIKit + Mux Preview"
+            selected={nativePlayerVariant === "native-b"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-b")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -138,6 +176,8 @@ type SettingsRowProps = {
   label: string
   /** Toggle row when set (switch role + trailing On/Off); action row otherwise. */
   checked?: boolean
+  /** Radio-style experiment choice with one selected row. */
+  selected?: boolean
   /** Inert while prefs hydrate — focusable stays true so the D-pad path is stable. */
   disabled?: boolean
   onPress: () => void
@@ -151,6 +191,7 @@ function SettingsRow({
   icon,
   label,
   checked,
+  selected,
   disabled = false,
   onPress,
   onFocusNode,
@@ -187,11 +228,13 @@ function SettingsRow({
       progress.interpolate({
         inputRange: [0, 1],
         outputRange: [
-          checked === true ? WATCH_THEME.accent : WATCH_THEME.text50,
+          checked === true || selected === true
+            ? WATCH_THEME.accent
+            : WATCH_THEME.text50,
           WATCH_THEME.focusInk,
         ],
       }),
-    [progress, checked],
+    [progress, checked, selected],
   )
   const animatedRow = useMemo(
     () => ({ backgroundColor: bg, transform }),
@@ -210,9 +253,11 @@ function SettingsRow({
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       testID={testID}
-      accessibilityRole={checked == null ? "button" : "switch"}
+      accessibilityRole={
+        selected != null ? "radio" : checked == null ? "button" : "switch"
+      }
       accessibilityLabel={label}
-      accessibilityState={{ checked, disabled }}
+      accessibilityState={{ checked, selected, disabled }}
     >
       <Animated.View
         style={[styles.row, disabled && styles.rowDisabled, animatedRow]}
@@ -221,9 +266,15 @@ function SettingsRow({
         <Animated.Text style={[styles.rowLabel, { color: ink }]}>
           {label}
         </Animated.Text>
-        {checked != null ? (
+        {checked != null || selected != null ? (
           <Animated.Text style={[styles.rowValue, { color: valueInk }]}>
-            {checked ? "On" : "Off"}
+            {selected != null
+              ? selected
+                ? "Selected"
+                : ""
+              : checked
+                ? "On"
+                : "Off"}
           </Animated.Text>
         ) : null}
       </Animated.View>

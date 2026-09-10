@@ -15,6 +15,8 @@ import "@/graphql/types/videoTranscript"
 import "@/graphql/types/managerSession"
 import "@/graphql/types/managerReadModels"
 import "@/graphql/types/managerJob"
+import "@/graphql/types/studio"
+import "@/graphql/types/studio-assets"
 import "@/graphql/types/managerSeo"
 import "@/graphql/types/managerWatchRouteAlerts"
 import "@/graphql/types/watch-events"
@@ -42,3 +44,5 @@ import "@/graphql/queries/sync-status"
 import "@/graphql/types/watch-setting"
 
 export const schema = builder.toSchema()
+
+import "./types/studio-catalog"

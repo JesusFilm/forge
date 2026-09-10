@@ -175,6 +175,13 @@ type ContainerSlotSpans {
   xs: Int
 }
 
+type ContentPackRevision {
+  document: JSON
+  id: ID
+  number: Int
+  packId: ID
+}
+
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -1283,15 +1290,20 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
+  applyShortsOperations(input: ShortsApplyInput!): ShortsCommandResult
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
+  approveShortsProject(input: ShortsApproveInput!): ShortsCommandResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  attachShortsExperimentCandidate(input: JSON!): JSON
+  captureShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
   claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String!): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
+  completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
   """
@@ -1299,6 +1311,7 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
+  createShortsProject(input: ShortsCreateInput!): ShortsCommandResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
   """
@@ -1315,7 +1328,10 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
+  issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
   issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String!): WatchPlaybackContextReceipt!
+  materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -1332,6 +1348,8 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
+  requestShortsExperiment(input: JSON!): JSON
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -1342,6 +1360,8 @@ type Mutation {
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
   selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String!, tabDigest: String): SemanticRecommendationSelectionReceipt!
+  stageShortsCatalog(input: JSON!): ShortsCatalogRelease
+  startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
@@ -1420,6 +1440,7 @@ type Mutation {
     """
     mode: TranscriptBackfillMode
   ): JSON
+  unpublishShortsProject(input: ShortsRevisionCommandInput!): ShortsCommandResult
   """
   Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
   """
@@ -1434,6 +1455,7 @@ type Mutation {
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
+  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -1555,6 +1577,22 @@ type Query {
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
   semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
+  shortsAsset(reference: JSON!): ShortsAssetVersion
+  shortsAssets(input: JSON): [ShortsAssetVersion!]
+  shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
+  shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
+  shortsCatalogRelease(id: ID!): ShortsCatalogRelease
+  shortsContentPackRevision(id: ID!): ContentPackRevision
+  shortsContentPacks(input: JSON): [ContentPackRevision!]
+  shortsExperiment(id: ID!): JSON
+  shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
+  shortsNarrationIdentity(language: String!, speech: JSON!): JSON
+  shortsNarrationMatches(identity: JSON!): [ShortsAssetVersion!]
+  shortsProject(projectId: ID!): ShortsProject
+  shortsProjects(cursor: ID, limit: Int): [ShortsProjectSummary!]
+  shortsSourceEligibility(id: ID!): JSON
+  shortsSourceSnapshot(id: ID!): ShortsSourceSnapshot
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
@@ -1814,6 +1852,203 @@ type SemanticRecommendationSelectionReceipt {
   claimNonce: String
   status: String!
   targetMediaId: ID!
+}
+
+type ShortsActor {
+  id: ID
+  kind: String
+}
+
+input ShortsApplyInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+}
+
+type ShortsApproval {
+  actor: ShortsActor
+  dependencyHash: String
+  id: ID
+  kind: ShortsApprovalKind
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+}
+
+enum ShortsApprovalKind {
+  PUBLICATION
+  SCRIPT
+}
+
+input ShortsApproveInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  kind: ShortsApprovalKind!
+  projectId: ID!
+  renderAttemptId: ID
+}
+
+type ShortsAssetReference {
+  assetId: ID
+  digest: String
+  versionId: ID
+}
+
+type ShortsAssetTransfer {
+  expiresAt: String
+  method: String
+  path: String
+}
+
+type ShortsAssetVersion {
+  byteSize: Float
+  filename: String
+  mediaAssetId: ID
+  mimeType: String
+  narration: JSON
+  provenance: JSON
+  reference: ShortsAssetReference
+  role: String
+  voice: JSON
+}
+
+type ShortsAttempt {
+  actor: ShortsActor
+  baseRevision: Int
+  id: ID
+  inputHash: String
+  instructions: JSON
+  jobReference: String
+  kind: ShortsAttemptKind
+  projectId: ID
+  result: JSON
+  status: ShortsAttemptStatus
+}
+
+enum ShortsAttemptKind {
+  GENERATION
+  NARRATION
+  RENDER
+}
+
+enum ShortsAttemptStatus {
+  CANCELLED
+  FAILED
+  QUEUED
+  RUNNING
+  STALE
+  SUCCEEDED
+}
+
+type ShortsCatalogRelease {
+  durationMs: Int
+  fps: Int
+  height: Int
+  id: ID
+  languageSlug: String
+  muxAssetId: ID
+  muxPlaybackId: ID
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+  snapshot: JSON
+  title: String
+  width: Int
+}
+
+type ShortsCommandResult {
+  approvalId: ID
+  attemptId: ID
+  outcome: String
+  projectId: ID
+  revision: Int
+}
+
+input ShortsCompleteInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+  result: JSON!
+  status: ShortsAttemptStatus!
+}
+
+input ShortsCreateInput {
+  document: JSON!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+  sourceVideoDubId: ID
+}
+
+enum ShortsLifecycle {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+type ShortsProject {
+  actor: ShortsActor
+  document: JSON
+  firstPublishedAt: String
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+  sourceVideoDubId: ID
+}
+
+type ShortsProjectSummary {
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+}
+
+input ShortsRequestInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  instructions: JSON!
+  kind: ShortsAttemptKind!
+  projectId: ID!
+}
+
+type ShortsRevision {
+  actor: ShortsActor
+  document: JSON
+  revision: Int
+}
+
+input ShortsRevisionCommandInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+}
+
+type ShortsSourceSnapshot {
+  catalogDigest: String
+  coveredRanges: JSON
+  downloadId: ID
+  downloadUrl: String
+  durationMs: Float
+  exportHeight: Int
+  hlsUrl: String
+  id: ID
+  materialization: String
+  originalByteDigest: String
+  restrictions: [String!]
+  source: JSON
+  subtitleAiGenerated: Boolean
+  subtitlePrimary: Boolean
+  subtitleUrl: String
+}
+
+input ShortsStartInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  jobReference: String!
+  projectId: ID!
 }
 
 """Rich text block with heading, subtitle, and paragraphs."""
