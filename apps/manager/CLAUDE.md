@@ -331,117 +331,19 @@ rejects every QA call with `frame_host_not_allowed`. Manager degrades that to
 a skipped (advisory) QA step rather than a failed job, but the QA gap stays
 until the allowlist is extended.
 
-## Shorts Studio
+## Retired Shorts authoring
 
-Vertical 9:16 shorts with word-level whisper captions, rendered via Remotion
-(plan `docs/plans/2026-06-11-002-feat-manager-shorts-studio-plan.md` — the
-authoritative architecture and wire-contract source; roadmap feat-178).
-Topology clones Smart Crop: manager owns the operator UI
-(`/dashboard/shorts`), durable orchestration
-(`src/workflows/shortsStudio.ts` + `launchShorts.ts` — `options.shorts`
-discriminator on the existing JobRecord, ZERO admin schema changes), draft
-state, propsHash computation, and Mux output asset creation;
-apps/shorts-worker owns the bytes (ffmpeg clip trim + whisper transcription
-in a prepare lane, Remotion renders in a render lane — client:
-`src/services/shorts-worker.ts`, submit + poll with bounded resubmit and
-queue_full backoff, poll ceilings prepare 50min / render 80min strictly
-ABOVE the worker's 45/70min deadlines); `packages/shorts-compositions` is
-the shared composition consumed by both the browser `<Player>` preview and
-the worker render (parity by construction).
+Studio at `/dashboard/shorts` uses `features/video-studio` and Admin-owned projects.
+The legacy `/api/shorts` creation, caption draft, clone and render workflow was retired
+in feat-462. Source captions come from the exact library edition/language track;
+legacy Whisper transcription, the 180-second limit and last-write-wins drafts do not
+apply. Historical job options/step literals remain for generic job readers and
+artifact identity; they cannot launch Shorts work. No stored data is migrated or
+deleted by retirement. Active devotional tools still use the separate Shorts Worker.
 
-- Routes: `POST/GET /api/shorts/jobs` (create validates clip bounds 5–180s
-  against live Mux duration — never `mux_videos.duration`),
-  `GET /api/shorts/videos/[coreId]` (eligibility with reasons
-  `missing_mux_asset | playback_not_public`), `POST+GET
-/api/shorts/jobs/[id]/draft`, `POST /api/shorts/jobs/[id]/render`,
-  `POST /api/shorts/jobs/[id]/retry` (`{force?: "prepare" | "render"}`;
-  force-prepare responses surface `discardsCaptionEdits: true`),
-  `GET /api/shorts/jobs/[id]/media/[clip|output]` (streaming).
-- **Phase lifecycle + single-writer rule:** UI/API source of truth is
-  `ShortsPhase` in the `shorts` metadata artifact entry
-  (`src/lib/shorts-report.ts`): `queued → preparing → ready_for_review →
-rendering → mux_processing → completed`, failures
-  `prepare_failed | render_failed`. The WORKFLOWS own all phase
-  transitions; routes write launching intents only. Prepare ends with
-  `job.status = "completed"` + phase `ready_for_review` — shorts routes
-  gate on PHASE, not job status (the generic retry route never sees shorts
-  semantics). Render/retry launches claim an in-memory TTL slot
-  (`src/lib/shorts-claim.ts` — sync-claim before any await, try/finally
-  release).
-- **Draft / provenance / propsHash contracts:** whisper captions
-  (`shorts-captions-v1`) are immutable; operator edits live in
-  `shorts-draft-v1.json` — last-write-wins with SERVER-side `draftVersion`
-  increment and `captionsGeneratedAt` provenance (`src/lib/shorts-draft.ts`;
-  `updatedBy` derived from the authenticated actor, never the body).
-  Force-prepare regenerates captions → provenance mismatch → draft reset:
-  the documented caption-edit discard. Render hard-gates
-  `draft_provenance_mismatch`. `propsHash` = sha256 over canonical
-  (sorted-key) JSON of `{clip: {assetId, artifactType: "shorts-clip-v1"},
-props}` (`src/lib/shorts-props.ts`) — `clipUrl` is excluded by
-  construction and the worker treats the hash as opaque. The render
-  workflow REUSES an existing output when the stored render meta echoes the
-  same propsHash and the output MP4 exists (e.g. relaunch after a
-  Mux-output failure never re-pays a Remotion render); the worker's
-  `render:{assetId}:{propsHash}` dedupe re-attaches identical in-flight
-  submits. Mux output is record-before-poll
-  (`shorts-mux-output-v1.json` written before readiness polling,
-  errored → recreate; presign-unavailable → step skipped, job completes
-  with `output.ready: false`).
-- **Streaming media route, not the artifact route:** shorts MP4s are served
-  ONLY by `GET /api/shorts/jobs/[id]/media/[clip|output]` — fixed logical
-  literals, Range-capable (single + suffix ranges → 206, multi-range → 416),
-  stream-never-buffer, 60s in-process jobId→prefix cache, `Cache-Control:
-private, max-age=3600`. The legacy buffering artifact route must NEVER
-  serve shorts media: `readArtifact` buffers whole objects in memory and the
-  rendered output is 180–360MB.
-- **Import rule:** manager server/workflow code imports ONLY the pure
-  subpaths `@forge/shorts-compositions/{schema,captions,registry}` (the
-  compositions package's module-graph test pins schema/captions as
-  React/Remotion-free). The package root (`ShortComposition`, Player
-  consumers) is imported ONLY inside `next/dynamic` `ssr:false` client
-  components (`src/features/shorts/short-preview.tsx` — memoized
-  inputProps, draft commits debounced 250ms, Player never keyed by
-  `draftVersion`). `remotion`/`@remotion/*` are pinned EXACT across
-  manager / worker / compositions — the lockstep test fails on drift.
-- Whisper language resolution: `src/lib/whisper-language.ts` (BCP-47 →
-  whisper ISO-639-1; aliases `jv→jw`, `nb→no`, `fil→tl`; `null` =
-  unsupported → captions-less short annotated
-  `transcription_unsupported_language`; no-audio clips annotate
-  `transcription_skipped_no_audio`). ElevenLabs cue-level transcription
-  (enrichment) and whisper word-level captions (shorts) deliberately
-  coexist — word timings ARE the shorts product; do not "unify" them.
-- **Templates** (source of truth: `SHORT_TEMPLATES` in
-  `packages/shorts-compositions/src/templates/registry.ts` — per-template
-  default knobs applied when an operator PICKS a template in the editor):
-
-  | id      | label | accentColor | captionPosition | captionFont  | waveformStyle | showCaptions |
-  | ------- | ----- | ----------- | --------------- | ------------ | ------------- | ------------ |
-  | `focus` | Focus | `#f97316`   | `center`        | `montserrat` | `bars`        | `true`       |
-  | `frame` | Frame | `#f97316`   | `lower`         | `montserrat` | `bars`        | `true`       |
-
-  Distinct from the freshly-prepared INITIAL draft (`buildInitialDraft` in
-  `src/lib/shorts-draft.ts`, plan decision 14): Focus template, brand-yellow
-  `#facc15` accent, `lower` caption band.
-
-- Licensing: JFP is a non-profit → free Remotion license per Remotion's
-  LICENSE.md; `acknowledgeRemotionLicense` is set on the Player. Re-verify
-  at Remotion 5.0.
-
-Env (both `.optional()` at schema load; shorts routes return 503
-`config_missing` when unset):
-
-| Variable               | Description                                 |
-| ---------------------- | ------------------------------------------- |
-| SHORTS_WORKER_BASE_URL | shorts-worker base URL                      |
-| SHORTS_WORKER_API_KEY  | caller-side single bearer for shorts-worker |
-
-**Deploy ordering (receiver first):** deploy the shorts-worker Railway
-service (Dockerfile builder, Config-as-code Path set, numReplicas=1), set
-`SHORTS_WORKER_API_KEYS` there (a DISTINCT secret from
-`CROP_WORKER_API_KEYS`), verify a wrong bearer gets 401 (not 503), THEN set
-manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
-(container smoke, Dockerfile.dockerignore caveat):
-`apps/shorts-worker/CLAUDE.md`.
+See `docs/plans/2026-09-08-feat-462-legacy-shorts-retirement.md` for slice scope and
+remaining release acceptance. Keep the Studio routes, shared composition/font
+packages, exact Remotion version lockstep and React-free server imports intact.
 
 ## Common pitfalls
 
@@ -494,8 +396,6 @@ manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
 | CROP_WORKER_BASE_URL                              | crop-worker base URL (optional — enables Smart Crop)                                          |
 | CROP_WORKER_API_KEY                               | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)                    |
 | MASTRA_SMART_CROP_TIMEOUT_MS                      | Optional per-call timeout for Mastra smart-crop launches (default 120000)                     |
-| SHORTS_WORKER_BASE_URL                            | shorts-worker base URL (optional — enables Shorts Studio)                                     |
-| SHORTS_WORKER_API_KEY                             | Bearer key Manager presents to shorts-worker (optional — enables Shorts Studio)               |
 | NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                             |
 
 ## SEO workspace
@@ -525,3 +425,80 @@ retention job, while run totals, report state, and proposal references remain.
 The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` and `apps/manager/public` into `apps/manager/.next/standalone/apps/manager/public` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate, and without the copied public assets regional images 404 in standalone mode.
 
 Production Manager may still be governed by Railway dashboard-level overrides instead of `apps/manager/railway.toml`; verify the effective Railway config before assuming this file is honored. The shell brand assets `/jesusfilm-sign.svg` and `/favicon.svg` are also served by app route handlers so the login shell keeps rendering if the runtime image omits `apps/manager/public`.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+## Standalone Studio editor (feat-456)
+
+`src/features/video-studio/` replaces the Shorts product at `/dashboard/shorts`.
+The authenticated command adapter is `src/backend/studio-interactive.ts`; the
+browser supplies commands and expected revisions, while the server signs the
+validated session user's identity. Admin checks current operator membership.
+Delegated OAuth attribution does not grant interactive review authority.
+
+The preview broker is `src/services/studio-broker.ts`; generated code executes in
+`apps/studio-preview`, in a sandboxed iframe on a different registrable site.
+Read `docs/solutions/security-issues/studio-standalone-editor-runtime.md` before
+changing preview isolation, source reuse, deployment configuration or save recovery.
+
+| Variable                       | Purpose                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| STUDIO_ENVIRONMENT             | Explicit local/preview/production assertion binding; use separate keys per environment |
+| STUDIO_INTERACTIVE_KEY_ID      | Active Manager Ed25519 signing key ID                                                  |
+| STUDIO_INTERACTIVE_PRIVATE_KEY | PKCS8 key; matching Admin `STUDIO_INTERACTIVE_PUBLIC_KEYS` JSON keyring                |
+| STUDIO_PREVIEW_ORIGIN          | Public, distinct-site HTTPS preview origin; loopback allowed for local verification    |
+| STUDIO_PREVIEW_SERVICE_URL     | Server-reachable preview service URL                                                   |
+| STUDIO_PREVIEW_API_KEY         | Dedicated random service credential, also authenticates retained broker codec proofs   |
+| STUDIO_FFMPEG_PATH             | Explicit provisioned FFmpeg 7.0.2 proof binary; never a generated-code executor        |
+| STUDIO_FFPROBE_PATH            | Explicit provisioned probe; local verification uses Remotion 4.0.475 bundled n7.1      |
+
+The existing root Nixpacks setup provisions FFmpeg generally. Studio's pinned
+7.0.2 binary must be supplied as a deployment artifact and selected explicitly;
+a system binary is not claimed to reproduce the pinned proof automatically.
+`ADMIN_MANAGER_API_KEY` authorizes trusted source materialization only; it is not
+used to attribute human commands. Production render execution remains feat-460.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.
+
+## Contained Studio rendering (feat-460)
+
+`STUDIO_RENDER_SERVICE_URL` is the dedicated private execution-service origin
+(`*.railway.internal`; loopback for isolated local verification).
+`STUDIO_RENDER_PRIVATE_KEY` is the broker's Ed25519 admission key; only its
+public counterpart belongs in the execution container. The Manager startup
+reconciler runs only when both are configured. Browser commands enqueue/poll;
+the server owns the900-second cumulative render profile,920-second private
+request and1200-second durable lease. Preparation is bounded90seconds and
+retention60seconds. Mux readiness/publication is a distinct durable phase.
+Do not route this request through the public edge or put provider/DB/storage
+credentials in the executor. Changes to service settings require normal release
+approval; adding these code fields does not authorize deployment.
+
+`STUDIO_MUX_INGEST_ENABLED=true` enables the separate durable Mux processing
+reconciler; enabling it is an external spending/release step, never a local
+validation requirement. Manager issues a signed Mux Direct Upload URL to the
+exact render host after its canonical successful receipt. The VM PUTs the
+verified local MP4 directly; Mux does not fetch retained bytes from Admin.
+`STUDIO_ASSET_INGEST_ORIGIN` is retired. Only the trusted host receives the URL;
+authored containers remain offline. Consumed ambiguous creates remain unresolved
+and cannot automatically create another paid asset.
+The processing loop uses a bounded keyset cursor independently of long renders.
+
+### VM outbound Studio render gateway
+
+Before changing pool authentication, retained-output settlement or claim pause
+behavior, read `docs/plans/2026-09-08-001-feat-studio-vm-execution-plan.md`,
+“Outbound gateway and retained-output protocol.” The scoped route is
+`/api/shorts/render-pool/{claim,input,owns,retain,finish,receipt}`. Environment variables
+are defined in `src/config/env.ts`; `STUDIO_RENDER_POOL_ENABLED` gates new
+assignment selection, while configured historical receipt recovery remains
+available. Admin remains the canonical job authority.

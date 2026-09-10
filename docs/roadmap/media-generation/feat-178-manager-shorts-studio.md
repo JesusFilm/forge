@@ -14,6 +14,15 @@ tags:
   - "infrastructure"
 ---
 
+## Supersession — feat-462
+
+The legacy Shorts creation/caption/draft/clone and exclusive execution path is
+retired by the Studio replacement (feat-451 through feat-462). Historical build
+and host-smoke evidence below remains unchanged. The old unperformed container
+and production acceptance is superseded, not passed. Shared devotional worker,
+composition and font consumers remain. Full Studio release acceptance is still
+open in feat-462; this note does not complete either feature's external gates.
+
 ## Problem
 
 Producing vertical (9:16) social cuts from library videos requires a video

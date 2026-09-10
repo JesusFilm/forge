@@ -49,3 +49,24 @@ apps/*/.impeccable
 apps/mobile/design-mockups
 
 /local/
+
+# Studio validation JSON is byte-verified provider/fixture/measurement evidence.
+# Keep exact recorded bytes; human-authored Markdown remains format-checked.
+docs/validation/studio-458/**/*.json
+
+# Closed paid comparison: exact adapters, harnesses and preregistered rubric bytes.
+docs/validation/studio-458/model-comparison-1/**/*.mjs
+docs/validation/studio-458/model-comparison-1/evaluation.md
+docs/validation/studio-458/model-comparison-1/content-overlap-findings.md
+docs/validation/studio-458/model-comparison-1/live/editorial-blinded/evaluation.md
+
+# Exact Studio render proof harnesses and captured measurements; Markdown remains checked.
+docs/validation/studio-460/**/*.json
+docs/validation/studio-460/**/*.mjs
+docs/validation/studio-460/**/*.cjs
+
+# Exact calendar runtime, browser and matched-loading evidence.
+docs/validation/studio-461/**/*.json
+docs/validation/studio-461/**/*.mjs
+# Frozen original independent review report, included in its existing hash manifest.
+docs/validation/studio-461/review/README.md

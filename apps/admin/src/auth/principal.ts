@@ -60,8 +60,11 @@ export type Role =
   | "CONSUMER_BEARER"
 
 export type Principal = {
+  studioClientId?: string
   id: string | null
   role: Role
+  /** Set only by trusted Studio interactive transport; OAuth delegation is not review. */
+  studioAuthority?: "interactive" | "delegated"
   managerRole?: ManagerRole | null
   /**
    * Set on bearer principals that need rate-limit bucketing — the matched
