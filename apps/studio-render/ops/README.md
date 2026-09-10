@@ -2,6 +2,8 @@
 
 This host supervisor is trusted and holds Docker authority plus one scoped worker key. Renderer and verifier containers receive neither. The selected model is outbound HTTPS polling from the dedicated VM; no public/LAN listener, Docker TCP socket, host proc bind or nested proc mount is required.
 
+Render jobs have a 1 GiB temporary filesystem for local source copies and Chrome's frame buffers; verification retains 256 MiB. These tmpfs pages count against the existing 2 GiB aggregate RAM limit, with no swap. The output file limit remains 128 MiB.
+
 ## Release inputs
 
 A reviewed PR merged to main must produce two approved linux/amd64 OCI images from the `render-job` and `verify-job` Dockerfile targets, plus a host bundle. The source-only hosted workflow is prepared in `.github/workflows/studio-release.yml` and defaults disabled. `release/README.md` defines its exact candidate approval, durable supply, host acquisition and inactive selection contract. No hosted run or artifact publication is established by that preparation. Do not install a self-hosted arbitrary PR runner on the rendering VM.

@@ -48,7 +48,9 @@ export function containerArguments({ identity, image, deadlineMs, phase }) {
     "--restart=no",
     "--log-driver=none",
     "--shm-size=8388608",
-    "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=268435456,uid=1000,gid=1000,mode=700",
+    // Retained HLS, Remotion's local copy, and Chrome's unlinked buffers share
+    // this mount. Its pages still count toward the unchanged 2 GiB memory cap.
+    `--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=${phase === "render" ? 1073741824 : 268435456},uid=1000,gid=1000,mode=700`,
     `--mount=type=bind,source=${identity.directory}/${phase}-input,target=/input,readonly`,
     "--workdir=/input",
     "--entrypoint=/runtime/guard",
