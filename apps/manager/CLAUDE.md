@@ -443,8 +443,9 @@ browser supplies commands and expected revisions, while the server signs the
 validated session user's identity. Admin checks current operator membership.
 Delegated OAuth attribution does not grant interactive review authority.
 
-Live preview runs in an opaque sandboxed browser frame using the fixed bundle
-built by `scripts/build-shorts-preview.mjs`. `src/services/shorts-browser-preview.ts`
+Live preview uses a lazy-loaded Remotion Player directly in the editor page.
+Custom components execute with the editor's browser access; there is no iframe.
+`src/services/shorts-browser-preview.ts`
 resolves authorized HLS URLs and retained assets; no separate preview service is
 required. Source codec materialization in `src/services/studio-broker.ts` runs on
 explicit render preparation. Read

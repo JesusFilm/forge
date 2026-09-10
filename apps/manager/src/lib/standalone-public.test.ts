@@ -23,27 +23,25 @@ function fixture() {
   roots.push(root)
   mkdirSync(join(root, ".next/standalone/apps/manager"), { recursive: true })
   writeFileSync(join(root, ".next/standalone/apps/manager/server.js"), "server")
-  mkdirSync(join(root, "public/shorts-preview"), { recursive: true })
+  mkdirSync(join(root, "public/icons"), { recursive: true })
   return root
 }
 
-it("includes generated preview and other public assets in the standalone server", () => {
+it("includes public assets in the standalone server", () => {
   const root = fixture()
-  writeFileSync(
-    join(root, "public/shorts-preview/runtime.js"),
-    "preview runtime",
-  )
+  writeFileSync(join(root, "public/icons/check.svg"), "check icon")
   writeFileSync(join(root, "public/logo.svg"), "logo")
   execFileSync(process.execPath, [script], { cwd: root })
   const target = join(root, ".next/standalone/apps/manager/public")
-  expect(readFileSync(join(target, "shorts-preview/runtime.js"), "utf8")).toBe(
-    "preview runtime",
+  expect(readFileSync(join(target, "icons/check.svg"), "utf8")).toBe(
+    "check icon",
   )
   expect(readFileSync(join(target, "logo.svg"), "utf8")).toBe("logo")
 })
 
-it("fails the build when the generated preview is missing", () => {
+it("fails the build when public assets are missing", () => {
   const root = fixture()
+  rmSync(join(root, "public"), { recursive: true })
   expect(() =>
     execFileSync(process.execPath, [script], { cwd: root, stdio: "pipe" }),
   ).toThrow()

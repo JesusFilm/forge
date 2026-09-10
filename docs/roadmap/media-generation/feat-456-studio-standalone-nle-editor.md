@@ -77,7 +77,8 @@ production export/publication remain their dependent tickets, including 457,
 
 ## Browser preview simplification — 2026-09-11
 
-Preview now runs from Manager's fixed static browser bundle in an opaque sandbox.
+Preview now runs directly in Manager's lazy-loaded Remotion Player without an
+iframe, separate runtime download, or preview service.
 No separate preview host, session quota, renewal, codec binary or proof key is
 required for editing. Canonical HLS streams directly; retained assets stay scoped.
 Explicit render preparation retains codec verification and saves the prepared
