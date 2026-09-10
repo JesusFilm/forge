@@ -98,3 +98,7 @@ Actual environment/reviewer setup, durable codec supply, hosted image/bundle
 qualification, publication and named VM/production activation remain external
 gates. Source preparation does not waive full460 provider/storage/public-release
 acceptance or mark this ticket complete.
+
+## Production source preview follow-up
+
+Mux playback varies its CDN regions. The Manager broker admits mux.com and its subdomains, plus the existing exact Core media host. HTTPS, credentials, ports, redirect rejection and bounded transfers remain enforced. The focused broker-host regression covers regional Mux playback and rejects lookalike domains.
