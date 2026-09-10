@@ -56,13 +56,12 @@ class PublisherCommand(unittest.TestCase):
             else:
                 self.value['images'][role] = ref
         self.calls = []
-        self.approvals = True
         self.fail_role = None
         self.env = {'RUNNER_TEMP': str(self.root), 'GITHUB_REPOSITORY': 'JesusFilm/forge',
                     'GITHUB_REF': 'refs/heads/main', 'GITHUB_SHA': '1' * 40, 'GITHUB_RUN_ID': '123',
                     'GITHUB_RUN_ATTEMPT': '1', 'GH_TOKEN': 'fixture_only_token', 'GITHUB_STEP_SUMMARY': str(self.root / 'summary')}
         self.save()
-        self.config = {'target': self.value['target'], 'codecArtifact': self.value['codec']['artifact'], 'environmentId': 42, 'reviewerIds': [101]}
+        self.config = {'target': self.value['target'], 'codecArtifact': self.value['codec']['artifact']}
 
     def save(self):
         raw = json.dumps(self.value).encode()
@@ -71,12 +70,7 @@ class PublisherCommand(unittest.TestCase):
 
     def get(self, path):
         self.calls.append(('api', path))
-        if path.endswith('/approvals'):
-            return [{'state': 'approved', 'user': {'id': 101}, 'environments': [{'id': 42}],
-                     'comment': 'studio-candidate-sha256:' + self.env['STUDIO_CANDIDATE_SHA256']}] if self.approvals else []
-        if path.startswith('environments/'):
-            return {'id': 42, 'name': 'studio-release', 'protection_rules': [{'type': 'required_reviewers', 'prevent_self_review': True,
-                      'reviewers': [{'type': 'User', 'reviewer': {'id': 101}}]}]}
+        self.assertEqual(path, 'actions/runs/123')
         return {'id': 123, 'run_attempt': 1, 'head_sha': '1' * 40, 'head_branch': 'main', 'event': 'workflow_dispatch',
                 'path': '.github/workflows/studio-release.yml@main', 'actor': {'id': 202}, 'triggering_actor': {'id': 303}}
 
@@ -97,9 +91,9 @@ class PublisherCommand(unittest.TestCase):
         with patch.dict(os.environ, self.env), patch.object(ci, 'configuration', return_value=self.config), patch.object(ci, 'GitHub', return_value=self), patch.object(ci, 'login', self.login), patch.object(ci, 'run', self.run_command), patch.object(ci, 'tool', return_value='/fixture/oras'):
             ci.publish()
 
-    def test_exact_approval_and_bytes_precede_inert_copy_and_record_is_last(self):
+    def test_exact_run_and_bytes_precede_inert_copy_and_record_is_last(self):
         self.execute()
-        self.assertEqual([call[0] for call in self.calls], ['api', 'api', 'api', 'login', 'command', 'command', 'command', 'command'])
+        self.assertEqual([call[0] for call in self.calls], ['api', 'login', 'command', 'command', 'command', 'command'])
         commands = [call[1] for call in self.calls if call[0] == 'command']
         self.assertEqual([command[1] for command in commands], ['cp', 'cp', 'cp', 'push'])
         for command, role in zip(commands, ('render', 'verify', 'host')):
@@ -107,12 +101,7 @@ class PublisherCommand(unittest.TestCase):
             self.assertIn(str(self.directory / (role + '.oci.tar')) + '@' + ref.split('@')[1], command)
         self.assertFalse((self.root / 'registry').exists())
 
-    def test_missing_approval_or_inconsistent_host_payload_never_logs_into_registry(self):
-        self.approvals = False
-        with self.assertRaises(ReleaseRefused):
-            self.execute()
-        self.assertNotIn(('login',), self.calls)
-        self.approvals = True
+    def test_inconsistent_host_payload_never_logs_into_registry(self):
         self.value['bundle']['sha256'] = '0' * 64
         self.save()
         with self.assertRaises(ReleaseRefused):

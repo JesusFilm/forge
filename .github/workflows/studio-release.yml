@@ -4,7 +4,7 @@ name: Studio release candidate
   workflow_dispatch:
     inputs:
       publish:
-        description: Request protected publication after candidate build (not VM activation)
+        description: Publish after candidate build (not VM activation)
         required: true
         type: boolean
         default: false
@@ -31,7 +31,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Check configured existing approval environment before any build
+      - name: Check manual main release configuration before any build
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 apps/studio-render/ops/release/ci.py preflight
@@ -85,7 +85,7 @@ jobs:
           STUDIO_CANDIDATE_ARTIFACT_ID: ${{ needs.candidate.outputs.artifact-id }}
           STUDIO_CANDIDATE_SHA256: ${{ needs.candidate.outputs.candidate-sha256 }}
         run: python3 apps/studio-render/ops/release/ci.py download
-      - name: Verify actual digest-bound review and copy only approved bytes
+      - name: Verify workflow identity and copy exact candidate bytes
         env:
           GH_TOKEN: ${{ github.token }}
           STUDIO_CANDIDATE_SHA256: ${{ needs.candidate.outputs.candidate-sha256 }}
