@@ -527,8 +527,7 @@
     "previousVideoPreview": "Өмнөх видеоны урьдчилсан үзүүлбэр",
     "nextVideoPreview": "Дараагийн видеоны урьдчилсан үзүүлбэр",
     "mediaCollection": "Медиа цуглуулга",
-    "scrollToVideo": "{title} видеон руу очих",
-    "forYou": "Танд зориулсан"
+    "scrollToVideo": "{title} видеон руу очих"
   },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",

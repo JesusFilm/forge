@@ -343,8 +343,7 @@
     "nextVideoPreview": "Sonraki video önizlemesi",
     "featured": "Öne çıkan",
     "mediaCollection": "Medya koleksiyonu",
-    "scrollToVideo": "{title} videosuna git",
-    "forYou": "Sizin için önerilenler"
+    "scrollToVideo": "{title} videosuna git"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Diller",

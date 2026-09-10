@@ -527,8 +527,7 @@
     "previousVideoPreview": "Ukážka predchádzajúceho videa",
     "nextVideoPreview": "Ukážka ďalšieho videa",
     "mediaCollection": "Mediálna zbierka",
-    "scrollToVideo": "Posunúť na video {title}",
-    "forYou": "Pre vás"
+    "scrollToVideo": "Posunúť na video {title}"
   },
   "WatchFooter": {
     "home": "Domovská stránka Jesus Film Project",

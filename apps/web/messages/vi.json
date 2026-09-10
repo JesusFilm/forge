@@ -343,8 +343,7 @@
     "nextVideoPreview": "Xem trước video tiếp theo",
     "featured": "Nổi bật",
     "mediaCollection": "Bộ sưu tập truyền thông",
-    "scrollToVideo": "Cuộn đến video {title}",
-    "forYou": "Đề xuất cho bạn"
+    "scrollToVideo": "Cuộn đến video {title}"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngôn ngữ",

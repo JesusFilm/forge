@@ -343,8 +343,7 @@
     "nextVideoPreview": "Preview ng susunod na video",
     "featured": "Tampok",
     "mediaCollection": "Koleksyon ng media",
-    "scrollToVideo": "Mag-scroll sa video na {title}",
-    "forYou": "Para sa iyo"
+    "scrollToVideo": "Mag-scroll sa video na {title}"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",

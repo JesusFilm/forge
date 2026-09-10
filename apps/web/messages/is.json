@@ -527,8 +527,7 @@
     "previousVideoPreview": "Fyrri myndbandsforskoðun",
     "nextVideoPreview": "Næsta myndbandsforskoðun",
     "mediaCollection": "Miðlasafn",
-    "scrollToVideo": "Fletta að myndbandinu {title}",
-    "forYou": "Fyrir þig"
+    "scrollToVideo": "Fletta að myndbandinu {title}"
   },
   "WatchFooter": {
     "home": "Forsíða Jesus Film Project",

@@ -527,8 +527,7 @@
     "previousVideoPreview": "Előző videó előnézete",
     "nextVideoPreview": "Következő videó előnézete",
     "mediaCollection": "Médiagyűjtemény",
-    "scrollToVideo": "Görgess a {title} videóhoz",
-    "forYou": "Neked"
+    "scrollToVideo": "Görgess a {title} videóhoz"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kezdőlap",
