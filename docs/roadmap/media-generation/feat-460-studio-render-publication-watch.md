@@ -106,3 +106,5 @@ Mux playback varies its CDN regions. The Manager broker admits mux.com and its s
 Source import follow-up: accept canonical WebVTT bold/italic/underline as plain dialogue while retaining original bytes; use the renamed `materializeShortsSource` Admin mutation.
 
 Render storage follow-up: real 1080p source footage exhausted the 256 MiB temporary filesystem during Chrome frame capture. Increase render scratch to 1 GiB within the unchanged 2 GiB RAM cap; keep verifier scratch and output limits unchanged.
+
+Lease-check follow-up: allow ten seconds for the read-only public gateway request instead of overlapping five-second client timers. A six-second valid-response regression preserves one request; cancellation and the absolute render deadline remain enforced.

@@ -282,10 +282,7 @@ export async function runVmSupervisor() {
               const valid = await api.json(
                 "owns",
                 {},
-                AbortSignal.any([
-                  monitorStop.signal,
-                  AbortSignal.timeout(5000),
-                ]),
+                monitorStop.signal,
                 claim.capability,
               )
               if (!valid) {
