@@ -44,7 +44,7 @@ A single averaged profile vector hides distinct interests and can make recommend
 
 ## What To Build
 
-- Derive bounded long-term interest centroids or medoids plus a separate short-term session vector from consent- and integrity-eligible evidence.
+- Derive bounded long-term interest centroids or medoids plus a separate short-term session vector from integrity-eligible evidence.
 - Preserve explicit preferences and negative evidence independently.
 - Nominate semantic ANN candidates per interest with source, interest, projection, and manifest provenance.
 - Run only through shadow evaluation and record a terminal decision.
@@ -59,14 +59,14 @@ The ticket is not complete until this result is visible and reconcilable in the 
 ## Constraints
 
 - Do not average unrelated interests into one taste vector.
-- Essential-only viewers receive contextual semantic recommendations without profile resolution or learning; reset/delete removes future consented profile influence.
+- Viewers who disable personalization receive contextual semantic recommendations without profile resolution or learning; reset/delete removes future profile influence.
 - Profile candidates remain shadow-only in this ticket.
 - Every new recommendation record declares purpose, identity class, retention, access, deletion behavior, ingestion health, and rollback or fallback.
 - Watch serves viewers; Admin observes, verifies, and controls. Admin is not the viewer recommendation surface.
 
 ## Verification
 
-- Test unrelated interests, consented short-lived intent without durable rewrite, Essential-only semantic delivery, sparse profile, explicit/negative evidence, reset, withdrawal, and deletion.
+- Test unrelated interests, short-lived intent without durable rewrite, contextual delivery with personalization disabled, sparse profile, explicit/negative evidence, reset, disabling personalization, and deletion.
 - Test projection reproducibility and generator latency/coverage.
 - Reconcile interest-level candidates and terminal decision in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.

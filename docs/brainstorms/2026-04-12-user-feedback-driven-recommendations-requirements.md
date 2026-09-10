@@ -85,7 +85,7 @@ This is the Phase 2 work deferred in R4b of the [Video Content Vectorization bra
 - The existing `recommender.ts` cosine similarity API continues to work as the candidate generator and fallback.
 - Railway PostgreSQL supports the required table additions (`watch_events`, FPMC factor tables, 256-dim learned embedding column).
 - `onnxruntime-node` is compatible with the Strapi/Node.js runtime on Railway.
-- First-party UUID cookie for session tracking. GDPR consent banner may be needed for EU users — deferred to planning for legal review.
+- First-party UUID cookie for session tracking. Recommendations and analytics use the configured default without a consent prerequisite; see `docs/analytics-and-recommendation-policy.md`.
 
 ## Outstanding Questions
 
@@ -121,7 +121,7 @@ _Updated 2026-04-13: IDs renumbered from the original feat-084–088 because tho
 
 ## Next Steps
 
-Resolve the cookie/consent question (above), then:
+Follow the current recommendation and analytics policy above, then:
 
 → `/ce:plan` for structured implementation planning
 

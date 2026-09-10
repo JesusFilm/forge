@@ -33,7 +33,7 @@ tags:
 
 ## Context
 
-The TV app (`apps/tv`, React Native tvOS + Expo SDK 54) already had an opt-in Datadog Mobile RUM
+The TV app (`apps/tv`, React Native tvOS + Expo SDK 54) already had an environment-configured Datadog Mobile RUM
 skeleton wired (feat-225/226, PR #1434 / #1449). Completing the observability injection (PR #1458)
 meant adding the load-bearing pieces that the skeleton deferred: build-time symbol upload and
 version stamping via EAS hooks, agent read access via a hosted Datadog MCP, video playback
@@ -464,7 +464,7 @@ Consolidated before/after and idiom references, all verified in the PR #1458 wor
   the hosted-vs-local MCP install decision (precedent for the read-only-denylist trap, rule 2).
 - `docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md` —
   the general sanitize-before-log rule behind the native-error sanitization (rule 3d).
-- `apps/tv/CLAUDE.md` "Observability (Datadog)" — the opt-in gate, action-name privacy, and
+- `apps/tv/CLAUDE.md` "Observability (Datadog)" — environment configuration, action-name privacy, and
   load-bearing patch notes.
 - `docs/observability/datadog.md` — TV runbook, "TV ↔ web data parity" table, and "Datadog MCP for
   agents".

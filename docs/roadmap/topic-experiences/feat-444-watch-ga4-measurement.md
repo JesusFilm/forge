@@ -48,7 +48,8 @@ search, language, download, share, and CTA outcomes.
 ## Constraints
 
 - Preserve raw-path diagnostics while adding canonical dimensions.
-- Respect consent and avoid user/content identifiers that create PII risk.
+- Follow `docs/analytics-and-recommendation-policy.md`: configured analytics require no consent prerequisite. Preserve the GA page views, navigation, Watch events, and Datadog RUM restored in PR #2229 throughout migration and rollback.
+- Avoid user/content identifiers that create PII risk.
 - Avoid duplicate events during redirects, hydration, and client navigation.
 
 ## Verification

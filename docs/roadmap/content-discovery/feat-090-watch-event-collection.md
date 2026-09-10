@@ -104,7 +104,7 @@ CREATE INDEX IF NOT EXISTS watch_events_not_bounce
 
 - No login system. All identity is session/cookie-based.
 - No PII stored — session_id is a random UUID, not tied to any user account.
-- GDPR: cookie is functional (enables personalized recommendations), not tracking. May need consent banner for EU — defer legal review to implementation.
+- Collect configured Watch events without a consent prerequisite; follow `docs/analytics-and-recommendation-policy.md` and retain bounded payloads and retention controls.
 - Do not modify the existing recommendation query in this ticket. Data collection only.
 - Web app first. Mobile instrumentation is a follow-up.
 

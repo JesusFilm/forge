@@ -42,7 +42,8 @@ navigation, custom events, and duplicate initialization.
 
 ## Constraints
 
-- Keep recommendation consent, withdrawal, and personalization controls intact.
+- Preserve explicit recommendation personalization, reset, and deletion controls.
+- Keep the restored GA page views, navigation, Watch events, and Datadog RUM in place under `docs/analytics-and-recommendation-policy.md`.
 - Preserve GA's `afterInteractive` loading and the static Watch layout.
 - Use the normal PR-to-main production deployment path.
 

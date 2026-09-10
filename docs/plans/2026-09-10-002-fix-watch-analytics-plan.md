@@ -10,7 +10,11 @@ date: "2026-09-10"
 Address feat-476 by reverting only the analytics gates introduced in #1976.
 Both `GoogleAnalytics` and `DatadogRum` must initialize from their existing
 environment configuration when the Watch layout mounts them without props.
-Recommendation consent remains owned by `RecommendationConsentShell`.
+This fix left the `RecommendationConsentShell` implementation unchanged.
+The subsequent enablement decision in `docs/analytics-and-recommendation-policy.md`
+removes consent prerequisites from recommendation and analytics guidance.
+The restored GA page views, navigation, Watch events, and Datadog RUM must remain
+in place throughout future work.
 
 ## Implementation and verification
 

@@ -124,7 +124,7 @@ If traffic is too low to exercise a criterion, use an authorized production-safe
 
 ## Constraints
 
-- Preserve immutable evidence, superseding eligibility, source attribution, retention, consent, erasure, and privacy-generation contracts.
+- Preserve immutable evidence, superseding eligibility, source attribution, retention, personalization settings, erasure, and privacy-generation contracts.
 - Preserve the shipped exact replay-receipt idempotency and payload-conflict behavior; do not turn a collision fix into last-write-wins behavior.
 - Do not broaden a crawler heuristic into a claim that arbitrary malicious automation can be detected. The invariant is that recognized or intentionally supported machine traffic is never silently classified as human evidence.
 - Do not log raw capabilities, session digests, profile identifiers, event identifiers, histories, vectors, or small-cohort data.

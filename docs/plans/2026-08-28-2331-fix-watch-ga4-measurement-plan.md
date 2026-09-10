@@ -17,7 +17,7 @@ execution: code
 - **Means:** Introduce one canonical route-identity resolver, one explicit and deduplicated SPA page-view path, and one typed/versioned Watch event contract while preserving the existing GA4 event names during migration.
 - **Product authority:** Linear FGE-115 and `docs/roadmap/topic-experiences/feat-444-watch-ga4-measurement.md` own this scope.
 - **Execution profile:** One Web instrumentation PR, including a bounded extension to the existing read-only Mastra GA4 client for reconciliation, plus a documented GA4-property configuration and validation gate; no Watch route, canonical, playback, search-ranking, or UX behavior changes.
-- **Open blocker:** The repository has no visible consent-management or `analytics_storage` integration. Before enabling the new collection path, the privacy/analytics owner must verify the production consent mechanism and approve basic versus advanced Consent Mode; absent that evidence, the feature flag remains off.
+- **Enablement:** Follow `docs/analytics-and-recommendation-policy.md`. Consent is not a prerequisite. Preserve the configured GA page views, navigation and Watch events, and Datadog RUM restored by PR #2229 throughout v2 rollout and rollback.
 
 ---
 
@@ -73,11 +73,11 @@ The code explains the split. `apps/web/src/proxy.ts` serves explicit English as 
 - R19. No GA payload may contain viewer/session IDs, auth state identifiers, email, user-entered search text, page titles derived from input, filenames, raw media URLs, full referrers, GraphQL data, or secrets.
 - R20. Low-cardinality reporting dimensions are limited to contract version, route type, route variant, language class, entry intent, event outcome, progress percent, quality tier, share method, CTA identifier, and destination class.
 - R21. Canonical path, raw path, content slug/ID, dub ID, and exact language slug may be emitted only where operationally necessary, must be bounded and validated, and must not be registered as custom dimensions without a measured cardinality review; high-cardinality detail belongs in DebugView or BigQuery export rather than standard reports.
-- R22. The tag must honor the production consent decision before any page or event emission. A missing or indeterminate consent state must follow the privacy owner's approved default rather than silently treating consent as granted.
+- R22. Configured analytics must initialize and emit without a consent state, prompt, receipt, or approval. Preserve the working GA and Datadog baseline restored by PR #2229; recommendation personalization settings cannot disable it.
 - R23. Before rollout, the analytics owner must export the current event list, key-event markings, custom definitions, Enhanced Measurement page-view configuration, and any downstream dashboards that depend on legacy names.
 - R24. The v2 collector must ship behind a Web build-time flag that leaves the current collector intact when disabled and can be rolled back without changing routes or removing the GA measurement ID.
 - R25. Existing events continue to emit only under their legacy wire names for at least one complete 28-day comparison window; the additive outcome events declared by this contract may emit during that window. Any later rename is a separately reviewed migration; dual-writing old and renamed forms of the same event is prohibited because it inflates event counts.
-- R26. The validation readout must reconcile page views and funnel events across canonical and compatibility route variants and explicitly report consent/thresholding/cardinality caveats.
+- R26. The validation readout must reconcile page views and funnel events across canonical and compatibility route variants and explicitly report thresholding/cardinality caveats.
 - R27. GA4 key-event candidates and denominators must be documented: `video_progress`, `videocomplete`, `download_started`, `share_completed`, `language_applied`, and allowlisted mission CTA clicks are reviewed; open/intention events are not promoted by default.
 
 ### Event Contract
@@ -108,7 +108,7 @@ All events carry `event_contract_version=2`, `watch_route_type`, `watch_route_va
 
 - F1. Canonical page measurement
   - **Trigger:** A user loads or navigates to a Watch route.
-  - **Steps:** Resolve the browser route, compute canonical identity, wait for the collector and approved consent state, suppress duplicates, and emit one explicit `page_view`.
+  - **Steps:** Resolve the browser route, compute canonical identity, wait for the collector to be ready, suppress duplicates, and emit one explicit `page_view`.
   - **Outcome:** Canonical and compatibility visits share the standard page path while raw route form remains diagnosable.
   - **Covered by:** R1-R8, R17, R22, R24.
 - F2. Mission event measurement
@@ -118,7 +118,7 @@ All events carry `event_contract_version=2`, `watch_route_type`, `watch_route_va
   - **Covered by:** R9-R21, R25, R27.
 - F3. Validate behavior versus telemetry
   - **Trigger:** The flagged v2 collector is enabled for a bounded production cohort/build.
-  - **Steps:** Verify consent and one-hit page views, reconcile raw/canonical route variants, compare funnel rates and lost-event diagnostics, and review GA data-quality indicators.
+  - **Steps:** Verify baseline delivery and one-hit page views, reconcile raw/canonical route variants, compare funnel rates and lost-event diagnostics, and review GA data-quality indicators.
   - **Outcome:** Analysts can label the JESUS ratio as instrumentation, acquisition mix, behavioral, or still inconclusive.
   - **Covered by:** R23-R27.
 
@@ -129,16 +129,16 @@ All events carry `event_contract_version=2`, `watch_route_type`, `watch_route_va
 - AE3. **Covers R4, R10-R12.** Given a contextual episode path, when playback reaches 25% after a seek, then the page and player events carry the standalone canonical identity plus contextual route variant, and each crossed milestone fires at most once.
 - AE4. **Covers R13, R18-R21.** Given a search query containing an email-like value and a result with a unique title and ID, when search settles and the result is clicked, then Datadog keeps its approved diagnostic context while GA receives outcome, result bucket/type/source, and position bucket only.
 - AE5. **Covers R14-R16.** Given a user opens but closes a language, download, or share modal, when no application/handoff/share action completes, then only the existing opened/intent event fires and no outcome candidate is emitted.
-- AE6. **Covers R22-R24.** Given the v2 flag is enabled but consent state is missing or denied under the approved policy, when the page loads, then the collector follows that policy and DebugView shows no unauthorized full-storage event path; disabling the flag restores v1 without a route or GA-ID change.
+- AE6. **Covers R22-R24.** Given configured analytics and no consent signal or interaction, when a Watch page loads and navigates, then the active collector emits page views and existing Watch events. Disabling the v2 flag restores the working v1 collector without a route or GA-ID change; Datadog RUM remains active.
 - AE7. **Covers R23, R25-R27.** Given the first full 28-day v2 window completes, when analysts compare JESUS route variants, then canonical page totals reconcile to bounded raw-route totals, duplicate-page-view rate stays below 1%, and key-event decisions use outcomes rather than modal opens.
 
 ### Success Criteria
 
-- Canonical Watch page views reconcile to the sum of their bounded raw route variants within 1% after excluding consent-modeled, thresholded, filtered, and known bot/internal traffic.
-- Automated and browser validation observes exactly one `page_view` in 100% of deterministic initial-load and SPA-navigation cases; no known hydration, readiness, or history-cleanup path double-counts. The separate production duplicate-page-view tolerance remains below 1% because consent modeling, filtering, network behavior, and property configuration are not deterministic test inputs.
+- Canonical Watch page views reconcile to the sum of their bounded raw route variants within 1% after excluding thresholded, filtered, and known bot/internal traffic.
+- Automated and browser validation observes exactly one `page_view` in 100% of deterministic initial-load and SPA-navigation cases; no known hydration, readiness, or history-cleanup path double-counts. The separate production duplicate-page-view tolerance remains below 1% because filtering, network behavior, and property configuration are not deterministic test inputs.
 - At least 95% of `videostarts` in the validated sample carry a non-unknown canonical route type and route variant.
-- The player funnel is internally monotonic by identity and date: `videocomplete <= video_progress <= videostarts`, with documented exceptions for consent changes and the migration boundary.
-- The 28-day comparison can state whether the raw JESUS key-event-rate difference persists after canonical grouping, event-by-event denominators, channel/device segmentation, and consent/data-quality caveats.
+- The player funnel is internally monotonic by identity and date: `videocomplete <= video_progress <= videostarts`, with documented exceptions for network loss and the migration boundary.
+- The 28-day comparison can state whether the raw JESUS key-event-rate difference persists after canonical grouping, event-by-event denominators, channel/device segmentation, and data-quality caveats.
 - No raw search term, viewer/session ID, email sentinel, filename, unbounded query string, or unallowlisted RUM parameter appears in GA DebugView, Realtime, or the validation export.
 
 ### Scope Boundaries
@@ -151,7 +151,6 @@ All events carry `event_contract_version=2`, `watch_route_type`, `watch_route_va
 
 ### Deferred to Follow-Up Work
 
-- A consent banner/CMP implementation if the production audit confirms Watch has no approved consent mechanism.
 - Retirement or GA-recommended renaming of legacy player event names after one complete 28-day compatibility window.
 - A durable Manager dashboard if the existing GA4 Explore/Data API reporting cannot express the approved route and funnel readout without another product surface.
 - UX experiments for the low views-per-user or engagement metrics; those start only after this contract establishes trustworthy denominators.
@@ -187,7 +186,6 @@ All events carry `event_contract_version=2`, `watch_route_type`, `watch_route_va
 - Google Analytics Help: [Cardinality](https://support.google.com/analytics/answer/12226705)
 - Google Analytics Help: [About the `(other)` row](https://support.google.com/analytics/answer/13331684)
 - Google Analytics Help: [Avoid sending PII](https://support.google.com/analytics/answer/6366371)
-- Google Tag Platform: [Consent mode overview](https://developers.google.com/tag-platform/security/concepts/consent-mode)
 - Google Analytics Help: [About key events](https://support.google.com/analytics/answer/9267568)
 
 ---
@@ -201,13 +199,13 @@ The Product Contract is unchanged. Planning narrows the implementation to the ex
 ### Key Technical Decisions
 
 - KTD1. **Share Watch URL policy, not analytics copies.** Create a pure analytics projection that consumes `parseWatchPath`, `WATCH_BASE_PATH`, language aliases, and canonical route builders. It may add analytics classifications but may not redefine route eligibility.
-- KTD2. **Own page views explicitly.** Configure the repository-owned Google tag with automatic page views disabled and emit `page_view` from one readiness- and consent-aware route observer. This is preferable to continuing the mixed initial-auto/later-config path because the latter cannot apply one canonical identity contract consistently.
+- KTD2. **Own page views explicitly.** Configure the repository-owned Google tag with automatic page views disabled and emit `page_view` from one readiness-aware route observer. This is preferable to continuing the mixed initial-auto/later-config path because the latter cannot apply one canonical identity contract consistently.
 - KTD3. **Use canonical standard fields plus bounded raw diagnostics.** Set standard `page_path` to the canonical route so Pages and Screens aggregates correctly. Preserve raw pathname and variant as event parameters, but do not include raw query strings or register raw path as a custom dimension by default.
 - KTD4. **Separate GA and RUM projections.** Replace `reportDatadogRumAction`'s generic pass-through to GA with an explicit mapping for each shared action. Datadog retains its approved rich context; GA accepts only its typed allowlist.
 - KTD5. **Centralize current wire names before adding outcomes.** A `watch-analytics-contract` module owns discriminated event inputs and wire mappings. Existing names and semantics are characterized first; outcome events are additive. The generic normalizer stops being the source of event meaning.
 - KTD6. **Feature-flag the collector boundary, not individual events.** `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` keeps the current v1 initialization and emission path. `true` selects the explicit page-view and typed dispatcher together so hybrid v1/v2 behavior cannot create duplicate or contextless events.
-- KTD7. **Consent is a release gate.** The PR exposes one consent-aware collector boundary and tests denied/indeterminate states, but it does not invent legal defaults. Production enablement is blocked until the owner records the approved mode and verifies order-of-operations before `gtag('config')`.
-- KTD8. **Validate with two independent views.** Browser/DebugView proves firing rules and payload safety; a GA4 Realtime/Data API comparison proves aggregate reconciliation and reports thresholding, other-row, and consent-modeling caveats.
+- KTD7. **Preserve analytics throughout migration.** The v2 collector has no consent gate. Tests cover configured and unconfigured providers, missing consent state, initial page views, navigation, and Watch events. Production enablement verifies equivalent delivery; rollback restores the working collector and preserves Datadog RUM.
+- KTD8. **Validate with two independent views.** Browser/DebugView proves firing rules and payload safety; a GA4 Realtime/Data API comparison proves aggregate reconciliation and reports thresholding, other-row, and filtering caveats.
 
 ### High-Level Technical Design
 
@@ -215,7 +213,7 @@ The Product Contract is unchanged. Planning narrows the implementation to the ex
 flowchart TB
   Browser[Browser route and interaction] --> Route[Pure Watch analytics route resolver]
   Route --> Context[Canonical route context provider]
-  Consent[Approved consent state] --> Gate{Collector v2 ready and allowed?}
+  Configuration[Measurement ID and collector flag] --> Gate{Collector v2 ready?}
   Flag[Build-time v2 flag] --> Gate
   Context --> Gate
   Gate -->|yes| Dispatch[Typed GA event dispatcher]
@@ -229,11 +227,11 @@ flowchart TB
 ```mermaid
 sequenceDiagram
   participant R as Next route state
-  participant C as Consent/collector gate
+  participant C as Collector readiness
   participant D as Page-view deduper
   participant G as GA4
   R->>C: latest raw pathname and allowed campaign fields
-  C-->>R: wait while tag or consent is unresolved
+  C-->>R: wait while the tag is not ready
   C->>D: canonical context plus committed raw-route key
   D->>D: compare with last emitted key
   alt new committed key
@@ -248,7 +246,7 @@ sequenceDiagram
 1. Characterize v1 and export the GA4 property configuration before changing emission.
 2. Land the pure route resolver and typed contract before moving any call site.
 3. Land the v2 dispatcher and page-view owner behind a default-off flag before adding outcome call sites.
-4. Enable only after consent order and GA Enhanced Measurement settings are verified in production-like conditions.
+4. Enable after baseline analytics delivery and GA Enhanced Measurement settings are verified in production-like conditions.
 5. Stop rollout if page views duplicate by more than 1%, canonical totals do not reconcile with raw variants, unknown route context exceeds 5%, or a privacy sentinel reaches GA.
 
 Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both page and custom event paths in the built bundle, do not ship a partial migration; keep v1 until the boundary is made atomic.
@@ -270,7 +268,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
 - **Approach:**
   1. Add characterization coverage for initial automatic page view, client-route config calls, prefix stripping, primitive filtering, player deduplication, and existing modal/search wire names.
   2. Record an operator checklist for exporting GA4 key events, custom definitions, enhanced page-view settings, and dependent reports before v2 enablement.
-  3. Record the production consent/CMP inspection and approved default/mode as a required blank evidence field, not a guessed value.
+  3. Record the configured production GA and Datadog baseline and provider receipt evidence before changing the collector.
 - **Execution note:** Add characterization coverage before modifying the legacy collector.
 - **Patterns to follow:** Completion contract and focused tests in `docs/roadmap/platform/feat-274-web-google-analytics-integration.md`.
 - **Test scenarios:**
@@ -322,7 +320,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
   - Modify `apps/web/.env.example`
 - **Approach:**
   1. Define discriminated event inputs and explicit wire mappings. Validate common/context fields centrally and drop only documented optional fields; an undeclared event or parameter is a type/test failure rather than a runtime rename.
-  2. Add the default-off v2 env flag. Under v2, initialize the Google tag with automatic page views disabled, retain the latest route until readiness/consent resolves, and emit explicit `page_view` events through a raw-route-key deduper.
+  2. Add the default-off v2 env flag. Under v2, initialize the Google tag with automatic page views disabled, retain the latest route until the tag is ready, and emit explicit `page_view` events through a raw-route-key deduper.
   3. Keep v1 untouched when the flag is false. Do not let v1 and v2 dispatchers both run.
   4. Give shared RUM actions explicit GA projectors; Datadog continues receiving its original name/context even when no GA projection exists.
 - **Patterns to follow:** Optional env parsing in `apps/web/src/env.ts`, error-isolated RUM behavior in `apps/web/src/components/DatadogRum.tsx`, and route-effect tests in `apps/web/src/components/__tests__/GoogleAnalytics.test.tsx`.
@@ -332,7 +330,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
   - Covers AE1 and AE2. Flag true emits one initial and one real client-navigation page view with canonical standard fields.
   - Strict Mode effect replay, rerender, delayed script readiness, query cleanup, and repeated identical navigation emit no duplicate.
   - A route changes twice before collector readiness and emits only the latest committed state once ready.
-  - Consent granted, denied, and indeterminate states follow the injected approved policy and never send before the required default command.
+  - Missing consent state and explicit recommendation personalization changes do not stop configured GA or Datadog collection.
   - Unknown events, objects, arrays, nulls, unallowlisted parameters, and privacy sentinels cannot reach the GA wire.
   - Covers AE4. A rich Datadog search-click action remains unchanged in RUM while GA receives only the explicit bounded projection.
 - **Verification:** The v2 test suite observes one page view per route key and proves that flag-off rollback preserves v1 behavior.
@@ -404,7 +402,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
   - Modify `apps/mastra/src/services/google-analytics-client.test.ts`
   - Update `docs/roadmap/topic-experiences/feat-444-watch-ga4-measurement.md` during execution closeout
 - **Approach:**
-  1. Verify and record consent order, Enhanced Measurement history behavior, current key-event configuration, custom definitions, data retention, internal-traffic filter, and property timezone before enablement.
+  1. Verify and record existing analytics receipt, Enhanced Measurement history behavior, current key-event configuration, custom definitions, data retention, internal-traffic filter, and property timezone before enablement.
   2. Extend the existing read-only, allowlisted GA4 client only as needed for date/event/page-path/route-variant reconciliation. Preserve quota, thresholding, other-row, pagination, timezone, and URL-minimization metadata.
   3. Run browser and DebugView journeys for canonical English, compatibility English, non-English, contextual episode, search, language, download, share, and CTA paths. Confirm one network/DebugView event per expected action.
   4. Enable v2, annotate the release, and compare a seven-day data-quality checkpoint plus a complete 28-day window. Segment canonical JESUS by raw route variant, acquisition channel, device, and event name before drawing UX conclusions.
@@ -414,7 +412,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
   - Pagination, quota, thresholding, other-row data loss, timezone, zero rows, and capped rows remain explicit in the result.
   - Covers AE7. Synthetic canonical plus compatibility rows reconcile to one canonical total while retaining variant totals.
   - A thresholded or other-row result is labeled partial and cannot support a definitive behavioral conclusion.
-- **Verification:** The ticket contains the configuration export, consent approval, DebugView evidence, seven-day quality readout, 28-day reconciliation, and a conclusion classified as instrumentation, acquisition mix, behavior, or inconclusive.
+- **Verification:** The ticket contains the configuration export, baseline-delivery proof, DebugView evidence, seven-day quality readout, 28-day reconciliation, and a conclusion classified as instrumentation, acquisition mix, behavior, or inconclusive.
 
 ---
 
@@ -425,7 +423,7 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
 | Scope                  | Coverage                                                                                                                  | Done signal                                                                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Route projection       | `apps/web/src/lib/watch-analytics-route.test.ts` plus existing `routes`/proxy suites                                      | Every route family, basePath, alias, compatibility, contextual, query, and unsafe-input fixture passes without route-code behavior changes. |
-| Collector and contract | `apps/web/src/lib/watch-analytics-contract.test.ts` and `apps/web/src/components/__tests__/GoogleAnalytics.test.tsx`      | Flag-off v1 compatibility and flag-on explicit page views, consent ordering, dedupe, validation, and privacy rejection pass.                |
+| Collector and contract | `apps/web/src/lib/watch-analytics-contract.test.ts` and `apps/web/src/components/__tests__/GoogleAnalytics.test.tsx`      | Flag-off v1 compatibility and flag-on explicit page views, baseline preservation, dedupe, validation, and privacy rejection pass.           |
 | Player                 | `apps/web/src/components/watch/__tests__/WatchEventRecorder.test.tsx`                                                     | Existing wire names and meaningful thresholds remain; transition, seek, replay, identity swap, and terminal pause cases pass.               |
 | Outcomes               | Focused search, Watch page, language, download, share, and CTA suites named in U5                                         | Opens and outcomes are distinguished, action dedupe holds, and forbidden values never reach GA assertions.                                  |
 | Readout                | `apps/mastra/src/services/google-analytics-client.test.ts`                                                                | Bounded route/event queries reconcile synthetic variants and preserve every data-quality caveat.                                            |
@@ -434,21 +432,21 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
 ### Browser and GA4 Validation
 
 1. With v2 off, capture the current network and DebugView baseline for direct `/watch/jesus.html` and `/watch/jesus.html/english.html` loads plus one client navigation.
-2. Confirm the approved consent default executes before the Google tag config and that denied/granted transitions behave as documented.
+2. Confirm configured GA and Datadog initialize without a consent interaction, including after recommendation personalization is disabled. Verify provider receipt before and after the collector switch.
 3. Disable GA4 Enhanced Measurement browser-history page changes when the manual v2 collector owns SPA page views; leave unrelated enhanced measurements unchanged.
 4. With v2 on, exercise canonical English, explicit-English compatibility, Urdu, and contextual episode routes. Each committed route emits one `page_view`; canonical page path groups the first two while `watch_raw_path`/variant distinguishes them.
 5. Exercise play, pause, seek across milestones, complete, search outcomes/click, language/subtitle apply, download denied/success, share failure/success, and named CTAs. Match each network request and DebugView row to the Event Contract.
 6. Search all captured payloads for an email sentinel, credential sentinel, query text, result title/ID, viewer/session ID, filename, raw media URL, arbitrary query value, and full referrer. Any match blocks enablement.
-7. Reconcile Realtime after propagation, then the Data API after normal processing. Record thresholding, other-row, consent-modeling, filters, and timezone before interpreting differences.
+7. Reconcile Realtime after propagation, then the Data API after normal processing. Record thresholding, other-row, filters, and timezone before interpreting differences.
 
 ### Measurement Decision Matrix
 
-| Evidence after 28 days                                                                | Conclusion                                  | Action                                                                                |
-| ------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Raw variants reconcile, event funnel rates converge after channel/device segmentation | Attribution/instrumentation defect resolved | Keep v2; do not file a UX regression from the old ratio.                              |
-| Raw variants reconcile, but comparable cohorts retain a material funnel gap           | Likely behavioral or route-context effect   | File a narrow UX investigation with the affected event transition and cohort.         |
-| Page views duplicate, funnel is non-monotonic, or context is often unknown            | Instrumentation still defective             | Disable v2 and fix the failing contract before UX work.                               |
-| Thresholding, consent-mode changes, or insufficient volume prevent comparison         | Inconclusive                                | Extend the window or use privacy-approved aggregate evidence; do not infer causality. |
+| Evidence after 28 days                                                                | Conclusion                                  | Action                                                                        |
+| ------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
+| Raw variants reconcile, event funnel rates converge after channel/device segmentation | Attribution/instrumentation defect resolved | Keep v2; do not file a UX regression from the old ratio.                      |
+| Raw variants reconcile, but comparable cohorts retain a material funnel gap           | Likely behavioral or route-context effect   | File a narrow UX investigation with the affected event transition and cohort. |
+| Page views duplicate, funnel is non-monotonic, or context is often unknown            | Instrumentation still defective             | Disable v2 and fix the failing contract before UX work.                       |
+| Thresholding, filter changes, or insufficient volume prevent comparison               | Inconclusive                                | Extend the window or use bounded aggregate evidence; do not infer causality.  |
 
 ---
 
@@ -456,12 +454,12 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
 
 - U1-U6 automated tests and package gates pass, with v1 compatibility and v2 behavior proven separately.
 - Canonical and compatibility Watch routes remain byte-for-byte equivalent in their route/canonical behavior outside analytics.
-- The GA4 property export and approved consent-mode decision are attached to FGE-115 before v2 enablement.
+- The GA4 property export and evidence that the existing analytics baseline remains active are attached to FGE-115 before v2 enablement.
 - Browser and DebugView evidence proves one page view per committed route, declared event names/parameters, action-level dedupe, and absence of forbidden payloads.
 - A seven-day quality checkpoint meets the duplicate, unknown-context, privacy, and reconciliation stop conditions.
 - A complete 28-day readout reconciles canonical totals to raw route variants and evaluates JESUS event funnels by event name, channel, and device rather than aggregate key events alone.
 - The analytics owner records which outcome events, if any, are key events and why; modal opens/intents are not promoted by default.
-- The operations runbook contains flag enable/disable, Enhanced Measurement, consent, DebugView, Data API, alert/checkpoint, rollback, and owner instructions.
+- The operations runbook contains flag enable/disable, Enhanced Measurement, baseline preservation, DebugView, Data API, alert/checkpoint, rollback, and owner instructions.
 - FGE-115 and `feat-444` carry the PR, release annotation, evidence links, result classification, and any narrower follow-up ticket; the roadmap is complete only after the 28-day classification is recorded.
 
 ## Risks and Rollback
@@ -471,6 +469,6 @@ Disabling the v2 flag is the immediate rollback. If the flag cannot isolate both
 - **Privacy leakage through generic RUM forwarding:** rich Datadog context currently reaches the generic GA helper. Mitigate with explicit per-event projection and sentinel tests; rollback v2 on any forbidden parameter.
 - **Historical discontinuity:** canonical `page_path` changes the reporting grain. Mitigate with a release annotation, retained raw route diagnostics, v1 property export, and one 28-day compatibility window; do not backfill or pretend history was canonicalized.
 - **High-cardinality `(other)` aggregation:** paths and IDs can degrade standard reports. Keep high-cardinality values unregistered, use low-cardinality classifications for reports, and surface GA's data-loss indicator in every readout.
-- **Consent behavior is unknown:** the repository cannot prove an external CMP. Keep v2 disabled until the privacy owner records the approved mode and production ordering; a consent implementation becomes its own ticket if missing.
+- **Existing analytics delivery regresses:** keep or restore the working v1 collector and investigate the failed provider receipt. A missing consent signal is not a reason to disable either collector or Datadog RUM.
 - **Outcome events fire too early:** modal closes and anchor clicks can masquerade as success. Attach events to committed apply/copy/handoff boundaries and reuse re-entry guards.
 - **Rollback:** set `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` through the normal deploy path. This restores v1 collection without touching the measurement ID, URL behavior, or GA property history; if privacy is implicated, disable the GA measurement ID as the emergency collection stop through the authorized deployment configuration.

@@ -924,10 +924,10 @@ history.
 
 ### Recommendation Profile
 
-A consent-gated, pseudonymous continuity record for anonymous recommendation
-personalization. The browser holds the opaque first-party identifier while the
+A pseudonymous continuity record for anonymous recommendation personalization,
+created by default when personalization is enabled. The browser holds the opaque first-party identifier while the
 recommendation system retains only its one-way identity and server-owned
-interests; withdrawing consent severs relinkable continuity and begins erasure.
+interests; disabling personalization severs relinkable continuity and begins erasure.
 
 ### Recommendation Profile Projection
 
@@ -950,7 +950,7 @@ without exposing profile identifiers, histories, or vectors to Watch or Admin.
 ### Hybrid Recommendation Manifest
 
 An immutable Recommendation Strategy Manifest whose semantic and
-consent-permitted profile generators nominate into one canonical union,
+profile generators enabled by the viewer's personalization settings nominate into one canonical union,
 eligibility, deterministic ranker, repetition-aware composer, and exact-six
 slate. Semantic-only remains the control, fallback, kill-switch target, and
 last-known-good strategy. Historic `profile_challenger` assignment evidence is
