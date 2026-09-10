@@ -5,6 +5,21 @@ import { containerArguments, jobIdentity } from "../src/vm/profile.mjs"
 const identity = jobIdentity("a".repeat(32))
 const image = "sha256:" + "b".repeat(64)
 const job = { identity, image, deadlineMs: 123456789, phase: "render" }
+test("render scratch accommodates retained media and Chrome without expanding verifier memory", () => {
+  for (const [phase, bytes] of [
+    ["render", 1073741824],
+    ["verify", 268435456],
+  ]) {
+    const args = containerArguments({ ...job, phase })
+    assert.ok(
+      args.includes(
+        `--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=${bytes},uid=1000,gid=1000,mode=700`,
+      ),
+    )
+    assert.ok(args.includes("--memory=2147483648"))
+    assert.ok(args.includes("--memory-swap=2147483648"))
+  }
+})
 test("disposable render has only exact readonly input and no runtime authority", () => {
   const args = containerArguments(job)
   for (const expected of [
