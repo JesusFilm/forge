@@ -39,7 +39,7 @@ merged, as of 2026-09-09). The layer runs four
 beats inside one `Animated.parallel`. A white projector screen blooms in, one
 ray of light grows from the right edge, the screen crossfades to brand crimson,
 and the word `Jesus` fades in on top
-(`apps/mobile/src/components/splash/SplashSequence.tsx:238-269`).
+(`apps/mobile/src/components/splash/SplashSequence.tsx`, the `Animated.parallel` the sequence effect starts).
 
 The bloom was first written as an `Animated.sequence` of two timings, nested
 inside that `Animated.parallel`. No `Animated.loop` was present anywhere. On an
@@ -108,7 +108,8 @@ explanation beyond that as unverified.
   rather than construct-specific.
 - Logcat showed Glide decoding both mark rasters at 1024x748, so the images were
   packaged, found and loaded. The in-tree record of this is the comment at
-  `apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:386-390`.
+  `apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+  `it("uses no Animated.sequence at all")`.
 - The whole jest suite, `tsc`, eslint and prettier stayed green through the
   defect. No automated check could see it.
 
@@ -144,7 +145,7 @@ took the written law and drew a conclusion from it. Decision KTD9 says, at line
 > A looped `Animated.sequence` runs only once on Fabric, so any repeat must loop
 > a single timing and interpolate from it.
 
-The plan then turned that decision into a test scenario for unit U4, at line 335:
+The plan then turned that decision into a test scenario for unit U4, in its Approach list:
 
 > No `Animated.loop` wraps a sequence, so the Fabric single-run defect cannot
 > appear.
@@ -158,7 +159,8 @@ have caught this. A device found it.
 ### The pre-existing guard forbade only the loop
 
 The suite's guard block already asserted that no `Animated.loop` is ever called
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:379-383`).
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+`it("never wraps a sequence in Animated.loop")`).
 That guard is the letter of KTD9. It passed on the broken code, because the
 broken code used no loop.
 
@@ -169,7 +171,7 @@ Carry both halves of the bloom on ONE timing, and put the overshoot in an
 two durations, so the two constants still state the shape.
 
 The phase boundary and the overshoot value
-(`apps/mobile/src/components/splash/SplashSequence.tsx:49-57`):
+(`apps/mobile/src/components/splash/SplashSequence.tsx`, `SPLASH_BLOOM_RISE_MS` through `BLOOM_OVERSHOOT_AT`):
 
 ```tsx
 /** The screen's rise into its overshoot. */
@@ -185,8 +187,8 @@ const BLOOM_OVERSHOOT_AT =
 ```
 
 The interpolation the mark reads
-(`apps/mobile/src/components/splash/SplashSequence.tsx:210-217`, applied at
-line 341 as `transform: [{ scale: bloomScale }]`):
+(`apps/mobile/src/components/splash/SplashSequence.tsx`, `bloomScale`, applied on the
+mark as `transform: [{ scale: bloomScale }]`):
 
 ```tsx
 const bloomScale = useMemo(
@@ -200,7 +202,7 @@ const bloomScale = useMemo(
 ```
 
 The single timing that drives it
-(`apps/mobile/src/components/splash/SplashSequence.tsx:239-247`):
+(`apps/mobile/src/components/splash/SplashSequence.tsx`, the `Animated.timing(bloom, …)` entry):
 
 ```tsx
 Animated.timing(bloom, {
@@ -261,7 +263,8 @@ makes an animation claim checkable at all.
 The guard now spies on both `Animated.sequence` and `Animated.loop` and asserts
 that neither is ever called. It carries the dated device observation in a
 comment, so the next reader gets the evidence with the rule
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:378-394`):
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+`describe("the Fabric single-run defect (KTD9)")`):
 
 ```tsx
 describe("the Fabric single-run defect (KTD9)", () => {
@@ -285,7 +288,8 @@ describe("the Fabric single-run defect (KTD9)", () => {
 
 A companion case pins the bloom to exactly one timing of the full duration, and
 pins the whole layer to four timings — one per beat
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:396-408`).
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+`it("drives the bloom's overshoot by interpolation, not a second timing")`).
 
 ### 2. A call-shape guard alone cannot see this defect class
 
@@ -301,7 +305,7 @@ point. That is the same defect class that had already reached Android.
 The fix is a test that DRIVES each beat's own `Animated.Value` and reads the
 RENDERED style back. The helper takes the value off the timing's own call, so
 the test cannot be satisfied by a value that no layer reads
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:118-125`):
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`, `valueDrivenBy`):
 
 ```tsx
 function valueDrivenBy(
@@ -316,7 +320,8 @@ function valueDrivenBy(
 
 The case itself drives all four values to 1 and then reads the mark's scale, the
 ray's scale, the crimson layer's opacity and the word's opacity
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:410-449`).
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+`it("drives every beat's own layer, not just the timing config")`).
 A second case drives the bloom to the same fraction `BLOOM_OVERSHOOT_AT` holds —
 recomputed inline from the two duration constants, because the constant itself
 is not exported — and asserts the rendered scale is greater than 1, which pins
@@ -329,10 +334,11 @@ motion path. That assertion passes on the broken code.
 
 The layer seeds every value at 0 when motion is on, and at 1 when Reduce Motion
 is on: `const rest = reduceMotion ? 1 : 0`
-(`apps/mobile/src/components/splash/SplashSequence.tsx:206`). In the motion
+(`apps/mobile/src/components/splash/SplashSequence.tsx`, `const rest`). In the motion
 path `rest` is therefore 0. The suite's existing motion-path case asserts that
 the mark's scale is 0 before anything runs
-(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx:353-360`).
+(`apps/mobile/src/components/splash/__tests__/SplashSequence.test.tsx`,
+`it("starts the sequence when it is off")`).
 A static `transform: [{ scale: rest }]` also reads 0 there. The mutation
 survives the assertion.
 

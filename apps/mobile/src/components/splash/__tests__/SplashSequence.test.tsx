@@ -18,7 +18,7 @@ jest.mock("expo-linear-gradient", () => ({
 }))
 
 import { act } from "react"
-import { Animated } from "react-native"
+import { Animated, Dimensions } from "react-native"
 
 import {
   MARK_ASPECT,
@@ -28,6 +28,9 @@ import {
   WORD_RISE_FROM_CENTROID,
   WORD_SHIFT_LEFT_OF_CENTROID,
   MARK_WIDTH_RATIO,
+  RAY_APEX_X_RATIO,
+  RAY_BAND_COUNT,
+  RAY_BAND_PROFILE,
   RAY_APEX_Y_RATIO,
   SPLASH_BLOOM_RISE_MS,
   SPLASH_BLOOM_SETTLE_MS,
@@ -46,6 +49,7 @@ import {
   SPLASH_HOLD_MS,
   SPLASH_MOUNT_LAG_ALLOWANCE_MS,
 } from "../../../lib/splash/splashSession"
+import { BG_COLOR, TEXT_ON_OVERLAY, hexToRgba } from "../../../lib/color"
 import {
   TestRenderer,
   type RenderedNode,
@@ -82,6 +86,33 @@ function march(
 
 function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
   return Math.hypot(b.x - a.x, b.y - a.y)
+}
+
+function degreesOf(x: number, y: number) {
+  return (Math.atan2(y, x) * 180) / Math.PI
+}
+
+/** Into (-180, 180], so two angles can be compared without a wrap artefact. */
+function normalizeDeg(value: number) {
+  return ((((value + 180) % 360) + 360) % 360) - 180
+}
+
+/** A rendered node's style array, collapsed to one object. */
+function flatten(raw: unknown): Record<string, unknown> {
+  const merged = Array.isArray(raw)
+    ? Object.assign({}, ...raw.filter(Boolean))
+    : raw
+  return (merged ?? {}) as Record<string, unknown>
+}
+
+/** Where a beam edge crosses into the frame, and how far it ran to get there. */
+function crossRightEdge(
+  apex: { x: number; y: number },
+  angleDeg: number,
+  frameWidth: number,
+) {
+  const travelled = (frameWidth - apex.x) / Math.cos((angleDeg * Math.PI) / 180)
+  return { travelled, ...march(apex, angleDeg, travelled) }
 }
 
 /**
@@ -160,15 +191,97 @@ afterEach(async () => {
 })
 
 describe("the beam's geometry (R9)", () => {
-  it("puts the apex on the right edge, four fifths of the way down", () => {
-    expect(splashGeometry(PHONE).apex).toEqual({
-      x: PHONE.width,
-      y: PHONE.height * RAY_APEX_Y_RATIO,
-    })
-    expect(splashGeometry(TABLET).apex).toEqual({
-      x: TABLET.width,
-      y: TABLET.height * RAY_APEX_Y_RATIO,
-    })
+  it("puts the apex PAST the right edge, four fifths of the way down", () => {
+    // On the edge, the bands converge to a point of light the viewer can see.
+    expect(RAY_APEX_X_RATIO).toBeGreaterThan(1)
+    for (const frame of [PHONE, TABLET]) {
+      const { apex } = splashGeometry(frame)
+      expect(apex).toEqual({
+        x: frame.width * RAY_APEX_X_RATIO,
+        y: frame.height * RAY_APEX_Y_RATIO,
+      })
+      expect(apex.x).toBeGreaterThan(frame.width)
+    }
+  })
+
+  it.each([
+    ["a phone", PHONE],
+    ["a tablet", TABLET],
+  ])("crosses into %s as a band, never as a point", (_label, frame) => {
+    const geometry = splashGeometry(frame)
+    const edges = [geometry.bottomLeftAngleDeg, geometry.topRightAngleDeg].map(
+      (angleDeg) => crossRightEdge(geometry.apex, angleDeg, frame.width),
+    )
+
+    for (const edge of edges) {
+      // Both edges run left OUT of the apex and arrive on the right edge, so
+      // the beam enters through that edge rather than round the bottom corner.
+      expect(edge.travelled).toBeGreaterThan(0)
+      expect(edge.x).toBeCloseTo(frame.width, 6)
+      expect(edge.y).toBeGreaterThan(0)
+      expect(edge.y).toBeLessThan(frame.height)
+    }
+
+    // The gap between them is the beam's width where a viewer first sees it.
+    // At the apex it is zero, which is the pinch this requirement removes.
+    expect(Math.abs(edges[0].y - edges[1].y) / frame.height).toBeGreaterThan(
+      0.1,
+    )
+  })
+
+  it("fades every band out at BOTH of its own edges", () => {
+    // This is the whole reason a viewer cannot count the bands. A band that is
+    // uniform across its thickness puts a step at each edge, and the steps add
+    // up into visible streaks inside the beam.
+    const profile: number[] = [...RAY_BAND_PROFILE]
+    expect(profile.length).toBeGreaterThanOrEqual(5)
+    expect(profile[0]).toBe(0)
+    expect(profile[profile.length - 1]).toBe(0)
+
+    // Symmetric, so a band is not brighter on one side than the other.
+    expect(profile).toEqual([...profile].reverse())
+
+    // One peak in the middle, reached without a plateau or a second bump.
+    const peak = Math.max(...profile)
+    expect(peak).toBe(1)
+    expect(profile.indexOf(peak)).toBe((profile.length - 1) / 2)
+    const rising = profile.slice(0, (profile.length + 1) / 2)
+    for (let i = 1; i < rising.length; i += 1) {
+      expect(rising[i]).toBeGreaterThan(rising[i - 1])
+    }
+
+    // Its SLOPE also reaches zero at the edges, so the sum has no visible
+    // kink: the first step in is smaller than the next one.
+    expect(profile[1] - profile[0]).toBeLessThan(profile[2] - profile[1])
+  })
+
+  it.each([
+    ["a phone", PHONE],
+    ["a tablet", TABLET],
+  ])("squares the dissolve onto the corner line, on %s", (_label, frame) => {
+    const geometry = splashGeometry(frame)
+    const corners = expectedCorners(frame)
+    const { dissolve } = geometry
+
+    // Its gradient runs along the corner line's NORMAL. Any other angle and the
+    // bands' ends fade on different schedules, which is a visible edge again.
+    const lineAngle = degreesOf(
+      corners.topRight.x - corners.bottomLeft.x,
+      corners.topRight.y - corners.bottomLeft.y,
+    )
+    const perpendicular = Math.abs(
+      normalizeDeg(dissolve.angleDeg - lineAngle) % 180,
+    )
+    expect(perpendicular).toBeCloseTo(0, 6)
+
+    expect(dissolve.height).toBeGreaterThan(0)
+    // It has to be wider than the beam is at that depth, or it clips the sides.
+    expect(dissolve.width).toBeGreaterThan(
+      distance(corners.bottomLeft, corners.topRight),
+    )
+    // Fully opaque BEFORE its own far edge, so nothing shows past the line.
+    expect(dissolve.stop).toBeGreaterThan(0)
+    expect(dissolve.stop).toBeLessThanOrEqual(1)
   })
 
   it.each([
@@ -195,19 +308,65 @@ describe("the beam's geometry (R9)", () => {
     expect(upper.y).toBeCloseTo(corners.topRight.y, 6)
   })
 
-  it("opens the cone by about 37.7 degrees on a 390x844 frame", () => {
+  it("opens the cone by about 29.4 degrees on a 390x844 frame", () => {
     const geometry = splashGeometry(PHONE)
+    // Narrower than the 37.7 degrees the on-edge apex gave: the further out
+    // the apex sits, the flatter the cone. Pinned on both sides, because the
+    // cone stops reading as a cone at about 17 degrees and stops hiding its
+    // origin below about 1.09 of the frame's width.
     expect(geometry.topRightAngleDeg - geometry.bottomLeftAngleDeg).toBeCloseTo(
-      37.7,
+      29.4,
       1,
     )
   })
 
-  it("runs the beam past the far corner, so it does not stop on the mark", () => {
-    const geometry = splashGeometry(PHONE)
-    const corners = expectedCorners(PHONE)
-    expect(geometry.rayLength).toBeGreaterThan(
-      distance(geometry.apex, corners.bottomLeft),
+  it.each([
+    ["a phone", PHONE],
+    ["a tablet", TABLET],
+  ])("stops the beam ON the two corners it lights, on %s", (_label, frame) => {
+    const geometry = splashGeometry(frame)
+    const corners = expectedCorners(frame)
+    const bands = geometry.bands
+
+    // The outermost bands END on the corners — they no longer run past them.
+    const lower = march(geometry.apex, bands[0].angleDeg, bands[0].length)
+    const upper = march(
+      geometry.apex,
+      bands[bands.length - 1].angleDeg,
+      bands[bands.length - 1].length,
+    )
+    expect(lower.x).toBeCloseTo(corners.bottomLeft.x, 4)
+    expect(lower.y).toBeCloseTo(corners.bottomLeft.y, 4)
+    expect(upper.x).toBeCloseTo(corners.topRight.x, 4)
+    expect(upper.y).toBeCloseTo(corners.topRight.y, 4)
+
+    // And every band between them ends ON the segment joining those corners,
+    // so the beam's far edge is that line rather than an arc past it.
+    const span = {
+      x: corners.topRight.x - corners.bottomLeft.x,
+      y: corners.topRight.y - corners.bottomLeft.y,
+    }
+    for (const band of bands) {
+      const end = march(geometry.apex, band.angleDeg, band.length)
+      const along =
+        ((end.x - corners.bottomLeft.x) * span.x +
+          (end.y - corners.bottomLeft.y) * span.y) /
+        (span.x * span.x + span.y * span.y)
+      expect(along).toBeGreaterThanOrEqual(-1e-6)
+      expect(along).toBeLessThanOrEqual(1 + 1e-6)
+      const offLine = distance(end, {
+        x: corners.bottomLeft.x + span.x * along,
+        y: corners.bottomLeft.y + span.y * along,
+      })
+      expect(offLine).toBeLessThan(1e-6)
+    }
+
+    // The bands are NOT all one length: the upper edge is the shorter reach,
+    // and drawing it to the longer one is what ran it past its corner.
+    expect(bands[bands.length - 1].length).toBeLessThan(bands[0].length)
+    expect(geometry.rayLength).toBeCloseTo(
+      Math.max(...bands.map((band) => band.length)),
+      6,
     )
   })
 
@@ -262,6 +421,111 @@ describe("the beam's geometry (R9)", () => {
     // sliced corner causes without carrying the word past the middle.
     expect(across).toBeGreaterThan(0.5)
     expect(across).toBeLessThan(MARK_CENTROID_X)
+  })
+
+  it("emits finite stops for a frame that has not been measured yet", () => {
+    // The cover mounts on the first frame of a cold start, where the window can
+    // still measure 0x0. The stops are a ratio now, so 0/0 would put NaN on the
+    // locations array of all 28 native gradient views.
+    for (const frame of [
+      { width: 0, height: 0 },
+      { width: 0, height: 844 },
+      { width: 390, height: 0 },
+    ]) {
+      const geometry = splashGeometry(frame)
+      expect(geometry.bands).toHaveLength(RAY_BAND_COUNT)
+      for (const band of geometry.bands) {
+        expect(Number.isFinite(band.length)).toBe(true)
+        expect(band.length).toBeGreaterThanOrEqual(0)
+      }
+      expect(Number.isFinite(geometry.bandThickness)).toBe(true)
+      for (const value of [
+        geometry.dissolve.left,
+        geometry.dissolve.top,
+        geometry.dissolve.width,
+        geometry.dissolve.height,
+        geometry.dissolve.angleDeg,
+        geometry.dissolve.stop,
+      ]) {
+        expect(Number.isFinite(value)).toBe(true)
+      }
+    }
+  })
+
+  it("draws every band ACROSS its thickness, at its own length", async () => {
+    const renderer = await render({ reduceMotion: true })
+    const geometry = splashGeometry(Dimensions.get("window"))
+    const drawn = renderer.root.findAll(
+      (node) =>
+        Array.isArray(node.props.locations) && node.props.testID === undefined,
+    )
+    expect(drawn).toHaveLength(RAY_BAND_COUNT)
+
+    drawn.forEach((node, index) => {
+      const band = geometry.bands[index]
+      const style = flatten(node.props.style)
+
+      // THE assertion this whole change rests on. `start` and `end` sharing an
+      // x runs the gradient down the band's THICKNESS. Run it along the band's
+      // length instead and every band is uniform across, which is what let a
+      // viewer count them inside the beam.
+      expect(node.props.start).toEqual({ x: 0.5, y: 0 })
+      expect(node.props.end).toEqual({ x: 0.5, y: 1 })
+
+      const colors = node.props.colors as string[]
+      const locations = node.props.locations as number[]
+      expect(colors).toHaveLength(RAY_BAND_PROFILE.length)
+      expect(locations).toHaveLength(RAY_BAND_PROFILE.length)
+      // Both edges fully transparent, the middle the brightest.
+      expect(colors[0]).toBe(hexToRgba(TEXT_ON_OVERLAY, 0))
+      expect(colors[colors.length - 1]).toBe(hexToRgba(TEXT_ON_OVERLAY, 0))
+      expect(colors[(colors.length - 1) / 2]).not.toBe(colors[0])
+      // Evenly spaced from 0 to 1, so the profile is not skewed to one edge.
+      locations.forEach((value, at) => {
+        expect(value).toBeCloseTo(at / (locations.length - 1), 6)
+      })
+
+      expect(style.width).toBeCloseTo(band.length, 6)
+      expect(style.height).toBeCloseTo(geometry.bandThickness, 6)
+      // A band points LEFT out of the apex, so it is drawn half a turn back.
+      const transform = style.transform as Record<string, unknown>[]
+      const rotate = transform.find((entry) => entry.rotate !== undefined)
+      expect(rotate?.rotate).toBe(`${band.angleDeg - 180}deg`)
+    })
+
+    // Not all one length — that is the whole point of the band list.
+    const widths = drawn.map(
+      (node) => flatten(node.props.style).width as number,
+    )
+    expect(Math.max(...widths)).toBeGreaterThan(Math.min(...widths))
+  })
+
+  it("lays the dissolve over the bands' shared far end", async () => {
+    const renderer = await render({ reduceMotion: true })
+    const geometry = splashGeometry(Dimensions.get("window"))
+    const found = renderer.root.findAll(
+      (node) => node.props.testID === "splash-ray-dissolve",
+    )
+    expect(found.length).toBeGreaterThan(0)
+    const node = found[found.length - 1]
+
+    // Ground colour, transparent first and fully opaque by its own far edge —
+    // so the bands' ends dissolve into the page instead of cutting.
+    const colors = node.props.colors as string[]
+    expect(colors[0]).toBe(hexToRgba(BG_COLOR, 0))
+    expect(colors[colors.length - 1]).toBe(hexToRgba(BG_COLOR, 1))
+    expect(node.props.locations).toEqual([0, geometry.dissolve.stop, 1])
+    expect(node.props.start).toEqual({ x: 0.5, y: 0 })
+    expect(node.props.end).toEqual({ x: 0.5, y: 1 })
+
+    const style = flatten(node.props.style)
+    expect(style.left).toBeCloseTo(geometry.dissolve.left, 6)
+    expect(style.top).toBeCloseTo(geometry.dissolve.top, 6)
+    expect(style.width).toBeCloseTo(geometry.dissolve.width, 6)
+    expect(style.height).toBeCloseTo(geometry.dissolve.height, 6)
+    const transform = style.transform as Record<string, unknown>[]
+    const rotate = transform.find((entry) => entry.rotate !== undefined)
+    expect(rotate?.rotate).toBe(`${geometry.dissolve.angleDeg}deg`)
   })
 
   it("keeps the mark's own proportions on both frames", () => {
