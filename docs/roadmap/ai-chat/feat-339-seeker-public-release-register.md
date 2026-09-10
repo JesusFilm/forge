@@ -39,6 +39,12 @@ with no release-level view.
 
 ### 1. Data & privacy
 
+- **Protection after operator erasure (STATUS: open)** — recorded 2026-09-09 by the feature owner during feat-247 planning; see [feat-247](feat-247-chat-history-management.md) and its [engineering plan, R12–R14](../../plans/2026-09-09-0438-feat-chat-conversation-delete-plan.md). The selected B design keeps content-free conversation deletion records until operator erasure, including records for users with no remaining live conversations. The owner accepts that removing those records removes their protection: outstanding requests or still-valid sessions may subsequently persist under previously deleted IDs. Ordinary single-conversation deletion retains protection while its record exists. **Before public release, decide whether this erasure limitation remains acceptable or requires additional safeguards**, such as coordinating erasure with request/session invalidation. The current acceptance is not public-release approval. Account-deletion integration remains feat-356; cross-owner disclosure is not part of the accepted exception.
+
+  The release review must establish the exposure window from actual session/token validity, renewal, and in-flight request behavior, including what closes it. Feat-247 sets no maximum window and adds no invalidation/drain mechanism. Record that evidence and the responsible release decision before accepting the exception; do not infer that ordinary 25-day retention closes the recreation window.
+
+- **Conversation-deletion disclosure (STATUS: open)** — feat-247 removes chat history while leaving observability traces under the settled 25-day Langfuse sweep. Its confirmation must describe removal from chat history, not immediate erasure everywhere. Include this distinction, infrastructure backup behavior, and the existing residual-log boundaries in the public data/privacy disclosure review. This entry does not change the settled retention policy or add trace deletion to feat-247.
+
 - **Retention enforcement live:** feat-336 (Langfuse trace retention sweep,
   flat 25 days matching ai-chat Postgres — owner decision 2026-08-10,
   superseding the earlier 30/180 split) must be deployed and observed
@@ -160,6 +166,7 @@ with no release-level view.
 
 - Per-caller rate/concurrency cap — named by feat-236 as its precondition
   step 0 and by feat-208 as "the real flood control"; still open.
+- **Absent-ID deletion reservations (STATUS: open, feat-247)** — a signed-in caller can reserve arbitrary previously unknown IDs as deleted; each distinct ID adds a content-free record retained until operator erasure. Include this permanent-row amplification path in admission/abuse policy before public exposure, with measured growth and count-only monitoring. Choose and test appropriate limits without silently expiring protection, returning unprotected success, or making legitimate deletion permanently unavailable. No quota, ceiling, or retention change is approved by the deletion plan.
 - Model spend ceilings for public traffic (the gateway/Gemma chain budget
   posture was sized for dogfood). (Added 2026-08-19, feat-366: with
   `SEEKER_FOLLOWUPS_ENABLED` on, each grounded send adds a SECOND
